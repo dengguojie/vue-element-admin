@@ -40,29 +40,31 @@ static const string SUB = "Sub";
 static const string SOFTMAXGRADEXT = "SoftmaxGradExt";
 static const string AXIS = "axes";
 static const string KEEPDIMS = "keep_dims";
+static const string PATTERN_INPUT0 = "Input0";
+static const string PATTERN_INPUT1 = "Input1";
+static const string PATTERN_INPUT2 = "Input2";
 
 vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxGradExtV2FusionPass pattern begin");
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
+  FusionPattern* pattern0 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
+  FUSION_PASS_CHECK(pattern0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
 
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
+  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
+
+  FusionPattern* pattern2 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
+  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
+
+  FusionPattern* pattern3 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
+  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   /*
-                        input1 input0
-                            \   /
-                             mul               input0   input1  input2
-                              |                   \        |      /
-                      input0  sum        ----->     softmax_grad_ext
-                         \    /
-               input1      sub
-                   \      /
-         input2      mul1
-            \         /
-              mul_grad
-  */
-  /*
+  pattern0
                       input1 input0
                           \   /
                            mul               input0   input1  input2
@@ -76,36 +78,126 @@ vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
                       mul_grad
   */
 
-  pattern->AddOpDesc(PATTERN_MUL, {MUL})
+  /*
+  pattern1
+             input1 input0
+                 \   /
+                  mul               input0   input1  input2
+                   |                   \        |      /
+          input0  sum        ----->     softmax_grad_ext
+              \    /
+                sub    input1 
+                 \      /
+                   mul1      input2
+                     \        /
+                      mul_grad
+  */
+
+  /*
+  pattern2
+                         input1 input0
+                             \   /
+                              mul               input0   input1  input2
+                               |                   \        |      /
+                      input0  sum        ----->     softmax_grad_ext
+                         \    /
+               input1      sub
+                   \      /
+         input2      mul1
+            \         /
+              mul_grad
+  */
+
+  /*
+  pattern3
+                      input1 input0
+                          \   /
+                           mul               input0   input1  input2
+                            |                   \        |      /
+                   input0  sum        ----->     softmax_grad_ext
+                       \    /
+                         sub    input1
+                           \      /
+                  input2     mul1      
+                     \        /
+                      mul_grad
+  */
+
+  pattern0->AddOpDesc(PATTERN_MUL, {MUL})
       .AddOpDesc(PATTERN_MUL1, {MUL})
       .AddOpDesc(PATTERN_MUL_Grad, {MUL})
       .AddOpDesc(PATTERN_SUM, {SUM})
       .AddOpDesc(PATTERN_SUB, {SUB})
+      .AddOpDesc(PATTERN_INPUT0)
+      .AddOpDesc(PATTERN_INPUT1)
+      .AddOpDesc(PATTERN_INPUT2)
+      .SetInputs(PATTERN_MUL, {PATTERN_INPUT0, PATTERN_INPUT1})
       .SetInputs(PATTERN_SUM, {PATTERN_MUL})
-      .SetInputs(PATTERN_SUB, {PATTERN_SUM})
-      .SetInputs(PATTERN_MUL1, {PATTERN_SUB})
-      .SetInputs(PATTERN_MUL_Grad, {PATTERN_MUL1})
+      .SetInputs(PATTERN_SUB, {PATTERN_INPUT0, PATTERN_SUM})
+      .SetInputs(PATTERN_MUL1, {PATTERN_INPUT1, PATTERN_SUB})
+      .SetInputs(PATTERN_MUL_Grad, {PATTERN_MUL1, PATTERN_INPUT2})
       .SetOutput(PATTERN_MUL_Grad);
+  patterns.push_back(pattern0);
 
-  patterns.push_back(pattern);
+  pattern1->AddOpDesc(PATTERN_MUL, {MUL})
+      .AddOpDesc(PATTERN_MUL1, {MUL})
+      .AddOpDesc(PATTERN_MUL_Grad, {MUL})
+      .AddOpDesc(PATTERN_SUM, {SUM})
+      .AddOpDesc(PATTERN_SUB, {SUB})
+      .AddOpDesc(PATTERN_INPUT0)
+      .AddOpDesc(PATTERN_INPUT1)
+      .AddOpDesc(PATTERN_INPUT2)
+      .SetInputs(PATTERN_MUL, {PATTERN_INPUT0, PATTERN_INPUT1})
+      .SetInputs(PATTERN_SUM, {PATTERN_MUL})
+      .SetInputs(PATTERN_SUB, {PATTERN_INPUT0, PATTERN_SUM})
+      .SetInputs(PATTERN_MUL1, {PATTERN_SUB, PATTERN_INPUT1})
+      .SetInputs(PATTERN_MUL_Grad, {PATTERN_MUL1, PATTERN_INPUT2})
+      .SetOutput(PATTERN_MUL_Grad);
+  patterns.push_back(pattern1);
+
+  pattern2->AddOpDesc(PATTERN_MUL, {MUL})
+      .AddOpDesc(PATTERN_MUL1, {MUL})
+      .AddOpDesc(PATTERN_MUL_Grad, {MUL})
+      .AddOpDesc(PATTERN_SUM, {SUM})
+      .AddOpDesc(PATTERN_SUB, {SUB})
+      .AddOpDesc(PATTERN_INPUT0)
+      .AddOpDesc(PATTERN_INPUT1)
+      .AddOpDesc(PATTERN_INPUT2)
+      .SetInputs(PATTERN_MUL, {PATTERN_INPUT0, PATTERN_INPUT1})
+      .SetInputs(PATTERN_SUM, {PATTERN_MUL})
+      .SetInputs(PATTERN_SUB, {PATTERN_INPUT0, PATTERN_SUM})
+      .SetInputs(PATTERN_MUL1, {PATTERN_INPUT1, PATTERN_SUB})
+      .SetInputs(PATTERN_MUL_Grad, {PATTERN_INPUT2, PATTERN_MUL1})
+      .SetOutput(PATTERN_MUL_Grad);
+  patterns.push_back(pattern2);
+
+  pattern3->AddOpDesc(PATTERN_MUL, {MUL})
+      .AddOpDesc(PATTERN_MUL1, {MUL})
+      .AddOpDesc(PATTERN_MUL_Grad, {MUL})
+      .AddOpDesc(PATTERN_SUM, {SUM})
+      .AddOpDesc(PATTERN_SUB, {SUB})
+      .AddOpDesc(PATTERN_INPUT0)
+      .AddOpDesc(PATTERN_INPUT1)
+      .AddOpDesc(PATTERN_INPUT2)
+      .SetInputs(PATTERN_MUL, {PATTERN_INPUT0, PATTERN_INPUT1})
+      .SetInputs(PATTERN_SUM, {PATTERN_MUL})
+      .SetInputs(PATTERN_SUB, {PATTERN_INPUT0, PATTERN_SUM})
+      .SetInputs(PATTERN_MUL1, {PATTERN_SUB, PATTERN_INPUT1})
+      .SetInputs(PATTERN_MUL_Grad, {PATTERN_INPUT2, PATTERN_MUL1})
+      .SetOutput(PATTERN_MUL_Grad);
+  patterns.push_back(pattern3);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxGradExtV2FusionPass pattern end");
 
   return patterns;
 }
 
 Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxGradExtV2FusionPass fusion begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass fusion begin");
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
   ge::NodePtr mul1Node = GetNodeFromMapping(PATTERN_MUL1, mapping);
   ge::NodePtr mulGradNode = GetNodeFromMapping(PATTERN_MUL_Grad, mapping);
   ge::NodePtr subNode = GetNodeFromMapping(PATTERN_SUB, mapping);
   ge::NodePtr sumNode = GetNodeFromMapping(PATTERN_SUM, mapping);
-
-  // check pattern
-  if (subNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
-      mulNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()) {
-    return NOT_CHANGED;
-  }
 
   FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -126,27 +218,62 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                     return PARAM_INVALID);
 
   // add inputs
-  ge::GeTensorDesc input_tensor0 = mulNode->GetOpDesc()->GetInputDesc(1);
-  FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor0) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
-  ge::GeTensorDesc input_tensor1 = mulNode->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor1) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
-  ge::GeTensorDesc input_tensor2;
-  if (mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() != mul1Node) {
-    input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(0);
-    FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor2) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
-  } else {
-    input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(1);
-    FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor2) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
+  string newOpName = newOpdesc->GetName();
+  size_t mulInputId = 2;
+  for (size_t i = 0; i < 2; i++) {
+    for (size_t j = 0; j < 2; j++) {
+      if (subNode->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode()->GetName() ==
+          mulNode->GetInDataAnchor(j)->GetPeerOutAnchor()->GetOwnerNode()->GetName()) {
+        mulInputId = j;
+        break;
+      }
+    }
+    if (mulInputId != 2) {
+      break;
+    }
   }
+  if (!(mulInputId == 1 || mulInputId == 0)) {
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for different input0 and input1.");
+    return NOT_CHANGED;
+  }
+  ge::GeTensorDesc input_tensor0 = mulNode->GetOpDesc()->GetInputDesc(mulInputId);
+  FUSION_PASS_CHECK(
+      newOpdesc->AddInputDesc(input_tensor0) != SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input grad failed.", newOpName.c_str()),
+      return FAILED);
+  ge::GeTensorDesc input_tensor1 = mulNode->GetOpDesc()->GetInputDesc(1 - mulInputId);
+  FUSION_PASS_CHECK(
+      newOpdesc->AddInputDesc(input_tensor1) != SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input x1 failed.", newOpName.c_str()),
+      return FAILED);
 
+  size_t gradInputId = 2;
+  for (size_t i = 0; i < 2; i++) {
+    for (size_t j = 0; j < 2; j++) {
+      if (mulGradNode->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode()->GetName() ==
+          mul1Node->GetOutDataAnchor(j)->GetOwnerNode()->GetName()) {
+        gradInputId = 1 - i;
+        break;
+      }
+    }
+    if (gradInputId != 2) {
+      break;
+    }
+  }
+  if (!(gradInputId == 1 || gradInputId == 0)) {
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for different input2.");
+    return NOT_CHANGED;
+  }
+  ge::GeTensorDesc input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(gradInputId);
+  FUSION_PASS_CHECK(
+      newOpdesc->AddInputDesc(input_tensor2) != SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input x2 failed.", newOpName.c_str()),
+      return FAILED);
   vector<ge::GeTensorDesc> input_tensor;
   input_tensor.push_back(input_tensor0);
   input_tensor.push_back(input_tensor1);
   input_tensor.push_back(input_tensor2);
+
   if (input_tensor.size() != 0) {
     for (size_t i = 0; i < input_tensor.size(); i++) {
       vector<int64_t> dimOut = input_tensor[i].GetOriginShape().GetDims();
@@ -201,33 +328,24 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
 
   // connect input edge
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(1)->GetPeerOutAnchor(), newNode->GetInDataAnchor(0)) != SUCCESS,
+      ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(mulInputId)->GetPeerOutAnchor(), newNode->GetInDataAnchor(0)) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
               mulNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
               newNode->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(0)->GetPeerOutAnchor(), newNode->GetInDataAnchor(1)) != SUCCESS,
+      ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(1 -mulInputId)->GetPeerOutAnchor(), newNode->GetInDataAnchor(1)) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
               mulNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
               newNode->GetName().c_str()),
       return FAILED);
 
-  if (mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() != mul1Node) {
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                              newNode->GetInDataAnchor(2)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                              mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
-                      return FAILED);
-  } else {
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulGradNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                                              newNode->GetInDataAnchor(2)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                              mulGradNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
-                      return FAILED);
-  }
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulGradNode->GetInDataAnchor(gradInputId)->GetPeerOutAnchor(),
+                                            newNode->GetInDataAnchor(2)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                            newNode->GetName().c_str()),
+                    return FAILED);
 
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(mulGradNode->GetOutControlAnchor(), newNode->GetInControlAnchor()) != SUCCESS,
@@ -249,7 +367,7 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node failed."),
                     return FAILED);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxGradExtV2FusionPass fusion end");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass fusion end");
   return SUCCESS;
 }
 REGISTER_PASS("SoftmaxGradExtFusionV2", BUILT_IN_GRAPH_PASS, SoftmaxGradExtV2FusionPass);
