@@ -313,6 +313,11 @@ def _tiling_params_negative(args):
     axis_dst_c_size = out_shape[dst_format.index("C")]
     if dst_cr_lp_cnt > 1 or axis_src_c_size == 1:
         tp_200_src_c_lp_unit = 1
+    elif (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32) or
+        (in_dtype in NEED_CAST_DTYPES and cce.cce_conf.intrinsic_check_support("Intrinsic_vnchwconv", "float32"))) and \
+            axis_dst_cr_size >= cr_gate:
+        tmp_src_c_lp_unit = tmp_dst_cr_lp_unit // tdc.ceil_fill(axis_dst_cr_size, c0_len)
+        tp_200_src_c_lp_unit = tmp_src_c_lp_unit if axis_src_c_size > tmp_src_c_lp_unit else axis_src_c_size
     else:
         tmp_src_c_lp_unit = tmp_dst_cr_lp_unit // tdc.ceil_fill(axis_dst_cr_size, block_elem_cnt)
         tp_200_src_c_lp_unit = tmp_src_c_lp_unit if axis_src_c_size > tmp_src_c_lp_unit else axis_src_c_size
@@ -558,8 +563,8 @@ def _once_vnchwconv_invert(args):
     with tik_inst.new_stmt_scope():
         src_stride = tik_inst.Scalar(dtype="int32")
         dst_stride = tik_inst.Scalar(dtype="int32")
-        cr_align_block_size = tdc.ceil_fill(cr_pln_size, tdc.VNC_LINES)
-        repeat_cnt = tdc.ceil_div(cr_pln_size, tdc.VNC_LINES)
+        cr_align_block_size = tdc.ceil_fill(cr_pln_size, c0_len)
+        repeat_cnt = tdc.ceil_div(cr_pln_size, c0_len)
         if (src_ub.dtype.lower() in NEED_CAST_DTYPES and
                 not cce.cce_conf.intrinsic_check_support("Intrinsic_vnchwconv", "float32")):
             src_ub = src_ub.reinterpret_cast_to("float16")
@@ -1043,7 +1048,7 @@ def _copy_data_out(copy_out_args):
     with tik_inst.new_stmt_scope():
         cr_block_align_size = tik_inst.Scalar(name="cr_block_align_size")
         with tik_inst.if_scope(tiling_mode == 2001):
-            cr_block_align_size.set_as(tdc.ceil_fill(cr_pln_size, tdc.VNC_LINES))
+            cr_block_align_size.set_as(tdc.ceil_fill(cr_pln_size, c0_len))
         with tik_inst.else_scope():
             cr_block_align_size.set_as(tdc.ceil_fill(cr_pln_size, ele_per_block))
         tmp_reg = [tik_inst.Scalar(dtype=src_ub.dtype) for i in tdc.REG_IDX_LIST[:ele_per_block]]
