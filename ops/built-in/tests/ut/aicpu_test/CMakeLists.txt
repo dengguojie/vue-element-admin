@@ -106,12 +106,18 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
   ${CPU_KERNELS_DIR}/utils/kernel_util.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
+  ${CPU_KERNELS_DIR}/utils/range_sampler.cc
 )
 
 set(cpu_kernels_llt_src
@@ -218,6 +224,11 @@ set(_cpu_kernels_ut_files
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/where/src/where_utest.cpp
+  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
+  testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
+  testcase/compute_accidental_hits/src/compute_accidental_hits_kernel_utest.cpp
+  testcase/edit_distance/src/edit_distance_kernel_utest.cpp
+  testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

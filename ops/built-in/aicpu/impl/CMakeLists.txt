@@ -5,10 +5,15 @@ set(local_kernels_src_files
     kernels/normalized/add.cc
     kernels/normalized/asin.cc
     kernels/normalized/atan.cc
+    kernels/normalized/cache_swap_table.cc
+    kernels/normalized/candidate_sampler.cc
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
+    kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
     kernels/normalized/dynamic_stitch.cc
+    kernels/normalized/edit_distance.cc
+    kernels/normalized/embedding_lookup.cc
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
     kernels/normalized/fill.cc
@@ -40,6 +45,7 @@ set(local_kernels_src_files
     utils/broadcast_iterator.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc
+    utils/range_sampler.cc
     utils/sparse_group.cc
     utils/sparse_tensor.cc
 )
