@@ -95,7 +95,7 @@ TEST_F(lstm_fusion_test, lstm_fusion_test_1) {
         break;
     }
     }
-    EXPECT_EQ(findLstmCell, true);
+    EXPECT_EQ(findLstmCell, false);
 }
 
 TEST_F(lstm_fusion_test, lstm_fusion_test_2) {
@@ -207,6 +207,6 @@ TEST_F(lstm_fusion_test, lstm_fusion_test_2) {
             break;
         }
     }
-    EXPECT_EQ(findLstmCell, true);
+    EXPECT_EQ(findLstmCell, false);
 }
 }

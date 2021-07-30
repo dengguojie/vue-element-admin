@@ -50,7 +50,7 @@ IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
   TensorDesc outputFTensorDesc = op.GetOutputDesc("f");
   TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
   TensorDesc outputTanhcTensorDesc = op.GetOutputDesc("tanhc");
-  
+
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batchSize = 0;
   int64_t hiddenSize = 0;
@@ -116,7 +116,6 @@ IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
   (void)op.UpdateOutputDesc("o", outputOTensorDesc);
   (void)op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc);
 
-  inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
   (void)op.UpdateInputDesc("w", inputWTensorDesc);
 
   return GRAPH_SUCCESS;
@@ -158,9 +157,11 @@ IMPLEMT_INFERFUNC(DynamicRNNV2, DynamicRNNV2InferShape) {
   int64_t batchSize = 0;
   int64_t hiddenSize = 0;
   int64_t num_step = 0;
+  int64_t inputSize = 0;
   if (dim_num == 3) {
     num_step = shapeX.GetDims().at(0);
     batchSize = shapeX.GetDims().at(1);
+    inputSize = shapeX.GetDims().at(2);
     hiddenSize = shapeWi.GetDims().at(1) / 4;
   } else {
     AscendString OpName;
@@ -208,8 +209,8 @@ IMPLEMT_INFERFUNC(DynamicRNNV2, DynamicRNNV2InferShape) {
   CHECK(op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
-  inputWiTensorDesc.SetFormat(ge::FORMAT_HWCN);
-  inputWhTensorDesc.SetFormat(ge::FORMAT_HWCN);
+  ge::AttrUtils::SetInt(op_desc, "input_size", inputSize);
+  ge::AttrUtils::SetInt(op_desc, "hidden_size", hiddenSize);
   CHECK(op.UpdateInputDesc("weight_input", inputWiTensorDesc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
   CHECK(op.UpdateInputDesc("weight_hidden", inputWhTensorDesc) != GRAPH_SUCCESS,

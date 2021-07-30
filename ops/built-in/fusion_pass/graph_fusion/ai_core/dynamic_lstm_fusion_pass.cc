@@ -195,9 +195,9 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     dimsIn.push_back(wxRow);
 
     ge::GeShape wxhShape(dimsIn);
-    ge::GeTensorDesc wxhTensorDesc(wxhShape, ge::FORMAT_HWCN, dataType);
+    ge::GeTensorDesc wxhTensorDesc(wxhShape, ge::FORMAT_ND, dataType);
     wxhTensorDesc.SetOriginShape(wxhShape);
-    wxhTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
+    wxhTensorDesc.SetOriginFormat(ge::FORMAT_ND);
 
     fusedNode->GetInDataAnchor(inputIndexInfo.wxIndex)
         ->GetPeerOutAnchor()
@@ -252,6 +252,11 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
     x.SetOriginFormat(ge::FORMAT_ND);
     thisOpDesc->AddInputDesc("x",x);
 
+    vector<int64_t> tensorXDims = inputX.GetShape().GetDims();
+    if (tensorXDims.size() == 3) {
+      int64_t inputSize = tensorXDims[2];
+      ge::AttrUtils::SetInt(thisOpDesc, "input_size", inputSize);
+    }
     //set w input
     thisOpDesc->AddInputDesc("w",wxhTensorDesc);
 
@@ -293,6 +298,12 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
     thisOpDesc->AddOutputDesc("y",outputYTensorDesc);
     thisOpDesc->AddOutputDesc("output_h",outputYTensorDesc);
     thisOpDesc->AddOutputDesc("output_c",outputYTensorDesc);
+
+    vector<int64_t> tensorYDims = outputY.GetShape().GetDims();
+    if (tensorYDims.size() == 3) {
+      int64_t hiddenSize = tensorYDims[2];
+      ge::AttrUtils::SetInt(thisOpDesc, "hidden_size", hiddenSize);
+    }
 
     // set last_h and last_c
     if (outputSize == 3) {

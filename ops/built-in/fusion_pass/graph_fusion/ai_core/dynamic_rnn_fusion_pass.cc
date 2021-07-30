@@ -45,6 +45,12 @@ vector<FusionPattern*> DynamicRNNFusionPass::DefinePatterns() {
 ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpDescPtr dynamicRNNDesc, string direction,
                                                   bool has_seq, bool has_h0, bool has_c0) {
   // for inputs
+  vector<int64_t> tensorXDims = dynamicRNNDesc->GetInputDesc(0).GetShape().GetDims();
+  int64_t inputSize = tensorXDims[2];
+  ge::AttrUtils::SetInt(RNNDesc, "input_size", inputSize);
+  vector<int64_t> tensorOutputDims = dynamicRNNDesc->GetOutputDesc(0).GetShape().GetDims();
+  int64_t hiddenSize = tensorOutputDims[2];
+  ge::AttrUtils::SetInt(RNNDesc, "hidden_size", hiddenSize);
 
   // update x
   ge::GeTensorDesc tensorXDesc = dynamicRNNDesc->GetInputDesc("x").Clone();
@@ -326,6 +332,20 @@ Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(dynamicRNNDesc == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "dynamicRNNDesc OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
+
+  auto wxhTensorDesc = dynamicRNNDesc->MutableInputDesc("w");
+  wxhTensorDesc->SetFormat(ge::FORMAT_ND);
+  wxhTensorDesc->SetOriginFormat(ge::FORMAT_ND);
+  auto biasTensorDesc = dynamicRNNDesc->MutableInputDesc("b");
+  biasTensorDesc->SetFormat(ge::FORMAT_ND);
+  biasTensorDesc->SetOriginFormat(ge::FORMAT_ND);
+  
+  vector<int64_t> tensorXDims = dynamicRNNDesc->GetInputDesc(0).GetShape().GetDims();
+  int64_t inputSize = tensorXDims[2];
+  ge::AttrUtils::SetInt(dynamicRNNDesc, "input_size", inputSize);
+  vector<int64_t> tensorYDims = dynamicRNNDesc->GetOutputDesc(0).GetShape().GetDims();
+  int64_t hiddenSize = tensorYDims[2];
+  ge::AttrUtils::SetInt(dynamicRNNDesc, "hidden_size", hiddenSize);
 
   // check attr_direction
   string direction = "UNIDIRECTIONAL";

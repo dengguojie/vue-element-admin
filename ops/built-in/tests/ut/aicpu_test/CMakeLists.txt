@@ -72,6 +72,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
   ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
+  ${CPU_KERNELS_DIR}/kernels/host/trans_data_rnn.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
@@ -223,6 +224,8 @@ set(_cpu_kernels_ut_files
   testcase/top_k/src/top_k_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
+  testcase/trans_data/src/trans_data_utest.cpp
+  testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
   testcase/where/src/where_utest.cpp
   testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
   testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp

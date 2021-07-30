@@ -154,6 +154,32 @@ REG_OP(TransData)
     .OP_END_FACTORY_REG(TransData)
 
 /**
+*@brief Do format transfer for various data format only 
+support "ND" to "ND_RNN_BIAS" and "ND" to "FRACTAL_ZN_RNN"
+
+*@par Inputs:
+*src: A Tensor. For all branches can be types: float16, float32, int32, int8, bool.
+* For branches without padding also can be types: int16, int64, uint8, uint16, uint32, uint64 . \n
+
+*@par Attributes:
+*@li src_format: A string source data format, can be "ND", "ND_RNN_BIAS", "FRACTAL_ZN_RNN" etc.
+*@li dst_format: A string target data format, can be "ND", "ND_RNN_BIAS", "FRACTAL_ZN_RNN" etc.
+*@li input_size: A mental int32.
+*@li hidden_size: A mental int32.
+
+*@par Outputs:
+*dst: A Tensor. Has the same type as "src".
+*/
+REG_OP(TransDataRNN)
+    .INPUT(src, TensorType::BasicType())
+    .OUTPUT(dst, TensorType::BasicType())
+    .REQUIRED_ATTR(src_format, String)
+    .REQUIRED_ATTR(dst_format, String)
+    .REQUIRED_ATTR(input_size, Int)
+    .REQUIRED_ATTR(hidden_size, Int)
+    .OP_END_FACTORY_REG(TransDataRNN)
+
+/**
 *@brief Permutes the dimensions according to order.
         The returned tensor's dimension i will correspond to the input dimension order[i] . \n
 

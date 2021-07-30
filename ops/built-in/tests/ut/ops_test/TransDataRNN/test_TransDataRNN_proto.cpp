@@ -24,11 +24,11 @@ class TransDataRNNProtoTest : public testing::Test {
 
 
 // base ut
-/*
-TEST_F(TransDataRnnProtoTest, TransDataRnnBaseTest) {
-    ge::op::TransDataRnn transDataRnn;
-    transDataRnn.UpdateInputDesc("src", create_desc_with_ori({17, 4000}, ge::DT_FLOAT16, ge::ND,{17, 4000},ge::ND));
-    transDataRnn.UpdateOutputDesc("dst", create_desc_with_ori({2, 250, 16, 16}, ge::DT_FLOAT16, ge::FRACTAL_ZN_RNN,{2, 250, 16, 16},ge::FRACTAL_ZN_RNN));
+
+TEST_F(TransDataRNNProtoTest, TransDataRnnBaseTest) {
+    ge::op::TransDataRNN transDataRnn;
+    transDataRnn.UpdateInputDesc("src", create_desc_with_ori({17, 4000}, ge::DT_FLOAT16, ge::FORMAT_ND,{17, 4000},ge::FORMAT_ND));
+    transDataRnn.UpdateOutputDesc("dst", create_desc_with_ori({2, 250, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_ND,{2, 250, 16, 16},ge::FORMAT_ND));
     transDataRnn.SetAttr("src_format", "ND");
     transDataRnn.SetAttr("dst_format", "FRACTAL_ZN_RNN");
     transDataRnn.SetAttr("input_size", 17);
@@ -38,4 +38,4 @@ TEST_F(TransDataRnnProtoTest, TransDataRnnBaseTest) {
 
     auto ret = transDataRnn.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}*/
+}

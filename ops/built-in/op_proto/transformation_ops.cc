@@ -1276,6 +1276,22 @@ IMPLEMT_INFERFORMAT_FUNC(TransposeD, TransposeDInferFormat) {
 INFER_FORMAT_FUNC_REG(TransposeD, TransposeDInferFormat);
 // ----------------TransposeD Op End-------------------
 
+// ----------------TransDataRNN Op Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(TransDataRNNInferShape) {
+  auto src_tensor = op.GetInputDescByName("src");
+  Shape src_shape = src_tensor.GetShape();
+  DataType input_dtype = src_tensor.GetDataType();
+  auto td = op.GetOutputDescByName("dst");
+  if (src_tensor.GetOriginFormat() == td.GetOriginFormat()) {
+    td.SetShape(ge::Shape(src_shape));
+    td.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("dst", td);
+  }
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(TransDataRNN, TransDataRNNInferShape);
+// ----------------TransDataRNN Op End-------------------
+
 // ----------------TranData Op Begin---------------------
 IMPLEMT_COMMON_INFERFUNC(TransDataInferShape) {
   PROFILING_PROTO_INIT(op.GetName().c_str());
