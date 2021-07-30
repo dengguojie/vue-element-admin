@@ -62,4 +62,16 @@ IMPLEMT_INFERFUNC(PrintV2, PrintV2Infer) {
 
 INFER_FUNC_REG(PrintV2, PrintV2Infer);
 
+//----------------PrintV3----------------
+IMPLEMT_INFERFUNC(PrintV3, PrintV3Infer) {
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(op.GetInputDesc("x").GetShape());
+  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  op.UpdateOutputDesc("y", output_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(PrintV3, PrintV3Infer);
+//----------------PrintV3End----------------
 }  // namespace ge
