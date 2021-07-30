@@ -27,6 +27,8 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 from topi import generic
 import collections
+import math
+from te.utils import error_manager
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 
@@ -377,8 +379,8 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     out_h = out_shape[3]
     out_w = out_shape[4]
     # compute dilation shape
-    dila_h = out_h * stride - (stride - 1)
-    dila_w = out_w * stride - (stride - 1)
+    dila_h = out_h * stride[0] - (stride[0] - 1)
+    dila_w = out_w * stride[1] - (stride[1] - 1)
 
     # 2 is for double buffer
     max_l0a_m = l0a_size // (data_size * BLOCK_SIZE * 2)
@@ -412,18 +414,19 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
     max_tile_input_h = l1_size // (input_w * BLOCK_SIZE * 2)
-    dout_l1_size = input_w * (k_height + stride) * BLOCK_SIZE * 2
+    max_tile_dh = l1_size // (dila_w * BLOCK_SIZE * data_size) + 1 - k_height
+    dout_l1_size = input_w * (k_height + stride[0]) * BLOCK_SIZE * 2
     tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
     
     max_h_in_ub = ((ub_size // data_size -
                     (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
-                   (stride - 1) * dila_w) // (3 * out_w + stride * dila_w)
+                   (stride[0] - 1) * dila_w) // (3 * out_w + stride[0] * dila_w)
     def _compute_tile_h(max_h_in_ub):
-        tile_dile_h_ub = max_h_in_ub * stride - (stride - 1)
-        if k_height > stride:
-            tile_input_h = (max_h_in_ub - 1) * stride + k_height
+        tile_dile_h_ub = max_h_in_ub * stride[0] - (stride[0] - 1)
+        if k_height > stride[0]:
+            tile_input_h = (max_h_in_ub - 1) * stride[0] + k_height
         else:
-            tile_input_h = max_h_in_ub * stride
+            tile_input_h = max_h_in_ub * stride[0]
         tile_input_h = min(tile_input_h, max_tile_input_h)
         if tile_input_h < 1:
             tile_input_h = 1
@@ -434,8 +437,8 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
         # if tile_input_h > input_h, input_h no tiling
         if tile_input_h >= input_h:
             tile_input_h = input_h
-            tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - \
-                    dilated_pad_bottom
+            tile_hd = min(tile_input_h - 1 + k_height - dilated_pad_top - \
+                    dilated_pad_bottom, tile_dile_h_ub)
             tile_dile_h_ub = tile_hd
         return tile_input_h, tile_dile_h_ub
        
@@ -443,12 +446,21 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     dila_h = tile_input_h + k_height - 1
     if dila_h * dila_w * BLOCK_SIZE * data_size > l1_size:
         tile_input_h, tile_dile_h_ub = _compute_tile_h(1)
+    tile_input_h = min(tile_input_h, max_tile_dh)
+    tile_input_h = max(tile_input_h, 1)
         
     # tiling in L0;
     tile_m = min(max_l0a_m, _ceil(tile_input_h * input_w))
     tile_k = 1
     tile_n = 1
     res_l1 = tile_input_h * input_w
+    # axis cut below will enlarge inferred bound, to avoid exceeding buffer, need calculating new tile h
+    for k in range(tile_input_h, 0, -1):
+        res_l1 = k * input_w
+        tile_input_h = math.ceil(math.ceil(res_l1 / tile_m) * tile_m / input_w)
+        if tile_input_h <= max_tile_dh:
+            break
+
     # when res_l1 > 16, return a rounded integer down to a multiple of BLOCK_SIZE
     if res_l1 < input_h * input_w:
         res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
@@ -517,7 +529,9 @@ def avg_pool_grad_schedule(res, l1_load_kernel):
               + dilated_pad_right - k_width + 1
     input_h = dout_dilated_h.value + dilated_pad_top \
               + dilated_pad_bottom - k_height + 1
-    stride = dout_dilated.op.attrs["strides"][0].value
+    stride_h = dout_dilated.op.attrs["strides"][0].value
+    stride_w = dout_dilated.op.attrs["strides"][1].value
+    stride = (stride_h, stride_w)
     weight_shape = [int(i.value) for i in weight.shape]
     dout_shape = [int(i.value) for i in dout.shape]
     dout_dilated_shape = [int(i.value) for i in dout_dilated.shape]
@@ -589,11 +603,11 @@ def avg_pool_grad_schedule(res, l1_load_kernel):
     ub_l1hcut_o, ub_l1hcut_i = s[dout_cbuf_nc1hwc0].split(
         dout_cbuf_nc1hwc0.op.axis[3], factor=tile_dile_h_ub)
 
-    if stride > 1:
+    if stride[0] > 1 or stride[1] > 1:
         dila_o_h, dila_i_h = s[dout_dilated_ubuf].split(
-            dout_dilated_ubuf.op.axis[3], factor=stride)
+            dout_dilated_ubuf.op.axis[3], factor=stride[0])
         dila_o_w, dila_i_w = s[dout_dilated_ubuf].split(
-            dout_dilated_ubuf.op.axis[4], factor=stride)
+            dout_dilated_ubuf.op.axis[4], factor=stride[1])
         s[dout_dilated_ubuf].reorder(dila_i_h, dila_i_w, dila_o_h, dila_o_w)
         s[dout_dilated_ubuf].unroll(dila_i_h)
         s[dout_dilated_ubuf].unroll(dila_i_w)
@@ -747,6 +761,15 @@ def avg_pool_v2_grad_d(input_grad,
         stride_w = strides[3]
         # transfer 4D to 5D orig_input_shape
         ON, OC, OHH, OWW = orig_input_shape
+    else:
+        dict_args = {
+            'errCode': 'E80014',
+            'op_name': 'avg_pool_grad_d',
+            'param_name': 'input_grad',
+            'excepted_format_list': {"NCHW", "NHWC"},
+            'format': input_grad_ori_format
+        }
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
     OC1 = _ceil(OC) // BLOCK_SIZE
     OC0 = BLOCK_SIZE
     orig_input_shape = ON, OC1, OHH, OWW, OC0
@@ -789,8 +812,14 @@ def avg_pool_v2_grad_d(input_grad,
         input_grad = tvm.placeholder(input_grad_shape,
                                      name="input_grad",
                                      dtype=data_dtype)
-        kernel_h = HH
-        kernel_w = WW
+                # input_grad is overlapped result
+        filter_num_h = (HH - kernel_h + pad_top + pad_bottom) // stride_h + 1
+        filter_num_w = (WW - kernel_w + pad_left + pad_right) // stride_w + 1
+
+        # global_avgpool, input FMAP size equals kernel size, kernel number=1
+        if not (filter_num_h == 1 and filter_num_w == 1):
+            error_manager_vector.raise_err_specific_reson(
+                "avg_pool_grad_d", "Global average pooling, input_grad_h and input_grad_w must equel 1!")
 
         kernel_size_reciprocal = 1.0 / (kernel_h * kernel_w)
 
@@ -802,7 +831,12 @@ def avg_pool_v2_grad_d(input_grad,
                 grad_tmp = te.lang.cce.cast_to(grad_tmp, "float16")
             res = te.lang.cce.broadcast(grad_tmp, orig_input_shape)
             sch = generic.auto_schedule(res)
-        config = {"name": kernel_name, "tensor_list": [input_grad, res]}
+        # add two placeholder for mean_matrix and kernel_matrix
+        dummy_placeholder = tvm.placeholder((1, ), name="dumy", dtype=data_dtype)
+        config = {"name": kernel_name, 
+                  "tensor_list": [input_grad, dummy_placeholder, dummy_placeholder, res], 
+                  "dummy_placeholder": True
+                 }
         te.lang.cce.cce_build_code(sch, config)
     else:
         shape_in = orig_input_shape

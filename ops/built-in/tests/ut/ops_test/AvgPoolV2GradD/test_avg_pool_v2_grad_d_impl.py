@@ -568,6 +568,40 @@ case11 = {
     "format_expect": [],
     "support_expect": True
 }
+case12 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 2, 2),
+                "shape": (1, 1, 2, 2, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 2, 2),
+                "shape": (1, 1, 2, 2, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (3, 3, 1, 1),
+                "shape": (1, 3, 3, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 4, 5),
+                "shape": (1, 1, 4, 5, 16), "param_type": "output"},
+               [1, 1, 4, 5], [1, 1, 3, 3], [1, 1, 1, 2], "CALCULATED", (0, 0, 0, 0),
+               "NCHW", False, False, True],
+    "case_name": "test",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+case13 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 2, 2),
+                "shape": (1, 1, 2, 2, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 2, 2),
+                "shape": (1, 1, 2, 2, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (3, 3, 1, 1),
+                "shape": (1, 3, 3, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 4, 5),
+                "shape": (1, 1, 4, 5, 16), "param_type": "output"},
+               [1, 1, 4, 5], [1, 1, 3, 3], [1, 1, 1, 2], "VALID", (0, 0, 0, 0),
+               "NCHW", False, False, True],
+    "case_name": "test_1",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
 ut_case.add_case(["Ascend310", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend910A"], case3)
@@ -578,7 +612,8 @@ ut_case.add_case(["Ascend310", "Ascend910A"], case7)
 ut_case.add_case(["Ascend310", "Ascend910A"], case8)
 ut_case.add_case(["Ascend310", "Ascend910A"], case9)
 ut_case.add_case(["Ascend310", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend910A"], case13)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
