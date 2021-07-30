@@ -310,7 +310,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Cast after valid num is null, fusion failed."),
                         return FAILED);
         Cast->AddOutputDesc("y", tensorDesccast1);
-        ge::AttrUtils::SetFloat(Cast, "dst_type", 0);
+        ge::AttrUtils::SetInt(Cast, "dst_type", 0);
         // add node cast1 to graph
         ge::NodePtr cast1Node = graph.AddNode(Cast);
 
