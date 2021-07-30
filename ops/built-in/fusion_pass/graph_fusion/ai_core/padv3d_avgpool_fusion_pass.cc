@@ -112,6 +112,12 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   std::vector<int32_t> new_pad;
   UpdateAttrPads(input_format, paddings, new_pad, paddings_contiguous);
 
+  std::vector<int32_t> ksize;
+  op_Pooling.GetAttr("ksize", ksize);
+  if (CheckPadAndKsize(input_format, new_pad, ksize) != SUCCESS) {
+    return NOT_CHANGED;
+  }
+
   op_Pooling.SetAttr("pads", new_pad);
   Pooling_desc->UpdateInputDesc(0, input_desc);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(pooling_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
@@ -282,5 +288,43 @@ Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format, s
   }
   return SUCCESS;
 }
+
+Status Padv3dAvgpoolFusionPass::CheckPadAndKsize(ge::Format& input_format, std::vector<int32_t>& pads, std::vector<int32_t>& ksize) {
+  if (ksize.size() < 4) {
+    return NOT_CHANGED;
+  }
+
+  int start = 0;
+  if (pads.size() != 4) {
+    start = 2;
+  }
+  int ksize_w = 0;
+  int ksize_h = 0;
+  if (input_format == ge::FORMAT_NHWC) {
+    ksize_h = ksize[1];
+    ksize_w = ksize[2];
+  } else if (input_format == ge::FORMAT_NCHW || input_format == ge::FORMAT_NDHWC) {
+    ksize_h = ksize[2];
+    ksize_w = ksize[3];
+  } else if (input_format == ge::FORMAT_NCDHW) {
+    ksize_h = ksize[3];
+    ksize_w = ksize[4];
+  }
+
+  if (pads[start] >= ksize_h || pads[start + 1] >= ksize_h) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "pads start[%d] >=ksize_h[%d] or pads end[%d] >= ksize_h[%d]",
+            pads[start], ksize_h, pads[start + 1], ksize_h);
+    return NOT_CHANGED;
+  }
+
+  start += 2;
+  if (pads[start] >= ksize_w || pads[start + 1] >= ksize_w) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "pads start[%d] >=ksize_w[%d] or pads end[%d] >= ksize_w[%d]",
+            pads[start], ksize_w, pads[start + 1], ksize_w);
+    return NOT_CHANGED;
+  }
+  return SUCCESS;
+}
+
 REGISTER_PASS("Padv3dAvgpoolFusionPass", BUILT_IN_GRAPH_PASS, Padv3dAvgpoolFusionPass);
 }

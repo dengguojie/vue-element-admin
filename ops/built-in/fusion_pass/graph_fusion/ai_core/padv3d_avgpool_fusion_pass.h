@@ -34,6 +34,7 @@ class Padv3dAvgpoolFusionPass : public PatternFusionBasePass {
 private:
     Status CheckFormatAndPading(ge::Format& input_format, std::vector<std::vector<int64_t>>& paddings,
                               bool paddings_contiguous);
+    Status CheckPadAndKsize(ge::Format& input_format, std::vector<int32_t>& pads, std::vector<int32_t>& ksize);
     void UpdateAttrPads(ge::Format& input_format, std::vector<std::vector<int64_t>>& paddings,
                         std::vector<int32_t>& new_pad, bool paddings_contiguous);
     const string FUSED_OP_TYPE = "Avgpool_Pad3d";
