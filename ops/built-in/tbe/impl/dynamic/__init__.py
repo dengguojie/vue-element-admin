@@ -254,6 +254,7 @@ from .asinh import asinh
 from .asinh_grad import asinh_grad
 from .expm1 import expm1
 from .mse_loss import mse_loss
+from .dynamic_rnn import dynamic_rnn
 from .mse_loss_grad import mse_loss_grad
 from .floor import floor
 from .rint import rint
