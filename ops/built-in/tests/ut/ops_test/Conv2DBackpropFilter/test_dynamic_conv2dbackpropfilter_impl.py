@@ -520,6 +520,41 @@ def test_conv2d_backprop_filter_fuzz_build_generalization_1(test_arg):
 print("adding conv2d test_conv2d_backprop_filter_fuzz_build_generalization_1 testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_generalization_1)
 
+def test_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (1, 1, 8, 3051, 16),
+            'ori_shape': (1, 8, 3051, 1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(1, 1), (1, 1), (4, 15), (1024, 4096), (16, 16)],
+            'ori_range': [(1, 1), (4, 15), (1024, 4096), (1, 1)]
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'shape': (1, 1, 1, 3040, 16),
+            'ori_shape': (1, 1, 3040, 1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(1, 1), (1, 1), (1, 3), (1024, 4096), (16, 16)],
+            'ori_range': [(1, 1), (1, 3), (1024, 4096), (1, 1)]
+        }, {
+            'ori_shape': (8, 12, 1, 1),
+            'ori_format': 'HWCN',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        },  (1, 1, 3, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
+    conv2d_bp_filter_generalization(*input_list)
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_w_range_max_fixed)
+
 def test_conv2d_backprop_filter_fuzz_build_tilingcase(test_arg):
     import json
     from impl.dynamic.conv2d_backprop_filter import conv2d_backprop_filter

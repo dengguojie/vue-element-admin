@@ -331,6 +331,16 @@ def _get_output(x_in, k_size, pads, stride, dilation):
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 
+def _get_input(x_out, filter_dilation, pads, stride):
+    if DYNAMIC_FLAG in pads:
+        input_low = stride * (x_out - 1) + 1
+        input_high = stride * x_out
+    else:
+        input_low = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1]
+        input_high = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1] + stride - 1
+    return input_low, input_high
+
+
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     correct_range_flag = False
     fmap_range_n, fmap_range_c, fmap_range_h, fmap_range_w = fmap_range
@@ -767,15 +777,24 @@ def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_
     pad_up, pad_down, pad_left, pad_right = pads
     stride_h, stride_w = strides
     dilation_h, dilation_w = dilations[H_DIM], dilations[W_DIM]
-    al1_min_byte = C0_SIZE * C0_SIZE * 2
-    fmap_h_padding = x_nchw[H_DIM] + pad_up + pad_down
     filter_h_dilation = (dedw_nchw[H_DIM] - 1) * dilation_h + 1
     filter_w_dilation = (dedw_nchw[W_DIM] - 1) * dilation_w + 1
-    is_conv1d_situation = fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1
-    l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
-    bl1_min_byte = l1_size - al1_min_byte
     w_index = x.get("ori_format").find("W")
     x_w_range = x.get("ori_range")[w_index]
+    h_index = x.get("ori_format").find("H")
+    x_h_range = x.get("ori_range")[h_index] 
+    if DYNAMIC_FLAG in pads:
+        pad_h = _align(x_nchw[H_DIM], stride_h) - stride_h + filter_h_dilation - x_nchw[H_DIM]
+        pad_h = max(pad_h, 0)
+        pad_up = pad_h // 2
+        pad_down = pad_h - pad_up
+    al1_min_byte = C0_SIZE * C0_SIZE * 2
+    upper_fmap_h_padding = x_h_range[1] + pad_up + pad_down
+    lower_fmap_h_padding = x_h_range[0] + pad_up + pad_down
+    is_conv1d_situation = upper_fmap_h_padding == 1 and lower_fmap_h_padding == 1 and \
+                          filter_h_dilation == 1 and stride_h == 1
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
+    bl1_min_byte = l1_size - al1_min_byte
     if not is_conv1d_situation:
         kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
         kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
@@ -785,12 +804,11 @@ def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_
         elif x_nchw[W_DIM] <= kl1_min:
             x_w_range = (x_w_range[0], kl1_min)
         elif dedy_nchw[W_DIM] % C0_SIZE == 0 and dedy_nchw[W_DIM] <= max_dedy_devided_sixteen:
-            x_w_range_low = (dedy_nchw[W_DIM] - 1) * stride_w + filter_w_dilation - pad_left - pad_right
-            x_w_range_high = (dedy_nchw[W_DIM] - 1) * stride_w + \
-                             filter_w_dilation - pad_left - pad_right + stride_w - 1
-            if x_w_range_high > x_w_range[1]:
-                x_w_range_high = x_w_range[1]                   
-            x_w_range = (x_w_range_low, x_w_range_high)
+            x_w_range_low, x_w_range_high = _get_input(dedy_nchw[W_DIM], 
+                                                       filter_w_dilation, pads[2:], stride_w)            
+            x_w_range_low = max(x_w_range_low, x_w_range[0])
+            x_w_range_high = min(x_w_range_high, x_w_range[1])
+            x_w_range = (x_w_range_low, x_w_range_high)                 
         else:
             error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
                                                         "Input is too large, the minimum tiling may exceed L1_Buffer")

@@ -94,6 +94,17 @@ def _align(x_1, x_2):
 def _get_output(x_in, k_size, pads, stride, dilation):
         return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
+
+def _get_input(x_out, filter_dilation, pads, stride):
+    if DYNAMIC_FLAG in pads:
+        input_low = stride * (x_out - 1) + 1
+        input_high = stride * x_out
+    else:
+        input_low = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1]
+        input_high = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1] + stride - 1
+    return input_low, input_high
+
+
 def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
     if value is None:
         return
@@ -451,34 +462,51 @@ def _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pa
     pad_up, pad_down, pad_left, pad_right = pads
     stride_h, stride_w = strides
     dilation_h, dilation_w = dilations[DIM_H_NCHW], dilations[DIM_W_NCHW]
-    al1_min_byte = C0_SIZE * C0_SIZE * 2
-    fmap_h_padding = x_nchw[DIM_H_NCHW] + pad_up + pad_down
     filter_h_dilation = (dedw_nchw[DIM_H_NCHW] - 1) * dilation_h + 1
     filter_w_dilation = (dedw_nchw[DIM_W_NCHW] - 1) * dilation_w + 1
-    is_conv1d_situation = fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1
-    l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
-    bl1_min_byte = l1_size - al1_min_byte
+    al1_min_byte = C0_SIZE * C0_SIZE * 2
+    if DYNAMIC_FLAG in pads:
+        pad_h = _align(x_nchw[DIM_H_NCHW], stride_h) - stride_h + filter_h_dilation - x_nchw[DIM_H_NCHW]
+        pad_h = max(pad_h, 0)
+        pad_up = pad_h // 2
+        pad_down = pad_h - pad_up
+    h_index = input_fm.get("ori_format").find("H")
+    x_h_range = input_fm.get("ori_range")[h_index]      
     w_index = input_fm.get("ori_format").find("W")
     x_w_range = input_fm.get("ori_range")[w_index]
+    upper_fmap_h_padding = x_h_range[1] + pad_up + pad_down
+    lower_fmap_h_padding = x_h_range[0] + pad_up + pad_down
+    is_conv1d_situation = upper_fmap_h_padding == 1 and lower_fmap_h_padding == 1 and \
+                          filter_h_dilation == 1 and stride_h == 1
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
+    bl1_min_byte = l1_size - al1_min_byte
     if not is_conv1d_situation:
         kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
         kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
         max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + pad_right - filter_w_dilation) // stride_w + 1
-        if kl1_min >= x_w_range[1]:
-            x_w_range = input_fm.get("ori_range")[w_index]
-        elif x_nchw[DIM_W_NCHW] <= kl1_min:
-            x_w_range = (x_w_range[0], kl1_min)
+        range_unchange = (dedy_nchw[DIM_H_NCHW] != 1 and x_w_range[1] <= kl1_min) or \
+                         (dedy_nchw[DIM_H_NCHW] == 1 and x_w_range[1] <= kl1_min_devided_sixteen)
+        if range_unchange:
+            return x_h_range, x_w_range
+        if dedy_nchw[DIM_H_NCHW] != 1 and x_nchw[DIM_W_NCHW] <= kl1_min:
+            x_w_range = (x_w_range[0], min(kl1_min, x_w_range[1]))
+        elif dedy_nchw[DIM_H_NCHW] == 1 and x_nchw[DIM_W_NCHW] <= kl1_min_devided_sixteen:
+            x_h_range_low, x_h_range_high = _get_input(dedy_nchw[DIM_H_NCHW], 
+                                                       filter_h_dilation, pads[:2], stride_h)
+            x_h_range_low = max(x_h_range_low, x_h_range[0])
+            x_h_range_high = min(x_h_range_high, x_h_range[1])
+            x_h_range = (x_h_range_low, x_h_range_high)
+            x_w_range = (x_w_range[0], min(kl1_min_devided_sixteen, x_w_range[1]))
         elif dedy_nchw[DIM_W_NCHW] % C0_SIZE == 0 and dedy_nchw[DIM_W_NCHW] <= max_dedy_devided_sixteen:
-            x_w_range_low = (dedy_nchw[DIM_W_NCHW] - 1) * stride_w + filter_w_dilation - pad_left - pad_right
-            x_w_range_high = (dedy_nchw[DIM_W_NCHW] - 1) * stride_w + \
-                             filter_w_dilation - pad_left - pad_right + stride_w - 1
-            if x_w_range_high > x_w_range[1]:
-                x_w_range_high = x_w_range[1]
+            x_w_range_low, x_w_range_high = _get_input(dedy_nchw[DIM_W_NCHW], 
+                                                       filter_w_dilation, pads[2:], stride_w)            
+            x_w_range_low = max(x_w_range_low, x_w_range[0])
+            x_w_range_high = min(x_w_range_high, x_w_range[1])
             x_w_range = (x_w_range_low, x_w_range_high)
         else:
             error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                                        "Input is too large, the minimum tiling may exceed L1_Buffer")
-    return x_w_range
+    return x_h_range, x_w_range
 
 
 @tbe_register.register_param_generalization("DepthwiseConv2DBackpropFilter")
@@ -549,14 +577,14 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
                                                            "invalid {} ori_shape {}, only support {}d".format(
                                                                name, str(tensor.get("shape")), str(SHAPE_LEN)))
             if name == "input_fm":
-                x_w_range = _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pads, data_format)
+                x_h_range, x_w_range = _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pads, data_format)
                 if x_w_range[0] < FMAP_HW_MAX:
-                    tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], tensor["ori_range"][2],
+                    tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], x_h_range,
                                            x_w_range) if tensor.get("ori_format") == "NCHW" else (
                     tensor["ori_range"][0],
-                    tensor["ori_range"][1], x_w_range, tensor["ori_range"][3])
+                    x_h_range, x_w_range, tensor["ori_range"][3])
                     # default format is NC1HWC0
-                    tensor["range"] = (tensor["range"][0], tensor["range"][1], tensor["range"][2],
+                    tensor["range"] = (tensor["range"][0], tensor["range"][1], x_h_range,
                                        x_w_range, tensor["range"][4])
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]

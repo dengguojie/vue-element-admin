@@ -248,6 +248,8 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fi
         'depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed)
+
 def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg):
     from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
     input_list = [
@@ -278,11 +280,47 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg)
             'ori_format': 'HWCN',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
-        },  (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed']
+        },  (1, 1, 3, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
+        'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
 ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed)
+
+def test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
+    input_list = [
+        {
+            'shape': (6, 1, 2, 2857, 16),
+            'ori_shape': (6, 2, 2857, 1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(4, 7), (1, 1), (2, 3), (1024, 4096), (16, 16)],
+            'ori_range': [(4, 7), (2, 3), (1024, 4096), (1, 1)]
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'shape': (6, 1, 1, 2857, 16),
+            'ori_shape': (6, 1, 2857, 1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(4, 7), (1, 1), (1, 3), (1024, 4096), (16, 16)],
+            'ori_range': [(4, 7), (1, 3), (1024, 4096), (1, 1)]
+        }, {
+            'ori_shape': (11, 1, 1, 1),
+            'ori_format': 'HWCN',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        },  (1, 1, 2, 1), (1, 1, 1, 1), (-1, -1, -1, -1), 'NCHW',
+        'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
+    depthwise_conv2d_backprop_filter_generalization(*input_list)
+
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed)
 
 if __name__ == '__main__':
     ut_case.run()
