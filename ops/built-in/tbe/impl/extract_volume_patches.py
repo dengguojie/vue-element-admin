@@ -453,7 +453,8 @@ def _im2col_fractal(A_im2col_shape, fmap):
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
-def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, max_next_valid_size, dtype):
+def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
+                       max_l1_valid_size, max_next_valid_size, dtype, aligned_flag):
     """
     get load3d tiling in davinci.
     ----------
@@ -605,17 +606,46 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     l0ub_howo_tmp = l0ub_howo
     tile_l1_wi = fmap_w
 
-    def get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h):
+    def get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h, howo_split, aligned_flag):
         l0ub_howo = 2 * l0ub_howo if dtype in ("uint8", "int8") else l0ub_howo
-        return min((l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1, fmap_h)
+        tile_l1_hi_1 = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1
+        if not howo_split or aligned_flag or dtype == "float16":
+            return min(tile_l1_hi_1, fmap_h)
+        else:
+            #  infer bound calculation info
+            min_align = output_w
+            extent_align = output_w
+            tensor5_num = fmap_c0 * fmap_c0
+            tensor42_num = tensor5_num
+            tensor7_num = tensor42_num
+            res_double_buffer_flag = 1 if (MAX_UB_SIZE // 4) // (tensor42_num + tensor5_num + tensor7_num) else 0
+            ub_num = MAX_UB_SIZE // (DOUBLE_BUFFER * data_size) if res_double_buffer_flag \
+                else MAX_UB_SIZE // data_size
+            max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
+            mhowo = (output_h * output_w + fmap_c0 - 1) // fmap_c0
+            factor = min(max_mhowo_factor, mhowo)
 
-    tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+            howo = output_w * output_h
+            howo_outer = (howo // fmap_c0 + factor - 1) // factor * factor
+            min_range = (howo_outer * 2) * 16
+            # 48 is BLOCK_SIZE + BLOCK_SIZE_ALIGN
+            extent = 48
+            max_range = min_range + extent - 1
+            aligned_min = (min_range // min_align * min_align)
+            new_extent = max_range - aligned_min + 1
+            aligned_extent = ((new_extent + extent_align - 1) // extent_align + 1) * extent_align
+            tile_l1_hi_2 = (((((aligned_extent + (((howo_outer * fmap_c0) // output_w) * output_w)) - 1) // output_w) *
+                             stride_h) + kernel_h - 1) - \
+                           (((((howo_outer * fmap_c0) // output_w) * output_w) // output_w) * stride_h) + 1
+            return min(max(tile_l1_hi_1, tile_l1_hi_2), fmap_h)
+
+    tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h, howo_split, aligned_flag)
 
     tile_l1_di = fmap_d
     tile_l1_c0 = l0ub_c0
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         l0ub_howo = block_size_align
-        tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+        tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h, howo_split, aligned_flag)
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         howo_split = 0
@@ -626,7 +656,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
 
     l0ub_howo = l0ub_howo_tmp
     tile_l1_wi = fmap_w
-    tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+    tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h, howo_split, aligned_flag)
 
     tile_l1_di = max(l0ub_kd, l0ub_do)
     tile_l1_c0 = l0ub_c0
@@ -638,7 +668,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
         tile_l1_di = min(l0ub_kd, fmap_d)
         if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
             l0ub_howo = block_size_align
-            tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+            tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h, howo_split, aligned_flag)
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         error_manager_vector.raise_err_specific_reson("extract_volume_patches", "L1 Size is not enough")
@@ -1434,9 +1464,11 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
 
     max_l1_valid_size = MAX_L1_SIZE
 
+    aligned_flag = original_cin % BLOCK_SIZE_ALIGN == 0
+
     is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d, is_l0_ub_double_buffer, \
     howo_split = _get_load3d_tiling(fmap_shape, (filter_d, filter_h, filter_w), (stride_d, stride_h, stride_w), \
-                                    padding, max_l1_valid_size, max_next_valid_size, dtype_input)
+                                    padding, max_l1_valid_size, max_next_valid_size, dtype_input, aligned_flag)
 
     if (is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d,
             is_l0_ub_double_buffer) == (False, None, None, None, None):
@@ -2087,6 +2119,19 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
 
         if (ub_do * ub_kd * ub_khkw * ub_howo * BLOCK_SIZE_ALIGN * dtype_size) * 3 > MAX_UB_SIZE:
             ub_khkw = max(min(ub_khkw, (MAX_UB_SIZE // 3) // (ub_howo * BLOCK_SIZE_ALIGN * dtype_size)), 1)
+
+        if padding == "SAME":
+            l1_di = ub_do * stride_d - stride_d + 1
+            if not howo_split and \
+                (l1_di * ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_L1_SIZE:
+                l1_di = max(MAX_L1_SIZE // (ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size), 1)
+                ub_do = (l1_di - 1 + stride_d) // stride_d
+        else:
+            l1_di = ub_do * stride_d - stride_d + filter_d
+            if not howo_split and \
+                    (l1_di * ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_L1_SIZE:
+                l1_di = max(MAX_L1_SIZE // (ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size), 1)
+                ub_do = (l1_di - filter_d + stride_d) // stride_d
 
         # cut res
         res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)
