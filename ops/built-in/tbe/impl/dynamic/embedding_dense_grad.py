@@ -140,6 +140,7 @@ class EmbeddingDenseGrad(object):
         self.embedding_dim = None
         self.ele_not_last_core = None
         self.ele_last_core = None
+        self.core_used = None
         self.ele_not_last_core = self.tik_instance.Scalar(self.dtype_indices, name='ele_not_last_core')
         self.ele_last_core = self.tik_instance.Scalar(self.dtype_indices, name='ele_last_core')
         self.ranges = self.tik_instance.Scalar(self.dtype_indices, name='ranges')
@@ -189,12 +190,14 @@ class EmbeddingDenseGrad(object):
             0,
             0)
         self.get_tiling_args(tiling_ub)
-        core_used = self.tik_instance.Scalar(self.dtype_indices, name='core_used')
-        core_used.set_as(32)
-        with self.tik_instance.if_scope(self.numel_indices // self.aicore_num * self.embedding_dim < 8):
-            core_used.set_as(1)
+        self.core_used = self.tik_instance.Scalar(self.dtype_indices, name='core_used')
+        self.ele_not_last_core.set_as((self.numel_indices - 1) // self.aicore_num + 1)
+        self.core_used.set_as((self.numel_indices - 1) // self.ele_not_last_core + 1)
+        self.ele_last_core.set_as(self.numel_indices - (self.core_used - 1) * self.ele_not_last_core)
+        with self.tik_instance.if_scope(self.numel_indices // self.core_used * self.embedding_dim < 8):
+            self.core_used.set_as(1)
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as core_index:
-            with self.tik_instance.if_scope(core_index < core_used):
+            with self.tik_instance.if_scope(core_index < self.core_used):
                 tiling_ub = self.tik_instance.Tensor(
                     self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_ub', scope=tik.scope_ubuf)
                 self.tik_instance.data_move(
@@ -207,8 +210,6 @@ class EmbeddingDenseGrad(object):
                     0,
                     0)
                 self.get_tiling_args(tiling_ub)
-                self.ele_not_last_core.set_as((self.numel_indices - 1) // self.aicore_num + 1)
-                self.ele_last_core.set_as(self.numel_indices - (self.aicore_num - 1) * self.ele_not_last_core)
                 self.ub_to_data()
                 mode_of_cal = self.tik_instance.Scalar(
                     self.dtype_indices, name='mode_of_cal')
@@ -300,7 +301,7 @@ class EmbeddingDenseGrad(object):
         # Move indexes and grad blocks from gm to ub
         line_num = self.tik_instance.Scalar(dtype='int32', name='line_num')
         line_num.set_as(self.ub_grad_size // GRAD_TENSOR_PART // 2)
-        if core_index == 31:
+        if core_index == self.core_used - 1:
             self.ranges.set_as(self.ele_last_core)
         else:
             self.ranges.set_as(self.ele_not_last_core)
@@ -347,8 +348,7 @@ class EmbeddingDenseGrad(object):
                  line_num - 1) // self.indices_each_block + 1)
             offset_grad_move = (core_index * self.ele_not_last_core + self.ranges // line_num *
                 line_num) * self.embedding_dim
-            burst_len_grad = (self.ranges % line_num * \
-                self.embedding_dim - 1) // self.grad_each_block + 1
+            burst_len_grad = (self.ranges % line_num * self.embedding_dim - 1) // self.grad_each_block + 1
 
             self.tik_instance.data_move(
                 self.indices_ub,
@@ -386,7 +386,8 @@ class EmbeddingDenseGrad(object):
         with self.tik_instance.for_range(0, total) as self.index:
             self.k.set_as(self.indices_ub[self.index])
             with self.tik_instance.if_scope(self.k != self.padding_idx):
-                self.cac_result()
+                with self.tik_instance.if_scope(tik.all(self.k >= 0, self.k < self.num_weights)):
+                    self.cac_result()
 
     def cac_result(self):
         """
@@ -495,5 +496,4 @@ def check_attr_param(n_w):
     """
     if n_w <= 0:
         raise RuntimeError('num_weights must be greater than 0')
-
 

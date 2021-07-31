@@ -129,6 +129,7 @@ class EmbeddingDenseGrad(object):
         self.ranges = None
         self.ele_not_last_core = None
         self.ele_last_core = None
+        self.used_core = None
 
     def embedding_dense_grad_compute(self):
         """
@@ -189,10 +190,12 @@ class EmbeddingDenseGrad(object):
                                                     name="grad_weight", scope=tik.scope_gm, is_atomic_add=True)
         self.grad = self.tik_instance.Tensor(self.dtype_grad, self.grad_shape, name="grad", scope=tik.scope_gm)
         # Create a new space to initialize grad_weight
+        self.ele_not_last_core = (self.numel_indices - 1) // self.aicore_num + 1
+        self.used_core = (self.numel_indices - 1) //self.ele_not_last_core + 1
+        self.ele_last_core = self.numel_indices - (self.used_core - 1) * self.ele_not_last_core
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as core_index:
-            self.ele_not_last_core = (self.numel_indices - 1) // self.aicore_num + 1
-            self.ele_last_core = self.numel_indices - (self.aicore_num - 1) * self.ele_not_last_core
-            self.ub_for_data(core_index)
+            with self.tik_instance.if_scope(core_index < self.used_core):
+                self.ub_for_data(core_index)
 
     def ub_for_data(self, core_index):
         """
@@ -228,7 +231,7 @@ class EmbeddingDenseGrad(object):
         # Define k, the scalar used to index the elements of indicators
         self.k = self.tik_instance.Scalar(dtype=self.dtype_indices)
         scalar_float0 = self.tik_instance.Scalar(dtype=self.dtype_grad, init_value=0)
-        if core_index == 31:
+        if core_index == self.used_core - 1:
             self.ranges = self.ele_last_core
         else:
             self.ranges = self.ele_not_last_core
@@ -296,18 +299,19 @@ class EmbeddingDenseGrad(object):
         with self.tik_instance.for_range(0, total) as self.index:
             self.k.set_as(self.indices_ub[self.index])
             with self.tik_instance.if_scope(self.k != self.padding_idx):
-                self.tik_instance.set_atomic_add(1)
-                if self.embedding_dim < 8:
-                    with self.tik_instance.for_range(0, self.embedding_dim) as i:
-                        self.block_ub[i].set_as(self.grad_ub[self.index * self.embedding_dim + i])
-                    self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
-                                            self.block_ub, 0,
-                                            1, BLOCK // self.grad_each_block, 0, 0)
-                else:
-                    self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
-                                                self.grad_ub[self.index * self.embedding_dim], 0,
-                                                1, self.embedding_dim // self.grad_each_block, 0, 0)
-                self.tik_instance.set_atomic_add(0)
+                with self.tik_instance.if_scope(tik.all(self.k >= 0, self.k < self.num_weights)):
+                    self.tik_instance.set_atomic_add(1)
+                    if self.embedding_dim < 8:
+                        with self.tik_instance.for_range(0, self.embedding_dim) as i:
+                            self.block_ub[i].set_as(self.grad_ub[self.index * self.embedding_dim + i])
+                        self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
+                                                self.block_ub, 0,
+                                                1, BLOCK // self.grad_each_block, 0, 0)
+                    else:
+                        self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
+                                                    self.grad_ub[self.index * self.embedding_dim], 0,
+                                                    1, self.embedding_dim // self.grad_each_block, 0, 0)
+                    self.tik_instance.set_atomic_add(0)
 
 
 def embedding_dense_grad(
