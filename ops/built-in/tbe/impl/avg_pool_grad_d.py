@@ -488,9 +488,11 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     if stride[0] > 1 or stride[1] > 1:
         dila_o_h, dila_i_h = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[3], factor=stride[0])
         dila_o_w, dila_i_w = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[4], factor=stride[1])
-        s[dout_dilated_ubuf].reorder(dila_i_h, dila_i_w, dila_o_h, dila_o_w)
-        s[dout_dilated_ubuf].unroll(dila_i_h)
-        s[dout_dilated_ubuf].unroll(dila_i_w)
+        # 2000 for stack limit
+        if stride[0] * stride[1] <= 2000:
+            s[dout_dilated_ubuf].reorder(dila_i_h, dila_i_w, dila_o_h, dila_o_w)
+            s[dout_dilated_ubuf].unroll(dila_i_h)
+            s[dout_dilated_ubuf].unroll(dila_i_w)
         s[dout_dilated_ubuf].compute_at(s[dout_cbuf_nc1hwc0], ub_l1hcut_o)
         s[dout_dilated_ubuf].emit_insn(dout_dilated_ubuf.op.axis[0], tbe_platform.DMA_PADDING)
     else:
