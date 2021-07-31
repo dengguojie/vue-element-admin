@@ -124,7 +124,7 @@ class MsOpGenException(Exception):
     """
 
     def __init__(self, error_info):
-        super().__init__(error_info)
+        super(MsOpGenException, self).__init__(error_info)
         self.error_info = error_info
 
 
@@ -527,9 +527,9 @@ def fix_name_lower_with_under(name):
     for index, name_str in enumerate(name):
         if index == 0:
             fix_name += name_str.lower()
-        elif name_str.isupper() and index != len(name) - 1:
-            if name[index + 1].islower() or (
-                    index != 0 and name[index - 1].islower()):
+        elif name_str.isupper():
+            if (index != len(name) - 1 and name[index + 1].islower()) or \
+                    (index != 0 and name[index - 1].islower()):
                 # If a capital letter is surrounded by lowercase letters, convert to "_" + lowercase letter
                 # In addition, all are converted to lowercase letters
                 # eg: "Abc2DEf"  ->   "abc2d_ef"

@@ -606,8 +606,8 @@ def fix_name_lower_with_under(name):
         if index == 0:
             fix_name += name_str.lower()
         elif name_str.isupper() and index != len(name) - 1:
-            if name[index + 1].islower() or (
-                    index != 0 and name[index - 1].islower()):
+            if (index != len(name) - 1 and name[index + 1].islower()) or \
+                    (index != 0 and name[index - 1].islower()):
                 # If a capital letter is surrounded by lowercase letters, convert to "_" + lowercase letter
                 # In addition, all are converted to lowercase letters
                 # eg: "Abc2DEf"  ->   "abc2d_ef"
