@@ -195,7 +195,7 @@ def vms4(tik_instance, total, input_ub, dest_pos_ub):
     dest_pos_ub: The dest position in UB.
     ----------
     """
-    # record the lists info
+    # record the lists info, since overlapping src and dst addresses can lead to perf degradation
     length = total // BLOCK
     num_list = [BLOCK] * length
     src_pos_ub = 0
@@ -440,25 +440,23 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
     data_out, data_out_ : for data move
     ----------
     """
-    availabel_ub_size = tik.Dprofile().get_unified_buffer_size()
+
     if num <= NUM_BLOCK:
+        repeat_times = num_16 // BLOCK
         threadNum = 2 if rounds > 1 else 1
-        threadNum = 1 if num_16 * 12 > availabel_ub_size else threadNum
         with tik_instance.for_range(0, rounds, thread_num=threadNum) as i:
             float_ub = tik_instance.Tensor("float16", [num_16], name="float_ub", scope=tik.scope_ubuf)
             int_ub = tik_instance.Tensor("int32", [num_16], name="int_ub", scope=tik.scope_ubuf)
 
-            with tik_instance.for_range(0, rounds) as i:
-                tik_instance.data_move(float_ub[0], data_out[i * num_16], 0, 1, num_16 // BLOCK, 0, 0)
-                tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, num_16 // BLOCK, 0, 0)
+            tik_instance.data_move(float_ub[0], data_out[i * num_16], 0, 1, repeat_times, 0, 0)
+            tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, repeat_times, 0, 0)
 
-                tik_instance.data_move(int_ub[0], data_indices[i * num_16], 0, 1, 2 * num_16 // BLOCK, 0, 0)
-                tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, 2 * num_16 // BLOCK, 0, 0)
+            tik_instance.data_move(int_ub[0], data_indices[i * num_16], 0, 1, 2 * repeat_times, 0, 0)
+            tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, 2 * repeat_times, 0, 0)
 
     else:
         repeat_times = NUM_BLOCK // BLOCK
         threadNum = 2 if num_gm > 1 else 1
-        threadNum = 1 if NUM_BLOCK * 12 > availabel_ub_size else threadNum
         with tik_instance.for_range(0, rounds) as i:
             with tik_instance.for_range(0, num_gm, thread_num=threadNum) as j:
                 float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
@@ -619,12 +617,10 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
         data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
 
     else:
-        big_shape = list(shape)
-        big_shape[-1] = num_2048
-
         input_gm = tik_instance.Tensor(dtype, shape, name="input_gm", scope=tik.scope_gm)
-        data_out = tik_instance.Tensor(dtype, big_shape, name="data_out", scope=tik.scope_gm, is_workspace=True)
-        data_indices = tik_instance.Tensor("int32", big_shape, name="data_indices", scope=tik.scope_gm,
+        data_out = tik_instance.Tensor(dtype, [rounds * num_2048], name="data_out", scope=tik.scope_gm,
+                                       is_workspace=True)
+        data_indices = tik_instance.Tensor("int32", [rounds * num_2048], name="data_indices", scope=tik.scope_gm,
                                            is_workspace=True)
 
         data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
