@@ -459,7 +459,7 @@ class BNUpdateGradSchedule():
             
             if is_need_mte3_opt:
                 sum_x_block_inner_outer, sum_x_block_inner_inner = \
-                    sch[final_out_tensor].split(sum_x_block_inner, nparts=1)
+                    sch[final_out_tensor].split(self.sum_x_block_inner, nparts=1)
 
         ub_split_axis = final_out_buffer.op.reduce_axis[ub_split_reduce_axis]
         self.sum_x_ub_outer, self.sum_x_ub_inner = self.schedule[final_out_buffer].split(ub_split_axis, factor=self.ub_inner)
