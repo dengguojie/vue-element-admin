@@ -162,15 +162,8 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
         ut_case = getattr(case_module, "ut_case", None)
 
         # template handle
-        _version_920a = False
-        if hasattr(run_arg.soc_version, "index"):
-            if "Ascend920A" in run_arg.soc_version:
-                _version_920a = True
-        else:
-            if "Ascend920A" == run_arg.soc_version:
-                _version_920a = True
 
-        if _version_920a:
+        if run_arg.soc_version in ["Ascend920A", "Ascend710"]:
             case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
                                CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT]
         else:

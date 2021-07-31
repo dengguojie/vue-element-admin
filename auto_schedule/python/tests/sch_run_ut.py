@@ -211,6 +211,8 @@ def main(argv):
     # template handle
     if "Ascend920A" not in soc_version:
         soc_version.append("Ascend920A")
+    if "Ascend710" not in soc_version:
+        soc_version.append("Ascend710")
     pr_changed_file = FLAGS.pr_changed_file
     if not pr_changed_file or not str(pr_changed_file).strip():
         case_dir = FLAGS.case_dir
