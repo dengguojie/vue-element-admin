@@ -26,6 +26,7 @@
 #include "op_log.h"
 #include "op_tiling.h"
 #include "error_log.h"
+#include "securec.h"
 
 namespace optiling {
 using namespace ge;
@@ -357,7 +358,7 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
 
   // calc and set and print tiling param
   TilingParam param;
-  memset(&param, 0, sizeof(param));
+  memset_s(&param, sizeof(param), 0, sizeof(param));
   string dtype = op_paras.inputs[0].tensor[0].dtype;
   CalTilingParam(param, input_shape, dtype, axis, ub_ele, core_num);
   SetTilingParam(param, run_info);
