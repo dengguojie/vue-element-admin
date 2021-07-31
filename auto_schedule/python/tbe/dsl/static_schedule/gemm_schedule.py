@@ -2657,9 +2657,13 @@ class GEMM_Schedule:
                     raise RuntimeError(
                         args_dict, error_manager_util.get_error_message(args_dict)
                     )
+                trans_align_factor = 1
+                if self.gemm_params.cube_vector_split and self.gemm_params.trans_a:
+                    if self.gemm_params.TENSOR_MAP["a_placehold"].dtype == "int8":
+                        trans_align_factor = 2 #needs at least 2 16*32 fractal to transpose
 
                 sch[a_l0a].buffer_align(
-                    (1, 1),
+                    (1, trans_align_factor),
                     (1, 1),
                     (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][0]),
                     (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][0])
