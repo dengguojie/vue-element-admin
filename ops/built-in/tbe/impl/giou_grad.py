@@ -318,13 +318,13 @@ class GIoUGrad(object):
         self.tmp_d = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="tmp_d", scope=tik.scope_ubuf)
 
         # func: init for the calculation cache of dxlen/dylen
-        self.dxlen = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="dx_len", scope=tik.scope_ubuf)
-        self.dylen = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="dy_len", scope=tik.scope_ubuf)
+        self.dxlen = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="dxlen", scope=tik.scope_ubuf)
+        self.dylen = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="dylen", scope=tik.scope_ubuf)
 
         # func: init for the calculation cache of dinter/dunion/denclose
-        self.dinter = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="inter", scope=tik.scope_ubuf)
-        self.dunion = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="union", scope=tik.scope_ubuf)
-        self.denclose = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="enclose", scope=tik.scope_ubuf)
+        self.dinter = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="dinter", scope=tik.scope_ubuf)
+        self.dunion = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="dunion", scope=tik.scope_ubuf)
+        self.denclose = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="denclose", scope=tik.scope_ubuf)
 
         # func: init for the calculation cache of xlen_min/ylen_min/xlen_max/ylen_max
         self.xlen_min = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="xlen_min", scope=tik.scope_ubuf)
