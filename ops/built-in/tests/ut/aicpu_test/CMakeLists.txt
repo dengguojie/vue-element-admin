@@ -62,6 +62,7 @@ set(_cpu_context
 
 set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
+  ${CPU_KERNELS_DIR}/kernels/device/mem_cpy.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
   ${CPU_KERNELS_DIR}/kernels/host/assign.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
@@ -92,6 +93,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/non_max_suppression_v3_kernels.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/not_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
@@ -112,6 +114,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
+  ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
@@ -208,6 +211,7 @@ set(_cpu_kernels_ut_files
   testcase/masked_select_grad/src/masked_select_grad_utest.cpp
   testcase/mul/src/mul_utest.cpp
   testcase/no_op/src/no_op_utest.cpp
+  testcase/non_max_suppression_v3/src/non_max_suppression_v3_utest.cpp
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp

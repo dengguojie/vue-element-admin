@@ -27,6 +27,7 @@ set(local_kernels_src_files
     kernels/normalized/masked_select_grad.cc
     kernels/normalized/mul.cc
     kernels/normalized/not_equal.cc
+    kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
@@ -41,6 +42,7 @@ set(local_kernels_src_files
     kernels/normalized/strided_slice.cc
     kernels/normalized/strided_slice_v2.cc
     kernels/normalized/top_k.cc
+    utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc
     utils/eigen_tensor.cc
@@ -65,6 +67,7 @@ set(local_host_kernels_src_files
 )
 set(local_device_kernels_src_files
     kernels/device/avg_pool1d_avg_matrix.cc
+    kernels/device/mem_cpy.cc
     kernels/device/where.cc
 )
 
@@ -236,6 +239,7 @@ set(local_kernels_inc_path
     ${TOP_DIR}/inc
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/abl/libc_sec/include
+    ${TOP_DIR}/ace/comop/inc
 )
 
 add_library(cpu_kernels SHARED
