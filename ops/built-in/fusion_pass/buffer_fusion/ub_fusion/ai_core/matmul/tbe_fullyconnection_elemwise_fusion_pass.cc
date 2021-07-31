@@ -28,6 +28,7 @@ static const string PATTERN_QUANT = "quant";
 static const string PATTERN_ELTWISE1 = "eltwise1";      // desc name
 static const string PATTERN_ELTWISE2 = "eltwise2";      // desc name
 static const string PATTERN_OTHER_INPUT = "InputData";  // desc name
+static const string PATTERN_OUTPUT = "output";          // desc name
 static const vector<string> elemWiseWhiteList = {
   "Elu", "LeakyRelu", "Gelu", "Softsign", "Relu6", "Relu", "Softplus", "Sigmoid", "Tanh", "Selu",
   "GeluGrad", "Add", "AddN", "FastGelu", "FastGeluGrad", "Eltwise", "PRelu", "Mul", "Power", "Relu6D"};
@@ -46,14 +47,23 @@ static const vector<string> matmulWhiteList = {
  */
 vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
-  string passName = "TbeFullyconnectionElemwiseDequantFusionPass";
 
-  BufferFusionPattern *pattern =
-          new (std::nothrow) BufferFusionPattern(passName, TBE_FUSION_OP_NUM_MAX);
-  if (pattern == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed.");
-    return patterns;
-  }
+  string passName0 = "TbeBatchMatMulElemwiseDoubleOut";
+  BufferFusionPattern *pattern0 = new (std::nothrow) BufferFusionPattern(passName0, TBE_FUSION_OP_NUM_MAX);
+  FUSION_PASS_CHECK(pattern0 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName0.c_str());
+  // define pattern rules
+  pattern0->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+           .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+           .AddOpDesc(PATTERN_OUTPUT, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+           .SetHead({PATTERN_FC_MATMUL})
+           .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_ELTWISE1, PATTERN_OUTPUT}, TBE_OUTPUT_BRANCH_MULTI);
+
+  patterns.push_back(pattern0);
+
+  string passName = "TbeFullyconnectionElemwiseDequantFusionPass";
+  BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName, TBE_FUSION_OP_NUM_MAX);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
@@ -231,6 +241,20 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
       return SUCCESS;
     }
   }
+
+  // the outputData can't be fused
+  for (auto& item : mapping) {
+    auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
+    if (opdesc != item.first->types.end()) {
+      for (auto& node : item.second) {
+        auto node_ptr = find(fusionNodes.begin(), fusionNodes.end(), node);
+        if (node_ptr != fusionNodes.end()) {
+          fusionNodes.erase(node_ptr);
+        }
+      }
+    }
+  }
+
   SetSplitInfo(mapping, fusionNodes);
   OP_LOGD("End to do TbeFullyconnectionElemwiseFusionPass!");
   return SUCCESS;
