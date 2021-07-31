@@ -1,8 +1,9 @@
 from te import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
-import math
 
+import math
+from functools import partial
 from abc import ABCMeta
 from abc import abstractmethod
 from enum import Enum
@@ -52,6 +53,10 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         self.mask4compute = 128
         self.upper_rep_limit = 255
 
+        # notice: though we can aligned the shape of bitmask_ub, but each repeat of vcmpv has 128bits(16B) result.
+        # we have to aligned the address to 32B.
+        self.upper_cmp_rep = 254
+
         self.N, self.input_d, self.C1, self.input_h, self.input_w, self.C0 = x.get('shape')
         _, _, self.k_d, self.k_h, self.k_w = kernel_size
         _, _, self.stride_d, self.stride_h, self.stride_w = stride
@@ -70,15 +75,28 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         self.l1_strategy = L1MoveStrategy.EMPTY
         self.ub_kernel_stg = UbKernelStrategy.EMPTY
 
-    # encapsulate the data_move function when the data is continue.
-    def _move_ctn(self, dst, src, data_blknum):
-        self.inst.data_move(dst=dst,
-                            src=src,
-                            sid=0,
-                            nburst=1,
-                            burst=data_blknum,
-                            src_stride=0,
-                            dst_stride=0)
+        # encapsulate the data_move function when the data is continue.
+        self._move_ctn = partial(self.inst.data_move,
+                                 sid=0,
+                                 nburst=1,
+                                 src_stride=0,
+                                 dst_stride=0)
+
+        # encapsulate the vnot function when the data is continue.
+        self._vnot_ctn = partial(self.inst.vnot,
+                                 src_blk_stride=1,
+                                 dst_blk_stride=1,
+                                 src_rep_stride=8,
+                                 dst_rep_stride=8,
+                                 repeat_times=1,
+                                 mask=128)
+
+        # encapsulate the vcmpv function when the data is continue.
+        self._cmp_ctn = partial(self.inst.vcmpv_eq,
+                                src0_blk_stride=1,
+                                src1_blk_stride=1,
+                                src0_rep_stride=8,
+                                src1_rep_stride=8)
 
     # encapsulate the two-number compute function.
     @staticmethod
@@ -94,28 +112,6 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                dst_rep_stride=8,
                src0_rep_stride=8,
                src1_rep_stride=8)
-
-    # encapsulate the vnot function when the data is continue.
-    def _vnot_ctn(self, dst, src, rep_times=1, mask=128):
-        self.inst.vnot(mask=mask,
-                       dst=dst,
-                       src=src,
-                       repeat_times=rep_times,
-                       src_blk_stride=1,
-                       dst_blk_stride=1,
-                       src_rep_stride=8,
-                       dst_rep_stride=8)
-
-    # encapsulate the vcmpv function when the data is continue.
-    def _cmp_ctn(self, dst, src0, src1, rep_times):
-        self.inst.vcmpv_eq(dst=dst,
-                           src0=src0,
-                           src1=src1,
-                           repeat_times=rep_times,
-                           src0_blk_stride=1,
-                           src1_blk_stride=1,
-                           src0_rep_stride=8,
-                           src1_rep_stride=8)
 
     def _img2col(self, aux_l1, big_matrix_ub, l1_begin_pos, rep_times):
         if self.ub_kernel_stg is UbKernelStrategy.WHOLE_KERNEL:
@@ -148,7 +144,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
     def _calc_maxline(self, max_line_ub, big_matrix_ub, line_blk, super_line_loop, super_line_tail):
         self._move_ctn(dst=max_line_ub,
                        src=big_matrix_ub,
-                       data_blknum=line_blk)
+                       burst=line_blk)
         with self.inst.for_range(1, self.k_elem) as line_ind:
             if super_line_loop != 0:
                 with self.inst.for_range(0, super_line_loop) as super_loop_ind:
@@ -199,17 +195,17 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
             if super_line_loop != 0:
                 with self.inst.for_range(0, super_line_loop) as super_loop_ind:
                     self._cmp_ctn(
-                        dst=bitmask_ub[line_ind, super_loop_ind * self.upper_rep_limit * self.mask4compute // 16],
-                        src0=big_matrix_ub[line_ind, super_loop_ind * self.upper_rep_limit * self.mask4compute],
-                        src1=max_line_ub[super_loop_ind * self.upper_rep_limit * self.mask4compute],
-                        rep_times=self.upper_rep_limit
+                        dst=bitmask_ub[line_ind, super_loop_ind * self.upper_cmp_rep * self.mask4compute // 16],
+                        src0=big_matrix_ub[line_ind, super_loop_ind * self.upper_cmp_rep * self.mask4compute],
+                        src1=max_line_ub[super_loop_ind * self.upper_cmp_rep * self.mask4compute],
+                        repeat_times=self.upper_cmp_rep
                     )
             if super_line_tail != 0:
                 self._cmp_ctn(
-                    dst=bitmask_ub[line_ind, super_line_loop * self.upper_rep_limit * self.mask4compute // 16],
-                    src0=big_matrix_ub[line_ind, super_line_loop * self.upper_rep_limit * self.mask4compute],
-                    src1=max_line_ub[super_line_loop * self.upper_rep_limit * self.mask4compute],
-                    rep_times=super_line_tail
+                    dst=bitmask_ub[line_ind, super_line_loop * self.upper_cmp_rep * self.mask4compute // 16],
+                    src0=big_matrix_ub[line_ind, super_line_loop * self.upper_cmp_rep * self.mask4compute],
+                    src1=max_line_ub[super_line_loop * self.upper_cmp_rep * self.mask4compute],
+                    repeat_times=super_line_tail
                 )
 
     def _deduplicate_bitmask(self, mask_or_ub, mask_not_ub, bitmask_ub, data_blk, bm_loop, bm_tail):
@@ -217,14 +213,14 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         if bm_loop != 0:
             self._vnot_ctn(dst=mask_not_ub,
                            src=bitmask_ub,
-                           rep_times=bm_loop)
+                           repeat_times=bm_loop)
         if bm_tail != 0:
             self._vnot_ctn(dst=mask_not_ub[bm_loop * self.mask4compute],
                            src=bitmask_ub[0, bm_loop * self.mask4compute],
                            mask=bm_tail)
         self._move_ctn(dst=mask_or_ub,
                        src=bitmask_ub,
-                       data_blknum=data_blk)
+                       burst=data_blk)
         with self.inst.for_range(1, self.k_elem) as line_ind:
             if bm_loop != 0:
                 self._compute_two_ctn(method=self.inst.vor,
@@ -239,7 +235,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                                       rep_times=bm_loop)
                 self._vnot_ctn(dst=mask_not_ub,
                                src=mask_or_ub,
-                               rep_times=bm_loop)
+                               repeat_times=bm_loop)
             if bm_tail != 0:
                 self._compute_two_ctn(method=self.inst.vor,
                                       dst=mask_or_ub[bm_loop * self.mask4compute],
@@ -351,9 +347,9 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                                   super_line_tail=self.super_line_tail)
 
             # step3: move the max_line_ub to gm
-            super()._move_ctn(dst=tensor_info['output'][ind_N, ind_d, ind_C1, cut_ub_ind * self.ub_line],
-                              src=maxline_ub_T,
-                              data_blknum=self.ub_line * self.each_fp16_bytes // self.block_size)
+            self._move_ctn(dst=tensor_info['output'][ind_N, ind_d, ind_C1, cut_ub_ind * self.ub_line],
+                           src=maxline_ub_T,
+                           burst=self.ub_line * self.each_fp16_bytes // self.block_size)
 
             # step4: compute the bitmask
             super()._calc_bitmask(big_matrix_ub=bigmat_ub_T,
@@ -400,9 +396,9 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                               super_line_tail=self.ubtail_super_tail)
 
         # step3: move the max_line_ub to gm
-        super()._move_ctn(dst=tensor_info['output'][ind_N, ind_d, ind_C1, self.cut_ub_loop * self.ub_line],
-                          src=maxline_ub_T,
-                          data_blknum=self.cut_ub_tail_ori * self.C0 * self.each_fp16_bytes // self.block_size)
+        self._move_ctn(dst=tensor_info['output'][ind_N, ind_d, ind_C1, self.cut_ub_loop * self.ub_line],
+                       src=maxline_ub_T,
+                       burst=self.cut_ub_tail_ori * self.C0 * self.each_fp16_bytes // self.block_size)
 
         # step4: compute the bitmask
         super()._calc_bitmask(big_matrix_ub=bigmat_ub_T,
@@ -468,7 +464,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                             dst=aux_l1_T[0, d_ind, 0, 0, 0],
                             src=tensor_info['input'][core.ind_N, core.ind_d * self.stride_d + d_ind,
                                                      core.ind_C1, 0, 0, 0],
-                            data_blknum=self.input_h * self.input_w
+                            burst=self.input_h * self.input_w
                         )
 
             ub_context = {"ind_N": core.ind_N,
