@@ -39,7 +39,7 @@ TEST_F(RnnGenMaskV2Test, rnn_gen_mask_tsest_1) {
     auto ret = rnn_gen_mask_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     // compare
-    auto output_desc = rnn_gen_mask_op.GetOutputDesc("seq_mask");
+    auto output_desc = rnn_gen_mask_op.GetOutputDescByName("seq_mask");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 
     std::vector<int64_t> expected_output_shape = {-1, 32, -1};

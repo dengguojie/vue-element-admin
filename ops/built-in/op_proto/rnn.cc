@@ -983,24 +983,24 @@ VERIFY_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradVerify);
 
 // ----------------EmbeddingDenseGrad Begin-------------------
 bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
-                                         const string &input_name1,
-                                         const string &input_name2,
-                                         const string &output_name)
+                                         const char* input_name1,
+                                         const char* input_name2,
+                                         const char* output_name)
 {
-    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-    DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-    Format input_format = op.GetInputDesc(input_name1).GetFormat();
-    ge::Shape shapeX = op.GetInputDesc(input_name1).GetShape();
+    TensorDesc v_output_desc = op.GetOutputDescByName(output_name);
+    DataType input_dtype = op.GetInputDescByName(input_name1).GetDataType();
+    Format input_format = op.GetInputDescByName(input_name1).GetFormat();
+    ge::Shape shapeX = op.GetInputDescByName(input_name1).GetShape();
     std::vector<int64_t> dims_x = shapeX.GetDims();
 
     int64_t num_weights_value = 0;
     std::vector<int64_t> dim_vec;
     op.GetAttr("num_weights", num_weights_value);
-    OP_LOGI(op.GetName().c_str(), "the attr num_weights is %d",
+    OP_LOGI("EmbeddingDenseGrad", "the attr num_weights is %d",
             num_weights_value);
     if (num_weights_value == 0)
     {
-        OP_LOGE(op.GetName().c_str(), "num_weights not be zero");
+        OP_LOGE("EmbeddingDenseGrad", "num_weights not be zero");
         return false;
     }
     dim_vec.push_back(num_weights_value);
@@ -1021,7 +1021,7 @@ bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
     {
         std::vector<std::pair<int64_t, int64_t>> input_range;
         std::vector<std::pair<int64_t, int64_t>> output_shape_range;
-        op.GetInputDesc(input_name1).GetShapeRange(input_range);
+        op.GetInputDescByName(input_name1).GetShapeRange(input_range);
         if (input_range.empty())
         {
             output_shape_range = {{num_weights_value, num_weights_value}, {1, -1}};
@@ -1033,7 +1033,7 @@ bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
         v_output_desc.SetShapeRange(output_shape_range);
     }
     CHECK(op.UpdateOutputDesc(output_name, v_output_desc) != GRAPH_SUCCESS,
-          OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+          OP_LOGE("EmbeddingDenseGrad", "UpdateOutputDesc failed."), return GRAPH_FAILED);
     return true;
 }
 
@@ -1059,21 +1059,21 @@ VERIFY_FUNC_REG(EmbeddingDenseGrad, EmbeddingDenseGradVerify);
 // ----------------EmbeddingDenseGrad END---------------------
 // ----------------RnnGenMaskV2 Begin-------------------
 bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
-                                         const string &seq_length,
-                                         const string &b,
-                                         const string &x,
-                                         const string &seq_mask)
+                                         const char* seq_length,
+                                         const char* b,
+                                         const char* x,
+                                         const char* seq_mask)
 {
-  TensorDesc tensordesc_input = op.GetInputDesc("seq_length");
-  TensorDesc tensordesc_input_b = op.GetInputDesc("b");
-  TensorDesc tensordesc_input_x = op.GetInputDesc("x");
-  TensorDesc tensordesc_output = op.GetOutputDesc("seq_mask");
+  TensorDesc tensordesc_input = op.GetInputDescByName(seq_length);
+  TensorDesc tensordesc_input_b = op.GetInputDescByName(b);
+  TensorDesc tensordesc_input_x = op.GetInputDescByName(x);
+  TensorDesc tensordesc_output = op.GetOutputDescByName(seq_mask);
 
   ge::Shape length_shape = tensordesc_input.GetShape();
   std::vector<int64_t> dim_length = length_shape.GetDims();
 
   if(dim_length.size() != 1){
-    OP_LOGE(op.GetName().c_str(), "Unexcepeted Input Shape.");
+    OP_LOGE("RnnGenMaskV2", "Unexcepeted Input Shape.");
     return false;
   }
 
@@ -1106,13 +1106,13 @@ bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
   if (IsUnknown(dim_length))
   {
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    op.GetInputDesc(seq_length).GetShapeRange(input_range);
+    op.GetInputDescByName(seq_length).GetShapeRange(input_range);
 
     std::vector<std::pair<int64_t, int64_t>> input_b_range;
-    op.GetInputDesc(b).GetShapeRange(input_b_range);
+    op.GetInputDescByName(b).GetShapeRange(input_b_range);
 
     std::vector<std::pair<int64_t, int64_t>> input_x_range;
-    op.GetInputDesc(x).GetShapeRange(input_x_range);
+    op.GetInputDescByName(x).GetShapeRange(input_x_range);
 
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;
     if (input_range.empty()){
@@ -1149,6 +1149,7 @@ COMMON_INFER_FUNC_REG(RnnGenMaskV2, g_rnnGenMaskV2InferShape);
 // Registered verify function
 VERIFY_FUNC_REG(RnnGenMaskV2, RnnGenMaskV2Verify);
 // ----------------RnnGenMaskV2 END---------------------
+
 IMPLEMT_VERIFIER(CommonLSTM, CommonLSTMVerify) {
   return GRAPH_SUCCESS;
 }
@@ -1321,3 +1322,4 @@ COMMON_INFER_FUNC_REG(EmbeddingBag, EmbeddingBagInferShape);
 VERIFY_FUNC_REG(EmbeddingBag, EmbeddingBagVerify);
 // ----------------EmbeddingBag-------------------
 }  // namespace ge
+

@@ -2295,11 +2295,11 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
   int32_t axis = -1;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     std::string err_msg = GetInputInvalidErrMsg("Get const axis failed from op of 'OneHot'!\n");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT("OneHot", err_msg);
     return GRAPH_FAILED;
   }
   if (axis < -1) {
-    OP_LOGE(op.GetName().c_str(), "attr axis must be >= -1");
+    OP_LOGE("OneHot", "attr axis must be >= -1");
     return GRAPH_FAILED;
   }
 
@@ -2318,7 +2318,7 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
 
   if (IsUnknownRankShape(input_shape)) {
     // input is UnknownRank, set output UnknownRank
-    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output UnknownRank");
+    OP_LOGW("OneHot", "input shape is UnknownRank, set output UnknownRank");
     output_desc->SetShape(GeShape(input_shape));
     return GRAPH_SUCCESS;
   }
@@ -2331,12 +2331,12 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     auto const_desc = op_info->MutableInputDesc("depth");
     auto const_dtype = const_desc->GetDataType();
     if (!GetConstValue(op, depth_tensor, const_dtype, depth_value)) {
-      OP_LOGW(op.GetName().c_str(), "Get depth const from const tensor failed, set depth -1");
+      OP_LOGW("OneHot", "Get depth const from const tensor failed, set depth -1");
       depth_value.clear();
       depth_value.push_back(-1);
     }
   } else {
-    OP_LOGW(op.GetName().c_str(), "Get depth const tensor failed, set depth -1");
+    OP_LOGW("OneHot", "Get depth const tensor failed, set depth -1");
     depth_value.clear();
     depth_value.push_back(-1);
   }
@@ -4722,3 +4722,4 @@ COMMON_INFER_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceInferShape);
 VERIFY_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceVerify);
 // ----------------InplaceTopKDistance END---------------------
 }  // namespace ge
+

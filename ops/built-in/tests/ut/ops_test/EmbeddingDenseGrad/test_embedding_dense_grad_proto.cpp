@@ -53,7 +53,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_1) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {2, 32};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
@@ -79,7 +79,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_2) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {2000, 64};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
@@ -105,7 +105,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_3) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {99, 1024};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
@@ -131,7 +131,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_4) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {23, 32};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
@@ -157,7 +157,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_5) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {2000, -1};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
@@ -183,7 +183,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_6) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {20000, -1};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
@@ -209,7 +209,7 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_7) {
     auto ret = embedding_dense_grad_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = embedding_dense_grad_op.GetOutputDesc("y");
+    auto output_desc = embedding_dense_grad_op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {20010, 256};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
