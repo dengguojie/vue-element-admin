@@ -1,0 +1,447 @@
+[
+  {
+    "op": "ClipByNormNoDivSum",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "greater_zeros",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "select_ones",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "maximum_ones",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ClipByNormNoDivSum_000"
+  },
+  {
+    "op": "ClipByNormNoDivSum",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "greater_zeros",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "select_ones",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "maximum_ones",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ClipByNormNoDivSum_001"
+  },
+  {
+    "op": "ClipByNormNoDivSum",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "greater_zeros",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "select_ones",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "maximum_ones",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ClipByNormNoDivSum_002"
+  },
+  {
+    "op": "ClipByNormNoDivSum",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "greater_zeros",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "select_ones",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "maximum_ones",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ClipByNormNoDivSum_003"
+  },
+  {
+    "op": "ClipByNormNoDivSum",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "greater_zeros",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "select_ones",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "maximum_ones",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ClipByNormNoDivSum_004"
+  }
+]

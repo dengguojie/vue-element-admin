@@ -1,0 +1,272 @@
+[
+  {
+    "op": "GridAssignPositive",
+    "input_desc": [
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "assigned_gt_inds",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128,
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "overlaps",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "box_responsible_flags",
+        "type": "uint8"
+      },
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "max_overlaps",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "argmax_overlaps",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128
+        ],
+        "ori_format": "ND",
+        "name": "gt_max_overlaps",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128
+        ],
+        "ori_format": "ND",
+        "name": "gt_argmax_overlaps",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "num_gts",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "assigned_gt_inds_pos",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "pos_iou_thr",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "min_pos_iou",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "gt_max_assign_all",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_GridAssignPositive_000"
+  },
+  {
+    "op": "GridAssignPositive",
+    "input_desc": [
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "assigned_gt_inds",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128,
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "overlaps",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "box_responsible_flags",
+        "type": "uint8"
+      },
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "max_overlaps",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "argmax_overlaps",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128
+        ],
+        "ori_format": "ND",
+        "name": "gt_max_overlaps",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128
+        ],
+        "ori_format": "ND",
+        "name": "gt_argmax_overlaps",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "num_gts",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6300
+        ],
+        "ori_format": "ND",
+        "name": "assigned_gt_inds_pos",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "pos_iou_thr",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "min_pos_iou",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "gt_max_assign_all",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GridAssignPositive_001"
+  }
+]

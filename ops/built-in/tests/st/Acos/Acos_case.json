@@ -1,0 +1,166 @@
+[
+  {
+    "op": "Acos",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Acos_000"
+  },
+  {
+    "op": "Acos",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Acos_001"
+  },
+  {
+    "op": "Acos",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Acos_002"
+  },
+  {
+    "op": "Acos",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Acos_003"
+  }
+]

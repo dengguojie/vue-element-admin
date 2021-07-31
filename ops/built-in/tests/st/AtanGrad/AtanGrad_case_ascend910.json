@@ -1,0 +1,53 @@
+[
+  {
+    "op": "AtanGrad",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          100,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AtanGrad_000"
+  }
+]

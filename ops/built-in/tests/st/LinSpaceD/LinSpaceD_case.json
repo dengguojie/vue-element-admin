@@ -1,0 +1,722 @@
+[
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_000"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_001"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_002"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_003"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8192
+        ],
+        "ori_format": "NCHW",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8192
+        ],
+        "ori_format": "NCHW",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_004"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          991
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          991
+        ],
+        "ori_format": "NCHW",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          991
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          991
+        ],
+        "ori_format": "NCHW",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_005"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_006"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_007"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_008"
+  },
+  {
+    "op": "LinSpaceD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_assist",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_start",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_stop",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_num",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_op",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LinSpaceD_009"
+  }
+]

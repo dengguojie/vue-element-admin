@@ -1,0 +1,451 @@
+[
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_labels",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_backprop",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_000"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_features",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_labels",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_loss",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_backprop",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_001"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_features",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_labels",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_loss",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_backprop",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_002"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          221,
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221,
+          8
+        ],
+        "ori_format": "NHWC",
+        "name": "input_features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          8
+        ],
+        "ori_format": "NHWC",
+        "name": "input_labels",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          221
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221
+        ],
+        "ori_format": "NHWC",
+        "name": "output_loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          221,
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221,
+          8
+        ],
+        "ori_format": "NHWC",
+        "name": "output_backprop",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_005"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          221,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "input_features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          221,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "input_labels",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          221,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "output_loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          221,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          221,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "output_backprop",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_012"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          24,
+          30000
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          24,
+          30000
+        ],
+        "ori_format": "NHWC",
+        "name": "input_features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          24,
+          30000
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          24,
+          30000
+        ],
+        "ori_format": "NHWC",
+        "name": "input_labels",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          24,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          24,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "output_loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          24,
+          30000
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          24,
+          30000
+        ],
+        "ori_format": "NHWC",
+        "name": "output_backprop",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_013"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          14,
+          11760
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          14,
+          11760
+        ],
+        "ori_format": "NHWC",
+        "name": "input_features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          14,
+          11760
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          14,
+          11760
+        ],
+        "ori_format": "NHWC",
+        "name": "input_labels",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          14,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          14,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "output_loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          14,
+          11760
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          14,
+          11760
+        ],
+        "ori_format": "NHWC",
+        "name": "output_backprop",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_014"
+  }
+]

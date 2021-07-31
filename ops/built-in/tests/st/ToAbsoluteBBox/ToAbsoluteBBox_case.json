@@ -1,0 +1,1005 @@
+[
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          16
+        ],
+        "ori_shape": [
+          25,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          16
+        ],
+        "ori_shape": [
+          25,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_000"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_001"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_002"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_003"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          8
+        ],
+        "ori_shape": [
+          25,
+          4,
+          8
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          8
+        ],
+        "ori_shape": [
+          25,
+          4,
+          8
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_004"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600000
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_005"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_006"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1600001
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_007"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          4
+        ],
+        "ori_shape": [
+          25,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          4
+        ],
+        "ori_shape": [
+          25,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_008"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_009"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_010"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_011"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          2,
+          4
+        ],
+        "ori_shape": [
+          25,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          2,
+          4
+        ],
+        "ori_shape": [
+          25,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_012"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600000,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_013"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_shape": [
+          25,
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_014"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_shape": [
+          1,
+          1600001,
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_015"
+  },
+  {
+    "op": "ToAbsoluteBBox",
+    "input_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "normalized_boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "shape_hw",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_shape": [
+          25,
+          4,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ToAbsoluteBBox_016"
+  }
+]

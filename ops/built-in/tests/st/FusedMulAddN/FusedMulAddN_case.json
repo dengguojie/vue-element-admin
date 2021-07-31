@@ -1,0 +1,430 @@
+[
+  {
+    "op": "FusedMulAddN",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [],
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddN_000"
+  },
+  {
+    "op": "FusedMulAddN",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [],
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddN_001"
+  },
+  {
+    "op": "FusedMulAddN",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddN_002"
+  },
+  {
+    "op": "FusedMulAddN",
+    "input_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddN_003"
+  },
+  {
+    "op": "FusedMulAddN",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddN_004"
+  },
+  {
+    "op": "FusedMulAddN",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          16,
+          16
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddN_005"
+  }
+]

@@ -1,0 +1,1316 @@
+[
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_000"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_001"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_002"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_003"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_004"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_005"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_006"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_007"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_008"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_009"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_010"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_011"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_012"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_013"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_014"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_015"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_016"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_017"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_018"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_019"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_020"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_021"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_022"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_023"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_024"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_025"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_026"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_027"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_028"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_029"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_030"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_031"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_032"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Invert_033"
+  }
+]

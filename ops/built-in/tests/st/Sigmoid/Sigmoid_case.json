@@ -1,0 +1,244 @@
+[
+  {
+    "op": "Sigmoid",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sigmoid_000"
+  },
+  {
+    "op": "Sigmoid",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sigmoid_001"
+  },
+  {
+    "op": "Sigmoid",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sigmoid_002"
+  },
+  {
+    "op": "Sigmoid",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sigmoid_003"
+  },
+  {
+    "op": "Sigmoid",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sigmoid_004"
+  },
+  {
+    "op": "Sigmoid",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sigmoid_005"
+  }
+]

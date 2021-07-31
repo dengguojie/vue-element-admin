@@ -1,0 +1,362 @@
+[
+  {
+    "op": "DecodeBboxV2",
+    "input_desc": [
+      {
+        "shape": [
+          29782,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          29782,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          29782,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          29782,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "anchors",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          29782,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          29782,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scales",
+        "type": "list_float",
+        "value": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "name": "decode_clip",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_DecodeBboxV2_000"
+  },
+  {
+    "op": "DecodeBboxV2",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          29782
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          29782
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4,
+          29782
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          29782
+        ],
+        "ori_format": "ND",
+        "name": "anchors",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          29782
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          29782
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scales",
+        "type": "list_float",
+        "value": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "name": "decode_clip",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_DecodeBboxV2_001"
+  },
+  {
+    "op": "DecodeBboxV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "anchors",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scales",
+        "type": "list_float",
+        "value": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "name": "decode_clip",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_DecodeBboxV2_002"
+  },
+  {
+    "op": "DecodeBboxV2",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "anchors",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scales",
+        "type": "list_float",
+        "value": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "name": "decode_clip",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_DecodeBboxV2_006"
+  },
+  {
+    "op": "DecodeBboxV2",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "anchors",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scales",
+        "type": "list_float",
+        "value": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "name": "decode_clip",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "reversed_box",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_DecodeBboxV2_007"
+  }
+]

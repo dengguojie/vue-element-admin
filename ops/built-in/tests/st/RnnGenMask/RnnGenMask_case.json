@@ -1,0 +1,302 @@
+[
+  {
+    "op": "RnnGenMask",
+    "input_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "seq_length",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "outputput",
+        "name": "seq_mask",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_step",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "hidden_size",
+        "type": "int",
+        "value": 16
+      }
+    ],
+    "case_name": "test_RnnGenMask_000"
+  },
+  {
+    "op": "RnnGenMask",
+    "input_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "seq_length",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          32,
+          7
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          32,
+          7
+        ],
+        "ori_format": "ND",
+        "param_type": "outputput",
+        "name": "seq_mask",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_step",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "hidden_size",
+        "type": "int",
+        "value": 7
+      }
+    ],
+    "case_name": "test_RnnGenMask_001"
+  },
+  {
+    "op": "RnnGenMask",
+    "input_desc": [
+      {
+        "shape": [
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          12
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "seq_length",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          12,
+          7
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          12,
+          7
+        ],
+        "ori_format": "ND",
+        "param_type": "outputput",
+        "name": "seq_mask",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_step",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "hidden_size",
+        "type": "int",
+        "value": 7
+      }
+    ],
+    "case_name": "test_RnnGenMask_002"
+  },
+  {
+    "op": "RnnGenMask",
+    "input_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "seq_length",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "outputput",
+        "name": "seq_mask",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_step",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "hidden_size",
+        "type": "int",
+        "value": 16
+      }
+    ],
+    "case_name": "test_RnnGenMask_003"
+  },
+  {
+    "op": "RnnGenMask",
+    "input_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "seq_length",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          32,
+          7
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          32,
+          7
+        ],
+        "ori_format": "ND",
+        "param_type": "outputput",
+        "name": "seq_mask",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_step",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "hidden_size",
+        "type": "int",
+        "value": 7
+      }
+    ],
+    "case_name": "test_RnnGenMask_004"
+  },
+  {
+    "op": "RnnGenMask",
+    "input_desc": [
+      {
+        "shape": [
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          12
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "seq_length",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          12,
+          7
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          12,
+          7
+        ],
+        "ori_format": "ND",
+        "param_type": "outputput",
+        "name": "seq_mask",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_step",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "hidden_size",
+        "type": "int",
+        "value": 7
+      }
+    ],
+    "case_name": "test_RnnGenMask_005"
+  }
+]

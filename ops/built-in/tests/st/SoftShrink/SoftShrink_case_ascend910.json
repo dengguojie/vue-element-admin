@@ -1,0 +1,96 @@
+[
+  {
+    "op": "SoftShrink",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_SoftShrink_000"
+  },
+  {
+    "op": "SoftShrink",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_SoftShrink_002"
+  }
+]

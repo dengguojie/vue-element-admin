@@ -1,0 +1,98 @@
+[
+  {
+    "op": "HardSigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "shape": [
+          100
+        ],
+        "param_type": "input",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "shape": [
+          100
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "shape": [
+          100
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_HardSigmoidGrad_001"
+  },
+  {
+    "op": "HardSigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "shape": [
+          100
+        ],
+        "param_type": "input",
+        "name": "grads",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "shape": [
+          100
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "shape": [
+          100
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_HardSigmoidGrad_002"
+  }
+]

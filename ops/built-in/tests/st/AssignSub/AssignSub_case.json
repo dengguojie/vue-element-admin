@@ -1,0 +1,47 @@
+[
+  {
+    "op": "AssignSub",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "out",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AssignSub_000"
+  }
+]

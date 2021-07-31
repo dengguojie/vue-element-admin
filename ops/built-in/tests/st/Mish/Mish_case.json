@@ -1,0 +1,828 @@
+[
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_000"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          256,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          256,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          256,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          256,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_001"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_002"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_003"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_004"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_005"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_006"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_007"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_008"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_009"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          256,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          256,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          256,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          256,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_010"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          608,
+          608,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_011"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          304,
+          304,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_012"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          4,
+          152,
+          152,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_013"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          76,
+          76,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_014"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_015"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          38,
+          38,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_016"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mish_017"
+  }
+]

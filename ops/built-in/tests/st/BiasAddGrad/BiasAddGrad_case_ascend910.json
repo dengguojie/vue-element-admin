@@ -1,0 +1,139 @@
+[
+  {
+    "op": "BiasAddGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_000"
+  },
+  {
+    "op": "BiasAddGrad",
+    "input_desc": [
+      {
+        "shape": [
+          77,
+          30522
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          77,
+          30522
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          77,
+          30522
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          77,
+          30522
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_001"
+  },
+  {
+    "op": "BiasAddGrad",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NCHW"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_002"
+  }
+]

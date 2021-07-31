@@ -1,0 +1,140 @@
+[
+  {
+    "op": "ClipBoxesD",
+    "input_desc": [
+      {
+        "shape": [
+          4000,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4000,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes_input",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4000,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4000,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes_output",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "img_size",
+        "type": "list_int",
+        "value": [
+          1024,
+          728
+        ]
+      }
+    ],
+    "case_name": "test_ClipBoxesD_000"
+  },
+  {
+    "op": "ClipBoxesD",
+    "input_desc": [
+      {
+        "shape": [
+          6000,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6000,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes_input",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6000,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6000,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes_output",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "img_size",
+        "type": "list_int",
+        "value": [
+          1024,
+          728
+        ]
+      }
+    ],
+    "case_name": "test_ClipBoxesD_001"
+  },
+  {
+    "op": "ClipBoxesD",
+    "input_desc": [
+      {
+        "shape": [
+          17600,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17600,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes_input",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          17600,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17600,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes_output",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "img_size",
+        "type": "list_int",
+        "value": [
+          1024,
+          728
+        ]
+      }
+    ],
+    "case_name": "test_ClipBoxesD_002"
+  }
+]

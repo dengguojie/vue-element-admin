@@ -1,0 +1,362 @@
+[
+  {
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_NotEqual_000"
+  },
+  {
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_NotEqual_001"
+  },
+  {
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_NotEqual_002"
+  },
+  {
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_NotEqual_003"
+  },
+  {
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_NotEqual_004"
+  },
+  {
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_NotEqual_005"
+  }
+]

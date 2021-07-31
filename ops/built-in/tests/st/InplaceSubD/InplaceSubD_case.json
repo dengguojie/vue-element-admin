@@ -1,0 +1,140 @@
+[
+  {
+    "op": "InplaceSubD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          32
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          32
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          32
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          32
+        ],
+        "ori_format": "NHWC",
+        "name": "v",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          32
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          32
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceSubD_000"
+  },
+  {
+    "op": "InplaceSubD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceSubD_003"
+  }
+]

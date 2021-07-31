@@ -1,0 +1,218 @@
+[
+  {
+    "op": "LogSoftmaxV2",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          2,
+          3
+        ]
+      }
+    ],
+    "case_name": "test_LogSoftmaxV2_002"
+  },
+  {
+    "op": "LogSoftmaxV2",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          9,
+          6,
+          11
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          9,
+          6,
+          11
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          9,
+          6,
+          11
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          9,
+          6,
+          11
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          2,
+          3
+        ]
+      }
+    ],
+    "case_name": "test_LogSoftmaxV2_003"
+  },
+  {
+    "op": "LogSoftmaxV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1,
+          2
+        ]
+      }
+    ],
+    "case_name": "test_LogSoftmaxV2_005"
+  },
+  {
+    "op": "LogSoftmaxV2",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          2,
+          3
+        ]
+      }
+    ],
+    "case_name": "test_LogSoftmaxV2_008"
+  }
+]

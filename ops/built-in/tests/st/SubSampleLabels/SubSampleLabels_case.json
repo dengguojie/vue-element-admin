@@ -1,0 +1,114 @@
+[
+  {
+    "op": "SubSampleLabels",
+    "input_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "labels",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "shuffle_matrix",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "batch_size_per_images",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "positive_fraction",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_SubSampleLabels_000"
+  },
+  {
+    "op": "SubSampleLabels",
+    "input_desc": [
+      {
+        "shape": [
+          41153
+        ],
+        "format": "ND",
+        "ori_shape": [
+          41153
+        ],
+        "ori_format": "ND",
+        "name": "labels",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          41153
+        ],
+        "format": "ND",
+        "ori_shape": [
+          41153
+        ],
+        "ori_format": "ND",
+        "name": "shuffle_matrix",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          41153
+        ],
+        "format": "ND",
+        "ori_shape": [
+          41153
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "batch_size_per_images",
+        "type": "int",
+        "value": 256
+      },
+      {
+        "name": "positive_fraction",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_SubSampleLabels_001"
+  }
+]

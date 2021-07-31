@@ -1,0 +1,286 @@
+[
+  {
+    "op": "ScatterNdAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var_out",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNdAdd_003"
+  },
+  {
+    "op": "ScatterNdAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var",
+        "type": "uint8"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var_out",
+        "type": "uint8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNdAdd_004"
+  },
+  {
+    "op": "ScatterNdAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var_out",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNdAdd_008"
+  },
+  {
+    "op": "ScatterNdAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var",
+        "type": "uint8"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "var_out",
+        "type": "uint8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNdAdd_009"
+  }
+]

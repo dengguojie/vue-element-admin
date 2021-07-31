@@ -1,0 +1,85 @@
+[
+  {
+    "op": "IndexFillD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_IndexFillD_000"
+  }
+]

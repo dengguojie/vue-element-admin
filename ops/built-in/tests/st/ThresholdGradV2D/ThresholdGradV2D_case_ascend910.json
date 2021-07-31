@@ -1,0 +1,986 @@
+[
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_000"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.2
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_001"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_002"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_003"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          199999999,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          199999999,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          199999999,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          199999999,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          199999999,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          199999999,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_004"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            3
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 2.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_007"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            3
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 2.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_008"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_009"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.2
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_010"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_011"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_012"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          199999999,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          199999999,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          199999999,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          199999999,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          199999999,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          199999999,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_013"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            3
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 2.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_016"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            2
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "input_features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "range": [
+          [
+            2,
+            3
+          ]
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 2.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_017"
+  }
+]

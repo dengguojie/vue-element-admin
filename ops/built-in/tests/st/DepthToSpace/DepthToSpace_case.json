@@ -1,0 +1,282 @@
+[
+  {
+    "op": "DepthToSpace",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "block_size",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_DepthToSpace_000"
+  },
+  {
+    "op": "DepthToSpace",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          3,
+          40000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          3,
+          40000
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          40,
+          60,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          40,
+          60,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "block_size",
+        "type": "int",
+        "value": 20
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_DepthToSpace_001"
+  },
+  {
+    "op": "DepthToSpace",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          3,
+          90000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          3,
+          90000
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          6,
+          22500
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          6,
+          22500
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "block_size",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_DepthToSpace_002"
+  },
+  {
+    "op": "DepthToSpace",
+    "input_desc": [
+      {
+        "shape": [
+          68,
+          2,
+          3,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          68,
+          2,
+          3,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          68,
+          6,
+          9,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          68,
+          6,
+          9,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "block_size",
+        "type": "int",
+        "value": 3
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_DepthToSpace_003"
+  },
+  {
+    "op": "DepthToSpace",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          2,
+          3,
+          909
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          3,
+          909
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          6,
+          9,
+          101
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          6,
+          9,
+          101
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "block_size",
+        "type": "int",
+        "value": 3
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_DepthToSpace_004"
+  }
+]

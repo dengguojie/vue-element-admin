@@ -1,0 +1,322 @@
+[
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_000"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "shape": [
+          2,
+          1024
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "shape": [
+          2,
+          1024
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_001"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_002"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_003"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_004"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "shape": [
+          2,
+          1024
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "shape": [
+          2,
+          1024
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_005"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_006"
+  },
+  {
+    "op": "Log1p",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_007"
+  }
+]

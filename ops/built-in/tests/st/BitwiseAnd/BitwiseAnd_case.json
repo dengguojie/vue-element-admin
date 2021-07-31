@@ -1,0 +1,362 @@
+[
+  {
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x1",
+        "type": "int16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x2",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BitwiseAnd_000"
+  },
+  {
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x1",
+        "type": "uint16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x2",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BitwiseAnd_001"
+  },
+  {
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x1",
+        "type": "int16"
+      },
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x2",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BitwiseAnd_002"
+  },
+  {
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x1",
+        "type": "int16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x2",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BitwiseAnd_003"
+  },
+  {
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x1",
+        "type": "uint16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x2",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BitwiseAnd_004"
+  },
+  {
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x1",
+        "type": "int16"
+      },
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x2",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BitwiseAnd_005"
+  }
+]

@@ -1,0 +1,461 @@
+[
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7
+        ],
+        "shape": [
+          7
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7
+        ],
+        "shape": [
+          7
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_000"
+  },
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          279,
+          499
+        ],
+        "shape": [
+          279,
+          499
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          279,
+          499
+        ],
+        "shape": [
+          279,
+          499
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_001"
+  },
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16,
+          64,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_002"
+  },
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_003"
+  },
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "shape": [
+          9973
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          9973
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          9973
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_004"
+  },
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          13,
+          829
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          13,
+          829
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          9973,
+          13,
+          829
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          13,
+          829
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          13,
+          829
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          13,
+          829
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          9973,
+          13,
+          829
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          13,
+          829
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_005"
+  },
+  {
+    "op": "SquareSumAll",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          1913
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1913
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          1913
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1913
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          1913
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1913
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          1913
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1913
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SquareSumAll_006"
+  }
+]

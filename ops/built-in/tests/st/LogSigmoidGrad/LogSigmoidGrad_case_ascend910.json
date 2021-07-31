@@ -1,0 +1,161 @@
+[
+  {
+    "op": "LogSigmoidGrad",
+    "input_desc": [
+      {
+        "shape": [
+          41
+        ],
+        "ori_shape": [
+          41
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          41
+        ],
+        "ori_shape": [
+          41
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          41
+        ],
+        "ori_shape": [
+          41
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSigmoidGrad_000"
+  },
+  {
+    "op": "LogSigmoidGrad",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          23
+        ],
+        "ori_shape": [
+          100,
+          23
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "grads",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          100,
+          23
+        ],
+        "ori_shape": [
+          100,
+          23
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          23
+        ],
+        "ori_shape": [
+          100,
+          23
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSigmoidGrad_001"
+  },
+  {
+    "op": "LogSigmoidGrad",
+    "input_desc": [
+      {
+        "shape": [
+          15,
+          20,
+          10,
+          15
+        ],
+        "ori_shape": [
+          15,
+          20,
+          10,
+          15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          15,
+          20,
+          10,
+          15
+        ],
+        "ori_shape": [
+          15,
+          20,
+          10,
+          15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15,
+          20,
+          10,
+          15
+        ],
+        "ori_shape": [
+          15,
+          20,
+          10,
+          15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSigmoidGrad_002"
+  }
+]

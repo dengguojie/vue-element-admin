@@ -1,0 +1,145 @@
+[
+  {
+    "op": "CTCLossV2Grad",
+    "input_desc": [
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "grad_out",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          195,
+          1,
+          41
+        ],
+        "shape": [
+          195,
+          1,
+          41
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "log_probs",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1,
+          74
+        ],
+        "shape": [
+          1,
+          74
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "targets",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "input_lengths",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "target_lengths",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "neg_log_likelihood",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1,
+          195,
+          149
+        ],
+        "shape": [
+          1,
+          195,
+          149
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "log_alpha",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          195,
+          1,
+          41
+        ],
+        "shape": [
+          195,
+          1,
+          41
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "blank",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      },
+      {
+        "name": "zero_infinity",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CTCLossV2Grad_000"
+  }
+]

@@ -1,0 +1,207 @@
+[
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_000"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_001"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_002"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_003"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_004"
+  }
+]

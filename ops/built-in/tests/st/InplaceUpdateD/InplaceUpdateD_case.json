@@ -1,0 +1,328 @@
+[
+  {
+    "op": "InplaceUpdateD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceUpdateD_000"
+  },
+  {
+    "op": "InplaceUpdateD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          16
+        ]
+      }
+    ],
+    "case_name": "test_InplaceUpdateD_001"
+  },
+  {
+    "op": "InplaceUpdateD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          32
+        ]
+      }
+    ],
+    "case_name": "test_InplaceUpdateD_002"
+  },
+  {
+    "op": "InplaceUpdateD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceUpdateD_003"
+  },
+  {
+    "op": "InplaceUpdateD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceUpdateD_004"
+  }
+]

@@ -1,0 +1,91 @@
+[
+  {
+    "op": "AddMatMatElements",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "c",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "a",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "b",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "c_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AddMatMatElements_000"
+  }
+]

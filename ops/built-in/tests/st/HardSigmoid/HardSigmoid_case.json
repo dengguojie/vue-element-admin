@@ -1,0 +1,686 @@
+[
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_000"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_001"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_002"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_003"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_004"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_005"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "ori_shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "ori_shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_006"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_009"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_010"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_011"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "ori_shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_012"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_013"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          6
+        ],
+        "ori_shape": [
+          10,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_014"
+  },
+  {
+    "op": "HardSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "ori_shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "ori_shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.166
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardSigmoid_015"
+  }
+]

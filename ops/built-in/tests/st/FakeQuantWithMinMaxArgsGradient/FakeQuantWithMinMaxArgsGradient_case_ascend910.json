@@ -1,0 +1,518 @@
+[
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_000"
+  },
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          123
+        ],
+        "format": "ND",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          123
+        ],
+        "format": "ND",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          123
+        ],
+        "format": "ND",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_001"
+  },
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_002"
+  },
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          123
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "NCHW",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          123
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          123
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_004"
+  },
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_006"
+  },
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          123
+        ],
+        "format": "ND",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          123
+        ],
+        "format": "ND",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          123
+        ],
+        "format": "ND",
+        "ori_shape": [
+          123
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_007"
+  },
+  {
+    "op": "FakeQuantWithMinMaxArgsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min",
+        "type": "float",
+        "value": 7.778
+      },
+      {
+        "name": "max",
+        "type": "float",
+        "value": 30.123
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 9
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxArgsGradient_008"
+  }
+]

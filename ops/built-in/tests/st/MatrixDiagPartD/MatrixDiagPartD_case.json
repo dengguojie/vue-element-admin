@@ -1,0 +1,173 @@
+[
+  {
+    "op": "MatrixDiagPartD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "NHWC",
+        "name": "input_diagonal",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "NHWC",
+        "name": "input_help",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "NHWC",
+        "name": "output_diagonal",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_MatrixDiagPartD_000"
+  },
+  {
+    "op": "MatrixDiagPartD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          8192,
+          8192
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          8192,
+          8192
+        ],
+        "ori_format": "NHWC",
+        "name": "input_diagonal",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          8192,
+          8192
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          8192,
+          8192
+        ],
+        "ori_format": "NHWC",
+        "name": "input_help",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          8192,
+          8192
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          8192,
+          8192
+        ],
+        "ori_format": "NHWC",
+        "name": "output_diagonal",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_MatrixDiagPartD_001"
+  },
+  {
+    "op": "MatrixDiagPartD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "input_diagonal",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "input_help",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          3
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          4,
+          3
+        ],
+        "ori_format": "NHWC",
+        "name": "output_diagonal",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_MatrixDiagPartD_002"
+  }
+]

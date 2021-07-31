@@ -1,0 +1,100 @@
+[
+  {
+    "op": "RangeD",
+    "input_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "start",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "limit",
+        "type": "float",
+        "value": 6.0
+      },
+      {
+        "name": "delta",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_RangeD_000"
+  },
+  {
+    "op": "RangeD",
+    "input_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8192
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8192
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "start",
+        "type": "float",
+        "value": 2.2
+      },
+      {
+        "name": "limit",
+        "type": "float",
+        "value": 8194.2
+      },
+      {
+        "name": "delta",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_RangeD_001"
+  }
+]

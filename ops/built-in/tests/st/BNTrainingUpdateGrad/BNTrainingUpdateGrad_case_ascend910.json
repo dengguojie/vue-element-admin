@@ -1,0 +1,155 @@
+[
+  {
+    "op": "BNTrainingUpdateGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "grads",
+        "param_name": "grads",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "x",
+        "param_name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "batch_mean",
+        "param_name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "batch_variance",
+        "param_name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "diff_scale",
+        "param_name": "diff_scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "diff_offset",
+        "param_name": "diff_offset",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdateGrad_000"
+  }
+]

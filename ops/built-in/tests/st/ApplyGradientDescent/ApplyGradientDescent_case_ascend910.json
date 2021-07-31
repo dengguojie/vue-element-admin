@@ -1,0 +1,83 @@
+[
+  {
+    "op": "ApplyGradientDescent",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "delta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ApplyGradientDescent_000"
+  }
+]

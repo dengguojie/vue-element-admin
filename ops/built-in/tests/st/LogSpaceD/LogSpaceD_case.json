@@ -1,0 +1,114 @@
+[
+  {
+    "op": "LogSpaceD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "param_type": "input",
+        "name": "assist",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "start",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "end",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "steps",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "base",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_LogSpaceD_000"
+  },
+  {
+    "op": "LogSpaceD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "param_type": "input",
+        "name": "assist",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "start",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "end",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "steps",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "base",
+        "type": "float",
+        "value": -0.5
+      }
+    ],
+    "case_name": "test_LogSpaceD_001"
+  }
+]

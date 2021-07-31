@@ -1,0 +1,386 @@
+[
+  {
+    "op": "InplaceUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_InplaceUpdate_000"
+  },
+  {
+    "op": "InplaceUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_InplaceUpdate_001"
+  },
+  {
+    "op": "InplaceUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_InplaceUpdate_002"
+  },
+  {
+    "op": "InplaceUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_InplaceUpdate_003"
+  },
+  {
+    "op": "InplaceUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_InplaceUpdate_004"
+  },
+  {
+    "op": "InplaceUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_InplaceUpdate_005"
+  }
+]

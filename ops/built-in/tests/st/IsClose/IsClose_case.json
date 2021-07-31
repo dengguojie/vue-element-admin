@@ -1,0 +1,306 @@
+[
+  {
+    "op": "IsClose",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_IsClose_000"
+  },
+  {
+    "op": "IsClose",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "shape": [
+          3
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "shape": [
+          3
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "shape": [
+          3
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_IsClose_001"
+  },
+  {
+    "op": "IsClose",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          10
+        ],
+        "name": "input_x1",
+        "type": "int32"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          10
+        ],
+        "name": "input_x2",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_IsClose_002"
+  },
+  {
+    "op": "IsClose",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_IsClose_003"
+  },
+  {
+    "op": "IsClose",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "shape": [
+          3
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "shape": [
+          3
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "shape": [
+          3
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_IsClose_004"
+  },
+  {
+    "op": "IsClose",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          10
+        ],
+        "name": "input_x1",
+        "type": "int32"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          10
+        ],
+        "name": "input_x2",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_IsClose_005"
+  }
+]

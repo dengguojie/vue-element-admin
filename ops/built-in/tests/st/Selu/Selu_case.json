@@ -1,0 +1,260 @@
+[
+  {
+    "op": "Selu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_000"
+  },
+  {
+    "op": "Selu",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_001"
+  },
+  {
+    "op": "Selu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_002"
+  },
+  {
+    "op": "Selu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_003"
+  },
+  {
+    "op": "Selu",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_004"
+  },
+  {
+    "op": "Selu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_005"
+  }
+]

@@ -1,0 +1,104 @@
+[
+  {
+    "op": "AbsGrad",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AbsGrad_000"
+  },
+  {
+    "op": "AbsGrad",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AbsGrad_001"
+  }
+]

@@ -1,0 +1,524 @@
+[
+  {
+    "op": "GridUnnormal",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grid",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "diff",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "position",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GridUnnormal_000"
+  },
+  {
+    "op": "GridUnnormal",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grid",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "diff",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "position",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GridUnnormal_001"
+  },
+  {
+    "op": "GridUnnormal",
+    "input_desc": [
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grid",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "diff",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "position",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_GridUnnormal_002"
+  },
+  {
+    "op": "GridUnnormal",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grid",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "diff",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          6,
+          5,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "position",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GridUnnormal_003"
+  },
+  {
+    "op": "GridUnnormal",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grid",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "diff",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          88,
+          15,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "position",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GridUnnormal_004"
+  },
+  {
+    "op": "GridUnnormal",
+    "input_desc": [
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grid",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "diff",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          88,
+          3,
+          19,
+          2
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "position",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_GridUnnormal_005"
+  }
+]

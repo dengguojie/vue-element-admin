@@ -1,0 +1,988 @@
+[
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            3
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_000"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          1027
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          2,
+          1027
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          18,
+          1043
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          18,
+          1043
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            16
+          ],
+          [
+            0,
+            16
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_001"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          245760
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          2,
+          245760
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          245767
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          245767
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            0,
+            7
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_002"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_003"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "ori_format": "NHWC",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "ori_format": "NHWC",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            32,
+            32
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_004"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "ori_format": "NHWC",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "ori_format": "NHWC",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            32,
+            32
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_005"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          120,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          120,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1592,
+          1482
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1592,
+          1482
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            689,
+            783
+          ],
+          [
+            689,
+            783
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_006"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            3
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_009"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_013"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          304,
+          64,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          5,
+          304,
+          64,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "ori_format": "NHWC",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            32,
+            32
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_014"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            3
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_015"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          1027
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          2,
+          1027
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          18,
+          1043
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          18,
+          1043
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            16
+          ],
+          [
+            0,
+            16
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_016"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          245760
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          2,
+          245760
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          245767
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          245767
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            0,
+            7
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_017"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_018"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "ori_format": "NHWC",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "ori_format": "NHWC",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            32,
+            32
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_019"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          8
+        ],
+        "ori_format": "NHWC",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          304,
+          64,
+          72
+        ],
+        "ori_format": "NHWC",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            32,
+            32
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_020"
+  },
+  {
+    "op": "PadD",
+    "input_desc": [
+      {
+        "shape": [
+          120,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          120,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1592,
+          1482
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1592,
+          1482
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            689,
+            783
+          ],
+          [
+            689,
+            783
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_021"
+  }
+]

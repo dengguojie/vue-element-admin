@@ -1,0 +1,380 @@
+[
+  {
+    "op": "EmbeddingBag",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "weight",
+        "type": "float"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "offsets",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "per_sample_weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "sum"
+      },
+      {
+        "name": "scale_grid_by_freq",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "sparse",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "include_last_offset",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_EmbeddingBag_000"
+  },
+  {
+    "op": "EmbeddingBag",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "weight",
+        "type": "float"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "offsets",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "per_sample_weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "mean"
+      },
+      {
+        "name": "scale_grid_by_freq",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "sparse",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "include_last_offset",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_EmbeddingBag_001"
+  },
+  {
+    "op": "EmbeddingBag",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "weight",
+        "type": "float"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "offsets",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "per_sample_weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "max"
+      },
+      {
+        "name": "scale_grid_by_freq",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "sparse",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "include_last_offset",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_EmbeddingBag_002"
+  },
+  {
+    "op": "EmbeddingBag",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "weight",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "offsets",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "per_sample_weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "sum"
+      },
+      {
+        "name": "scale_grid_by_freq",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "sparse",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "include_last_offset",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_EmbeddingBag_003"
+  }
+]

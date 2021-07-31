@@ -1,0 +1,212 @@
+[
+  {
+    "op": "AscendQuant",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "sqrt_mode",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "round_mode",
+        "type": "string",
+        "value": "Floor"
+      }
+    ],
+    "case_name": "test_AscendQuant_000"
+  },
+  {
+    "op": "AscendQuant",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "sqrt_mode",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "round_mode",
+        "type": "string",
+        "value": "Trunc"
+      }
+    ],
+    "case_name": "test_AscendQuant_002"
+  },
+  {
+    "op": "AscendQuant",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          3,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          3,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 3.0
+      },
+      {
+        "name": "sqrt_mode",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "round_mode",
+        "type": "string",
+        "value": "Ceil"
+      }
+    ],
+    "case_name": "test_AscendQuant_003"
+  }
+]

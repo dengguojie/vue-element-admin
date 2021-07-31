@@ -1,0 +1,1022 @@
+[
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4
+        ],
+        "shape": [
+          3,
+          4
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4
+        ],
+        "shape": [
+          3,
+          4
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4
+        ],
+        "shape": [
+          3,
+          4
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4
+        ],
+        "shape": [
+          3,
+          4
+        ],
+        "param_type": "output",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_Quantize_000"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint8"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_001"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.quint8"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_002"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_003"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_004"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_005"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -5
+      }
+    ],
+    "case_name": "test_Quantize_006"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_007"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_008"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_009"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_010"
+  },
+  {
+    "op": "Quantize",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          8
+        ],
+        "shape": [
+          8
+        ],
+        "param_type": "input",
+        "name": "scales",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          8
+        ],
+        "shape": [
+          8
+        ],
+        "param_type": "input",
+        "name": "zero_points",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "string",
+        "value": "torch.qint32"
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Quantize_011"
+  }
+]

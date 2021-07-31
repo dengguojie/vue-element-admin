@@ -1,0 +1,327 @@
+[
+  {
+    "op": "ConfusionTransposeD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_000"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_001"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          32,
+          2,
+          4,
+          16
+        ]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_002"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          32,
+          2,
+          4,
+          16
+        ]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_003"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_004"
+  }
+]

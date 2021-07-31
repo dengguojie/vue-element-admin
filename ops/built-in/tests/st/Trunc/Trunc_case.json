@@ -1,0 +1,260 @@
+[
+  {
+    "op": "Trunc",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Trunc_000"
+  },
+  {
+    "op": "Trunc",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Trunc_001"
+  },
+  {
+    "op": "Trunc",
+    "input_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "ori_shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "value_range": [
+          1,
+          50
+        ],
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "ori_shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "value_range": [
+          1,
+          50
+        ],
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Trunc_002"
+  },
+  {
+    "op": "Trunc",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Trunc_003"
+  },
+  {
+    "op": "Trunc",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Trunc_004"
+  },
+  {
+    "op": "Trunc",
+    "input_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "ori_shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "value_range": [
+          1,
+          50
+        ],
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32
+        ],
+        "ori_shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "value_range": [
+          1,
+          50
+        ],
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Trunc_005"
+  }
+]

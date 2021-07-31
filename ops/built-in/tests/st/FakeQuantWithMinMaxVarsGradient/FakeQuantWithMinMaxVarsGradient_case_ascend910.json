@@ -1,0 +1,234 @@
+[
+  {
+    "op": "FakeQuantWithMinMaxVarsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          255,
+          36
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          255,
+          36
+        ],
+        "ori_format": "ND",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128,
+          255,
+          36
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          255,
+          36
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          255,
+          36
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          255,
+          36
+        ],
+        "ori_format": "ND",
+        "name": "backprops_wrt_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "backprops_wrt_min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "backprops_wrt_max",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 16
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxVarsGradient_000"
+  },
+  {
+    "op": "FakeQuantWithMinMaxVarsGradient",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          6,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7,
+          6,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "shape": [
+          7,
+          6,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7,
+          6,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          6,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7,
+          6,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "backprops_wrt_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "backprops_wrt_min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "backprops_wrt_max",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 6
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxVarsGradient_001"
+  }
+]

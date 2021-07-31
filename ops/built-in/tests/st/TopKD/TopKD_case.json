@@ -1,0 +1,270 @@
+[
+  {
+    "op": "TopKD",
+    "input_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_tensor",
+        "param_name": "input_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "indices_tensor",
+        "param_name": "indices_tensor",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_tensor",
+        "param_name": "out_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_indices_tensor",
+        "param_name": "out_indices_tensor",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "k",
+        "type": "int",
+        "value": 10
+      }
+    ],
+    "case_name": "test_TopKD_000"
+  },
+  {
+    "op": "TopKD",
+    "input_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_tensor",
+        "param_name": "input_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "indices_tensor",
+        "param_name": "indices_tensor",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_tensor",
+        "param_name": "out_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_indices_tensor",
+        "param_name": "out_indices_tensor",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "k",
+        "type": "int",
+        "value": 10
+      }
+    ],
+    "case_name": "test_TopKD_001"
+  },
+  {
+    "op": "TopKD",
+    "input_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_tensor",
+        "param_name": "input_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "indices_tensor",
+        "param_name": "indices_tensor",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_tensor",
+        "param_name": "out_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_indices_tensor",
+        "param_name": "out_indices_tensor",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "k",
+        "type": "int",
+        "value": 10
+      }
+    ],
+    "case_name": "test_TopKD_003"
+  },
+  {
+    "op": "TopKD",
+    "input_desc": [
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_tensor",
+        "param_name": "input_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "indices_tensor",
+        "param_name": "indices_tensor",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_tensor",
+        "param_name": "out_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10
+        ],
+        "ori_format": "ND",
+        "name": "out_indices_tensor",
+        "param_name": "out_indices_tensor",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "k",
+        "type": "int",
+        "value": 10
+      }
+    ],
+    "case_name": "test_TopKD_004"
+  }
+]

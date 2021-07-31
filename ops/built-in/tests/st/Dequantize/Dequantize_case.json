@@ -1,0 +1,491 @@
+[
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "MIN_COMBINED"
+      }
+    ],
+    "case_name": "test_Dequantize_000"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "MIN_FIRST"
+      }
+    ],
+    "case_name": "test_Dequantize_001"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "SCALED"
+      }
+    ],
+    "case_name": "test_Dequantize_002"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "SCALED"
+      }
+    ],
+    "case_name": "test_Dequantize_003"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "SCALED"
+      }
+    ],
+    "case_name": "test_Dequantize_004"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "SCALED"
+      }
+    ],
+    "case_name": "test_Dequantize_005"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          77
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          77
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "min_range",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "max_range",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          77
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          77
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "SCALED"
+      }
+    ],
+    "case_name": "test_Dequantize_006"
+  }
+]

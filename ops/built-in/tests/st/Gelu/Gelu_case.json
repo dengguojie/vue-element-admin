@@ -1,0 +1,150 @@
+[
+  {
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Gelu_000"
+  },
+  {
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Gelu_001"
+  },
+  {
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Gelu_002"
+  },
+  {
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Gelu_003"
+  }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "op": "InplaceAddD",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          4,
+          32,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          32,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          4,
+          32,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          4,
+          32,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceAddD_000"
+  },
+  {
+    "op": "InplaceAddD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "v",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          32,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "indices",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      }
+    ],
+    "case_name": "test_InplaceAddD_002"
+  }
+]

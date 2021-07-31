@@ -1,0 +1,230 @@
+[
+  {
+    "op": "Sign",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sign_000"
+  },
+  {
+    "op": "Sign",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sign_001"
+  },
+  {
+    "op": "Sign",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sign_002"
+  },
+  {
+    "op": "Sign",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sign_003"
+  },
+  {
+    "op": "Sign",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sign_004"
+  },
+  {
+    "op": "Sign",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Sign_005"
+  }
+]

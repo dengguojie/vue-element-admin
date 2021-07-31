@@ -1,0 +1,154 @@
+[
+  {
+    "op": "FakeQuantWithMinMaxVarsPerChannel",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "name": "min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "name": "max",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 8
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxVarsPerChannel_000"
+  },
+  {
+    "op": "FakeQuantWithMinMaxVarsPerChannel",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "name": "min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "name": "max",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 16
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxVarsPerChannel_001"
+  }
+]

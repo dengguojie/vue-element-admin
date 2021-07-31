@@ -1,0 +1,377 @@
+[
+  {
+    "op": "LayerNormBetaGammaBackprop",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          512
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          512
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "name": "input_variance",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "name": "input_mean",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "name": "output_pd_gamma",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "name": "output_pd_beta",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "shape_gamma",
+        "type": "list_int",
+        "value": [
+          512
+        ]
+      }
+    ],
+    "case_name": "test_LayerNormBetaGammaBackprop_000"
+  },
+  {
+    "op": "LayerNormBetaGammaBackprop",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_variance",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_mean",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_pd_gamma",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_pd_beta",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "shape_gamma",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_LayerNormBetaGammaBackprop_001"
+  },
+  {
+    "op": "LayerNormBetaGammaBackprop",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_variance",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_mean",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_pd_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_pd_beta",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "shape_gamma",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_LayerNormBetaGammaBackprop_002"
+  }
+]

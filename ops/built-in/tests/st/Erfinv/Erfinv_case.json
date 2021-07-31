@@ -1,0 +1,158 @@
+[
+  {
+    "op": "Erfinv",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Erfinv_000"
+  },
+  {
+    "op": "Erfinv",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Erfinv_001"
+  },
+  {
+    "op": "Erfinv",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Erfinv_002"
+  },
+  {
+    "op": "Erfinv",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          4,
+          2
+        ],
+        "shape": [
+          4,
+          2
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Erfinv_003"
+  }
+]

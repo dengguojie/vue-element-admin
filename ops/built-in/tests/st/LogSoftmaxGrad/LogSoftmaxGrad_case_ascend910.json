@@ -1,0 +1,206 @@
+[
+  {
+    "op": "LogSoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSoftmaxGrad_000"
+  },
+  {
+    "op": "LogSoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1024,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSoftmaxGrad_001"
+  },
+  {
+    "op": "LogSoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSoftmaxGrad_002"
+  },
+  {
+    "op": "LogSoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSoftmaxGrad_003"
+  }
+]

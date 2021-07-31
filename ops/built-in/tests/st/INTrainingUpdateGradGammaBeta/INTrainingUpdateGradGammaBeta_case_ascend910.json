@@ -1,0 +1,99 @@
+[
+  {
+    "op": "INTrainingUpdateGradGammaBeta",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "res_gamma",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "res_beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "pd_gamma",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "pd_beta",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_INTrainingUpdateGradGammaBeta_000"
+  }
+]

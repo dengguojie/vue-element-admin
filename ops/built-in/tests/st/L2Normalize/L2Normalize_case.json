@@ -1,0 +1,618 @@
+[
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_000"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_001"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_002"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_003"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_004"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_005"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_006"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_007"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_008"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_009"
+  },
+  {
+    "op": "L2Normalize",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2Normalize_010"
+  }
+]

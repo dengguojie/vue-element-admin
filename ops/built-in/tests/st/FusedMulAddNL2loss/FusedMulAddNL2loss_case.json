@@ -1,0 +1,170 @@
+[
+  {
+    "op": "FusedMulAddNL2loss",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddNL2loss_000"
+  },
+  {
+    "op": "FusedMulAddNL2loss",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_z",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulAddNL2loss_001"
+  }
+]

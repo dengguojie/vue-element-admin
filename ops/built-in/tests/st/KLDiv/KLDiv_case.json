@@ -1,0 +1,541 @@
+[
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_KLDiv_000"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "batchmean"
+      }
+    ],
+    "case_name": "test_KLDiv_001"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_KLDiv_002"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "batchmean"
+      }
+    ],
+    "case_name": "test_KLDiv_003"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_target",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_KLDiv_004"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "batchmean"
+      }
+    ],
+    "case_name": "test_KLDiv_005"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          1,
+          17,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          7,
+          1,
+          17,
+          8
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          7,
+          1,
+          17,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          7,
+          1,
+          17,
+          8
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "batchmean"
+      }
+    ],
+    "case_name": "test_KLDiv_006"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          77
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          1,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          77
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "batchmean"
+      }
+    ],
+    "case_name": "test_KLDiv_007"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "batchmean"
+      }
+    ],
+    "case_name": "test_KLDiv_008"
+  }
+]

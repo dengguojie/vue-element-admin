@@ -1,0 +1,5666 @@
+[
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_000"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_001"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_002"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_003"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_004"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_005"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          110007
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          110007
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          110001
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          110001
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          110002
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_006"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          98301
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          98301
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          98299
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          98299
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          98300
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_007"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          55009
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          55009
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          55006
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          55006
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          55007
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_008"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          98301
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          98301
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          37
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          37
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          4000
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          4037
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_009"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          8
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_010"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          4,
+          8,
+          16
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_011"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          32000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          32000
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          32000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          32000
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          32000
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          16,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_012"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          2
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_013"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          4,
+          8,
+          16
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_014"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          1024
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_015"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          4,
+          9,
+          16
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_016"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          2048
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          2048
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          2048
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          2048
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          2048
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          16,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_017"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          15,
+          38,
+          38,
+          3,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          38,
+          38,
+          3,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15,
+          38,
+          38,
+          3,
+          80
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          38,
+          38,
+          3,
+          80
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          5
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_018"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          120
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          120
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          80
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          80
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          40
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          120
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_019"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          76,
+          76,
+          3,
+          9
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          32,
+          76,
+          76,
+          3,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          76,
+          76,
+          3,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          32,
+          76,
+          76,
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          5
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          32,
+          76,
+          76,
+          3,
+          9
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_020"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          188,
+          192,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          7,
+          188,
+          192,
+          33
+        ],
+        "ori_format": "NDHWC",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          188,
+          192,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          7,
+          188,
+          192,
+          33
+        ],
+        "ori_format": "NDHWC",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          3,
+          4,
+          16
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          5,
+          5,
+          77,
+          43,
+          33
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          2,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_021"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          88,
+          77,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          33,
+          7,
+          88,
+          77
+        ],
+        "ori_format": "NCDHW",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          88,
+          77,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          33,
+          7,
+          88,
+          77
+        ],
+        "ori_format": "NCDHW",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          1,
+          16,
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          5,
+          33,
+          7,
+          43,
+          9
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_023"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_024"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_025"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_026"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          16000,
+          3121
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16000,
+          3121
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16000,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16000,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          3120
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          16000,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_027"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          1344,
+          2028
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          1344,
+          2028
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          1344,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          1344,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          3,
+          1344,
+          6
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_028"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          3,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          3,
+          16,
+          15
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          16,
+          15
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          32,
+          3,
+          16,
+          15
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_029"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_030"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_031"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_032"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          83
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_033"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_034"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          80,
+          3,
+          76,
+          76,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_035"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          110007
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          110007
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          110001
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          110001
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          110002
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_036"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          98301
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          98301
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          98299
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          98299
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          98300
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_037"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          55009
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          55009
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          55006
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          55006
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          55007
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_038"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          99,
+          98301
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          98301
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          99,
+          37
+        ],
+        "format": "ND",
+        "ori_shape": [
+          99,
+          37
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          4000
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          99,
+          4037
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_039"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          8
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_040"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          4,
+          8,
+          16
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_041"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          32000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          32000
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          32000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          32000
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          32000
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          16,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_042"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          2
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_043"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          4,
+          8,
+          16
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_044"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          1024
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_045"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          4,
+          9,
+          16
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_046"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          2048
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          2048
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          2048
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          2048
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          512,
+          2048
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          16,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_StridedSliceD_047"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          15,
+          38,
+          38,
+          3,
+          85
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          38,
+          38,
+          3,
+          85
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15,
+          38,
+          38,
+          3,
+          80
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          38,
+          38,
+          3,
+          80
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          5
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_048"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          120
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          120
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          80
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          80
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          40
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          120
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_049"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          76,
+          76,
+          3,
+          9
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          32,
+          76,
+          76,
+          3,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          76,
+          76,
+          3,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          32,
+          76,
+          76,
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          5
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          32,
+          76,
+          76,
+          3,
+          9
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_050"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          188,
+          192,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          7,
+          188,
+          192,
+          33
+        ],
+        "ori_format": "NDHWC",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          188,
+          192,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          7,
+          188,
+          192,
+          33
+        ],
+        "ori_format": "NDHWC",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          3,
+          4,
+          16
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          5,
+          5,
+          77,
+          43,
+          33
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          2,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_051"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          88,
+          77,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          33,
+          7,
+          88,
+          77
+        ],
+        "ori_format": "NCDHW",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          7,
+          3,
+          88,
+          77,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          7,
+          33,
+          7,
+          88,
+          77
+        ],
+        "ori_format": "NCDHW",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          1,
+          16,
+          3,
+          4,
+          1
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          5,
+          33,
+          7,
+          43,
+          9
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_053"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_054"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_055"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          49,
+          1,
+          1,
+          1,
+          64,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_StridedSliceD_056"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          16000,
+          3121
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16000,
+          3121
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16000,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16000,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          3120
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          16000,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_057"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          1344,
+          2028
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          1344,
+          2028
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          1344,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          1344,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          1,
+          3,
+          1344,
+          6
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_058"
+  },
+  {
+    "op": "StridedSliceD",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          3,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          3,
+          16,
+          15
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          16,
+          15
+        ],
+        "ori_format": "ND",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          32,
+          3,
+          16,
+          15
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceD_059"
+  }
+]

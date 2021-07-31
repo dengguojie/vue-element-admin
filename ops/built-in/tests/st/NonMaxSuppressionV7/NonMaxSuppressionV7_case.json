@@ -1,0 +1,362 @@
+[
+  {
+    "op": "NonMaxSuppressionV7",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          6,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          6,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "scores",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_output_size",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "iou_threshold",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "score_threshold",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          6,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          6,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "index_id",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          20,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          20,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "selected_indices",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "center_point_box",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "max_boxes_size",
+        "type": "int",
+        "value": 20
+      }
+    ],
+    "case_name": "test_NonMaxSuppressionV7_000"
+  },
+  {
+    "op": "NonMaxSuppressionV7",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          6,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          6,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "scores",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_output_size",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "iou_threshold",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "score_threshold",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          6,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          6,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "index_id",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "selected_indices",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "center_point_box",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "max_boxes_size",
+        "type": "int",
+        "value": 10
+      }
+    ],
+    "case_name": "test_NonMaxSuppressionV7_001"
+  },
+  {
+    "op": "NonMaxSuppressionV7",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          720,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          720,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "boxes",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          720
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          720
+        ],
+        "ori_format": "ND",
+        "name": "scores",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_output_size",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "iou_threshold",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "score_threshold",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          720,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2,
+          720,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "index_id",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "selected_indices",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "center_point_box",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "max_boxes_size",
+        "type": "int",
+        "value": 100
+      }
+    ],
+    "case_name": "test_NonMaxSuppressionV7_002"
+  }
+]

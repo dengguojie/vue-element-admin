@@ -1,0 +1,209 @@
+[
+  {
+    "op": "DiagPartD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          2,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          4,
+          2,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          2,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          4,
+          2,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_DiagPartD_000"
+  },
+  {
+    "op": "DiagPartD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          2,
+          3,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          2,
+          3,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          2,
+          3,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          2,
+          3,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "assist",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          3,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_DiagPartD_001"
+  },
+  {
+    "op": "DiagPartD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          11,
+          32,
+          2,
+          3,
+          11,
+          32
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          3,
+          11,
+          32,
+          2,
+          3,
+          11,
+          32
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          11,
+          32,
+          2,
+          3,
+          11,
+          32
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          3,
+          11,
+          32,
+          2,
+          3,
+          11,
+          32
+        ],
+        "ori_format": "NCHW",
+        "name": "assist",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          11,
+          32
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          3,
+          11,
+          32
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_DiagPartD_002"
+  }
+]

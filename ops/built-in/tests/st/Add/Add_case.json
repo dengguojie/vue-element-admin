@@ -1,0 +1,5180 @@
+[
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_000"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_001"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_002"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_003"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_004"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_005"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_006"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_007"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_008"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_009"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_010"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_011"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_012"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_013"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_014"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_015"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_016"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_017"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_018"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_019"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_020"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_021"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_022"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_023"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_024"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_025"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_026"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_027"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_028"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_029"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_030"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_031"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_032"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_033"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_034"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_035"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_036"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_037"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_038"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_039"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_040"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_041"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_042"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_043"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_044"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_045"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_046"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_047"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_069"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_070"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_071"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_072"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_073"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_074"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_075"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_076"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_077"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_078"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_079"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_080"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_081"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_082"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_083"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_084"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_085"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_086"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_087"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_088"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_089"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_090"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_091"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_092"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_093"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_094"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_095"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_096"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_097"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_098"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_099"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_100"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_101"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_102"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_103"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_104"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_105"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_106"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_107"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_108"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_109"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_110"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_111"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_112"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_113"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_114"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_115"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_116"
+  }
+]

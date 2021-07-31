@@ -1,0 +1,407 @@
+[
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_000"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_001"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_002"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_003"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_004"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_005"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NDC1HWC0",
+        "name": "input_A",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          10,
+          1,
+          512,
+          1,
+          512,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_006"
+  }
+]

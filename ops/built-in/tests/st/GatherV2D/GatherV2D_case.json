@@ -1,0 +1,332 @@
+[
+  {
+    "op": "GatherV2D",
+    "input_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          512
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          512
+        ],
+        "ori_format": "NHWC",
+        "name": "indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherV2D_000"
+  },
+  {
+    "op": "GatherV2D",
+    "input_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          512
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          512
+        ],
+        "ori_format": "NHWC",
+        "name": "indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherV2D_001"
+  },
+  {
+    "op": "GatherV2D",
+    "input_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          512
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          512
+        ],
+        "ori_format": "NHWC",
+        "name": "indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherV2D_002"
+  },
+  {
+    "op": "GatherV2D",
+    "input_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "uint8"
+      },
+      {
+        "shape": [
+          512
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          512
+        ],
+        "ori_format": "NHWC",
+        "name": "indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherV2D_003"
+  },
+  {
+    "op": "GatherV2D",
+    "input_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          30522,
+          1024
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          30522,
+          1024
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherV2D_004"
+  },
+  {
+    "op": "GatherV2D",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherV2D_005"
+  }
+]

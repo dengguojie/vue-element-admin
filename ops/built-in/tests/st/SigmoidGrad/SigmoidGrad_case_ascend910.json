@@ -1,0 +1,458 @@
+[
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_000"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_001"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_002"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_003"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_004"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_005"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_006"
+  },
+  {
+    "op": "SigmoidGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "input",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "param_type": "output",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SigmoidGrad_007"
+  }
+]

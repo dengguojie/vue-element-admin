@@ -1,0 +1,342 @@
+[
+  {
+    "op": "SoftMarginLossGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "input_predict",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "input_label",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "input_dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "output_gdient",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftMarginLossGrad_000"
+  },
+  {
+    "op": "SoftMarginLossGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_predict",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_label",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "output",
+        "name": "output_gdient",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftMarginLossGrad_001"
+  },
+  {
+    "op": "SoftMarginLossGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_predict",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_label",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "input",
+        "name": "input_dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "param_type": "output",
+        "name": "output_gdient",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftMarginLossGrad_002"
+  },
+  {
+    "op": "SoftMarginLossGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "input_predict",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "input_label",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "input",
+        "name": "input_dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          10,
+          20,
+          30,
+          4,
+          5,
+          6
+        ],
+        "param_type": "output",
+        "name": "output_gdient",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftMarginLossGrad_003"
+  }
+]

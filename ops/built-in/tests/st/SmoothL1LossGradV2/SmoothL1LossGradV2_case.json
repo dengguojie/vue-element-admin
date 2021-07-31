@@ -1,0 +1,1952 @@
+[
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_000"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_001"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_002"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_003"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_004"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_008"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_009"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_010"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_011"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_012"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_013"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_015"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_016"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_017"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_018"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          2,
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_019"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_020"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_024"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_025"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_026"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_027"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_028"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_029"
+  },
+  {
+    "op": "SmoothL1LossGradV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dout",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "gradient",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_SmoothL1LossGradV2_031"
+  }
+]

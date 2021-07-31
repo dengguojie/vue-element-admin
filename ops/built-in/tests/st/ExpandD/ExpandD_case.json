@@ -1,0 +1,104 @@
+[
+  {
+    "op": "ExpandD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          3
+        ],
+        "shape": [
+          1,
+          3
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          3
+        ],
+        "shape": [
+          3,
+          2,
+          3
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          3,
+          2,
+          3
+        ]
+      }
+    ],
+    "case_name": "test_ExpandD_000"
+  },
+  {
+    "op": "ExpandD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          3
+        ],
+        "shape": [
+          1,
+          3
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          3
+        ],
+        "shape": [
+          3,
+          2,
+          3
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [
+          3,
+          2,
+          3
+        ]
+      }
+    ],
+    "case_name": "test_ExpandD_001"
+  }
+]

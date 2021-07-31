@@ -1,0 +1,1890 @@
+[
+  {
+    "op": "BNTrainingUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          384,
+          576,
+          16
+        ],
+        "ori_shape": [
+          2,
+          4,
+          384,
+          576,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "offset",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          384,
+          576,
+          16
+        ],
+        "ori_shape": [
+          2,
+          4,
+          384,
+          576,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "mean_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "variance_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "factor",
+        "type": "float",
+        "value": 0.2
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdate_000"
+  },
+  {
+    "op": "BNTrainingUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "offset",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "mean_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "variance_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "factor",
+        "type": "float",
+        "value": 0.2
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdate_001"
+  },
+  {
+    "op": "BNTrainingUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          256,
+          2,
+          112,
+          112,
+          16
+        ],
+        "ori_shape": [
+          256,
+          2,
+          112,
+          112,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "offset",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          256,
+          2,
+          112,
+          112,
+          16
+        ],
+        "ori_shape": [
+          256,
+          2,
+          112,
+          112,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "mean_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "variance_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "factor",
+        "type": "float",
+        "value": 0.2
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdate_002"
+  },
+  {
+    "op": "BNTrainingUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          32,
+          28,
+          28,
+          16
+        ],
+        "ori_shape": [
+          32,
+          32,
+          28,
+          28,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "offset",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          32,
+          28,
+          28,
+          16
+        ],
+        "ori_shape": [
+          32,
+          32,
+          28,
+          28,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "mean_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "variance_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "range": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ],
+        "name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "factor",
+        "type": "float",
+        "value": 0.2
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdate_003"
+  },
+  {
+    "op": "BNTrainingUpdate",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "x",
+        "param_name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "sum",
+        "param_name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "square_sum",
+        "param_name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "scale",
+        "param_name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "offset",
+        "param_name": "offset",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "mean",
+        "param_name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "variance",
+        "param_name": "variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          5,
+          5,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "y",
+        "param_name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "mean_out",
+        "param_name": "mean_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "variance_out",
+        "param_name": "variance_out",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "batch_mean",
+        "param_name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "batch_variance",
+        "param_name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "factor",
+        "type": "float",
+        "value": 0.2
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdate_004"
+  }
+]

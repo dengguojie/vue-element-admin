@@ -1,0 +1,152 @@
+[
+  {
+    "op": "BN3DTrainingReduce",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_shape": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "format": "NDC1HWC0",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "format": "NDC1HWC0",
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "format": "NDC1HWC0",
+        "name": "square_sum",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BN3DTrainingReduce_000"
+  },
+  {
+    "op": "BN3DTrainingReduce",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_shape": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "format": "NDC1HWC0",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "format": "NDC1HWC0",
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NDC1HWC0",
+        "format": "NDC1HWC0",
+        "name": "square_sum",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BN3DTrainingReduce_001"
+  }
+]

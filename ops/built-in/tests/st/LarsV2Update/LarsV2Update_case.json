@@ -1,0 +1,224 @@
+[
+  {
+    "op": "LarsV2Update",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "name": "weight",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "weight_s",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "grad_s",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "weight_decay",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "learning_rate",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "name": "out",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LarsV2Update_000"
+  },
+  {
+    "op": "LarsV2Update",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "name": "weight",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "name": "grad",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "weight_s",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "grad_s",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "weight_decay",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "learning_rate",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          512,
+          128
+        ],
+        "name": "out",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LarsV2Update_001"
+  }
+]

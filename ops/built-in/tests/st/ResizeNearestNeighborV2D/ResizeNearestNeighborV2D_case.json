@@ -1,0 +1,68 @@
+[
+  {
+    "op": "ResizeNearestNeighborV2D",
+    "input_desc": [
+      {
+        "shape": [
+          1088,
+          188,
+          3,
+          72,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1088,
+          3008,
+          3,
+          72
+        ],
+        "ori_format": "NCHW",
+        "name": "images",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1088,
+          188,
+          2,
+          2,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1088,
+          3008,
+          2,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          2,
+          2
+        ]
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ResizeNearestNeighborV2D_006"
+  }
+]

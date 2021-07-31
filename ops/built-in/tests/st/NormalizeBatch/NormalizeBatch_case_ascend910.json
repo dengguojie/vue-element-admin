@@ -1,0 +1,258 @@
+[
+  {
+    "op": "NormalizeBatch",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          8
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8
+        ],
+        "ori_format": "ND",
+        "name": "seq_len",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "normalize_type",
+        "type": "string",
+        "value": "per_feature"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-05
+      }
+    ],
+    "case_name": "test_NormalizeBatch_000"
+  },
+  {
+    "op": "NormalizeBatch",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          2,
+          60000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          60000
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "seq_len",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          2,
+          60000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          60000
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "normalize_type",
+        "type": "string",
+        "value": "per_feature"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-05
+      }
+    ],
+    "case_name": "test_NormalizeBatch_001"
+  },
+  {
+    "op": "NormalizeBatch",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          8
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8
+        ],
+        "ori_format": "ND",
+        "name": "seq_len",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "normalize_type",
+        "type": "string",
+        "value": "all_features"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-05
+      }
+    ],
+    "case_name": "test_NormalizeBatch_002"
+  },
+  {
+    "op": "NormalizeBatch",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          2,
+          60000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          60000
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "seq_len",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          2,
+          60000
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          60000
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "normalize_type",
+        "type": "string",
+        "value": "all_features"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-05
+      }
+    ],
+    "case_name": "test_NormalizeBatch_003"
+  }
+]

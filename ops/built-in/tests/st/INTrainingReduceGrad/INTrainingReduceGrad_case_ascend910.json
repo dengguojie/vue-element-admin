@@ -1,0 +1,372 @@
+[
+  {
+    "op": "INTrainingReduceGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "ori_shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "ori_shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "variance",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "res_gamma",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "res_beta",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "gamma",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "ori_shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "pd_x",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_INTrainingReduceGrad_000"
+  },
+  {
+    "op": "INTrainingReduceGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "ori_shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "ori_shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "variance",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "res_gamma",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "res_beta",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          1,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "gamma",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "ori_shape": [
+          2,
+          128,
+          2,
+          128,
+          128,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDC1HWC0",
+        "name": "pd_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_INTrainingReduceGrad_001"
+  }
+]

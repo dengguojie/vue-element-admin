@@ -1,0 +1,3944 @@
+[
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_000"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_001"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_002"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_003"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_004"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_005"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_006"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_007"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_008"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_009"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_010"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_011"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_012"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_013"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_014"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_015"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_016"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_017"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_018"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_019"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_020"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_021"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_022"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_023"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_024"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_025"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_026"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_027"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_028"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_029"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_030"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_031"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_032"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_033"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_034"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_035"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_036"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_037"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_038"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_039"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_040"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_041"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_042"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_043"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_044"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_045"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_046"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_047"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_048"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_049"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_050"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_051"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_052"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_053"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_054"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_055"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_056"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_057"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_058"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_059"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_060"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_061"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_062"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_063"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_064"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_065"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_066"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_067"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_068"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_069"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_070"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_071"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_072"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_073"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_074"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_075"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_076"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_077"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_078"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_079"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_080"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_081"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_082"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_083"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_084"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_085"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_086"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_087"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_088"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_089"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_090"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_091"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_092"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_093"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_094"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_095"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_096"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_097"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_098"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_099"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_100"
+  },
+  {
+    "op": "BNLL",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_BNLL_101"
+  }
+]

@@ -1,0 +1,1090 @@
+[
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_000"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_001"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_002"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_003"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_006"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "shape": [
+          7,
+          7,
+          33,
+          2
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_007"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          777,
+          1
+        ],
+        "shape": [
+          777,
+          1
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_008"
+  },
+  {
+    "op": "SGD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "parameters",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "gradient",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "learning_rate",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "input",
+        "name": "stat",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "shape": [
+          11,
+          33,
+          77,
+          1
+        ],
+        "param_type": "output",
+        "name": "update",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dampening",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "weight_decay",
+        "type": "float",
+        "value": 0.0
+      },
+      {
+        "name": "nesterov",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_SGD_009"
+  }
+]

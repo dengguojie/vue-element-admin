@@ -1,0 +1,117 @@
+[
+  {
+    "op": "LayerNormGrad",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          3,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_dy",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          3,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_variance",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "input_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_gamma",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          3,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "output_pd_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_pd_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_pd_beta",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LayerNormGrad_000"
+  }
+]

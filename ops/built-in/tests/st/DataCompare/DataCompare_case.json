@@ -1,0 +1,206 @@
+[
+  {
+    "op": "DataCompare",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          8,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          8,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          8,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          8,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_num",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "atol",
+        "type": "float",
+        "value": 0.0001
+      },
+      {
+        "name": "rtol",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_DataCompare_000"
+  },
+  {
+    "op": "DataCompare",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_num",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "atol",
+        "type": "float",
+        "value": 0.0001
+      },
+      {
+        "name": "rtol",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_DataCompare_001"
+  },
+  {
+    "op": "DataCompare",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          10,
+          1028,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          10,
+          1028,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          10,
+          1028,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          10,
+          1028,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_num",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "atol",
+        "type": "float",
+        "value": 0.001
+      },
+      {
+        "name": "rtol",
+        "type": "float",
+        "value": 0.001
+      }
+    ],
+    "case_name": "test_DataCompare_002"
+  }
+]

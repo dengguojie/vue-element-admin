@@ -1,0 +1,158 @@
+[
+  {
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          13,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          13,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          10,
+          13,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_TileWithAxis_000"
+  },
+  {
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "shape": [
+          65,
+          75
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          65,
+          75
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          130,
+          75
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          130,
+          75
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_TileWithAxis_001"
+  },
+  {
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_TileWithAxis_002"
+  }
+]

@@ -1,0 +1,128 @@
+[
+  {
+    "op": "TruncateDiv",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16
+        ],
+        "shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            16,
+            16
+          ]
+        ],
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TruncateDiv_000"
+  },
+  {
+    "op": "TruncateDiv",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16
+        ],
+        "shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            16,
+            16
+          ]
+        ],
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TruncateDiv_001"
+  }
+]

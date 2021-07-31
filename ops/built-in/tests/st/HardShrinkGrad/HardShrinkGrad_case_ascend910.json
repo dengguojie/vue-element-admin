@@ -1,0 +1,242 @@
+[
+  {
+    "op": "HardShrinkGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "input",
+        "name": "features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "output",
+        "name": "backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardShrinkGrad_000"
+  },
+  {
+    "op": "HardShrinkGrad",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "ori_shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardShrinkGrad_001"
+  },
+  {
+    "op": "HardShrinkGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "input",
+        "name": "features",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "output",
+        "name": "backprops",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardShrinkGrad_004"
+  },
+  {
+    "op": "HardShrinkGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "input",
+        "name": "gradients",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "input",
+        "name": "features",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "param_type": "output",
+        "name": "backprops",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardShrinkGrad_005"
+  }
+]

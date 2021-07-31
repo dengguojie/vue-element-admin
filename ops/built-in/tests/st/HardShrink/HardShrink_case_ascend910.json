@@ -1,0 +1,47 @@
+[
+  {
+    "op": "HardShrink",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          32
+        ],
+        "ori_shape": [
+          32,
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          32
+        ],
+        "ori_shape": [
+          32,
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_HardShrink_000"
+  }
+]

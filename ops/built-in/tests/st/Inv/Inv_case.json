@@ -1,0 +1,1973 @@
+[
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_000"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_001"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_002"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_003"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_004"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_005"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_006"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_007"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_008"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_009"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_010"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_011"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_012"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_013"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          2,
+          4,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_014"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_015"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_016"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          512,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_017"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_018"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_019"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_020"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_021"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_022"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4096,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_023"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_024"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_025"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          128,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          128,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_026"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_027"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_028"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          100
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_029"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_030"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_031"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          512,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_032"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_033"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_034"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          512,
+          512
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_035"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_036"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_037"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          9973,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          9973,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_038"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_039"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_040"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1024,
+          1024,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          256
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_041"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_042"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_043"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_044"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_045"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_046"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_047"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_048"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_049"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          13
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Inv_050"
+  }
+]

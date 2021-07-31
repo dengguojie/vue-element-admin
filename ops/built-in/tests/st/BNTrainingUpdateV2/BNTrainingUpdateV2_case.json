@@ -1,0 +1,177 @@
+[
+  {
+    "op": "BNTrainingUpdateV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "offset",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          2,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdateV2_000"
+  }
+]

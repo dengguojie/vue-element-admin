@@ -1,0 +1,195 @@
+[
+  {
+    "op": "TensorRedirect",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          13,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          5,
+          13,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          13,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          10,
+          13,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TensorRedirect_000"
+  },
+  {
+    "op": "TensorRedirect",
+    "input_desc": [
+      {
+        "shape": [
+          65,
+          75
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          65,
+          75
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          130,
+          75
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          130,
+          75
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TensorRedirect_001"
+  },
+  {
+    "op": "TensorRedirect",
+    "input_desc": [
+      {
+        "shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TensorRedirect_002"
+  },
+  {
+    "op": "TensorRedirect",
+    "input_desc": [
+      {
+        "shape": [
+          160000,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          160000,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          160000,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          160000,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TensorRedirect_003"
+  },
+  {
+    "op": "TensorRedirect",
+    "input_desc": [
+      {
+        "shape": [
+          459999
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          459999
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          919998
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          919998
+        ],
+        "ori_format": "NCHW",
+        "name": "output_x",
+        "type": "uint16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TensorRedirect_004"
+  }
+]

@@ -1,0 +1,288 @@
+[
+  {
+    "op": "SoftMarginLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SoftMarginLoss_000"
+  },
+  {
+    "op": "SoftMarginLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SoftMarginLoss_001"
+  },
+  {
+    "op": "SoftMarginLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SoftMarginLoss_002"
+  },
+  {
+    "op": "SoftMarginLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_SoftMarginLoss_003"
+  },
+  {
+    "op": "SoftMarginLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SoftMarginLoss_004"
+  }
+]

@@ -1,0 +1,206 @@
+[
+  {
+    "op": "Assign",
+    "input_desc": [
+      {
+        "shape": [
+          15,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "ref",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          15,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Assign_000"
+  },
+  {
+    "op": "Assign",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          13,
+          64
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          13,
+          64
+        ],
+        "ori_format": "ND",
+        "name": "ref",
+        "type": "int16"
+      },
+      {
+        "shape": [
+          5,
+          13,
+          64
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          13,
+          64
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "int16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          13,
+          64
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          13,
+          64
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "int16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Assign_001"
+  },
+  {
+    "op": "Assign",
+    "input_desc": [
+      {
+        "shape": [
+          65535,
+          53
+        ],
+        "format": "ND",
+        "ori_shape": [
+          65535,
+          53
+        ],
+        "ori_format": "ND",
+        "name": "ref",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          65535,
+          53
+        ],
+        "format": "ND",
+        "ori_shape": [
+          65535,
+          53
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          65535,
+          53
+        ],
+        "format": "ND",
+        "ori_shape": [
+          65535,
+          53
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Assign_002"
+  },
+  {
+    "op": "Assign",
+    "input_desc": [
+      {
+        "shape": [
+          128981
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128981
+        ],
+        "ori_format": "ND",
+        "name": "ref",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128981
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128981
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128981
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128981
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Assign_003"
+  }
+]

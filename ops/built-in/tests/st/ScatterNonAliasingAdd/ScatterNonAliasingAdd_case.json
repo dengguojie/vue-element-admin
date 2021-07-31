@@ -1,0 +1,712 @@
+[
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          33,
+          5
+        ],
+        "ori_shape": [
+          33,
+          5
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33,
+          25,
+          1
+        ],
+        "ori_shape": [
+          33,
+          25,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          33,
+          25,
+          5
+        ],
+        "ori_shape": [
+          33,
+          25,
+          5
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          33,
+          5
+        ],
+        "ori_shape": [
+          33,
+          5
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_000"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10,
+          2,
+          1
+        ],
+        "ori_shape": [
+          10,
+          2,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10,
+          2,
+          14,
+          16
+        ],
+        "ori_shape": [
+          10,
+          2,
+          14,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_001"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          427
+        ],
+        "ori_shape": [
+          8,
+          427
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          1
+        ],
+        "ori_shape": [
+          2,
+          3,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          427
+        ],
+        "ori_shape": [
+          2,
+          3,
+          427
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          427
+        ],
+        "ori_shape": [
+          8,
+          427
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_002"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_003"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_004"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          33,
+          5
+        ],
+        "ori_shape": [
+          33,
+          5
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33,
+          25,
+          1
+        ],
+        "ori_shape": [
+          33,
+          25,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          33,
+          25,
+          5
+        ],
+        "ori_shape": [
+          33,
+          25,
+          5
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          33,
+          5
+        ],
+        "ori_shape": [
+          33,
+          5
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_005"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10,
+          2,
+          1
+        ],
+        "ori_shape": [
+          10,
+          2,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          10,
+          2,
+          14,
+          16
+        ],
+        "ori_shape": [
+          10,
+          2,
+          14,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_shape": [
+          128,
+          14,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_006"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          427
+        ],
+        "ori_shape": [
+          8,
+          427
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          1
+        ],
+        "ori_shape": [
+          2,
+          3,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          427
+        ],
+        "ori_shape": [
+          2,
+          3,
+          427
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          427
+        ],
+        "ori_shape": [
+          8,
+          427
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_007"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_shape": [
+          128,
+          512,
+          7,
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_008"
+  },
+  {
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "inputs",
+        "type": "float"
+      },
+      {
+        "shape": [
+          128,
+          1
+        ],
+        "ori_shape": [
+          128,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "updates",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128,
+          32
+        ],
+        "ori_shape": [
+          128,
+          32
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "outpus",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ScatterNonAliasingAdd_009"
+  }
+]

@@ -1,0 +1,308 @@
+[
+  {
+    "op": "LRNGrad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "grads",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.00011111111234640703
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.75
+      }
+    ],
+    "case_name": "test_LRNGrad_000"
+  },
+  {
+    "op": "LRNGrad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          32,
+          16,
+          64,
+          16
+        ],
+        "ori_format": "NHWC",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.00011111111234640703
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.75
+      }
+    ],
+    "case_name": "test_LRNGrad_001"
+  },
+  {
+    "op": "LRNGrad",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "ori_format": "NHWC",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1,
+          2,
+          432000,
+          20
+        ],
+        "ori_format": "NHWC",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 4
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 0.00011111111234640703
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.75
+      }
+    ],
+    "case_name": "test_LRNGrad_002"
+  }
+]

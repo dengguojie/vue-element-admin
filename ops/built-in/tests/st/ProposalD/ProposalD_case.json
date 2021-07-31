@@ -1,0 +1,324 @@
+[
+  {
+    "op": "ProposalD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          18,
+          23,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          18,
+          23,
+          77
+        ],
+        "ori_format": "NCHW",
+        "name": "cls_prob_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "ori_format": "NCHW",
+        "name": "bbox_delta_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "im_info_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "ori_format": "NCHW",
+        "name": "rpn_bbox_dic",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          5,
+          304
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          5,
+          304
+        ],
+        "ori_format": "NCHW",
+        "name": "rois_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "actual_rois_num_dic",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "feat_stride",
+        "type": "float",
+        "value": 16.0
+      },
+      {
+        "name": "base_size",
+        "type": "float",
+        "value": 16.0
+      },
+      {
+        "name": "min_size",
+        "type": "float",
+        "value": 10.0
+      },
+      {
+        "name": "ratio",
+        "type": "list_float",
+        "value": [
+          0.5,
+          1.0,
+          2.0
+        ]
+      },
+      {
+        "name": "scale",
+        "type": "list_float",
+        "value": [
+          8.0,
+          16.0,
+          32.0
+        ]
+      },
+      {
+        "name": "pre_nms_topn",
+        "type": "int",
+        "value": 3000
+      },
+      {
+        "name": "post_nms_topn",
+        "type": "int",
+        "value": 304
+      },
+      {
+        "name": "iou_threshold",
+        "type": "float",
+        "value": 0.69999999
+      },
+      {
+        "name": "output_actual_rois_num",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ProposalD_001"
+  },
+  {
+    "op": "ProposalD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          18,
+          23,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          18,
+          23,
+          77
+        ],
+        "ori_format": "NCHW",
+        "name": "cls_prob_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "ori_format": "NCHW",
+        "name": "bbox_delta_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          2
+        ],
+        "ori_format": "NCHW",
+        "name": "im_info_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          36,
+          23,
+          77
+        ],
+        "ori_format": "NCHW",
+        "name": "rpn_bbox_dic",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          5,
+          304
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          5,
+          304
+        ],
+        "ori_format": "NCHW",
+        "name": "rois_dic",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "actual_rois_num_dic",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "feat_stride",
+        "type": "float",
+        "value": 16.0
+      },
+      {
+        "name": "base_size",
+        "type": "float",
+        "value": 16.0
+      },
+      {
+        "name": "min_size",
+        "type": "float",
+        "value": 10.0
+      },
+      {
+        "name": "ratio",
+        "type": "list_float",
+        "value": [
+          0.5,
+          1.0,
+          2.0
+        ]
+      },
+      {
+        "name": "scale",
+        "type": "list_float",
+        "value": [
+          8.0,
+          16.0,
+          32.0
+        ]
+      },
+      {
+        "name": "pre_nms_topn",
+        "type": "int",
+        "value": 3000
+      },
+      {
+        "name": "post_nms_topn",
+        "type": "int",
+        "value": 304
+      },
+      {
+        "name": "iou_threshold",
+        "type": "float",
+        "value": 0.69999999
+      },
+      {
+        "name": "output_actual_rois_num",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ProposalD_002"
+  }
+]

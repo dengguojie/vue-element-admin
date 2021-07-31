@@ -1,0 +1,140 @@
+[
+  {
+    "op": "MaskedFill",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "mask",
+        "type": "bool"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_MaskedFill_001"
+  },
+  {
+    "op": "MaskedFill",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "mask",
+        "type": "bool"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_MaskedFill_004"
+  }
+]

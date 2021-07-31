@@ -1,0 +1,1399 @@
+[
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "accum",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "lr",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "grad",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "momentum",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "out_var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "out_accum",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ApplyKerasMomentumD_000"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_001"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_002"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_003"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_004"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_005"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_006"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "format": "ND",
+        "ori_shape": [
+          17,
+          9,
+          7,
+          19
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_007"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          1,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_008"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "accum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "momentum",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "out_accum",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "use_nesterov",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ApplyKerasMomentumD_009"
+  }
+]

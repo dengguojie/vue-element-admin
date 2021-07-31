@@ -1,0 +1,148 @@
+[
+  {
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GeluGrad_002"
+  },
+  {
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "input_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          3,
+          24,
+          96
+        ],
+        "ori_format": "NHWC",
+        "name": "output_z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GeluGrad_005"
+  }
+]

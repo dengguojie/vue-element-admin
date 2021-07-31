@@ -1,0 +1,450 @@
+[
+  {
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          33,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ScatterMin_000"
+  },
+  {
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          32,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          32,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          32,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          32,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ScatterMin_001"
+  },
+  {
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          17,
+          17
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          17,
+          17
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          2,
+          17,
+          17
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          17,
+          17
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          17,
+          17
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          17,
+          17
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ScatterMin_002"
+  },
+  {
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          33,
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          33,
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ScatterMin_003"
+  },
+  {
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          32,
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ScatterMin_004"
+  },
+  {
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          220,
+          300
+        ],
+        "format": "ND",
+        "ori_shape": [
+          220,
+          300
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          220,
+          300,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          220,
+          300,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ScatterMin_005"
+  }
+]

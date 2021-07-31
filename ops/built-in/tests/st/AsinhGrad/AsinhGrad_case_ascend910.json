@@ -1,0 +1,53 @@
+[
+  {
+    "op": "AsinhGrad",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AsinhGrad_001"
+  }
+]

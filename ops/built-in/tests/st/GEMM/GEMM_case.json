@@ -1,0 +1,1602 @@
+[
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          32,
+          64
+        ],
+        "shape": [
+          32,
+          64
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          64,
+          96
+        ],
+        "shape": [
+          64,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_000"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          1,
+          256
+        ],
+        "shape": [
+          1,
+          256
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          256,
+          96
+        ],
+        "shape": [
+          256,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1,
+          96
+        ],
+        "shape": [
+          1,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1,
+          96
+        ],
+        "shape": [
+          1,
+          96
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_001"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16,
+          256
+        ],
+        "shape": [
+          16,
+          256
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          256,
+          1
+        ],
+        "shape": [
+          256,
+          1
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          1
+        ],
+        "shape": [
+          16,
+          1
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          16,
+          1
+        ],
+        "shape": [
+          16,
+          1
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_002"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_003"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          1,
+          256
+        ],
+        "shape": [
+          1,
+          256
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          256,
+          96
+        ],
+        "shape": [
+          256,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1,
+          96
+        ],
+        "shape": [
+          1,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1,
+          96
+        ],
+        "shape": [
+          1,
+          96
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_004"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16,
+          256
+        ],
+        "shape": [
+          16,
+          256
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          256,
+          1
+        ],
+        "shape": [
+          256,
+          1
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          1
+        ],
+        "shape": [
+          16,
+          1
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          16,
+          1
+        ],
+        "shape": [
+          16,
+          1
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_005"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          32,
+          64
+        ],
+        "shape": [
+          32,
+          64
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          64,
+          96
+        ],
+        "shape": [
+          64,
+          96
+        ],
+        "format": "FRACTAL_Z",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_006"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          32,
+          256
+        ],
+        "shape": [
+          32,
+          256
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          256,
+          96
+        ],
+        "shape": [
+          256,
+          96
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_008"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          15,
+          31
+        ],
+        "shape": [
+          15,
+          31
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          31,
+          16
+        ],
+        "shape": [
+          31,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          15,
+          16
+        ],
+        "shape": [
+          15,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          15,
+          16
+        ],
+        "shape": [
+          15,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_009"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          32,
+          256
+        ],
+        "shape": [
+          32,
+          256
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          256,
+          96
+        ],
+        "shape": [
+          256,
+          96
+        ],
+        "format": "FRACTAL_Z",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "format": "FRACTAL_NZ",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_010"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_011"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_012"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          16,
+          16
+        ],
+        "shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_GEMM_015"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          32,
+          64
+        ],
+        "shape": [
+          32,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          64,
+          96
+        ],
+        "shape": [
+          64,
+          96
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          32,
+          96
+        ],
+        "shape": [
+          32,
+          96
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_018"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          63,
+          17
+        ],
+        "shape": [
+          63,
+          17
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          17,
+          64
+        ],
+        "shape": [
+          17,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "int8"
+      },
+      {
+        "ori_shape": [
+          63,
+          64
+        ],
+        "shape": [
+          63,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "int32"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          63,
+          64
+        ],
+        "shape": [
+          63,
+          64
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_019"
+  },
+  {
+    "op": "GEMM",
+    "input_desc": [
+      {
+        "ori_shape": [
+          1,
+          6259
+        ],
+        "shape": [
+          1,
+          6259
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          6259,
+          5552
+        ],
+        "shape": [
+          6259,
+          5552
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_x2",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1,
+          5552
+        ],
+        "shape": [
+          1,
+          5552
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "bias",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1,
+          5552
+        ],
+        "shape": [
+          1,
+          5552
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "trans_a",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "trans_b",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_GEMM_021"
+  }
+]

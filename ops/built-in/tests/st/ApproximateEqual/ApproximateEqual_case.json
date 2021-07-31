@@ -1,0 +1,485 @@
+[
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 1e-05
+      }
+    ],
+    "case_name": "test_ApproximateEqual_000"
+  },
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 0.01
+      }
+    ],
+    "case_name": "test_ApproximateEqual_001"
+  },
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 0.001
+      }
+    ],
+    "case_name": "test_ApproximateEqual_002"
+  },
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_ApproximateEqual_003"
+  },
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 0.01
+      }
+    ],
+    "case_name": "test_ApproximateEqual_004"
+  },
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 0.001
+      }
+    ],
+    "case_name": "test_ApproximateEqual_005"
+  },
+  {
+    "op": "ApproximateEqual",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_z",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tolerance",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_ApproximateEqual_006"
+  }
+]

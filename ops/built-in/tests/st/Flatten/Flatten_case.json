@@ -1,0 +1,428 @@
+[
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            255,
+            255
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            33,
+            33
+          ]
+        ],
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          264
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            255,
+            255
+          ],
+          [
+            264,
+            264
+          ]
+        ],
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_000"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            5,
+            5
+          ]
+        ],
+        "name": "x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            5,
+            5
+          ]
+        ],
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_001"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            255,
+            255
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            33,
+            33
+          ]
+        ],
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          264
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            255,
+            255
+          ],
+          [
+            264,
+            264
+          ]
+        ],
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_002"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            5,
+            5
+          ]
+        ],
+        "name": "x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            5,
+            5
+          ]
+        ],
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_003"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_004"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_005"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_006"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          16,
+          64
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16,
+          64
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          16,
+          64
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          16,
+          64
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_007"
+  }
+]

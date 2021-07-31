@@ -1,0 +1,1092 @@
+[
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          3,
+          3
+        ],
+        "ori_shape": [
+          16,
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          33,
+          3
+        ],
+        "ori_shape": [
+          33,
+          3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          33,
+          3
+        ],
+        "ori_shape": [
+          33,
+          3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_002"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          127,
+          4,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_shape": [
+          127,
+          4,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          190000,
+          6
+        ],
+        "ori_shape": [
+          190000,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          190000,
+          1
+        ],
+        "ori_shape": [
+          190000,
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_003"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          34000
+        ],
+        "ori_shape": [
+          2,
+          34000
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          15000,
+          1
+        ],
+        "ori_shape": [
+          15000,
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15000,
+          34000
+        ],
+        "ori_shape": [
+          15000,
+          34000
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_005"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "ori_shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "ori_shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_006"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          13,
+          5,
+          97304
+        ],
+        "ori_shape": [
+          13,
+          5,
+          97304
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          17,
+          30,
+          16,
+          2
+        ],
+        "ori_shape": [
+          17,
+          30,
+          16,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          17,
+          30,
+          16,
+          97304
+        ],
+        "ori_shape": [
+          17,
+          30,
+          16,
+          97304
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_007"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          3,
+          3
+        ],
+        "shape": [
+          16,
+          3,
+          3
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          3
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          3
+        ],
+        "shape": [
+          33,
+          3
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_008"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          9,
+          7,
+          6,
+          5,
+          4,
+          2
+        ],
+        "shape": [
+          9,
+          7,
+          6,
+          5,
+          4,
+          2
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          3
+        ],
+        "shape": [
+          3,
+          2,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          2
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          5,
+          4,
+          2
+        ],
+        "shape": [
+          3,
+          2,
+          5,
+          4,
+          2
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_009"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          16
+        ],
+        "shape": [
+          1024,
+          1024,
+          16
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          2
+        ],
+        "shape": [
+          3,
+          2,
+          2
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          16
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          16
+        ],
+        "shape": [
+          3,
+          2,
+          16
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_010"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          9,
+          7,
+          6,
+          5
+        ],
+        "shape": [
+          9,
+          7,
+          6,
+          5
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "shape": [
+          3,
+          1
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          5
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          7,
+          6,
+          5
+        ],
+        "shape": [
+          3,
+          7,
+          6,
+          5
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_011"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          3,
+          3
+        ],
+        "ori_shape": [
+          16,
+          3,
+          3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          33,
+          3
+        ],
+        "ori_shape": [
+          33,
+          3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          33,
+          3
+        ],
+        "ori_shape": [
+          33,
+          3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_014"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          127,
+          4,
+          2,
+          2,
+          2,
+          2
+        ],
+        "ori_shape": [
+          127,
+          4,
+          2,
+          2,
+          2,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          190000,
+          6
+        ],
+        "ori_shape": [
+          190000,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          190000,
+          1
+        ],
+        "ori_shape": [
+          190000,
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_015"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          34000
+        ],
+        "ori_shape": [
+          2,
+          34000
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          15000,
+          1
+        ],
+        "ori_shape": [
+          15000,
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15000,
+          34000
+        ],
+        "ori_shape": [
+          15000,
+          34000
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_017"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "ori_shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "ori_shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_018"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "shape": [
+          13,
+          5,
+          97304
+        ],
+        "ori_shape": [
+          13,
+          5,
+          97304
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          17,
+          30,
+          16,
+          2
+        ],
+        "ori_shape": [
+          17,
+          30,
+          16,
+          2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_indices",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          17,
+          30,
+          16,
+          97304
+        ],
+        "ori_shape": [
+          17,
+          30,
+          16,
+          97304
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_019"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          3,
+          3
+        ],
+        "shape": [
+          16,
+          3,
+          3
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          2
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          3
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          33,
+          3
+        ],
+        "shape": [
+          33,
+          3
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_020"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          9,
+          7,
+          6,
+          5,
+          4,
+          2
+        ],
+        "shape": [
+          9,
+          7,
+          6,
+          5,
+          4,
+          2
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          3
+        ],
+        "shape": [
+          3,
+          2,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          2
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          5,
+          4,
+          2
+        ],
+        "shape": [
+          3,
+          2,
+          5,
+          4,
+          2
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_021"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1024,
+          1024,
+          16
+        ],
+        "shape": [
+          1024,
+          1024,
+          16
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          2
+        ],
+        "shape": [
+          3,
+          2,
+          2
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          16
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          2,
+          16
+        ],
+        "shape": [
+          3,
+          2,
+          16
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_022"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          9,
+          7,
+          6,
+          5
+        ],
+        "shape": [
+          9,
+          7,
+          6,
+          5
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "shape": [
+          3,
+          1
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          5
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          7,
+          6,
+          5
+        ],
+        "shape": [
+          3,
+          7,
+          6,
+          5
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_023"
+  }
+]

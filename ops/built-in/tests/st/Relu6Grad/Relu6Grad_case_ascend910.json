@@ -1,0 +1,923 @@
+[
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "shape": [
+          16,
+          1024
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "shape": [
+          16,
+          1024
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "shape": [
+          16,
+          1024
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_000"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56
+        ],
+        "shape": [
+          32,
+          56,
+          56
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56
+        ],
+        "shape": [
+          32,
+          56,
+          56
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56
+        ],
+        "shape": [
+          32,
+          56,
+          56
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_001"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_002"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_003"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_004"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          112,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          112,
+          112,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          112,
+          112,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          112,
+          112,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          112,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          112,
+          112,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_005"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          112,
+          96
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          112,
+          112,
+          96
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          112,
+          112,
+          96
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          112,
+          112,
+          96
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          112,
+          96
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          112,
+          112,
+          96
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_006"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          56,
+          56,
+          96
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56,
+          96
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          56,
+          56,
+          96
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56,
+          96
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          56,
+          56,
+          96
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56,
+          96
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_007"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          28,
+          28,
+          192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          28,
+          28,
+          192
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          28,
+          28,
+          192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          28,
+          28,
+          192
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          28,
+          28,
+          192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          28,
+          28,
+          192
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_008"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          14,
+          14,
+          192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          14,
+          14,
+          192
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          14,
+          14,
+          192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          14,
+          14,
+          192
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          14,
+          14,
+          192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          14,
+          14,
+          192
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_009"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          14,
+          14,
+          384
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          14,
+          14,
+          384
+        ],
+        "ori_format": "ND",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          14,
+          14,
+          384
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          14,
+          14,
+          384
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          14,
+          14,
+          384
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          14,
+          14,
+          384
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_010"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "shape": [
+          16,
+          1024
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "shape": [
+          16,
+          1024
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          16,
+          1024
+        ],
+        "shape": [
+          16,
+          1024
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_011"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56
+        ],
+        "shape": [
+          32,
+          56,
+          56
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56
+        ],
+        "shape": [
+          32,
+          56,
+          56
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          56,
+          56
+        ],
+        "shape": [
+          32,
+          56,
+          56
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_012"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          384
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_013"
+  },
+  {
+    "op": "Relu6Grad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "param_type": "input",
+        "name": "input_grad",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "shape": [
+          1,
+          14,
+          14,
+          7
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Relu6Grad_014"
+  }
+]

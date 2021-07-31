@@ -1,0 +1,128 @@
+[
+  {
+    "op": "FloorMod",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16
+        ],
+        "shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            16,
+            16
+          ]
+        ],
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FloorMod_000"
+  },
+  {
+    "op": "FloorMod",
+    "input_desc": [
+      {
+        "ori_shape": [
+          16
+        ],
+        "shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            16,
+            16
+          ]
+        ],
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FloorMod_001"
+  }
+]

@@ -1,0 +1,137 @@
+[
+  {
+    "op": "BNInfer",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "offset",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "variance",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNInfer_000"
+  }
+]

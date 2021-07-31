@@ -1,0 +1,482 @@
+[
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_000"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_001"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "int32"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_002"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_003"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "uint8"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "uint8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_004"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_005"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_006"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "int32"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_007"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "int8"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_008"
+  },
+  {
+    "op": "Dot",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x1",
+        "type": "uint8"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "input_x2",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "output",
+        "type": "uint8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Dot_009"
+  }
+]

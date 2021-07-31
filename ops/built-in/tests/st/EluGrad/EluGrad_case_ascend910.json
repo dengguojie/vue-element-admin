@@ -1,0 +1,173 @@
+[
+  {
+    "op": "EluGrad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          15,
+          112
+        ],
+        "ori_shape": [
+          32,
+          112,
+          15,
+          112
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          112,
+          15,
+          112
+        ],
+        "ori_shape": [
+          32,
+          112,
+          15,
+          112
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "activations",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          15,
+          112
+        ],
+        "ori_shape": [
+          32,
+          112,
+          15,
+          112
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_EluGrad_000"
+  },
+  {
+    "op": "EluGrad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          15
+        ],
+        "ori_shape": [
+          32,
+          112,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          112,
+          15
+        ],
+        "ori_shape": [
+          32,
+          112,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "activations",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          112,
+          15
+        ],
+        "ori_shape": [
+          32,
+          112,
+          15
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_EluGrad_001"
+  },
+  {
+    "op": "EluGrad",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          112
+        ],
+        "ori_shape": [
+          32,
+          112
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "grads",
+        "type": "float"
+      },
+      {
+        "shape": [
+          32,
+          112
+        ],
+        "ori_shape": [
+          32,
+          112
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "activations",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          112
+        ],
+        "ori_shape": [
+          32,
+          112
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_EluGrad_002"
+  }
+]

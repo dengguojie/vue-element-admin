@@ -1,0 +1,214 @@
+[
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_005"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_006"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_012"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_013"
+  }
+]

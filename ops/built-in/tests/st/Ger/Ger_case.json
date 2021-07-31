@@ -1,0 +1,942 @@
+[
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_000"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_001"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_003"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_004"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_005"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_007"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_008"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_009"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_010"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_011"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_013"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_014"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_015"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_017"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_021"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_022"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_024"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NCHW",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_025"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_026"
+  },
+  {
+    "op": "Ger",
+    "input_desc": [
+      {
+        "shape": [
+          100
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          200
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          100,
+          200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          100,
+          200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Ger_028"
+  }
+]

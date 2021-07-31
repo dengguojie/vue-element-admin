@@ -1,0 +1,173 @@
+[
+  {
+    "op": "TanhGrad",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TanhGrad_000"
+  },
+  {
+    "op": "TanhGrad",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          10241
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10241
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TanhGrad_001"
+  },
+  {
+    "op": "TanhGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "dy",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "z",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TanhGrad_004"
+  }
+]

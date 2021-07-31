@@ -1,0 +1,347 @@
+[
+  {
+    "op": "PoissonNllLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "loss",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "log_input",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "full",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 1e-08
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_PoissonNllLoss_000"
+  },
+  {
+    "op": "PoissonNllLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "loss",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "log_input",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "full",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 1e-08
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_PoissonNllLoss_001"
+  },
+  {
+    "op": "PoissonNllLoss",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "target",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "loss",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "log_input",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "full",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 1e-08
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_PoissonNllLoss_002"
+  },
+  {
+    "op": "PoissonNllLoss",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "loss",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "log_input",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "full",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 1e-08
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_PoissonNllLoss_008"
+  },
+  {
+    "op": "PoissonNllLoss",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "loss",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "log_input",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "full",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 1e-08
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_PoissonNllLoss_009"
+  }
+]

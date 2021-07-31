@@ -1,0 +1,542 @@
+[
+  {
+    "op": "ArgMaxGradD",
+    "input_desc": [
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_ArgMaxGradD_000"
+  },
+  {
+    "op": "ArgMaxGradD",
+    "input_desc": [
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          6,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_ArgMaxGradD_001"
+  },
+  {
+    "op": "ArgMaxGradD",
+    "input_desc": [
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          6,
+          5,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          6,
+          5,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          5,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_ArgMaxGradD_002"
+  },
+  {
+    "op": "ArgMaxGradD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_ArgMaxGradD_009"
+  },
+  {
+    "op": "ArgMaxGradD",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_ArgMaxGradD_010"
+  },
+  {
+    "op": "ArgMaxGradD",
+    "input_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "updates",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "assist",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_ArgMaxGradD_013"
+  }
+]

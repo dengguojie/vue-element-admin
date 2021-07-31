@@ -1,0 +1,137 @@
+[
+  {
+    "op": "FusedMulApplyKerasMomentum",
+    "input_desc": [
+      {
+        "shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "name": "accum",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "lr",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "momentum",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "name": "out_var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          144,
+          16,
+          16,
+          16
+        ],
+        "name": "out_accum",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_FusedMulApplyKerasMomentum_001"
+  }
+]

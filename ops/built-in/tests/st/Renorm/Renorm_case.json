@@ -1,0 +1,372 @@
+[
+  {
+    "op": "Renorm",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          3,
+          3
+        ],
+        "shape": [
+          3,
+          3,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1,
+          1
+        ],
+        "shape": [
+          3,
+          1,
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "maxnorm",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Renorm_000"
+  },
+  {
+    "op": "Renorm",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "shape": [
+          3,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "shape": [
+          3,
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "maxnorm",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Renorm_001"
+  },
+  {
+    "op": "Renorm",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          3,
+          3
+        ],
+        "shape": [
+          3,
+          3,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1,
+          1
+        ],
+        "shape": [
+          3,
+          1,
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "maxnorm",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Renorm_002"
+  },
+  {
+    "op": "Renorm",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          3,
+          3
+        ],
+        "shape": [
+          3,
+          3,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1,
+          1
+        ],
+        "shape": [
+          3,
+          1,
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "float",
+        "value": 3.0
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "maxnorm",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Renorm_003"
+  },
+  {
+    "op": "Renorm",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          3
+        ],
+        "shape": [
+          3,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "shape": [
+          3,
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "float",
+        "value": 2.0
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "maxnorm",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Renorm_004"
+  },
+  {
+    "op": "Renorm",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          3,
+          3
+        ],
+        "shape": [
+          3,
+          3,
+          3
+        ],
+        "param_type": "input",
+        "value_range": [
+          1,
+          1
+        ],
+        "name": "input_x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          3,
+          1,
+          1
+        ],
+        "shape": [
+          3,
+          1,
+          1
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "maxnorm",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Renorm_005"
+  }
+]

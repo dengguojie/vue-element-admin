@@ -1,0 +1,1283 @@
+[
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_000"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_001"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "param_name": "feature",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "param_name": "img",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "param_name": "boxes",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "param_name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_002"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_003"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_004"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "param_name": "feature",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "param_name": "img",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "param_name": "boxes",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "param_name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_005"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_006"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_007"
+  },
+  {
+    "op": "PriorBoxDV2",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          5,
+          5
+        ],
+        "ori_format": "NCHW",
+        "name": "feature",
+        "param_name": "feature",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "img",
+        "param_name": "img",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "boxes",
+        "param_name": "boxes",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          160,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          16,
+          300,
+          300
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "param_name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "min_size",
+        "type": "list_float",
+        "value": [
+          30.0
+        ]
+      },
+      {
+        "name": "max_size",
+        "type": "list_float",
+        "value": [
+          60.0
+        ]
+      },
+      {
+        "name": "img_h",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "img_w",
+        "type": "int",
+        "value": 300
+      },
+      {
+        "name": "step_h",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "step_w",
+        "type": "float",
+        "value": 8.0
+      },
+      {
+        "name": "flip",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "clip",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "offset",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "variance",
+        "type": "list_float",
+        "value": [
+          0.1,
+          0.1,
+          0.2,
+          0.2
+        ]
+      }
+    ],
+    "case_name": "test_PriorBoxDV2_008"
+  }
+]

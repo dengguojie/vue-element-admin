@@ -1,0 +1,182 @@
+[
+  {
+    "op": "Cummin",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32
+        ],
+        "shape": [
+          32
+        ],
+        "param_type": "output",
+        "name": "argmin",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_Cummin_000"
+  },
+  {
+    "op": "Cummin",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          8
+        ],
+        "shape": [
+          32,
+          8
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          8
+        ],
+        "shape": [
+          32,
+          8
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          32,
+          8
+        ],
+        "shape": [
+          32,
+          8
+        ],
+        "param_type": "output",
+        "name": "argmin",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_Cummin_001"
+  },
+  {
+    "op": "Cummin",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          32,
+          16
+        ],
+        "shape": [
+          2,
+          32,
+          16
+        ],
+        "param_type": "output",
+        "name": "argmin",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_Cummin_002"
+  }
+]

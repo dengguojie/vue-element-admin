@@ -1,0 +1,374 @@
+[
+  {
+    "op": "SqrtGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          64
+        ],
+        "shape": [
+          2,
+          64
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          64
+        ],
+        "shape": [
+          2,
+          64
+        ],
+        "param_type": "input",
+        "name": "dx",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          64
+        ],
+        "shape": [
+          2,
+          64
+        ],
+        "param_type": "output",
+        "name": "out",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SqrtGrad_000"
+  },
+  {
+    "op": "SqrtGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          73,
+          64
+        ],
+        "shape": [
+          73,
+          64
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          73,
+          64
+        ],
+        "shape": [
+          73,
+          64
+        ],
+        "param_type": "input",
+        "name": "dx",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          73,
+          64
+        ],
+        "shape": [
+          73,
+          64
+        ],
+        "param_type": "output",
+        "name": "out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SqrtGrad_001"
+  },
+  {
+    "op": "SqrtGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "param_type": "input",
+        "name": "dx",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "param_type": "output",
+        "name": "out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SqrtGrad_002"
+  },
+  {
+    "op": "SqrtGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          64
+        ],
+        "shape": [
+          2,
+          64
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          64
+        ],
+        "shape": [
+          2,
+          64
+        ],
+        "param_type": "input",
+        "name": "dx",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          64
+        ],
+        "shape": [
+          2,
+          64
+        ],
+        "param_type": "output",
+        "name": "out",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SqrtGrad_003"
+  },
+  {
+    "op": "SqrtGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          73,
+          64
+        ],
+        "shape": [
+          73,
+          64
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          73,
+          64
+        ],
+        "shape": [
+          73,
+          64
+        ],
+        "param_type": "input",
+        "name": "dx",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          73,
+          64
+        ],
+        "shape": [
+          73,
+          64
+        ],
+        "param_type": "output",
+        "name": "out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SqrtGrad_004"
+  },
+  {
+    "op": "SqrtGrad",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "param_type": "input",
+        "name": "dx",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "shape": [
+          15,
+          3,
+          7,
+          5,
+          3,
+          2
+        ],
+        "param_type": "output",
+        "name": "out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SqrtGrad_005"
+  }
+]

@@ -1,0 +1,450 @@
+[
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 4.5
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.6
+      }
+    ],
+    "case_name": "test_ThresholdV2D_000"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 5.6
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 8.6
+      }
+    ],
+    "case_name": "test_ThresholdV2D_001"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 10.5
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 8.6
+      }
+    ],
+    "case_name": "test_ThresholdV2D_002"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 6.6
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 7.4
+      }
+    ],
+    "case_name": "test_ThresholdV2D_003"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 4.5
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.6
+      }
+    ],
+    "case_name": "test_ThresholdV2D_004"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4,
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          4,
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 5.6
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 8.6
+      }
+    ],
+    "case_name": "test_ThresholdV2D_005"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 10.5
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 8.6
+      }
+    ],
+    "case_name": "test_ThresholdV2D_006"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6,
+          2,
+          8,
+          10
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 6.6
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 7.4
+      }
+    ],
+    "case_name": "test_ThresholdV2D_007"
+  }
+]
