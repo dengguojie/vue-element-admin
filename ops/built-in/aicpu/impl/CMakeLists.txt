@@ -348,7 +348,12 @@ target_compile_options(cpu_kernels_host PRIVATE
     -fstack-protector-all
 )
 
-set(INSTALL_LIBRARY_DIR lib)
+if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc")
+set(INSTALL_LIBRARY_DIR lib/${PRODUCT})
+else()
+set(INSTALL_LIBRARY_DIR lib/)
+endif()
+
 install(TARGETS cpu_kernels OPTIONAL
     EXPORT cpu_kernels-targets
     LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}

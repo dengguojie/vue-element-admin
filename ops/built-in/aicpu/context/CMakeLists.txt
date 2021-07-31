@@ -200,17 +200,23 @@ target_link_libraries(cpu_kernels_context_static PRIVATE
     -ldl
     -shared
 )
-set(INSTALL_LIBRARY_DIR lib)
+if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc")
+set(INSTALL_LIBRARY_DIR lib/${PRODUCT})
+else()
+set(INSTALL_LIBRARY_DIR lib/)
+endif()
+
+install(TARGETS cpu_kernels_context_static OPTIONAL
+    EXPORT cpu_kernels_context_static-targets
+    ARCHIVE DESTINATION ${INSTALL_LIBRARY_DIR}
+)
 
 install(TARGETS cpu_kernels_context OPTIONAL
     EXPORT cpu_kernels_context-targets
     LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
 )
 
-install(TARGETS cpu_kernels_context_static OPTIONAL
-    EXPORT cpu_kernels_context_static-targets
-    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
-)
+
 
 set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
 
