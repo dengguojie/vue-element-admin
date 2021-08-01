@@ -1197,10 +1197,12 @@ REG_OP(IndexAdd)
 
 * @par Inputs:
 * Three inputs, including:
-* @li x1: A Tensor. Must be one of the following types:
-*     float16, float32, int32, int8, uint8.
+* @li x1:  A Tensor. Must be one of the following types:
+*float16, float32, double, int32, uint8, int16, int8, complex64, int64,
+*qint8, quint8, qint32, uint16, complex128, uint32, uint64. \n
+
 * @li x2: A Tensor of the same type as "x1".
-* @li indices: A Tensor of the indices, type should be int32.
+* @li indices: A Tensor of the indices, 
 
 * @par Attributes:
 * @li accumulate: Does it support self accumulation.Defaults to 0.
@@ -1215,10 +1217,10 @@ REG_OP(IndexAdd)
 * Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(IndexPut)
-    .INPUT(x1, TensorType({DT_INT64, DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
-    .INPUT(x2, TensorType({DT_INT64, DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
-    .INPUT(indices, TensorType({DT_INT64, DT_INT32}))
-    .OUTPUT(y, TensorType({DT_INT64, DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .INPUT(x1, TensorType::BasicType())
+    .INPUT(x2, TensorType::BasicType())
+    .INPUT(indices, TensorType::IntegerDataType())
+    .OUTPUT(y, TensorType::BasicType())
     .ATTR(accumulate, Int, 0)
     .OP_END_FACTORY_REG(IndexPut)
 

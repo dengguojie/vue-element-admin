@@ -3253,11 +3253,6 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
             "The input shape of x1 x2 y is equal, please check!");
     return GRAPH_FAILED;
   }
-  if (indices_dtype != DT_INT32 && indices_dtype != DT_INT64) {
-    OP_LOGE(op_name,
-            "The input shape of indices is neither int32 nor int64, please check!");
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
 
