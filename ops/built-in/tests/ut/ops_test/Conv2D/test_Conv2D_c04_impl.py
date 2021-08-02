@@ -74,10 +74,38 @@ def test_conv2d_c04_impl(test_arg):
 
             conv2d_c04_test(fmap_shape, filters_shape, bias_flag,
                                  strides, pads, dilations, dtype)
+
+
+    def v100_c04_single_op():
+        inputs = {'shape': (1, 1, 10, 10, 16), 'ori_shape': (1, 1, 10, 10), 'format': 'NC1HWC0', 'sub_format': 0, 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'sgt_slice_shape': (), 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': [1, 1, 10, 10, 16], 'split_index': 0}
+        weights = {'shape': (3, 4, 16, 16), 'ori_shape': (56, 1, 3, 3), 'format': 'FRACTAL_Z_C04', 'sub_format': 0, 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'sgt_slice_shape': (), 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': [3, 4, 16, 16], 'split_index': 0}
+        bias = {'shape': (56,), 'ori_shape': (56,), 'format': 'NCHW', 'sub_format': 0, 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'sgt_slice_shape': (), 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': [56], 'split_index': 0}
+        offset_w = None
+        outputs = {'shape': (1, 4, 10, 10, 16), 'ori_shape': (1, 56, 10, 10), 'format': 'NC1HWC0', 'sub_format': 0, 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'sgt_slice_shape': (), 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': [1, 4, 10, 10, 16], 'split_index': 0}
+
+        strides = (1, 1, 1, 1)
+        pads = (1, 1, 1, 1)
+        dilations = (1, 1, 1, 1)
+
+        cce_conf.te_set_version('Ascend310')
+        conv2d(inputs,
+               weights,
+               bias,
+               offset_w,
+               outputs,
+               strides,
+               pads,
+               dilations,
+               groups=1,
+               offset_x=0,
+               kernel_name='conv2d')
+
     testcases = [
         {"fmap_shape": [1, 4, 1025, 2049], "filters_shape": [32, 4, 3, 3], "dtype": "float16", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 2, 2], "dilations": [1, 1, 1, 1]},
     ]
     fusion_conv2d_c04_compute(testcases)
+
+    v100_c04_single_op()
 
 print("test_conv2d_c04_impl")
 ut_case.add_cust_test_func(test_func=test_conv2d_c04_impl)

@@ -476,6 +476,19 @@ def conv_layer_cce_para_check(shape_in,
             err_man.raise_err_specific_user(
                 "conv2d", "Invalid config for c0=4 optimize feature.")
 
+    block_size_k = CUBE_MKN[in_dtype]['mac'][1]
+    block_size_n = CUBE_MKN[w_dtype]['mac'][2]
+
+    shape_in[1] = ((shape_in[1] + block_size_k - 1) // block_size_k)*block_size_k
+    shape_w[1] = ((shape_in[1] + block_size_k - 1) // block_size_k)*block_size_k
+    shape_w[0] = ((shape_w[0] + block_size_n - 1) // block_size_n)*block_size_n
+
+    if optim_dict["c0_optim_flg"]:
+        shape_in[1] = 4
+        shape_w[1] = 4
+
+    shape_in[1] = shape_in[1] // groups
+
     return shape_in, shape_w
 
 
