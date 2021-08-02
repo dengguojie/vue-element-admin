@@ -38,12 +38,3 @@ TEST_F(scatter_elements_test, scatter_elements_verify_test) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-// exception cases
-TEST_F(scatter_elements_test, scatter_elements_verify_invalid_test) {
-    ge::op::ScatterElements op;
-    op.UpdateInputDesc("data", create_desc_with_ori({33, 5}, ge::DT_INT32, ge::FORMAT_ND, {33, 5}, ge::FORMAT_ND));
-    op.UpdateInputDesc("indices", create_desc_with_ori({33, 25, 1}, ge::DT_INT32, ge::FORMAT_ND, {33, 25, 1}, ge::FORMAT_ND));
-    op.UpdateInputDesc("updates", create_desc_with_ori({33, 25, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {33, 25, 5}, ge::FORMAT_ND));
-    auto ret = op.VerifyAllAttr(true);
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}

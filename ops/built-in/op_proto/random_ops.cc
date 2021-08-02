@@ -137,10 +137,10 @@ IMPLEMT_INFERFUNC(Randperm, RandpermInferShape) {
   (void)Scalar(scalar_shape);
   auto attr_dtype = op.get_attr_dtype();
   
-  TensorDesc td = op.GetOutputDescByName("y");
+  TensorDesc td = op.GetOutputDescByName("out");
   td.SetDataType(ge::DataType(attr_dtype));
   td.SetShape(scalar_shape);
-  (void)op.UpdateOutputDesc("y", td);
+  (void)op.UpdateOutputDesc("out", td);
 
   return GRAPH_SUCCESS;
 }

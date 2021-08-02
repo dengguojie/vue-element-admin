@@ -532,61 +532,6 @@ REG_OP(ScatterAdd)
     .OP_END_FACTORY_REG(ScatterAdd)
 
 /**
-*@brief  Use a scalar to modify the tensor. \n
-
-*@par Inputs:
-*inputs, including:
-*@li index: An ND Tensor . \n
-
-*Must be one of the following types: float16, float32, int32, int8, uint8
-
-*@par Attributes:
-* dim : the axis along which to index .
-* value : the source element(s) to scatter . \n
-
-*@par Outputs:
-*y: A Tensor. Has the same type and format as input "index" . \n
-
-*@par Third-party framework compatibility
-* Compatible with the Pytorch operator ScatterScalar.
-*/
-REG_OP(ScatterScalar)
-    .INPUT(index, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
-    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
-    .REQUIRED_ATTR(dim, Int)
-    .REQUIRED_ATTR(value, Float)
-    .OP_END_FACTORY_REG(ScatterScalar)
-
-/**
-*@brief Use a tensor to modify the tensor . \n
-
-*@par Inputs:
-* Two inputs, including:
-*@li index: An ND Tensor . \n
-
-*Must be one of the following types: float16, float32, int32, int8, uint8
-
-*@li src: An ND Tensor . \n
-
-*Must be one of the following types: float16, float32, int32, int8, uint8
-
-*@par Attributes:
-* dim : the axis along which to index . \n
-
-*@par Outputs:
-*y: A Tensor. Has the same type and format as input "index" . \n
-
-*@par Third-party framework compatibility
-* Compatible with the Pytorch operator ScatterTensor.
-*/
-REG_OP(ScatterTensor)
-    .INPUT(index, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
-    .INPUT(src, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
-    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
-    .REQUIRED_ATTR(dim, Int)
-    .OP_END_FACTORY_REG(ScatterTensor)
-
-/**
 *@brief Divides a variable reference by sparse updates . \n
 
 *@par Inputs:

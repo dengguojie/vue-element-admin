@@ -2223,12 +2223,8 @@ VERIFY_FUNC_REG(TensorScatterUpdate, TensorScatterUpdateVerify);
 
 // -------------------ScatterElements------------------------
 IMPLEMT_VERIFIER(ScatterElements, ScatterElementsVerify) {
-  if (!CheckTwoInputDtypeSame(op, "data", "updates")) {
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
-
 IMPLEMT_INFERFUNC(ScatterElements, ScatterElementsInferShape) {
   Shape data_shape = op.GetInputDescByName("data").GetShape();
   DataType input_dtype = op.GetInputDescByName("data").GetDataType();
@@ -2268,44 +2264,6 @@ IMPLEMT_COMMON_INFERFUNC(ScatterAddInferShape) {
 COMMON_INFER_FUNC_REG(ScatterAdd, ScatterAddInferShape);
 VERIFY_FUNC_REG(ScatterAdd, ScatterAddVerify);
 // --------------ScatterAdd END------------------
-
-// ------------------ScatterScalar--------------------
-IMPLEMT_COMMON_INFERFUNC(ScatterScalarInferShape) {
-  // main part of shape infer
-  Shape index_shape = op.GetInputDescByName("index").GetShape();
-  DataType index_dtype = op.GetInputDescByName("index").GetDataType();
-  TensorDesc td = op.GetOutputDescByName("y");
-  td.SetShape(ge::Shape(index_shape));
-  td.SetDataType(index_dtype);
-  (void)op.UpdateOutputDesc("y", td);
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(ScatterScalar, ScatterScalarInferShape);
-// --------------ScatterScalar END------------------
-
-// ------------------ScatterTensor---------------------
-IMPLEMT_VERIFIER(ScatterTensor, ScatterTensorVerify) {
-  if (!CheckTwoInputDtypeSame(op, "index", "src")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(ScatterTensorInferShape) {
-  // main part of shape infer
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  ge::GeShape index_shape = op_desc->MutableInputDesc("index")->GetShape();
-  DataType input_dtype = op_desc->MutableInputDesc("index")->GetDataType();
-  GeTensorDescPtr td = op_desc->MutableOutputDesc("y");
-  td->SetShape(index_shape);
-  td->SetDataType(input_dtype);
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(ScatterTensor, ScatterTensorInferShape);
-VERIFY_FUNC_REG(ScatterTensor, ScatterTensorVerify);
-// --------------ScatterTensor END------------------
 
 // ------------------ScatterDiv---------------------
 IMPLEMT_VERIFIER(ScatterDiv, ScatterDivVerify) {
