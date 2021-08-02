@@ -85,6 +85,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   // Escape GE require attr [pads] check here
   std::vector<int32_t> pad_list = {pad_top, pad_bottom, pad_left, pad_right};
   op.SetAttr("pads", pad_list);
+  OP_LOGD(op.GetName().c_str(), "set pads [%d,%d,%d,%d] here.", pad_list[0], pad_list[1], pad_list[2], pad_list[3]);
 
   return SUCCESS;
 }
