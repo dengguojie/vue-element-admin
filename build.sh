@@ -135,7 +135,7 @@ down_third_libs(){
   echo "begin to test  network..."
   wget --no-check-certificate https://www.gitee.com
   res_net=`echo $?`
-  if [ ! $res_net -eq 0 ];then
+  if [  $res_net -ne 0 ];then
     echo $dotted_line
     echo "The network doesn't work. please check..."
     echo "If you are in Huawei yellow area"
@@ -258,11 +258,13 @@ check_third_libs(){
   echo "check third libs success"
 }
 install_python_libs(){
-  python_libs=$(pip3 list)
+  python_libs=`pip3 list`
   for p in numpy decorator sympy wheel psutil attrs
     do
       if [[ "$python_libs" =~ "$p" ]];then
-        pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple $p
+        echo $p
+      else
+         pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple $p
       fi
     done
 }
@@ -314,6 +316,9 @@ usage() {
   echo "    --make_clean_all make clean and delete related file"
   echo "    --noexec Only compile ut, do not execute the compiled executable file"
   echo "    --build_mode_xxx,the xxx can be in [O0 O1 O2 O3 g], for example build_mode_O2"
+  echo "    --install_daily  download and install Ascend, using package/daily/ the latest package"
+  echo "        *** You must use a single quotation mark for your username and password.***"
+  echo "        *** example ./build.sh --install_daily 'username' 'password'   ***"
   echo "    Next is the name that you can build directly"
   echo "    --sprotoc build sprotoc"
   echo "    --secure_c build secure_c"
@@ -415,6 +420,11 @@ checkopts() {
                            exit 0;;
            make_clean) make_clean
                        exit 0;;
+           install_daily) username="$2"
+                          pwsswd="$3"
+                          chmod 744 ./scripts/install_daily.sh 
+                          ./scripts/install_daily.sh $username $pwsswd
+                          exit 0;;
            *) for m in [ O0 O1 O2 O3 g ]
                 do
                   if [[ "build_mode_$m" =~ "$OPTARG" ]];then
