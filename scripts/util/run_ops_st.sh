@@ -100,7 +100,7 @@ run_st() {
     python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}"
     if [[ $? -ne 0 ]]; then
       echo "[ERROR] run ops stest failed, case file is: $op_case."
-      exit $STATUS_FAILED
+      st_failed="true"
     fi
     if [[ "${op_type}" != "all" ]]; then
       op_result="${CANN_ST_OUT}/result_${op_type}.txt"
@@ -152,6 +152,7 @@ main() {
   local base_path="$1"
   local op_type="$2"
   local soc_version="$3"
+  st_failed="false"
 
   if [[ -z "${op_type}" ]]; then
      op_type="all"
@@ -167,6 +168,11 @@ main() {
   run_st "${op_type}" "${soc_version}"
   get_results
   clear_tmp
+
+  if [[ "$st_failed"=="true" ]];then
+    echo "Some TestCase failed! Please check log with keyword \"[failed]\""
+    exit $STATUS_FAILED
+  fi
 }
 
 if [[ $# -lt 1 ]]; then
