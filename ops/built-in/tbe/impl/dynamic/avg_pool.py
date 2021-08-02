@@ -1332,12 +1332,26 @@ def assist_matrix_compute(res):
     c_ub = res.get("op_res")[0]
     res_dtype = c_ub.dtype
     conv_shape = c_ub.shape
+    if ConvParam.v200_width_out_1_flag:
+        out_w = 1
     if res["padding_mode"] == "VALID":
-        c_ub_avg = tvm.compute(conv_shape,
-                                lambda n, c1, m, c0:
-                                tvm.div(c_ub(n, c1, m, c0), filter_h * filter_w).astype(res_dtype),
-                                name="c_ub_avg",
-                                tag="elewise_binary_mul")
+        if "Ascend310" in tbe_platform.get_soc_spec("SOC_VERSION"):
+            c_ub_avg = tvm.compute(conv_shape,
+                                   lambda n, c1, m, c0:
+                                   tvm.div(c_ub(n, c1, m, c0), filter_h * filter_w).astype(res_dtype),
+                                   name="c_ub_avg",
+                                   tag="elewise_binary_div")
+        else:
+            mean_matrix_shape = c_ub.shape[3]
+            mean_matrix = tvm.compute(mean_matrix_shape, lambda * index:
+                                    tvm.const(filter_h * filter_w).astype(res_dtype),
+                                    name="mean_matrix")
+            c_ub_avg = tvm.compute(conv_shape,
+                                   lambda n, c1, m, c0:
+                                   tvm.div(c_ub(n, c1, m, c0), mean_matrix(c0)).astype(res_dtype),
+                                   name="c_ub_avg",
+                                   tag="elewise_binary_div")
+            ConvParam.tensor_map["mean_matrix"] = mean_matrix
     else:
         mean_matrix_shape = c_ub.shape[2:4]
         mean_matrix = tvm.compute(mean_matrix_shape, lambda m, c0:
@@ -1367,7 +1381,6 @@ def assist_matrix_compute(res):
                                    name="c_ub_avg",
                                    tag="elewise_binary_div")
         ConvParam.tensor_map["mean_matrix"] = mean_matrix
-        
     return c_ub_avg
 
 

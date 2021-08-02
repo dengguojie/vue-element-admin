@@ -3809,7 +3809,8 @@ class CceConvOp:
                     fmap_h = (fmap_h - 1) // stride_h + 1
                 al1_m = ceil(fmap_h * fmap_w, fmap_c0)
                 al1_bound = al1_m * fmap_c1 * fmap_c0
-
+            if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
+                al1_bound *= 2
             return al1_bound
 
         def _update_load3dv1_split_for_largek():
@@ -4327,6 +4328,8 @@ class CceConvOp:
                 if ConvParam.conv_reluv2_flag and "vcmpv_gt" in lop["op"]:
                     sch[lop["dst_buffer"]].set_storage_bound(math.ceil(ub_storage_bound_size//8))
                     continue
+                if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
+                    ub_storage_bound_size *= 2
                 sch[lop["dst_buffer"]].set_storage_bound(math.ceil(ub_storage_bound_size))
 
             # mem_unique
