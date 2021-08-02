@@ -34,8 +34,8 @@ def run_st(case_dir, soc_version, out_dir):
             # has no relate ut, not need run ut.
             exit(0)
     
-    cov_report_path = "./cov_report/ops/python_utest"
-    report_path = "./report/ops/python_report"
+    cov_report_path = "./cov_result"
+    report_path = "./report/sch/python_report"
 
     res = op_ut_runner.run_ut(case_dir,
                               soc_version=soc_version,
