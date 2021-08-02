@@ -2956,6 +2956,10 @@ IMPLEMT_INFERFUNC(Col2im, Col2imInferShape) {
     OP_LOGE(op_name_c, "Input[output_size], get failed.");
     return GRAPH_FAILED;
   }
+  if (input_size.size()!=4) {
+    OP_LOGE(op_name_c, "Input[x], dim of x must be 4.");
+    return GRAPH_FAILED;
+  }
   if (output_size_value.size()!=2) {
     OP_LOGE(op_name_c, "Input[output_size], size of output_size must be 2.");
     return GRAPH_FAILED;
@@ -2967,7 +2971,7 @@ IMPLEMT_INFERFUNC(Col2im, Col2imInferShape) {
     dtype_repeat_num = 128;
   }
   int64_t repeat_times_max = 255;
-  if ((output_size_value[1] * input_size[4]) / dtype_repeat_num  > repeat_times_max) {
+  if ((output_size_value[1] * input_size[3]) / dtype_repeat_num  > repeat_times_max) {
     OP_LOGE(op_name_c, "InferShape[Col2im], width of output too large, not support.");
     return GRAPH_FAILED;
   }
