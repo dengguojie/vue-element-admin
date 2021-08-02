@@ -1,0 +1,90 @@
+[
+{
+    "op": "Add",
+    "case_name" : "test_add_demo",
+    "calc_expect_func_file": "test_add_golden.py:calc_expect_func",
+    "input_desc": [
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x1"
+        },
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "name": "x2"
+        }
+    ],
+    "output_desc": [
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "name": "y1"
+        }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_demo",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,4,2],
+        "ori_shape": [-1,7,4,2],
+        "typical_shape": [4,7,4,2],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,2,2],
+        "ori_shape": [-1,7,2,2],
+        "typical_shape": [4,7,2,2],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,5,5],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,2,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  }
+]

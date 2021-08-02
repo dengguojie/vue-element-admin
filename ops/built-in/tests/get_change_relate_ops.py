@@ -327,7 +327,7 @@ def get_change_relate_op_type_list(changed_file_info_from_ci):
 
             if not relate_op_type_list:
                 # if test frame change, test one op at least
-                relate_op_type_list.append("Add")
+                relate_op_type_list.append("Demo")
 
         _deal_op_test_frame_change()
 
