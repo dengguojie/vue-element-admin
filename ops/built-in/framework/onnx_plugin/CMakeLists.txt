@@ -129,6 +129,7 @@ set(_onnx_plugins
   onnx_common.cc
   hardswish_plugin.cc
   reduce_log_sum_plugin.cc
+  lppool_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
