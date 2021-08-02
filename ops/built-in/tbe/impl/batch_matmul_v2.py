@@ -374,25 +374,25 @@ def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, tran
     is_dynamic_shape = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
     if is_dynamic_shape:
         input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                               datatype="float16,int8,int8,float16",
-                                               format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
-                                               unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
+                                               datatype="float16,int8,int8",
+                                               format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
+                                               unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
         input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                               datatype="float16,int8,int8,float16",
-                                               format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z,FRACTAL_NZ",
-                                               unknownshape_format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z,FRACTAL_NZ")
+                                               datatype="float16,int8,int8",
+                                               format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z",
+                                               unknownshape_format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z")
         input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                               datatype="float16,int32,float16,float32",
-                                               format="ND,ND,ND,ND",
-                                               unknownshape_format="ND,ND,ND,ND")
+                                               datatype="float16,int32,float16",
+                                               format="ND,ND,ND",
+                                               unknownshape_format="ND,ND,ND")
         input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                               datatype="int8,int8,int8,int8",
-                                               format="ND,ND,ND,ND",
-                                               unknownshape_format="ND,ND,ND,ND")
+                                               datatype="int8,int8,int8",
+                                               format="ND,ND,ND",
+                                               unknownshape_format="ND,ND,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,int32,float16,float32",
-                                                format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
-                                                unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
+                                                datatype="float16,int32,float16",
+                                                format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
+                                                unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
     else:
         if src_dtype == "float16":
             input0 = util_select_op_base.gen_param(classify="input0", name="x1",
