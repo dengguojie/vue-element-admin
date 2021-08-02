@@ -122,7 +122,9 @@ install_Ascend(){
     cd out/run_package
 
     if [ $UID -eq 0 ];then
+      set +e
       useradd HwHiAiUser
+      set -e
     fi
 
     if [ -f ./Ascend-atc* ];then
