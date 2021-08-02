@@ -1023,18 +1023,15 @@ class Sort(object):
                 float_ub = self.tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
                 int_ub = self.tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
 
-                with self.tik_instance.for_range(0, self.round) as i:
-                    self.tik_instance.data_move(float_ub[0], self.data_out[i * self.dim_align_num], 0, 1,
-                                                self.dim_align_num // 16, 0, 0)
-                    self.tik_instance.data_move(self.out_gm1[i * self.dim_num], float_ub[0], 0, 1,
-                                                self.dim_align_num // 16,
-                                                0, 0)
+                self.tik_instance.data_move(float_ub[0], self.data_out[i * self.dim_align_num], 0, 1,
+                                            self.dim_align_num // 16, 0, 0)
+                self.tik_instance.data_move(self.out_gm1[i * self.dim_num], float_ub[0], 0, 1,
+                                            self.dim_align_num // 16, 0, 0)
 
-                    self.tik_instance.data_move(int_ub[0], self.data_indices[i * self.dim_align_num], 0, 1,
-                                                self.dim_align_num // 8, 0, 0)
-                    self.tik_instance.data_move(self.out_gm2[i * self.dim_num], int_ub[0], 0, 1,
-                                                self.dim_align_num // 8, 0,
-                                                0)
+                self.tik_instance.data_move(int_ub[0], self.data_indices[i * self.dim_align_num], 0, 1,
+                                            self.dim_align_num // 8, 0, 0)
+                self.tik_instance.data_move(self.out_gm2[i * self.dim_num], int_ub[0], 0, 1,
+                                            self.dim_align_num // 8, 0, 0)
 
         with self.tik_instance.else_scope():
             repeat_times = NUM_BLOCK // BLOCK
