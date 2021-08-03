@@ -19,6 +19,7 @@ dynamic_depthwise_conv2d_bp_input_op_testcase = [
     
     ((3, 3, 16, 2), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], RuntimeError),
     ((3, 3, 16, 1), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], RuntimeError),
+    ((1, 1, 14, 20), (-1, 1, 28, 3507), (-1, 1, 111, 3507), (4, 1), (-1, -1, -1, -1), "NCHW", None, RuntimeError),
 ]
 
 def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads):
@@ -66,28 +67,29 @@ def _get_range_from_shape(shape, dynamic_dim=None):
 
 def _trans_dynamic_shape(shape, format, dynamic_dim, tran_flag=False):
     shape = list(shape)
-    if len(format) == 4:
-        if 0 in dynamic_dim:
-            n_dim = format.index("N")
-            shape[n_dim] = -1
-        if 1 in dynamic_dim and tran_flag:
-            c_dim = format.index("C")
-            shape[c_dim] = -1
-        if 2 in dynamic_dim:
-            h_dim = format.index("H")
-            shape[h_dim] = -1
-        if 3 in dynamic_dim:
-            w_dim = format.index("W")
-            shape[w_dim] = -1
-    else:
-        if 0 in dynamic_dim:
-            shape[0] = -1
-        if 1 in dynamic_dim and tran_flag:
-            shape[1] = -1
-        if 2 in dynamic_dim:
-            shape[2] = -1
-        if 3 in dynamic_dim:
-            shape[3] = -1
+    if dynamic_dim:
+        if len(format) == 4:
+            if 0 in dynamic_dim:
+                n_dim = format.index("N")
+                shape[n_dim] = -1
+            if 1 in dynamic_dim and tran_flag:
+                c_dim = format.index("C")
+                shape[c_dim] = -1
+            if 2 in dynamic_dim:
+                h_dim = format.index("H")
+                shape[h_dim] = -1
+            if 3 in dynamic_dim:
+                w_dim = format.index("W")
+                shape[w_dim] = -1
+        else:
+            if 0 in dynamic_dim:
+                shape[0] = -1
+            if 1 in dynamic_dim and tran_flag:
+                shape[1] = -1
+            if 2 in dynamic_dim:
+                shape[2] = -1
+            if 3 in dynamic_dim:
+                shape[3] = -1
     return tuple(shape)
 
 

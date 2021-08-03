@@ -924,59 +924,6 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         return int(fmap_l1_size + grad_l1_size) <= utils.L1BUFFER
 
-    def _check_batch_flag(self, tiling, current_n, seed_fmap_shape):
-        """
-
-        check whether this tiling matches the shape
-
-        Parameters
-        ----------
-        tiling : dict, result of tiling fetch
-
-        current_size : int, size of n
-
-        Returns
-        -------
-        bool, True: match
-            False: do not match
-
-        """
-
-        # shape info
-        _, _, w_i, h_i, _ = seed_fmap_shape
-        self._set_padding_list(h_i, w_i)
-        h_o = self._get_output_h(h_i)
-        w_o = self._get_output_w(w_i)
-        if tiling.get("w_one_flag") == 2:
-            w_o *= 2
-        cur_dy_shape = current_n, self.a_info[1], h_o, w_o, utils.CUBE_SIZE
-        cur_fmap_shape = current_n, self.b_info[1], h_i, w_i, utils.CUBE_SIZE
-
-        # flag check
-        constraint_flag = self._get_attach_flag_detail(tiling, cur_dy_shape, cur_fmap_shape)
-        local_tiling_flag = (constraint_flag['l0a_attach'],
-                             constraint_flag['l0b_attach'],
-                             constraint_flag['al1_attach'],
-                             constraint_flag['bl1_attach'],
-                             constraint_flag['flag_bl1k_less_than_wo'],
-                             constraint_flag['bl1_hw_allin_flag'],
-                             constraint_flag['batch_num_sc'],
-                             constraint_flag['flag_conv1d_case'],
-                             constraint_flag['flag_fmap_load2d'],
-                             constraint_flag['k_atomic_add_len'],)
-        seed_tiling_flag = (tiling["dynamic_l0a_attach"],
-                            tiling["dynamic_l0b_attach"],
-                            tiling["dynamic_al1_attach"],
-                            tiling["dynamic_bl1_attach"],
-                            tiling["flag_bl1k_less_than_wo"],
-                            tiling["bl1_hw_allin_flag"],
-                            tiling["batch_num_sc"],
-                            tiling["flag_conv1d_case"],
-                            tiling["flag_fmap_load2d"],
-                            tiling["k_atomic_add_len"],)
-
-        return seed_tiling_flag[:-3] == local_tiling_flag[:-3]
-
     def _get_output_h(self, h_i):
         if not h_i:
             return None

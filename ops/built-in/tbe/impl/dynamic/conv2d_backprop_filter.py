@@ -798,7 +798,11 @@ def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_
     if not is_conv1d_situation:
         kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
         kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
-        max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + pad_right - filter_w_dilation) // stride_w + 1
+        if DYNAMIC_FLAG in pads:
+            max_dedy_devided_sixteen = _ceil(kl1_min_devided_sixteen, stride_w)
+        else:
+            max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + \
+                                        pad_right - filter_w_dilation) // stride_w + 1
         if kl1_min >= x_w_range[1]:
             x_w_range = x.get("ori_range")[w_index]
         elif x_nchw[W_DIM] <= kl1_min:

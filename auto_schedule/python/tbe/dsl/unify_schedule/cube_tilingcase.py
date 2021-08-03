@@ -619,6 +619,16 @@ class TilingSelection:
         if not tiling_seeds:
             cur_seed = next(self.seed_cnt)
             cost_seed = self.op.get_costmodel_tiling(sum(batch_range) // 2)
+            if self.op.op_type == "conv2d_bp_input":
+                tiling = copy.deepcopy(cost_seed.get("tiling"))
+                if tiling["AL1_shape"]:
+                    tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // (cost_seed.get("B_shape")[2] * \
+                                             cost_seed.get("B_shape")[3] * TilingUtils.CUBE_SIZE)
+                if tiling["BL1_shape"]:
+                    tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // (cost_seed.get("B_shape")[2] * \
+                                             cost_seed.get("B_shape")[3] * TilingUtils.CUBE_SIZE)
+                if not self.op.check_tiling_match(tiling, cost_seed.get("C_shape")[3], cost_seed.get("C_shape")[2]):
+                    raise RuntimeError("Input range is too large, the minimum tiling may exceed L1_Buffer")
             tiling_cases.append(
                 self.op.assembly_case(cost_seed['tiling'], batch_range, cur_seed))
             add_compile_info("tiling_range", {cur_seed: batch_range})

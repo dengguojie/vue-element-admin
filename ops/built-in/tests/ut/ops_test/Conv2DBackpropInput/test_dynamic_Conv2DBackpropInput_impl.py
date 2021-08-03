@@ -235,6 +235,192 @@ def test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed(test_ar
 
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed)
 
+def conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_1(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 26, 2888, 16),
+            'ori_shape': (50, 2, 26, 2888),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_1', {"mode": "keep"}]
+    try:
+        conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("invalid generalize mode")
+
+
+ut_case.add_cust_test_func(test_func=conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_1)
+
+def conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_2(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 26, 2888, 16),
+            'ori_shape': (-2,),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_2']
+    try:
+        conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("not support unknow_rank under mode keep_rank")
+
+ut_case.add_cust_test_func(test_func=conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_2)
+
+def conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_3(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 26, 2888, 16),
+            'ori_shape': (50, 2, 26, 2888),
+            'ori_format': 'HWCN',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_3']
+    try:
+        conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("invalid inputs ori_format")
+
+ut_case.add_cust_test_func(test_func=conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_3)
+
+def conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_4(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 26, 2888, 16),
+            'ori_shape': (50, 2, 26),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_4']
+    try:
+        conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("invalid inputs ori_shape")
+
+ut_case.add_cust_test_func(test_func=conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_4)
+
+def test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_5(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 26, 16),
+            'ori_shape': (50, 2, 26, 2888),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_5']
+    try:
+        conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("invalid inputs shape")
+
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_5)
+
 def test_conv2d_backprop_input_fuzz_build_tilingcase(test_arg):
     import json
     from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input
