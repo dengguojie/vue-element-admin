@@ -44,7 +44,9 @@ def get_op_support_info(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
     axis_reduce_list = None
     if format_x == "NC1HWC0":
         axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
-                              util_select_op_base.SplitOutput([0, [0]])]]
+                              util_select_op_base.SplitOutput([0, [0]])],
+                             [util_select_op_base.SplitInput([0, [2], [0], [0]]),
+                              util_select_op_base.SplitOutput([0, [2]])]]
     else:
         axis_split_matrix = None
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)

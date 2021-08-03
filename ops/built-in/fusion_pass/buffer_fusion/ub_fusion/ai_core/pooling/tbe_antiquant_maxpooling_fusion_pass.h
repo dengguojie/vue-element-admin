@@ -34,6 +34,22 @@ protected:
    */
   vector<BufferFusionPattern*> DefinePatterns() override;
 
+  /*
+   * @brief: parse nodes matched in mapping and call DoFusion
+   * @param [in] graph: original graph
+   * @param [out] mapping: nodes matched by pattern
+   * @return bool: fusion status ok or not.
+   */
+  Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
+
+  /*
+   * @brief: Set split info for patterns
+   * @param [in] graph: original graph
+   * @param [out] mapping: nodes matched by pattern
+   * @return bool: void
+   */
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr>& fusion_nodes);
+
 private:
   const string fused_op_type_ = "FusedOp";
 };

@@ -19,6 +19,8 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 using std::vector;
@@ -68,6 +70,43 @@ vector<BufferFusionPattern*> AntiquantMaxpoolingFusionPass::DefinePatterns() {
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
 
   return patterns;
+}
+
+Status AntiquantMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+  OP_LOGD(fused_op_type_.c_str(), "Begin to do AntiquantMaxpooling!");
+  fusion_nodes = GetMatchedNodes(mapping);
+  SetSplitInfo(mapping, fusion_nodes);
+  OP_LOGD(fused_op_type_.c_str(), "End to do AntiquantMaxpooling!");
+
+  return SUCCESS;
+}
+
+void AntiquantMaxpoolingFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr>& fusion_nodes) {
+  vector<ge::NodePtr> pool_nodes = GetMatchedNodesByDescName(PATTERN_MAXPOOLING, mapping);
+  if (pool_nodes.empty()) {
+    OP_LOGD(fused_op_type_.c_str(), "pool node not matched");
+    return;
+  }
+
+  if (pool_nodes[0] == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "pool node invalid.");
+    return;
+  }
+  std::string op_calc_info_str;
+  fe::OpCalcInfo op_calc_info;
+  if (!op_calc_info.Initialize()) {
+    OP_LOGD(fused_op_type_.c_str(), "op_calc_info init failed.");
+    return;
+  }
+  (void)ge::AttrUtils::GetStr(pool_nodes[0]->GetOpDesc(), OP_SLICE_INFO, op_calc_info_str);
+  GetOpSliceInfoFromJson(op_calc_info, op_calc_info_str);
+
+  SetFusionOpSliceInfoToJson(op_calc_info, op_calc_info_str);
+  for (auto fusion_node : fusion_nodes) {
+    (void)ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), FUSION_OP_SLICE_INFO, op_calc_info_str);
+  }
+
+  OP_LOGD(fused_op_type_.c_str(), "set _fusion_op_slice_info success.");
 }
 
 REGISTER_BUFFER_FUSION_PASS("TbeAntiquantMaxpoolingFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,

@@ -1258,6 +1258,7 @@ IMPLEMT_INFERFORMAT_FUNC(Pooling, PoolingInferFormat) {
 }
 
 IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter PoolingInferDataSlice.");
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
@@ -1279,13 +1280,77 @@ IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
+      } else if (i == 2) {
+        int64_t out_h_start = y_data_slice[i][0];
+        int64_t out_h_end = y_data_slice[i][1];
+
+        OP_LOGD(op.GetName().c_str(), "Get cut h output range[%d, %d]", out_h_start, out_h_end);
+
+        auto xFormat = op.get_input_desc_x().GetFormat();
+        auto xShape = op.get_input_desc_x().GetShape().GetDims();
+        int64_t inputH = 0;
+        if (xFormat == FORMAT_NC1HWC0) {
+          inputH = xShape[2];
+        } else {
+          OP_LOGI(op.GetName().c_str(), "x format is not NC1HWC0");
+          return GRAPH_FAILED;
+        }
+
+        // get attr
+        auto globalPooling = op.get_attr_global_pooling();
+        auto window = op.get_attr_window();
+        auto pad = op.get_attr_pad();
+        auto stride = op.get_attr_stride();
+        if (globalPooling) {
+          OP_LOGI(op.GetName().c_str(), "global pooling can't cut h");
+          return NOT_SUPPORT_SLICE;
+        }
+        if (pad.size() != 4) {
+          OP_LOGI(op.GetName().c_str(), "pad size error");
+          return NOT_SUPPORT_SLICE;
+        }
+        int64_t strH = stride[0];
+        int64_t windowH = window[0];
+        int64_t padT = pad[0];
+
+        int64_t in_h_start = strH * out_h_start - padT;
+        in_h_start = in_h_start > 0 ? in_h_start : 0;
+        int64_t in_h_end = strH * out_h_end - padT + windowH;
+        in_h_end = in_h_end < inputH ? in_h_end : inputH;
+        in_h_end = in_h_end - 1;
+        x_data_slice[i] = {in_h_start, in_h_end};
+
+        OP_LOGD(op.GetName().c_str(), "Get cut h input range[%d, %d]", in_h_start, in_h_end);
+
+        vector<int32_t> new_pad_lists = {0, 0, 0, 0};
+        if (in_h_start == 0) {
+          new_pad_lists[0] = pad[0];
+          new_pad_lists[2] = pad[2];
+          new_pad_lists[3] = pad[3];
+        } else if (in_h_start != 0 && in_h_end != (inputH - 1)) {
+          new_pad_lists[2] = pad[2];
+          new_pad_lists[3] = pad[3];
+        } else {
+          new_pad_lists[1] = pad[1];
+          new_pad_lists[2] = pad[2];
+          new_pad_lists[3] = pad[3];
+        }
+        op.SetAttr("pad", new_pad_lists);
+        OP_LOGD(op.GetName().c_str(), "pooling new pad lists is [%d, %d, %d, %d]", new_pad_lists[0],
+                new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
+
+        if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+          std::string err_msg = SetAttrErrMsg("x_data_slice");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+          return GRAPH_FAILED;
+        }
       } else {
-        OP_LOGI(op.GetName().c_str(), "only support cut in n");
+        OP_LOGI(op.GetName().c_str(), "only support cut in n and h");
         return NOT_SUPPORT_SLICE;
       }
     }
   }
-  OP_LOGI(op.GetName().c_str(), "PoolingInferDataSlice success");
+  OP_LOGD(op.GetName().c_str(), "PoolingInferDataSlice success");
   return GRAPH_SUCCESS;
 }
 
