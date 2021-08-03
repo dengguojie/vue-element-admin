@@ -28,6 +28,7 @@ TILING_ARG_NUM = 4
 MAX_INPUT_RANK = 64
 
 
+# pylint: disable=locally-disabled,unused-argument,invalid-name
 def get_op_support_info(concat_dim, x, y, kernel_name="concat_offset_d"):
     """
     get_op_support_info
@@ -41,13 +42,13 @@ def get_op_support_info(concat_dim, x, y, kernel_name="concat_offset_d"):
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
     """
-    the ori_shape of concat_dim doesnot support -2
+    when input is more than 95, changed to aicpu
     """
-    shapex = concat_dim.get("ori_shape")
-    for i in range(len(shapex)):
-        if shapex[i] == -2:
-            return False
-    return True
+    x_len = len(x)
+    if x_len > 95:
+        return False, "aicore only support cases that all num of x is <= 95"
+
+    return True, ""
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
