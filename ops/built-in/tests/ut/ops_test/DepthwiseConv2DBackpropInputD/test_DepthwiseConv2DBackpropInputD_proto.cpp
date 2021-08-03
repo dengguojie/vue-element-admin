@@ -31,7 +31,7 @@ TEST_F(DepthwiseConv2DBackpropInputDProtoTest, DepthwiseConv2dBackpropInputDBase
     op.SetAttr("strides", {1, 2, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     std::string padding = "VALID";
     op.SetAttr("padding", padding);
@@ -55,6 +55,7 @@ TEST_F(DepthwiseConv2DBackpropInputDProtoTest, DepthwiseConv2dBackpropInputDBase
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 26, 26}, ge::FORMAT_NCHW));
     op.SetAttr("strides", {1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("groups", 1);
     op.SetAttr("dilations", {1, 1, 1, 1});
     op.SetAttr("padding", "SAME");
     op.SetAttr("data_format", "NCHW");

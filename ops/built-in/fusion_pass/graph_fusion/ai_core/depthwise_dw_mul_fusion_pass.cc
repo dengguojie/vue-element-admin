@@ -135,7 +135,7 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   OP_LOGI("in AddMul After calculate mul_dim_info");
   ge::GeTensorDesc output_desc;
   if (!is_dynamic) {
-    vector<int64_t> mul_dim_info = {mul_c1 * mul_h * mul_w, 1, COUT*multiplier, COUT};
+    vector<int64_t> mul_dim_info = {mul_c1 * mul_h * mul_w, multiplier, COUT, COUT};
     ge::GeShape mulInputShape(mul_dim_info);
     input_desc.SetShape(mulInputShape);
     input_desc.SetOriginShape(ge::GeShape({mul_h, mul_w, 1, mul_n*mul_c}));
@@ -419,6 +419,7 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   if (!is_dynamic) {
     ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
     depthwise_dw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
+    depthwise_dw_output_tensor.SetShape(ge::GeShape(filter_size_reset));
     ret_res = depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
     dim_info2 = depthwise_dw_output_tensor.GetOriginShape().GetDims();
     OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0], 

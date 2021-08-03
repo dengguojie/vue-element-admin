@@ -913,7 +913,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   filterW = shapeW.GetDim(fwPosition);
 
   int64_t groups = 0;
-  groups = tensorDescW.GetOriginShape().GetDim(fcPosition) * tensorDescW.GetOriginShape().GetDim(fnPosition);
+  groups = shapeIn.GetDim(cPosition);
   op.SetAttr("groups", groups);
 
   dilationH = dilation.at(hPosition);
@@ -1531,6 +1531,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     // when static op or dynamic op phase_running, is_dynamic == False
     is_dynamic = true;
     reset_range(op, "out_backprop");
+
   }
 
   std::vector<int64_t> strides;
@@ -1581,7 +1582,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
 
   auto tensorDescW = op.GetInputDesc(1);
   auto shapeW = tensorDescW.GetShape();
-
   Format filterFormat = tensorDescW.GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
   if (!GetDimInFormat(op.GetName(), filterFormatStr, "H", fh_position)) {
@@ -1600,8 +1600,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   filter_h = shapeW.GetDim(fh_position);
   filter_w = shapeW.GetDim(fw_position);
   filter_c = shapeW.GetDim(fc_position);
-  groups = tensorDescW.GetOriginShape().GetDim(fc_position) * tensorDescW.GetOriginShape().GetDim(fn_position);
-  op.SetAttr("groups", groups);
 
   if (!GetDimInFormat(op.GetName(), dataFormat, "H", h_position)) {
     return GRAPH_FAILED;
@@ -1664,7 +1662,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   if (input_sizes.size() == 4) {
     y_desc->SetShape(GeShape(input_sizes));
   }
-
+  groups = tensorDescW.GetOriginShape().GetDim(fc_position);
+  op.SetAttr("groups", groups);
   // fuzz_build switch
   bool fuzz_build = false;
   op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
@@ -1759,9 +1758,6 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDV
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
-  int64_t groups = 0;
-  groups = filter_size[2] * filter_size[3];
-  op.SetAttr("groups", groups);
 
   DataType output_dtype = op.GetInputDesc("out_backprop").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDesc("filter_grad");
@@ -1799,6 +1795,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   int64_t wPosition = 0;
   int64_t fhPosition = 0;
   int64_t fwPosition = 0;
+  int64_t cPosition = 0;
   int64_t inH = 0;
   int64_t inW = 0;
   int64_t filterH = 0;
@@ -1825,13 +1822,18 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
 
   auto tensorDescIn = op.GetInputDesc(0);
   auto shapeIn = tensorDescIn.GetShape();
-
   if (!GetDimInFormat(op.GetName(), dataFormat, "H", hPosition)) {
     return GRAPH_FAILED;
   }
   if (!GetDimInFormat(op.GetName(), dataFormat, "W", wPosition)) {
     return GRAPH_FAILED;
   }
+  if (!GetDimInFormat(op.GetName(), dataFormat, "C", cPosition)) {
+    return GRAPH_FAILED;
+  }
+  int64_t groups = 0;
+  groups = shapeIn.GetDim(cPosition);
+  op.SetAttr("groups", groups);
 
   // NC1HWC0(NCHW)
   inH = shapeIn.GetDim(hPosition);
@@ -2017,7 +2019,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   filter_c = filter_size[fc_position];
   filter_n = filter_size[fn_position];
   int64_t groups = 0;
-  groups = filter_c * filter_n;
+  groups = filter_c;
   op.SetAttr("groups", groups);
 
   auto tensorDescIn = op.GetInputDesc(0);

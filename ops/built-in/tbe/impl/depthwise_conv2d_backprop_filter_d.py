@@ -250,6 +250,7 @@ def depthwise_conv2d_backprop_filter_d(
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     n_size, c_size, h_size, w_size = shape_in
+    groups = c_size
     shape_in = [n_size, _ceil(c_size) // BLOCK_SIZE, 
                 h_size, w_size, BLOCK_SIZE]
     n_size, c_size, h_size, w_size = shape_dout
@@ -263,7 +264,7 @@ def depthwise_conv2d_backprop_filter_d(
         "strides": (strides[dim_h], strides[dim_w]),
         "padding": pads,
         "dilations": (1, 1, dilations[dim_h], dilations[dim_w]),
-        "groups": shape_w[2]*shape_w[3],
+        "groups": groups,
         "res_dtype":w_dtype.lower(),
         "kernel_name": kernel_name
     }

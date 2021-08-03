@@ -610,7 +610,7 @@ conv2d_bp_filter_op_testcase = [
         1,
         RuntimeError,
     ),
-    # error batchw!=Cy
+    # error filter_size != res_shape
     (
         "float16",
         "float16",
@@ -628,6 +628,24 @@ conv2d_bp_filter_op_testcase = [
         1,
         RuntimeError,
     ),
+    # error batchw!=Cy
+    (
+        "float16",
+        "float16",
+        "float32",
+        (1, 16, 14, 14),
+        (1, 16, 14, 14),
+        (2, 16, 1, 1),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (2, 16, 1, 1),
+        (1, 1, 1, 1),
+        (0, 0, 0, 0),
+        (1, 1, 1, 1),
+        1,
+        RuntimeError,
+    ),
     # error Cw!=Cx
     (
         "float16",
@@ -635,7 +653,7 @@ conv2d_bp_filter_op_testcase = [
         "float32",
         (1, 16, 14, 14),
         (1, 16, 14, 14),
-        (16, 16, 1, 1),
+        (16, 2, 1, 1),
         "NCHW",
         "NCHW",
         "NCHW",

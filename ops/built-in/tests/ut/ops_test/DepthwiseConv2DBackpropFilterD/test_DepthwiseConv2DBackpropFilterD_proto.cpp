@@ -32,7 +32,7 @@ TEST_F(DepthwiseConv2DBackpropFilterDProtoTest, DepthwiseConv2DBackpropFilterDBa
     op.SetAttr("strides", {1, 2, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NHWC");
     std::string padding = "VALID";
     op.SetAttr("padding", padding);
@@ -51,19 +51,43 @@ TEST_F(DepthwiseConv2DBackpropFilterDProtoTest, DepthwiseConv2DBackpropFilterDBa
     op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
     op.UpdateOutputDesc("filter_grad", create_desc_with_ori({512, 256, 1, 1},
-        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
-    op.SetAttr("strides", {1, 1, 2, 2});
+        ge::DT_FLOAT16, ge::FORMAT_HWCN, {1,1,256,512}, ge::FORMAT_HWCN));
+    op.SetAttr("filter_size", {512, 1, 1, 256});
+    op.SetAttr("strides", {2, 2, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("data_format","NCHW");
+    op.SetAttr("data_format","NHWC");
+    op.SetAttr("groups", 1);
     std::string padding = "SAME";
     op.SetAttr("padding", padding);
-    op.SetAttr("filter_size", {512, 256, 1, 1});
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+// Error data_format
+TEST_F(DepthwiseConv2DBackpropFilterDProtoTest, DepthwiseConv2DBackpropFilterDErrorDataFormat) {
+    ge::op::DepthwiseConv2DBackpropFilterD op;
+    op.UpdateInputDesc("input", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("filter_grad", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_HWCN, {1,1,256,512}, ge::FORMAT_HWCN));
+    op.SetAttr("filter_size", {512, 1, 1, 256});
+    op.SetAttr("strides", {2, 2, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NHW");
+    op.SetAttr("groups", 1);
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 // check fm type diff x type

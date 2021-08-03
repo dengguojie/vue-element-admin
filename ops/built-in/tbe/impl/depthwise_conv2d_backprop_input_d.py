@@ -322,7 +322,7 @@ def depthwise_conv2d_backprop_input_d(filter,
 
     # input parameters
     batch, channel_in, input_height, input_width = input_shape
-    filter_height, filter_width, _, channel_out = filter_shape
+    filter_height, filter_width, filter_c, filter_k = filter_shape
     input_c1 = (channel_in + BLOCK_SIZE - 1) // BLOCK_SIZE
     stride_h, stride_w = strides[dim_s_h], strides[dim_s_w]
     dilation_h, dilation_w = dilations[dim_d_h], dilations[dim_d_w]
@@ -343,9 +343,9 @@ def depthwise_conv2d_backprop_input_d(filter,
     out_backprop_width = (full_width - dilated_filter_width) // stride_w + 1
 
     _check_output_backprop(output_height, output_width, out_backprop_height, out_backprop_width)
-
-    filter_shape = [_ceil(channel_in * channel_out) // BLOCK_SIZE * filter_height * filter_width,
-                    1, BLOCK_SIZE, BLOCK_SIZE]
+    multi_k = output_channel // channel_in
+    filter_size = [filter_c * filter_k, 1, filter_height, filter_width]
+    filter_shape = [input_c1 * filter_height * filter_width, multi_k, BLOCK_SIZE, BLOCK_SIZE]
     filter_init = tvm.placeholder(filter_shape, dtype=filter_dtype, name='filter')
 
     output_shape = [batch, output_c1, output_height, output_width, BLOCK_SIZE]
@@ -356,13 +356,13 @@ def depthwise_conv2d_backprop_input_d(filter,
     group_dict = {
         "dx_c1_extend": 1,
         "dx_c_ori": 1,
-        "dy_c1_extend": 1,
-        "dy_c_ori": 1,
-        "filter_batch_ori": 1,
+        "dy_c1_extend": multi_k,
+        "dy_c_ori": multi_k,
+        "filter_batch_ori": multi_k,
         "filter_c_ori": 1,
         "filter_ori_format": "HWCN",
-        "g_extend": output_c1,
-        "groups": output_c1 * BLOCK_SIZE,
+        "g_extend": input_c1,
+        "groups": channel_in,
         "multiple_extend": 16
     }
     para_dict = {
