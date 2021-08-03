@@ -229,11 +229,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                 attr_name,
                 str(attr_value))
 
-    def _check_64bits_limitation(attr_name, attr_value, dtype=None):
-        if dtype is None:
-            bit_ratio = _BIT_RATIO_DICT.get("float16")
-        else:
-            bit_ratio = _BIT_RATIO_DICT.get(dtype)
+    def _check_64bits_limitation(attr_name, attr_value, dtype):
+        bit_ratio = _BIT_RATIO_DICT.get(dtype)
         if attr_value * bit_ratio > _DATA_SIZE_MAX:
             dict_args = {
                 'errCode': 'E60020',
@@ -393,7 +390,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     # Chip Design demand fmap_w must larger than 2 when fmap_h != 1
     if var_map and dedx_h_upper != 1 and dedx_w_upper == 1:
         cube_err.raise_err_one_para(
-            'E62006', 'conv3d_backprop_input', 
+            'E62006', 'conv3d_backprop_input',
             'Dynamic mode only support input_size_w must >=2 when input_size_h != 1')
 
     # filter value limit

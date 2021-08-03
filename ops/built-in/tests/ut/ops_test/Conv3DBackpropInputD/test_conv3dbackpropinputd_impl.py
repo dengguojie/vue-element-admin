@@ -249,94 +249,222 @@ case27 = _run_api_end_with_d(out_backprop=out_backprop, filters=filters,
 strides = (1, 2, 2, 3000, 1)
 case28 = _run_api_end_with_d(strides=strides)
 
+# test H!=1 W=1
+case_wo1 = _run_api_end_with_d(
+    filters={'ori_shape': (1, 5, 8, 52, 11), 'shape': (1, 5, 8, 52, 11),
+             'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'},
+    out_backprop={'ori_shape': (1, 3, 28, 1, 11), 'shape': (1, 3, 28, 1, 11),
+                  'ori_format': 'NDHWC', 'format': 'NDHWC',
+                  'dtype': 'float16'},
+    y_input={'ori_shape': (1, 52, 28, 1, 52),
+             'shape': (1, 52, 28, 1, 52),
+             'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'},
+    input_sizes=(1, 52, 28, 1, 52),
+    strides=(1, 20, 1, 4, 1),
+    pads=[0, 0, 2, 2, 3, 4],
+    dilations=(1, 1, 1, 1, 1),
+    groups=1, data_format="NDHWC")
+
+# default tiling
+def test_conv3d_dx_mock_default_tiling(test_args):
+    from tbe.common.tiling.tiling_helper import TILING_INSTANCE
+    from impl.conv3d_backprop_input_d import conv3d_backprop_input_d
+    tiling_type = "auto_tiling"
+    tiling_params = {'a_shape': [1, 1, 1, 1, 1, 16], 'b_shape': [16, 2, 1, 2, 2, 16], 'c_shape': [1, 2, 2, 2, 16],
+                     'a_dtype': 'float16', 'b_dtype': 'float16', 'c_dtype': 'float16', 'mad_dtype': 'float32',
+                     'pad': [0, 0, 1, 0, 1, 0], 'stride': [2, 1, 1], 'strideh_expand': 2, 'stridew_expand': 2,
+                     'dilation': [1, 1, 1], 'group': 1, 'fused_coefficient': [0, 0, 0], 'bias_flag': False,
+                     'op_type': 'conv3d_backprop_input', 'kernel_name': 'conv3d_dx_fault',
+                     'model_type': 'xgboost', 'dynamic_shape_flag': False, 'fused_channel_wise': [0, 0, 0],
+                     'fusion_type': 0, 'l1_fusion_type': -1, 'l2_fusion_type': -1, 'fm_l1_valid_size': 0,
+                     'fm_l1_valid_size_level': 0}
+    tiling_dict = {
+        'conv3d_dx_fault': {'AL0_matrix': [50, 1, 32, 16, 1, 2], 'AL1_shape': [224, 1, 1, 1],
+                            'AUB_channel_wise_flag': None, 'AUB_shape': [896, 3, 1, 1], 'A_overhead_opt_flag': 0,
+                            'BL0_matrix': [1, 2, 16, 16, 1, 1], 'BL1_shape': [], 'BUB_channel_wise_flag': None,
+                            'BUB_shape': [1, 1, 1, 1], 'B_overhead_opt_flag': 0, 'CL0_matrix': [2, 50, 16, 16, 1, 1],
+                            'CUB_channel_wise_flag': False, 'CUB_matrix': [1, 50, 16, 16, 1, 1],
+                            'batch_bef_group_flag': 0, 'block_dim': [1, 3, 3, 3],
+                            'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 2, 'AUB_pbuffer': 2,
+                                                       'BL0_pbuffer': 2, 'BL1_pbuffer': 1, 'BUB_pbuffer': 1,
+                                                       'CL0_pbuffer': 1, 'CUB_pbuffer': 2, 'UBG_pbuffer': 2},
+                                                       'n_bef_batch_flag': 0, 'n_bef_group_flag': 0,
+                                                       'tbe_compile_para': 0}}
+
+    input_list = [
+        {'ori_shape': (2, 2, 2, 16, 16), 'shape': (2, 2, 2, 16, 16),
+         'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'},
+        {'ori_shape': (1, 1, 1, 1, 16), 'shape': (1, 1, 1, 1, 16),
+         'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'},
+        {'ori_shape': (1, 2, 2, 2, 16), 'shape': (1, 2, 2, 2, 16),
+         'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'},
+        (1, 2, 2, 2, 16), (1, 2, 2, 2, 1), [0, 0, 0, 0, 0, 0], (1, 1, 1, 1, 1),
+        1, "NDHWC", "conv3d_dx_fault"
+    ]
+
+    TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+    conv3d_backprop_input_d(*input_list)
+    TILING_INSTANCE.instance_refresh(tiling_type, tiling_params, {})
+
+ut_case.add_cust_test_func(test_func=test_conv3d_dx_mock_default_tiling)
+
+# dsl d_dim wrong
+def test_conv3d_dx_dsl_d_wrong(test_args):
+    from tbe.dsl.compute import conv3d_backprop_input_compute as dx
+    shape_filter = (2, 2, 2, 16, 16)
+    shape_out_backprop = (1, 3, 1, 1, 16)
+    input_sizes = (1, 2, 2, 2, 16)
+    strides = (1, 2, 2, 2, 1)
+    pads = [0, 0, 0, 0, 0, 0]
+    dilations = (1, 1, 1, 1, 1)
+    try:
+        dx._check_conv3dbp_input_params_in_dsl(
+            shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
+            'float16', 'float16', 'float16', {})
+    except RuntimeError as e:
+        print(e)
+ut_case.add_cust_test_func(test_func=test_conv3d_dx_dsl_d_wrong)
+
+# dsl h_dim wrong
+def test_conv3d_dx_dsl_h_wrong(test_args):
+    from tbe.dsl.compute import conv3d_backprop_input_compute as dx
+    shape_filter = (2, 2, 2, 16, 16)
+    shape_out_backprop = (1, 1, 3, 1, 16)
+    input_sizes = (1, 2, 2, 2, 16)
+    strides = (1, 2, 2, 2, 1)
+    pads = [0, 0, 0, 0, 0, 0]
+    dilations = (1, 1, 1, 1, 1)
+    try:
+        dx._check_conv3dbp_input_params_in_dsl(
+            shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
+            'float16', 'float16', 'float16', {})
+    except RuntimeError as e:
+        print(e)
+ut_case.add_cust_test_func(test_func=test_conv3d_dx_dsl_h_wrong)
+
+# dsl w_dim wrong
+def test_conv3d_dx_dsl_w_wrong(test_args):
+    from tbe.dsl.compute import conv3d_backprop_input_compute as dx
+    shape_filter = (2, 2, 2, 16, 16)
+    shape_out_backprop = (1, 1, 1, 3, 16)
+    input_sizes = (1, 2, 2, 2, 16)
+    strides = (1, 2, 2, 2, 1)
+    pads = [0, 0, 0, 0, 0, 0]
+    dilations = (1, 1, 1, 1, 1)
+    try:
+        dx._check_conv3dbp_input_params_in_dsl(
+            shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
+            'float16', 'float16', 'float16', {})
+    except RuntimeError as e:
+        print(e)
+ut_case.add_cust_test_func(test_func=test_conv3d_dx_dsl_w_wrong)
+
+# dsl exceed L1
+def test_conv3d_dx_dsl_exceed_l1(test_args):
+    from tbe.dsl.compute import conv3d_backprop_input_compute as dx
+    shape_filter = (7, 2, 2, 3, 19)
+    shape_out_backprop = (4, 9, 2, 8, 19)
+    input_sizes = (4, 31, 112, 118, 57)
+    strides = (1, 3, 1, 1, 1)
+    pads = [0, 0, 0, 0, 0, 0]
+    dilations = (1, 1, 110, 110, 1)
+    try:
+        dx._check_conv3dbp_input_params_in_dsl(
+            shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
+            'float16', 'float16', 'float16', {})
+    except RuntimeError as e:
+        print(e)
+ut_case.add_cust_test_func(test_func=test_conv3d_dx_dsl_exceed_l1)
 
 # Add test Cases
 # Params is the input params of the operator.
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case1, "success", "case1", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case2, "success", "case2", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case3, RuntimeError, "case3", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case4, RuntimeError, "case4", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case5, RuntimeError, "case5", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case6, RuntimeError, "case6", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case7, RuntimeError, "case7", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case8, RuntimeError, "case8", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case9, RuntimeError, "case9", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case10, RuntimeError, "case10", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case11, RuntimeError, "case11", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case12, RuntimeError, "case12", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case13, RuntimeError, "case13", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case14, RuntimeError, "case14", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case15, RuntimeError, "case15", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case16, RuntimeError, "case16", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case17, RuntimeError, "case17", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case18, RuntimeError, "case18", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case19, RuntimeError, "case19", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case20, RuntimeError, "case20", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case21, RuntimeError, "case21", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case22, RuntimeError, "case22", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case23, RuntimeError, "case23", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case24, RuntimeError, "case24", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case25, RuntimeError, "case25", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case26, RuntimeError, "case26", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case27, RuntimeError, "case27", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend310"],
                  _gen_data_case(case28, RuntimeError, "case28", True))
 
+ut_case.add_case(["Ascend310"],
+                 _gen_data_case(case_wo1, "success", "case_wo1", True))
 
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910A")
     exit(0)

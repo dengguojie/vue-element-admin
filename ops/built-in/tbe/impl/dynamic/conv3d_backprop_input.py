@@ -459,7 +459,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
             _check_64bits_limitation("out_backprop", dedy_size, dtype=out_backprop_dtype)
         filter_size = util_common.align(filter_batch, _C0_SIZE) * util_common.align(
-                    filter_channel, _C0_SIZE) * filter_depth * filter_h * filter_w
+                      filter_channel, _C0_SIZE) * filter_depth * filter_h * filter_w
         _check_64bits_limitation("filter", filter_size, dtype=filter_dtype)
 
     # Base check, Mainly required by interface appearance
