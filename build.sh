@@ -154,7 +154,7 @@ down_third_libs(){
     fi
   fi
   if [ ! -f "./build/cann/download/thirdlibs.zip" ];then 
-    wget  --connect-timeout=5 -P build/cann/download $obs_addr
+    wget --no-check-certificate  --connect-timeout=5 -P build/cann/download $obs_addr
     res_down=`echo $?`
     if [  $res_down -eq 0 ];then
       echo "download from $obs_addr success"
@@ -169,7 +169,7 @@ down_third_libs(){
           eval pack=$(echo \$$pack)
           eval link=$(echo \$$link)
           if [ ! -f "./build/cann/download/$mylib/$pack" ];then
-            wget -P build/cann/download/$mylib --debug ${link}
+            wget --no-check-certificate -P build/cann/download/$mylib --debug ${link}
           fi
         done
     fi
