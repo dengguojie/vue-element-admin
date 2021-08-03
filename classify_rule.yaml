@@ -1655,3 +1655,80 @@ vector_B:
   llt:
     ut_check: true
     st_check: true
+
+cube-conv2d:
+  commiter:
+    "xxx"
+  team: "cube-conv2d"
+  src:
+    release:
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_quant_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_quant_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_double_in_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_double_in_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_requant_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_requant_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_common_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_common_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_conv2d_mul_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
+      - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
+      - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
+      - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
+      - ops/built-in/framework/onnx_plugin/conv2d_plugin.cc
+      - ops/built-in/framework/caffe_plugin/caffe_conv2d_plugin.cc
+    unrelease:
+  llt:
+    ut_check: true
+    st_check: false
+
+cube-conv2d-python:
+  commiter:
+    "xxx"
+  team: "cube-conv2d-python" ##组件名称
+  src:
+    release:
+      - ops/built-in/tbe/impl/conv2d.py
+      - ops/built-in/tbe/impl/strided_read.py
+      - ops/built-in/tbe/impl/strided_write.py
+      - ops/built-in/tbe/impl/conv2d_data_rm.py
+      - ops/built-in/tbe/impl/depthwise_conv2d.py
+      - ops/built-in/tbe/impl/dynamic/conv2d.py
+      - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
+      - ops/built-in/tbe/impl/util/util_conv2d.py
+      - auto_schedule/python/lang/cce/te_compute/conv_compute.py
+      - auto_schedule/python/lang/cce/te_compute/depthwise_conv2d_compute.py
+      - auto_schedule/python/lang/cce/te_compute/max_pool2d_3_2_fusion_compute.py
+      - auto_schedule/python/tbe/dsl/compute/conv_compute.py
+      - auto_schedule/python/tbe/dsl/compute/max_pool2d_3_2_fusion_compute.py
+      - auto_schedule/python/tbe/dsl/compute/depthwise_conv2d_compute.py
+      - auto_schedule/python/tbe/dsl/static_schedule/conv_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/strided_read_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/strided_write_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/depthwise_conv2d_schedule.py
+      - auto_schedule/python/lang/dynamic/schedule/conv2d_tilingcase.py
+      - auto_schedule/python/lang/dynamic/schedule/conv2d_schedule.py
+      - ops/built-in/tbe/impl/dynamic/avg_pool.py
+  llt:
+    ut_check: true
+    st_check: false
