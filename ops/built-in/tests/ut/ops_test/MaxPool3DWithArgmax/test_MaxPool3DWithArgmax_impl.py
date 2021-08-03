@@ -24,10 +24,13 @@ case2 = {"params": [{"shape": (3, 87, 6, 100, 64, 16), "dtype": "float16"},
                     {}, {}, [1, 1, 1, 1, 2], [1, 1, 10, 1, 1]]}
 case3 = {"params": [{"shape": (10, 225, 1, 103, 176, 16), "dtype": "float16"},
                     {}, {}, [1, 1, 1, 1, 1], [1, 1, 5, 3, 2]]}
+case4 = {"params": [{"shape": (4, 25, 1, 70, 30, 16), "dtype": "float16"},
+                    {}, {}, [1, 1, 2, 2, 2], [1, 1, 5, 4, 2]]}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 
 if __name__ == '__main__':
     ut_case.run()

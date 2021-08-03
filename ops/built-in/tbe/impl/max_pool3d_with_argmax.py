@@ -288,6 +288,9 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         self.bm_line_loop = self.cut_ub_val // self.vector_size_elem
         self.bm_line_tail = self.cut_ub_val % self.vector_size_elem
 
+        self.super_line_loop_cmp = self.line_rep_loop // self.upper_cmp_rep
+        self.super_line_tail_cmp = self.line_rep_loop % self.upper_cmp_rep
+
         # compute some values for ub-cut-tail process
         # Notice: cut_ub_tail_aligned has already aligned to 16, so there is no need to consider ubtail_ub_tail
         self.ubtail_ub_loop = self.cut_ub_tail_aligned * self.C0 // self.vector_size_elem
@@ -295,6 +298,9 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         self.ubtail_bm_tail = self.cut_ub_tail_aligned % self.vector_size_elem
         self.ubtail_super_loop = self.ubtail_ub_loop // self.upper_rep_limit
         self.ubtail_super_tail = self.ubtail_ub_loop % self.upper_rep_limit
+
+        self.ubtail_super_loop_cmp = self.ubtail_ub_loop // self.upper_cmp_rep
+        self.ubtail_super_tail_cmp = self.ubtail_ub_loop % self.upper_cmp_rep
 
     def _cut_ub_process(self, ind_ctx, mode):
         tensor_info = ind_ctx['tensor_info']
@@ -355,8 +361,8 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
             super()._calc_bitmask(big_matrix_ub=bigmat_ub_T,
                                   bitmask_ub=bitmask_ub_T,
                                   max_line_ub=maxline_ub_T,
-                                  super_line_loop=self.super_line_loop,
-                                  super_line_tail=self.super_line_tail)
+                                  super_line_loop=self.super_line_loop_cmp,
+                                  super_line_tail=self.super_line_tail_cmp)
 
             # step5: deduplicate the bitmask, each column must have at most one '1'.
             super()._deduplicate_bitmask(mask_or_ub=maskor_ub_T,
@@ -404,8 +410,8 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         super()._calc_bitmask(big_matrix_ub=bigmat_ub_T,
                               bitmask_ub=bitmask_ub_T,
                               max_line_ub=maxline_ub_T,
-                              super_line_loop=self.ubtail_super_loop,
-                              super_line_tail=self.ubtail_super_tail)
+                              super_line_loop=self.ubtail_super_loop_cmp,
+                              super_line_tail=self.ubtail_super_tail_cmp)
 
         # step5: deduplicate the bitmask, each column must have at most one '1'.
         super()._deduplicate_bitmask(mask_or_ub=maskor_ub_T,
@@ -512,7 +518,7 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
         raise RuntimeError("dimension of dilation must be 5, value of (1, 1, dil_d, dil_h, dil_w)!")
     if dilation[0] != 1 or dilation[1] != 1:
         raise RuntimeError("first two dimensions of dilation must be one!")
-    if ceil_mode is not False:
+    if ceil_mode:
         raise RuntimeError("current version only support ceil_mode=False!")
     if argmax_type != "bitmask":
         raise RuntimeError("current version only support bitmask argmax, please set argmax_type=bitmask!")
@@ -532,6 +538,8 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
     # so we put size kernel_d * input_h * input_w into l1 at one time.
     if ksize[2] * (input_shape[3] + l1_h_pad) * input_shape[4] * 16 > tbe_platform.get_soc_spec(tbe_platform.L1_SIZE):
         raise RuntimeError("l1 is not enough, please try a smaller kernel_d, or a smaller input_h or input_w!")
+    if Wo == 1 and Ho != 1 and tbe_platform.get_soc_spec('SOC_VERSION') != 'Ascend310':
+        raise RuntimeError("current version don't support W_out = 1 in this environment!")
 
 
 @register_operator("MaxPool3DWithArgmax")
