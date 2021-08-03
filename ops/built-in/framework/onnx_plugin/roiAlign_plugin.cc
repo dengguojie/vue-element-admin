@@ -76,9 +76,7 @@ Status ParseOpToGraphRoiAlign(const ge::Operator& op, Graph& graph) {
 
   int32_t concat_dim = 1;
   std::vector<int64_t> dims;
-  ge::Shape shape(dims);
-  TensorDesc tensor_desc(shape, ge::FORMAT_ND, ge::DT_INT32);
-  ge::Tensor dim_tensor(tensor_desc, reinterpret_cast<uint8_t*>(&concat_dim), sizeof(int32_t));
+  ge::Tensor dim_tensor = Scalar2Tensor(concat_dim, dims, ge::DT_INT32);
   auto dim_const_op = op::Const("concat_dim").set_attr_value(dim_tensor);
 
   std::vector<int64_t> axes = {-1};

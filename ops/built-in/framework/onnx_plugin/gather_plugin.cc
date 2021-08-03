@@ -46,14 +46,8 @@ Status ParseParamsGather(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
-  ge::TensorDesc tensorDesc1;
   std::vector<int64_t> value_dims = {1};
-  ge::Shape value_shape(value_dims);
-  tensorDesc1.SetShape(value_shape);
-  tensorDesc1.SetDataType(DT_INT32);
-  tensorDesc1.SetFormat(ge::FORMAT_ND);
-
-  ge::Tensor tensor1(tensorDesc1, reinterpret_cast<uint8_t*>(&axis_val), sizeof(int32_t));
+  ge::Tensor tensor1 = Scalar2Tensor(axis_val, value_dims, ge::DT_INT32);
   op_dest.SetAttr("constant_values", tensor1);
   return SUCCESS;
 }

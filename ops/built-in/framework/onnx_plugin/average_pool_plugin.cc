@@ -194,13 +194,13 @@ void AvgGenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t
   }
   if (use_pad) {
     int64_t len = pads_vector.size();
-    TensorDesc tensorDesc(ge::Shape({len}), ge::FORMAT_NHWC, ge::DT_INT32);
-    ge::Tensor pads_tensor(tensorDesc, reinterpret_cast<uint8_t*>(pads_vector.data()), len * sizeof(ge::DT_INT32));
+    std::vector<int64_t> dims_pad = {len};
+    ge::Tensor pads_tensor = Vec2Tensor(pads_vector, dims_pad, ge::DT_INT32, ge::FORMAT_NHWC);
     auto paddings = op::Const("paddings").set_attr_value(pads_tensor);
 
-    float tmpConst[1] = {0.0};
-    TensorDesc valueDesc(ge::Shape({1}), ge::FORMAT_NHWC, ge::DT_FLOAT);
-    ge::Tensor values_tensor(valueDesc, reinterpret_cast<uint8_t*>(tmpConst), sizeof(ge::DT_FLOAT));
+    float tmp_const = 0.0f;
+    std::vector<int64_t> dims = {1};
+    ge::Tensor values_tensor = Scalar2Tensor(tmp_const, dims, ge::DT_FLOAT, ge::FORMAT_NHWC);
     auto constant_values = op::Const("constant_values").set_attr_value(values_tensor);
 
     auto padV2 =

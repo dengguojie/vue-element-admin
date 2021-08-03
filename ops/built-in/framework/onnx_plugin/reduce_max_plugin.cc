@@ -34,9 +34,8 @@ Status ParseParamsReduceMax(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   int num = axes.size();
-  ge::Shape shape({num});
-  ge::TensorDesc tensorDesc(shape, FORMAT_NCHW, DT_INT32);
-  ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(axes.data()), axes.size() * sizeof(DT_INT32));
+  std::vector<int64_t> dims = {num};
+  ge::Tensor tensor = Vec2Tensor(axes, dims, ge::DT_INT32, ge::FORMAT_NCHW);
 
   op_dest.SetAttr("axes", tensor);
   op_dest.SetAttr("keep_dims", keep_dims);

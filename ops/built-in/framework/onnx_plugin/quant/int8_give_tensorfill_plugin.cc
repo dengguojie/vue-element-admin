@@ -69,16 +69,14 @@ Status ParseParamsInt8GivenTensorFill(const Message* op_src, ge::Operator& op_de
     dims.push_back((int64_t)vals.size());
   }
 
-  ge::Shape shape(dims);
   auto data_type = zero_point == 0 ? ge::DT_UINT8 : ge::DT_INT8;
-  TensorDesc tensorDesc(shape, ge::FORMAT_NCHW, data_type);
   if (data_type == ge::DT_INT8) {
     std::vector<int8_t> vals_int;
     int size = vals.size();
     for (int i = 0; i < size; ++i) {
       vals_int.push_back((int8_t)vals[i]);
     }
-    ge::Tensor value_tensor(tensorDesc, reinterpret_cast<uint8_t*>(vals_int.data()), vals_int.size() * sizeof(int8_t));
+    ge::Tensor value_tensor = Vec2Tensor(vals_int, dims, data_type, ge::FORMAT_NCHW);
     op_dest.SetAttr("value", value_tensor);
   } else {
     std::vector<uint8_t> vals_uint;
@@ -86,7 +84,7 @@ Status ParseParamsInt8GivenTensorFill(const Message* op_src, ge::Operator& op_de
     for (int i = 0; i < size; ++i) {
       vals_uint.push_back((uint8_t)vals[i]);
     }
-    ge::Tensor value_tensor(tensorDesc, vals_uint.data(), vals_uint.size() * sizeof(uint8_t));
+    ge::Tensor value_tensor = Vec2Tensor(vals_uint, dims, data_type, ge::FORMAT_NCHW);
     op_dest.SetAttr("value", value_tensor);
   }
   return SUCCESS;

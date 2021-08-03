@@ -114,11 +114,9 @@ static Status ParseOpToGraphFlatten(const Operator& op, Graph& graph) {
     auto flattenV2 = op::FlattenV2().set_input_x(data0).set_attr_axis(0).set_attr_end_axis(-1);
 
     std::vector<int64_t> dims = {1};
-    ge::Shape shape(dims);
-    TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_INT32);
-    int32_t tmpAxis = 0;
-    ge::Tensor tensorAxis(tensorDesc, reinterpret_cast<uint8_t*>(&tmpAxis), sizeof(ge::DT_INT32));
-    auto data1 = op::Const("data1").set_attr_value(tensorAxis);
+    int32_t tmp_axis = 0;
+    ge::Tensor tensor_axis = Scalar2Tensor(tmp_axis, dims, ge::DT_INT32);
+    auto data1 = op::Const("data1").set_attr_value(tensor_axis);
     auto expandDims = op::ExpandDims().set_input_x(flattenV2).set_input_axis(data1);
 
     output_indexs.emplace_back(expandDims, vector<std::size_t>{0});

@@ -41,12 +41,8 @@ Status ParseParamsInt8Transpose(const Message* op_src, ge::Operator& op_dest) {
   }
 
   int num = axes.size();
-  ge::TensorDesc tensorDesc;
   std::vector<int64_t> dims = {num};
-  ge::Shape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(DT_INT64);
-  ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(axes.data()), axes.size() * sizeof(int64_t));
+  ge::Tensor tensor = Vec2Tensor(axes, dims, ge::DT_INT64);
   op_dest.SetAttr("axes", tensor);
   return SUCCESS;
 }

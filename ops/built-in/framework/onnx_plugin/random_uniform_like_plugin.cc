@@ -77,15 +77,10 @@ Status ParseOpToGraphRandomUniformLike(const ge::Operator &op, ge::Graph &graph)
   int seed = 0;
   op.GetAttr("seed", seed);
   
-  ge::TensorDesc tensorDesc;
   std::vector<int64_t> dims = {1};
-  ge::Shape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(ge::DT_FLOAT);
-
   float delta = high - low;
-  ge::Tensor tensor_mean(tensorDesc, reinterpret_cast<uint8_t*>(&low), sizeof(float));
-  ge::Tensor tensor_scale(tensorDesc, reinterpret_cast<uint8_t*>(&delta), sizeof(float));
+  ge::Tensor tensor_mean = Scalar2Tensor(low, dims, ge::DT_FLOAT);
+  ge::Tensor tensor_scale = Scalar2Tensor(delta, dims, ge::DT_FLOAT);
   
   auto data0 = op::Data("data0").set_attr_index(0);
   auto shape_op = op::Shape("shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);

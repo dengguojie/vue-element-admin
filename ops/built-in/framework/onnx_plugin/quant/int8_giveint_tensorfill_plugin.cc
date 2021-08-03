@@ -51,9 +51,7 @@ Status ParseParamsInt8GivenIntTensorFill(const Message* op_src, ge::Operator& op
     dims.push_back((int64_t)vals.size());
   }
 
-  ge::Shape shape(dims);
-  TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_INT32);
-  ge::Tensor value_tensor(tensorDesc, reinterpret_cast<uint8_t*>(vals.data()), vals.size() * sizeof(int32_t));
+  ge::Tensor value_tensor = Vec2Tensor(vals, dims, ge::DT_INT32);
   op_dest.SetAttr("value", value_tensor);
   return SUCCESS;
 }

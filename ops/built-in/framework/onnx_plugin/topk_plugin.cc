@@ -60,11 +60,7 @@ Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
   ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::9::TopK");
   int axis = -1;
   int64_t data = -1;
-  ge::TensorDesc tensorDesc;
-  std::vector<int64_t> dims = {};
-  ge::Shape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(ge::DT_INT32);
+  
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "k" && attr.type() == ge::onnx::AttributeProto::INT) {
       data = attr.i();
@@ -77,8 +73,10 @@ Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
     ONNX_PLUGIN_LOGE("TopK", "onnx TopK has no K attr.");
     return PARAM_INVALID;
   }
-  const ge::Tensor valueTensor(tensorDesc, reinterpret_cast<uint8_t*>(&data), sizeof(int32_t));
-  op_dest.SetAttr("k", valueTensor);
+
+  std::vector<int64_t> dims = {};
+  const ge::Tensor value_tensor = Scalar2Tensor(data, dims, ge::DT_INT32); 
+  op_dest.SetAttr("k", value_tensor);
   op_dest.SetAttr("dim", axis);
   return SUCCESS;
 }

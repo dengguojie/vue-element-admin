@@ -56,9 +56,8 @@ Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
   }
 
   int num = op_shape.size();
-  ge::Shape shape({num});
-  ge::TensorDesc tensorDesc(shape, FORMAT_ND, ge::DT_INT32);
-  ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(op_shape.data()), op_shape.size() * sizeof(ge::DT_INT32));
+  std::vector<int64_t> dims = {num};
+  ge::Tensor tensor = Vec2Tensor(op_shape, dims, ge::DT_INT32);
 
   op_dest.SetAttr("shape", tensor);
   op_dest.SetAttr("max", high);
@@ -100,17 +99,7 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "only support float32/float16/int32/int64, but got %d", dtype);
     return FAILED;
   }
-  ge::DataType temp_type = ge::DT_FLOAT;
-  if (dtype == 1) {
-    temp_type = ge::DT_FLOAT;
-  } else if (dtype == 10) {
-    temp_type = ge::DT_FLOAT16;
-  } else if (dtype == 6) {
-    temp_type = ge::DT_INT32;
-  } else if (dtype == 2) {
-    temp_type = ge::DT_INT64;
-  }
-
+  ge::DataType temp_type = GetOmDtypeFromOnnxDtype(dtype);
   int seed = 0;
   if (op.GetAttr("seed", seed) != SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get seed from op failed");
@@ -120,13 +109,12 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> outputs;
   if (dtype == 6 || dtype == 2) {
     int32_t max = max_f;
-    ge::TensorDesc tensorDesc1(ge::Shape(), FORMAT_ND, temp_type);
-    ge::Tensor max_tensor(tensorDesc1, reinterpret_cast<uint8_t*>(&max), sizeof(temp_type));
+    std::vector<int64_t> dims = {};
+    ge::Tensor max_tensor = Scalar2Tensor(max, dims, temp_type);
     auto data1 = op::Const("data1").set_attr_value(max_tensor);
 
     int32_t min = min_f;
-    ge::TensorDesc tensorDesc2(ge::Shape(), FORMAT_ND, temp_type);
-    ge::Tensor min_tensor(tensorDesc2, reinterpret_cast<uint8_t*>(&min), sizeof(temp_type));
+    ge::Tensor min_tensor = Scalar2Tensor(min, dims, temp_type);
     auto data2 = op::Const("data2").set_attr_value(min_tensor);
 
     auto random_int = op::RandomUniformInt()

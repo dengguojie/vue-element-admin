@@ -77,14 +77,8 @@ Status ParseParamSliceCall(const Message* op_src, ge::Operator& op_dest) {
 ge::Operator MakeConstOp(const ge::Operator& op, const std::string& attr_name) {
   std::vector<int64_t> val = {};
   op.GetAttr(attr_name, val);
-  ge::TensorDesc desc;
   std::vector<int64_t> dims(1, val.size());
-  ge::Shape shape(dims);
-  desc.SetDataType(ge::DT_INT64);
-  desc.SetFormat(ge::FORMAT_ND);
-  desc.SetShape(shape);
-
-  ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(val.data()), val.size() * sizeof(int64_t));
+  ge::Tensor tensor = Vec2Tensor(val, dims, ge::DT_INT64);
   ge::Operator const_op = op::Const(attr_name).set_attr_value(tensor);
   return const_op;
 }

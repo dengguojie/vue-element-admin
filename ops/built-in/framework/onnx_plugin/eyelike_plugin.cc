@@ -50,30 +50,27 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
   //Follow will add new optype eyelike to adapte 
   int dtype = 1;
   op.GetAttr("dtype", dtype);
-  std::map<int, ge::DataType> dmap = {{1, ge::DT_FLOAT}, {10, ge::DT_FLOAT16}, {11, ge::DT_DOUBLE},
-                                      {3, ge::DT_INT8}, {5, ge::DT_INT16}, {6, ge::DT_INT32},
-                                      {7, ge::DT_INT64}, {2, ge::DT_UINT8}, {4, ge::DT_UINT16},
-                                      {12, ge::DT_UINT32}, {13, ge::DT_UINT64}, {9, ge::DT_BOOL}};
+  auto om_type = GetOmDtypeFromOnnxDtype(dtype);
+  if (om_type == ge::DT_UNDEFINED) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "cur attr dype[%d] not support",dtype);
+    return FAILED;
+  }
   
   int32_t k = 0;
   op.GetAttr("k", k);
-  ge::Shape shape({1});
-  TensorDesc tensor_desc(shape, ge::FORMAT_ND, ge::DT_INT32);
-  ge::Tensor k_tensor(tensor_desc, reinterpret_cast<uint8_t*>(&k), sizeof(int32_t));
+  std::vector<int64_t> dims_k = {1};
+  ge::Tensor k_tensor = Scalar2Tensor(k, dims_k, ge::DT_INT32);
+
 
   std::vector<int64_t> dims;
-  ge::Shape shape1(dims);
   int32_t pad = 0;
-  TensorDesc tensor_desc1(shape1, ge::FORMAT_ND, dmap[dtype]);
-  ge::Tensor pad_tensor(tensor_desc1, reinterpret_cast<uint8_t*>(&pad), sizeof(int32_t));
+  ge::Tensor pad_tensor = Scalar2Tensor(pad, dims, om_type);
 
   int32_t fill = 1;
-  TensorDesc tensor_desc2(shape1, ge::FORMAT_ND, ge::DT_INT32);
-  ge::Tensor fill_tensor(tensor_desc2, reinterpret_cast<uint8_t*>(&fill), sizeof(int32_t));
+  ge::Tensor fill_tensor = Scalar2Tensor(fill, dims, ge::DT_INT32);
 
   int32_t split_dim = 0;
-  TensorDesc tensor_desc3(shape1, ge::FORMAT_ND, ge::DT_INT32);
-  ge::Tensor split_dim_tensor(tensor_desc3, reinterpret_cast<uint8_t*>(&split_dim), sizeof(int32_t));
+  ge::Tensor split_dim_tensor = Scalar2Tensor(split_dim, dims, ge::DT_INT32);
   
   auto data0 = op::Data("data").set_attr_index(0);
   auto const_op = op::Const("const").set_attr_value(k_tensor);
@@ -88,7 +85,7 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
   auto add_op = op::Adds("add").set_input_x(split_op, 0).set_attr_value(k);
   auto const_op2 = op::Const("const2").set_attr_value(fill_tensor);
   auto fill_op = op::Fill("fill").set_input_dims(add_op).set_input_value(const_op2);
-  auto cast_op = op::Cast("cast").set_input_x(fill_op).set_attr_dst_type(dmap[dtype]);
+  auto cast_op = op::Cast("cast").set_input_x(fill_op).set_attr_dst_type(om_type);
 
   auto squeeze_op = op::Squeeze("squeeze").set_input_x(split_op, 0).set_attr_axis(0);
   auto squeeze_op1 = op::Squeeze("squeeze1").set_input_x(split_op, 1).set_attr_axis(0);

@@ -29,45 +29,41 @@ Status ParseParamsMean(const Message* op_src, ge::Operator& op_dest) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed");
     return FAILED;
   }
-  int N_num = node->input_size();
+  int n_num = node->input_size();
 
-  op_dest.SetAttr("N", N_num);
-  opDesc->AddDynamicInputDesc("x", N_num);
+  op_dest.SetAttr("N", n_num);
+  opDesc->AddDynamicInputDesc("x", n_num);
   opDesc->AddDynamicOutputDesc("y", 1);
 
   return SUCCESS;
 }
 
 Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
-  int N_num = 0;
-  if (op.GetAttr("N", N_num) != SUCCESS) {
+  int n_num = 0;
+  if (op.GetAttr("N", n_num) != SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attribute N failed");
     return FAILED;
   }
   std::vector<ge::Operator> inputs;
   std::vector<std::pair<Operator, std::vector<size_t>>> output_indexs;
-  if (N_num == 0) {
+  if (n_num == 0) {
     ONNX_PLUGIN_LOGE("ParseOpToGraphMean", "input size must greater than 1");
     return FAILED;
   } else {
-    auto ACC = op::AccumulateNV2("AccumulateNV2").create_dynamic_input_x(N_num).set_attr_N(N_num);
+    auto acc = op::AccumulateNV2("AccumulateNV2").create_dynamic_input_x(n_num).set_attr_N(n_num);
     std::string input_name = "";
-    for (int i = 0; i < N_num; ++i) {
+    for (int i = 0; i < n_num; ++i) {
       input_name = "data_mean_" + to_string(i);
       auto data_op = op::Data(input_name).set_attr_index(i);
-      ACC.set_dynamic_input_x(i, data_op);
+      acc.set_dynamic_input_x(i, data_op);
       inputs.push_back(data_op);
     }
-    ge::TensorDesc tensorDesc2;
-    float N_f = N_num;
-    vector<float> N_list = {N_f};
+
     vector<int64_t> dims2 = {1};
-    ge::Shape shape(dims2);
-    tensorDesc2.SetShape(shape);
-    tensorDesc2.SetDataType(DT_FLOAT);
-    ge::Tensor Num_Tensor(tensorDesc2, reinterpret_cast<uint8_t*>(N_list.data()), sizeof(float));
-    auto data2 = op::Const("data2").set_attr_value(Num_Tensor);
-    auto div_op = op::Div().set_input_x1(ACC).set_input_x2(data2);
+    float num = n_num;
+    ge::Tensor num_tensor = Scalar2Tensor(num, dims2, ge::DT_FLOAT);
+    auto data2 = op::Const("data2").set_attr_value(num_tensor);
+    auto div_op = op::Div().set_input_x1(acc).set_input_x2(data2);
     output_indexs.emplace_back(div_op, std::vector<size_t>{0});
   }
   graph.SetInputs(inputs).SetOutputs(output_indexs);

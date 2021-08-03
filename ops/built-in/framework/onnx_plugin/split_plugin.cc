@@ -84,10 +84,7 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
   }
 
   std::vector<int64_t> split_dim_dims = {1};
-  ge::Shape split_dim_shape(split_dim_dims);
-  ge::TensorDesc split_dim_desc(split_dim_shape, ge::FORMAT_ND, ge::DT_INT32);
-  ge::Tensor split_dim_tensor(
-    split_dim_desc, reinterpret_cast<uint8_t *>(&split_dim),  sizeof(int32_t));
+  ge::Tensor split_dim_tensor = Scalar2Tensor(split_dim, split_dim_dims, ge::DT_INT32);
   auto const_split_dim_2 = op::Const("split_dim").set_attr_value(split_dim_tensor);
 
   if (input_size == 1) {
@@ -104,10 +101,7 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
                             .set_attr_num_split(num_split);
     } else {
       std::vector<int64_t> dims = {(int64_t)size_splits.size()};
-      ge::Shape size_splits_shape(dims);
-      ge::TensorDesc size_splits_desc(size_splits_shape, ge::FORMAT_ND, ge::DT_INT64);
-      ge::Tensor size_splits_tensor(
-      size_splits_desc, reinterpret_cast<uint8_t *>(size_splits.data()),  size_splits.size() * sizeof(int64_t));
+      ge::Tensor size_splits_tensor = Vec2Tensor(size_splits, dims, ge::DT_INT64);
       auto const_size_splits = op::Const("size_splits").set_attr_value(size_splits_tensor);
 
       split_op = op::SplitV().create_dynamic_output_y(num_split)

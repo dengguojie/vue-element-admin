@@ -204,12 +204,8 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  ge::TensorDesc tensorDesc;
   std::vector<int64_t> dims = {1};
-  ge::Shape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(DT_FLOAT16);
-  ge::Tensor tensor_scale(tensorDesc, reinterpret_cast<uint8_t*>(&scale), sizeof(DT_FLOAT16));
+  ge::Tensor tensor_scale = Scalar2Tensor(scale, dims, ge::DT_FLOAT16);
   auto data_deq = op::Const("data_deq").set_attr_value(tensor_scale);
   auto ascendD = op::AscendDequant().set_input_x(conv)
                                     .set_input_deq_scale(data_deq)
