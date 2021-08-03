@@ -763,12 +763,9 @@ std::vector<int64_t> Norm::CalcWorkspace() {
 bool Norm::ConstInputProcPost() {
   // runtime
   try {
-    tilingInfo.block_tiling_axis = op_info.at("_const_block_axis").get<std::int32_t>();
-    tilingInfo.ub_tiling_axis = op_info.at("_const_ub_axis").get<std::int32_t>();
+    int32_t const_tiling_key = op_info.at("_const_tiling_key").get<std::int32_t>();
     run_info.SetBlockDim(op_info.at("_block_dims").get<std::int32_t>());
-    // const sch
-    sch_type = is_partial_reorder ? 3 : 1;
-    run_info.SetTilingKey(CalcTilingKey());
+    run_info.SetTilingKey(const_tiling_key);
     if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
       for (auto item : CalcWorkspace()) {
         run_info.AddWorkspace(item);

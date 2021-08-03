@@ -234,7 +234,7 @@ def _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
                     return False
         return True
 
-    if hasattr(outs, "__index__") and len(outs) != 1:
+    if isinstance(outs, (list, tuple)) and len(outs) != 1:
         return False
     placeholder_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
@@ -243,22 +243,25 @@ def _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
     reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
     total = compute_type_size_map.get(ComputeType.ANY, 0)
 
-    if reduce_size == 0 or broadcast_size == 0:
-        return False
-    if reduce_size != broadcast_size:
-        return False
-    if placeholder_size + elewise_size + reduce_size + cast_size + broadcast_size != total:
+    illegal_type_size = (reduce_size == 0 or broadcast_size == 0) or (reduce_size != broadcast_size) or \
+                        (placeholder_size + elewise_size + reduce_size + cast_size + broadcast_size != total)
+    if illegal_type_size:
         return False
 
     reduce_tensor_list = compute_type_tensor_map[ComputeType.REDUCE]
     broadcast_tensor_list = compute_type_tensor_map[ComputeType.BROADCAST]
+
+    # broadcast may not have input
+    for broadcast_tensor in broadcast_tensor_list:
+        if not hasattr(broadcast_tensor.op, "input_tensors"):
+            return False
 
     before_reduce_shape = reduce_tensor_list[0].op.input_tensors[0].shape
     after_reduce_shape = reduce_tensor_list[0].shape
     before_broadcast_shape = broadcast_tensor_list[0].op.input_tensors[0].shape
     after_broadcast_shape = broadcast_tensor_list[0].shape
 
-    out_shape = outs[0].shape if hasattr(outs, "__index__") else outs.shape
+    out_shape = outs[0].shape if isinstance(outs, (list, tuple)) else outs.shape
     if not _eq_tvm_shape(before_reduce_shape, out_shape):
         return False
 

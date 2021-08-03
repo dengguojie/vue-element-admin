@@ -237,8 +237,7 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     if ori_reduce_axis is not None:
         add_compile_info_inner("_ori_axis", ori_reduce_axis)
     add_compile_info_inner(CompileInfo.BLOCK_DIMS, run_info["block_dim"])
-    add_compile_info_inner("_const_block_axis", tiling_data["block_axis"])
-    add_compile_info_inner("_const_ub_axis", tiling_data["ub_axis"])
+    add_compile_info_inner("_const_tiling_key", const_tiling_case.tiling_key)
 
     # add workspace info in json
     if tiling_data["ub_axis"] in reduce_axis_index and get_op_context():

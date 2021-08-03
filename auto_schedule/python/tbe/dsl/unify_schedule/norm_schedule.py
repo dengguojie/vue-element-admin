@@ -28,6 +28,11 @@ from .norm_tilingcase import get_block_size as get_align_factor
 from .norm_tilingcase import reorder_reduce_shape
 from .schedule import Schedule
 
+BLOCK_IDX = "blockIdx.x"
+LOCAL_UB = "local.UB"
+NO_OVERLAP = "no_overlap"
+STORAGE_BOUND = "storage_bound"
+
 
 def _get_insn(tensor):
     """
@@ -51,6 +56,9 @@ def _add_sub_dict_to_dict(_map, _key, _sub_key, _sub_value):
 
 
 class EntryNormSchedule(Schedule):
+    """
+    entrance to norm schedule
+    """
     def __init__(self, outs, tiling_case):
         self.outs = outs
         self.tiling_case = tiling_case
@@ -73,8 +81,9 @@ class EntryNormSchedule(Schedule):
 
     def do_schedule(self):
         # Get Compute Graph Info
-        norm_compute_graph_info = get_context().get_current_compute().get("_compute_graph_info")
-        norm_info = get_context().get_current_compute().get("_norm_info")
+        current_compute = get_context().get_current_compute()
+        norm_compute_graph_info = current_compute.get("_compute_graph_info")
+        norm_info = current_compute.get("_norm_info")
 
         if self.tiling_case.ub_split_axis_index not in norm_info.reduce_axis_indices:
             norm_sch = NormNormalSchedule(norm_compute_graph_info, norm_info, self.tiling_case, self.outs)
@@ -86,10 +95,13 @@ class EntryNormSchedule(Schedule):
 
 
 class NormNormalSchedule:
+    """
+    norm schedule when ub split common axis
+    """
     def __init__(self, graph_info, norm_info, tiling_case, outs):
         self._outs = outs
         self._sch = None
-        self._scope = "local.UB"
+        self._scope = LOCAL_UB
 
         self._graph_info = graph_info
         self._forward_compute_graph_map = graph_info.tensor_consumers_map
@@ -119,10 +131,13 @@ class NormNormalSchedule:
         self._compute_at_map = {}
         self._emit_insn_map = {}
 
-        self._is_nlast_block_split_last_a = False
-        self._is_nlast_ub_split_last_a = False
+        self._is_last_common_axis_split_block = False
+        self._is_last_common_axis_split_ub = False
 
     def do_schedule(self):
+        """
+        normal norm schedule process
+        """
         # to ensure that the number of input parameters in the normal sch is the same as that in the workspace sch.
         fake_workspace_count = 0
         for _ in self._graph_info.workspace_tensor_set:
@@ -228,10 +243,11 @@ class NormNormalSchedule:
         self._ub_split_result["inner_itervar"] = ub_inner
         self._ub_split_result["factor"] = ub_split_factor
 
-        self._is_nlast_block_split_last_a = (not self._norm_info.is_reduce_last_axis and
-                                             block_split_axis_index == len(self._norm_info.shape_before_reduce) - 1)
-        self._is_nlast_ub_split_last_a = (not self._norm_info.is_reduce_last_axis and
-                                          ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1)
+        self._is_last_common_axis_split_block = (not self._norm_info.is_reduce_last_axis and
+                                                 block_split_axis_index ==
+                                                 len(self._norm_info.shape_before_reduce) - 1)
+        self._is_last_common_axis_split_ub = (not self._norm_info.is_reduce_last_axis and
+                                              ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1)
 
     def _calc_reorder(self):
         def __calc_split_tensor_reorder_axis(tensor):
@@ -240,8 +256,8 @@ class NormNormalSchedule:
             ori_ub_axis = self._tiling_case.ub_split_axis_index
             reduce_axis_index = self._norm_info.reduce_axis_indices
             is_reduce_last_axis = self._norm_info.is_reduce_last_axis
-            reorder_first_r_index = len(self._norm_info.shape_before_reduce) - len(reduce_axis_index) -\
-                                    (not is_reduce_last_axis)
+            reorder_first_r_index =\
+                len(self._norm_info.shape_before_reduce) - len(reduce_axis_index) - (not is_reduce_last_axis)
             reduce_reorder_axis, _, ori_to_reorder_axis_map = reorder_reduce_shape(ori_axis,
                                                                                    reduce_axis_index,
                                                                                    is_reduce_last_axis)
@@ -260,12 +276,12 @@ class NormNormalSchedule:
                 else:
                     reorder_axis.append(axis)
             # reorder outer before reduce
-            if self._is_nlast_block_split_last_a:
+            if self._is_last_common_axis_split_block:
                 reorder_axis.insert(reorder_first_r_index, self._ub_split_result["outer_itervar"])
                 reorder_axis.insert(reorder_first_r_index, self._block_split_result["outer_itervar"])
                 reorder_axis.pop(-2)
                 reorder_axis.pop(-2)
-            elif self._is_nlast_ub_split_last_a:
+            elif self._is_last_common_axis_split_ub:
                 reorder_axis.insert(reorder_first_r_index, self._ub_split_result["outer_itervar"])
                 reorder_axis.pop(-2)
 
@@ -334,7 +350,7 @@ class NormNormalSchedule:
 
     def _do_multi_core(self):
         if self._multi_core_bind_axis is not None:
-            block = tvm.thread_axis("blockIdx.x")
+            block = tvm.thread_axis(BLOCK_IDX)
             self._sch[self._res_tensor].bind(self._multi_core_bind_axis, block)
 
     def _do_storage_bound(self):
@@ -343,8 +359,8 @@ class NormNormalSchedule:
             .union(self._cache_write_buffer_and_tensor_map.keys())
 
         for single_tensor in storage_bound_tensors:
-            storage_bound = self._graph_info.available_ub_size
-            self._sch[single_tensor].set_storage_bound(storage_bound)
+            storage_bound_value = self._graph_info.available_ub_size
+            self._sch[single_tensor].set_storage_bound(storage_bound_value)
 
     def _do_set_constraint(self):
         if get_context().get_current_compute().get("_mode") == "const":
@@ -381,11 +397,13 @@ class NormNormalSchedule:
 
     def _calc_emit_insn(self):
         emit_insn_axis_index = 0
-        self._emit_insn_map[self._res_tensor] = [self._ub_split_result["inner_itervar"], "dma_copy", {"no_overlap": 3}]
-        if self._is_nlast_block_split_last_a or len(self._norm_info.reduce_axis_indices) > 1:
+        self._emit_insn_map[self._res_tensor] = [self._ub_split_result.get("inner_itervar"),
+                                                 "dma_copy",
+                                                 {NO_OVERLAP: 3}]
+        if self._is_last_common_axis_split_block or len(self._norm_info.reduce_axis_indices) > 1:
             # copy ub to gm with stride, the last block need process the overlap too
-            self._emit_insn_map[self._res_tensor].pop()
-            self._emit_insn_map[self._res_tensor].append({"no_overlap": 2})
+            self._emit_insn_map.get(self._res_tensor).pop()
+            self._emit_insn_map.get(self._res_tensor).append({NO_OVERLAP: 2})
 
         for source, _ in self._cache_read_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "dma_copy"]
@@ -402,7 +420,7 @@ class NormNormalSchedule:
                         if axis_dom.min.value == 0 and axis_dom.extent.value == 1:
                             emit_insn_axis = single_tensor.op.reduce_axis[0]
                 self._emit_insn_map[single_tensor] = [emit_insn_axis, _get_insn(single_tensor),
-                                                      {"storage_bound": self._graph_info.available_ub_size}]
+                                                      {STORAGE_BOUND: self._graph_info.available_ub_size}]
             else:
                 self._emit_insn_map[single_tensor] = [emit_insn_axis, _get_insn(single_tensor)]
 
@@ -418,10 +436,13 @@ class NormNormalSchedule:
 
 
 class NormWorkspaceSchedule:
+    """
+    norm schedule when ub split reduce axis
+    """
     def __init__(self, graph_info, norm_info, tiling_case, outs):
         self._outs = outs
         self._sch = None
-        self._scope = "local.UB"
+        self._scope = LOCAL_UB
 
         self._graph_info = graph_info
         self._forward_compute_graph_map = graph_info.tensor_consumers_map
@@ -460,9 +481,12 @@ class NormWorkspaceSchedule:
         self._compute_at_map = {}
         self._emit_insn_map = {}
 
-        self._is_nlast_block_split_last_a = False
+        self._is_last_common_axis_split_block = False
 
     def do_schedule(self):
+        """
+        workspace norm schedule process
+        """
         real_output_tensor_op_list = [tensor.op for tensor in self._graph_info.endpoint_output_tensor_set]
         for workspace_tensor in self._workspace_tensor_set:
             self._outs.append(workspace_tensor)
@@ -524,7 +548,7 @@ class NormWorkspaceSchedule:
                 if cache_clone_tensor in sub_tensor_list:
                     sub_tensor_consumers_map = \
                         self._split_tensor_and_sub_graph_map[sub_graph_split_tensor]["sub_tensor_consumers_map"]
-                    local_consumers = list(sub_tensor_consumers_map[cache_clone_tensor]).copy()
+                    local_consumers = list(sub_tensor_consumers_map[cache_clone_tensor])[:]
                     for idx, tensor in enumerate(local_consumers):
                         # the readers have cache clone tensor
                         if tensor in self._cache_clone_tensor_and_buffer_map:
@@ -547,12 +571,12 @@ class NormWorkspaceSchedule:
                 if cache_read_tensor in sub_tensor_list:
                     sub_tensor_consumers_map = \
                         self._split_tensor_and_sub_graph_map[sub_graph_split_tensor]["sub_tensor_consumers_map"]
-                    local_consumers = list(sub_tensor_consumers_map[cache_read_tensor]).copy()
+                    local_consumers = list(sub_tensor_consumers_map[cache_read_tensor])[:]
                     for idx, tensor in enumerate(local_consumers):
                         # the readers have cache clone tensor
                         if tensor in self._cache_clone_tensor_and_buffer_map and \
                                 sub_graph_split_tensor == \
-                                    list(self._cache_clone_tensor_and_buffer_map[tensor].values())[0]:
+                                list(self._cache_clone_tensor_and_buffer_map.get(tensor).values())[0]:
                             local_consumers[idx] = list(self._cache_clone_tensor_and_buffer_map[tensor].keys())[0]
                     read_buffer = self._sch.cache_read(cache_read_tensor, self._scope, local_consumers)
                     _add_sub_dict_to_dict(self._cache_read_buffer_and_tensor_map, read_buffer,
@@ -583,7 +607,7 @@ class NormWorkspaceSchedule:
                 if workspace_tensor in sub_tensor_list:
                     sub_tensor_consumers_map = \
                         self._split_tensor_and_sub_graph_map[sub_graph_split_tensor]["sub_tensor_consumers_map"]
-                    local_consumers = list(sub_tensor_consumers_map[workspace_tensor]).copy()
+                    local_consumers = list(sub_tensor_consumers_map[workspace_tensor])[:]
                     # if workspace_tensor has consumers
                     if local_consumers:
                         # readers may include res tensor, but res tensor has been cache write
@@ -676,8 +700,9 @@ class NormWorkspaceSchedule:
             "factor": ub_split_factor
         }
 
-        self._is_nlast_block_split_last_a = (not self._norm_info.is_reduce_last_axis and
-                                             block_split_axis_index == len(self._norm_info.shape_before_reduce) - 1)
+        self._is_last_common_axis_split_block = (not self._norm_info.is_reduce_last_axis and
+                                                 block_split_axis_index ==
+                                                 len(self._norm_info.shape_before_reduce) - 1)
 
     def _calc_reorder(self):
         def __calc_split_tensor_reorder_axis(tensor):
@@ -686,8 +711,8 @@ class NormWorkspaceSchedule:
             ori_ub_axis = self._tiling_case.ub_split_axis_index
             reduce_axis_index = self._norm_info.reduce_axis_indices
             is_reduce_last_axis = self._norm_info.is_reduce_last_axis
-            reorder_first_r_index = len(self._norm_info.shape_before_reduce) - len(reduce_axis_index) -\
-                                    (not is_reduce_last_axis)
+            reorder_first_r_index =\
+                len(self._norm_info.shape_before_reduce) - len(reduce_axis_index) - (not is_reduce_last_axis)
             reduce_reorder_axis, _, ori_to_reorder_axis_map = reorder_reduce_shape(ori_axis,
                                                                                    reduce_axis_index,
                                                                                    is_reduce_last_axis)
@@ -702,7 +727,7 @@ class NormWorkspaceSchedule:
                 else:
                     reorder_axis.append(axis)
             # reorder outer before reduce
-            if self._is_nlast_block_split_last_a and tensor in self._block_split_result:
+            if self._is_last_common_axis_split_block and tensor in self._block_split_result:
                 reorder_axis.insert(reorder_first_r_index, self._block_split_result[tensor]["outer_itervar"])
                 reorder_axis.pop(-2)
 
@@ -712,8 +737,8 @@ class NormWorkspaceSchedule:
             ori_axis = tensor.op.axis
             reduce_axis_index = self._norm_info.reduce_axis_indices
             is_reduce_last_axis = self._norm_info.is_reduce_last_axis
-            reorder_first_r_index = len(self._norm_info.shape_before_reduce) - len(reduce_axis_index) -\
-                                    (not is_reduce_last_axis)
+            reorder_first_r_index =\
+                len(self._norm_info.shape_before_reduce) - len(reduce_axis_index) - (not is_reduce_last_axis)
             reorder_axis = []
             reduce_reorder_axis, reorder_to_ori_axis_map, _ = reorder_reduce_shape(ori_axis,
                                                                                    reduce_axis_index,
@@ -738,7 +763,7 @@ class NormWorkspaceSchedule:
                     else:
                         reorder_axis.append(axis)
             # reorder outer before reduce
-            if self._is_nlast_block_split_last_a and tensor in self._block_split_result:
+            if self._is_last_common_axis_split_block and tensor in self._block_split_result:
                 reorder_axis.insert(reorder_first_r_index, self._block_split_result[tensor]["outer_itervar"])
                 reorder_axis.pop(-2)
 
@@ -825,8 +850,8 @@ class NormWorkspaceSchedule:
             if not self._norm_info.is_reduce_last_axis or workspace_tensor in self._graph_info.tensors_before_reduce:
                 align_factor = get_align_factor(workspace_tensor.dtype)
                 bind_axis = len(workspace_tensor.shape) - 2
-                bind_factor = tvm.div((workspace_tensor.shape[bind_axis + 1] + align_factor - 1), align_factor) *\
-                              align_factor
+                bind_factor =\
+                    tvm.div((workspace_tensor.shape[bind_axis + 1] + align_factor - 1), align_factor) * align_factor
                 self._bind_buffer_map[workspace_tensor] = [workspace_tensor.op.axis[bind_axis], bind_factor, 0]
 
     def _do_bind_buffer(self):
@@ -848,7 +873,7 @@ class NormWorkspaceSchedule:
 
     def _do_multi_core(self):
         if self._multi_core_bind_axis_map:
-            block = tvm.thread_axis("blockIdx.x")
+            block = tvm.thread_axis(BLOCK_IDX)
             for single_tensor, param in self._multi_core_bind_axis_map.items():
                 self._sch[single_tensor].bind(param, block)
 
@@ -866,8 +891,8 @@ class NormWorkspaceSchedule:
             storage_bound_tensors = storage_bound_tensors.union(reread_workspace_ub_tensor_map.keys())
 
         for single_tensor in storage_bound_tensors:
-            storage_bound = self._graph_info.workspace_available_min_ub_size
-            self._sch[single_tensor].set_storage_bound(storage_bound)
+            storage_bound_value = self._graph_info.workspace_available_min_ub_size
+            self._sch[single_tensor].set_storage_bound(storage_bound_value)
 
     def _do_set_constraint(self):
         if get_context().get_current_compute().get("_mode") == "const":
@@ -886,7 +911,7 @@ class NormWorkspaceSchedule:
         shape_in_ub = ub_split_inner
         for i in range(reorder_ub_axis + 1, len(reduce_reorder_shape)):
             shape_in_ub *= reduce_reorder_shape[i]
-        if self._is_nlast_block_split_last_a:
+        if self._is_last_common_axis_split_block:
             shape_in_ub = shape_in_ub // reduce_reorder_shape[-1] * blk_split_inner
 
         self._sch.set_constraint(shape_in_ub <= self._graph_info.workspace_available_min_ub_size)
@@ -896,11 +921,11 @@ class NormWorkspaceSchedule:
             # reduce workspace tensor compute at to the workspace_ub_tensor
             if ori_compute_at_tensor not in self._ub_split_result and ori_compute_at_tensor in self._workspace_map:
                 return self._workspace_map[ori_compute_at_tensor]["ub_tensor"]
-            else:
-                return ori_compute_at_tensor
 
-        for single_tensor in self._graph_info.mid_tensor_set - self._compute_inline_tensors -\
-                             self._workspace_tensor_set:
+            return ori_compute_at_tensor
+
+        for single_tensor in \
+                self._graph_info.mid_tensor_set - self._compute_inline_tensors - self._workspace_tensor_set:
             for sub_graph_split_tensor in self._split_tensor_and_sub_graph_map:
                 sub_tensor_list = self._split_tensor_and_sub_graph_map[sub_graph_split_tensor]["sub_tensor_list"]
                 if single_tensor in sub_tensor_list:
@@ -955,14 +980,17 @@ class NormWorkspaceSchedule:
             self._sch[single_tensor].compute_at(self._sch[param[0]], param[1])
 
     def _calc_emit_insn(self):
+        need_enable_no_overlap_two = self._is_last_common_axis_split_block or \
+                                     len(self._norm_info.reduce_axis_indices) > 1 and \
+                                     not self._tiling_case.is_partial_reorder_case
         for source, _ in self._cache_clone_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], _get_insn(source)]
 
         for source, _ in self._cache_read_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], "dma_copy"]
 
-        for single_tensor in self._graph_info.mid_tensor_set - self._compute_inline_tensors -\
-                             self._workspace_tensor_set:
+        for single_tensor in \
+                self._graph_info.mid_tensor_set - self._compute_inline_tensors - self._workspace_tensor_set:
             self._emit_insn_map[single_tensor] = [single_tensor.op.axis[0], _get_insn(single_tensor)]
 
         for workspace_tensor in self._workspace_tensor_set:
@@ -970,20 +998,21 @@ class NormWorkspaceSchedule:
             reread_workspace_ub_tensor_map = self._workspace_map[workspace_tensor]["reread_ub_tensor"]
             # non_reduce workspace node, block and ub split on workspace tensor
             if workspace_tensor not in self._graph_info.reduce_tensor_set:
-                if self._is_nlast_block_split_last_a or len(self._norm_info.reduce_axis_indices) > 1:
+                if need_enable_no_overlap_two:
                     self._emit_insn_map[workspace_tensor] =\
                         [self._ub_split_result[workspace_tensor]["inner_itervar"],
                          "dma_copy",
-                         {"no_overlap": 2}]
+                         {NO_OVERLAP: 2}]
                 else:
                     self._emit_insn_map[workspace_tensor] =\
                         [self._ub_split_result[workspace_tensor]["inner_itervar"], "dma_copy"]
                     # src and dst are align
-                    is_align = (not self._norm_info.is_reduce_last_axis or
-                                workspace_tensor in self._graph_info.tensors_before_reduce) and \
-                                self._tiling_case.block_split_axis_index != len(self._norm_info.shape_before_reduce) - 1
+                    is_align = (not self._norm_info.is_reduce_last_axis and
+                                workspace_tensor in self._graph_info.tensors_before_reduce and
+                                self._tiling_case.block_split_axis_index !=
+                                len(self._norm_info.shape_before_reduce) - 1)
                     if is_align:
-                        self._emit_insn_map[workspace_tensor].append({"no_overlap": 0})
+                        self._emit_insn_map.get(workspace_tensor).append({NO_OVERLAP: 0})
 
                 if self._tiling_case.is_partial_reorder_case:
                     if self._tiling_case.block_split_axis_index > self._tiling_case.ub_split_axis_index:
@@ -997,15 +1026,14 @@ class NormWorkspaceSchedule:
                 self._emit_insn_map[workspace_tensor] =\
                     [self._block_split_result[workspace_tensor]["inner_itervar"], "dma_copy"]
                 # src and dst are align
-                is_align = (not self._norm_info.is_reduce_last_axis or
-                            workspace_tensor in self._graph_info.tensors_before_reduce) and \
-                           self._tiling_case.block_split_axis_index != len(self._norm_info.shape_before_reduce) - 1
+                is_align = (not self._norm_info.is_reduce_last_axis and
+                            self._tiling_case.block_split_axis_index != len(self._norm_info.shape_before_reduce) - 1)
                 if is_align:
-                    self._emit_insn_map[workspace_tensor].append({"no_overlap": 0})
+                    self._emit_insn_map.get(workspace_tensor).append({NO_OVERLAP: 0})
 
                 self._emit_insn_map[workspace_ub_tensor] =\
                     [self._ub_split_result[workspace_ub_tensor]["inner_itervar"], _get_insn(workspace_tensor),
-                     {"storage_bound": self._graph_info.workspace_available_min_ub_size}]
+                     {STORAGE_BOUND: self._graph_info.workspace_available_min_ub_size}]
 
             for reread_workspace_ub_tensor in reread_workspace_ub_tensor_map.keys():
                 self._emit_insn_map[reread_workspace_ub_tensor] =\
@@ -1015,10 +1043,10 @@ class NormWorkspaceSchedule:
             target = list(target_map.values())[0]
             self._emit_insn_map[source] = [source.op.axis[0], _get_insn(target)]
 
-        if self._is_nlast_block_split_last_a or len(self._norm_info.reduce_axis_indices) > 1:
+        if need_enable_no_overlap_two:
             self._emit_insn_map[self._res_tensor] = [self._ub_split_result[self._res_tensor]["inner_itervar"],
                                                      "dma_copy",
-                                                     {"no_overlap": 2}]
+                                                     {NO_OVERLAP: 2}]
         else:
             self._emit_insn_map[self._res_tensor] =\
                 [self._ub_split_result[self._res_tensor]["inner_itervar"], "dma_copy"]

@@ -218,3 +218,37 @@ TEST_F(NormTiling, NormTiling5) {
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1968 3 3 3 677 ");
 }
+
+TEST_F(NormTiling, NormTiling6) {
+  using namespace optiling;
+
+  ge::Graph graph("NormTiling5");
+  std::vector<int64_t> input{1, 7, 543, 76};
+  std::vector<int64_t> output{1, 7, 543, 76};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x = op::Data("x");
+  x.update_input_desc_x(tensor_input);
+  x.update_output_desc_y(tensor_output);
+
+  auto softmax_op = op::SoftmaxV2("SoftmaxV2_6");
+  softmax_op.set_input_x(x);
+  softmax_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x};
+  std::vector<Operator> outputs{softmax_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  std::string compileInfo = R"({ "_ori_axis": [3], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_reduce_shape_known": true, "_const_shape_post": true, "_const_tiling_key": 10000400, "_block_dims": 32, "_vars": {"10000400": []}})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_TRUE(iter->second(softmax_op, op_compile_info, runInfo));
+}
