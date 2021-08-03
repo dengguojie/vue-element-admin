@@ -174,11 +174,14 @@ def _shape_check_quantification(shape_a, shape_b, trans_a, trans_b, format_a):
             "mat_mul", "x2", error_detail)
 
 
-def _get_bias(shape_bias):
+def _get_bias(shape_bias, ori_shape_bias):
     bias_length = 1
     for i in shape_bias:
         bias_length *= i
-    return [(bias_length + _C0_16 - 1) // _C0_16 * _C0_16]
+    ori_bias_length = 1
+    for i in ori_shape_bias:
+        ori_bias_length *= i
+    return [(bias_length + _C0_16 - 1) // _C0_16 * _C0_16], [ori_bias_length]
 
 
 def _get_input_shape(shape_x, transpose):
@@ -753,10 +756,9 @@ def mat_mul(input_x1,
     para_check.check_shape(shape_b, param_name="input_x2")
 
     shape_bias = ()
+    ori_shape_bias = ()
     if bias is not None and bool(bias):
-        shape_bias = bias.get("shape")
-        shape_bias = list(shape_bias)
-        shape_bias = _get_bias(shape_bias)
+        shape_bias, ori_shape_bias = _get_bias(bias.get("shape"), bias.get("ori_shape"))
 
     src_dtype = input_x1.get("dtype").lower()
     dst_dtype = output_y.get("dtype").lower()
@@ -796,7 +798,7 @@ def mat_mul(input_x1,
     if shape_bias_length > 0:
         bias_dtype = bias.get("dtype")
         tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias',
-                                      dtype=bias_dtype, attrs={'ori_shape': bias['ori_shape']})
+                                      dtype=bias_dtype, attrs={'ori_shape': ori_shape_bias})
 
     if offset_w is None:
         tensor_offset_w = None
