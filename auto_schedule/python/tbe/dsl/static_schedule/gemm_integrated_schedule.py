@@ -57,14 +57,16 @@ class GemmSchedule(object):
     DEBUG_PARAM = False
     DEBUG_IR = False
     DTYPE_WIDTH_MAP = {"uint64": 4, "float16": 1, "float32": 2, "int32": 2,
-                       "int16": 1, "uint16": 1, "int8": 0.5, "uint8": 0.5, "bool": 0.5}
-    INPUT_SIZE = {"fp162fp16": 2, "fp162fp32": 2, "int82int32": 1, "int82fp32": 1}
-    L1_L0_SIZE = {"fp162fp16": 2, "fp162fp32": 2, "int82int32": 1, "int82fp32": 2}
-    OUTPUT_SIZE = {"fp162fp16": 2, "fp162fp32": 4, "int82int32": 4, "int82fp32": 4}
+                       "int16": 1, "uint16": 1, "int8": 0.5, "uint8": 0.5,
+                       "int4": 0.25, "bool": 0.5}
+    INPUT_SIZE = {"fp162fp16": 2, "fp162fp32": 2, "int82int32": 1, "int82fp32": 1, "int42int32": 0.5}
+    L1_L0_SIZE = {"fp162fp16": 2, "fp162fp32": 2, "int82int32": 1, "int82fp32": 2, "int42int32": 0.5}
+    OUTPUT_SIZE = {"fp162fp16": 2, "fp162fp32": 4, "int82int32": 4, "int82fp32": 4, "int42int32": 4}
     MAD_TYPE = {
         "fp162fp16": "float32",
         "fp162fp32": "float32",
         "int82int32": "int32",
+        "int42int32": "int32",
         "int82fp32": "float32"
     }
     emit_fusion_insn_map = {"dequant_NZ": "phony_insn",
@@ -3616,14 +3618,14 @@ class GemmSchedule(object):
                                         (unchanged, unchanged),
                                         (unchanged, block_out),
                                         (unchanged, block_out),
-                                        (unchanged, block_reduce),
+                                        (unchanged, unchanged),
                                         (unchanged, block_reduce))
             else:
                 sch[c_l0c].buffer_align((unchanged, unchanged),
                                         (unchanged, unchanged),
                                         (unchanged, block_out),
                                         (unchanged, block_out),
-                                        (unchanged, block_reduce),
+                                        (unchanged, unchanged),
                                         (unchanged, block_reduce))
         else:
             if self.have_batch:

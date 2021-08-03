@@ -375,3 +375,4 @@ TEST_F(BatchMatMulV2Test, split_test5) {
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{}, {16, 31}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
+

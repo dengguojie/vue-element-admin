@@ -1,0 +1,257 @@
+[
+    {
+      "op": "FullyConnection",
+      "case_name": "test_fully_connection_001",
+      "input_desc": [
+        {
+          "format": "NCHW",
+          "shape": [
+            16, 1, 1, 16
+          ],
+          "type": "float16",
+          "value_range": [
+            [
+              -1,
+              1
+            ]
+          ],
+          "data_distribute": "uniform",
+          "name": "x"
+        },
+        {
+          "format": "NCHW",
+          "shape": [
+            16, 16
+          ],
+          "type": "float16",
+          "value_range": [
+            [
+              -1,
+              1
+            ]
+          ],
+          "data_distribute": "uniform",
+          "name": "w"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "shape": [
+            1, 1, 16, 16
+          ],
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "name": "transpose",
+          "value": false,
+          "type": "bool"
+        },
+        {
+          "name": "axis",
+          "value": 1,
+          "type": "int"
+        },
+        {
+          "name": "num_output",
+          "value": 1,
+          "type": "int"
+        }
+      ]
+    },
+
+    {
+        "op": "FullyConnection",
+        "case_name": "test_fully_connection_002",
+        "input_desc": [
+          {
+            "format": "NCHW",
+            "shape": [
+              1, 1, 16, 16
+            ],
+            "type": "float16",
+            "value_range": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "data_distribute": "uniform",
+            "name": "x"
+          },
+          {
+            "format": "NCHW",
+            "shape": [
+              16, 256
+            ],
+            "type": "float16",
+            "value_range": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "data_distribute": "uniform",
+            "name": "w"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "shape": [
+              1, 1, 16, 16
+            ],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "transpose",
+            "value": false,
+            "type": "bool"
+          },
+          {
+            "name": "axis",
+            "value": 2,
+            "type": "int"
+          },
+          {
+            "name": "num_output",
+            "value": 1,
+            "type": "int"
+          }
+        ]
+      },
+
+      {
+        "op": "FullyConnection",
+        "case_name": "test_fully_connection_003",
+        "input_desc": [
+          {
+            "format": "NC1HWC0",
+            "shape": [
+              1, 1, 2, 2, 16
+            ],
+            "type": "float16",
+            "value_range": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "data_distribute": "uniform",
+            "name": "x"
+          },
+          {
+            "format": "NCHW",
+            "shape": [
+              16, 64
+            ],
+            "type": "float16",
+            "value_range": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "data_distribute": "uniform",
+            "name": "w"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "shape": [
+              1, 1, 16, 16
+            ],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "transpose",
+            "value": false,
+            "type": "bool"
+          },
+          {
+            "name": "axis",
+            "value": 1,
+            "type": "int"
+          },
+          {
+            "name": "num_output",
+            "value": 1,
+            "type": "int"
+          }
+        ]
+      },
+
+      {
+        "op": "FullyConnection",
+        "case_name": "test_fully_connection_004",
+        "input_desc": [
+          {
+            "format": "NCHW",
+            "shape": [
+              16, 16
+            ],
+            "type": "float16",
+            "value_range": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "data_distribute": "uniform",
+            "name": "x"
+          },
+          {
+            "format": "NCHW",
+            "shape": [
+              16, 16
+            ],
+            "type": "float16",
+            "value_range": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "data_distribute": "uniform",
+            "name": "w"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "FRACTAL_NZ",
+            "shape": [
+              1, 1, 16, 16
+            ],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "transpose",
+            "value": true,
+            "type": "bool"
+          },
+          {
+            "name": "axis",
+            "value": 1,
+            "type": "int"
+          },
+          {
+            "name": "num_output",
+            "value": 1,
+            "type": "int"
+          }
+        ]
+      }
+  ]

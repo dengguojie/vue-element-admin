@@ -349,7 +349,7 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
   (void)op.UpdateInputDesc("w", weightDesc);
 
   outDesc.SetShape(ge::Shape(yShape));
-  if (xDtype == ge::DT_INT8) {
+  if (xDtype == ge::DT_INT8 || xDtype == ge::DT_INT4) {
     outDesc.SetDataType(ge::DT_INT32);
   } else {
     outDesc.SetDataType(ge::DataType(xDtype));
@@ -1580,6 +1580,7 @@ IMPLEMT_VERIFIER(MatMulV2, MatMulV2Verify) {
   support_list.push_back(DT_FLOAT);
   support_list.push_back(DT_INT32);
   support_list.push_back(DT_INT8);
+  support_list.push_back(DT_INT4);
   if (CheckInputDataType(op, "x1", support_list) == false) {
     return GRAPH_FAILED;
   }
@@ -1626,7 +1627,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   tensordesc_output->SetShape(shape_out_desc);
   tensordesc_output->SetOriginShape(shape_out_desc);
   tensordesc_output->SetShapeRange(shape_range_out);
-  if (tensordesc_x1->GetDataType() == ge::DT_INT8) {
+  if (tensordesc_x1->GetDataType() == ge::DT_INT8 || tensordesc_x1->GetDataType() == ge::DT_INT4) {
     tensordesc_output->SetDataType(ge::DT_INT32);
   } else {
     tensordesc_output->SetDataType(tensordesc_x1->GetDataType());

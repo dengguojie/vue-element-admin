@@ -345,7 +345,7 @@ def check_supported(input_x1,
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
     src_dtype = input_x1.get("dtype")
-    cube_type = ["float16", "int8"]
+    cube_type = ["float16", "int8", "int4"]
     if (format_a == "FRACTAL_NZ" or format_b == "FRACTAL_NZ") and \
             src_dtype in cube_type:
         return True, ""
@@ -773,7 +773,7 @@ def mat_mul(input_x1,
 
         return
 
-    if src_dtype != "int8":
+    if src_dtype not in ("int8", "int4"):
         _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b)
     else:
         _shape_check_quantification(shape_a, shape_b, trans_a, trans_b,
@@ -782,7 +782,7 @@ def mat_mul(input_x1,
     shape_a_temp = input_x1.get("shape")
     shape_b_temp = input_x2.get("shape")
     tensor_bias = None
-    if src_dtype == "int8" and not cube_vector_split:
+    if src_dtype in ("int8", "int4") and not cube_vector_split:
         format_a = "FRACTAL_NZ"
         format_b = "FRACTAL_Z"
     else:

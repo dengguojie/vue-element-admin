@@ -26,6 +26,7 @@ from tbe.common.platform import platform_info as tbe_platform_info
 import tbe.common.utils as tbe_utils
 from tbe.common.utils import broadcast_shapes
 from tbe.dsl.compute.util import check_input_tensor_shape
+from tbe.dsl.compute import cube_util
 from tbe.dsl.base.operation import in_dynamic
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
@@ -137,7 +138,8 @@ class GEMMCompute(FormatCompute):
         "float32": "fp32",
         "int8": "int8",
         "int32": "int32",
-        "uint8": "uint8"
+        "uint8": "uint8",
+        "int4": "int4"
     }
 
     def __init__(self, tensor_a, tensor_b, para_dict):
@@ -153,8 +155,7 @@ class GEMMCompute(FormatCompute):
         self.trans_b = para_dict.get("trans_b", False)
         self.format_a = para_dict.get("format_a", "ND")
         self.format_b = para_dict.get("format_b", "ND")
-        self.offset_x = para_dict.get("offset_a", 0)
-        self.offset_w = para_dict.get("offset_b", None)
+        self.offset_x, self.offset_w = self._get_offset_info(para_dict, tensor_a.dtype, tensor_b.dtype)
         self.tensor_bias = None
         self.tensor_c = para_dict.get("tensor_c")
         self.src_dtype = tensor_a.dtype
@@ -286,6 +287,22 @@ class GEMMCompute(FormatCompute):
         elif transpose_b:
             trans_flag = 3
         return trans_flag
+
+    def _get_offset_info(self, attrs_dict, dtype_a, dtype_b):
+        """
+        get offset info, like offset_x and offset_w
+        """
+        offset_x = 0
+        offset_w = None
+        if cube_util.is_v200_version_new():
+            if dtype_a in ("uint8", "int8", "int4"):
+                if attrs_dict.get("offset_a") is not None:
+                    offset_x = attrs_dict.get("offset_a")
+                if dtype_b in ("int8", "int4"):
+                    if attrs_dict.get("offset_b") is not None:
+                        offset_w = attrs_dict.get("offset_b")
+
+        return offset_x, offset_w
 
     def _get_a_shape_in_nc1hwc0(self, tensor_a_l0a):
         """
@@ -926,12 +943,12 @@ class GEMMCompute(FormatCompute):
     def _compute_a_matrix_nd(self, tensor_a_normalize, use_normal_func):
         nd2Zz_normal_flag = False
         nd2Zz_normal_flag = nd2Zz_normal_flag or self.cube_vector_split
-        nd2Zz_normal_flag = nd2Zz_normal_flag or (self.ops_data_flow_mode == "int82int32")
+        nd2Zz_normal_flag = nd2Zz_normal_flag or (self.ops_data_flow_mode in ("int82int32", "int4int32"))
         nd2Zz_normal_flag = nd2Zz_normal_flag or (self.mmad_mode == "gevm")
         nd2Zz_normal_flag = nd2Zz_normal_flag or use_normal_func
 
         nd2Zz_vnchwconv_flag = False
-        nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (self.ops_data_flow_mode != "int82int32")
+        nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (not self.ops_data_flow_mode  in ("int82int32", "int4int32"))
 
         compute_params = {
             "tensor_name": "tensor_a_matrix",
@@ -1676,6 +1693,9 @@ class GEMMCompute(FormatCompute):
             "int82fp16": "int82int32",
             "int82int8": "int82int32",
             "uint82fp16": "int82int32",
+            "int42int32": "int42int32",
+            "int42int4": "int42int32",
+            "int42fp16": "int42int32",
             # ---- merge to fp162fp32 ---- #
             "fp162fp32": "fp162fp32",
             # ---- merge to fp162fp16 ---- #
@@ -1695,10 +1715,22 @@ class GEMMCompute(FormatCompute):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
-
-        self.block_reduce = (tbe_platform.BLOCK_REDUCE_INT8
-            if self.ops_data_flow_mode == "int82int32" else self.block_reduce)
-        self.matrix_type = "int32" if self.ops_data_flow_mode == "int82int32" else self.matrix_type
+        block_reduce_dict = {
+            "int82int32": tbe_platform.BLOCK_REDUCE_INT8,
+            "int42int32": tbe_platform.BLOCK_REDUCE_INT4,
+            "fp162fp32": tbe_platform.BLOCK_REDUCE,
+            "fp162fp16": tbe_platform.BLOCK_REDUCE,
+            "int82fp32": tbe_platform.BLOCK_REDUCE
+        }
+        self.block_reduce = block_reduce_dict.get(self.ops_data_flow_mode)
+        matrix_type_dict = {
+            "int82int32": "int32",
+            "int42int32": "int32",
+            "fp162fp32": "float32",
+            "fp162fp16": "float32",
+            "int82fp32": "float32"
+        }
+        self.matrix_type = matrix_type_dict.get(self.ops_data_flow_mode)
         self.l0c_support_fp32 = True
         support_type = tbe_platform.getValue("Intrinsic_mmad")
         if "f162f32" not in support_type:

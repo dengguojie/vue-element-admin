@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from impl.fully_connection import get_op_support_info
+from impl.fully_connection import op_select_format
 
 from op_test_frame.ut import OpUT
 ut_case = OpUT("FullyConnection", None, None)
@@ -74,6 +75,7 @@ def test_split_fc(test_arg):
     b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
     y = {'shape': (8, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 2, 1, 1, 16)}
     get_op_support_info(x, w, b, None, y, 32, False, 1)
+    op_select_format(x, w, b, None, y, 32, False, 1, 0)
 
 # NZ -> NZ with batch
 def test_split_fc_1(test_arg):
@@ -82,6 +84,7 @@ def test_split_fc_1(test_arg):
     b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
     y = {'shape': (2, 2, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 2, 2, 16, 16)}
     get_op_support_info(x, w, b, None, y, 32, False, 2)
+    op_select_format(x, w, b, None, y, 32, False, 2, 0)
 
 # NZ -> NZ no batch
 def test_split_fc_2(test_arg):
@@ -89,6 +92,7 @@ def test_split_fc_2(test_arg):
     w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
     y = {'shape': (2, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 2, 16, 16)}
     get_op_support_info(x, w, None, None, y, 32, False, 1)
+    op_select_format(x, w, None, None, y, 32, False, 1, 0)
 
 # ND -> NZ
 def test_split_fc_3(test_arg):
@@ -96,12 +100,12 @@ def test_split_fc_3(test_arg):
     w = {'shape': (4, 1, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
     y = {'shape': (1, 1, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(1, 1, 16, 16)}
     get_op_support_info(x, w, None, None, y, 16, False, 1)
+    op_select_format(x, w, None, None, y, 16, False, 1, 0)
 
 ut_case.add_cust_test_func(test_func=test_split_fc)
 ut_case.add_cust_test_func(test_func=test_split_fc_1)
 ut_case.add_cust_test_func(test_func=test_split_fc_2)
 ut_case.add_cust_test_func(test_func=test_split_fc_3)
-
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

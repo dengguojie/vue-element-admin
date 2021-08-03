@@ -359,7 +359,15 @@ def test_matmul_cpu_validation(test_arg):
     params = dsl_case["params"]
     matmul_cpu_validation(params)
 
+def test_op_check_supported_nz_fp16(test_arg):
+    from impl.mat_mul import check_supported
+    input_x1 = {"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND"}
+    input_x2 = {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64), "ori_format": "ND"}
+    bias = {"shape": (64, ), "dtype": "float16", "format": "ND", "ori_shape": (64, ),"ori_format": "ND"}
+    check_supported(input_x1, input_x2, bias)
+
 ut_case.add_cust_test_func(test_func=test_matmul_cpu_validation)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_nz_fp16)
 
 def test_check_support(test_arg):
     from impl.mat_mul import check_supported

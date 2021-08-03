@@ -217,3 +217,16 @@ TEST_F(FullyConnectionProtoTest, fully_connection_failed_01) {
     auto status = fullyConnection.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+
+TEST_F(FullyConnectionProtoTest, FullyConnectionInferShapeTest) {
+  ge::op::FullyConnection fullyConnection;
+  fullyConnection.UpdateInputDesc("x", create_desc_with_ori({4, 1, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,{4, 16, 1, 1}, ge::FORMAT_NCHW));
+  fullyConnection.UpdateInputDesc("w", create_desc_with_ori({1, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z,{64, 16, 1, 1}, ge::FORMAT_NCHW));
+  fullyConnection.UpdateOutputDesc("y", create_desc_with_ori({4, 4, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,{4, 64, 1, 1}, ge::FORMAT_NCHW));
+  fullyConnection.SetAttr("num_output", 32);
+  fullyConnection.SetAttr("transpose", false);
+  fullyConnection.SetAttr("axis", 1);
+  auto status = fullyConnection.InferShapeAndType();
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}

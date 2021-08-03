@@ -62,7 +62,7 @@ namespace ge {
 static const std::map<ge::DataType, std::string> DTYPE_STR_MAP{
     {ge::DT_FLOAT16, "float16"}, {ge::DT_FLOAT, "float32"}, {ge::DT_INT8, "int8"},   {ge::DT_INT16, "int16"},
     {ge::DT_INT32, "int32"},     {ge::DT_INT64, "int64"},   {ge::DT_UINT8, "uint8"}, {ge::DT_UINT16, "uint16"},
-    {ge::DT_UINT32, "uint32"},   {ge::DT_UINT64, "uint64"}, {ge::DT_BOOL, "bool"}};
+    {ge::DT_UINT32, "uint32"},   {ge::DT_UINT64, "uint64"}, {ge::DT_BOOL, "bool"}, {ge::DT_INT4, "int4"}};
 
 // define the input num of shape
 const size_t INPUT_NUM0 = 0;
