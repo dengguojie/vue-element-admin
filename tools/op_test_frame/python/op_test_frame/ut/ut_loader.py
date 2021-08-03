@@ -60,7 +60,7 @@ def load_ut_cases(case_dir, file_name_pattern="test_*_impl.py") -> List[op_ut_ca
     logger.log_debug("load_ut_cases, case_file_list: %s" % ",".join(case_file_list))
     if len(case_file_list) > 4:
 
-        cpu_cnt = multiprocessing.cpu_count() - 1
+        cpu_cnt = max(multiprocessing.cpu_count() - 1, 1)
         with Pool(processes=cpu_cnt) as pool:
             all_res = pool.map(_get_op_module_info, case_file_list)
         for res in all_res:

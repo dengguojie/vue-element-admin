@@ -81,7 +81,7 @@ def _get_case_info_by_multi(soc_version, ut_case_file_info_list):
         } for ut_file_info in ut_case_file_info_list
     ]
 
-    cpu_cnt = multiprocessing.cpu_count() - 1
+    cpu_cnt = max(multiprocessing.cpu_count() - 1, 1)
     with Pool(processes=cpu_cnt) as pool:
         all_res = pool.map(get_case_name_from_file, multi_process_args)
     return all_res

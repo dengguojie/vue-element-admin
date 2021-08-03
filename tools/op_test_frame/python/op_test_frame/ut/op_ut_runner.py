@@ -236,7 +236,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     :param test_report_path: test report save path
     :param cov_report: support html/json/xml type, if None means not need coverage report
     :param cov_report_path: coverage report save path
-    :param simulator_mode: simulator_mode can be None/pv/ca/tm
+    :param simulator_mode: simulator_mode can be None/pv/ca/tm/esl
     :param simulator_lib_path: simulator library path
     :param simulator_data_path: test data directory, input, output and expect output data
     :param test_data_path: when run ca or tm mode, dump data save in this dirctory
@@ -304,7 +304,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
         run_success = reduce(lambda x, y: x and y, results)
     else:
         if process_num == 0:
-            cpu_count = multiprocessing.cpu_count() - 1
+            cpu_count = max(multiprocessing.cpu_count() - 1, 1)
             logger.log_info("multiprocessing cpu count: %d" % cpu_count)
         else:
             cpu_count = process_num

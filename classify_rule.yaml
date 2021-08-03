@@ -427,1231 +427,1231 @@ vector_B:
   team: "vector_B"
   src:
     release:
-      auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
-      auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
-      auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py
-      auto_schedule/python/tbe/dsl/static_schedule/layer_norm_grad_schedule.py
-      auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py
-      auto_schedule/python/utils/scatter/scatter.py
-      classify_rule.txt
-      cmake/dependencies.cmake
-      cmake/external/gtest.cmake
-      cmake/external/protobuf.cmake
-      cmake/external/protobuf_static.cmake
-      cmake/template/config.cmake
-      cmake/util/intf_pub_llt_gccnative.cmake
-      ops/built-in/CMakeLists.txt
-      ops/built-in/framework/caffe_plugin/bias_plugin.cc
-      ops/built-in/framework/caffe_plugin/spatial_transformer_d_plugin.cc
-      ops/built-in/framework/onnx_plugin/adaptive_max_pool2d_plugin.cc
-      ops/built-in/framework/onnx_plugin/addcmul_plugin.cc
-      ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
-      ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
-      ops/built-in/framework/tf_plugin/cast_plugin.cc
-      ops/built-in/framework/tf_plugin/CMakeLists.txt
-      ops/built-in/framework/tf_plugin/decode_csv_plugin.cc
-      ops/built-in/framework/tf_plugin/dilation2d_backprop_filter_plugin.cc
-      ops/built-in/framework/tf_plugin/dilation2d_backprop_input_plugin.cc
-      ops/built-in/framework/tf_plugin/drop_out_do_mask_v3_plugin.cc
-      ops/built-in/framework/tf_plugin/dynamic_lstm_plugin.cc
-      ops/built-in/framework/tf_plugin/dynamic_rnn_plugin.cc
-      ops/built-in/framework/tf_plugin/einsum_plugin.cc
-      ops/built-in/framework/tf_plugin/instance_norm_grad_plugin.cc
-      ops/built-in/framework/tf_plugin/instance_norm_plugin.cc
-      ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
-      ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
-      ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
-      ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
-      ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
-      ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
-      ops/built-in/framework/tf_scope_fusion_passes/CMakeLists.txt
-      ops/built-in/framework/tf_scope_fusion_passes/register_scope_fusion_passes.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_v2_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.h
-      ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_lstm_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.h
-      ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.h
-      ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.h
-      ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
-      ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_max_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_mean_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_min_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_prod_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_sum_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/adaptive_max_pool2d_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/add_n_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/arg_max_v2_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/concatd_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_mul_grad_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/derelu_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/diag_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnormgrad_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/gelu_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/keep_ratio_resize_bilinear_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_part_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/maxpoolwithargmax_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/mul_add_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/nll_loss_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/nll_loss_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/normalize_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/one_hot_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/pow_2_square_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/prelu_abs_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/range_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/reshape_transpose_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/scatter_nd_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/space_to_depth_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/tile_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.h
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
-      ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.h
-      ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
-      ops/built-in/fusion_rules/CMakeLists.txt
-      ops/built-in/op_proto/data_flow_ops.cc
-      ops/built-in/op_proto/inc/data_flow_ops.h
-      ops/built-in/op_proto/inc/elewise_calculation_ops.h
-      ops/built-in/op_proto/inc/nn_batch_norm_ops.h
-      ops/built-in/op_proto/inc/nn_calculation_ops.h
-      ops/built-in/op_proto/inc/nn_norm_ops.h
-      ops/built-in/op_proto/inc/nn_ops.h
-      ops/built-in/op_proto/inc/nn_training_ops.h
-      ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
-      ops/built-in/op_proto/inc/pad_ops.h
-      ops/built-in/op_proto/inc/rnn.h
-      ops/built-in/op_proto/inc/spectral_ops.h
-      ops/built-in/op_proto/inc/transformation_ops.h
-      ops/built-in/op_proto/nn_batch_norm_ops.cc
-      ops/built-in/op_proto/psroipooling_ops.cc
-      ops/built-in/op_proto/roipooling_ops.cc
-      ops/built-in/op_proto/rpn_ops.cc
-      ops/built-in/op_proto/ssddetectionoutput_ops.cc
-      ops/built-in/op_proto/util/axis_util.h
-      ops/built-in/op_proto/util/lookup_ops_shape_fns.cc
-      ops/built-in/op_proto/util/nn_shape_fns.h
-      ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
-      ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
-      ops/built-in/op_proto/util/transfer_shape_according_to_format.h
-      ops/built-in/op_tiling/arg_max_v2.cc
-      ops/built-in/op_tiling/arg_max_with_value.cc
-      ops/built-in/op_tiling/assign.cc
-      ops/built-in/op_tiling/avg_pool.cc
-      ops/built-in/op_tiling/batch_to_space_nd.cc
-      ops/built-in/op_tiling/bias.cc
-      ops/built-in/op_tiling/bias_add.cc
-      ops/built-in/op_tiling/bias_add_grad.cc
-      ops/built-in/op_tiling/binary_cross_entropy.cc
-      ops/built-in/op_tiling/binary_cross_entropy_grad.cc
-      ops/built-in/op_tiling/bitwise.cc
-      ops/built-in/op_tiling/bn_reduce.cc
-      ops/built-in/op_tiling/bn_reduce_grad.cc
-      ops/built-in/op_tiling/bninference_d.cc
-      ops/built-in/op_tiling/bounding_box_decode.cc
-      ops/built-in/op_tiling/broadcast.cc
-      ops/built-in/op_tiling/broadcast_to.cc
-      ops/built-in/op_tiling/concat.cc
-      ops/built-in/op_tiling/concat_offset.cc
-      ops/built-in/op_tiling/drop_out_do_mask.cc
-      ops/built-in/op_tiling/dynamic_atomic_addr_clean.cc
-      ops/built-in/op_tiling/eletwise.cc
-      ops/built-in/op_tiling/embedding_dense_grad.cc
-      ops/built-in/op_tiling/error_log.h
-      ops/built-in/op_tiling/flatten.cc
-      ops/built-in/op_tiling/gather.cc
-      ops/built-in/op_tiling/gather_nd.cc
-      ops/built-in/op_tiling/gather_v2.cc
-      ops/built-in/op_tiling/in_top_k.cc
-      ops/built-in/op_tiling/iou.cc
-      ops/built-in/op_tiling/layer_norm_x_backprop.cc
-      ops/built-in/op_tiling/max_pool.cc
-      ops/built-in/op_tiling/max_pool_grad.cc
-      ops/built-in/op_tiling/maxpoolgradwithargmaxv1.cc
-      ops/built-in/op_tiling/maxpoolwithargmaxv1.cc
-      ops/built-in/op_tiling/nll_loss.cc
-      ops/built-in/op_tiling/nll_loss_grad.cc
-      ops/built-in/op_tiling/nms_with_mask.cc
-      ops/built-in/op_tiling/norm.cc
-      ops/built-in/op_tiling/one_hot.cc
-      ops/built-in/op_tiling/pad.cc
-      ops/built-in/op_tiling/pad_d.cc
-      ops/built-in/op_tiling/pad_v3.cc
-      ops/built-in/op_tiling/prelu.cc
-      ops/built-in/op_tiling/reduce_mean.cc
-      ops/built-in/op_tiling/reduce_tiling.cc
-      ops/built-in/op_tiling/resize_bilinear_v2_grad.cc
-      ops/built-in/op_tiling/resize_register.cc
-      ops/built-in/op_tiling/reverse.cc
-      ops/built-in/op_tiling/rnn_gen_mask_v2.cc
-      ops/built-in/op_tiling/roi_align.cc
-      ops/built-in/op_tiling/roi_align_grad.cc
-      ops/built-in/op_tiling/scale.cc
-      ops/built-in/op_tiling/scatter_add.cc
-      ops/built-in/op_tiling/scatter_div.cc
-      ops/built-in/op_tiling/scatter_max.cc
-      ops/built-in/op_tiling/scatter_min.cc
-      ops/built-in/op_tiling/scatter_mul.cc
-      ops/built-in/op_tiling/scatter_nd.cc
-      ops/built-in/op_tiling/scatter_nd_add.cc
-      ops/built-in/op_tiling/scatter_nd_sub.cc
-      ops/built-in/op_tiling/scatter_nd_update.cc
-      ops/built-in/op_tiling/scatter_non_aliasing_add.cc
-      ops/built-in/op_tiling/scatter_sub.cc
-      ops/built-in/op_tiling/scatter_update.cc
-      ops/built-in/op_tiling/smooth_l1_loss_v2.cc
-      ops/built-in/op_tiling/softmax_tiling.cc
-      ops/built-in/op_tiling/sort.cc
-      ops/built-in/op_tiling/space_to_batch_nd.cc
-      ops/built-in/op_tiling/sparse_apply_ftrl_d.cc
-      ops/built-in/op_tiling/sparse_apply_proximal_adagrad_d.cc
-      ops/built-in/op_tiling/split_d.cc
-      ops/built-in/op_tiling/split_v.cc
-      ops/built-in/op_tiling/strided_slice.cc
-      ops/built-in/op_tiling/tile_d.cc
-      ops/built-in/op_tiling/tile_with_axis.cc
-      ops/built-in/op_tiling/top_k.cc
-      ops/built-in/op_tiling/trans_data.cc
-      ops/built-in/op_tiling/trans_data_common.h
-      ops/built-in/op_tiling/trans_data_negative_target_ntc.cc
-      ops/built-in/op_tiling/trans_data_negative_target_tc_201.cc
-      ops/built-in/op_tiling/trans_data_positive_source_ntc_100.cc
-      ops/built-in/op_tiling/trans_data_positive_source_tc_1010.cc
-      ops/built-in/op_tiling/trans_data_positive_source_tc_1011.cc
-      ops/built-in/op_tiling/transpose_d.cc
-      ops/built-in/op_tiling/unpack.cc
-      ops/built-in/op_tiling/unsorted_segment.cc
-      ops/built-in/op_tiling/unsorted_segment_sum.cc
-      ops/built-in/tbe/impl/accumulate_nv2.py
-      ops/built-in/tbe/impl/adam_apply_one.py
-      ops/built-in/tbe/impl/adaptive_max_pool2d.py
-      ops/built-in/tbe/impl/add.py
-      ops/built-in/tbe/impl/add_mat_mat_elements.py
-      ops/built-in/tbe/impl/add_row_ranges.py
-      ops/built-in/tbe/impl/apply_adagrad_d.py
-      ops/built-in/tbe/impl/apply_proximal_adagrad_d.py
-      ops/built-in/tbe/impl/arg_max_d.py
-      ops/built-in/tbe/impl/arg_max_with_kd.py
-      ops/built-in/tbe/impl/arg_max_with_value.py
-      ops/built-in/tbe/impl/arg_min_d.py
-      ops/built-in/tbe/impl/arg_min_with_value.py
-      ops/built-in/tbe/impl/asinh.py
-      ops/built-in/tbe/impl/avg_pool_v2.py
-      ops/built-in/tbe/impl/avg_pool_v2_grad_d.py
-      ops/built-in/tbe/impl/axpy.py
-      ops/built-in/tbe/impl/axpy_v2.py
-      ops/built-in/tbe/impl/basic_lstm_cell.py
-      ops/built-in/tbe/impl/basic_lstm_cell_weight_grad.py
-      ops/built-in/tbe/impl/batch_multi_class_non_max_suppression.py
-      ops/built-in/tbe/impl/batch_norm.py
-      ops/built-in/tbe/impl/batch_norm_grad.py
-      ops/built-in/tbe/impl/batch_norm3d.py
-      ops/built-in/tbe/impl/batch_norm3d_grad.py
-      ops/built-in/tbe/impl/batch_to_space_nd_d.py
-      ops/built-in/tbe/impl/bias.py
-      ops/built-in/tbe/impl/bias_add.py
-      ops/built-in/tbe/impl/bias_add_grad.py
-      ops/built-in/tbe/impl/binary_cross_entropy.py
-      ops/built-in/tbe/impl/bn_infer.py
-      ops/built-in/tbe/impl/bn_infer_grad.py
-      ops/built-in/tbe/impl/bn_training_reduce.py
-      ops/built-in/tbe/impl/bn_training_update_grad.py
-      ops/built-in/tbe/impl/bn_training_update_v2.py
-      ops/built-in/tbe/impl/bn_training_update_v3.py
-      ops/built-in/tbe/impl/bn3d_training_reduce.py
-      ops/built-in/tbe/impl/bn3d_training_reduce_grad.py
-      ops/built-in/tbe/impl/bn3d_training_update.py
-      ops/built-in/tbe/impl/bn3d_training_update_grad.py
-      ops/built-in/tbe/impl/bninference_d.py
-      ops/built-in/tbe/impl/bnll.py
-      ops/built-in/tbe/impl/bounding_box_encode.py
-      ops/built-in/tbe/impl/c1hwc0_2_chw.py
-      ops/built-in/tbe/impl/cast.py
-      ops/built-in/tbe/impl/cdist.py
-      ops/built-in/tbe/impl/clip_by_norm_no_div_sum.py
-      ops/built-in/tbe/impl/clip_by_value.py
-      ops/built-in/tbe/impl/combined_non_max_suppression.py
-      ops/built-in/tbe/impl/concat_offset.py
-      ops/built-in/tbe/impl/concat_tik.py
-      ops/built-in/tbe/impl/concat_v2_d.py
-      ops/built-in/tbe/impl/confusion_matrix.py
-      ops/built-in/tbe/impl/confusion_mul_grad.py
-      ops/built-in/tbe/impl/cosine_embedding_loss.py
-      ops/built-in/tbe/impl/crop.py
-      ops/built-in/tbe/impl/crop_and_resize.py
-      ops/built-in/tbe/impl/cumulativelogsumexp_d.py
-      ops/built-in/tbe/impl/decode_bbox.py
-      ops/built-in/tbe/impl/decode_bbox_v2.py
-      ops/built-in/tbe/impl/deformable_offsets_grad.py
-      ops/built-in/tbe/impl/depth_to_space.py
-      ops/built-in/tbe/impl/diag_d.py
-      ops/built-in/tbe/impl/dilation2d.py
-      ops/built-in/tbe/impl/dilation2d_backprop_filter.py
-      ops/built-in/tbe/impl/dilation2d_backprop_input.py
-      ops/built-in/tbe/impl/drop_out_do_mask.py
-      ops/built-in/tbe/impl/dynamic/__init__.py
-      ops/built-in/tbe/impl/dynamic/abs.py
-      ops/built-in/tbe/impl/dynamic/accumulate_nv2.py
-      ops/built-in/tbe/impl/dynamic/acos_grad.py
-      ops/built-in/tbe/impl/dynamic/acosh.py
-      ops/built-in/tbe/impl/dynamic/acosh_grad.py
-      ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay.py
-      ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay_assign.py
-      ops/built-in/tbe/impl/dynamic/add.py
-      ops/built-in/tbe/impl/dynamic/add_mat_mat_elements.py
-      ops/built-in/tbe/impl/dynamic/apply_ada_max_d.py
-      ops/built-in/tbe/impl/dynamic/apply_adadelta_d.py
-      ops/built-in/tbe/impl/dynamic/apply_adagrad_d.py
-      ops/built-in/tbe/impl/dynamic/apply_adagrad_da_d.py
-      ops/built-in/tbe/impl/dynamic/apply_adagradv2_d.py
-      ops/built-in/tbe/impl/dynamic/apply_adam_with_amsgrad_d.py
-      ops/built-in/tbe/impl/dynamic/apply_add_sign_d.py
-      ops/built-in/tbe/impl/dynamic/apply_keras_momentum_d.py
-      ops/built-in/tbe/impl/dynamic/apply_proximal_adagrad_d.py
-      ops/built-in/tbe/impl/dynamic/apply_proximal_gradient_descent.py
-      ops/built-in/tbe/impl/dynamic/apply_rms_prop_d.py
-      ops/built-in/tbe/impl/dynamic/approximate_equal.py
-      ops/built-in/tbe/impl/dynamic/arg_max_v2.py
-      ops/built-in/tbe/impl/dynamic/arg_max_with_value.py
-      ops/built-in/tbe/impl/dynamic/arg_min.py
-      ops/built-in/tbe/impl/dynamic/arg_min_with_value.py
-      ops/built-in/tbe/impl/dynamic/asin.py
-      ops/built-in/tbe/impl/dynamic/asin_grad.py
-      ops/built-in/tbe/impl/dynamic/asinh.py
-      ops/built-in/tbe/impl/dynamic/asinh_grad.py
-      ops/built-in/tbe/impl/dynamic/avg_pool_1d.py
-      ops/built-in/tbe/impl/dynamic/axpy.py
-      ops/built-in/tbe/impl/dynamic/bessel_i0e.py
-      ops/built-in/tbe/impl/dynamic/bessel_i1e.py
-      ops/built-in/tbe/impl/dynamic/bias_add.py
-      ops/built-in/tbe/impl/dynamic/bias_add_grad.py
-      ops/built-in/tbe/impl/dynamic/binary_cross_entropy.py
-      ops/built-in/tbe/impl/dynamic/binary_cross_entropy_grad.py
-      ops/built-in/tbe/impl/dynamic/bitwise_and.py
-      ops/built-in/tbe/impl/dynamic/bitwise_or.py
-      ops/built-in/tbe/impl/dynamic/bitwise_xor.py
-      ops/built-in/tbe/impl/dynamic/bn_infer.py
-      ops/built-in/tbe/impl/dynamic/bn_infer_grad.py
-      ops/built-in/tbe/impl/dynamic/bn_training_reduce.py
-      ops/built-in/tbe/impl/dynamic/bn_training_update_v3.py
-      ops/built-in/tbe/impl/dynamic/bninference_d.py
-      ops/built-in/tbe/impl/dynamic/broadcast_to.py
-      ops/built-in/tbe/impl/dynamic/ceil.py
-      ops/built-in/tbe/impl/dynamic/clip_by_norm_no_div_sum.py
-      ops/built-in/tbe/impl/dynamic/clip_by_value.py
-      ops/built-in/tbe/impl/dynamic/cos.py
-      ops/built-in/tbe/impl/dynamic/cosh.py
-      ops/built-in/tbe/impl/dynamic/data_format_dim_map.py
-      ops/built-in/tbe/impl/dynamic/dequantize.py
-      ops/built-in/tbe/impl/dynamic/div.py
-      ops/built-in/tbe/impl/dynamic/div_no_nan.py
-      ops/built-in/tbe/impl/dynamic/dynamic_atomic_addr_clean.py
-      ops/built-in/tbe/impl/dynamic/eltwise.py
-      ops/built-in/tbe/impl/dynamic/elu.py
-      ops/built-in/tbe/impl/dynamic/elu_grad.py
-      ops/built-in/tbe/impl/dynamic/equal.py
-      ops/built-in/tbe/impl/dynamic/erf.py
-      ops/built-in/tbe/impl/dynamic/erfc.py
-      ops/built-in/tbe/impl/dynamic/exp.py
-      ops/built-in/tbe/impl/dynamic/expm1.py
-      ops/built-in/tbe/impl/dynamic/fast_gelu.py
-      ops/built-in/tbe/impl/dynamic/fast_gelu_grad.py
-      ops/built-in/tbe/impl/dynamic/fills.py
-      ops/built-in/tbe/impl/dynamic/floor.py
-      ops/built-in/tbe/impl/dynamic/floor_div.py
-      ops/built-in/tbe/impl/dynamic/floor_mod.py
-      ops/built-in/tbe/impl/dynamic/fused_mul_add.py
-      ops/built-in/tbe/impl/dynamic/fused_mul_add_n.py
-      ops/built-in/tbe/impl/dynamic/gather.py
-      ops/built-in/tbe/impl/dynamic/gather_nd.py
-      ops/built-in/tbe/impl/dynamic/gather_v2.py
-      ops/built-in/tbe/impl/dynamic/gelu.py
-      ops/built-in/tbe/impl/dynamic/gelu_grad.py
-      ops/built-in/tbe/impl/dynamic/greater_equal.py
-      ops/built-in/tbe/impl/dynamic/inv.py
-      ops/built-in/tbe/impl/dynamic/inv_grad.py
-      ops/built-in/tbe/impl/dynamic/invert.py
-      ops/built-in/tbe/impl/dynamic/lars_v2_update.py
-      ops/built-in/tbe/impl/dynamic/leaky_relu.py
-      ops/built-in/tbe/impl/dynamic/less.py
-      ops/built-in/tbe/impl/dynamic/less_equal.py
-      ops/built-in/tbe/impl/dynamic/log.py
-      ops/built-in/tbe/impl/dynamic/log1p.py
-      ops/built-in/tbe/impl/dynamic/logical_not.py
-      ops/built-in/tbe/impl/dynamic/max_pool_grad.py
-      ops/built-in/tbe/impl/dynamic/max_pool_with_argmaxv1.py
-      ops/built-in/tbe/impl/dynamic/maximum.py
-      ops/built-in/tbe/impl/dynamic/maximum_grad.py
-      ops/built-in/tbe/impl/dynamic/minimum.py
-      ops/built-in/tbe/impl/dynamic/minimum_grad.py
-      ops/built-in/tbe/impl/dynamic/mul.py
-      ops/built-in/tbe/impl/dynamic/muls.py
-      ops/built-in/tbe/impl/dynamic/neg.py
-      ops/built-in/tbe/impl/dynamic/nll_loss.py
-      ops/built-in/tbe/impl/dynamic/nll_loss_grad.py
-      ops/built-in/tbe/impl/dynamic/not_equal.py
-      ops/built-in/tbe/impl/dynamic/ones_like.py
-      ops/built-in/tbe/impl/dynamic/pow.py
-      ops/built-in/tbe/impl/dynamic/power.py
-      ops/built-in/tbe/impl/dynamic/prelu.py
-      ops/built-in/tbe/impl/dynamic/reciprocal.py
-      ops/built-in/tbe/impl/dynamic/reduce_mean.py
-      ops/built-in/tbe/impl/dynamic/reduce_min.py
-      ops/built-in/tbe/impl/dynamic/relu.py
-      ops/built-in/tbe/impl/dynamic/relu_grad_v2.py
-      ops/built-in/tbe/impl/dynamic/relu_v2.py
-      ops/built-in/tbe/impl/dynamic/relu6.py
-      ops/built-in/tbe/impl/dynamic/relu6_d.py
-      ops/built-in/tbe/impl/dynamic/resize_nearest_neighbor_v2_grad.py
-      ops/built-in/tbe/impl/dynamic/rint.py
-      ops/built-in/tbe/impl/dynamic/roi_align.py
-      ops/built-in/tbe/impl/dynamic/roi_align_grad.py
-      ops/built-in/tbe/impl/dynamic/round.py
-      ops/built-in/tbe/impl/dynamic/rsqrt.py
-      ops/built-in/tbe/impl/dynamic/rsqrt_grad.py
-      ops/built-in/tbe/impl/dynamic/scale.py
-      ops/built-in/tbe/impl/dynamic/scan_pq_codes.py
-      ops/built-in/tbe/impl/dynamic/scatter_add.py
-      ops/built-in/tbe/impl/dynamic/scatter_common.py
-      ops/built-in/tbe/impl/dynamic/scatter_div.py
-      ops/built-in/tbe/impl/dynamic/scatter_max.py
-      ops/built-in/tbe/impl/dynamic/scatter_min.py
-      ops/built-in/tbe/impl/dynamic/scatter_mul.py
-      ops/built-in/tbe/impl/dynamic/scatter_nd.py
-      ops/built-in/tbe/impl/dynamic/scatter_nd_add.py
-      ops/built-in/tbe/impl/dynamic/scatter_nd_sub.py
-      ops/built-in/tbe/impl/dynamic/scatter_nd_update.py
-      ops/built-in/tbe/impl/dynamic/scatter_non_aliasing_add.py
-      ops/built-in/tbe/impl/dynamic/scatter_sub.py
-      ops/built-in/tbe/impl/dynamic/scatter_update.py
-      ops/built-in/tbe/impl/dynamic/select_v2.py
-      ops/built-in/tbe/impl/dynamic/sigmoid.py
-      ops/built-in/tbe/impl/dynamic/sigmoid_grad.py
-      ops/built-in/tbe/impl/dynamic/sign.py
-      ops/built-in/tbe/impl/dynamic/sin.py
-      ops/built-in/tbe/impl/dynamic/sinh.py
-      ops/built-in/tbe/impl/dynamic/smooth_l1_loss.py
-      ops/built-in/tbe/impl/dynamic/softplus.py
-      ops/built-in/tbe/impl/dynamic/softsign.py
-      ops/built-in/tbe/impl/dynamic/space_to_depth.py
-      ops/built-in/tbe/impl/dynamic/sqrt.py
-      ops/built-in/tbe/impl/dynamic/sqrt_grad.py
-      ops/built-in/tbe/impl/dynamic/square.py
-      ops/built-in/tbe/impl/dynamic/square_sum_v1.py
-      ops/built-in/tbe/impl/dynamic/strided_slice_grad.py
-      ops/built-in/tbe/impl/dynamic/threshold_grad_v2_d.py
-      ops/built-in/tbe/impl/dynamic/tile.py
-      ops/built-in/tbe/impl/dynamic/tile_d.py
-      ops/built-in/tbe/impl/dynamic/tile_with_axis.py
-      ops/built-in/tbe/impl/dynamic/trans_data.py
-      ops/built-in/tbe/impl/dynamic/trans_data_negative_target_ntc.py
-      ops/built-in/tbe/impl/dynamic/trans_data_negative_target_tc_new.py
-      ops/built-in/tbe/impl/dynamic/trans_data_positive_source_ntc.py
-      ops/built-in/tbe/impl/dynamic/trans_data_positive_source_tc.py
-      ops/built-in/tbe/impl/dynamic/truncate_div.py
-      ops/built-in/tbe/impl/dynamic/truncate_mod.py
-      ops/built-in/tbe/impl/dynamic/unpack.py
-      ops/built-in/tbe/impl/dynamic/unsorted_segment_sum.py
-      ops/built-in/tbe/impl/dynamic/unsorted_segment_sum_no_atomic.py
-      ops/built-in/tbe/impl/dynamic/xdivy.py
-      ops/built-in/tbe/impl/dynamic/xlogy.py
-      ops/built-in/tbe/impl/elu.py
-      ops/built-in/tbe/impl/equal.py
-      ops/built-in/tbe/impl/exp.py
-      ops/built-in/tbe/impl/fake_quant_with_min_max_vars_gradient.py
-      ops/built-in/tbe/impl/fast_gelu.py
-      ops/built-in/tbe/impl/fast_gelu_grad.py
-      ops/built-in/tbe/impl/fastrcnn_predictions.py
-      ops/built-in/tbe/impl/fill.py
-      ops/built-in/tbe/impl/fills.py
-      ops/built-in/tbe/impl/five_2_four.py
-      ops/built-in/tbe/impl/five_2_four_int8.py
-      ops/built-in/tbe/impl/floor_div.py
-      ops/built-in/tbe/impl/floor_mod.py
-      ops/built-in/tbe/impl/four_2_five.py
-      ops/built-in/tbe/impl/four_2_five_int8.py
-      ops/built-in/tbe/impl/fractal_z_3d_2_ncdhw.py
-      ops/built-in/tbe/impl/fsr_detection_output.py
-      ops/built-in/tbe/impl/fused_mul_add.py
-      ops/built-in/tbe/impl/gather_v2_d.py
-      ops/built-in/tbe/impl/gelu.py
-      ops/built-in/tbe/impl/gelu_grad.py
-      ops/built-in/tbe/impl/gn_training_reduce.py
-      ops/built-in/tbe/impl/gn_training_update.py
-      ops/built-in/tbe/impl/histogram_fixed_width_d.py
-      ops/built-in/tbe/impl/in_infer_v2.py
-      ops/built-in/tbe/impl/in_infer_v2d.py
-      ops/built-in/tbe/impl/in_training_reduce_grad.py
-      ops/built-in/tbe/impl/in_training_reduce_v2.py
-      ops/built-in/tbe/impl/in_training_update_grad.py
-      ops/built-in/tbe/impl/in_training_update_grad_gamma_beta.py
-      ops/built-in/tbe/impl/in_training_update_v2.py
-      ops/built-in/tbe/impl/inplace_update.py
-      ops/built-in/tbe/impl/instance_norm.py
-      ops/built-in/tbe/impl/instance_norm_grad.py
-      ops/built-in/tbe/impl/internal_data_move.py
-      ops/built-in/tbe/impl/l2_loss.py
-      ops/built-in/tbe/impl/layer_norm.py
-      ops/built-in/tbe/impl/layer_norm_beta_gamma_backprop.py
-      ops/built-in/tbe/impl/layer_norm_beta_gamma_backprop_v2.py
-      ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
-      ops/built-in/tbe/impl/lrn_grad.py
-      ops/built-in/tbe/impl/lru_cache_v2.py
-      ops/built-in/tbe/impl/matrix_diag_part_d.py
-      ops/built-in/tbe/impl/matrix_set_diag_d.py
-      ops/built-in/tbe/impl/max_pool.py
-      ops/built-in/tbe/impl/max_pool_ext2.py
-      ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
-      ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
-      ops/built-in/tbe/impl/max_pool_grad_with_argmax_resnet50.py
-      ops/built-in/tbe/impl/max_pool_grad_with_argmaxv2.py
-      ops/built-in/tbe/impl/max_pool_v3.py
-      ops/built-in/tbe/impl/max_pool_v3_grad.py
-      ops/built-in/tbe/impl/max_pool_with_argmax.py
-      ops/built-in/tbe/impl/max_pool_with_argmax_resnet50.py
-      ops/built-in/tbe/impl/max_pool3d.py
-      ops/built-in/tbe/impl/max_pool3d_grad_grad_d.py
-      ops/built-in/tbe/impl/maximum.py
-      ops/built-in/tbe/impl/minimum.py
-      ops/built-in/tbe/impl/minimum_grad.py
-      ops/built-in/tbe/impl/mul.py
-      ops/built-in/tbe/impl/mvn.py
-      ops/built-in/tbe/impl/ncdhw_2_fractal_z_3d.py
-      ops/built-in/tbe/impl/ncdhw_2_ndc1hwc0.py
-      ops/built-in/tbe/impl/nchw_2_fractal_z_g.py
-      ops/built-in/tbe/impl/nd_2_nz.py
-      ops/built-in/tbe/impl/ndc1hwc0_2_ncdhw.py
-      ops/built-in/tbe/impl/nll_loss.py
-      ops/built-in/tbe/impl/nll_loss_grad.py
-      ops/built-in/tbe/impl/normalize_sum.py
-      ops/built-in/tbe/impl/not_equal.py
-      ops/built-in/tbe/impl/nz_2_nd.py
-      ops/built-in/tbe/impl/one_hot_d.py
-      ops/built-in/tbe/impl/pad_d.py
-      ops/built-in/tbe/impl/pad_v2_d.py
-      ops/built-in/tbe/impl/parallel_concat.py
-      ops/built-in/tbe/impl/population_count.py
-      ops/built-in/tbe/impl/power.py
-      ops/built-in/tbe/impl/prelu_grad.py
-      ops/built-in/tbe/impl/prior_box_d.py
-      ops/built-in/tbe/impl/prior_box_d_v2.py
-      ops/built-in/tbe/impl/proposal_d.py
-      ops/built-in/tbe/impl/psroipooling.py
-      ops/built-in/tbe/impl/range_d.py
-      ops/built-in/tbe/impl/read_select.py
-      ops/built-in/tbe/impl/real_div.py
-      ops/built-in/tbe/impl/reciprocal.py
-      ops/built-in/tbe/impl/reduce_mean_d.py
-      ops/built-in/tbe/impl/reduce_prod_d.py
-      ops/built-in/tbe/impl/reduction.py
-      ops/built-in/tbe/impl/relu.py
-      ops/built-in/tbe/impl/resize_bilinear_v2_d.py
-      ops/built-in/tbe/impl/resize_bilinear_v2_grad.py
-      ops/built-in/tbe/impl/resize_nearest_neighbor_v2_d.py
-      ops/built-in/tbe/impl/resize_nearest_neighbor_v2_grad_d.py
-      ops/built-in/tbe/impl/reverse_v2_d.py
-      ops/built-in/tbe/impl/roi_pooling.py
-      ops/built-in/tbe/impl/rpn_proposals_d.py
-      ops/built-in/tbe/impl/scale.py
-      ops/built-in/tbe/impl/scatter_nd_d.py
-      ops/built-in/tbe/impl/segment_max_d.py
-      ops/built-in/tbe/impl/select.py
-      ops/built-in/tbe/impl/select_v2.py
-      ops/built-in/tbe/impl/shuffle_channel.py
-      ops/built-in/tbe/impl/sign.py
-      ops/built-in/tbe/impl/sin.py
-      ops/built-in/tbe/impl/slice_d.py
-      ops/built-in/tbe/impl/space_to_batch_d.py
-      ops/built-in/tbe/impl/space_to_batch_nd_d.py
-      ops/built-in/tbe/impl/space_to_depth.py
-      ops/built-in/tbe/impl/split_d.py
-      ops/built-in/tbe/impl/split_v_d.py
-      ops/built-in/tbe/impl/spp_pooling.py
-      ops/built-in/tbe/impl/sqrt_grad.py
-      ops/built-in/tbe/impl/square_sum_v1.py
-      ops/built-in/tbe/impl/ssd_detection_output.py
-      ops/built-in/tbe/impl/stn_pre.py
-      ops/built-in/tbe/impl/strided_read.py
-      ops/built-in/tbe/impl/strided_slice_d.py
-      ops/built-in/tbe/impl/strided_slice_grad.py
-      ops/built-in/tbe/impl/strided_slice_grad_d.py
-      ops/built-in/tbe/impl/strided_slice_last_dim_with_vreducev2.py
-      ops/built-in/tbe/impl/strided_write.py
-      ops/built-in/tbe/impl/swap_ci.py
-      ops/built-in/tbe/impl/tensor_move.py
-      ops/built-in/tbe/impl/tile.py
-      ops/built-in/tbe/impl/tile_d.py
-      ops/built-in/tbe/impl/tile_with_axis.py
-      ops/built-in/tbe/impl/topk.py
-      ops/built-in/tbe/impl/trans_data.py
-      ops/built-in/tbe/impl/trans_data_common_func.py
-      ops/built-in/tbe/impl/trans_data_negative_target_ntc.py
-      ops/built-in/tbe/impl/trans_data_negative_target_tc.py
-      ops/built-in/tbe/impl/trans_data_positive_source_ntc.py
-      ops/built-in/tbe/impl/trans_data_positive_source_tc.py
-      ops/built-in/tbe/impl/transpose_d.py
-      ops/built-in/tbe/impl/transpose_d_014253_big.py
-      ops/built-in/tbe/impl/unsorted_segment_max_d.py
-      ops/built-in/tbe/impl/unsorted_segment_min.py
-      ops/built-in/tbe/impl/unsorted_segment_min_d.py
-      ops/built-in/tbe/impl/unsorted_segment_prod_d.py
-      ops/built-in/tbe/impl/unsorted_segment_sum_d.py
-      ops/built-in/tbe/impl/upsample.py
-      ops/built-in/tbe/impl/util/util_common.py
-      ops/built-in/tbe/impl/util/util_select_op_base.py
-      ops/built-in/tbe/impl/write_select.py
-      ops/built-in/tbe/impl/yolo.py
-      ops/built-in/tbe/impl/yolo_v2_cls_prob.py
-      ops/built-in/tbe/impl/yolo_v2_correct_box.py
-      ops/built-in/tbe/impl/yolo_v2_detection_output_d.py
-      ops/built-in/tbe/impl/yolo_v3_cls_prob.py
-      ops/built-in/tbe/impl/yolo_v3_cls_prob_v2.py
-      ops/built-in/tbe/impl/yolo_v3_correct_region_box.py
-      ops/built-in/tbe/impl/yolo_v3_correct_region_box_v2.py
-      ops/built-in/tbe/impl/yolo_v3_detection_output_d.py
-      ops/built-in/tbe/impl/yolo_v3_detection_output_v2d.py
-      ops/built-in/tbe/impl/zn_2_hwcn.py
-      ops/built-in/tbe/impl/zn_2_nchw.py
-      ops/built-in/tbe/impl/zng_2_nchw_hwcn.py
-      ops/built-in/tbe/impl_mode/all_ops_impl_mode.ini
-      ops/built-in/tbe/impl_mode/high_performance.ini
-      ops/built-in/tbe/impl_mode/high_performance_for_all.ini
-      ops/built-in/tbe/impl_mode/high_precision.ini
-      ops/built-in/tbe/impl_mode/high_precision_for_all.ini
-      ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
-      ops/CMakeLists.txt
-      tools/custom_operator_sample/dependency_files/protobuf_static.cmake
-      tools/op_test_frame/python/op_test_frame/common/ascend_tbe_op.py
-      tools/op_test_frame/python/op_test_frame/common/data_generator.py
-      tools/op_test_frame/python/op_test_frame/common/logger.py
-      tools/op_test_frame/python/op_test_frame/runtime/rts_api.py
-      tools/op_test_frame/python/op_test_frame/runtime/rts_info.py
-      tools/op_test_frame/python/op_test_frame/ut/__init__.py
-      tools/op_test_frame/python/op_test_frame/ut/op_ut.py
-      tools/op_test_frame/python/op_test_frame/ut/op_ut_case_info.py
-      tools/op_test_frame/python/op_test_frame/ut/op_ut_runner.py
-      tools/op_test_frame/python/op_test_frame/ut/ut_report.py
-      tools/op_test_frame/python/op_test_frame/utils/file_util.py
-      tools/op_test_frame/python/op_test_frame/utils/precision_compare_util.py
+    - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
+    - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
+    - auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py
+    - auto_schedule/python/tbe/dsl/static_schedule/layer_norm_grad_schedule.py
+    - auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py
+    - auto_schedule/python/utils/scatter/scatter.py
+    - classify_rule.txt
+    - cmake/dependencies.cmake
+    - cmake/external/gtest.cmake
+    - cmake/external/protobuf.cmake
+    - cmake/external/protobuf_static.cmake
+    - cmake/template/config.cmake
+    - cmake/util/intf_pub_llt_gccnative.cmake
+    - ops/built-in/CMakeLists.txt
+    - ops/built-in/framework/caffe_plugin/bias_plugin.cc
+    - ops/built-in/framework/caffe_plugin/spatial_transformer_d_plugin.cc
+    - ops/built-in/framework/onnx_plugin/adaptive_max_pool2d_plugin.cc
+    - ops/built-in/framework/onnx_plugin/addcmul_plugin.cc
+    - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
+    - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
+    - ops/built-in/framework/tf_plugin/cast_plugin.cc
+    - ops/built-in/framework/tf_plugin/CMakeLists.txt
+    - ops/built-in/framework/tf_plugin/decode_csv_plugin.cc
+    - ops/built-in/framework/tf_plugin/dilation2d_backprop_filter_plugin.cc
+    - ops/built-in/framework/tf_plugin/dilation2d_backprop_input_plugin.cc
+    - ops/built-in/framework/tf_plugin/drop_out_do_mask_v3_plugin.cc
+    - ops/built-in/framework/tf_plugin/dynamic_lstm_plugin.cc
+    - ops/built-in/framework/tf_plugin/dynamic_rnn_plugin.cc
+    - ops/built-in/framework/tf_plugin/einsum_plugin.cc
+    - ops/built-in/framework/tf_plugin/instance_norm_grad_plugin.cc
+    - ops/built-in/framework/tf_plugin/instance_norm_plugin.cc
+    - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
+    - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
+    - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
+    - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
+    - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
+    - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/CMakeLists.txt
+    - ops/built-in/framework/tf_scope_fusion_passes/register_scope_fusion_passes.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_v2_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.h
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_lstm_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.h
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.h
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.h
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
+    - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_max_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_mean_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_min_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_prod_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_sum_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/adaptive_max_pool2d_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/add_n_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/arg_max_v2_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/concatd_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_mul_grad_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/derelu_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/diag_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnormgrad_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/gelu_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/keep_ratio_resize_bilinear_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_part_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/maxpoolwithargmax_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_add_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/nll_loss_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/nll_loss_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/normalize_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/one_hot_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/pow_2_square_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/prelu_abs_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/range_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/reshape_transpose_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/scatter_nd_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/space_to_depth_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/tile_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.h
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
+    - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.h
+    - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
+    - ops/built-in/fusion_rules/CMakeLists.txt
+    - ops/built-in/op_proto/data_flow_ops.cc
+    - ops/built-in/op_proto/inc/data_flow_ops.h
+    - ops/built-in/op_proto/inc/elewise_calculation_ops.h
+    - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
+    - ops/built-in/op_proto/inc/nn_calculation_ops.h
+    - ops/built-in/op_proto/inc/nn_norm_ops.h
+    - ops/built-in/op_proto/inc/nn_ops.h
+    - ops/built-in/op_proto/inc/nn_training_ops.h
+    - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
+    - ops/built-in/op_proto/inc/pad_ops.h
+    - ops/built-in/op_proto/inc/rnn.h
+    - ops/built-in/op_proto/inc/spectral_ops.h
+    - ops/built-in/op_proto/inc/transformation_ops.h
+    - ops/built-in/op_proto/nn_batch_norm_ops.cc
+    - ops/built-in/op_proto/psroipooling_ops.cc
+    - ops/built-in/op_proto/roipooling_ops.cc
+    - ops/built-in/op_proto/rpn_ops.cc
+    - ops/built-in/op_proto/ssddetectionoutput_ops.cc
+    - ops/built-in/op_proto/util/axis_util.h
+    - ops/built-in/op_proto/util/lookup_ops_shape_fns.cc
+    - ops/built-in/op_proto/util/nn_shape_fns.h
+    - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
+    - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
+    - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
+    - ops/built-in/op_tiling/arg_max_v2.cc
+    - ops/built-in/op_tiling/arg_max_with_value.cc
+    - ops/built-in/op_tiling/assign.cc
+    - ops/built-in/op_tiling/avg_pool.cc
+    - ops/built-in/op_tiling/batch_to_space_nd.cc
+    - ops/built-in/op_tiling/bias.cc
+    - ops/built-in/op_tiling/bias_add.cc
+    - ops/built-in/op_tiling/bias_add_grad.cc
+    - ops/built-in/op_tiling/binary_cross_entropy.cc
+    - ops/built-in/op_tiling/binary_cross_entropy_grad.cc
+    - ops/built-in/op_tiling/bitwise.cc
+    - ops/built-in/op_tiling/bn_reduce.cc
+    - ops/built-in/op_tiling/bn_reduce_grad.cc
+    - ops/built-in/op_tiling/bninference_d.cc
+    - ops/built-in/op_tiling/bounding_box_decode.cc
+    - ops/built-in/op_tiling/broadcast.cc
+    - ops/built-in/op_tiling/broadcast_to.cc
+    - ops/built-in/op_tiling/concat.cc
+    - ops/built-in/op_tiling/concat_offset.cc
+    - ops/built-in/op_tiling/drop_out_do_mask.cc
+    - ops/built-in/op_tiling/dynamic_atomic_addr_clean.cc
+    - ops/built-in/op_tiling/eletwise.cc
+    - ops/built-in/op_tiling/embedding_dense_grad.cc
+    - ops/built-in/op_tiling/error_log.h
+    - ops/built-in/op_tiling/flatten.cc
+    - ops/built-in/op_tiling/gather.cc
+    - ops/built-in/op_tiling/gather_nd.cc
+    - ops/built-in/op_tiling/gather_v2.cc
+    - ops/built-in/op_tiling/in_top_k.cc
+    - ops/built-in/op_tiling/iou.cc
+    - ops/built-in/op_tiling/layer_norm_x_backprop.cc
+    - ops/built-in/op_tiling/max_pool.cc
+    - ops/built-in/op_tiling/max_pool_grad.cc
+    - ops/built-in/op_tiling/maxpoolgradwithargmaxv1.cc
+    - ops/built-in/op_tiling/maxpoolwithargmaxv1.cc
+    - ops/built-in/op_tiling/nll_loss.cc
+    - ops/built-in/op_tiling/nll_loss_grad.cc
+    - ops/built-in/op_tiling/nms_with_mask.cc
+    - ops/built-in/op_tiling/norm.cc
+    - ops/built-in/op_tiling/one_hot.cc
+    - ops/built-in/op_tiling/pad.cc
+    - ops/built-in/op_tiling/pad_d.cc
+    - ops/built-in/op_tiling/pad_v3.cc
+    - ops/built-in/op_tiling/prelu.cc
+    - ops/built-in/op_tiling/reduce_mean.cc
+    - ops/built-in/op_tiling/reduce_tiling.cc
+    - ops/built-in/op_tiling/resize_bilinear_v2_grad.cc
+    - ops/built-in/op_tiling/resize_register.cc
+    - ops/built-in/op_tiling/reverse.cc
+    - ops/built-in/op_tiling/rnn_gen_mask_v2.cc
+    - ops/built-in/op_tiling/roi_align.cc
+    - ops/built-in/op_tiling/roi_align_grad.cc
+    - ops/built-in/op_tiling/scale.cc
+    - ops/built-in/op_tiling/scatter_add.cc
+    - ops/built-in/op_tiling/scatter_div.cc
+    - ops/built-in/op_tiling/scatter_max.cc
+    - ops/built-in/op_tiling/scatter_min.cc
+    - ops/built-in/op_tiling/scatter_mul.cc
+    - ops/built-in/op_tiling/scatter_nd.cc
+    - ops/built-in/op_tiling/scatter_nd_add.cc
+    - ops/built-in/op_tiling/scatter_nd_sub.cc
+    - ops/built-in/op_tiling/scatter_nd_update.cc
+    - ops/built-in/op_tiling/scatter_non_aliasing_add.cc
+    - ops/built-in/op_tiling/scatter_sub.cc
+    - ops/built-in/op_tiling/scatter_update.cc
+    - ops/built-in/op_tiling/smooth_l1_loss_v2.cc
+    - ops/built-in/op_tiling/softmax_tiling.cc
+    - ops/built-in/op_tiling/sort.cc
+    - ops/built-in/op_tiling/space_to_batch_nd.cc
+    - ops/built-in/op_tiling/sparse_apply_ftrl_d.cc
+    - ops/built-in/op_tiling/sparse_apply_proximal_adagrad_d.cc
+    - ops/built-in/op_tiling/split_d.cc
+    - ops/built-in/op_tiling/split_v.cc
+    - ops/built-in/op_tiling/strided_slice.cc
+    - ops/built-in/op_tiling/tile_d.cc
+    - ops/built-in/op_tiling/tile_with_axis.cc
+    - ops/built-in/op_tiling/top_k.cc
+    - ops/built-in/op_tiling/trans_data.cc
+    - ops/built-in/op_tiling/trans_data_common.h
+    - ops/built-in/op_tiling/trans_data_negative_target_ntc.cc
+    - ops/built-in/op_tiling/trans_data_negative_target_tc_201.cc
+    - ops/built-in/op_tiling/trans_data_positive_source_ntc_100.cc
+    - ops/built-in/op_tiling/trans_data_positive_source_tc_1010.cc
+    - ops/built-in/op_tiling/trans_data_positive_source_tc_1011.cc
+    - ops/built-in/op_tiling/transpose_d.cc
+    - ops/built-in/op_tiling/unpack.cc
+    - ops/built-in/op_tiling/unsorted_segment.cc
+    - ops/built-in/op_tiling/unsorted_segment_sum.cc
+    - ops/built-in/tbe/impl/accumulate_nv2.py
+    - ops/built-in/tbe/impl/adam_apply_one.py
+    - ops/built-in/tbe/impl/adaptive_max_pool2d.py
+    - ops/built-in/tbe/impl/add.py
+    - ops/built-in/tbe/impl/add_mat_mat_elements.py
+    - ops/built-in/tbe/impl/add_row_ranges.py
+    - ops/built-in/tbe/impl/apply_adagrad_d.py
+    - ops/built-in/tbe/impl/apply_proximal_adagrad_d.py
+    - ops/built-in/tbe/impl/arg_max_d.py
+    - ops/built-in/tbe/impl/arg_max_with_kd.py
+    - ops/built-in/tbe/impl/arg_max_with_value.py
+    - ops/built-in/tbe/impl/arg_min_d.py
+    - ops/built-in/tbe/impl/arg_min_with_value.py
+    - ops/built-in/tbe/impl/asinh.py
+    - ops/built-in/tbe/impl/avg_pool_v2.py
+    - ops/built-in/tbe/impl/avg_pool_v2_grad_d.py
+    - ops/built-in/tbe/impl/axpy.py
+    - ops/built-in/tbe/impl/axpy_v2.py
+    - ops/built-in/tbe/impl/basic_lstm_cell.py
+    - ops/built-in/tbe/impl/basic_lstm_cell_weight_grad.py
+    - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression.py
+    - ops/built-in/tbe/impl/batch_norm.py
+    - ops/built-in/tbe/impl/batch_norm_grad.py
+    - ops/built-in/tbe/impl/batch_norm3d.py
+    - ops/built-in/tbe/impl/batch_norm3d_grad.py
+    - ops/built-in/tbe/impl/batch_to_space_nd_d.py
+    - ops/built-in/tbe/impl/bias.py
+    - ops/built-in/tbe/impl/bias_add.py
+    - ops/built-in/tbe/impl/bias_add_grad.py
+    - ops/built-in/tbe/impl/binary_cross_entropy.py
+    - ops/built-in/tbe/impl/bn_infer.py
+    - ops/built-in/tbe/impl/bn_infer_grad.py
+    - ops/built-in/tbe/impl/bn_training_reduce.py
+    - ops/built-in/tbe/impl/bn_training_update_grad.py
+    - ops/built-in/tbe/impl/bn_training_update_v2.py
+    - ops/built-in/tbe/impl/bn_training_update_v3.py
+    - ops/built-in/tbe/impl/bn3d_training_reduce.py
+    - ops/built-in/tbe/impl/bn3d_training_reduce_grad.py
+    - ops/built-in/tbe/impl/bn3d_training_update.py
+    - ops/built-in/tbe/impl/bn3d_training_update_grad.py
+    - ops/built-in/tbe/impl/bninference_d.py
+    - ops/built-in/tbe/impl/bnll.py
+    - ops/built-in/tbe/impl/bounding_box_encode.py
+    - ops/built-in/tbe/impl/c1hwc0_2_chw.py
+    - ops/built-in/tbe/impl/cast.py
+    - ops/built-in/tbe/impl/cdist.py
+    - ops/built-in/tbe/impl/clip_by_norm_no_div_sum.py
+    - ops/built-in/tbe/impl/clip_by_value.py
+    - ops/built-in/tbe/impl/combined_non_max_suppression.py
+    - ops/built-in/tbe/impl/concat_offset.py
+    - ops/built-in/tbe/impl/concat_tik.py
+    - ops/built-in/tbe/impl/concat_v2_d.py
+    - ops/built-in/tbe/impl/confusion_matrix.py
+    - ops/built-in/tbe/impl/confusion_mul_grad.py
+    - ops/built-in/tbe/impl/cosine_embedding_loss.py
+    - ops/built-in/tbe/impl/crop.py
+    - ops/built-in/tbe/impl/crop_and_resize.py
+    - ops/built-in/tbe/impl/cumulativelogsumexp_d.py
+    - ops/built-in/tbe/impl/decode_bbox.py
+    - ops/built-in/tbe/impl/decode_bbox_v2.py
+    - ops/built-in/tbe/impl/deformable_offsets_grad.py
+    - ops/built-in/tbe/impl/depth_to_space.py
+    - ops/built-in/tbe/impl/diag_d.py
+    - ops/built-in/tbe/impl/dilation2d.py
+    - ops/built-in/tbe/impl/dilation2d_backprop_filter.py
+    - ops/built-in/tbe/impl/dilation2d_backprop_input.py
+    - ops/built-in/tbe/impl/drop_out_do_mask.py
+    - ops/built-in/tbe/impl/dynamic/__init__.py
+    - ops/built-in/tbe/impl/dynamic/abs.py
+    - ops/built-in/tbe/impl/dynamic/accumulate_nv2.py
+    - ops/built-in/tbe/impl/dynamic/acos_grad.py
+    - ops/built-in/tbe/impl/dynamic/acosh.py
+    - ops/built-in/tbe/impl/dynamic/acosh_grad.py
+    - ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay.py
+    - ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay_assign.py
+    - ops/built-in/tbe/impl/dynamic/add.py
+    - ops/built-in/tbe/impl/dynamic/add_mat_mat_elements.py
+    - ops/built-in/tbe/impl/dynamic/apply_ada_max_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_adadelta_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_adagrad_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_adagrad_da_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_adagradv2_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_adam_with_amsgrad_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_add_sign_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_keras_momentum_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_proximal_adagrad_d.py
+    - ops/built-in/tbe/impl/dynamic/apply_proximal_gradient_descent.py
+    - ops/built-in/tbe/impl/dynamic/apply_rms_prop_d.py
+    - ops/built-in/tbe/impl/dynamic/approximate_equal.py
+    - ops/built-in/tbe/impl/dynamic/arg_max_v2.py
+    - ops/built-in/tbe/impl/dynamic/arg_max_with_value.py
+    - ops/built-in/tbe/impl/dynamic/arg_min.py
+    - ops/built-in/tbe/impl/dynamic/arg_min_with_value.py
+    - ops/built-in/tbe/impl/dynamic/asin.py
+    - ops/built-in/tbe/impl/dynamic/asin_grad.py
+    - ops/built-in/tbe/impl/dynamic/asinh.py
+    - ops/built-in/tbe/impl/dynamic/asinh_grad.py
+    - ops/built-in/tbe/impl/dynamic/avg_pool_1d.py
+    - ops/built-in/tbe/impl/dynamic/axpy.py
+    - ops/built-in/tbe/impl/dynamic/bessel_i0e.py
+    - ops/built-in/tbe/impl/dynamic/bessel_i1e.py
+    - ops/built-in/tbe/impl/dynamic/bias_add.py
+    - ops/built-in/tbe/impl/dynamic/bias_add_grad.py
+    - ops/built-in/tbe/impl/dynamic/binary_cross_entropy.py
+    - ops/built-in/tbe/impl/dynamic/binary_cross_entropy_grad.py
+    - ops/built-in/tbe/impl/dynamic/bitwise_and.py
+    - ops/built-in/tbe/impl/dynamic/bitwise_or.py
+    - ops/built-in/tbe/impl/dynamic/bitwise_xor.py
+    - ops/built-in/tbe/impl/dynamic/bn_infer.py
+    - ops/built-in/tbe/impl/dynamic/bn_infer_grad.py
+    - ops/built-in/tbe/impl/dynamic/bn_training_reduce.py
+    - ops/built-in/tbe/impl/dynamic/bn_training_update_v3.py
+    - ops/built-in/tbe/impl/dynamic/bninference_d.py
+    - ops/built-in/tbe/impl/dynamic/broadcast_to.py
+    - ops/built-in/tbe/impl/dynamic/ceil.py
+    - ops/built-in/tbe/impl/dynamic/clip_by_norm_no_div_sum.py
+    - ops/built-in/tbe/impl/dynamic/clip_by_value.py
+    - ops/built-in/tbe/impl/dynamic/cos.py
+    - ops/built-in/tbe/impl/dynamic/cosh.py
+    - ops/built-in/tbe/impl/dynamic/data_format_dim_map.py
+    - ops/built-in/tbe/impl/dynamic/dequantize.py
+    - ops/built-in/tbe/impl/dynamic/div.py
+    - ops/built-in/tbe/impl/dynamic/div_no_nan.py
+    - ops/built-in/tbe/impl/dynamic/dynamic_atomic_addr_clean.py
+    - ops/built-in/tbe/impl/dynamic/eltwise.py
+    - ops/built-in/tbe/impl/dynamic/elu.py
+    - ops/built-in/tbe/impl/dynamic/elu_grad.py
+    - ops/built-in/tbe/impl/dynamic/equal.py
+    - ops/built-in/tbe/impl/dynamic/erf.py
+    - ops/built-in/tbe/impl/dynamic/erfc.py
+    - ops/built-in/tbe/impl/dynamic/exp.py
+    - ops/built-in/tbe/impl/dynamic/expm1.py
+    - ops/built-in/tbe/impl/dynamic/fast_gelu.py
+    - ops/built-in/tbe/impl/dynamic/fast_gelu_grad.py
+    - ops/built-in/tbe/impl/dynamic/fills.py
+    - ops/built-in/tbe/impl/dynamic/floor.py
+    - ops/built-in/tbe/impl/dynamic/floor_div.py
+    - ops/built-in/tbe/impl/dynamic/floor_mod.py
+    - ops/built-in/tbe/impl/dynamic/fused_mul_add.py
+    - ops/built-in/tbe/impl/dynamic/fused_mul_add_n.py
+    - ops/built-in/tbe/impl/dynamic/gather.py
+    - ops/built-in/tbe/impl/dynamic/gather_nd.py
+    - ops/built-in/tbe/impl/dynamic/gather_v2.py
+    - ops/built-in/tbe/impl/dynamic/gelu.py
+    - ops/built-in/tbe/impl/dynamic/gelu_grad.py
+    - ops/built-in/tbe/impl/dynamic/greater_equal.py
+    - ops/built-in/tbe/impl/dynamic/inv.py
+    - ops/built-in/tbe/impl/dynamic/inv_grad.py
+    - ops/built-in/tbe/impl/dynamic/invert.py
+    - ops/built-in/tbe/impl/dynamic/lars_v2_update.py
+    - ops/built-in/tbe/impl/dynamic/leaky_relu.py
+    - ops/built-in/tbe/impl/dynamic/less.py
+    - ops/built-in/tbe/impl/dynamic/less_equal.py
+    - ops/built-in/tbe/impl/dynamic/log.py
+    - ops/built-in/tbe/impl/dynamic/log1p.py
+    - ops/built-in/tbe/impl/dynamic/logical_not.py
+    - ops/built-in/tbe/impl/dynamic/max_pool_grad.py
+    - ops/built-in/tbe/impl/dynamic/max_pool_with_argmaxv1.py
+    - ops/built-in/tbe/impl/dynamic/maximum.py
+    - ops/built-in/tbe/impl/dynamic/maximum_grad.py
+    - ops/built-in/tbe/impl/dynamic/minimum.py
+    - ops/built-in/tbe/impl/dynamic/minimum_grad.py
+    - ops/built-in/tbe/impl/dynamic/mul.py
+    - ops/built-in/tbe/impl/dynamic/muls.py
+    - ops/built-in/tbe/impl/dynamic/neg.py
+    - ops/built-in/tbe/impl/dynamic/nll_loss.py
+    - ops/built-in/tbe/impl/dynamic/nll_loss_grad.py
+    - ops/built-in/tbe/impl/dynamic/not_equal.py
+    - ops/built-in/tbe/impl/dynamic/ones_like.py
+    - ops/built-in/tbe/impl/dynamic/pow.py
+    - ops/built-in/tbe/impl/dynamic/power.py
+    - ops/built-in/tbe/impl/dynamic/prelu.py
+    - ops/built-in/tbe/impl/dynamic/reciprocal.py
+    - ops/built-in/tbe/impl/dynamic/reduce_mean.py
+    - ops/built-in/tbe/impl/dynamic/reduce_min.py
+    - ops/built-in/tbe/impl/dynamic/relu.py
+    - ops/built-in/tbe/impl/dynamic/relu_grad_v2.py
+    - ops/built-in/tbe/impl/dynamic/relu_v2.py
+    - ops/built-in/tbe/impl/dynamic/relu6.py
+    - ops/built-in/tbe/impl/dynamic/relu6_d.py
+    - ops/built-in/tbe/impl/dynamic/resize_nearest_neighbor_v2_grad.py
+    - ops/built-in/tbe/impl/dynamic/rint.py
+    - ops/built-in/tbe/impl/dynamic/roi_align.py
+    - ops/built-in/tbe/impl/dynamic/roi_align_grad.py
+    - ops/built-in/tbe/impl/dynamic/round.py
+    - ops/built-in/tbe/impl/dynamic/rsqrt.py
+    - ops/built-in/tbe/impl/dynamic/rsqrt_grad.py
+    - ops/built-in/tbe/impl/dynamic/scale.py
+    - ops/built-in/tbe/impl/dynamic/scan_pq_codes.py
+    - ops/built-in/tbe/impl/dynamic/scatter_add.py
+    - ops/built-in/tbe/impl/dynamic/scatter_common.py
+    - ops/built-in/tbe/impl/dynamic/scatter_div.py
+    - ops/built-in/tbe/impl/dynamic/scatter_max.py
+    - ops/built-in/tbe/impl/dynamic/scatter_min.py
+    - ops/built-in/tbe/impl/dynamic/scatter_mul.py
+    - ops/built-in/tbe/impl/dynamic/scatter_nd.py
+    - ops/built-in/tbe/impl/dynamic/scatter_nd_add.py
+    - ops/built-in/tbe/impl/dynamic/scatter_nd_sub.py
+    - ops/built-in/tbe/impl/dynamic/scatter_nd_update.py
+    - ops/built-in/tbe/impl/dynamic/scatter_non_aliasing_add.py
+    - ops/built-in/tbe/impl/dynamic/scatter_sub.py
+    - ops/built-in/tbe/impl/dynamic/scatter_update.py
+    - ops/built-in/tbe/impl/dynamic/select_v2.py
+    - ops/built-in/tbe/impl/dynamic/sigmoid.py
+    - ops/built-in/tbe/impl/dynamic/sigmoid_grad.py
+    - ops/built-in/tbe/impl/dynamic/sign.py
+    - ops/built-in/tbe/impl/dynamic/sin.py
+    - ops/built-in/tbe/impl/dynamic/sinh.py
+    - ops/built-in/tbe/impl/dynamic/smooth_l1_loss.py
+    - ops/built-in/tbe/impl/dynamic/softplus.py
+    - ops/built-in/tbe/impl/dynamic/softsign.py
+    - ops/built-in/tbe/impl/dynamic/space_to_depth.py
+    - ops/built-in/tbe/impl/dynamic/sqrt.py
+    - ops/built-in/tbe/impl/dynamic/sqrt_grad.py
+    - ops/built-in/tbe/impl/dynamic/square.py
+    - ops/built-in/tbe/impl/dynamic/square_sum_v1.py
+    - ops/built-in/tbe/impl/dynamic/strided_slice_grad.py
+    - ops/built-in/tbe/impl/dynamic/threshold_grad_v2_d.py
+    - ops/built-in/tbe/impl/dynamic/tile.py
+    - ops/built-in/tbe/impl/dynamic/tile_d.py
+    - ops/built-in/tbe/impl/dynamic/tile_with_axis.py
+    - ops/built-in/tbe/impl/dynamic/trans_data.py
+    - ops/built-in/tbe/impl/dynamic/trans_data_negative_target_ntc.py
+    - ops/built-in/tbe/impl/dynamic/trans_data_negative_target_tc_new.py
+    - ops/built-in/tbe/impl/dynamic/trans_data_positive_source_ntc.py
+    - ops/built-in/tbe/impl/dynamic/trans_data_positive_source_tc.py
+    - ops/built-in/tbe/impl/dynamic/truncate_div.py
+    - ops/built-in/tbe/impl/dynamic/truncate_mod.py
+    - ops/built-in/tbe/impl/dynamic/unpack.py
+    - ops/built-in/tbe/impl/dynamic/unsorted_segment_sum.py
+    - ops/built-in/tbe/impl/dynamic/unsorted_segment_sum_no_atomic.py
+    - ops/built-in/tbe/impl/dynamic/xdivy.py
+    - ops/built-in/tbe/impl/dynamic/xlogy.py
+    - ops/built-in/tbe/impl/elu.py
+    - ops/built-in/tbe/impl/equal.py
+    - ops/built-in/tbe/impl/exp.py
+    - ops/built-in/tbe/impl/fake_quant_with_min_max_vars_gradient.py
+    - ops/built-in/tbe/impl/fast_gelu.py
+    - ops/built-in/tbe/impl/fast_gelu_grad.py
+    - ops/built-in/tbe/impl/fastrcnn_predictions.py
+    - ops/built-in/tbe/impl/fill.py
+    - ops/built-in/tbe/impl/fills.py
+    - ops/built-in/tbe/impl/five_2_four.py
+    - ops/built-in/tbe/impl/five_2_four_int8.py
+    - ops/built-in/tbe/impl/floor_div.py
+    - ops/built-in/tbe/impl/floor_mod.py
+    - ops/built-in/tbe/impl/four_2_five.py
+    - ops/built-in/tbe/impl/four_2_five_int8.py
+    - ops/built-in/tbe/impl/fractal_z_3d_2_ncdhw.py
+    - ops/built-in/tbe/impl/fsr_detection_output.py
+    - ops/built-in/tbe/impl/fused_mul_add.py
+    - ops/built-in/tbe/impl/gather_v2_d.py
+    - ops/built-in/tbe/impl/gelu.py
+    - ops/built-in/tbe/impl/gelu_grad.py
+    - ops/built-in/tbe/impl/gn_training_reduce.py
+    - ops/built-in/tbe/impl/gn_training_update.py
+    - ops/built-in/tbe/impl/histogram_fixed_width_d.py
+    - ops/built-in/tbe/impl/in_infer_v2.py
+    - ops/built-in/tbe/impl/in_infer_v2d.py
+    - ops/built-in/tbe/impl/in_training_reduce_grad.py
+    - ops/built-in/tbe/impl/in_training_reduce_v2.py
+    - ops/built-in/tbe/impl/in_training_update_grad.py
+    - ops/built-in/tbe/impl/in_training_update_grad_gamma_beta.py
+    - ops/built-in/tbe/impl/in_training_update_v2.py
+    - ops/built-in/tbe/impl/inplace_update.py
+    - ops/built-in/tbe/impl/instance_norm.py
+    - ops/built-in/tbe/impl/instance_norm_grad.py
+    - ops/built-in/tbe/impl/internal_data_move.py
+    - ops/built-in/tbe/impl/l2_loss.py
+    - ops/built-in/tbe/impl/layer_norm.py
+    - ops/built-in/tbe/impl/layer_norm_beta_gamma_backprop.py
+    - ops/built-in/tbe/impl/layer_norm_beta_gamma_backprop_v2.py
+    - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
+    - ops/built-in/tbe/impl/lrn_grad.py
+    - ops/built-in/tbe/impl/lru_cache_v2.py
+    - ops/built-in/tbe/impl/matrix_diag_part_d.py
+    - ops/built-in/tbe/impl/matrix_set_diag_d.py
+    - ops/built-in/tbe/impl/max_pool.py
+    - ops/built-in/tbe/impl/max_pool_ext2.py
+    - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
+    - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
+    - ops/built-in/tbe/impl/max_pool_grad_with_argmax_resnet50.py
+    - ops/built-in/tbe/impl/max_pool_grad_with_argmaxv2.py
+    - ops/built-in/tbe/impl/max_pool_v3.py
+    - ops/built-in/tbe/impl/max_pool_v3_grad.py
+    - ops/built-in/tbe/impl/max_pool_with_argmax.py
+    - ops/built-in/tbe/impl/max_pool_with_argmax_resnet50.py
+    - ops/built-in/tbe/impl/max_pool3d.py
+    - ops/built-in/tbe/impl/max_pool3d_grad_grad_d.py
+    - ops/built-in/tbe/impl/maximum.py
+    - ops/built-in/tbe/impl/minimum.py
+    - ops/built-in/tbe/impl/minimum_grad.py
+    - ops/built-in/tbe/impl/mul.py
+    - ops/built-in/tbe/impl/mvn.py
+    - ops/built-in/tbe/impl/ncdhw_2_fractal_z_3d.py
+    - ops/built-in/tbe/impl/ncdhw_2_ndc1hwc0.py
+    - ops/built-in/tbe/impl/nchw_2_fractal_z_g.py
+    - ops/built-in/tbe/impl/nd_2_nz.py
+    - ops/built-in/tbe/impl/ndc1hwc0_2_ncdhw.py
+    - ops/built-in/tbe/impl/nll_loss.py
+    - ops/built-in/tbe/impl/nll_loss_grad.py
+    - ops/built-in/tbe/impl/normalize_sum.py
+    - ops/built-in/tbe/impl/not_equal.py
+    - ops/built-in/tbe/impl/nz_2_nd.py
+    - ops/built-in/tbe/impl/one_hot_d.py
+    - ops/built-in/tbe/impl/pad_d.py
+    - ops/built-in/tbe/impl/pad_v2_d.py
+    - ops/built-in/tbe/impl/parallel_concat.py
+    - ops/built-in/tbe/impl/population_count.py
+    - ops/built-in/tbe/impl/power.py
+    - ops/built-in/tbe/impl/prelu_grad.py
+    - ops/built-in/tbe/impl/prior_box_d.py
+    - ops/built-in/tbe/impl/prior_box_d_v2.py
+    - ops/built-in/tbe/impl/proposal_d.py
+    - ops/built-in/tbe/impl/psroipooling.py
+    - ops/built-in/tbe/impl/range_d.py
+    - ops/built-in/tbe/impl/read_select.py
+    - ops/built-in/tbe/impl/real_div.py
+    - ops/built-in/tbe/impl/reciprocal.py
+    - ops/built-in/tbe/impl/reduce_mean_d.py
+    - ops/built-in/tbe/impl/reduce_prod_d.py
+    - ops/built-in/tbe/impl/reduction.py
+    - ops/built-in/tbe/impl/relu.py
+    - ops/built-in/tbe/impl/resize_bilinear_v2_d.py
+    - ops/built-in/tbe/impl/resize_bilinear_v2_grad.py
+    - ops/built-in/tbe/impl/resize_nearest_neighbor_v2_d.py
+    - ops/built-in/tbe/impl/resize_nearest_neighbor_v2_grad_d.py
+    - ops/built-in/tbe/impl/reverse_v2_d.py
+    - ops/built-in/tbe/impl/roi_pooling.py
+    - ops/built-in/tbe/impl/rpn_proposals_d.py
+    - ops/built-in/tbe/impl/scale.py
+    - ops/built-in/tbe/impl/scatter_nd_d.py
+    - ops/built-in/tbe/impl/segment_max_d.py
+    - ops/built-in/tbe/impl/select.py
+    - ops/built-in/tbe/impl/select_v2.py
+    - ops/built-in/tbe/impl/shuffle_channel.py
+    - ops/built-in/tbe/impl/sign.py
+    - ops/built-in/tbe/impl/sin.py
+    - ops/built-in/tbe/impl/slice_d.py
+    - ops/built-in/tbe/impl/space_to_batch_d.py
+    - ops/built-in/tbe/impl/space_to_batch_nd_d.py
+    - ops/built-in/tbe/impl/space_to_depth.py
+    - ops/built-in/tbe/impl/split_d.py
+    - ops/built-in/tbe/impl/split_v_d.py
+    - ops/built-in/tbe/impl/spp_pooling.py
+    - ops/built-in/tbe/impl/sqrt_grad.py
+    - ops/built-in/tbe/impl/square_sum_v1.py
+    - ops/built-in/tbe/impl/ssd_detection_output.py
+    - ops/built-in/tbe/impl/stn_pre.py
+    - ops/built-in/tbe/impl/strided_read.py
+    - ops/built-in/tbe/impl/strided_slice_d.py
+    - ops/built-in/tbe/impl/strided_slice_grad.py
+    - ops/built-in/tbe/impl/strided_slice_grad_d.py
+    - ops/built-in/tbe/impl/strided_slice_last_dim_with_vreducev2.py
+    - ops/built-in/tbe/impl/strided_write.py
+    - ops/built-in/tbe/impl/swap_ci.py
+    - ops/built-in/tbe/impl/tensor_move.py
+    - ops/built-in/tbe/impl/tile.py
+    - ops/built-in/tbe/impl/tile_d.py
+    - ops/built-in/tbe/impl/tile_with_axis.py
+    - ops/built-in/tbe/impl/topk.py
+    - ops/built-in/tbe/impl/trans_data.py
+    - ops/built-in/tbe/impl/trans_data_common_func.py
+    - ops/built-in/tbe/impl/trans_data_negative_target_ntc.py
+    - ops/built-in/tbe/impl/trans_data_negative_target_tc.py
+    - ops/built-in/tbe/impl/trans_data_positive_source_ntc.py
+    - ops/built-in/tbe/impl/trans_data_positive_source_tc.py
+    - ops/built-in/tbe/impl/transpose_d.py
+    - ops/built-in/tbe/impl/transpose_d_014253_big.py
+    - ops/built-in/tbe/impl/unsorted_segment_max_d.py
+    - ops/built-in/tbe/impl/unsorted_segment_min.py
+    - ops/built-in/tbe/impl/unsorted_segment_min_d.py
+    - ops/built-in/tbe/impl/unsorted_segment_prod_d.py
+    - ops/built-in/tbe/impl/unsorted_segment_sum_d.py
+    - ops/built-in/tbe/impl/upsample.py
+    - ops/built-in/tbe/impl/util/util_common.py
+    - ops/built-in/tbe/impl/util/util_select_op_base.py
+    - ops/built-in/tbe/impl/write_select.py
+    - ops/built-in/tbe/impl/yolo.py
+    - ops/built-in/tbe/impl/yolo_v2_cls_prob.py
+    - ops/built-in/tbe/impl/yolo_v2_correct_box.py
+    - ops/built-in/tbe/impl/yolo_v2_detection_output_d.py
+    - ops/built-in/tbe/impl/yolo_v3_cls_prob.py
+    - ops/built-in/tbe/impl/yolo_v3_cls_prob_v2.py
+    - ops/built-in/tbe/impl/yolo_v3_correct_region_box.py
+    - ops/built-in/tbe/impl/yolo_v3_correct_region_box_v2.py
+    - ops/built-in/tbe/impl/yolo_v3_detection_output_d.py
+    - ops/built-in/tbe/impl/yolo_v3_detection_output_v2d.py
+    - ops/built-in/tbe/impl/zn_2_hwcn.py
+    - ops/built-in/tbe/impl/zn_2_nchw.py
+    - ops/built-in/tbe/impl/zng_2_nchw_hwcn.py
+    - ops/built-in/tbe/impl_mode/all_ops_impl_mode.ini
+    - ops/built-in/tbe/impl_mode/high_performance.ini
+    - ops/built-in/tbe/impl_mode/high_performance_for_all.ini
+    - ops/built-in/tbe/impl_mode/high_precision.ini
+    - ops/built-in/tbe/impl_mode/high_precision_for_all.ini
+    - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
+    - ops/CMakeLists.txt
+    - tools/custom_operator_sample/dependency_files/protobuf_static.cmake
+    - tools/op_test_frame/python/op_test_frame/common/ascend_tbe_op.py
+    - tools/op_test_frame/python/op_test_frame/common/data_generator.py
+    - tools/op_test_frame/python/op_test_frame/common/logger.py
+    - tools/op_test_frame/python/op_test_frame/runtime/rts_api.py
+    - tools/op_test_frame/python/op_test_frame/runtime/rts_info.py
+    - tools/op_test_frame/python/op_test_frame/ut/__init__.py
+    - tools/op_test_frame/python/op_test_frame/ut/op_ut.py
+    - tools/op_test_frame/python/op_test_frame/ut/op_ut_case_info.py
+    - tools/op_test_frame/python/op_test_frame/ut/op_ut_runner.py
+    - tools/op_test_frame/python/op_test_frame/ut/ut_report.py
+    - tools/op_test_frame/python/op_test_frame/utils/file_util.py
+    - tools/op_test_frame/python/op_test_frame/utils/precision_compare_util.py
     unrelease:
-      scripts/check_clang_format.sh
-      scripts/custom_check.sh
-      scripts/precompile_test.sh
-      scripts/run_test.sh
-      scripts/run_ut.py
-      scripts/util/run_ops_st.sh
-      ops/built-in/tests/common/CMakeLists.txt
-      ops/built-in/tests/get_change_relate_ops.py
-      ops/built-in/tests/st/AdaptiveAvgpool2dGrad/test_adaptive_avgpool2d_grad_st.json
-      ops/built-in/tests/st/AdaptiveMaxPool2d/test_adaptive_max_pool2d_st.json
-      ops/built-in/tests/st/Add/add_case.json
-      ops/built-in/tests/st/Add/test_add_golden.py
-      ops/built-in/tests/st/Addcmul/test_addcmul_st.json
-      ops/built-in/tests/st/AxpyV2/test_axpy_v2_st.json
-      ops/built-in/tests/st/KlDivLossGrad/test_kl_div_loss_grad_st.json
-      ops/built-in/tests/st/L1LossGrad/test_l1_loss_grad_st.json
-      ops/built-in/tests/st/LpLoss/test_lp_loss_st.json
-      ops/built-in/tests/st/MaskedSelectV2/test_masked_select_v2_st.json
-      ops/built-in/tests/st/MseLossGrad/test_mse_loss_grad_st.json
-      ops/built-in/tests/st/Remap/Remap_Ascend910.json
-      ops/built-in/tests/st/SliceLastDim/test_slice_last_dim_st.json
-      ops/built-in/tests/st/SoftplusV2/test_softplus_v2_st.json
-      ops/built-in/tests/st/SoftplusV2Grad/test_softplus_v2_grad_st.json
-      ops/built-in/tests/st/TensorEqual/test_tensor_equal_st.json
-      ops/built-in/tests/ut/CMakeLists.txt
-      ops/built-in/tests/ut/graph_fusion/ai_core/a_reduce_all.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/a_reduce_any.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/a_reduce_max.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/adaptive_max_pool2d_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/argmax_ops.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/argmaxv2_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/argmin_ops.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_grad_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_cast_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/common_lstm_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/const2attr_fusion_pass_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_grad_fusion_pass_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_training_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/matrix_diag_fusion_pass_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/nll_loss_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/onehot_infershape_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/pow_2_square_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/reducemax.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/reducemin.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/single_batch_norm_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_grad_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/strided_slice_fusion_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/transdata_cast_fusion_pass_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass_test.cpp
-      ops/built-in/tests/ut/graph_fusion/ai_core/zunsortedsegmentsum_update_fusion_test.cpp
-      ops/built-in/tests/ut/op_cfg_test/test_op_cfg_file.py
-      ops/built-in/tests/ut/op_tiling_test/test_arg_max_with_value.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_batch_to_space_nd_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_concat_offset_tilling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_depth_and_space_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_drop_do_mask_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_dynamic_atomic_addr_clean.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_flatten_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_gather_nd_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_gather_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_gather_v2_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_maxpool_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_maxpoolgrad_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_nll_loss_grad_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_nll_loss_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_pad_d_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_resize_nearest_neighbor_v2_grad_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_roi_align_grad_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_roi_align_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_space_to_batch_nd_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_trans_data_tiling.cpp
-      ops/built-in/tests/ut/op_tiling_test/test_unsortedsegmentsum.cpp
-      ops/built-in/tests/ut/ops_test/Abs/test_Abs_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/AbsGrad/test_AbsGrad_impl.py
-      ops/built-in/tests/ut/ops_test/AbsGrad/test_AbsGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/AccumulateNV2/test_Dynamic_AccumulateNV2_impl.py
-      ops/built-in/tests/ut/ops_test/AcosGrad/test_AcosGrad_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/AcosGrad/test_AcosGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Acosh/test_Acosh_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Acosh/test_Acosh_impl.py
-      ops/built-in/tests/ut/ops_test/AcoshGrad/test_AcoshGrad_idynamic_mpl.py
-      ops/built-in/tests/ut/ops_test/AcoshGrad/test_AcoshGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/AdamApplyOne/test_AdamApplyOne_impl.py
-      ops/built-in/tests/ut/ops_test/AdamApplyOne/test_Dynamic_AdamApplyOne_impl.py
-      ops/built-in/tests/ut/ops_test/AdamApplyOne/test_dynamic_adamapplyone_proto.cpp
-      ops/built-in/tests/ut/ops_test/AdamApplyOneAssign/test_AdamApplyOneAssign_impl.py
-      ops/built-in/tests/ut/ops_test/AdamApplyOneAssign/test_dynamic_adamapplyoneassign_proto.cpp
-      ops/built-in/tests/ut/ops_test/AdamApplyOneWithDecay/test_dynamic_adamapplyonewithdecay_proto.cpp
-      ops/built-in/tests/ut/ops_test/AdamApplyOneWithDecayAssign/test_dynamic_adamapplyonewithdecayassign_proto.cpp
-      ops/built-in/tests/ut/ops_test/AdaptiveMaxPool2d/test_adaptive_max_pool2d_impl.py
-      ops/built-in/tests/ut/ops_test/Add/test_add_impl.py
-      ops/built-in/tests/ut/ops_test/AddMatMatElements/test_add_mat_mat_elements_impl_proto.cpp
-      ops/built-in/tests/ut/ops_test/AddMatMatElements/test_add_mat_mat_elementsimpl_impl.py
-      ops/built-in/tests/ut/ops_test/AddMatMatElements/test_dynamic_add_mat_mat_elementsimpl_impl.py
-      ops/built-in/tests/ut/ops_test/AddRowRanges/__init__.py
-      ops/built-in/tests/ut/ops_test/AddRowRanges/test_add_row_ranges_impl.py
-      ops/built-in/tests/ut/ops_test/AddRowRanges/test_add_row_ranges_proto.cpp
-      ops/built-in/tests/ut/ops_test/Adds/test_Adds_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdadeltaD/test_apply_adadelta_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAdagradD/test_applyadagradd_impl_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAdagradDAD/__init__.py
-      ops/built-in/tests/ut/ops_test/ApplyAdagradDAD/test_apply_adagrad_da_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdagradDAD/test_applyadagraddad_impl_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAdagradV2D/test_apply_adagradv2_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdagradV2D/test_apply_adagradv2_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAdagradV2D/test_dynamic_apply_adagradv2_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdaMaxD/test_apply_ada_max_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdaMaxD/test_apply_adamax_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAdaMaxD/test_dynamic_apply_ada_max_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdamD/test_dynamic_ApplyAdamD_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAdamWithAmsgradD/test_apply_adam_with_amsgrad_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAdamWithAmsgradD/test_apply_adam_with_amsgrad_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyAddSignD/test_apply_add_sign_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyAddSignD/test_dynamic_apply_add_sign_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyCenteredRMSPropD/test_ApplyCenteredRMSPropD_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyFtrlD/test_ApplyFtrlD_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyFtrlV2D/test_ApplyFtrlV2D_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyGradientDescent/test_ApplyGradientDescent_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyKerasMomentumD/test_dynamic_apply_keras_momentum_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyPowerSignD/test_ApplyPowerSignD_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyProximalAdagradD/test_apply_proximal_adagrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyProximalAdagradD/test_ApplyProximalAdagradD_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyProximalGradientDescent/test_dynamic_apply_proximal_gradient_descent_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyProximalGradientDescent/test_dynamic_apply_proximal_gradient_descent_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApplyRMSPropD/test_apply_rms_prop_d_impl.py
-      ops/built-in/tests/ut/ops_test/ApplyRMSPropD/test_apply_rms_prop_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ApproximateEqual/test_approximate_equal_proto.cpp
-      ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMax_proto.cpp
-      ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMaxD_impl.py
-      ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMaxD_proto.cpp
-      ops/built-in/tests/ut/ops_test/ArgMaxGradD/__init__.py
-      ops/built-in/tests/ut/ops_test/ArgMaxV2/__init__.py
-      ops/built-in/tests/ut/ops_test/ArgMaxWithValue/test_ArgMaxWithValue_proto.cpp
-      ops/built-in/tests/ut/ops_test/ArgMin/__init__.py
-      ops/built-in/tests/ut/ops_test/ArgMinD/test_ArgMinD_impl.py
-      ops/built-in/tests/ut/ops_test/ArgMinD/test_ArgMinD_proto.cpp
-      ops/built-in/tests/ut/ops_test/ArgMinWithValue/test_ArgMinWithValue_proto.cpp
-      ops/built-in/tests/ut/ops_test/Asin/test_Asin_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Asin/test_Asin_impl.py
-      ops/built-in/tests/ut/ops_test/AsinGrad/test_AsinGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Asinh/test_Asinh_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/AsinhGrad/test_AsinhGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/AssignSub/test_AssignSub_proto.cpp
-      ops/built-in/tests/ut/ops_test/Atan2/test_Atan2_proto.cpp
-      ops/built-in/tests/ut/ops_test/AtanGrad/test_AtanGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Atanh/test_Atanh_impl.py
-      ops/built-in/tests/ut/ops_test/Avg_pool_v2_grad_d/test_avg_pool_v2_grad_d_impl.py
-      ops/built-in/tests/ut/ops_test/AvgPool/test_AvgPool_impl.py
-      ops/built-in/tests/ut/ops_test/AvgPoolV2/test_avg_pool_v2_impl.py
-      ops/built-in/tests/ut/ops_test/AvgPoolV2GradD/test_avg_pool_v2_grad_d_impl.py
-      ops/built-in/tests/ut/ops_test/Axpy/test_axpy_impl.py
-      ops/built-in/tests/ut/ops_test/Axpy/test_axpy_proto.cpp
-      ops/built-in/tests/ut/ops_test/Axpy/test_Dynamic_axpy_impl.py
-      ops/built-in/tests/ut/ops_test/AxpyV2/__init__.py
-      ops/built-in/tests/ut/ops_test/AxpyV2/test_axpy_impl.py
-      ops/built-in/tests/ut/ops_test/BasicLstmCellCStateGrad/test_BasicLstmCellCStateGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BasicLSTMCellV2/test_BasicLSTMCellV2_impl.py
-      ops/built-in/tests/ut/ops_test/BasicLSTMCellWeightGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/BasicLSTMCellWeightGrad/test_BasicLstmCellWeightGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BatchNorm3D/__init__.py
-      ops/built-in/tests/ut/ops_test/BatchNorm3D/test_BatchNorm3d_impl.py
-      ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/test_BatchNorm3DGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BatchNormGrad/test_BatchNormGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BatchToSpace/__init__.py
-      ops/built-in/tests/ut/ops_test/BatchToSpace/test_batch_to_space_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/BatchToSpaceD/__init__.py
-      ops/built-in/tests/ut/ops_test/BatchToSpaceD/test_BatchToSpaceD_impl.py
-      ops/built-in/tests/ut/ops_test/BatchToSpaceND/__init__.py
-      ops/built-in/tests/ut/ops_test/BatchToSpaceND/test_batch_to_space_nd_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/BatchToSpaceNDD/__init__.py
-      ops/built-in/tests/ut/ops_test/BatchToSpaceNDD/test_BatchToSpaceNDD_impl.py
-      ops/built-in/tests/ut/ops_test/BesselI0e/test_bessel_i0e_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/BesselI0e/test_bessel_i0e_proto.cpp
-      ops/built-in/tests/ut/ops_test/BesselI1e/test_bessel_i1e_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/BesselI1e/test_bessel_i1e_impl.py
-      ops/built-in/tests/ut/ops_test/BesselI1e/test_bessel_i1e_proto.cpp
-      ops/built-in/tests/ut/ops_test/Bias/test_Bias_proto.cpp
-      ops/built-in/tests/ut/ops_test/BinaryCrossEntropy/test_binary_cross_entropy_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/BinaryCrossEntropy/test_BinaryCrossEntropy_impl.py
-      ops/built-in/tests/ut/ops_test/BinaryCrossEntropy/test_BinaryCrossEntropy_proto.cpp
-      ops/built-in/tests/ut/ops_test/BinaryCrossEntropyGrad/test_BinaryCrossEntropyGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BinaryCrossEntropyGrad/test_BinaryCrossEntropyGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/BitwiseAnd/test_bitwise_and_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/BitwiseAnd/test_BitwiseAnd_proto.cpp
-      ops/built-in/tests/ut/ops_test/BitwiseOr/test_bitwise_or_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/BitwiseOr/test_BitwiseOr_proto.cpp
-      ops/built-in/tests/ut/ops_test/BitwiseXor/test_bitwise_xor_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/BitwiseXor/test_BitwiseXor_proto.cpp
-      ops/built-in/tests/ut/ops_test/BN3DTrainingReduce/__init__.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingReduce/test_bn_3d_training_reduce_proto.cpp
-      ops/built-in/tests/ut/ops_test/BN3DTrainingReduce/test_BN3DTrainingReduce_impl.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingReduceGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingReduceGrad/test_BN3DTrainingReduceGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingReduceGrad/test_BNTrainingReduceGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/BN3DTrainingUpdate/__init__.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingUpdate/test_BN3DTrainingUpdate_impl.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingUpdate/test_BN3DTrainingUpdate_impl_proto.cpp
-      ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/test_BN3DTrainingUpdateGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/test_BN3DTrainingUpdateGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/BNInfer/test_BNInfer_impl.py
-      ops/built-in/tests/ut/ops_test/BNInfer/test_BNInfer_proto.cpp
-      ops/built-in/tests/ut/ops_test/BNInferenceD/__init__.py
-      ops/built-in/tests/ut/ops_test/BNInferenceD/test_BNInferenceD_impl.py
-      ops/built-in/tests/ut/ops_test/BNInferenceD/test_BNInferenceD_proto.cpp
-      ops/built-in/tests/ut/ops_test/BNInferGrad/test_BNInferGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BNInferGrad/test_BNInferGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/BNLL/test_BNLL_impl.py
-      ops/built-in/tests/ut/ops_test/BNTrainingReduce/test_bn_training_reduce_proto.cpp
-      ops/built-in/tests/ut/ops_test/BNTrainingReduceGrad/test_BNTrainingReduceGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BNTrainingUpdateGrad/test_BNTrainingUpdateGrad_impl.py
-      ops/built-in/tests/ut/ops_test/BNTrainingUpdateV2/test_BNTrainingUpdateV2_impl.py
-      ops/built-in/tests/ut/ops_test/BNTrainingUpdateV3/test_BNTrainingUpdateV3_impl.py
-      ops/built-in/tests/ut/ops_test/BoundingBoxDecode/test_BoundingBoxDecode_impl.py
-      ops/built-in/tests/ut/ops_test/BoundingBoxEncode/__init__.py
-      ops/built-in/tests/ut/ops_test/BoundingBoxEncode/test_BoundingBoxEncode_impl.py
-      ops/built-in/tests/ut/ops_test/BroadcastTo/__init__.py
-      ops/built-in/tests/ut/ops_test/BroadcastTo/test_BroadcastTo_proto.cpp
-      ops/built-in/tests/ut/ops_test/Cast/test_Cast_impl.py
-      ops/built-in/tests/ut/ops_test/Ceil/test_Ceil_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Ceil/test_Ceil_impl.py
-      ops/built-in/tests/ut/ops_test/ClipBoxesD/test_ClipBoxesD_impl.py
-      ops/built-in/tests/ut/ops_test/ClipByNormNoDivSum/test_ClipByNormNoDivSum_proto.cpp
-      ops/built-in/tests/ut/ops_test/ClipByNormNoDivSum/test_dynamic_ClipByNormNoDivSum_impl.py
-      ops/built-in/tests/ut/ops_test/ClipByValue/test_clip_by_value_proto.cpp
-      ops/built-in/tests/ut/ops_test/ClipByValue/test_ClipByValue_impl.py
-      ops/built-in/tests/ut/ops_test/CMakeLists.txt
-      ops/built-in/tests/ut/ops_test/Col2im/test_col2im_proto.cpp
-      ops/built-in/tests/ut/ops_test/ConcatD/test_ConcatD_impl.py
-      ops/built-in/tests/ut/ops_test/ConcatOffset/__init__.py
-      ops/built-in/tests/ut/ops_test/ConcatOffset/test_concat_offset_proto.cpp
-      ops/built-in/tests/ut/ops_test/ConcatV2D/test_ConcatV2D_impl.py
-      ops/built-in/tests/ut/ops_test/ConfusionMatrix/test_ConfusionMatrix_impl.py
-      ops/built-in/tests/ut/ops_test/ConfusionMulGrad/test_ConfusionMulGrad_impl.py
-      ops/built-in/tests/ut/ops_test/Cos/test_Cos_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Cos/test_Cos_impl.py
-      ops/built-in/tests/ut/ops_test/Cos/test_Cos_proto.cpp
-      ops/built-in/tests/ut/ops_test/Cosh/test_Cosh_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Cosh/test_Cosh_impl.py
-      ops/built-in/tests/ut/ops_test/Cosh/test_Cosh_proto.cpp
-      ops/built-in/tests/ut/ops_test/CosineEmbeddingLoss/test_cosine_embedding_loss_impl.py
-      ops/built-in/tests/ut/ops_test/CropAndResizeD/test_CropAndResizeD_op_select_format_impl.py
-      ops/built-in/tests/ut/ops_test/DataFormatDimMap/test_DataFormatDimMap_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/DataFormatDimMap/test_DataFormatDimMap_impl.py
-      ops/built-in/tests/ut/ops_test/DataFormatDimMap/test_DataFormatDimMap_proto.cpp
-      ops/built-in/tests/ut/ops_test/DeformableOffsets/__init__.py
-      ops/built-in/tests/ut/ops_test/DepthToSpace/test_depth_to_space_proto.cpp
-      ops/built-in/tests/ut/ops_test/DepthToSpace/test_DepthToSpace_impl.py
-      ops/built-in/tests/ut/ops_test/Dequantize/test_dequantize_proto.cpp
-      ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
-      ops/built-in/tests/ut/ops_test/Dilation2D/test_Dilation2D_check_support_impl.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/__init__.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_check_support_impl.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_impl.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_proto.cpp
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/__init__.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/test_Dilation2DBackpropInput_check_support_impl.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/test_Dilation2DBackpropInput_impl.py
-      ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/test_Dilation2DBackpropInput_proto.cpp
-      ops/built-in/tests/ut/ops_test/DivNoNan/test_DivNoNan_proto.cpp
-      ops/built-in/tests/ut/ops_test/DropOutDoMaskV3D/__init__.py
-      ops/built-in/tests/ut/ops_test/DropOutDoMaskV3D/test_DropOutDoMaskV3_proto.cpp
-      ops/built-in/tests/ut/ops_test/DropOutDoMaskV3D/test_DropOutDoMaskV3D_proto.cpp
-      ops/built-in/tests/ut/ops_test/DynamicLSTMV2/test_dynamic_lstm_v2_impl.py
-      ops/built-in/tests/ut/ops_test/DynamicLSTMV2/test_dynamic_lstm_v2_proto.cpp
-      ops/built-in/tests/ut/ops_test/Eltwise/test_eltwise_proto.cpp
-      ops/built-in/tests/ut/ops_test/Elu/test_Elu_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Elu/test_Elu_proto.cpp
-      ops/built-in/tests/ut/ops_test/EluGrad/test_EluGrad_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/EluGrad/test_EluGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Equal/test_equal_impl.py
-      ops/built-in/tests/ut/ops_test/Erf/test_Erf_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Erf/test_Erf_impl.py
-      ops/built-in/tests/ut/ops_test/Erf/test_Erf_proto.cpp
-      ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_impl.py
-      ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_proto.cpp
-      ops/built-in/tests/ut/ops_test/Exp/test_dynamic_exp_impl.py
-      ops/built-in/tests/ut/ops_test/Expm1/test_Expm1_proto.cpp
-      ops/built-in/tests/ut/ops_test/FakeQuantWithMinMaxArgs/test_FakeQuantWithMinMaxArgs_impl.py
-      ops/built-in/tests/ut/ops_test/FakeQuantWithMinMaxVarsGradient/test_FakeQuantWithMinMaxVarsGradient_impl.py
-      ops/built-in/tests/ut/ops_test/FastGelu/test_dynamic_fast_gelu_impl.py
-      ops/built-in/tests/ut/ops_test/FastGelu/test_FastGelu_impl.py
-      ops/built-in/tests/ut/ops_test/FastGelu/test_FastGelu_proto.cpp
-      ops/built-in/tests/ut/ops_test/FastGeluGrad/test_FastGeluGrad_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/FastGeluGrad/test_FastGeluGrad_impl.py
-      ops/built-in/tests/ut/ops_test/FastGeluGrad/test_FastGeluGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/FastrcnnPredictions/test_FastrcnnPredictions_impl.py
-      ops/built-in/tests/ut/ops_test/Fills/test_Fills_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Fills/test_Fills_impl.py
-      ops/built-in/tests/ut/ops_test/Fills/test_fills_proto.cpp
-      ops/built-in/tests/ut/ops_test/Floor/test_Floor_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Floor/test_Floor_impl.py
-      ops/built-in/tests/ut/ops_test/Floor/test_Floor_proto.cpp
-      ops/built-in/tests/ut/ops_test/FusedMulAdd/test_FusedMulAdd_impl.py
-      ops/built-in/tests/ut/ops_test/FusedMulAdd/test_FusedMulAdd_proto.cpp
-      ops/built-in/tests/ut/ops_test/FusedMulAddN/test_FusedMulAddN_proto.cpp
-      ops/built-in/tests/ut/ops_test/FusedMulApplyMomentum/test_FusedMulApplyMomentum_proto.cpp
-      ops/built-in/tests/ut/ops_test/Gather/test_Gather_impl.py
-      ops/built-in/tests/ut/ops_test/Gather/test_gather_proto.cpp
-      ops/built-in/tests/ut/ops_test/GatherNd/test_gather_nd_proto.cpp
-      ops/built-in/tests/ut/ops_test/GatherV2/test_Dynamic_GatherV2_impl.py
-      ops/built-in/tests/ut/ops_test/GatherV2/test_gather_v2_proto.cpp
-      ops/built-in/tests/ut/ops_test/GatherV2D/test_GatherV2D_impl.py
-      ops/built-in/tests/ut/ops_test/GatherV2D/test_GatherV2D_op_select_format_impl.py
-      ops/built-in/tests/ut/ops_test/Gelu/test_dynamic_Gelu_impl.py
-      ops/built-in/tests/ut/ops_test/Gelu/test_Gelu_impl.py
-      ops/built-in/tests/ut/ops_test/Gelu/test_Gelu_proto.cpp
-      ops/built-in/tests/ut/ops_test/GeluGrad/test_GeluGrad_impl.py
-      ops/built-in/tests/ut/ops_test/GeluGrad/test_GeluGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/GNTrainingReduce/test_gntrainingreduce_impl.py
-      ops/built-in/tests/ut/ops_test/INInferV2D/test_ininferv2d_impl.py
-      ops/built-in/tests/ut/ops_test/InstanceNorm/__init__.py
-      ops/built-in/tests/ut/ops_test/InstanceNorm/test_InstanceNorm_impl.py
-      ops/built-in/tests/ut/ops_test/InstanceNorm/test_InstanceNorm_proto.cpp
-      ops/built-in/tests/ut/ops_test/InstanceNormGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/InstanceNormGrad/test_InstanceNormGrad_impl.py
-      ops/built-in/tests/ut/ops_test/InstanceNormGrad/test_InstanceNormGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/INTrainingReduceGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/INTrainingReduceGrad/test_intrainingreducegrad_impl.py
-      ops/built-in/tests/ut/ops_test/INTrainingReduceGrad/test_intrainingreducegrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/INTrainingReduceV2/test_intrainingreducev2_impl.py
-      ops/built-in/tests/ut/ops_test/INTrainingReduceV2/test_intrainingreducev2_proto.cpp
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateGrad/test_intrainingupdategrad_impl.py
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateGrad/test_intrainingupdategrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateGradGammaBeta/__init__.py
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateGradGammaBeta/test_intrainingupdategradgammabeta_impl.py
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateGradGammaBeta/test_intrainingupdategradgammabeta_proto.cpp
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateV2/test_intrainingupdatev2_impl.py
-      ops/built-in/tests/ut/ops_test/INTrainingUpdateV2/test_intrainingupdatev2_proto.cpp
-      ops/built-in/tests/ut/ops_test/Inv/test_dynamic_inv_impl.py
-      ops/built-in/tests/ut/ops_test/Inv/test_Inv_impl.py
-      ops/built-in/tests/ut/ops_test/Inv/test_Inv_proto.cpp
-      ops/built-in/tests/ut/ops_test/Invert/test_Invert_impl.py
-      ops/built-in/tests/ut/ops_test/Invert/test_Invert_proto.cpp
-      ops/built-in/tests/ut/ops_test/InvGrad/test_InvGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/KLDiv/test_KLDiv_impl.py
-      ops/built-in/tests/ut/ops_test/KLDiv/test_KLDiv_proto.cpp
-      ops/built-in/tests/ut/ops_test/L2Loss/test_L2Loss_impl.py
-      ops/built-in/tests/ut/ops_test/L2Loss/test_L2Loss_op_select_format_impl.py
-      ops/built-in/tests/ut/ops_test/L2NormalizeGrad/test_L2NormalizeGrad_impl.py
-      ops/built-in/tests/ut/ops_test/LarsV2Update/test_LarsV2Update_proto.cpp
-      ops/built-in/tests/ut/ops_test/LayerNorm/test_LayerNorm_impl.py
-      ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/__init__.py
-      ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/test_layer_norm_beta_gamma_backprop_v2_proto.cpp
-      ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/test_LayerNormBetaGammaBackpropV2_impl.py
-      ops/built-in/tests/ut/ops_test/LayerNormGrad/test_LayerNormGrad_impl.py
-      ops/built-in/tests/ut/ops_test/LayerNormXBackprop/test_LayerNormXBackprop_impl.py
-      ops/built-in/tests/ut/ops_test/LayerNormXBackpropV2/__init__.py
-      ops/built-in/tests/ut/ops_test/LayerNormXBackpropV2/test_layer_norm_x_backprop_v2_proto.cpp
-      ops/built-in/tests/ut/ops_test/LayerNormXBackpropV2/test_LayerNormXBackpropV2_impl.py
-      ops/built-in/tests/ut/ops_test/LeakyRelu/test_LeakyRelu_proto.cpp
-      ops/built-in/tests/ut/ops_test/Log/test_Log_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Log1p/test_dynamic_Log1p_impl.py
-      ops/built-in/tests/ut/ops_test/LogicalNot/test_LogicalNot_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/LogSpaceD/test_log_space_d_impl.py
-      ops/built-in/tests/ut/ops_test/LpNorm/test_lp_norm_impl.py
-      ops/built-in/tests/ut/ops_test/LRNGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/LRNGrad/test_LrnGrad_impl.py
-      ops/built-in/tests/ut/ops_test/LRUCacheV2/__init__.py
-      ops/built-in/tests/ut/ops_test/LRUCacheV2/test_lru_cache_v2_proto.cpp
-      ops/built-in/tests/ut/ops_test/LRUCacheV2/test_LRUCacheV2_impl.py
-      ops/built-in/tests/ut/ops_test/MaskedFill/test_MaskedFill_proto.cpp
-      ops/built-in/tests/ut/ops_test/MaskedScale/test_masked_scale_impl.py
-      ops/built-in/tests/ut/ops_test/MatrixDiagPartD/test_MatrixDiagPartD_get_op_support_info_impl.py
-      ops/built-in/tests/ut/ops_test/MatrixSetDiagD/test_MatrixSetDiagD_get_op_support_info_impl.py
-      ops/built-in/tests/ut/ops_test/Maximum/test_dynamic_Maximum_impl.py
-      ops/built-in/tests/ut/ops_test/MaximumGrad/test_MaximumGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/MaxPool/test_MaxPool_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolExt2/test_MaxPoolExt2_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/MaxPoolGrad/test_Dynamic_MaxPoolGrad_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolGradWithArgmax/test_MaxPoolGradWithArgmax_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolV3/test_max_pool_v3_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolWithArgmax/test_MaxPoolWithArgmax_impl.py
-      ops/built-in/tests/ut/ops_test/MaxPoolWithArgmaxV2/test_MaxPoolGradWithArgmaxV2_proto.cpp
-      ops/built-in/tests/ut/ops_test/Minimum/test_dynamic_Minimum_impl.py
-      ops/built-in/tests/ut/ops_test/MinimumGrad/test_MinimumGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Mod/test_Mod_impl.py
-      ops/built-in/tests/ut/ops_test/Mul/test_Mul_impl.py
-      ops/built-in/tests/ut/ops_test/MulNoNan/test_MulNoNan_proto.cpp
-      ops/built-in/tests/ut/ops_test/Muls/test_Dynamic_Muls_impl.py
-      ops/built-in/tests/ut/ops_test/Muls/test_muls_proto.cpp
-      ops/built-in/tests/ut/ops_test/MVN/__init__.py
-      ops/built-in/tests/ut/ops_test/MVN/test_Mvn_impl.py
-      ops/built-in/tests/ut/ops_test/MVNV2/test_MVNV2_impl.py
-      ops/built-in/tests/ut/ops_test/NLLLoss/test_dynamic_nll_loss_impl.py
-      ops/built-in/tests/ut/ops_test/NLLLoss/test_nll_loss_impl.py
-      ops/built-in/tests/ut/ops_test/NLLLoss/test_nll_loss_proto.cpp
-      ops/built-in/tests/ut/ops_test/NLLLossGrad/test_dynamic_nll_loss_grad_impl.py
-      ops/built-in/tests/ut/ops_test/NLLLossGrad/test_nll_loss_grad_impl.py
-      ops/built-in/tests/ut/ops_test/NLLLossGrad/test_nll_loss_grad_proto.cpp
-      ops/built-in/tests/ut/ops_test/NotEqual/test_dynamic_not_equal_impl.py
-      ops/built-in/tests/ut/ops_test/NotEqual/test_not_equal_proto.cpp
-      ops/built-in/tests/ut/ops_test/NotEqual/test_NotEqual_impl.py
-      ops/built-in/tests/ut/ops_test/NPUClearFloatStatus/test_NPUClearFloatStatus_impl.py
-      ops/built-in/tests/ut/ops_test/OneHotD/test_one_hot_proto.cpp
-      ops/built-in/tests/ut/ops_test/OneHotD/test_OneHotD_impl.py
-      ops/built-in/tests/ut/ops_test/OnesLike/test_ones_like_proto.cpp
-      ops/built-in/tests/ut/ops_test/OnesLike/test_OnesLike_impl.py
-      ops/built-in/tests/ut/ops_test/PadD/test_pad_proto.cpp
-      ops/built-in/tests/ut/ops_test/PadD/test_PadD_impl.py
-      ops/built-in/tests/ut/ops_test/PopulationCount/test_PopulationCount_get_op_support_info_impl.py
-      ops/built-in/tests/ut/ops_test/Pow/test_Pow_impl.py
-      ops/built-in/tests/ut/ops_test/Pow/test_Pow_proto.cpp
-      ops/built-in/tests/ut/ops_test/Power/test_Power_proto.cpp
-      ops/built-in/tests/ut/ops_test/PRelu/test_PRelu_impl.py
-      ops/built-in/tests/ut/ops_test/PRelu/test_PRelu_proto.cpp
-      ops/built-in/tests/ut/ops_test/PReluGrad/test_PReluGrad_impl.py
-      ops/built-in/tests/ut/ops_test/PriorBoxD/test_PriorBoxD_impl.py
-      ops/built-in/tests/ut/ops_test/PriorBoxDV2/test_prior_box_d_v2_impl.py
-      ops/built-in/tests/ut/ops_test/RealDiv/test_RealDiv_impl.py
-      ops/built-in/tests/ut/ops_test/Reciprocal/test_Reciprocal_impl.py
-      ops/built-in/tests/ut/ops_test/ReciprocalGrad/test_ReciprocalGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReduceMax/__init__.py
-      ops/built-in/tests/ut/ops_test/ReduceMax/test_ReduceMax_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReduceMean/test_ReduceMean_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReduceMeanD/test_ReduceMeanD_impl.py
-      ops/built-in/tests/ut/ops_test/ReduceMin/test_ReduceMin_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReduceProdD/test_ReduceProdD_impl.py
-      ops/built-in/tests/ut/ops_test/ReduceSum/test_reducesum_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReduceSumD/test_ReduceSumD_impl.py
-      ops/built-in/tests/ut/ops_test/Reduction/test_Reduction_impl.py
-      ops/built-in/tests/ut/ops_test/Relu/test_dynamic_Relu_impl.py
-      ops/built-in/tests/ut/ops_test/Relu6/test_Relu6_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Relu6D/test_Relu6D_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReluGrad/test_ReluGrad_impl.py
-      ops/built-in/tests/ut/ops_test/ReluGradV2/test_ReluGradV2_proto.cpp
-      ops/built-in/tests/ut/ops_test/ReluV2/test_ReluV2_proto.cpp
-      ops/built-in/tests/ut/ops_test/ResizeNearestNeighborV2D/test_ResizeNearestNeighborV2D_impl.py
-      ops/built-in/tests/ut/ops_test/ResizeNearestNeighborV2Grad/test_resize_nearest_neighbor_v2_grad_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/ResizeNearestNeighborV2GradD/test_ResizeNearestNeighborV2GradD_impl.py
-      ops/built-in/tests/ut/ops_test/ReverseV2D/test_ReverseV2D_get_op_support_info_impl.py
-      ops/built-in/tests/ut/ops_test/Rint/test_Rint_impl.py
-      ops/built-in/tests/ut/ops_test/Rint/test_Rint_proto.cpp
-      ops/built-in/tests/ut/ops_test/RoiAlign/__init__.py
-      ops/built-in/tests/ut/ops_test/ROIAlign/test_Dynamic_ROIAlign_impl.py
-      ops/built-in/tests/ut/ops_test/ROIAlignGrad/__init__.py
-      ops/built-in/tests/ut/ops_test/ROIAlignGrad/test_Dynamic_ROIAlignGrad_impl.py
-      ops/built-in/tests/ut/ops_test/ROIAlignGrad/test_RoiAlignGrad_impl.py
-      ops/built-in/tests/ut/ops_test/Round/test_Round_proto.cpp
-      ops/built-in/tests/ut/ops_test/Rsqrt/test_Rsqrt_proto.cpp
-      ops/built-in/tests/ut/ops_test/RsqrtGrad/test_RsqrtGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Scale/test_scale_proto.cpp
-      ops/built-in/tests/ut/ops_test/ScanPQCodes/__init__.py
-      ops/built-in/tests/ut/ops_test/ScanPQCodes/test_ScanPQCodes_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/ScatterDiv/test_Dynamic_ScatterDiv_impl.py
-      ops/built-in/tests/ut/ops_test/ScatterDiv/test_ScatterDiv_impl.py
-      ops/built-in/tests/ut/ops_test/ScatterNdAdd/test_ScatterNdAdd_proto.cpp
-      ops/built-in/tests/ut/ops_test/ScatterNdD/__init__.py
-      ops/built-in/tests/ut/ops_test/ScatterNdD/test_ScatterNdD_impl.py
-      ops/built-in/tests/ut/ops_test/ScatterNdSub/test_ScatterNdSub_proto.cpp
-      ops/built-in/tests/ut/ops_test/ScatterNdUpdate/test_ScatterNdUpdate_proto.cpp
-      ops/built-in/tests/ut/ops_test/ScatterNonAliasingAdd/test_dynamic_scatter_non_aliasing_add_impl.py
-      ops/built-in/tests/ut/ops_test/ScatterNonAliasingAdd/test_ScatterNonAliasingAdd_proto.cpp
-      ops/built-in/tests/ut/ops_test/SelectV2/test_dynamic_select_v2_impl.py
-      ops/built-in/tests/ut/ops_test/SelectV2/test_select_v2_proto.cpp
-      ops/built-in/tests/ut/ops_test/Selu/test_Selu_proto.cpp
-      ops/built-in/tests/ut/ops_test/Sigmoid/test_Sigmoid_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Sigmoid/test_Sigmoid_proto.cpp
-      ops/built-in/tests/ut/ops_test/SigmoidGrad/test_dynamic_SigmoidGrad_impl.py
-      ops/built-in/tests/ut/ops_test/SigmoidGrad/test_SigmoidGrad_impl.py
-      ops/built-in/tests/ut/ops_test/Sign/test_Sign_dy_impl.py
-      ops/built-in/tests/ut/ops_test/Sign/test_Sign_impl.py
-      ops/built-in/tests/ut/ops_test/Sin/test_Sin_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Sin/test_Sin_impl.py
-      ops/built-in/tests/ut/ops_test/Sin/test_Sin_proto.cpp
-      ops/built-in/tests/ut/ops_test/Sinh/test_Sinh_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Sinh/test_Sinh_impl.py
-      ops/built-in/tests/ut/ops_test/Sinh/test_Sinh_proto.cpp
-      ops/built-in/tests/ut/ops_test/SliceD/test_SliceD_impl.py
-      ops/built-in/tests/ut/ops_test/SmoothL1Loss/test_smooth_l1_loss_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/SmoothL1Loss/test_SmoothL1Loss_proto.cpp
-      ops/built-in/tests/ut/ops_test/SmoothL1LossGrad/test_SmoothL1LossGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/SoftMarginLoss/test_SoftMarginLoss_impl.py
-      ops/built-in/tests/ut/ops_test/Softplus/test_dynamic_Softplus_impl.py
-      ops/built-in/tests/ut/ops_test/Softplus/test_Softplus_impl.py
-      ops/built-in/tests/ut/ops_test/Softplus/test_Softplus_proto.cpp
-      ops/built-in/tests/ut/ops_test/SoftplusGrad/test_SoftplusGrad_impl.py
-      ops/built-in/tests/ut/ops_test/SoftplusGrad/test_SoftplusGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/Softsign/test_dynamic_Softsign_impl.py
-      ops/built-in/tests/ut/ops_test/Softsign/test_Softsign_proto.cpp
-      ops/built-in/tests/ut/ops_test/SpaceToBatch/__init__.py
-      ops/built-in/tests/ut/ops_test/SpaceToBatch/test_space_to_batch_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/SpaceToBatchD/__init__.py
-      ops/built-in/tests/ut/ops_test/SpaceToBatchD/test_SpaceToBatchD_impl.py
-      ops/built-in/tests/ut/ops_test/SpaceToBatchND/__init__.py
-      ops/built-in/tests/ut/ops_test/SpaceToBatchND/test_space_to_batch_nd_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/SpaceToBatchNDD/__init__.py
-      ops/built-in/tests/ut/ops_test/SpaceToBatchNDD/test_SpaceToBatchNDD_impl.py
-      ops/built-in/tests/ut/ops_test/SpaceToDepth/test_space_to_depth_proto.cpp
-      ops/built-in/tests/ut/ops_test/SpaceToDepth/test_SpaceToDepth_impl.py
-      ops/built-in/tests/ut/ops_test/Split/__init__.py
-      ops/built-in/tests/ut/ops_test/SplitD/test_SplitD_impl.py
-      ops/built-in/tests/ut/ops_test/SplitD/test_SplitD_op_select_format_impl.py
-      ops/built-in/tests/ut/ops_test/SplitVD/test_SplitVD_impl.py
-      ops/built-in/tests/ut/ops_test/SqrtGrad/test_dynamic_SqrtGrad_impl.py
-      ops/built-in/tests/ut/ops_test/SqrtGrad/test_SqrtGrad_impl.py
-      ops/built-in/tests/ut/ops_test/Square/test_Dynamic_Square_impl.py
-      ops/built-in/tests/ut/ops_test/SquaredDifference/test_SquaredDifference_proto.cpp
-      ops/built-in/tests/ut/ops_test/SquareSumV1/test_square_sum_v1_proto.cpp
-      ops/built-in/tests/ut/ops_test/SquareSumV1/test_SquareSumV1_impl.py
-      ops/built-in/tests/ut/ops_test/SquareSumV2/test_SquareSumV2_impl.py
-      ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_impl.py
-      ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_v200_Ascend710_impl.py
-      ops/built-in/tests/ut/ops_test/StridedSliceD/test_StridedSliceD_1981_impl.py
-      ops/built-in/tests/ut/ops_test/StridedSliceGrad/test_dynamic_strided_slice_grad_impl.py
-      ops/built-in/tests/ut/ops_test/SwapCi/test_SwapCi_impl.py
-      ops/built-in/tests/ut/ops_test/Tan/test_Tan_impl.py
-      ops/built-in/tests/ut/ops_test/Tan/test_Tan_proto.cpp
-      ops/built-in/tests/ut/ops_test/TanhGrad/test_TanhGrad_proto.cpp
-      ops/built-in/tests/ut/ops_test/ThresholdGradV2D/test_dynamic_threshold_grad_v2_d_impl.py
-      ops/built-in/tests/ut/ops_test/ThresholdGradV2D/test_dynamic_threshold_grad_v2_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/ThresholdGradV2D/test_threshold_grad_v2_d_proto.cpp
-      ops/built-in/tests/ut/ops_test/Tile/__init__.py
-      ops/built-in/tests/ut/ops_test/Tile/test_dynamic_Tile_impl.py
-      ops/built-in/tests/ut/ops_test/Tile/test_Tile_impl.py
-      ops/built-in/tests/ut/ops_test/TileD/test_dynamic_TileD_impl.py
-      ops/built-in/tests/ut/ops_test/TileWithAxis/__init__.py
-      ops/built-in/tests/ut/ops_test/TileWithAxis/test_TileWithAxis_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/TileWithAxis/test_TileWithAxis_impl.py
-      ops/built-in/tests/ut/ops_test/TileWithAxis/test_TileWithAxis_proto.cpp
-      ops/built-in/tests/ut/ops_test/ToAbsoluteBBox/test_ToAbsoluteBBox_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_dhwcn2fractalz3d_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_Five2Four_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_Five2Four_v200_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_four2five_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_fz3d2ncdhw_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_fz3d2ndhwc_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_hwcn_2_fractal_z_g_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_ncdhw_2_fractal_z_3d_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_ncdhw_2_ndc1hwc0_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_nchw_2_fractal_z_g_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_nchw2zn_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_ndc1hwc02ncdhw_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_nz2nd_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_zn2hwcn_impl.py
-      ops/built-in/tests/ut/ops_test/TransData/test_zn2nchw_impl.py
-      ops/built-in/tests/ut/ops_test/TransposeD/test_TransposeD_impl.py
-      ops/built-in/tests/ut/ops_test/TruncateDiv/test_TruncateDiv_impl.py
-      ops/built-in/tests/ut/ops_test/TruncateMod/test_TruncateMod_impl.py
-      ops/built-in/tests/ut/ops_test/UnsortedSegmentSum/test_UnsortedSegmentSum_impl.py
-      ops/built-in/tests/ut/ops_test/UnsortedSegmentSumD/test_UnsortedSegmentSumD_impl.py
-      ops/built-in/tests/ut/ops_test/Upsample/test_Upsample_impl.py
-      ops/built-in/tests/ut/ops_test/Xdivy/test_Xdivy_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Xdivy/test_Xdivy_proto.cpp
-      ops/built-in/tests/ut/ops_test/Xlogy/test_Xlogy_dynamic_impl.py
-      ops/built-in/tests/ut/ops_test/Xlogy/test_Xlogy_proto.cpp
-      ops/built-in/tests/ut/ops_test/Yolo/test_Yolo_impl.py
-      ops/built-in/tests/ut/ops_test/YoloV2DetectionOutputD/test_YoloV2DetectionOutputD_impl.py
-      ops/built-in/tests/ut/ops_test/YoloV3DetectionOutputD/test_YoloV3DetectionOutputD_impl.py
-      ops/built-in/tests/ut/plugin_test/CMakeLists.txt
-      ops/built-in/tests/ut/plugin_test/common/tensorflow_parser.h
-      ops/built-in/tests/ut/plugin_test/onnx/test_add_case_1.pb
-      ops/built-in/tests/ut/plugin_test/onnx/test_add_onnx_plugin.cpp
-      ops/built-in/tests/ut/plugin_test/onnx/test_add_pb_gen.py
-      ops/built-in/tests/ut/plugin_test/tensorflow/CMakeLists.txt
-      ops/built-in/tests/ut/plugin_test/tensorflow/instance_norm_1.pb
-      ops/built-in/tests/ut/plugin_test/tensorflow/resizebilineargrad_case_1.pb
-      ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_grad_scope_pass_plugin.cpp
-      ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_scope_pass_plugin.cpp
-      ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_rnn_scope_pass_test.cpp
-      ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_pb_gen.py
-      ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_plugin.cpp
+    - scripts/check_clang_format.sh
+    - scripts/custom_check.sh
+    - scripts/precompile_test.sh
+    - scripts/run_test.sh
+    - scripts/run_ut.py
+    - scripts/util/run_ops_st.sh
+    - ops/built-in/tests/common/CMakeLists.txt
+    - ops/built-in/tests/get_change_relate_ops.py
+    - ops/built-in/tests/st/AdaptiveAvgpool2dGrad/test_adaptive_avgpool2d_grad_st.json
+    - ops/built-in/tests/st/AdaptiveMaxPool2d/test_adaptive_max_pool2d_st.json
+    - ops/built-in/tests/st/Add/add_case.json
+    - ops/built-in/tests/st/Add/test_add_golden.py
+    - ops/built-in/tests/st/Addcmul/test_addcmul_st.json
+    - ops/built-in/tests/st/AxpyV2/test_axpy_v2_st.json
+    - ops/built-in/tests/st/KlDivLossGrad/test_kl_div_loss_grad_st.json
+    - ops/built-in/tests/st/L1LossGrad/test_l1_loss_grad_st.json
+    - ops/built-in/tests/st/LpLoss/test_lp_loss_st.json
+    - ops/built-in/tests/st/MaskedSelectV2/test_masked_select_v2_st.json
+    - ops/built-in/tests/st/MseLossGrad/test_mse_loss_grad_st.json
+    - ops/built-in/tests/st/Remap/Remap_Ascend910.json
+    - ops/built-in/tests/st/SliceLastDim/test_slice_last_dim_st.json
+    - ops/built-in/tests/st/SoftplusV2/test_softplus_v2_st.json
+    - ops/built-in/tests/st/SoftplusV2Grad/test_softplus_v2_grad_st.json
+    - ops/built-in/tests/st/TensorEqual/test_tensor_equal_st.json
+    - ops/built-in/tests/ut/CMakeLists.txt
+    - ops/built-in/tests/ut/graph_fusion/ai_core/a_reduce_all.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/a_reduce_any.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/a_reduce_max.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/adaptive_max_pool2d_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/argmax_ops.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/argmaxv2_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/argmin_ops.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_grad_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_cast_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/common_lstm_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/const2attr_fusion_pass_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_grad_fusion_pass_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_training_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/matrix_diag_fusion_pass_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/nll_loss_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/onehot_infershape_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/pow_2_square_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/reducemax.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/reducemin.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/single_batch_norm_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_grad_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/strided_slice_fusion_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_cast_fusion_pass_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass_test.cpp
+    - ops/built-in/tests/ut/graph_fusion/ai_core/zunsortedsegmentsum_update_fusion_test.cpp
+    - ops/built-in/tests/ut/op_cfg_test/test_op_cfg_file.py
+    - ops/built-in/tests/ut/op_tiling_test/test_arg_max_with_value.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_batch_to_space_nd_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_concat_offset_tilling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_depth_and_space_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_drop_do_mask_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_dynamic_atomic_addr_clean.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_flatten_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_gather_nd_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_gather_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_gather_v2_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_maxpool_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_maxpoolgrad_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_nll_loss_grad_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_nll_loss_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_pad_d_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_resize_nearest_neighbor_v2_grad_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_roi_align_grad_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_roi_align_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_space_to_batch_nd_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_trans_data_tiling.cpp
+    - ops/built-in/tests/ut/op_tiling_test/test_unsortedsegmentsum.cpp
+    - ops/built-in/tests/ut/ops_test/Abs/test_Abs_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/AbsGrad/test_AbsGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/AbsGrad/test_AbsGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AccumulateNV2/test_Dynamic_AccumulateNV2_impl.py
+    - ops/built-in/tests/ut/ops_test/AcosGrad/test_AcosGrad_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/AcosGrad/test_AcosGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Acosh/test_Acosh_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Acosh/test_Acosh_impl.py
+    - ops/built-in/tests/ut/ops_test/AcoshGrad/test_AcoshGrad_idynamic_mpl.py
+    - ops/built-in/tests/ut/ops_test/AcoshGrad/test_AcoshGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AdamApplyOne/test_AdamApplyOne_impl.py
+    - ops/built-in/tests/ut/ops_test/AdamApplyOne/test_Dynamic_AdamApplyOne_impl.py
+    - ops/built-in/tests/ut/ops_test/AdamApplyOne/test_dynamic_adamapplyone_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AdamApplyOneAssign/test_AdamApplyOneAssign_impl.py
+    - ops/built-in/tests/ut/ops_test/AdamApplyOneAssign/test_dynamic_adamapplyoneassign_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AdamApplyOneWithDecay/test_dynamic_adamapplyonewithdecay_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AdamApplyOneWithDecayAssign/test_dynamic_adamapplyonewithdecayassign_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AdaptiveMaxPool2d/test_adaptive_max_pool2d_impl.py
+    - ops/built-in/tests/ut/ops_test/Add/test_add_impl.py
+    - ops/built-in/tests/ut/ops_test/AddMatMatElements/test_add_mat_mat_elements_impl_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AddMatMatElements/test_add_mat_mat_elementsimpl_impl.py
+    - ops/built-in/tests/ut/ops_test/AddMatMatElements/test_dynamic_add_mat_mat_elementsimpl_impl.py
+    - ops/built-in/tests/ut/ops_test/AddRowRanges/__init__.py
+    - ops/built-in/tests/ut/ops_test/AddRowRanges/test_add_row_ranges_impl.py
+    - ops/built-in/tests/ut/ops_test/AddRowRanges/test_add_row_ranges_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Adds/test_Adds_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdadeltaD/test_apply_adadelta_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradD/test_applyadagradd_impl_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradDAD/__init__.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradDAD/test_apply_adagrad_da_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradDAD/test_applyadagraddad_impl_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradV2D/test_apply_adagradv2_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradV2D/test_apply_adagradv2_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAdagradV2D/test_dynamic_apply_adagradv2_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdaMaxD/test_apply_ada_max_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdaMaxD/test_apply_adamax_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAdaMaxD/test_dynamic_apply_ada_max_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdamD/test_dynamic_ApplyAdamD_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAdamWithAmsgradD/test_apply_adam_with_amsgrad_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAdamWithAmsgradD/test_apply_adam_with_amsgrad_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyAddSignD/test_apply_add_sign_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyAddSignD/test_dynamic_apply_add_sign_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyCenteredRMSPropD/test_ApplyCenteredRMSPropD_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyFtrlD/test_ApplyFtrlD_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyFtrlV2D/test_ApplyFtrlV2D_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyGradientDescent/test_ApplyGradientDescent_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyKerasMomentumD/test_dynamic_apply_keras_momentum_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyPowerSignD/test_ApplyPowerSignD_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyProximalAdagradD/test_apply_proximal_adagrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyProximalAdagradD/test_ApplyProximalAdagradD_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyProximalGradientDescent/test_dynamic_apply_proximal_gradient_descent_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyProximalGradientDescent/test_dynamic_apply_proximal_gradient_descent_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApplyRMSPropD/test_apply_rms_prop_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ApplyRMSPropD/test_apply_rms_prop_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ApproximateEqual/test_approximate_equal_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMax_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMaxD_impl.py
+    - ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMaxD_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ArgMaxGradD/__init__.py
+    - ops/built-in/tests/ut/ops_test/ArgMaxV2/__init__.py
+    - ops/built-in/tests/ut/ops_test/ArgMaxWithValue/test_ArgMaxWithValue_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ArgMin/__init__.py
+    - ops/built-in/tests/ut/ops_test/ArgMinD/test_ArgMinD_impl.py
+    - ops/built-in/tests/ut/ops_test/ArgMinD/test_ArgMinD_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ArgMinWithValue/test_ArgMinWithValue_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Asin/test_Asin_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Asin/test_Asin_impl.py
+    - ops/built-in/tests/ut/ops_test/AsinGrad/test_AsinGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Asinh/test_Asinh_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/AsinhGrad/test_AsinhGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AssignSub/test_AssignSub_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Atan2/test_Atan2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/AtanGrad/test_AtanGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Atanh/test_Atanh_impl.py
+    - ops/built-in/tests/ut/ops_test/Avg_pool_v2_grad_d/test_avg_pool_v2_grad_d_impl.py
+    - ops/built-in/tests/ut/ops_test/AvgPool/test_AvgPool_impl.py
+    - ops/built-in/tests/ut/ops_test/AvgPoolV2/test_avg_pool_v2_impl.py
+    - ops/built-in/tests/ut/ops_test/AvgPoolV2GradD/test_avg_pool_v2_grad_d_impl.py
+    - ops/built-in/tests/ut/ops_test/Axpy/test_axpy_impl.py
+    - ops/built-in/tests/ut/ops_test/Axpy/test_axpy_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Axpy/test_Dynamic_axpy_impl.py
+    - ops/built-in/tests/ut/ops_test/AxpyV2/__init__.py
+    - ops/built-in/tests/ut/ops_test/AxpyV2/test_axpy_impl.py
+    - ops/built-in/tests/ut/ops_test/BasicLstmCellCStateGrad/test_BasicLstmCellCStateGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BasicLSTMCellV2/test_BasicLSTMCellV2_impl.py
+    - ops/built-in/tests/ut/ops_test/BasicLSTMCellWeightGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/BasicLSTMCellWeightGrad/test_BasicLstmCellWeightGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BatchNorm3D/__init__.py
+    - ops/built-in/tests/ut/ops_test/BatchNorm3D/test_BatchNorm3d_impl.py
+    - ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/test_BatchNorm3DGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BatchNormGrad/test_BatchNormGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BatchToSpace/__init__.py
+    - ops/built-in/tests/ut/ops_test/BatchToSpace/test_batch_to_space_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BatchToSpaceD/__init__.py
+    - ops/built-in/tests/ut/ops_test/BatchToSpaceD/test_BatchToSpaceD_impl.py
+    - ops/built-in/tests/ut/ops_test/BatchToSpaceND/__init__.py
+    - ops/built-in/tests/ut/ops_test/BatchToSpaceND/test_batch_to_space_nd_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BatchToSpaceNDD/__init__.py
+    - ops/built-in/tests/ut/ops_test/BatchToSpaceNDD/test_BatchToSpaceNDD_impl.py
+    - ops/built-in/tests/ut/ops_test/BesselI0e/test_bessel_i0e_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/BesselI0e/test_bessel_i0e_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BesselI1e/test_bessel_i1e_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/BesselI1e/test_bessel_i1e_impl.py
+    - ops/built-in/tests/ut/ops_test/BesselI1e/test_bessel_i1e_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Bias/test_Bias_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BinaryCrossEntropy/test_binary_cross_entropy_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/BinaryCrossEntropy/test_BinaryCrossEntropy_impl.py
+    - ops/built-in/tests/ut/ops_test/BinaryCrossEntropy/test_BinaryCrossEntropy_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BinaryCrossEntropyGrad/test_BinaryCrossEntropyGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BinaryCrossEntropyGrad/test_BinaryCrossEntropyGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BitwiseAnd/test_bitwise_and_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/BitwiseAnd/test_BitwiseAnd_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BitwiseOr/test_bitwise_or_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/BitwiseOr/test_BitwiseOr_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BitwiseXor/test_bitwise_xor_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/BitwiseXor/test_BitwiseXor_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingReduce/__init__.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingReduce/test_bn_3d_training_reduce_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingReduce/test_BN3DTrainingReduce_impl.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingReduceGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingReduceGrad/test_BN3DTrainingReduceGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingReduceGrad/test_BNTrainingReduceGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdate/__init__.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdate/test_BN3DTrainingUpdate_impl.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdate/test_BN3DTrainingUpdate_impl_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/test_BN3DTrainingUpdateGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/test_BN3DTrainingUpdateGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BNInfer/test_BNInfer_impl.py
+    - ops/built-in/tests/ut/ops_test/BNInfer/test_BNInfer_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BNInferenceD/__init__.py
+    - ops/built-in/tests/ut/ops_test/BNInferenceD/test_BNInferenceD_impl.py
+    - ops/built-in/tests/ut/ops_test/BNInferenceD/test_BNInferenceD_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BNInferGrad/test_BNInferGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BNInferGrad/test_BNInferGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BNLL/test_BNLL_impl.py
+    - ops/built-in/tests/ut/ops_test/BNTrainingReduce/test_bn_training_reduce_proto.cpp
+    - ops/built-in/tests/ut/ops_test/BNTrainingReduceGrad/test_BNTrainingReduceGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BNTrainingUpdateGrad/test_BNTrainingUpdateGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/BNTrainingUpdateV2/test_BNTrainingUpdateV2_impl.py
+    - ops/built-in/tests/ut/ops_test/BNTrainingUpdateV3/test_BNTrainingUpdateV3_impl.py
+    - ops/built-in/tests/ut/ops_test/BoundingBoxDecode/test_BoundingBoxDecode_impl.py
+    - ops/built-in/tests/ut/ops_test/BoundingBoxEncode/__init__.py
+    - ops/built-in/tests/ut/ops_test/BoundingBoxEncode/test_BoundingBoxEncode_impl.py
+    - ops/built-in/tests/ut/ops_test/BroadcastTo/__init__.py
+    - ops/built-in/tests/ut/ops_test/BroadcastTo/test_BroadcastTo_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Cast/test_Cast_impl.py
+    - ops/built-in/tests/ut/ops_test/Ceil/test_Ceil_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Ceil/test_Ceil_impl.py
+    - ops/built-in/tests/ut/ops_test/ClipBoxesD/test_ClipBoxesD_impl.py
+    - ops/built-in/tests/ut/ops_test/ClipByNormNoDivSum/test_ClipByNormNoDivSum_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ClipByNormNoDivSum/test_dynamic_ClipByNormNoDivSum_impl.py
+    - ops/built-in/tests/ut/ops_test/ClipByValue/test_clip_by_value_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ClipByValue/test_ClipByValue_impl.py
+    - ops/built-in/tests/ut/ops_test/CMakeLists.txt
+    - ops/built-in/tests/ut/ops_test/Col2im/test_col2im_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ConcatD/test_ConcatD_impl.py
+    - ops/built-in/tests/ut/ops_test/ConcatOffset/__init__.py
+    - ops/built-in/tests/ut/ops_test/ConcatOffset/test_concat_offset_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ConcatV2D/test_ConcatV2D_impl.py
+    - ops/built-in/tests/ut/ops_test/ConfusionMatrix/test_ConfusionMatrix_impl.py
+    - ops/built-in/tests/ut/ops_test/ConfusionMulGrad/test_ConfusionMulGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/Cos/test_Cos_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Cos/test_Cos_impl.py
+    - ops/built-in/tests/ut/ops_test/Cos/test_Cos_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Cosh/test_Cosh_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Cosh/test_Cosh_impl.py
+    - ops/built-in/tests/ut/ops_test/Cosh/test_Cosh_proto.cpp
+    - ops/built-in/tests/ut/ops_test/CosineEmbeddingLoss/test_cosine_embedding_loss_impl.py
+    - ops/built-in/tests/ut/ops_test/CropAndResizeD/test_CropAndResizeD_op_select_format_impl.py
+    - ops/built-in/tests/ut/ops_test/DataFormatDimMap/test_DataFormatDimMap_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/DataFormatDimMap/test_DataFormatDimMap_impl.py
+    - ops/built-in/tests/ut/ops_test/DataFormatDimMap/test_DataFormatDimMap_proto.cpp
+    - ops/built-in/tests/ut/ops_test/DeformableOffsets/__init__.py
+    - ops/built-in/tests/ut/ops_test/DepthToSpace/test_depth_to_space_proto.cpp
+    - ops/built-in/tests/ut/ops_test/DepthToSpace/test_DepthToSpace_impl.py
+    - ops/built-in/tests/ut/ops_test/Dequantize/test_dequantize_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
+    - ops/built-in/tests/ut/ops_test/Dilation2D/test_Dilation2D_check_support_impl.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/__init__.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_check_support_impl.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_impl.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/__init__.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/test_Dilation2DBackpropInput_check_support_impl.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/test_Dilation2DBackpropInput_impl.py
+    - ops/built-in/tests/ut/ops_test/Dilation2DBackpropInput/test_Dilation2DBackpropInput_proto.cpp
+    - ops/built-in/tests/ut/ops_test/DivNoNan/test_DivNoNan_proto.cpp
+    - ops/built-in/tests/ut/ops_test/DropOutDoMaskV3D/__init__.py
+    - ops/built-in/tests/ut/ops_test/DropOutDoMaskV3D/test_DropOutDoMaskV3_proto.cpp
+    - ops/built-in/tests/ut/ops_test/DropOutDoMaskV3D/test_DropOutDoMaskV3D_proto.cpp
+    - ops/built-in/tests/ut/ops_test/DynamicLSTMV2/test_dynamic_lstm_v2_impl.py
+    - ops/built-in/tests/ut/ops_test/DynamicLSTMV2/test_dynamic_lstm_v2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Eltwise/test_eltwise_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Elu/test_Elu_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Elu/test_Elu_proto.cpp
+    - ops/built-in/tests/ut/ops_test/EluGrad/test_EluGrad_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/EluGrad/test_EluGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Equal/test_equal_impl.py
+    - ops/built-in/tests/ut/ops_test/Erf/test_Erf_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Erf/test_Erf_impl.py
+    - ops/built-in/tests/ut/ops_test/Erf/test_Erf_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_impl.py
+    - ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Exp/test_dynamic_exp_impl.py
+    - ops/built-in/tests/ut/ops_test/Expm1/test_Expm1_proto.cpp
+    - ops/built-in/tests/ut/ops_test/FakeQuantWithMinMaxArgs/test_FakeQuantWithMinMaxArgs_impl.py
+    - ops/built-in/tests/ut/ops_test/FakeQuantWithMinMaxVarsGradient/test_FakeQuantWithMinMaxVarsGradient_impl.py
+    - ops/built-in/tests/ut/ops_test/FastGelu/test_dynamic_fast_gelu_impl.py
+    - ops/built-in/tests/ut/ops_test/FastGelu/test_FastGelu_impl.py
+    - ops/built-in/tests/ut/ops_test/FastGelu/test_FastGelu_proto.cpp
+    - ops/built-in/tests/ut/ops_test/FastGeluGrad/test_FastGeluGrad_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/FastGeluGrad/test_FastGeluGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/FastGeluGrad/test_FastGeluGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/FastrcnnPredictions/test_FastrcnnPredictions_impl.py
+    - ops/built-in/tests/ut/ops_test/Fills/test_Fills_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Fills/test_Fills_impl.py
+    - ops/built-in/tests/ut/ops_test/Fills/test_fills_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Floor/test_Floor_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Floor/test_Floor_impl.py
+    - ops/built-in/tests/ut/ops_test/Floor/test_Floor_proto.cpp
+    - ops/built-in/tests/ut/ops_test/FusedMulAdd/test_FusedMulAdd_impl.py
+    - ops/built-in/tests/ut/ops_test/FusedMulAdd/test_FusedMulAdd_proto.cpp
+    - ops/built-in/tests/ut/ops_test/FusedMulAddN/test_FusedMulAddN_proto.cpp
+    - ops/built-in/tests/ut/ops_test/FusedMulApplyMomentum/test_FusedMulApplyMomentum_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Gather/test_Gather_impl.py
+    - ops/built-in/tests/ut/ops_test/Gather/test_gather_proto.cpp
+    - ops/built-in/tests/ut/ops_test/GatherNd/test_gather_nd_proto.cpp
+    - ops/built-in/tests/ut/ops_test/GatherV2/test_Dynamic_GatherV2_impl.py
+    - ops/built-in/tests/ut/ops_test/GatherV2/test_gather_v2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/GatherV2D/test_GatherV2D_impl.py
+    - ops/built-in/tests/ut/ops_test/GatherV2D/test_GatherV2D_op_select_format_impl.py
+    - ops/built-in/tests/ut/ops_test/Gelu/test_dynamic_Gelu_impl.py
+    - ops/built-in/tests/ut/ops_test/Gelu/test_Gelu_impl.py
+    - ops/built-in/tests/ut/ops_test/Gelu/test_Gelu_proto.cpp
+    - ops/built-in/tests/ut/ops_test/GeluGrad/test_GeluGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/GeluGrad/test_GeluGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/GNTrainingReduce/test_gntrainingreduce_impl.py
+    - ops/built-in/tests/ut/ops_test/INInferV2D/test_ininferv2d_impl.py
+    - ops/built-in/tests/ut/ops_test/InstanceNorm/__init__.py
+    - ops/built-in/tests/ut/ops_test/InstanceNorm/test_InstanceNorm_impl.py
+    - ops/built-in/tests/ut/ops_test/InstanceNorm/test_InstanceNorm_proto.cpp
+    - ops/built-in/tests/ut/ops_test/InstanceNormGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/InstanceNormGrad/test_InstanceNormGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/InstanceNormGrad/test_InstanceNormGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/INTrainingReduceGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/INTrainingReduceGrad/test_intrainingreducegrad_impl.py
+    - ops/built-in/tests/ut/ops_test/INTrainingReduceGrad/test_intrainingreducegrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/INTrainingReduceV2/test_intrainingreducev2_impl.py
+    - ops/built-in/tests/ut/ops_test/INTrainingReduceV2/test_intrainingreducev2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateGrad/test_intrainingupdategrad_impl.py
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateGrad/test_intrainingupdategrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateGradGammaBeta/__init__.py
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateGradGammaBeta/test_intrainingupdategradgammabeta_impl.py
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateGradGammaBeta/test_intrainingupdategradgammabeta_proto.cpp
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateV2/test_intrainingupdatev2_impl.py
+    - ops/built-in/tests/ut/ops_test/INTrainingUpdateV2/test_intrainingupdatev2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Inv/test_dynamic_inv_impl.py
+    - ops/built-in/tests/ut/ops_test/Inv/test_Inv_impl.py
+    - ops/built-in/tests/ut/ops_test/Inv/test_Inv_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Invert/test_Invert_impl.py
+    - ops/built-in/tests/ut/ops_test/Invert/test_Invert_proto.cpp
+    - ops/built-in/tests/ut/ops_test/InvGrad/test_InvGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/KLDiv/test_KLDiv_impl.py
+    - ops/built-in/tests/ut/ops_test/KLDiv/test_KLDiv_proto.cpp
+    - ops/built-in/tests/ut/ops_test/L2Loss/test_L2Loss_impl.py
+    - ops/built-in/tests/ut/ops_test/L2Loss/test_L2Loss_op_select_format_impl.py
+    - ops/built-in/tests/ut/ops_test/L2NormalizeGrad/test_L2NormalizeGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/LarsV2Update/test_LarsV2Update_proto.cpp
+    - ops/built-in/tests/ut/ops_test/LayerNorm/test_LayerNorm_impl.py
+    - ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/__init__.py
+    - ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/test_layer_norm_beta_gamma_backprop_v2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/test_LayerNormBetaGammaBackpropV2_impl.py
+    - ops/built-in/tests/ut/ops_test/LayerNormGrad/test_LayerNormGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/LayerNormXBackprop/test_LayerNormXBackprop_impl.py
+    - ops/built-in/tests/ut/ops_test/LayerNormXBackpropV2/__init__.py
+    - ops/built-in/tests/ut/ops_test/LayerNormXBackpropV2/test_layer_norm_x_backprop_v2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/LayerNormXBackpropV2/test_LayerNormXBackpropV2_impl.py
+    - ops/built-in/tests/ut/ops_test/LeakyRelu/test_LeakyRelu_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Log/test_Log_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Log1p/test_dynamic_Log1p_impl.py
+    - ops/built-in/tests/ut/ops_test/LogicalNot/test_LogicalNot_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/LogSpaceD/test_log_space_d_impl.py
+    - ops/built-in/tests/ut/ops_test/LpNorm/test_lp_norm_impl.py
+    - ops/built-in/tests/ut/ops_test/LRNGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/LRNGrad/test_LrnGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/LRUCacheV2/__init__.py
+    - ops/built-in/tests/ut/ops_test/LRUCacheV2/test_lru_cache_v2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/LRUCacheV2/test_LRUCacheV2_impl.py
+    - ops/built-in/tests/ut/ops_test/MaskedFill/test_MaskedFill_proto.cpp
+    - ops/built-in/tests/ut/ops_test/MaskedScale/test_masked_scale_impl.py
+    - ops/built-in/tests/ut/ops_test/MatrixDiagPartD/test_MatrixDiagPartD_get_op_support_info_impl.py
+    - ops/built-in/tests/ut/ops_test/MatrixSetDiagD/test_MatrixSetDiagD_get_op_support_info_impl.py
+    - ops/built-in/tests/ut/ops_test/Maximum/test_dynamic_Maximum_impl.py
+    - ops/built-in/tests/ut/ops_test/MaximumGrad/test_MaximumGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/MaxPool/test_MaxPool_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolExt2/test_MaxPoolExt2_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolGrad/test_Dynamic_MaxPoolGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolGradWithArgmax/test_MaxPoolGradWithArgmax_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolV3/test_max_pool_v3_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolWithArgmax/test_MaxPoolWithArgmax_impl.py
+    - ops/built-in/tests/ut/ops_test/MaxPoolWithArgmaxV2/test_MaxPoolGradWithArgmaxV2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Minimum/test_dynamic_Minimum_impl.py
+    - ops/built-in/tests/ut/ops_test/MinimumGrad/test_MinimumGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Mod/test_Mod_impl.py
+    - ops/built-in/tests/ut/ops_test/Mul/test_Mul_impl.py
+    - ops/built-in/tests/ut/ops_test/MulNoNan/test_MulNoNan_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Muls/test_Dynamic_Muls_impl.py
+    - ops/built-in/tests/ut/ops_test/Muls/test_muls_proto.cpp
+    - ops/built-in/tests/ut/ops_test/MVN/__init__.py
+    - ops/built-in/tests/ut/ops_test/MVN/test_Mvn_impl.py
+    - ops/built-in/tests/ut/ops_test/MVNV2/test_MVNV2_impl.py
+    - ops/built-in/tests/ut/ops_test/NLLLoss/test_dynamic_nll_loss_impl.py
+    - ops/built-in/tests/ut/ops_test/NLLLoss/test_nll_loss_impl.py
+    - ops/built-in/tests/ut/ops_test/NLLLoss/test_nll_loss_proto.cpp
+    - ops/built-in/tests/ut/ops_test/NLLLossGrad/test_dynamic_nll_loss_grad_impl.py
+    - ops/built-in/tests/ut/ops_test/NLLLossGrad/test_nll_loss_grad_impl.py
+    - ops/built-in/tests/ut/ops_test/NLLLossGrad/test_nll_loss_grad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/NotEqual/test_dynamic_not_equal_impl.py
+    - ops/built-in/tests/ut/ops_test/NotEqual/test_not_equal_proto.cpp
+    - ops/built-in/tests/ut/ops_test/NotEqual/test_NotEqual_impl.py
+    - ops/built-in/tests/ut/ops_test/NPUClearFloatStatus/test_NPUClearFloatStatus_impl.py
+    - ops/built-in/tests/ut/ops_test/OneHotD/test_one_hot_proto.cpp
+    - ops/built-in/tests/ut/ops_test/OneHotD/test_OneHotD_impl.py
+    - ops/built-in/tests/ut/ops_test/OnesLike/test_ones_like_proto.cpp
+    - ops/built-in/tests/ut/ops_test/OnesLike/test_OnesLike_impl.py
+    - ops/built-in/tests/ut/ops_test/PadD/test_pad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/PadD/test_PadD_impl.py
+    - ops/built-in/tests/ut/ops_test/PopulationCount/test_PopulationCount_get_op_support_info_impl.py
+    - ops/built-in/tests/ut/ops_test/Pow/test_Pow_impl.py
+    - ops/built-in/tests/ut/ops_test/Pow/test_Pow_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Power/test_Power_proto.cpp
+    - ops/built-in/tests/ut/ops_test/PRelu/test_PRelu_impl.py
+    - ops/built-in/tests/ut/ops_test/PRelu/test_PRelu_proto.cpp
+    - ops/built-in/tests/ut/ops_test/PReluGrad/test_PReluGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/PriorBoxD/test_PriorBoxD_impl.py
+    - ops/built-in/tests/ut/ops_test/PriorBoxDV2/test_prior_box_d_v2_impl.py
+    - ops/built-in/tests/ut/ops_test/RealDiv/test_RealDiv_impl.py
+    - ops/built-in/tests/ut/ops_test/Reciprocal/test_Reciprocal_impl.py
+    - ops/built-in/tests/ut/ops_test/ReciprocalGrad/test_ReciprocalGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReduceMax/__init__.py
+    - ops/built-in/tests/ut/ops_test/ReduceMax/test_ReduceMax_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReduceMean/test_ReduceMean_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReduceMeanD/test_ReduceMeanD_impl.py
+    - ops/built-in/tests/ut/ops_test/ReduceMin/test_ReduceMin_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReduceProdD/test_ReduceProdD_impl.py
+    - ops/built-in/tests/ut/ops_test/ReduceSum/test_reducesum_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReduceSumD/test_ReduceSumD_impl.py
+    - ops/built-in/tests/ut/ops_test/Reduction/test_Reduction_impl.py
+    - ops/built-in/tests/ut/ops_test/Relu/test_dynamic_Relu_impl.py
+    - ops/built-in/tests/ut/ops_test/Relu6/test_Relu6_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Relu6D/test_Relu6D_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReluGrad/test_ReluGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/ReluGradV2/test_ReluGradV2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ReluV2/test_ReluV2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ResizeNearestNeighborV2D/test_ResizeNearestNeighborV2D_impl.py
+    - ops/built-in/tests/ut/ops_test/ResizeNearestNeighborV2Grad/test_resize_nearest_neighbor_v2_grad_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/ResizeNearestNeighborV2GradD/test_ResizeNearestNeighborV2GradD_impl.py
+    - ops/built-in/tests/ut/ops_test/ReverseV2D/test_ReverseV2D_get_op_support_info_impl.py
+    - ops/built-in/tests/ut/ops_test/Rint/test_Rint_impl.py
+    - ops/built-in/tests/ut/ops_test/Rint/test_Rint_proto.cpp
+    - ops/built-in/tests/ut/ops_test/RoiAlign/__init__.py
+    - ops/built-in/tests/ut/ops_test/ROIAlign/test_Dynamic_ROIAlign_impl.py
+    - ops/built-in/tests/ut/ops_test/ROIAlignGrad/__init__.py
+    - ops/built-in/tests/ut/ops_test/ROIAlignGrad/test_Dynamic_ROIAlignGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/ROIAlignGrad/test_RoiAlignGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/Round/test_Round_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Rsqrt/test_Rsqrt_proto.cpp
+    - ops/built-in/tests/ut/ops_test/RsqrtGrad/test_RsqrtGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Scale/test_scale_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ScanPQCodes/__init__.py
+    - ops/built-in/tests/ut/ops_test/ScanPQCodes/test_ScanPQCodes_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/ScatterDiv/test_Dynamic_ScatterDiv_impl.py
+    - ops/built-in/tests/ut/ops_test/ScatterDiv/test_ScatterDiv_impl.py
+    - ops/built-in/tests/ut/ops_test/ScatterNdAdd/test_ScatterNdAdd_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ScatterNdD/__init__.py
+    - ops/built-in/tests/ut/ops_test/ScatterNdD/test_ScatterNdD_impl.py
+    - ops/built-in/tests/ut/ops_test/ScatterNdSub/test_ScatterNdSub_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ScatterNdUpdate/test_ScatterNdUpdate_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ScatterNonAliasingAdd/test_dynamic_scatter_non_aliasing_add_impl.py
+    - ops/built-in/tests/ut/ops_test/ScatterNonAliasingAdd/test_ScatterNonAliasingAdd_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SelectV2/test_dynamic_select_v2_impl.py
+    - ops/built-in/tests/ut/ops_test/SelectV2/test_select_v2_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Selu/test_Selu_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Sigmoid/test_Sigmoid_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Sigmoid/test_Sigmoid_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SigmoidGrad/test_dynamic_SigmoidGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/SigmoidGrad/test_SigmoidGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/Sign/test_Sign_dy_impl.py
+    - ops/built-in/tests/ut/ops_test/Sign/test_Sign_impl.py
+    - ops/built-in/tests/ut/ops_test/Sin/test_Sin_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Sin/test_Sin_impl.py
+    - ops/built-in/tests/ut/ops_test/Sin/test_Sin_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Sinh/test_Sinh_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Sinh/test_Sinh_impl.py
+    - ops/built-in/tests/ut/ops_test/Sinh/test_Sinh_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SliceD/test_SliceD_impl.py
+    - ops/built-in/tests/ut/ops_test/SmoothL1Loss/test_smooth_l1_loss_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/SmoothL1Loss/test_SmoothL1Loss_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SmoothL1LossGrad/test_SmoothL1LossGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SoftMarginLoss/test_SoftMarginLoss_impl.py
+    - ops/built-in/tests/ut/ops_test/Softplus/test_dynamic_Softplus_impl.py
+    - ops/built-in/tests/ut/ops_test/Softplus/test_Softplus_impl.py
+    - ops/built-in/tests/ut/ops_test/Softplus/test_Softplus_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SoftplusGrad/test_SoftplusGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/SoftplusGrad/test_SoftplusGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Softsign/test_dynamic_Softsign_impl.py
+    - ops/built-in/tests/ut/ops_test/Softsign/test_Softsign_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SpaceToBatch/__init__.py
+    - ops/built-in/tests/ut/ops_test/SpaceToBatch/test_space_to_batch_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SpaceToBatchD/__init__.py
+    - ops/built-in/tests/ut/ops_test/SpaceToBatchD/test_SpaceToBatchD_impl.py
+    - ops/built-in/tests/ut/ops_test/SpaceToBatchND/__init__.py
+    - ops/built-in/tests/ut/ops_test/SpaceToBatchND/test_space_to_batch_nd_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SpaceToBatchNDD/__init__.py
+    - ops/built-in/tests/ut/ops_test/SpaceToBatchNDD/test_SpaceToBatchNDD_impl.py
+    - ops/built-in/tests/ut/ops_test/SpaceToDepth/test_space_to_depth_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SpaceToDepth/test_SpaceToDepth_impl.py
+    - ops/built-in/tests/ut/ops_test/Split/__init__.py
+    - ops/built-in/tests/ut/ops_test/SplitD/test_SplitD_impl.py
+    - ops/built-in/tests/ut/ops_test/SplitD/test_SplitD_op_select_format_impl.py
+    - ops/built-in/tests/ut/ops_test/SplitVD/test_SplitVD_impl.py
+    - ops/built-in/tests/ut/ops_test/SqrtGrad/test_dynamic_SqrtGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/SqrtGrad/test_SqrtGrad_impl.py
+    - ops/built-in/tests/ut/ops_test/Square/test_Dynamic_Square_impl.py
+    - ops/built-in/tests/ut/ops_test/SquaredDifference/test_SquaredDifference_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SquareSumV1/test_square_sum_v1_proto.cpp
+    - ops/built-in/tests/ut/ops_test/SquareSumV1/test_SquareSumV1_impl.py
+    - ops/built-in/tests/ut/ops_test/SquareSumV2/test_SquareSumV2_impl.py
+    - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_impl.py
+    - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_v200_Ascend710_impl.py
+    - ops/built-in/tests/ut/ops_test/StridedSliceD/test_StridedSliceD_1981_impl.py
+    - ops/built-in/tests/ut/ops_test/StridedSliceGrad/test_dynamic_strided_slice_grad_impl.py
+    - ops/built-in/tests/ut/ops_test/SwapCi/test_SwapCi_impl.py
+    - ops/built-in/tests/ut/ops_test/Tan/test_Tan_impl.py
+    - ops/built-in/tests/ut/ops_test/Tan/test_Tan_proto.cpp
+    - ops/built-in/tests/ut/ops_test/TanhGrad/test_TanhGrad_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ThresholdGradV2D/test_dynamic_threshold_grad_v2_d_impl.py
+    - ops/built-in/tests/ut/ops_test/ThresholdGradV2D/test_dynamic_threshold_grad_v2_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ThresholdGradV2D/test_threshold_grad_v2_d_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Tile/__init__.py
+    - ops/built-in/tests/ut/ops_test/Tile/test_dynamic_Tile_impl.py
+    - ops/built-in/tests/ut/ops_test/Tile/test_Tile_impl.py
+    - ops/built-in/tests/ut/ops_test/TileD/test_dynamic_TileD_impl.py
+    - ops/built-in/tests/ut/ops_test/TileWithAxis/__init__.py
+    - ops/built-in/tests/ut/ops_test/TileWithAxis/test_TileWithAxis_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/TileWithAxis/test_TileWithAxis_impl.py
+    - ops/built-in/tests/ut/ops_test/TileWithAxis/test_TileWithAxis_proto.cpp
+    - ops/built-in/tests/ut/ops_test/ToAbsoluteBBox/test_ToAbsoluteBBox_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_dhwcn2fractalz3d_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_Five2Four_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_Five2Four_v200_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_four2five_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_fz3d2ncdhw_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_fz3d2ndhwc_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_hwcn_2_fractal_z_g_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_ncdhw_2_fractal_z_3d_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_ncdhw_2_ndc1hwc0_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_nchw_2_fractal_z_g_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_nchw2zn_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_ndc1hwc02ncdhw_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_nz2nd_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_zn2hwcn_impl.py
+    - ops/built-in/tests/ut/ops_test/TransData/test_zn2nchw_impl.py
+    - ops/built-in/tests/ut/ops_test/TransposeD/test_TransposeD_impl.py
+    - ops/built-in/tests/ut/ops_test/TruncateDiv/test_TruncateDiv_impl.py
+    - ops/built-in/tests/ut/ops_test/TruncateMod/test_TruncateMod_impl.py
+    - ops/built-in/tests/ut/ops_test/UnsortedSegmentSum/test_UnsortedSegmentSum_impl.py
+    - ops/built-in/tests/ut/ops_test/UnsortedSegmentSumD/test_UnsortedSegmentSumD_impl.py
+    - ops/built-in/tests/ut/ops_test/Upsample/test_Upsample_impl.py
+    - ops/built-in/tests/ut/ops_test/Xdivy/test_Xdivy_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Xdivy/test_Xdivy_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Xlogy/test_Xlogy_dynamic_impl.py
+    - ops/built-in/tests/ut/ops_test/Xlogy/test_Xlogy_proto.cpp
+    - ops/built-in/tests/ut/ops_test/Yolo/test_Yolo_impl.py
+    - ops/built-in/tests/ut/ops_test/YoloV2DetectionOutputD/test_YoloV2DetectionOutputD_impl.py
+    - ops/built-in/tests/ut/ops_test/YoloV3DetectionOutputD/test_YoloV3DetectionOutputD_impl.py
+    - ops/built-in/tests/ut/plugin_test/CMakeLists.txt
+    - ops/built-in/tests/ut/plugin_test/common/tensorflow_parser.h
+    - ops/built-in/tests/ut/plugin_test/onnx/test_add_case_1.pb
+    - ops/built-in/tests/ut/plugin_test/onnx/test_add_onnx_plugin.cpp
+    - ops/built-in/tests/ut/plugin_test/onnx/test_add_pb_gen.py
+    - ops/built-in/tests/ut/plugin_test/tensorflow/CMakeLists.txt
+    - ops/built-in/tests/ut/plugin_test/tensorflow/instance_norm_1.pb
+    - ops/built-in/tests/ut/plugin_test/tensorflow/resizebilineargrad_case_1.pb
+    - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_grad_scope_pass_plugin.cpp
+    - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_scope_pass_plugin.cpp
+    - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_rnn_scope_pass_test.cpp
+    - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_pb_gen.py
+    - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_plugin.cpp
   llt:
     ut_check: true
     st_check: true
