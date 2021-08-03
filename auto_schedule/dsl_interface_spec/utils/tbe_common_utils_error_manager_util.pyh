@@ -4,4 +4,4 @@ def get_error_message(args):
 
 def raise_runtime_error(dict_args):
 
-def raise_runtime_error_cube(args_dict, msg):
+def raise_runtime_error_cube(args_dict, *msgs):

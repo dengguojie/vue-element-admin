@@ -60,10 +60,10 @@ def raise_runtime_error(dict_args):
                        get_error_message(dict_args))
 
 
-def raise_runtime_error_cube(args_dict, msg):
+def raise_runtime_error_cube(args_dict, *msgs):
     """
     raise runtime error
     :param args_dict: input dict
     :param msg: error message
     """
-    raise RuntimeError(args_dict, msg)
+    raise RuntimeError(args_dict, *msgs)
