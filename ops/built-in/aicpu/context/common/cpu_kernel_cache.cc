@@ -118,8 +118,8 @@ uint32_t CpuKernelCache::UpdateTensor(
     Tensor *input = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
                          "Get input[%zu] failed.", i)
-    input->SetData(reinterpret_cast<void *>(
-        static_cast<uintptr_t>(io_addrs[addr_index])));
+    input->SetData(
+        reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
 
     if (unknown_shape) {
       std::vector<int64_t> dims;
@@ -130,9 +130,12 @@ uint32_t CpuKernelCache::UpdateTensor(
       shape->SetDimSizes(dims);
     }
 
-    int64_t calc_data_size = input->CalcDataSizeByShape();
-    uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
-    input->SetDataSize(data_size);
+    KERNEL_CHECK_FALSE((input->NumElements() >= 0), KERNEL_STATUS_PARAM_INVALID,
+                       "Input[%zu] data elements number must be >= 0, "
+                       "got size[%lld].",
+                       i, input->NumElements());
+    input->SetDataSize(std::max(
+        uint64_t(0), static_cast<uint64_t>(input->CalcDataSizeByShape())));
     KERNEL_LOG_INFO("Set input[%zu] addr[%llu] success.", i,
                     io_addrs[addr_index]);
   }
@@ -141,8 +144,8 @@ uint32_t CpuKernelCache::UpdateTensor(
     Tensor *output = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                          "Get output[%zu] failed.", i)
-    output->SetData(reinterpret_cast<void *>(
-        static_cast<uintptr_t>(io_addrs[addr_index])));
+    output->SetData(
+        reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
 
     if (unknown_shape) {
       std::vector<int64_t> dims;
@@ -153,9 +156,13 @@ uint32_t CpuKernelCache::UpdateTensor(
       shape->SetDimSizes(dims);
     }
 
-    int64_t calc_data_size = output->CalcDataSizeByShape();
-    uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
-    output->SetDataSize(data_size);
+    KERNEL_CHECK_FALSE((unknown_shape || output->NumElements() >= 0),
+                       KERNEL_STATUS_PARAM_INVALID,
+                       "Output[%zu] data elements number must be >= 0 "
+                       "when known shape, got size[%lld].",
+                       i, output->NumElements());
+    output->SetDataSize(std::max(
+        uint64_t(0), static_cast<uint64_t>(output->CalcDataSizeByShape())));
     KERNEL_LOG_INFO("Set output[%zu] addr[%llu] success.", i,
                     io_addrs[addr_index]);
   }
@@ -305,10 +312,12 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
         ret = ParseExtShapeType(ext_info, unknown_shape);
         break;
       case FWKAdapter::FWK_ADPT_EXT_INPUT_SHAPE:
-        ret = ParseExtShapeAndType(unknown_shape, ext_info, input_shape_and_type);
+        ret =
+            ParseExtShapeAndType(unknown_shape, ext_info, input_shape_and_type);
         break;
       case FWKAdapter::FWK_ADPT_EXT_OUTPUT_SHAPE:
-        ret = ParseExtShapeAndType(unknown_shape, ext_info, output_shape_and_type);
+        ret = ParseExtShapeAndType(unknown_shape, ext_info,
+                                   output_shape_and_type);
         break;
       case FWKAdapter::FWK_ADPT_EXT_SESSION_INFO:
         has_session_info = true;
@@ -411,7 +420,7 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
 
   std::string str_data(nodedef, nodedef_len);
   nodedef_proto = CpuKernelUtils::CreateNodeDef();
-  KERNEL_CHECK_NULLPTR(nodedef_proto  ,
+  KERNEL_CHECK_NULLPTR(nodedef_proto,
                        std::shared_ptr<CpuKernelContext>(nullptr),
                        "Create node def failed.")
   if (!nodedef_proto->ParseFromString(str_data)) {

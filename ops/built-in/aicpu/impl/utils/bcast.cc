@@ -15,15 +15,124 @@
  */
 
 #include "bcast.h"
+
 #include <algorithm>
+
 #include "log.h"
 #include "status.h"
 
 namespace {
 const int64_t kNoBroadcastValue = 1;
+
+enum State {
+  UNKNOWN,
+  SAME,
+  X_ONE,
+  Y_ONE,
+};
 }
 
 namespace aicpu {
+uint32_t Bcast::Init(const std::vector<int64_t> &x, const std::vector<int64_t> &y) {
+  State prev = UNKNOWN;
+  for (size_t i = 0; i < x.size(); ++i) {
+    State curr = UNKNOWN;
+    const int64_t x_i = x[i];
+    const int64_t y_i = y[i];
+    int64_t o_i = 0;
+    int64_t bx_i = 0;
+    int64_t by_i = 0;
+    if (x_i == y_i) {
+      // No broadcast
+      o_i = x_i;
+      bx_i = kNoBroadcastValue;
+      by_i = kNoBroadcastValue;
+      curr = SAME;
+    } else if (x_i == kNoBroadcastValue) {
+      // x broadcast to y on this dimension
+      o_i = y_i;
+      bx_i = y_i;
+      by_i = kNoBroadcastValue;
+      curr = X_ONE;
+    } else if (y_i == kNoBroadcastValue) {
+      // y broadcast to x on this dimension
+      o_i = x_i;
+      bx_i = kNoBroadcastValue;
+      by_i = x_i;
+      curr = Y_ONE;
+    } else {
+      valid_ = false;
+      KERNEL_LOG_ERROR(
+          "Broadcast failed, x_shape[%zu]=%lld, y_shape[%zu]=%lld", i, x_i, i,
+          y_i);
+      return KERNEL_STATUS_PARAM_INVALID;
+    }
+    shape_out_.emplace_back(o_i);
+    if (curr == SAME && x_i == kNoBroadcastValue) {
+      continue;
+    } else if (prev == curr) {
+      result_shape_.back() *= o_i;
+      x_reshape_.back() *= x_i;
+      x_bcast_.back() *= bx_i;
+      y_reshape_.back() *= y_i;
+      y_bcast_.back() *= by_i;
+    } else {
+      result_shape_.emplace_back(o_i);
+      x_reshape_.emplace_back(x_i);
+      x_bcast_.emplace_back(bx_i);
+      y_reshape_.emplace_back(y_i);
+      y_bcast_.emplace_back(by_i);
+    }
+    prev = curr;
+  }
+  return KERNEL_STATUS_OK;
+}
+
+Bcast::Bcast(std::vector<int64_t> &x_shape, std::vector<int64_t> &y_shape)
+    : valid_(true) {
+  if (x_shape == y_shape) {
+    int64_t elements_num = 1;
+    for (size_t i = 0; i < x_shape.size(); ++i) {
+      elements_num *= x_shape[i];
+      shape_out_.emplace_back(x_shape[i]);
+    }
+    x_reshape_.emplace_back(elements_num);
+    y_reshape_.emplace_back(elements_num);
+    result_shape_.emplace_back(elements_num);
+    x_bcast_.emplace_back(kNoBroadcastValue);
+    y_bcast_.emplace_back(kNoBroadcastValue);
+  } else {
+    std::vector<int64_t> x = x_shape;
+    std::vector<int64_t> y = y_shape;
+    std::reverse(x.begin(), x.end());
+    std::reverse(y.begin(), y.end());
+    if (x.size() > y.size()) {
+      y.resize(x.size(), kNoBroadcastValue);
+    } else {
+      x.resize(y.size(), kNoBroadcastValue);
+    }
+    
+    auto ret = Init(x, y);
+    if (ret != KERNEL_STATUS_OK) {
+      return;
+    }
+
+    if (result_shape_.empty()) {
+      // when both x and y are scalar
+      result_shape_.emplace_back(kNoBroadcastValue);
+      x_reshape_.emplace_back(kNoBroadcastValue);
+      x_bcast_.emplace_back(kNoBroadcastValue);
+      y_reshape_.emplace_back(kNoBroadcastValue);
+      y_bcast_.emplace_back(kNoBroadcastValue);
+    }
+    std::reverse(result_shape_.begin(), result_shape_.end());
+    std::reverse(x_reshape_.begin(), x_reshape_.end());
+    std::reverse(x_bcast_.begin(), x_bcast_.end());
+    std::reverse(y_reshape_.begin(), y_reshape_.end());
+    std::reverse(y_bcast_.begin(), y_bcast_.end());
+  }
+}
+
 uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
   const std::vector<int64_t> &shape_x =
       calc_info.input_0->GetTensorShape()->GetDimSizes();

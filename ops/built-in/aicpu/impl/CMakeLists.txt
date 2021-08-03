@@ -7,10 +7,13 @@ set(local_kernels_src_files
     kernels/normalized/atan.cc
     kernels/normalized/cache_swap_table.cc
     kernels/normalized/candidate_sampler.cc
+    kernels/normalized/case_condition.cc
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
     kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
+    kernels/normalized/coordinates_1d_to_2d.cc
+    kernels/normalized/diag.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
     kernels/normalized/embedding_lookup.cc
@@ -18,15 +21,20 @@ set(local_kernels_src_files
     kernels/normalized/expanddims.cc
     kernels/normalized/fill.cc
     kernels/normalized/get_dynamic_dims.cc
+    kernels/normalized/greater.cc
+    kernels/normalized/greater_equal.cc
     kernels/normalized/identity.cc
     kernels/normalized/image_warp_offsets.cc
+    kernels/normalized/index_to_addr.cc
     kernels/normalized/inplace_top_k_distance.cc
     kernels/normalized/less.cc
     kernels/normalized/logging.cc
     kernels/normalized/masked_select.cc
     kernels/normalized/masked_select_grad.cc
     kernels/normalized/mul.cc
+    kernels/normalized/neg.cc
     kernels/normalized/not_equal.cc
+    kernels/normalized/ones_like.cc
     kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
@@ -36,11 +44,13 @@ set(local_kernels_src_files
     kernels/normalized/round.cc
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
+    kernels/normalized/slice_write.cc
     kernels/normalized/sparse_to_dense.cc
     kernels/normalized/spatial_transformer.cc
     kernels/normalized/split_v.cc
     kernels/normalized/strided_slice.cc
     kernels/normalized/strided_slice_v2.cc
+    kernels/normalized/sub.cc
     kernels/normalized/top_k.cc
     utils/allocator_utils.cc
     utils/bcast.cc
@@ -54,9 +64,6 @@ set(local_kernels_src_files
 
 set(local_host_kernels_src_files
     kernels/host/assign.cc
-    kernels/host/no_op.cc
-    kernels/host/transdata.cc
-    kernels/host/trans_data_rnn.cc
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
     kernels/host/format_transfer/format_transfer_fractal_z.cc
     kernels/host/format_transfer/format_transfer_fractalz_3d.cc
@@ -64,6 +71,12 @@ set(local_host_kernels_src_files
     kernels/host/format_transfer/format_transfer_transpose.cc
     kernels/host/format_transfer/format_transfer_utils.cc
     kernels/host/format_transfer/register_format_transfer.cc
+    kernels/host/gemm.cc
+    kernels/host/matmul.cc
+    kernels/host/matrix_triangular_solve.cc
+    kernels/host/no_op.cc
+    kernels/host/trans_data_rnn.cc
+    kernels/host/transdata.cc
 )
 set(local_device_kernels_src_files
     kernels/device/avg_pool1d_avg_matrix.cc
@@ -84,50 +97,7 @@ if(BUILD_OPEN_PROJECT)
     ${CANN_ROOT}/third_party/fwkacllib/inc/aicpu/cpu_kernels
     ${C_SEC_INCLUDE}
   )
-#[[
-  add_library(cpu_kernels_host SHARED
-    ${local_kernels_src_files}
-    ${local_host_kernels_src_files}
-  )
 
-  add_library(cpu_kernels_static STATIC
-    ${local_kernels_src_files}
-    ${local_host_kernels_src_files}
-  )
-
-  add_dependencies(cpu_kernels_host eigen_headers)
-  add_dependencies(cpu_kernels_static eigen_headers)
-
-  target_include_directories(cpu_kernels_host PRIVATE
-    ${local_kernels_inc_path}
-  )
-
-  target_include_directories(cpu_kernels_static PRIVATE
-    ${local_kernels_inc_path}
-  )
-
-  target_link_libraries(cpu_kernels_host PRIVATE
-    ${slog}
-    c_sec
-    cpu_kernels_context
-  )
-
-  target_link_libraries(cpu_kernels_static PRIVATE
-      c_sec
-  )
-
-  cann_install(
-    TARGET      cpu_kernels_host
-    FILES       $<TARGET_FILE:cpu_kernels_host>
-    DESTINATION "${OPS_AICPU_PATH}/host"
-  )
-
-  cann_install(
-    TARGET      cpu_kernels_static
-    FILES       $<TARGET_FILE:cpu_kernels_static>
-    DESTINATION "${OPS_AICPU_PATH}/host"
-  )
-]]
   if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
     if (MINRC)
       set(CMAKE_C_COMPILER /usr/bin/aarch64-linux-gnu-gcc)

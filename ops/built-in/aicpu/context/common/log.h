@@ -65,6 +65,12 @@ const char KERNEL_MODULE[] = "AICPU";
     return;                                          \
   }
 
+#define KERNEL_CHECK_FALSE(condition, errorCode, logText...)  \
+  if (!(condition)) {                                         \
+    KERNEL_LOG_ERROR(logText);                                \
+    return errorCode;                                         \
+  }
+
 #define KERNEL_CHECK_NULLPTR(value, errorCode, logText...) \
   if (value == nullptr) {                                  \
     KERNEL_LOG_ERROR(logText);                             \

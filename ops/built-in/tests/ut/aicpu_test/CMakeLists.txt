@@ -71,6 +71,9 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_transpose.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
+  ${CPU_KERNELS_DIR}/kernels/host/gemm.cc
+  ${CPU_KERNELS_DIR}/kernels/host/matmul.cc
+  ${CPU_KERNELS_DIR}/kernels/host/matrix_triangular_solve.cc
   ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/host/trans_data_rnn.cc
@@ -78,23 +81,31 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/case_condition.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/greater.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/greater_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/image_warp_offsets.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/index_to_addr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/inplace_top_k_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/neg.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/non_max_suppression_v3_kernels.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/not_equal.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/ones_like.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
@@ -103,11 +114,13 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/slice_write.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/spatial_transformer.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/sub.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
@@ -184,6 +197,7 @@ set(_cpu_kernels_ut_files
   testcase/assign/src/assign_utest.cpp
   testcase/atan/src/atan_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
+  testcase/case_condition/src/case_condition_utest.cpp
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
   testcase/common/src/async_cpu_kernel_utest.cpp
@@ -198,21 +212,31 @@ set(_cpu_kernels_ut_files
   testcase/common/src/sharder_utest.cpp
   testcase/common/src/tensor_utest.cpp
   testcase/concatv2/src/concatv2_utest.cpp
+  testcase/coordinates_1d_to_2d/src/coordinates_1d_to_2d_utest.cpp
+  testcase/diag/src/diag_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
+  testcase/greater/src/greater_utest.cpp
+  testcase/greater_equal/src/greater_equal_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
+  testcase/gemm/src/gemm_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/identity/src/identity_utest.cpp
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
+  testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
   testcase/less/src/less_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/masked_select/src/masked_select_utest.cpp
   testcase/masked_select_grad/src/masked_select_grad_utest.cpp
+  testcase/matmul/src/matmul_utest.cpp
+  testcase/matrix_triangular_solve/src/matrix_triangular_solve_utest.cpp
   testcase/mul/src/mul_utest.cpp
+  testcase/neg/src/neg_utest.cpp
   testcase/no_op/src/no_op_utest.cpp
   testcase/non_max_suppression_v3/src/non_max_suppression_v3_utest.cpp
   testcase/not_equal/src/not_equal_utest.cpp
+  testcase/ones_like/src/ones_like_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
@@ -221,10 +245,12 @@ set(_cpu_kernels_ut_files
   testcase/round/src/round_utest.cpp
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
+  testcase/slice_write/src/slice_write_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
+  testcase/sub/src/sub_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp

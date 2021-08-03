@@ -156,7 +156,7 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
                      const uint32_t outputs_num) {
   if (inputs_num != kDynamicInput) {
     KERNEL_CHECK_FALSE(
-        (ctx.GetInputsSize() == inputs_num), KERNEL_STATUS_PARAM_INVALID,
+        (ctx.GetInputsSize() >= inputs_num), KERNEL_STATUS_PARAM_INVALID,
         "[%s] need [%u] inputs, but got [%u].", ctx.GetOpType().c_str(),
         inputs_num, ctx.GetInputsSize());
     for (uint32_t i = 0; i < inputs_num; ++i) {
@@ -164,6 +164,16 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
       KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_INNER_ERROR,
                            "[%s] get input[%u] failed.",
                            ctx.GetOpType().c_str(), i);
+      auto input_shape = input->GetTensorShape();
+      KERNEL_CHECK_NULLPTR(input_shape, KERNEL_STATUS_PARAM_INVALID,
+                          "%s input[%u] tensor shape is nullptr.",
+                          ctx.GetOpType().c_str(), i);
+      if (!IsEmptyTensor(input)) {
+        auto input_data = input->GetData();
+        KERNEL_CHECK_NULLPTR(input_data, KERNEL_STATUS_PARAM_INVALID,
+                            "%s input[%u] tensor data is nullptr.",
+                            ctx.GetOpType().c_str(), i);
+      }
     }
   }
 
@@ -177,9 +187,49 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
       KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_INNER_ERROR,
                            "[%s] get output[%u] failed.",
                            ctx.GetOpType().c_str(), i);
+      auto output_shape = output->GetTensorShape();
+      KERNEL_CHECK_NULLPTR(output_shape, KERNEL_STATUS_PARAM_INVALID,
+                          "%s output[%u] tensor shape is nullptr.",
+                          ctx.GetOpType().c_str(), i);
+      if (!IsEmptyTensor(output)) {
+        auto output_data = output->GetData();
+        KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
+                            "%s output[%u] tensor data is nullptr.",
+                            ctx.GetOpType().c_str(), i);
+      }
     }
   }
   return KERNEL_STATUS_OK;
+}
+
+uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
+                     const uint32_t outputs_num,
+                     const std::vector<std::string> &attr_names) {
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, inputs_num, outputs_num),
+                      "Check Greater params failed.");
+  for (auto const &attr_name : attr_names) {
+    auto attr = ctx.GetAttr(attr_name);
+    KERNEL_CHECK_NULLPTR(attr, KERNEL_STATUS_PARAM_INVALID,
+                          "%s get attr[%s] is nullptr.",
+                          ctx.GetOpType().c_str(), attr_name.c_str());
+  }
+  return KERNEL_STATUS_OK;
+}
+
+bool IsScalar(const std::vector<int64_t> &shape) {
+  return (shape.size() == 0);
+}
+
+bool IsVector(const std::vector<int64_t> &shape) {
+  return (shape.size() == 1);
+}
+
+bool IsMatrix(const std::vector<int64_t> &shape) {
+  return (shape.size() == 2);
+}
+
+bool IsSquareMatrix(const std::vector<int64_t> &shape) {
+  return ((shape.size() == 2) && (shape[0] == shape[1]));
 }
 
 bool AddrAlignedCheck(const void *addr, uint64_t alignment) {

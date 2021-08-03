@@ -36,20 +36,31 @@ struct BCalcInfo {
 
 class Bcast {
  public:
-  Bcast() = default;
+  Bcast() : valid_(true){};
+  Bcast(std::vector<int64_t> &x_shape, std::vector<int64_t> &y_shape);
   ~Bcast() = default;
 
   uint32_t GenerateBcastInfo(const BCalcInfo &calc_info);
   void GetBcastVec(BCalcInfo &calc_info);
   void BCastIndexes(std::vector<int64_t> &x_indexes,
                     std::vector<int64_t> &y_indexes);
+  bool IsValid() const { return valid_; }
+  std::vector<int64_t> &x_reshape() { return x_reshape_; }
+  std::vector<int64_t> &y_reshape() { return y_reshape_; }
+  std::vector<int64_t> &result_shape() { return result_shape_; }
+  std::vector<int64_t> &x_bcast() { return x_bcast_; }
+  std::vector<int64_t> &y_bcast() { return y_bcast_; }
 
  private:
+  uint32_t Init(const std::vector<int64_t> &x, const std::vector<int64_t> &y);
+ private:
+  bool valid_;
   std::vector<int64_t> x_reshape_;
   std::vector<int64_t> y_reshape_;
   std::vector<int64_t> shape_out_;
   std::vector<int64_t> x_bcast_;
   std::vector<int64_t> y_bcast_;
+  std::vector<int64_t> result_shape_;
 };
 }  // namespace aicpu
 #endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_BCAST_H_

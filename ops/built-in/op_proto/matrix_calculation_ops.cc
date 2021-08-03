@@ -1678,37 +1678,35 @@ IMPLEMT_VERIFIER(GEMM, GemmVerify) {
   std::vector<DataType> support_list_ab;
 
   support_list.push_back(DT_FLOAT16);
+  support_list.push_back(DT_FLOAT);
   support_list.push_back(DT_INT8);
-
-  support_list_ab.push_back(DT_FLOAT);
-  support_list_ab.push_back(DT_INT32);
-  support_list_ab.push_back(DT_FLOAT16);
+  support_list.push_back(DT_INT32);
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   OP_LOGD(opName.GetString(), "[GEMM Verify] Start GEMM Verify.");
 
   if (CheckInputDataType(op, "a", support_list) == false) {
-    TbeInputDataTypeErrReport(opName.GetString(), "a", "float16,int8",
+    TbeInputDataTypeErrReport(opName.GetString(), "a", "float16,float32,int8,int32",
                               DataTypeToStringDesc(op.GetInputDescByName("a").GetDataType()));
     return GRAPH_FAILED;
   }
   if (CheckInputDataType(op, "b", support_list) == false) {
-    TbeInputDataTypeErrReport(opName.GetString(), "b", "float16,int8",
+    TbeInputDataTypeErrReport(opName.GetString(), "b", "float16,float32,int8,int32",
                               DataTypeToStringDesc(op.GetInputDescByName("b").GetDataType()));
     return GRAPH_FAILED;
   }
-  if (CheckInputDataType(op, "c", support_list_ab) == false) {
-    TbeInputDataTypeErrReport(opName.GetString(), "c", "float32,int32,float16",
+  if (CheckInputDataType(op, "c", support_list) == false) {
+    TbeInputDataTypeErrReport(opName.GetString(), "c", "float16,float32,int8,int32",
                               DataTypeToStringDesc(op.GetInputDescByName("c").GetDataType()));
     return GRAPH_FAILED;
   }
-  if (CheckInputDataType(op, "alpha", support_list_ab) == false) {
-    TbeInputDataTypeErrReport(opName.GetString(), "alpha", "float32,int32,float16",
+  if (CheckInputDataType(op, "alpha", support_list) == false) {
+    TbeInputDataTypeErrReport(opName.GetString(), "alpha", "float16,float32,int8,int32",
                               DataTypeToStringDesc(op.GetInputDescByName("alpha").GetDataType()));
     return GRAPH_FAILED;
   }
-  if (CheckInputDataType(op, "beta", support_list_ab) == false) {
-    TbeInputDataTypeErrReport(opName.GetString(), "beta", "float32,int32,float16",
+  if (CheckInputDataType(op, "beta", support_list) == false) {
+    TbeInputDataTypeErrReport(opName.GetString(), "beta", "float16,float32,int8,int32",
                               DataTypeToStringDesc(op.GetInputDescByName("beta").GetDataType()));
     return GRAPH_FAILED;
   }

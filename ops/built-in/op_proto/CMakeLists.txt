@@ -50,8 +50,10 @@ set(_op_proto_srcs
   bitwise_ops.cc
   boosted_trees_ops.cc
   candidate_sampling_ops.cc
+  case_condition_ops.cc
   condtake_ops.cc
   control_flow_ops.cc
+  coordinates_1d_to_2d_ops.cc
   copy_ops.cc
   ctc_ops.cc
   data_flow_ops.cc
@@ -63,6 +65,7 @@ set(_op_proto_srcs
   hvd_ops.cc
   ifmr.cc
   image_ops.cc
+  index_to_addr_ops.cc
   internal_ops.cc
   linalg_ops.cc
   list_ops.cc
@@ -99,6 +102,7 @@ set(_op_proto_srcs
   sdca_ops.cc
   selection_ops.cc
   set_ops.cc
+  slice_write_ops.cc
   sparse_ops.cc
   spectral_ops.cc
   split_combination_ops.cc

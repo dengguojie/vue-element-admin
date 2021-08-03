@@ -198,6 +198,25 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
                      const uint32_t outputs_num);
 
 /**
+ * @brief normal check for kernel
+ * @param ctx context
+ * @param inputs_num num of inputs
+ * @param outputs_num num of outputs
+ * @param attr_names names of attrs
+ * @return status code
+ */
+uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
+                     const uint32_t outputs_num,
+                     const std::vector<std::string> &attr_names);
+
+bool IsScalar(const std::vector<int64_t> &shape);
+
+bool IsMatrix(const std::vector<int64_t> &shape);
+
+bool IsVector(const std::vector<int64_t> &shape);
+
+bool IsSquareMatrix(const std::vector<int64_t> &shape);
+/**
  * @brief check if addr is aligned
  * @param addr address for check
  * @return true: aligned, false: not aligned
