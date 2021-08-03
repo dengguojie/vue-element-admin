@@ -22,16 +22,6 @@ net_addr=http://121.36.71.102/package/daily/
 rm -rf index.html*
 rm -rf ascend_download
 
-network_test(){
-  if [  $res_net -ne 0 ];then
-    echo $dotted_line
-    echo "Can not connect $test_net_addr. please check..."
-    exit -1
-  else
-    echo ${test_net_addr} is connected
-fi
-}
-
 get_arch(){
     echo $dotted_line
     echo "Get computer architecture"
@@ -45,6 +35,16 @@ get_arch(){
     fi
 }
 
+network_test(){
+  if [[ $1 -ne 0 ]];then
+    echo $dotted_line
+    echo "Can not connect $2. please check..."
+    exit -1
+  else
+    echo $2 is connected
+  fi
+}
+
 download_run(){
     wget -q --http-user=$username --http-passwd=$pwsswd $net_addr
     #http://121.36.71.102/package/daily/202107/
@@ -52,7 +52,7 @@ download_run(){
     #   20210702/    
     res_net=`echo $?`
     test_net_addr=$net_addr
-    network_test
+    network_test $res_net $test_net_addr
     #<tr><td class="link"><a href="202107/" title="202107">202107/</a></td><td class="size">-</td><td class="date">2021-Jul-29 00:35</td></tr>
     month=`cat index.html  | grep title |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}'`
     rm -rf index.html
@@ -63,7 +63,7 @@ download_run(){
     #    20210702/
     res_net=`echo $?`
     test_net_addr=${net_addr}${month}/
-    network_test
+    network_test $res_net $test_net_addr
     #</tbody></table></body></html><tr><td class="link"><a href="20210729/" title="20210729">20210729/</a></td><td class="size">-</td><td class="date">2021-Jul-29 00:35</td></tr>
     day=`cat index.html | grep title |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}'`
     rm -rf index.html
@@ -73,7 +73,7 @@ download_run(){
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/
     res_net=`echo $?`
     test_net_addr=${net_addr}${month}/${day}/${arch}/
-    network_test
+    network_test $res_net $test_net_addr
     folder_index_content=`cat index.html`
     folder_name_fragment=${folder_index_content##*href=\"}
     folder_name=${folder_name_fragment%%/*}
@@ -85,7 +85,7 @@ download_run(){
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/Ascend-cann-toolkit_5.0.2.alpha005_linux-x86_64.run
     res_net=`echo $?`
     test_net_addr=${net_addr}${month}/${day}/${arch}/${folder_name}/
-    network_test
+    network_test $res_net $test_net_addr
     file_index_content=`cat index.html`
     file_name_fragment=${file_index_content#*Ascend-cann-toolkit_5}
     file_name_fragment1=${file_name_fragment#*=\"}
@@ -98,7 +98,7 @@ download_run(){
     wget -P ascend_download --http-user=$username --http-passwd=$pwsswd ${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run
     res_net=`echo $?`
     test_net_addr=${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run
-    network_test
+    network_test $res_net $test_net_addr
 }
 
 delete_ori_Ascend(){
@@ -111,7 +111,7 @@ delete_ori_Ascend(){
     fi
 }
 
-install_Ascend(){
+extract_pack(){
     echo $dotted_line
     echo "start installation Ascend." 
     cd ascend_download
@@ -120,39 +120,35 @@ install_Ascend(){
     pwd
     $dir/${file_name}.run --noexec --extract=./out
     cd out/run_package
+}
 
+install_Ascend(){
     if [ $UID -eq 0 ];then
       set +e
       useradd HwHiAiUser
       set -e
     fi
-
-    if [ -f ./Ascend-atc* ];then
-      ./Ascend-atc* --pylocal --full
-    else
-      echo "The atc package does not exist, please check "
-      exit -1
-    fi
-
-    if [ -f ./Ascend-opp* ];then
-      ./Ascend-opp*  --full
-    else
-      echo "The opp package does not exist, please check "
-      exit -1
-    fi
-
-    if [ -f ./Ascend-toolkit* ];then
-      ./Ascend-atc* --pylocal --full
-    else
-      echo "The toolkit package does not exist, please check "
-      exit -1
-    fi
+    
+    for pack in atc opp toolkit
+      do 
+        if [ -f ./Ascend-${pack}* ];then
+          if [ ${pack} == "atc" ];then
+            ./Ascend-${pack}* --pylocal --full 
+          else 
+            ./Ascend-${pack}*  --full
+          fi
+        else
+          echo "The ${pack} package does not exist, please check "
+          exit -1
+        fi
+      done
 }
 
 network_test
 get_arch
 download_run
 delete_ori_Ascend
+extract_pack
 install_Ascend
 
 
