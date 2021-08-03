@@ -62,6 +62,20 @@ vector<BufferFusionPattern *> ConvBnreduceFusionPass::DefinePatterns() {
 
   patterns.push_back(pattern);
   OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name.c_str());
+  // define pattern rules
+  string pass_name1 = "TbeConvBNReduce3outputFusionPass";
+  BufferFusionPattern *pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1);
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
+  pattern1->AddOpDesc(kPatternBnreduce, {OP_PATTERN_BNREDUCE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput2, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternBnreduce, kPatternOutput1, kPatternOutput2},
+                  TBE_OUTPUT_BRANCH_MULTI);
+  patterns.push_back(pattern1);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
   return patterns;
 }
 
