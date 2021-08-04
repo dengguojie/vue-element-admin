@@ -57,22 +57,24 @@ download_run(){
     month=`cat index.html  | grep title |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}'`
     rm -rf index.html
     
-    wget -q --http-user=$username --http-passwd=$pwsswd ${net_addr}${month}/
+    eval net=$(echo ${net_addr}${month}/)
+    wget -q --http-user=$username --http-passwd=$pwsswd $net
     #http://121.36.71.102/package/daily/202107/
     #    20210701/
     #    20210702/
     res_net=`echo $?`
-    test_net_addr=${net_addr}${month}/
+    test_net_addr=$net
     network_test $res_net $test_net_addr
     #</tbody></table></body></html><tr><td class="link"><a href="20210729/" title="20210729">20210729/</a></td><td class="size">-</td><td class="date">2021-Jul-29 00:35</td></tr>
     day=`cat index.html | grep title |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}'`
     rm -rf index.html
     
-    wget -q --http-user=$username --http-passwd=$pwsswd ${net_addr}${month}/${day}/${arch}/
+    eval net=$(echo ${net}${day}/${arch}/)
+    wget -q --http-user=$username --http-passwd=$pwsswd $net
     #http://121.36.71.102/package/daily/202107/20210727/x86/
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/
     res_net=`echo $?`
-    test_net_addr=${net_addr}${month}/${day}/${arch}/
+    test_net_addr=$net
     network_test $res_net $test_net_addr
     folder_index_content=`cat index.html`
     folder_name_fragment=${folder_index_content##*href=\"}
@@ -80,11 +82,12 @@ download_run(){
     echo $folder_name
     rm -rf index.html
     
-    wget -q --http-user=$username --http-passwd=$pwsswd ${net_addr}${month}/${day}/${arch}/${folder_name}/
+    eval net=$(echo ${net}${folder_name}/)
+    wget -q --http-user=$username --http-passwd=$pwsswd $net
     #http://121.36.71.102/package/daily/202107/20210727/x86/master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/Ascend-cann-toolkit_5.0.2.alpha005_linux-x86_64.run
     res_net=`echo $?`
-    test_net_addr=${net_addr}${month}/${day}/${arch}/${folder_name}/
+    test_net_addr=$net
     network_test $res_net $test_net_addr
     file_index_content=`cat index.html`
     file_name_fragment=${file_index_content#*Ascend-cann-toolkit_5}
@@ -92,12 +95,13 @@ download_run(){
     file_name=${file_name_fragment1%%.deb*}
     rm -rf index.html
 
+    eval net=$(echo ${net}${file_name}.run)
     echo $dotted_line
     echo "Starting download ${file_name}.run"
     mkdir ascend_download
-    wget -P ascend_download --http-user=$username --http-passwd=$pwsswd ${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run
+    wget -P ascend_download --http-user=$username --http-passwd=$pwsswd $net
     res_net=`echo $?`
-    test_net_addr=${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run
+    test_net_addr=$net
     network_test $res_net $test_net_addr
 }
 
@@ -123,7 +127,7 @@ extract_pack(){
 }
 
 install_Ascend(){
-    if [ $UID -eq 0 ];then
+    if [[ $UID -eq 0 ]];then
       set +e
       useradd HwHiAiUser
       set -e

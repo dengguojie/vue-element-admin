@@ -23,7 +23,7 @@ rm -rf index.html*
 rm -rf ascend_download
 
 network_test(){
-  if [  $res_net -ne 0 ];then
+  if [[ $res_net -ne 0 ]];then
     echo $dotted_line
     echo "Can not connect $test_net_addr. please check..."
     exit -1
@@ -57,19 +57,20 @@ download_run(){
     day=`cat index.html  | grep title |tail -n 4| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}' | grep 20`
     rm -rf index.html
     
+    eval net=$(echo ${net_addr}${day}/x86_ubuntu_os_devtoolset_package.zip)
     echo $dotted_line
-    echo "Starting download ${file_name}.run"
+    echo "Starting download x86_ubuntu_os_devtoolset_package.zip"
     mkdir ascend_download
-    wget -P ascend_download --http-user=$username --http-passwd=$pwsswd ${net_addr}${day}/x86_ubuntu_os_devtoolset_package.zip
+    wget -P ascend_download --http-user=$username --http-passwd=$pwsswd $net
     res_net=`echo $?`
-    test_net_addr=${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run
+    test_net_addr=$net
     network_test
 }
 
 delete_ori_Ascend(){
     echo $dotted_line
     echo "Delete the original Ascend" 
-    if [ $UID -eq 0 ];then
+    if [[ $UID -eq 0 ]];then
       rm -rf /usr/local/Ascend
     else
       rm -rf ~/Ascend
@@ -89,7 +90,7 @@ extract_pack(){
 }
 
 install_Ascend(){
-    if [ $UID -eq 0 ];then
+    if [[ $UID -eq 0 ]];then
       set +e
       useradd HwHiAiUser
       set -e
