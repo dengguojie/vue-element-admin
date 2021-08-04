@@ -317,17 +317,6 @@ class BNUpdateGradSchedule():
             insn = insn_map.get(tensor.op.tag)
         return insn
     
-    def _get_emit_insn_map_for_broadcast(self, tensor):
-        insn_map = {"elewise_binary_mul": "vector_mul_with_broadcast",
-                    "elewise_binary_div": "vector_div_with_broadcast",
-                    "elewise_binary_add": "vector_add_with_broadcast",
-                    "elewise_binary_sub": "vector_sub_with_broadcast",
-                    }
-        if tensor.op.tag not in insn_map:
-            raise RuntimeError("Invalid tag of with broadcast vector instric!")
-
-        return insn_map.get(tensor.op.tag)
-    
     def _need_dichotomy_add(self, dtype, loop_size):
         if dtype == "float16":
             vector_inst_one_repeat_size = 128
@@ -525,23 +514,10 @@ class BNUpdateGradSchedule():
                 
                 self._do_const_double_buffer(outer_loop)
 
-            c0_size = 16
-            loop_size = self.ub_inner
-
-            if ub_split_axis == 2:
-                loop_size = loop_size * self.shape_x[3]
-
-            if ub_split_axis == 0:
-                loop_size = loop_size * self.shape_x[2]
-
-            if self._need_dichotomy_add(self.dtype, loop_size):
-                sch[final_out_buffer].emit_insn(self.sum_x_ub_inner,
-                                                "vector_dichotomy_add_for_bn_reduce")
-            else:
-                sch[final_out_buffer].emit_insn(self.sum_x_ub_inner,
-                                                "vector_reduce_sum")
+            sch[final_out_buffer].emit_insn(self.sum_x_ub_inner,
+                                            "vector_reduce_sum")
             
-            self._do_const_emit_insn()
+            self._do_emit_insn()
 
             if is_need_mte3_opt:
                 sch[final_out_tensor].emit_insn(sum_x_block_inner_inner, "dma_copy")
@@ -692,23 +668,10 @@ class BNUpdateGradSchedule():
 
                 self._do_const_double_buffer(outer_loop)
 
-            dtype = final_out_tensor.dtype.lower()
-            if ub_split_reduce_axis == 0:
-                loop_size = n_size // core_num * h_size * w_size * c0_size
-            elif ub_split_reduce_axis == 1:
-                loop_size = self.ub_inner * self.shape_x[3] * c0_size
-            else:
-                loop_size = self.ub_inner * c0_size
-
-            if self._need_dichotomy_add(dtype, loop_size):
-                sch[self.final_out_tensor_ub_rf].emit_insn(
-                    self.sum_x_ub_inner,
-                    "vector_dichotomy_add_for_bn_reduce")
-            else:
-                sch[self.final_out_tensor_ub_rf].emit_insn(
-                    self.sum_x_ub_inner, "vector_reduce_sum")
+            sch[self.final_out_tensor_ub_rf].emit_insn(
+                self.sum_x_ub_inner, "vector_reduce_sum")
             
-            self._do_const_emit_insn()
+            self._do_emit_insn()
 
             sch[self.final_out_tensor_global].emit_insn(
                 self.final_out_tensor_global.op.axis[1], "dma_copy")
@@ -807,7 +770,6 @@ class BNUpdateGradSchedule():
 
         block = tvm.thread_axis("blockIdx.x")
         sch[self.final_out_tensor_global].bind(self.final_out_tensor_global.op.reduce_axis[0], block)
-        dtype = final_out_tensor.dtype.lower()
 
         self._do_storage_bound()
         sch[self.final_out_tensor_ub_rf].set_storage_bound(self.storage_bound)
@@ -817,22 +779,11 @@ class BNUpdateGradSchedule():
             outer_loop = outer_loop * self.shape_x[0] * self.shape_x[1]
             self._do_const_double_buffer(outer_loop)
 
-            c0_size = 16
-            if self.ub_split_axis_index == 2:
-                loop_size = self.ub_inner * self.shape_x[3] * c0_size
-            else:
-                loop_size = self.ub_inner * c0_size
+            sch[self.final_out_tensor_ub_rf].emit_insn(
+                self.final_out_tensor_ub_rf.op.reduce_axis[3], 
+                "vector_reduce_sum")
             
-            if self._need_dichotomy_add(dtype, loop_size):
-                sch[self.final_out_tensor_ub_rf].emit_insn(
-                    self.final_out_tensor_ub_rf.op.reduce_axis[3],
-                    "vector_dichotomy_add_for_bn_reduce")
-            else:
-                sch[self.final_out_tensor_ub_rf].emit_insn(
-                    self.final_out_tensor_ub_rf.op.reduce_axis[3], 
-                    "vector_reduce_sum")
-            
-            self._do_const_emit_insn()
+            self._do_emit_insn()
 
             sch[self.final_out_tensor_global].emit_insn(
                 self.final_out_tensor_global.op.axis[1], "dma_copy")
@@ -943,7 +894,7 @@ class BNUpdateGradSchedule():
                 self.final_out_tensor_ub_rf.op.reduce_axis[2], 
                 "vector_reduce_sum")
             
-            self._do_const_emit_insn()
+            self._do_emit_insn()
             sch[self.final_out_tensor_global].emit_insn(
                 self.final_out_tensor_global.op.axis[4], "dma_copy")
             sch[final_out_tensor].emit_insn(
@@ -1042,26 +993,10 @@ class BNUpdateGradSchedule():
             if self.ub_split_axis_index == 3:
                 outer_loop = outer_loop * self.shape_x[2]
             self._do_const_double_buffer(outer_loop)
-
-            dtype = final_out_tensor.dtype.lower()
-            c0_size = 16
-            loop_size = self.ub_inner * c0_size
-            if self.ub_split_axis_index == 2:
-                loop_size = loop_size * self.shape_x[3]
             
-            if self.ub_split_axis_index == 3:
-                sch[final_out_buffer].emit_insn(self.sum_x_ub_inner, "vector_reduce_sum")
-            else:
-                if self._need_dichotomy_add(dtype, loop_size):
-                    sch[final_out_buffer].emit_insn(
-                        self.sum_x_ub_inner,
-                        "vector_dichotomy_add_for_bn_reduce")
-                else:
-                    sch[final_out_buffer].emit_insn(
-                        self.sum_x_ub_inner, 
-                        "vector_reduce_sum")
+            sch[final_out_buffer].emit_insn(self.sum_x_ub_inner, "vector_reduce_sum")
             
-            self._do_const_emit_insn()
+            self._do_emit_insn()
             sch[final_out_tensor].emit_insn(sum_x_c0_axis, "dma_copy")
         else:
             self._do_double_buffer()
@@ -1104,35 +1039,6 @@ class BNUpdateGradSchedule():
         for tensor in self.mid_tensor_buffer_map:
             buffer_tensor = self.mid_tensor_buffer_map[tensor]
             insn = self._get_emit_insn_map(tensor)
-            sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], insn)
-        self.sch_list[0] = sch
-    
-    def _do_const_emit_insn(self):
-        """
-        emit insn
-        """
-        sch = self.sch_list[0]
-        for tensor in self.input_tensor_buffer_map:
-            buffer_tensor = self.input_tensor_buffer_map[tensor]
-            sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], "dma_copy")
-
-        batch = self.shape_x[0]
-        c1_size = self.shape_x[1]
-        c0_size = self.shape_x[4]
-
-        for tensor in self.mid_tensor_buffer_map:
-            buffer_tensor = self.mid_tensor_buffer_map[tensor]
-            if buffer_tensor in self.broadcast_tensor_buffers:
-                shape = tensor.shape
-                shape_size = functools.reduce(lambda i, j: i * j, shape)
-                if shape_size.value // (batch * c1_size * c0_size) == 1 or \
-                        (self.ub_split_axis_index == 3 and self.ub_inner == 1):
-                    insn = self._get_emit_insn_map(tensor)
-                else:
-                    insn = self._get_emit_insn_map_for_broadcast(tensor)
-            else:
-                insn = self._get_emit_insn_map(tensor)
-
             sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], insn)
         self.sch_list[0] = sch
     

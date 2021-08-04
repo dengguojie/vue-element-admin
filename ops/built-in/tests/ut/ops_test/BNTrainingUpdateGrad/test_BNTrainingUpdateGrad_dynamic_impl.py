@@ -32,6 +32,10 @@ case6 = gen_bn_training_update_grad_case((2,2,256,256,16), (2,2,256,256,16), (1,
                                          "bn_training_update_grad_6")
 case7 = gen_bn_training_update_grad_case((99,256,47,47,16), (99,256,47,47,16), (1,256,1,1,16), (1,256,1,1,16), "float32", "float32",
                                          "bn_training_update_grad_7")
+case8 = gen_bn_training_update_grad_case((125,14,7,128,16), (125,14,7,128,16), (1,14,1,1,16), (1,14,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_8")
+case9 = gen_bn_training_update_grad_case((192,27,22,17,16), (192,27,22,17,16), (1,27,1,1,16), (1,27,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_9")
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -40,6 +44,8 @@ ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case8)
+ut_case.add_case(["Ascend910A"], case9)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
