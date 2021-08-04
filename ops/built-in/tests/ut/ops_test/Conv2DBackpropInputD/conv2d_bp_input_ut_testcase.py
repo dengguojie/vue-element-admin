@@ -1725,6 +1725,24 @@ conv2d_bp_input_fusion_testcase = [
         "success",
         "default",
     ),
+        (
+        "float16",
+        "float16",
+        "float32",
+        (512, 128, 1, 1),
+        (16, 512, 56, 56),
+        (16, 128, 56, 56),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (16, 128, 56, 56),
+        (1, 1, 1, 1),
+        (0, 0, 0, 0),
+        (1, 1, 1, 1),
+        1,
+        "success",
+        "default",
+    ),
 ]
 
 conv2d_bp_input_op_slice_testcase = [

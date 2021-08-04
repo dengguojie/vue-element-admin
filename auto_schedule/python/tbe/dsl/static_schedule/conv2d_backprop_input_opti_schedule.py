@@ -339,7 +339,7 @@ class Conv2dDxOptiSchedule:
             self._raise_dx_opti_err("tilling size exceed L0C Buffer")
 
 
-    def _check_tilling_cub(self, strideh, stridew, cub_space, isdouble, is_conv1d_bool):
+    def _check_tilling_cub(self, default_tiling_flag, strideh, stridew, cub_space, isdouble, is_conv1d_bool):
         """
         check tilling parameter in cub
 
@@ -404,12 +404,17 @@ class Conv2dDxOptiSchedule:
                         n_is_hfactor = max((cl0_m_extent - block_m), block_m) // DIM_MAP["img_shape"][3]
                         while DIM_MAP["img_shape"][2] % n_is_hfactor != 0:
                             n_is_hfactor = n_is_hfactor - 1
-                real_m = n_is_hfactor * DIM_MAP["img_shape"][3]
+                dy_w = DIM_MAP["img_shape"][3]
+                tilling_ub_m0 = TILING.get("CUB_matrix")[3]
+                real_m = n_is_hfactor * dy_w
+                if (dy_w % tilling_ub_m0 != 0) and default_tiling_flag == 1:
+                    # add tiling_ub_m0 is needed by buffer_tile of ub
+                    real_m = n_is_hfactor * align(dy_w + tilling_ub_m0, tilling_ub_m0)
                 dilate_cub_size = (
                     (1 + strideh * stridew)
                     * nc_factor
                     * real_m
-                    * TILING.get("CUB_matrix")[3]
+                    * tilling_ub_m0
                     * group_cub
                     * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype]
                     * isdouble
@@ -753,7 +758,9 @@ class Conv2dDxOptiSchedule:
         if tbe_compile_para is not None:
             out_of_order = tbe_compile_para.get("out_of_order")
         self.dx_para.update_para_map("out_of_order", out_of_order)
-
+        default_tiling_flag = 0
+        if TILING["AL0_matrix"][2] == 32:
+            default_tiling_flag = 1
         TILING = self._check_and_set_default_tiling(
             TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype, l0c_multi_group_flag
         )
@@ -805,6 +812,7 @@ class Conv2dDxOptiSchedule:
         # check tilling in CUB  attention:light when stride get  #########
         if "dedy_h" not in var_map and "dedy_w" not in var_map and not cube_vector_split_flag:
             self._check_tilling_cub(
+                default_tiling_flag,
                 strideh,
                 stridew,
                 tbe_platform_info.get_soc_spec("UB_SIZE"),
