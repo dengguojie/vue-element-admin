@@ -3782,6 +3782,9 @@ class CceConvOp:
                 stride_update = 1 if strideh_opti_flag else ConvParam.stride_h
                 ho_len = tvm.min(tvm.floordiv(l1_m, w_out) + additional_rows, ConvParam.h_out)
                 hi_max = tvm.min(ConvParam.filter_h + (ho_len - 1) * stride_update, ConvParam.h_in)
+                if "mean_matrix" in tensor_map:
+                    sch[al1].buffer_tile((None, None), (None, None), (None, None), (None, hi_max),
+                                         (None, None), (None, None))
                 return hi_max * w_in
 
             w_out = dim_map['out_img_height_width'][1]

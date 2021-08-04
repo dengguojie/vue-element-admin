@@ -420,6 +420,19 @@ case36 = {"params": [{"shape": (1,-1,2,32), "format": "NHWC", "dtype": "float16"
          "expect": RuntimeError,
          "support_expect": True}
 
+# check al1 buffer_tile
+case_al1_buffer_tile = {"params": [{"shape": (-1,17,-1,-1), "format": "NCHW", "dtype": "float16", "ori_shape": (-1,17,-1,-1), "ori_format": "NCHW",
+                     "range":[(32, 36), (17, 17), (64, 127), (128, 191)]},
+                    {"shape": (168,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (17, 1, 6, 14),"ori_format": "NCHW",
+                     "range":[(17, 17), (1, 1), (6, 6), (14, 14)]},
+                    None,
+                    {"shape": (-1, 17, -1, -1),"format": "NCHW", "dtype": "float16", "ori_shape": (-1, 17, -1, -1),"ori_format": "NCHW",
+                     "range":[(32, 36), (17, 17), (20, 30), (30, 35)]},
+                    [1,1,6,14], [1,1,4,4], "VALID", "NCHW"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -456,6 +469,7 @@ ut_case.add_case(["Ascend910A"], case33)
 ut_case.add_case(["Ascend910A"], case34)
 ut_case.add_case(["Ascend910A"], case35)
 ut_case.add_case(["Ascend910A"], case36)
+ut_case.add_case(["Ascend910A"], case_al1_buffer_tile)
 
 def test_avg_pool_fuzz_build_generalization(test_arg):
     from impl.dynamic.avg_pool import avg_pool_generalization
