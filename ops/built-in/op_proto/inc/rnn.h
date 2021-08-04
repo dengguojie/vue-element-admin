@@ -285,9 +285,9 @@ REG_OP(DynamicRNN)
 *@li num_proj:An integer identifying the num projection in the op. Default to 0.
 *@li time_major:An bool identifying the time major in the op. Default to true.
 *@li activation:An string identifying the type of activation function in the op. Default to "tanh".
-*Only tanh is currently supported.
+*Support "tanh" and "clip".
 *@li recurrent_activation:An string identifying the type of activation function in the op. Default to "sigmoid".
-*Supprot "sigmoid" and "hard_sigmoid". In general, set "hard_sigmoid" for TF Keras LSTM.
+*Support "sigmoid" and "hard_sigmoid". In general, set "hard_sigmoid" for TF Keras LSTM.
 *@li forget_bias:An float identifying the forget bias in the op. Default to 0.
 *@li gate_order:An string identifying the type of gate order in the op. Support "ijfo" and "ifco". Default to "ijfo".
 *Set "ijfo" for TF operator LSTM, Set "ifco" for TF Keras LSTM.

@@ -4,7 +4,8 @@
 from op_test_frame.ut import OpUT
 ut_case = OpUT("DynamicRNNV2", "impl.dynamic_rnn_v2", "dynamic_rnn_v2")
 
-def gen_dynamic_rnn_case(shape_x, shape_wi, shape_wh, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, case_name_val):
+def gen_dynamic_rnn_case(shape_x, shape_wi, shape_wh, shape_b, shape_output, dtype, init_from_gm, gate_output,
+                         activation, recurrent_activation, gate_order, expect, case_name_val):
     if not init_from_gm:
         init_h = None
         init_c = None
@@ -41,7 +42,9 @@ def gen_dynamic_rnn_case(shape_x, shape_wi, shape_wh, shape_b, shape_output, dty
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
                        {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       i, j, f, o, tanhc],
+                       i, j, f, o, tanhc,
+                       "LSTM", "UNIDIRECTIONAL", 1, False, 1.0, -1.0, 0, True,
+                       activation, recurrent_activation, 0.0, gate_order, False, "concat", True],
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
@@ -49,9 +52,12 @@ def gen_dynamic_rnn_case(shape_x, shape_wi, shape_wh, shape_b, shape_output, dty
             }
 
 case1 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
-                             "success", "dynamic_rnn_1")
+                             "tanh", "sigmoid", "ijfo", "success", "dynamic_rnn_1")
+case2 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
+                             "clip", "hard_sigmoid", "ifco", "success", "dynamic_rnn_2")
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 
 
 if __name__ == '__main__':

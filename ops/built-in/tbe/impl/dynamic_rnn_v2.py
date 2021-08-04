@@ -26,7 +26,8 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
-from te.lang.cce import vcmpsel
+from te.lang.cce import vmins
+from te.lang.cce import vmaxs
 from te.domain.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
@@ -80,21 +81,14 @@ def hard_sigmoid_compute(input_x):
     input_x dtype is float32
     """
     dtype = input_x.dtype
-    shape = input_x.shape
-    one_tensor = broadcast(tvm.const(1, input_x.dtype), shape)
-    vcmpsel_fp32_support = api_check_support(
-        "te.lang.cce.vcmpsel", "float32")
-    if dtype == "float32" and not vcmpsel_fp32_support:
-        zero_tensor = broadcast(tvm.const(0, "float16"), shape)
-    else:
-        zero_tensor = broadcast(tvm.const(0, input_x.dtype), shape)
+    one_const = tvm.const(1, dtype)
+    zero_const = tvm.const(0, dtype)
     alpha_x = vmuls(input_x, tvm.const(0.2, input_x.dtype))
     alpha_x_beta = vadds(alpha_x, tvm.const(0.5, input_x.dtype))
-    result1 = vcmpsel(alpha_x_beta, one_tensor, 'ge', one_tensor, alpha_x_beta)
-    result = vcmpsel(result1, zero_tensor, 'ge', result1, zero_tensor)
-    if dtype == "float32" and not vcmpsel_fp32_support:
-        result = cast_to(result, dtype)
+    result1 = vmins(alpha_x_beta, one_const)
+    result = vmaxs(result1, zero_const)
     return result
+
 
 def tanh_compute(input_x):
     """
@@ -133,6 +127,29 @@ def tanh_compute(input_x):
     if has_improve_precision:
         res = cast_to(res, "float16")
 
+    return res
+
+
+def clip_compute(input_x):
+    """
+    calculating clip
+    """
+    dtype = input_x.dtype
+    one_const = tvm.const(1, dtype)
+    negative_one_const = tvm.const(-1, dtype)
+    result1 = vmins(input_x, one_const)
+    result = vmaxs(result1, negative_one_const)
+    return result
+
+
+def activation_compute(activation, input_x):
+    """
+    activation compute
+    """
+    if activation == "clip":
+        res = clip_compute(input_x)
+    else:
+        res = tanh_compute(input_x)
     return res
 
 
@@ -402,9 +419,9 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                                                           "time_major is not True",
                                                           "time_major", str(time_major))
 
-    if activation not in ["tanh"]:
+    if activation not in ["tanh", "clip"]:
         error_manager_vector.raise_err_check_params_rules("DynamicRNNV2",
-                                                          "activation is not tanh",
+                                                          "activation in ['tanh', 'clip']",
                                                           "activation", str(activation))
 
     if recurrent_activation not in ["sigmoid", "hard_sigmoid"]:
@@ -675,7 +692,7 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
                     input_list,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init,
-                     forget_bias, recurrent_activation, gate_order, y_dtype])
+                     forget_bias, recurrent_activation, gate_order, y_dtype, activation])
 
             with tik_instance.if_scope(loop_i > 0):
                 is_first_round = False
@@ -684,7 +701,7 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
                     input_list,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init,
-                     forget_bias, recurrent_activation, gate_order, y_dtype])
+                     forget_bias, recurrent_activation, gate_order, y_dtype, activation])
 
     config_map = {
         "dump_cce_code": False,
@@ -718,11 +735,12 @@ def dynamic_rnn_tik(input_list, custom_list):
     recurrent_activation = custom_list[4]
     gate_order = custom_list[5]
     y_dtype = custom_list[6]
+    activation = custom_list[7]
 
     return dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm,
                             s_state_h_gm_last, s_state_c_gm_last, sync0,
                             is_gate_output, is_first_round, is_global_init,
-                            forget_bias, recurrent_activation, gate_order, y_dtype)
+                            forget_bias, recurrent_activation, gate_order, y_dtype, activation)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -730,7 +748,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0,
                      is_gate_output, is_first_round, is_global_init,
-                     forget_bias, recurrent_activation, gate_order, y_dtype):
+                     forget_bias, recurrent_activation, gate_order, y_dtype, activation):
     """
     implement of dynamic rnn
     :return:
@@ -918,7 +936,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         i_t_sigmoid = sigmoid_compute(i_t)
         o_t_sigmoid = sigmoid_compute(o_t)
 
-    j_t_tanh = tanh_compute(j_t)
+    j_t_tanh = activation_compute(activation, j_t)
 
     f_t_sigmoid_ub = f_t_sigmoid
     i_t_sigmoid_ub = i_t_sigmoid
@@ -1061,7 +1079,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                                               lambda *indices: last_update_c_back(*indices).astype('float32'),
                                               name="update_c_fp16_back_fp32_drnn_cast",
                                               tag="elewise_single_cast")
-        c_t_tanh = tanh_compute(update_c_fp16_back_fp32)
+        c_t_tanh = activation_compute(activation, update_c_fp16_back_fp32)
     else:
         update_c_fp32_back = tvm.compute(shape_i,
                                          lambda *indices: update_c_gm(*indices),
@@ -1075,7 +1093,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                                          lambda *indices: last_update_c_gm(*indices),
                                          name="last_update_c_back",
                                          tag="out_to_ub")
-        c_t_tanh = tanh_compute(last_update_c_back)
+        c_t_tanh = activation_compute(activation, last_update_c_back)
 
     c_t_tanh_ub = c_t_tanh
 
