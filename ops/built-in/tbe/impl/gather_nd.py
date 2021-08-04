@@ -1032,10 +1032,11 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
                 tvm.call_extern(data.dtype, "copy_gm_to_ubuf",
                                 output_ub.access_ptr("w", offset=post_step * last_core_row_remain),
                                 data.access_ptr('r', offset=gm_offset), 0, 1, param_core_len, 0, 0))
-        ir_build.emit(
-            tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
-                            dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + indices_loops * param_times_per_output_ub * post_step),
-                            output_ub.access_ptr("r"), 0, 1, core_len_last_remain, 0, 0))
+        if indices_loops_remain != 0:
+            ir_build.emit(
+                tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + indices_loops * param_times_per_output_ub * post_step),
+                                output_ub.access_ptr("r"), 0, 1, core_len_last_remain, 0, 0))
 
 
 def _calculate_last_burst_len(data, ele_num, last_ele_num):

@@ -1088,5 +1088,79 @@
     ],
     "attr": [],
     "case_name": "test_GatherNd_023"
+  },
+  {
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          8,
+          95,
+          32
+        ],
+        "shape": [
+          8,
+          95,
+          32
+        ],
+        "param_type": "input",
+        "name": "dict_data",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          3,
+          13,
+          1
+        ],
+        "shape": [
+          2,
+          3,
+          3,
+          13,
+          1
+        ],
+        "param_type": "input",
+        "value_range": [
+          0,
+          5
+        ],
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2,
+          3,
+          3,
+          13,
+          95,
+          32
+        ],
+        "shape": [
+          2,
+          3,
+          3,
+          13,
+          95,
+          32
+        ],
+        "param_type": "output",
+        "name": "dict_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_GatherNd_024"
   }
 ]
