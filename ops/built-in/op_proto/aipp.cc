@@ -32,9 +32,232 @@
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
 
+
 namespace ge {
 
-void GetOutputHeightWidth(::domi::AippOpParams* aipp_op_params, uint64_t* output_height, uint64_t* output_width) {
+namespace {
+  constexpr uint8_t kChannel1 = 1;
+  constexpr uint8_t kChannel3 = 3;
+  constexpr uint8_t kChannel4 = 4;
+
+  constexpr uint8_t kFormatYuv420sp = 1;
+  constexpr uint8_t kFormatXrgb8888 = 2;
+  constexpr uint8_t kFormatRgb888 = 5;
+  constexpr uint8_t kFormatArgb8888 = 6;
+  constexpr uint8_t kFormatYuyv = 7;
+  constexpr uint8_t kFormatYuv422sp = 8;
+  constexpr uint8_t kFormatAyuv444 = 9;
+  constexpr uint8_t kFormatYuv400 = 10;
+
+  constexpr int32_t kParamsHeadSize = 64;
+  constexpr int32_t kSize = 4;
+  constexpr int32_t kBatchNumIndex = 4;
+  constexpr int32_t kSrcImageSizeWIndex = 8;
+  constexpr int32_t kSrcImageSizeHIndex = 12;
+  constexpr int32_t kScfSwitchIndex = 1;
+  constexpr int32_t kPaddingSwitchIndex = 2;
+  constexpr int32_t kCropStartPosWIndex = 8;
+  constexpr int32_t kCropStartPosHIndex = 12;
+  constexpr int32_t kCropSizeWIndex = 16;
+  constexpr int32_t kCropSizeHIndex = 20;
+  constexpr int32_t kScfInputSizeWIndex = 24;
+  constexpr int32_t kScfInputSizeHIndex = 28;
+  constexpr int32_t kScfOutputSizeWIndex = 32;
+  constexpr int32_t kScfOutputSizeHIndex = 36;
+  constexpr int32_t kPaddingSizeTopIndex = 40;
+  constexpr int32_t kPaddingSizeBottomIndex = 44;
+  constexpr int32_t kPaddingSizeLeftIndex = 48;
+  constexpr int32_t kPaddingSizeRightIndex = 52;
+
+  constexpr int64_t kMinCropSize = 8;
+}
+
+struct AippParams {
+  uint8_t inputFormat;
+  int8_t batchNum;
+  int32_t srcImageSizeW;
+  int32_t srcImageSizeH;
+
+  int8_t cropSwitch;
+  int8_t scfSwitch;
+  int8_t paddingSwitch;
+  int32_t cropStartPosW;
+  int32_t cropStartPosH;
+  int32_t cropSizeW;
+  int32_t cropSizeH;
+  int32_t scfInputSizeW;
+  int32_t scfInputSizeH;
+  int32_t scfOutputSizeW;
+  int32_t scfOutputSizeH;
+  int32_t paddingSizeTop;
+  int32_t paddingSizeBottom;
+  int32_t paddingSizeLeft;
+  int32_t paddingSizeRight;
+};
+
+void InitAippParams(AippParams& params) {
+  params.inputFormat = 0;
+  params.batchNum = 0;
+  params.srcImageSizeW = 0;
+  params.srcImageSizeH = 0;
+
+  params.cropSwitch = 0;
+  params.scfSwitch = 0;
+  params.paddingSwitch = 0;
+  params.cropStartPosW = 0;
+  params.cropStartPosH = 0;
+  params.cropSizeW = 0;
+  params.cropSizeH = 0;
+  params.scfInputSizeW = 0;
+  params.scfInputSizeH = 0;
+  params.scfOutputSizeW = 0;
+  params.scfOutputSizeH = 0;
+  params.paddingSizeTop = 0;
+  params.paddingSizeBottom = 0;
+  params.paddingSizeLeft = 0;
+  params.paddingSizeRight = 0;
+}
+
+void ParseAippParams(const Tensor& data, AippParams& aippParams) {
+  const uint8_t* constData = data.GetData();
+
+  aippParams.inputFormat = *constData;
+  aippParams.batchNum = *((int8_t*)constData + kBatchNumIndex);
+  aippParams.srcImageSizeW = *((int32_t*)constData + (kSrcImageSizeWIndex / kSize));
+  aippParams.srcImageSizeH = *((int32_t*)constData + (kSrcImageSizeHIndex / kSize));
+
+  aippParams.cropSwitch = *((int8_t*)constData + kParamsHeadSize);
+  aippParams.scfSwitch = *((int8_t*)constData + (kParamsHeadSize + kScfSwitchIndex));
+  aippParams.paddingSwitch = *((int8_t*)constData + (kParamsHeadSize + kPaddingSwitchIndex));
+  aippParams.cropStartPosW = *((int32_t*)constData + (kParamsHeadSize + kCropStartPosWIndex) / kSize);
+  aippParams.cropStartPosH = *((int32_t*)constData + (kParamsHeadSize + kCropStartPosHIndex) / kSize);
+  aippParams.cropSizeW = *((int32_t*)constData + (kParamsHeadSize + kCropSizeWIndex) / kSize);
+  aippParams.cropSizeH = *((int32_t*)constData + (kParamsHeadSize + kCropSizeHIndex) / kSize);
+  aippParams.scfInputSizeW = *((int32_t*)constData + (kParamsHeadSize + kScfInputSizeWIndex) / kSize);
+  aippParams.scfInputSizeH = *((int32_t*)constData + (kParamsHeadSize + kScfInputSizeHIndex) / kSize);
+  aippParams.scfOutputSizeW = *((int32_t*)constData + (kParamsHeadSize + kScfOutputSizeWIndex) / kSize);
+  aippParams.scfOutputSizeH = *((int32_t*)constData + (kParamsHeadSize + kScfOutputSizeHIndex) / kSize);
+  aippParams.paddingSizeTop = *((int32_t*)constData + (kParamsHeadSize + kPaddingSizeTopIndex) / kSize);
+  aippParams.paddingSizeBottom = *((int32_t*)constData + (kParamsHeadSize + kPaddingSizeBottomIndex) / kSize);
+  aippParams.paddingSizeLeft = *((int32_t*)constData + (kParamsHeadSize + kPaddingSizeLeftIndex) / kSize);
+  aippParams.paddingSizeRight = *((int32_t*)constData + (kParamsHeadSize + kPaddingSizeRightIndex) / kSize);
+}
+
+void PrintAippParams(Operator& op, AippParams& aippParams) {
+  OP_LOGD(op.GetName().c_str(), "aippParams  inputFormat=%d", aippParams.inputFormat);
+  OP_LOGD(op.GetName().c_str(), "aippParams  batchNum=%d", aippParams.batchNum);
+  OP_LOGD(op.GetName().c_str(), "aippParams  srcImageSizeW=%d", aippParams.srcImageSizeW);
+  OP_LOGD(op.GetName().c_str(), "aippParams  srcImageSizeH=%d", aippParams.srcImageSizeH);
+  OP_LOGD(op.GetName().c_str(), "aippParams  cropSwitch=%d", aippParams.cropSwitch);
+  OP_LOGD(op.GetName().c_str(), "aippParams  scfSwitch=%d", aippParams.scfSwitch);
+  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSwitch=%d", aippParams.paddingSwitch);
+  OP_LOGD(op.GetName().c_str(), "aippParams  cropStartPosW=%d", aippParams.cropStartPosW);
+  OP_LOGD(op.GetName().c_str(), "aippParams  cropStartPosH=%d", aippParams.cropStartPosH);
+  OP_LOGD(op.GetName().c_str(), "aippParams  cropSizeW=%d", aippParams.cropSizeW);
+  OP_LOGD(op.GetName().c_str(), "aippParams  cropSizeH=%d", aippParams.cropSizeH);
+  OP_LOGD(op.GetName().c_str(), "aippParams  scfInputSizeW=%d", aippParams.scfInputSizeW);
+  OP_LOGD(op.GetName().c_str(), "aippParams  scfInputSizeH=%d", aippParams.scfInputSizeH);
+  OP_LOGD(op.GetName().c_str(), "aippParams  scfOutputSizeW=%d", aippParams.scfOutputSizeW);
+  OP_LOGD(op.GetName().c_str(), "aippParams  scfOutputSizeH=%d", aippParams.scfOutputSizeH);
+  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeTop=%d", aippParams.paddingSizeTop);
+  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeBottom=%d", aippParams.paddingSizeBottom);
+  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeLeft=%d", aippParams.paddingSizeLeft);
+  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeRight=%d", aippParams.paddingSizeRight);
+}
+
+int64_t GetDynamicShapeChannel(uint8_t inputFormat) {
+  uint8_t channel = kChannel3;
+  switch (inputFormat) {
+    case kFormatXrgb8888:
+    case kFormatArgb8888:
+    case kFormatAyuv444:
+      channel = kChannel4;
+      break;
+    case kFormatYuv400:
+      channel = kChannel1;
+      break;
+    default:
+      channel = kChannel3;
+      break;
+  }
+  return channel;
+}
+
+bool GetDynamicShapeOutputHW(AippParams& aippParams, int64_t* outputH, int64_t* outputW) {
+  if (outputH == nullptr || outputW == nullptr) {
+    OP_LOGE("Aipp", "outputH or outputW is null!");
+    return false;
+  }
+  OP_LOGD("Aipp", "GetDynamicShapeOutputHW  srcImageSizeH[%ld], srcImageSizeW[%ld]", *outputH, *outputW);
+  if (*outputH < kMinCropSize || *outputW < kMinCropSize) {
+    OP_LOGE("Aipp", "srcImageSizeH[%ld], srcImageSizeW[%ld] must be greater than or equal to 8", *outputH, *outputW);
+    return false;
+  }
+  if (aippParams.cropSwitch > 0) {
+    *outputH = aippParams.cropSizeH ? aippParams.cropSizeH : *outputH;
+    *outputW = aippParams.cropSizeW ? aippParams.cropSizeW : *outputW;
+    if (*outputH < kMinCropSize || *outputW < kMinCropSize) {
+      OP_LOGE("Aipp", "cropSizeH[%ld], cropSizeW[%ld] must be greater than or equal to 8", *outputH, *outputW);
+      return false;
+    }
+  }
+
+  if (aippParams.scfSwitch > 0) {
+    *outputH = aippParams.scfOutputSizeH ? aippParams.scfOutputSizeH : *outputH;
+    *outputW = aippParams.scfOutputSizeW ? aippParams.scfOutputSizeW : *outputW;
+  }
+
+  if (aippParams.paddingSwitch > 0) {
+    *outputH = *outputH + aippParams.paddingSizeTop + aippParams.paddingSizeBottom;
+    *outputW = *outputW + aippParams.paddingSizeLeft + aippParams.paddingSizeRight;
+  }
+
+  return true;
+}
+
+bool CheckImageInputFormat(AippParams& aippParams) {
+  if (aippParams.inputFormat != kFormatYuv420sp && aippParams.inputFormat != kFormatYuv400 &&
+      aippParams.inputFormat != kFormatRgb888 && aippParams.inputFormat != kFormatXrgb8888) {
+    OP_LOGE("Aipp", "inputFormat only support yuv420sp, yuv400, rgb888, xrgb8888");
+    return false;
+  }
+  return true;
+}
+
+int64_t GetDynamicShapeSrcSize(AippParams& aippParams, int64_t batch, ge::DataType* src_img_dtype) {
+  int64_t size = 0;
+  int64_t srcImageSizeH = aippParams.srcImageSizeH;
+  int64_t srcImageSizeW = aippParams.srcImageSizeW;
+
+  switch (aippParams.inputFormat) {
+    case kFormatYuv420sp:
+      size = batch * 3 * srcImageSizeH * srcImageSizeW / 2;
+      *src_img_dtype = DT_UINT8;
+      break;
+    case kFormatXrgb8888:
+    case kFormatArgb8888:
+    case kFormatAyuv444:
+      size = batch * 4 * srcImageSizeH * srcImageSizeW;
+      *src_img_dtype = DT_UINT8;
+      break;
+    case kFormatYuyv:
+    case kFormatYuv422sp:
+      size = batch * 2 * srcImageSizeH * srcImageSizeW;
+      *src_img_dtype = DT_UINT8;
+      break;
+    case kFormatYuv400:
+      size = batch * srcImageSizeH * srcImageSizeW;
+      *src_img_dtype = DT_UINT8;
+      break;
+    default:
+      size = batch * 3 * srcImageSizeH * srcImageSizeW;
+      *src_img_dtype = DT_UINT8;
+      break;
+  }
+  return size;
+}
+
+void GetOutputHeightWidth(::domi::AippOpParams* aipp_op_params, int64_t* output_height, int64_t* output_width) {
   if (aipp_op_params->crop()) {
     *output_height = aipp_op_params->crop_size_h() ? aipp_op_params->crop_size_h() : *output_height;
     *output_width = aipp_op_params->crop_size_w() ? aipp_op_params->crop_size_w() : *output_width;
@@ -51,21 +274,21 @@ void GetOutputHeightWidth(::domi::AippOpParams* aipp_op_params, uint64_t* output
   }
 
   if (aipp_op_params->padding()) {
-    uint64_t left_padding_size = aipp_op_params->left_padding_size() ? aipp_op_params->left_padding_size() : 0;
-    uint64_t right_padding_size = aipp_op_params->right_padding_size() ? aipp_op_params->right_padding_size() : 0;
-    uint64_t top_padding_size = aipp_op_params->top_padding_size() ? aipp_op_params->top_padding_size() : 0;
-    uint64_t bottom_padding_size = aipp_op_params->bottom_padding_size() ? aipp_op_params->bottom_padding_size() : 0;
+    int64_t left_padding_size = aipp_op_params->left_padding_size() ? aipp_op_params->left_padding_size() : 0;
+    int64_t right_padding_size = aipp_op_params->right_padding_size() ? aipp_op_params->right_padding_size() : 0;
+    int64_t top_padding_size = aipp_op_params->top_padding_size() ? aipp_op_params->top_padding_size() : 0;
+    int64_t bottom_padding_size = aipp_op_params->bottom_padding_size() ? aipp_op_params->bottom_padding_size() : 0;
 
     *output_height = *output_height + top_padding_size + bottom_padding_size;
     *output_width = *output_width + left_padding_size + right_padding_size;
   }
 }
 
-uint64_t GetSrcImageSizeDtype(::domi::AippOpParams* aipp_op_params, uint64_t batch, uint64_t c1, uint64_t height,
-                              uint64_t width, ge::DataType* src_img_dtype) {
-  uint64_t size = 0;
-  uint64_t src_image_size_h = aipp_op_params->src_image_size_h() ? aipp_op_params->src_image_size_h() : height;
-  uint64_t src_image_size_w = aipp_op_params->src_image_size_w() ? aipp_op_params->src_image_size_w() : width;
+int64_t GetSrcImageSizeDtype(::domi::AippOpParams* aipp_op_params, int64_t batch, int64_t c1, int64_t height,
+                             int64_t width, ge::DataType* src_img_dtype) {
+  int64_t size = 0;
+  int64_t src_image_size_h = aipp_op_params->src_image_size_h() ? aipp_op_params->src_image_size_h() : height;
+  int64_t src_image_size_w = aipp_op_params->src_image_size_w() ? aipp_op_params->src_image_size_w() : width;
 
   if (aipp_op_params->input_format()) {
     if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV420SP_U8) {
@@ -136,11 +359,11 @@ uint64_t GetSrcImageSizeDtype(::domi::AippOpParams* aipp_op_params, uint64_t bat
   return size;
 }
 
-std::vector<int32_t> GetAclInputDims(::domi::AippOpParams* aipp_op_params, uint64_t batch, uint64_t srcImageHeight,
-                                     uint64_t srcImageWidth) {
-  uint64_t channel = 3;
-  uint64_t height = srcImageHeight;
-  uint64_t width = srcImageWidth;
+std::vector<int32_t> GetAclInputDims(::domi::AippOpParams* aipp_op_params, int64_t batch, int64_t srcImageHeight,
+                                     int64_t srcImageWidth) {
+  int64_t channel = 3;
+  int64_t height = srcImageHeight;
+  int64_t width = srcImageWidth;
   std::vector<int32_t> aclInputDims;
 
   if (aipp_op_params->input_format()) {
@@ -195,7 +418,7 @@ std::vector<int32_t> GetAclInputDims(::domi::AippOpParams* aipp_op_params, uint6
   return aclInputDims;
 }
 
-uint64_t GetChannel(::domi::AippOpParams* aipp_op_params) {
+int64_t GetChannel(::domi::AippOpParams* aipp_op_params) {
   if (aipp_op_params->input_format()) {
     if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8) {
       return 4;
@@ -511,18 +734,297 @@ void SetPadding(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
   }
 }
 
+static graphStatus DynamicShapeInfershape(Operator& op, const Tensor& params_data) {
+  OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp dynamic shape start");
+  // parse params data
+  AippParams aippParams;
+  InitAippParams(aippParams);
+  ParseAippParams(params_data, aippParams);
+  PrintAippParams(op, aippParams);
+  if (!CheckImageInputFormat(aippParams)) {
+    std::string err_msg = OtherErrMsg("aipp dynamic shape, image input format is not support");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  auto images_desc = op.GetInputDesc("images");
+  auto features_desc = op.GetOutputDesc("features");
+  auto features_format = features_desc.GetFormat();
+  if (features_format != FORMAT_NCHW && features_format != FORMAT_NHWC) {
+    OpsInputFormatErrReport(op.GetName(), "features", "NCHW, NHWC",
+                            ge::TypeUtils::FormatToSerialString(features_format));
+    OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, input format only support NCHW, NHWC.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> features_shape_range;
+  features_desc.GetShapeRange(features_shape_range);
+  if (features_shape_range.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, the size of features shape range is invalid.");
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "features shape range is %s", to_string(features_shape_range).c_str());
+  int64_t n_start = features_shape_range[0].first;
+  int64_t n_end = features_shape_range[0].second;
+  int64_t h_start = features_shape_range[2].first;
+  int64_t h_end = features_shape_range[2].second;
+  int64_t w_start = features_shape_range[3].first;
+  int64_t w_end = features_shape_range[3].second;
+  OP_LOGD(op.GetName().c_str(), "features shape range is n: [%ld,%ld], height: [%ld,%ld], width: [%ld,%ld]",
+          n_start, n_end, h_start, h_end, w_start, w_end);
+
+  int64_t batch = aippParams.batchNum;
+  int64_t real_channel = GetDynamicShapeChannel(aippParams.inputFormat);
+  int64_t inputH = aippParams.srcImageSizeH;
+  int64_t inputW = aippParams.srcImageSizeW;
+  int64_t outputH = inputH;
+  int64_t outputW = inputW;
+  if (!GetDynamicShapeOutputHW(aippParams, &outputH, &outputW)) {
+    std::string err_msg = OtherErrMsg("aipp dynamic shape, GetDynamicShapeOutputHW error");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "aipp dynamic shape, batch=%ld, real_channel=%ld", batch, real_channel);
+  OP_LOGI(op.GetName().c_str(), "aipp dynamic shape, srcImageSizeH=%ld, srcImageSizeW=%ld, outputH=%ld, outputW=%ld",
+          inputH, inputW, outputH, outputW);
+  if ((n_start < 1 || (n_end != -1 && (batch < n_start || batch > n_end)))
+      || (h_start < 1 || (h_end != -1 && (outputH < h_start || outputH > h_end)))
+      || (w_start < 1 || (w_end != -1 && (outputW < w_start || outputW > w_end)))) {
+    OpsOneOutputShapeErrReport(op.GetName(), "output shape", "The output shape is invalid, out of range.");
+    OP_LOGE(op.GetName().c_str(), "The output shape is invalid, out of range. batch is %ld, batch range is [%ld,%ld],"
+            "height is %ld, height range is [%ld,%ld], width is %ld, width range is [%ld,%ld]",
+            batch, n_start, n_end, outputH, h_start, h_end, outputW, w_start, w_end);
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> shape;
+  if (features_desc.GetFormat() == FORMAT_NCHW) {
+    OP_LOGD(op.GetName().c_str(), "features Format is NCHW");
+    shape.push_back(batch);
+    shape.push_back(real_channel);
+    shape.push_back(outputH);
+    shape.push_back(outputW);
+  } else if (features_desc.GetFormat() == FORMAT_NHWC) {
+    OP_LOGD(op.GetName().c_str(), "features Format is NHWC");
+    shape.push_back(batch);
+    shape.push_back(outputH);
+    shape.push_back(outputW);
+    shape.push_back(real_channel);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, features format is not support.");
+    return GRAPH_FAILED;
+  }
+  features_desc.SetShape(Shape(shape));
+  (void)op.UpdateOutputDesc("features", features_desc);
+
+  ge::DataType src_image_dtype = DT_UINT8;
+  int64_t src_img_size = GetDynamicShapeSrcSize(aippParams, batch, &src_image_dtype);
+  OP_LOGD(op.GetName().c_str(), "aipp dynamic shape, src_img_size is %ld", src_img_size);
+  images_desc.SetSize(src_img_size);
+  images_desc.SetDataType(src_image_dtype);
+  images_desc.SetShape(Shape({batch, inputH, inputW, real_channel}));
+  images_desc.SetOriginShape(Shape({batch, inputH, inputW, real_channel}));
+  images_desc.SetFormat(FORMAT_NHWC);
+  images_desc.SetOriginFormat(FORMAT_NHWC);
+  (void)op.UpdateInputDesc("images", images_desc);
+
+  OP_LOGI(op.GetName().c_str(), "aipp infer, dynamic shape, success");
+  return GRAPH_SUCCESS;
+}
+
+static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aipp_op_params) {
+  OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp dynamic mode, start");
+  int64_t src_image_size = aipp_op_params->max_src_image_size() ? aipp_op_params->max_src_image_size() : 0;
+  OP_LOGD(op.GetName().c_str(), "dynamic aipp_real_size is %ld", src_image_size);
+  if (src_image_size <= 0) {
+    OP_LOGE(op.GetName().c_str(), "the max_src_image_size must be set to a value greater than 0 in cfg");
+    return GRAPH_FAILED;
+  }
+
+  auto images_desc = op.GetInputDesc("images");
+  OP_LOGD(op.GetName().c_str(), "images_desc size is %u", images_desc.GetSize());
+  auto images_shape = images_desc.GetShape().GetDims();
+  if (IsUnknownRankShape(images_shape)) {
+    OpsOneInputShapeErrReport(op.GetName(), "images shape", "The shape is unknown rank, not support");
+    OP_LOGE(op.GetName().c_str(), "The shape is unknown rank, not support!");
+    return GRAPH_FAILED;
+  }
+  (void)op.UpdateOutputDesc("features", images_desc);
+
+  // Set size to tensordesc
+  images_desc.SetSize(src_image_size);
+
+  std::vector<std::pair<int64_t, int64_t>> images_shape_range;
+  images_desc.GetShapeRange(images_shape_range);
+  if (!images_shape_range.empty() && images_shape_range.size() == 4) {
+    OP_LOGI(op.GetName().c_str(), "images shape range is %s", to_string(images_shape_range).c_str());
+    std::vector<std::pair<int64_t, int64_t>> images_shape_range_new;
+    images_shape_range_new.push_back(std::pair<int64_t, int64_t>(1, 1));
+    images_shape_range_new.push_back(std::pair<int64_t, int64_t>(1, src_image_size));
+    images_desc.SetShapeRange(images_shape_range_new);
+    OP_LOGI(op.GetName().c_str(), "after, images shape range is %s", to_string(images_shape_range_new).c_str());
+  }
+
+  vector<int64_t> shape_dync;
+  shape_dync.push_back(1);
+  shape_dync.push_back(src_image_size);
+  images_desc.SetShape(Shape(shape_dync));
+  images_desc.SetOriginShape(Shape(shape_dync));
+
+  images_desc.SetDataType(DT_UINT8);
+  images_desc.SetFormat(FORMAT_NHWC);
+  images_desc.SetOriginFormat(FORMAT_NHWC);
+
+  (void)op.UpdateInputDesc("images", images_desc);
+  op.SetAttr("has_infered_verified", 1);
+  OP_LOGI(op.GetName().c_str(), "aipp infer, dynamic mode, success");
+
+  return GRAPH_SUCCESS;
+}
+
+static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_params) {
+  OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp static mode, start");
+  auto images_desc = op.GetInputDesc("images");
+  auto images_shape = images_desc.GetShape().GetDims();
+  int64_t batch = 0;
+  int64_t height = 0;
+  int64_t width = 0;
+  int64_t c1 = 0;
+  int64_t c0 = 0;
+
+  auto imagesDimNum = images_desc.GetShape().GetDimNum();
+  if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
+      || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < 5)) {
+    OpsOneInputShapeErrReport(op.GetName(), "images shape dims", "The input shape of images is invalid");
+    OP_LOGE(op.GetName().c_str(), "The input shape of images is invalid");
+    return GRAPH_FAILED;
+  }
+  if (images_desc.GetFormat() == FORMAT_NCHW) {
+    batch = images_shape[0];
+    height = images_shape[2];
+    width = images_shape[3];
+  } else if (images_desc.GetFormat() == FORMAT_NHWC) {
+    batch = images_shape[0];
+    height = images_shape[1];
+    width = images_shape[2];
+  } else if (images_desc.GetFormat() == FORMAT_NC1HWC0_C04) {
+    batch = images_shape[0];
+    c1 = images_shape[1];
+    height = images_shape[2];
+    width = images_shape[3];
+    c0 = images_shape[4];
+  } else {
+    OpsInputFormatErrReport(op.GetName(), "images", "NCHW, NHWC or NC1HWC0_C04",
+                            ge::TypeUtils::FormatToSerialString(images_desc.GetFormat()));
+    OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
+    return GRAPH_FAILED;
+  }
+  OP_LOGI(op.GetName().c_str(), "batch=%ld, height=%ld, width=%ld", batch, height, width);
+
+  int64_t real_channel = 1;
+  if (images_desc.GetFormat() != FORMAT_NC1HWC0_C04) {
+    real_channel = GetChannel(aipp_op_params);
+    OP_LOGI(op.GetName().c_str(), "real_channel:%d", (int)real_channel);
+  }
+
+  int64_t output_height = height;
+  int64_t output_width = width;
+  (void)GetOutputHeightWidth(aipp_op_params, &output_height, &output_width);
+
+  OP_LOGI(op.GetName().c_str(), "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
+          (int)output_height, (int)output_width, (int)height, (int)width);
+
+  if (output_height != height || output_width != width) {
+    OpsAippErrReport(ConcatString(output_height), ConcatString(output_width), ConcatString(height),
+                     ConcatString(width));
+    OP_LOGE(op.GetName().c_str(), "the data output H and W is not equal with aipp output H and W."
+            "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
+            (int)output_height, (int)output_width, (int)height, (int)width);
+
+    return GRAPH_FAILED;
+  }
+
+  ge::DataType src_image_dtype = DT_UINT8;
+  int64_t src_image_size = GetSrcImageSizeDtype(aipp_op_params, batch, c1, height, width, &src_image_dtype);
+  // set size to tensordesc
+  images_desc.SetSize(src_image_size);
+  OP_LOGI(op.GetName().c_str(), "aipp_real_size is %ld", src_image_size);
+
+  (void)op.UpdateOutputDesc("features", images_desc);
+
+  int64_t src_image_size_h = aipp_op_params->src_image_size_h() ? aipp_op_params->src_image_size_h() : height;
+  int64_t src_image_size_w = aipp_op_params->src_image_size_w() ? aipp_op_params->src_image_size_w() : width;
+  OP_LOGD(op.GetName().c_str(), "src_image_size_h=%ld, src_image_size_w=%ld", src_image_size_h, src_image_size_w);
+  vector<int64_t> shape;
+  if (images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) {
+    shape.push_back(batch);
+    shape.push_back(src_image_size_h);
+    shape.push_back(src_image_size_w);
+    shape.push_back(real_channel);
+    images_desc.SetFormat(FORMAT_NHWC);
+    images_desc.SetOriginFormat(FORMAT_NHWC);
+  } else if (images_desc.GetFormat() == FORMAT_NC1HWC0_C04) {
+    shape.push_back(batch);
+    shape.push_back(c1);
+    shape.push_back(src_image_size_h);
+    shape.push_back(src_image_size_w);
+    shape.push_back(c0);
+  }
+
+  images_desc.SetShape(Shape(shape));
+  images_desc.SetOriginShape(Shape(shape));
+  images_desc.SetDataType(src_image_dtype);
+  (void)op.UpdateInputDesc("images", images_desc);
+  op.SetAttr("has_infered_verified", 1);
+
+  std::vector<int32_t> aclInputDims;
+  aclInputDims = GetAclInputDims(aipp_op_params, batch, src_image_size_h, src_image_size_w);
+  OP_LOGI(op.GetName().c_str(), "aclInputDims size: %d", aclInputDims.size());
+  if (aclInputDims.size() >= 4) {
+    OP_LOGI(op.GetName().c_str(), "aclInputDims: %d, %d, %d, %d", aclInputDims[0], aclInputDims[1], aclInputDims[2],
+            aclInputDims[3]);
+    op.SetAttr("input_dims", aclInputDims);
+  }
+  OP_LOGI(op.GetName().c_str(), "aipp infer, static mode, success");
+
+  return GRAPH_SUCCESS;
+}
+
 IMPLEMT_VERIFIER(Aipp, AippVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_INFERFUNC(Aipp, AippInfer) {
+IMPLEMT_COMMON_INFERFUNC(AippInfer) {
+  OP_LOGI(op.GetName().c_str(), "AippInfer start");
+  std::string aipp_config_path;
+  if (op.GetAttr("aipp_config_path", aipp_config_path) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "AippInfer, failed to get attr aipp_config_path");
+    return GRAPH_SUCCESS;
+  }
+
+  // dynamic shape, running
+  if (nlohmann::json::accept(aipp_config_path)) {
+    OP_LOGD(op.GetName().c_str(), "AippInfer, aipp_config_path is json");
+    int64_t modePosition = aipp_config_path.find("aipp_mode");
+    int64_t dynamicPosition = aipp_config_path.find("dynamic");
+    if (modePosition > 0 && dynamicPosition > 0) {
+      // aipp_config_path: {"aipp_mode":"dynamic"}
+      OP_LOGD(op.GetName().c_str(), "AippInfer, aipp dynamic shape");
+      Tensor params_data;
+      auto is_params_const = op.GetInputConstData("params", params_data);
+      if (is_params_const == GRAPH_SUCCESS) {
+        OP_LOGD(op.GetName().c_str(), "AippInfer, running, do DynamicShapeInfershape");
+        return DynamicShapeInfershape(op, params_data);
+      }
+    }
+  }
+
   int64_t has_infered_verified = 0;
   if (op.GetAttr("has_infered_verified", has_infered_verified) == GRAPH_SUCCESS) {
     OP_LOGI(op.GetName().c_str(), "This aipp has infered, return success");
     return GRAPH_SUCCESS;
   }
-  std::string aipp_config_path;
-  op.GetAttr("aipp_config_path", aipp_config_path);
+
   char resolved_file_path[PATH_MAX] = {0x00};
   if (realpath(aipp_config_path.c_str(), resolved_file_path) == nullptr) {
     OP_LOGE(op.GetName().c_str(), "invalid insert op conf file path:%s.", aipp_config_path.c_str());
@@ -542,9 +1044,9 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
     return GRAPH_FAILED;
   }
   int64_t index = 0;
-  if (op.GetAttr("current_aipp_index", index) == GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "Get current aipp index %d", index);
-  }
+  op.GetAttr("current_aipp_index", index);
+  OP_LOGD(op.GetName().c_str(), "AippInfer, current_aipp_index is %ld", index);
+
   if (index >= insert_op_conf_->aipp_op_size()) {
     OP_LOGE(op.GetName().c_str(), "current_aipp_index %d is invalid", index);
     OpsGetAttrErrReport(op.GetName().c_str(), "current_aipp_index");
@@ -608,146 +1110,17 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
   }
 
   auto aipp_config_json = root.dump();
-  op.set_attr_aipp_config_path(aipp_config_json);
+  op.SetAttr("aipp_config_path", aipp_config_json);
 
-  auto images_desc = op.GetInputDesc("images");
-  auto images_shape = images_desc.GetShape().GetDims();
-  uint64_t batch = 0;
-  // uint64_t channel = 0;
-  uint64_t height = 0;
-  uint64_t width = 0;
-  uint64_t c1 = 0;
-  uint64_t c0 = 0;
-
-  uint32_t src_image_size = 0;
   if (aipp_op_params->aipp_mode() == ::domi::AippOpParams_AippMode_dynamic) {
-    OP_LOGI(op.GetName().c_str(), "aipp dynamic config!");
+    OP_LOGI(op.GetName().c_str(), "aipp dynamic mode");
+    const vector<string> depend_name = {"params"};
+    PREPARE_DYNAMIC_SHAPE(depend_name);
 
-    (void)op.UpdateOutputDesc("features", images_desc);
-
-    src_image_size = aipp_op_params->max_src_image_size() ? aipp_op_params->max_src_image_size() : 0;
-    OP_LOGI(op.GetName().c_str(), "dynamic aipp_real_size is %u", src_image_size);
-
-    // Set size to tensordesc
-    images_desc.SetSize(src_image_size);
-
-    vector<int64_t> shape_dync;
-    shape_dync.push_back(1);
-    shape_dync.push_back(src_image_size);
-
-    images_desc.SetShape(Shape(shape_dync));
-    images_desc.SetOriginShape(Shape(shape_dync));
-
-    images_desc.SetDataType(DT_UINT8);
-    images_desc.SetFormat(FORMAT_NHWC);
-    images_desc.SetOriginFormat(FORMAT_NHWC);
-
-    (void)op.UpdateInputDesc("images", images_desc);
-    op.SetAttr("has_infered_verified", 1);
-    return GRAPH_SUCCESS;
-  }
-
-  auto imagesDimNum = images_desc.GetShape().GetDimNum();
-  if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
-      || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < 5)) {
-      OpsOneInputShapeErrReport(op.GetName(), "images shape dims", "The input shape of images is invalid");
-      OP_LOGE(op.GetName().c_str(), "The input shape of images is invalid");
-      return GRAPH_FAILED;
-  }
-  if (images_desc.GetFormat() == FORMAT_NCHW) {
-    batch = images_shape[0];
-    height = images_shape[2];
-    width = images_shape[3];
-  } else if (images_desc.GetFormat() == FORMAT_NHWC) {
-    batch = images_shape[0];
-    height = images_shape[1];
-    width = images_shape[2];
-  } else if (images_desc.GetFormat() == FORMAT_NC1HWC0_C04) {
-    batch = images_shape[0];
-    c1 = images_shape[1];
-    height = images_shape[2];
-    width = images_shape[3];
-    c0 = images_shape[4];
+    return DynamicModeInfershape(op, aipp_op_params);
   } else {
-    OpsInputFormatErrReport(op.GetName(), "images", "NCHW, NHWC or NC1HWC0_C04",
-                            ge::TypeUtils::FormatToSerialString(images_desc.GetFormat()));
-    OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
-    return GRAPH_FAILED;
+    return StaticInferShape(op, aipp_op_params);
   }
-
-  uint64_t real_channel = 1;
-  if (images_desc.GetFormat() != FORMAT_NC1HWC0_C04) {
-    real_channel = GetChannel(aipp_op_params);
-    OP_LOGI(op.GetName().c_str(), "real_channel:%d", (int)real_channel);
-  }
-
-  uint64_t output_height = height;
-  uint64_t output_width = width;
-  (void)GetOutputHeightWidth(aipp_op_params, &output_height, &output_width);
-
-  OP_LOGI(op.GetName().c_str(), "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
-          (int)output_height, (int)output_width, (int)height, (int)width);
-
-  if (output_height != height || output_width != width) {
-    OpsAippErrReport(ConcatString(output_height), ConcatString(output_width), ConcatString(height),
-                     ConcatString(width));
-    OP_LOGE(op.GetName().c_str(),
-            "the data output H and W is not equal with aipp output H and W."
-            "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
-            (int)output_height, (int)output_width, (int)height, (int)width);
-
-    return GRAPH_FAILED;
-  }
-
-  ge::DataType src_image_dtype = DT_UINT8;
-  src_image_size = GetSrcImageSizeDtype(aipp_op_params, batch, c1, height, width, &src_image_dtype);
-  // Set size to tensordesc
-  images_desc.SetSize(src_image_size);
-  OP_LOGI(op.GetName().c_str(), "aipp_real_size is %u", src_image_size);
-
-  (void)op.UpdateOutputDesc("features", images_desc);
-
-  uint64_t src_image_size_h = aipp_op_params->src_image_size_h() ? aipp_op_params->src_image_size_h() : height;
-  uint64_t src_image_size_w = aipp_op_params->src_image_size_w() ? aipp_op_params->src_image_size_w() : width;
-  vector<int64_t> shape;
-  if (images_desc.GetFormat() == FORMAT_NCHW) {
-    shape.push_back(batch);
-    shape.push_back(src_image_size_h);
-    shape.push_back(src_image_size_w);
-    shape.push_back(real_channel);
-    images_desc.SetFormat(FORMAT_NHWC);
-    images_desc.SetOriginFormat(FORMAT_NHWC);
-  } else if (images_desc.GetFormat() == FORMAT_NHWC) {
-    shape.push_back(batch);
-    shape.push_back(src_image_size_h);
-    shape.push_back(src_image_size_w);
-    shape.push_back(real_channel);
-    images_desc.SetFormat(FORMAT_NHWC);
-    images_desc.SetOriginFormat(FORMAT_NHWC);
-  } else if (images_desc.GetFormat() == FORMAT_NC1HWC0_C04) {
-    shape.push_back(batch);
-    shape.push_back(c1);
-    shape.push_back(src_image_size_h);
-    shape.push_back(src_image_size_w);
-    shape.push_back(c0);
-  }
-
-  images_desc.SetShape(Shape(shape));
-  images_desc.SetOriginShape(Shape(shape));
-  images_desc.SetDataType(src_image_dtype);
-  (void)op.UpdateInputDesc("images", images_desc);
-  op.SetAttr("has_infered_verified", 1);
-
-  std::vector<int32_t> aclInputDims;
-  aclInputDims = GetAclInputDims(aipp_op_params, batch, src_image_size_h, src_image_size_w);
-  OP_LOGI(op.GetName().c_str(), "aclInputDims size: %d", aclInputDims.size());
-  if (aclInputDims.size() >= 4) {
-    OP_LOGI(op.GetName().c_str(), "aclInputDims: %d, %d, %d, %d", aclInputDims[0], aclInputDims[1], aclInputDims[2],
-            aclInputDims[3]);
-    op.SetAttr("input_dims", aclInputDims);
-  }
-
-  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
@@ -803,7 +1176,7 @@ IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(Aipp, AippInfer);
+COMMON_INFER_FUNC_REG(Aipp, AippInfer);
 VERIFY_FUNC_REG(Aipp, AippVerify);
 INFER_DATA_SLICE_FUNC_REG(Aipp, AippInferDataSlice);
 

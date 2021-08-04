@@ -111,6 +111,7 @@ set(_optiling_files
   sparse_apply_common.cc
   split_d.cc
   split_v.cc
+  aipp.cc
   expand.cc
   strided_slice.cc
   select.cc

@@ -398,6 +398,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/unpack.cc \
         built-in/op_tiling/pad_common.cc \
         built-in/op_tiling/pad_d.cc \
+        built-in/op_tiling/aipp.cc \
         built-in/op_tiling/split_d.cc \
         built-in/op_tiling/split_v.cc \
         built-in/op_tiling/select.cc \
