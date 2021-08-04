@@ -236,13 +236,13 @@ case8 = {
         True
 }
 
-ut_case.add_case("all", case1)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A"], case2)
-ut_case.add_case("all", case3)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case3)
 ut_case.add_case(["Ascend910A"], case4)
-ut_case.add_case("all", case5)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case5)
 ut_case.add_case(["Ascend910A"], case6)
-ut_case.add_case("all", case7)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 
 

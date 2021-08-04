@@ -39,7 +39,7 @@ ELEWISE_COMPUTE = {
     "elewise_single_rec", "elewise_single_VS_add", "elewise_single_VS_mul",
     "elewise_single_VS_max", "elewise_single_VS_min", "elewise_single_abs",
     "elewise_single_relu", "elewise_single_not", "elewise_single_sqrt",
-    "elewise_single_rsqrt", "elewise_multiple_mla",
+    "elewise_single_rsqrt", "elewise_single_lrelu", "elewise_multiple_mla",
     "elewise_multiple_madd", "elewise_multiple_maddrelu",
     "elewise_multiple_sel", "elewise_binary_scalar_axpy",
     "elewise_binary_cmpsel_gt", "elewise_binary_cmpsel_ge",
@@ -48,6 +48,7 @@ ELEWISE_COMPUTE = {
     "elewise_binary_vcmpv_gt", "elewise_binary_vcmpv_ge",
     "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_le",
     "elewise_binary_vcmpv_eq", "elewise_binary_vcmpv_ne",
+    "elewise_binary_addrelu", "elewise_binary_subrelu",
 }
 
 CAST_COMPUTE = {

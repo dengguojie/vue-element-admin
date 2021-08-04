@@ -53,7 +53,27 @@ case1 = {
         True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+case2 = {
+    "params": [{
+        "shape": (2, -1),
+        "dtype": "float32",
+        "range": [(2, 2), (1, None)]
+    }, {
+        "shape": (2, -1),
+        "dtype": "float32",
+        "range": [(2, 2), (1, None)]
+    }],
+    "case_name":
+        "test_dync_vrelu_2",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A", "Ascend710"], case1)
+ut_case.add_case(["Ascend710"], case2)
 
 
 def calc_expect_func(x, y):

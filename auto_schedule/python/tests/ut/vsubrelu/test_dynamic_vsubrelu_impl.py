@@ -57,7 +57,7 @@ case1 = {
         True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A", "Ascend710"], case1)
 
 def calc_expect_func(x, y, z):
     x_value = x.get("value")

@@ -180,11 +180,11 @@ case8 = {"params": [{"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"
 
 compile_case = {
     "1": [case1, None],
-    "2": [case2, None],
-    "3": [case3, None],
-    "4": [case4, None],
+    "2": [case2, ["Ascend910A", "Ascend710", "Ascend310"]],
+    "3": [case3, ["Ascend910A", "Ascend710", "Ascend310"]],
+    "4": [case4, ["Ascend910A", "Ascend710", "Ascend310"]],
     "5": [case5, None],
-    "6": [case6, None],
+    "6": [case6, ["Ascend910A", "Ascend710", "Ascend310"]],
     "7": [case7, None],
     "8": [case8, None],
 }

@@ -685,6 +685,26 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
         ASCEND_615: ("float16", "float32", "int32"),
         ASCEND_SHISI: ("float16",),
     },
+    "reduce_max": {
+        "AllSoc": ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_920A: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16",),
+    },
+    "reduce_min": {
+        "AllSoc": ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_920A: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16",),
+    },
 }
 
 
