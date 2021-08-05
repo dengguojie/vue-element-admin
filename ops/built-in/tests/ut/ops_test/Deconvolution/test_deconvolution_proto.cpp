@@ -511,4 +511,110 @@ TEST_F(DeconvProtoTest, deconvBaseFuzzyCompilePartialStaticTest) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+// stride can not less than zero
+TEST_F(DeconvProtoTest, deconvDataSliceTest2) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {-1, -1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
+    
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {6, 20}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
 
+// no data slice
+TEST_F(DeconvProtoTest, deconvDataSliceTest3) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
+    
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// shape dim check failed
+TEST_F(DeconvProtoTest, deconvDataSliceTest4) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
+    
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {6}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// cannot support cut in block_C
+TEST_F(DeconvProtoTest, deconvDataSliceTest5) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
+    
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}, {6, 20}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, 50331645);
+}
+
+// no data slice
+TEST_F(DeconvProtoTest, deconvDataSliceTest6) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
+    
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// y format should be NCHW
+TEST_F(DeconvProtoTest, deconvOutputFormatTest) {
+    ge::op::Deconvolution deconv;
+    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
+    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_CHWN, {1, 16, 4, 4}, ge::FORMAT_CHWN));
+    deconv.SetAttr("strides", {1, 1});
+    deconv.SetAttr("pads", {0, 0, 0, 0});
+    deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
+
+    auto ret = deconv.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

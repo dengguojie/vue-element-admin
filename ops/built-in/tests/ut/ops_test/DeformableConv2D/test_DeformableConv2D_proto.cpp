@@ -370,3 +370,203 @@ TEST_F(DeformableConv2DProtoTest, deformableconv2dOutputBaseTest) {
     auto ret = conv2d.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+// strides N/C dimensions must be set to 1
+TEST_F(DeformableConv2DProtoTest, deformableconv2dNCTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {2, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// dilations N/C dimensions must be set to 1
+TEST_F(DeformableConv2DProtoTest, deformableconv2dNCTest2) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {2, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// input bias size should be equal to out_channels
+TEST_F(DeformableConv2DProtoTest, deformableconv2dBiasTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("bias", create_desc_with_ori({8}, ge::DT_FLOAT16));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// input bias shape should be 1D
+TEST_F(DeformableConv2DProtoTest, deformableconv2dBiasTest2) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("bias", create_desc_with_ori({4, 4}, ge::DT_FLOAT16));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// filter size is too large
+TEST_F(DeformableConv2DProtoTest, deformableconv2dFilterSizeTest) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({128, 128, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// ic != kc * groups
+TEST_F(DeformableConv2DProtoTest, deformableconv2dChannelTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    conv2d.SetAttr("groups", 10);
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// kn % groups != 0
+TEST_F(DeformableConv2DProtoTest, deformableconv2dChannelTest2) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 32}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 32},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    conv2d.SetAttr("groups", 2);
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// deformable_groups should be positive
+TEST_F(DeformableConv2DProtoTest, deformableconv2dDeformableGroupsTest) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    conv2d.SetAttr("deformable_groups", 0);
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// input offsets format should be NCHW or NHWC
+TEST_F(DeformableConv2DProtoTest, deformableconv2dOffsetsTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{4, 64, 64, 3},ge::FORMAT_HWCN));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// output y format should be NCHW or NHWC
+TEST_F(DeformableConv2DProtoTest, deformableconv2dOutputTest) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{4,64,64,1},ge::FORMAT_HWCN));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// x shape is empty
+TEST_F(DeformableConv2DProtoTest, deformableconv2dBaseInputTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// filter shape is empty
+TEST_F(DeformableConv2DProtoTest, deformableconv2dBaseFilterTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// input offsets shape is empty
+TEST_F(DeformableConv2DProtoTest, deformableconv2dBaseOffsetTest1) {
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

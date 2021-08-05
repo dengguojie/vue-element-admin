@@ -527,3 +527,26 @@ TEST_F(Conv3DBackpropInputDProtoTest, conv3dbpD_data_slice_cut_cout_infer){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     EXPECT_EQ(expect_w_data_slice, w_data_slice);
 }
+
+// no data slice
+TEST_F(Conv3DBackpropInputDProtoTest, conv3dbpD_infer_data_slice_no_data_slice){
+    ge::op::Conv3DBackpropInputD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori(
+      {2, 4, 14, 14, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 4, 14, 14, 16},ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {2, 2, 2, 32, 16}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {2, 2, 2, 32, 16},ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 8, 28, 28, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 8, 28, 28, 32},ge::FORMAT_NDHWC));
+
+    op.SetAttr("input_size", {2, 8, 28, 28, 32});
+    op.SetAttr("strides", {1, 2, 2, 2, 1});
+    op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

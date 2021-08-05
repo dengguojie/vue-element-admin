@@ -283,3 +283,25 @@ TEST_F(Conv2DBackpropFilterDProtoTest, Conv2DBackpropFilterDSplit) {
     std::vector<std::vector<int64_t>> expect_dedy_data_slice = {{}, {0, 1}, {}, {}, {}};
     EXPECT_EQ(expect_dedy_data_slice, dedy_data_slice);
 }
+
+// fmap_chanel / filter_channel != "groups"
+TEST_F(Conv2DBackpropFilterDProtoTest, Conv2DBackpropFilterDGroupsTest) {
+    ge::op::Conv2DBackpropFilterD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.SetAttr("filter_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", 10);
+    op.SetAttr("data_format","NCHW");
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

@@ -611,3 +611,115 @@ TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterFuzzyCompileErrorGroup
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+// get filter_size list failed
+TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterVerifyDataSliceTest1) {
+    ge::op::Conv2DBackpropFilter op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    std::vector<int64_t> dims_filter_size{};
+    ge::Tensor constTensor;
+    ge::TensorDesc tensor_desc_filter_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_filter_size.size();
+    tensor_desc_filter_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_filter_size);
+
+    int *conv_filter_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_filter_size_tensor_value + i) = dims_filter_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_filter_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("filter_size").set_attr_value(constTensor);
+    op.set_input_filter_size(const0);
+    delete[] conv_filter_size_tensor_value;
+    op.UpdateInputDesc("filter_size", tensor_desc_filter_size);
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// not need infer input
+TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterVerifyDataSliceTest2) {
+    ge::op::Conv2DBackpropFilter op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.SetAttr("filter_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// can not supported split in Cin, H and W
+TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterVerifyDataSliceTest3) {
+    ge::op::Conv2DBackpropFilter op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.SetAttr("filter_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// not need infer input
+TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterVerifyDataSliceTest4) {
+    ge::op::Conv2DBackpropFilter op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.SetAttr("filter_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

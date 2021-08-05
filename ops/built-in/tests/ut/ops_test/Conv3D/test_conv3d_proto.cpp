@@ -793,3 +793,108 @@ TEST_F(Conv3DProtoTest, conv3d_dynamic_cut_info_n){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     EXPECT_EQ(expect_x_data_slice, x_data_slice);
 }
+
+// input x format should be NCDHW or NDHWC
+TEST_F(Conv3DProtoTest, conv3d_Format_Test1){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {2, 3, 18, 18, 32}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,
+      {2, 3, 18, 18, 32}, ge::FORMAT_NC1HWC0));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 2, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {16, 2, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 3, 18, 18, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 16}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", std::string("SAME"));
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// input filter format should be NCDHW or NDHWC or DHWCN
+TEST_F(Conv3DProtoTest, conv3d_Format_Test2){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {2, 3, 18, 18, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 2, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,
+      {16, 2, 3, 3, 32}, ge::FORMAT_NC1HWC0));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 3, 18, 18, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 16}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", std::string("SAME"));
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// padding should be SAME or VALID
+TEST_F(Conv3DProtoTest, conv3d_Format_Test3){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {2, 3, 18, 18, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 2, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {16, 2, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 3, 18, 18, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 16}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("padding", "ELSE");
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// no support to cut C0 axis
+TEST_F(Conv3DProtoTest, conv3d_DataSlice_Test1){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {2, 3, 18, 18, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 2, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {16, 2, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 3, 18, 18, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 16}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", std::string("SAME"));
+
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}, {}, {0, 1}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, 50331645);
+}
+
+// no data slice
+TEST_F(Conv3DProtoTest, conv3d_DataSlice_Test2){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {2, 3, 18, 18, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 2, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {16, 2, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 3, 18, 18, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 16}, ge::FORMAT_NDHWC));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", std::string("SAME"));
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

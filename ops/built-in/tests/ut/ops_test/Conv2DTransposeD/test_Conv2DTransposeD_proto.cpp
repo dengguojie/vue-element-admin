@@ -586,3 +586,69 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxOutputShape) {
     std::vector<std::int64_t> new_output_padding_expect = {0, 0, 2, 2};
     EXPECT_EQ(new_output_padding_expect, new_output_padding);
 }
+
+// op get pads failed
+TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferBaseTest1) {
+    ge::op::Conv2DTransposeD op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("bias", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    // op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// get pads list failed
+TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferBaseTest2) {
+    ge::op::Conv2DTransposeD op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("bias", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// inputsize format should be NCHW or NHWC
+TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferBaseTest3) {
+    ge::op::Conv2DTransposeD op;
+    op.UpdateInputDesc("x", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_HWCN, {128, 512, 7, 7}, ge::FORMAT_HWCN));
+    op.UpdateInputDesc("filter", create_desc_with_ori({512, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("bias", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {128, 256, 14, 14});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
