@@ -3,8 +3,11 @@
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "transformation_ops.h"
+#include "array_ops.h"
 
 using namespace std;
+using namespace ge;
 
 class AsStridedTiling : public testing::Test {
  protected:
@@ -28,24 +31,18 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(AsStridedTiling, tiling1) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AsStrided");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputs, tensorOutputsArg;
-  TeOpParas opParas;
-  TeOpTensor tensorOutput;
-  tensorOutput.dtype = "float16";
-  tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
-  opParas.op_type = "AsStrided";
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 196608, \"core_num\" : 96, \"dtype\": \"int32\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456a";
-  OpRunInfo runInfo;
+#include "test_common.h"
 
+TEST_F(AsStridedTiling, tiling1) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("AsStrided");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::AsStrided("AsStrided");
+  TensorDesc tensorOutput;
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 196608, \"core_num\" : 96, \"dtype\": \"int32\"}}";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   EXPECT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
 

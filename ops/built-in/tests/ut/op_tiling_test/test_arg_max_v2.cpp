@@ -22,9 +22,17 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "selection_ops.h"
+#include "elewise_calculation_ops.h"
+#include "array_ops.h"
 #include "register/op_tiling_registry.h"
 
 using namespace std;
+using namespace ge;
 
 class ArgMaxV2Tiling : public testing::Test {
  protected:
@@ -51,371 +59,193 @@ static string to_string(const std::stringstream& tiling_data) {
 }
 
 TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_0) {
-  using namespace optiling;
   std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32}}";
 
   std::vector<int64_t> input{35, 5, 128};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35, 128};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT16);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT32);
+  Tensor multiples_tensor(tensor_input_axis);
+  uint32_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(uint32_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["dimension"] =
-      std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "7 35 5 128 18 2 1 0 0 0 0 0 128 128 0 0 128 128 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 35 5 128 18 2 1 0 0 0 0 0 128 128 0 0 128 128 0 ");
 }
+
 TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_1) {
-  using namespace optiling;
   std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32}}";
 
   std::vector<int64_t> input{35, 128};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT16);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT32);
+  Tensor multiples_tensor(tensor_input_axis);
+  uint32_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(uint32_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["dimension"] =
-      std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234561";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 35 128 128 5 8 3 1 192 0 0 0 8 0 0 0 3 0 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 35 128 128 5 8 3 1 192 0 0 0 8 0 0 0 3 0 0 ");
 }
+
 TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_2) {
-  using namespace optiling;
   std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32}}";
 
   std::vector<int64_t> input{35, 96};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT16);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT32);
+  Tensor multiples_tensor(tensor_input_axis);
+  uint32_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(uint32_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["dimension"] =
-      std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234562";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 35 96 96 5 8 3 1 248 0 0 0 8 0 0 0 3 0 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 35 96 96 5 8 3 1 248 0 0 0 8 0 0 0 3 0 0 ");
 }
+
 TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_3) {
-  using namespace optiling;
   std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32}}";
 
   std::vector<int64_t> input{35, 10000};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT16);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT32);
+  Tensor multiples_tensor(tensor_input_axis);
+  uint32_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(uint32_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["dimension"] =
-      std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234563";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "3 35 10000 10000 5 8 3 0 0 0 10000 0 8 0 0 0 3 0 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 35 10000 10000 5 8 3 0 0 0 10000 0 8 0 0 0 3 0 0 ");
 }
+
 TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_4) {
-  using namespace optiling;
   std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 63488, \"core_num\": 32}}";
 
   std::vector<int64_t> input{35, 10000};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT32);
+  Tensor multiples_tensor(tensor_input_axis);
+  uint32_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(uint32_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["dimension"] =
-      std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234564";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "4 35 10000 10000 5 8 3 0 0 1 1808 0 8 0 0 0 3 0 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 35 10000 10000 5 8 3 0 0 1 1808 0 8 0 0 0 3 0 0 ");
 }
+
 TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_5) {
-  using namespace optiling;
   std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 63488, \"core_num\": 32}}";
 
   std::vector<int64_t> input{35, 8000};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT64);
+  Tensor multiples_tensor(tensor_input_axis);
+  int64_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(int64_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["dimension"] =
-      std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234565";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");
-}
-
-TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_6) {
-  using namespace optiling;
-  std::string op_name = "ArgMaxV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32}}";
-
-  std::vector<int64_t> input{35, 5, 128};
-  std::vector<int64_t> input_axis{1};
-  std::vector<int32_t> axis{1};
-  std::vector<int64_t> output{35, 128};
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "ND";
-  tensor_input.ori_format = "ND";
-  TeOpTensor tensor_input_axis;
-  tensor_input_axis.shape = input_axis;
-  tensor_input_axis.dtype = "int32";
-  tensor_input_axis.format = "ND";
-  tensor_input_axis.ori_format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "int32";
-  tensor_output.format = "ND";
-  tensor_output.ori_format = "ND";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_input_axis_arg;
-  tensor_input_axis_arg.tensor.push_back(tensor_input_axis);
-  tensor_input_axis_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_input_axis_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");
 }

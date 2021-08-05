@@ -24,27 +24,29 @@
 #include "register/op_tiling.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "external/graph/operator.h"
 #include "securec.h"
 #include <nlohmann/json.hpp>
 
 using namespace std;
 
+using namespace ge;
 namespace optiling {
 
-static void Serialize(OpRunInfo& runInfo, const AsStridedInfo& asInfo) {
+static void Serialize(utils::OpRunInfo& runInfo, const AsStridedInfo& asInfo) {
     vector<int64_t> tilingData;
     tilingData.push_back(asInfo.axisLen);
     tilingData.push_back(asInfo.stride);
     for (int64_t i = 0; i < static_cast<int64_t>(tilingData.size()); i++) {
-        ByteBufferPut(runInfo.tiling_data, tilingData[i]);
+        runInfo.AddTilingData(tilingData[i]);
     }
-    runInfo.block_dim = 96;
+    runInfo.SetBlockDim(96);
 };
 
 bool AsStridedTiling(const std::string &opType,
-                     const TeOpParas &opParas,
+                     const ge::Operator &opParas,
                      const nlohmann::json &opInfo,
-                     OpRunInfo &runInfo) {
+                     utils::OpRunInfo &runInfo) {
     OP_LOGI(opType.c_str(), "Tiling is running.");
     AsStridedInfo asInfo;
     asInfo.axisLen = 1000;
@@ -54,6 +56,6 @@ bool AsStridedTiling(const std::string &opType,
     return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(AsStrided, AsStridedTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AsStrided, AsStridedTiling);
 
 };

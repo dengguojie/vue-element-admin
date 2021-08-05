@@ -22,9 +22,18 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "selection_ops.h"
+#include "elewise_calculation_ops.h"
+#include "array_ops.h"
+#include "quantize_ops.h"
 #include "register/op_tiling_registry.h"
 
 using namespace std;
+using namespace ge;
 
 class AscendAntiQuantTiling : public testing::Test {
  protected:
@@ -51,42 +60,29 @@ static string to_string(const std::stringstream& tiling_data) {
 }
 
 TEST_F(AscendAntiQuantTiling, AscendAntiQuant_tiling_0) {
-  using namespace optiling;
   std::string op_name = "AscendAntiQuant";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
   std::string compileInfo = R"({"common_info": [16256, 32]})";
 
   std::vector<int64_t> input{16, 6, 79, 69, 32};
   std::vector<int64_t> output{16, 12, 79, 69, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "int8";
-  tensor_input.format = "NC1HWC0";
-  tensor_input.ori_format = "NHWC";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-  tensor_output.format = "NC1HWC0";
-  tensor_output.ori_format = "NHWC";
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_NC1HWC0, DT_INT8);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_NC1HWC0, DT_FLOAT16);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_output);
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  auto opParas = op::AscendAntiQuant("AscendAntiQuant");
+  opParas.set_input_x(data);
+  vector<Operator> inputs{data};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("x", tensor_input);
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "ASCENDANTIQUANT_";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(1, 1);
 }

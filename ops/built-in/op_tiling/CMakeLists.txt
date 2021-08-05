@@ -75,6 +75,7 @@ set(_optiling_files
   l1_loss_grad.cc
   lp_loss.cc
   nms_with_mask.cc
+  op_tiling_util.cc
   pad_common.cc
   pad_d.cc
   batch_multi_class_non_max_suppression.cc

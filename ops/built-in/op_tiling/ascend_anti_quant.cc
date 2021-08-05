@@ -25,8 +25,10 @@
 #include "error_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "external/graph/operator.h"
 #include "error_log.h"
 
+using namespace ge;
 namespace optiling {
 
 struct TilingParams {
@@ -50,9 +52,9 @@ static void PrintTilingParams(const TilingParams &param) {
 }
 
 bool GetComInfo(const std::string &op_type,
-                const TeOpParas &op_paras,
+                const ge::Operator &op_paras,
                 const nlohmann::json &op_info,
-                OpRunInfo &run_info,
+                utils::OpRunInfo &run_info,
                 CompileInfo &compile_info) {
   std::vector<int32_t> info = op_info["common_info"];
   compile_info.max_ub_count = info[0];
@@ -61,15 +63,11 @@ bool GetComInfo(const std::string &op_type,
   return true;
 }
 
-int32_t GetBlockSize(std::string dtype) {
+int32_t GetBlockSize(ge::DataType dtype) {
   int32_t block_size = 0;
-  if (dtype == "float32" || dtype == "int32" || dtype == "uint32") {
-    block_size = 8;
-  } else if (dtype == "float16" || dtype == "int16" || dtype == "uint16") {
-    block_size = 16;
-  } else if (dtype == "int8" || dtype == "uint8") {
-    block_size = 32;
-  }
+  int32_t type_size = GetSizeByDataType(dtype);
+  if(type_size > 0)
+    block_size = 32/type_size;
 
   return block_size;
 }
@@ -129,7 +127,7 @@ void GetUbTilingParam(TilingParams &param,
 void GetTilingData(TilingParams& param,
                    std::vector<int64_t> &out_shape,
                    CompileInfo &compile_info,
-                   const std::string input_dtype) {
+                   const ge::DataType input_dtype) {
   int64_t core_limit = out_shape.size() - 3;
   int32_t block_tiling_axis = core_limit - 1;
   int64_t block_factor = 1;
@@ -205,18 +203,17 @@ int32_t CalcTilingKey(std::vector<int64_t> shape,
 }
 
 bool AscendAntiQuantTiling(const std::string &op_type,
-                           const TeOpParas &op_paras,
+                           const ge::Operator &op_paras,
                            const nlohmann::json &op_info,
-                           OpRunInfo &run_info) {
+                           utils::OpRunInfo &run_info) {
   OP_LOGI(op_type.c_str(), "AscendAntiQuantTiling running.");
 
-  string input_format = op_paras.inputs[0].tensor[0].format;
-  std::vector<int64_t> input_x = op_paras.inputs[0].tensor[0].shape;
-  const std::string input_dtype = op_paras.inputs[0].tensor[0].dtype;
-  const std::string output_dtype = op_paras.outputs[0].tensor[0].dtype;
-  OP_TILING_CHECK(input_format != "NC1HWC0",
+  ge::Format input_format = op_paras.GetInputDesc(0).GetFormat();
+  ge::Shape input_x = op_paras.GetInputDesc(0).GetShape();
+  const ge::DataType output_dtype = op_paras.GetOutputDesc(0).GetDataType();
+  OP_TILING_CHECK(input_format != FORMAT_NC1HWC0,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-                          "input format only support NC1HWC0, but got %s.", input_format.c_str()),
+                          "input format only support NC1HWC0, but got %d.", input_format),
                   return false);
 
   CompileInfo compile_info;
@@ -227,35 +224,33 @@ bool AscendAntiQuantTiling(const std::string &op_type,
 
   std::vector<int64_t> input_x_new;
   std::vector<int64_t> input_y;
-  int64_t c1 = input_x[1] * 2;
-  int64_t hw = input_x[2] * input_x[3];
+  int64_t c1 = input_x.GetDim(1) * 2;
+  int64_t hw = input_x.GetDim(2) * input_x.GetDim(3);
 
-  input_y.push_back(input_x[0]);
+  input_y.push_back(input_x.GetDim(0));
   input_y.push_back(c1);
   input_y.push_back(hw);
   input_y.push_back(16);
 
-  input_x_new.push_back(input_x[0]);
-  input_x_new.push_back(input_x[1]);
+  input_x_new.push_back(input_x.GetDim(0));
+  input_x_new.push_back(input_x.GetDim(1));
   input_x_new.push_back(hw);
-  input_x_new.push_back(input_x[4]);
+  input_x_new.push_back(input_x.GetDim(4));
 
   TilingParams tiling_params;
   GetTilingData(tiling_params, input_y, compile_info, output_dtype);
 
   // tiling_key
   int32_t tiling_key = CalcTilingKey(input_y, tiling_params);
-  std::vector<int64_t> workspaces;
-  run_info.workspaces = workspaces;
-  run_info.block_dim = tiling_params.block_dim;
-  run_info.tiling_key = tiling_key;
+  run_info.SetBlockDim(tiling_params.block_dim);
+  run_info.SetTilingKey(tiling_key);
 
   for (int64_t i = 0; i < static_cast<int64_t>(input_x_new.size()) - 1; i++) {
-    ByteBufferPut(run_info.tiling_data, (int32_t)input_x_new[i]);
+    run_info.AddTilingData((int32_t)input_x_new[i]);
     OP_LOGD(op_type.c_str(), "input_x_new shape:%d", input_x_new[i]);
   }
-  ByteBufferPut(run_info.tiling_data, (int32_t)tiling_params.block_factor);
-  ByteBufferPut(run_info.tiling_data, (int32_t)tiling_params.ub_factor);
+  run_info.AddTilingData((int32_t)tiling_params.block_factor);
+  run_info.AddTilingData((int32_t)tiling_params.ub_factor);
   OP_LOGD(op_type.c_str(), "block factor=%d", tiling_params.block_factor);
   OP_LOGD(op_type.c_str(), "ub factor=%d", tiling_params.ub_factor);
 
@@ -266,5 +261,5 @@ bool AscendAntiQuantTiling(const std::string &op_type,
 }
 
 // register tiling interface of AscendAntiQuant op.
-REGISTER_OP_TILING_FUNC_BUFFERED(AscendAntiQuant, AscendAntiQuantTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AscendAntiQuant, AscendAntiQuantTiling);
 }  // namespace optiling

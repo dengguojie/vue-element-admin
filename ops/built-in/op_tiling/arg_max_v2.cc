@@ -25,6 +25,8 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "op_tiling_util.h"
+#include "external/graph/operator.h"
 #include "error_log.h"
 #include "securec.h"
 
@@ -58,26 +60,26 @@ struct TilingParam {
   int32_t last_core_offset;
 };
 
-static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
-  ByteBufferPut(run_info.tiling_data, param.tiling_mode);
-  ByteBufferPut(run_info.tiling_data, param.first_dim_size);
-  ByteBufferPut(run_info.tiling_data, param.axis_size);
-  ByteBufferPut(run_info.tiling_data, param.last_dim_size);
-  ByteBufferPut(run_info.tiling_data, param.act_core_num);
-  ByteBufferPut(run_info.tiling_data, param.one_core_ele);
-  ByteBufferPut(run_info.tiling_data, param.last_core_ele);
-  ByteBufferPut(run_info.tiling_data, param.align_num);
-  ByteBufferPut(run_info.tiling_data, param.axis_size_one_time);
-  ByteBufferPut(run_info.tiling_data, param.loop_times);
-  ByteBufferPut(run_info.tiling_data, param.tail_size);
-  ByteBufferPut(run_info.tiling_data, param.one_core_segment_loop);
-  ByteBufferPut(run_info.tiling_data, param.one_core_segment_tail);
-  ByteBufferPut(run_info.tiling_data, param.one_core_segment_tail_data);
-  ByteBufferPut(run_info.tiling_data, param.one_core_offset);
-  ByteBufferPut(run_info.tiling_data, param.last_core_segment_loop);
-  ByteBufferPut(run_info.tiling_data, param.last_core_segment_tail);
-  ByteBufferPut(run_info.tiling_data, param.last_core_segment_tail_data);
-  ByteBufferPut(run_info.tiling_data, param.last_core_offset);
+static void SetTilingParam(const TilingParam& param, utils::OpRunInfo& run_info) {
+  run_info.AddTilingData(param.tiling_mode);
+  run_info.AddTilingData(param.first_dim_size);
+  run_info.AddTilingData(param.axis_size);
+  run_info.AddTilingData(param.last_dim_size);
+  run_info.AddTilingData(param.act_core_num);
+  run_info.AddTilingData(param.one_core_ele);
+  run_info.AddTilingData(param.last_core_ele);
+  run_info.AddTilingData(param.align_num);
+  run_info.AddTilingData(param.axis_size_one_time);
+  run_info.AddTilingData(param.loop_times);
+  run_info.AddTilingData(param.tail_size);
+  run_info.AddTilingData(param.one_core_segment_loop);
+  run_info.AddTilingData(param.one_core_segment_tail);
+  run_info.AddTilingData(param.one_core_segment_tail_data);
+  run_info.AddTilingData(param.one_core_offset);
+  run_info.AddTilingData(param.last_core_segment_loop);
+  run_info.AddTilingData(param.last_core_segment_tail);
+  run_info.AddTilingData(param.last_core_segment_tail_data);
+  run_info.AddTilingData(param.last_core_offset);
 }
 
 static void PrintParam(const TilingParam& param) {
@@ -108,29 +110,29 @@ static int GetAlignNum(int32_t dim_size, int32_t align_size) {
   return align_num;
 }
 
-static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape, const string& dtype, int32_t axis,
+static void CalTilingParam(TilingParam& param, const ge::Shape& input_shape, const ge::DataType& dtype, int32_t axis,
                            int32_t ub_ele, int32_t core_num) {
   // set block and vector
   int32_t data_each_block = 8;
   int32_t data_each_vector = 64;
   int32_t segment = MAX_SEGMENT_LEN;  // for arg at last dim
-  if (dtype == "float16") {
+  if (dtype == ge::DT_FLOAT16) {
     data_each_block = 16;
     data_each_vector = 128;
     segment = MAX_SEGMENT_LEN * 3;  // for arg at last dim
   }
 
   int32_t first_dim_size = 1;
-  int64_t input_dims = input_shape.size();
+  int64_t input_dims = input_shape.GetDimNum();
   if (axis == input_dims - 1) {
     // calc first dim size and axis size
     int32_t i = 0;
     while (i < input_dims - 1) {
-      first_dim_size = first_dim_size * input_shape[i];
+      first_dim_size = first_dim_size * input_shape.GetDim(i);
       i++;
     }
     param.first_dim_size = first_dim_size;
-    param.axis_size = input_shape[axis];
+    param.axis_size = input_shape.GetDim(axis);
     param.last_dim_size = param.axis_size;
 
     // calc core number at first dim size
@@ -155,7 +157,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.last_core_segment_tail = param.last_core_ele % MAX_SEGMENT_LEN;
 
     // select branch
-    if (dtype == "float16" && param.axis_size < MAX_SEGMENT_LEN) {
+    if (dtype == ge::DT_FLOAT16 && param.axis_size < MAX_SEGMENT_LEN) {
       param.tiling_mode = 0;  // compute_argxxx_last_axis_fp16_copy_one_time
       if (param.axis_size <= data_each_vector * 2) {
         param.align_num = GetAlignNum(param.axis_size, data_each_block);
@@ -190,7 +192,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       // tiling at last dim
       param.loop_times = param.axis_size / segment;
       param.tail_size = param.axis_size % segment;
-      if (dtype == "float32") {
+      if (dtype == ge::DT_FLOAT) {
         param.tiling_mode = 4;  // compute_argxxx_last_axis_fp32
         if (param.loop_times == 0) {
           param.tiling_mode = 12;  // compute_argxxx_last_axis_fp32 for zero loop
@@ -204,16 +206,16 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     int32_t i = 0;
     int32_t last_dim_size = 1;
     while (i < axis) {
-      first_dim_size = first_dim_size * input_shape[i];
+      first_dim_size = first_dim_size * input_shape.GetDim(i);
       i++;
     }
     i = axis + 1;
     while (i < input_dims) {
-      last_dim_size = last_dim_size * input_shape[i];
+      last_dim_size = last_dim_size * input_shape.GetDim(i);
       i++;
     }
     param.first_dim_size = first_dim_size;
-    param.axis_size = input_shape[axis];
+    param.axis_size = input_shape.GetDim(axis);
     param.last_dim_size = last_dim_size;
 
     if ((param.first_dim_size >= core_num) || (param.first_dim_size >= (param.last_dim_size / data_each_vector))) {
@@ -243,7 +245,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         param.last_core_ele = param.first_dim_size;
       }
       // select branch
-      if (dtype == "float32") {
+      if (dtype == ge::DT_FLOAT) {
         param.tiling_mode = 5;  // do_not_last
       } else {
         param.tiling_mode = 10;  // do_not_last
@@ -284,7 +286,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         param.last_core_offset = param.last_core_segment_tail_data - param.last_core_segment_tail;
       }
       // select branch
-      if (dtype == "float32") {
+      if (dtype == ge::DT_FLOAT) {
         param.tiling_mode = 8;  // do_not_last
       } else {
         param.tiling_mode = 11;  // do_not_last
@@ -309,36 +311,26 @@ static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, T&
   return true;
 }
 
-static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                         OpRunInfo& run_info) {
+static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                         utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "ArgOpsTiling running.");
 
   // get axis value
-  int32_t axis;
-  string axis_type = op_paras.inputs[1].tensor[0].dtype;
-  if (op_paras.const_inputs.count("dimension") == 0 || get<0>(op_paras.const_inputs.at("dimension")) == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include dimension or dimension is null");
+  int64_t axis;
+  vector<int64_t> axis_vec;
+  if(!GetConstValue(op_paras, "dimension", axis_vec)) {
     return false;
   }
-  if (axis_type == "int32") {
-    const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at("dimension")));
-    axis = *axis_ptr;
-  } else if (axis_type == "int64") {
-    const int64_t* axis_ptr = reinterpret_cast<const int64_t*>(std::get<0>(op_paras.const_inputs.at("dimension")));
-    axis = *axis_ptr;
-  } else {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis can only support int32, int64, but got %s", axis_type.c_str());
-    return false;
-  }
+  axis = axis_vec[0];
   // check axis value and set to positive value
-  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-  int64_t input_dims = input_shape.size();
+  ge::Shape input_shape = op_paras.GetInputDesc(0).GetShape();
+  int64_t input_dims = input_shape.GetDimNum();
   if (axis < -input_dims || axis >= input_dims) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%d, dims:%ld", axis, input_dims);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%ld, dims:%ld", axis, input_dims);
     return false;
   }
   axis = (axis + input_dims) % input_dims;
-  OP_LOGD(op_type.c_str(), "ArgOpsTiling", "axis is %d.", axis);
+  OP_LOGD(op_type.c_str(), "ArgOpsTiling", "axis is %ld.", axis);
 
   // get compile info
   int32_t ub_ele = 0;
@@ -359,20 +351,18 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
   // calc and set and print tiling param
   TilingParam param;
   memset_s(&param, sizeof(param), 0, sizeof(param));
-  string dtype = op_paras.inputs[0].tensor[0].dtype;
+  ge::DataType dtype = op_paras.GetInputDesc(0).GetDataType();
   CalTilingParam(param, input_shape, dtype, axis, ub_ele, core_num);
   SetTilingParam(param, run_info);
   PrintParam(param);
 
   // reserve
-  run_info.block_dim = param.act_core_num;
-  vector<int64_t> workspace;
-  run_info.workspaces = workspace;
+  run_info.SetBlockDim(param.act_core_num);
 
   OP_LOGI(op_type.c_str(), "ArgOpsTiling run success.");
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(ArgMin, ArgOpsTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(ArgMaxV2, ArgOpsTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ArgMin, ArgOpsTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ArgMaxV2, ArgOpsTiling);
 }  // namespace optiling
