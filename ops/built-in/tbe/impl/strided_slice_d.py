@@ -944,34 +944,31 @@ def op_select_format(input_x,
     format_base_out = ["ND"] * len(base_data_type)
 
     if -2 not in input_shape and -2 not in input_ori_shape and -2 not in output_shape and -2 not in output_ori_shape:
-        if not _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask,
-                                new_axis_mask, shrink_axis_mask):
-            error_manager_vector.raise_err_specific_reson("strided_slice_d", "Parameter Invalid!")
+        if _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask, new_axis_mask, shrink_axis_mask):
+            # update input_shape, begin_shape, end_shape
+            output_shape, input_shape, begin, end, strides = _infer_shape(input_ori_shape, begin, end,
+                                                                          strides, begin_mask, end_mask,
+                                                                          ellipsis_mask, new_axis_mask,
+                                                                          shrink_axis_mask)
 
-        # update input_shape, begin_shape, end_shape
-        output_shape, input_shape, begin, end, strides = _infer_shape(input_ori_shape, begin, end,
-                                                                      strides, begin_mask, end_mask,
-                                                                      ellipsis_mask, new_axis_mask,
-                                                                      shrink_axis_mask)
-
-        # charge whether support 6HD
-        # conditions:
-        # 1.C dim in begin is c0 align
-        # 2.C dim in end is c0 align or C dim in end is equal to C dim in shape
-        # 3.C dim in strides is 1
-        hd_support_format = get_fused_str(["N", "D", "C", "H", "W"])
-        if list(input_shape) == list(input_ori_shape) and len(input_ori_format) == len(
-                input_ori_shape) and input_ori_format in hd_support_format and len(input_shape) == len(output_shape):
-            dict_zip_begin = dict(zip(list(input_ori_format), begin))
-            dict_zip_end = dict(zip(list(input_ori_format), end))
-            dict_zip_strides = dict(zip(list(input_ori_format), strides))
-            dict_zip_shape = dict(zip(list(input_ori_format), input_ori_shape))
-            begin_c_align_flag = dict_zip_begin["C"] % hd_format_c0 == 0
-            end_c_align_flag = dict_zip_end["C"] % hd_format_c0 == 0 or dict_zip_end["C"] == dict_zip_shape["C"]
-            strides_c_align_flag = dict_zip_strides["C"] == 1
-            if begin_c_align_flag and end_c_align_flag and strides_c_align_flag:
-                dtype_base_out = dtype_base_out + other_data_type
-                format_base_out = format_base_out + ["NDC1HWC0"] * len(other_data_type)
+            # charge whether support 6HD
+            # conditions:
+            # 1.C dim in begin is c0 align
+            # 2.C dim in end is c0 align or C dim in end is equal to C dim in shape
+            # 3.C dim in strides is 1
+            hd_support_format = get_fused_str(["N", "D", "C", "H", "W"])
+            if list(input_shape) == list(input_ori_shape) and len(input_ori_format) == len(input_ori_shape) and \
+                input_ori_format in hd_support_format and len(input_shape) == len(output_shape):
+                dict_zip_begin = dict(zip(list(input_ori_format), begin))
+                dict_zip_end = dict(zip(list(input_ori_format), end))
+                dict_zip_strides = dict(zip(list(input_ori_format), strides))
+                dict_zip_shape = dict(zip(list(input_ori_format), input_ori_shape))
+                begin_c_align_flag = dict_zip_begin["C"] % hd_format_c0 == 0
+                end_c_align_flag = dict_zip_end["C"] % hd_format_c0 == 0 or dict_zip_end["C"] == dict_zip_shape["C"]
+                strides_c_align_flag = dict_zip_strides["C"] == 1
+                if begin_c_align_flag and end_c_align_flag and strides_c_align_flag:
+                    dtype_base_out = dtype_base_out + other_data_type
+                    format_base_out = format_base_out + ["NDC1HWC0"] * len(other_data_type)
 
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
