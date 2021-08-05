@@ -116,7 +116,7 @@ def erfc_compute(input_x, output_y, kernel_name="erfc"):
     erfc_sign_vmul = tbe.vmul(tensor_sign, erfc_exp_vadds)
     erfc_sign_vmuls = tbe.vmuls(erfc_sign_vmul, const_negative_one)
     erfc_result = tbe.vadds(erfc_sign_vmuls, const_one)
-    if dtype == dtype_:
+    if dtype != dtype_:
         erfc_result = tbe.cast_to(erfc_result, dtype_)
     return erfc_result
 
