@@ -3704,8 +3704,6 @@ class GEMM_Schedule:
             al0_axis_factor, bl0_axis_factor, reduce_axis_factor = self._get_mmad_factor()
             # -----------split and get axis of l0c, al1, bl1 or may aub , bub----------------
             small_ub_flag = self._get_ub_pos()
-            fix_pipe_bias = self.gemm_params.TENSOR_MAP.get("fix_pipe_bias")
-            is_with_fix_pipe_bias = fix_pipe_bias is not None
 
             if self.gemm_params.ops_mode == "int8fp32" and not small_ub_flag and not self.gemm_params.cube_vector_split:
                 (
@@ -3786,14 +3784,16 @@ class GEMM_Schedule:
                 sch, c_gm, l0c_n_inner, l0c_m_inner, l0c_ub_parts
             )
 
-            def _fix_pipe_bias_process():
-                bias_l1 = sch.cache_read(
-                    fix_pipe_bias, tbe_platform_info.scope_cbuf, [c_l0c])
-                bias_fix_pipe = sch.cache_read(bias_l1, "local.BT", [c_l0c])
-                sch[bias_fix_pipe].compute_at(sch[c_l0c], bl0_n_outer)
-                sch[bias_l1].compute_at(sch[c_l0c], bl0_n_outer)
+            def _buffer_table_bias_process():
+                bias_l1 = sch.cache_read(fix_pipe_bias, tbe_platform_info.scope_cbuf, [c_l0c])
+                bias_bt = sch.cache_read(bias_l1, "local.BT", [c_l0c])
+                sch[bias_bt].compute_at(sch[c_l0c], bl0_n_outer)
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
+                if bl1_parts[1] == 1:
+                    sch[bias_l1].compute_at(sch[c_gm], batch_in_out_axis)
+                else:
+                    sch[bias_l1].compute_at(sch[c_l0c], bl0_n_outer)
                 sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
-                sch[bias_fix_pipe].emit_insn(bias_fix_pipe.op.axis[0], "dma_copy")
 
             def _attach_ub(sch, c_gm, at_axis):
                 """
@@ -3950,8 +3950,11 @@ class GEMM_Schedule:
             # -----------attach tensor of a_l0a----------------
             sch[a_l0a].compute_at(sch[c_l0c], l0a_at_axis)
             sch[b_l0b].compute_at(sch[c_l0c], l0b_at_axis)
-            if is_with_fix_pipe_bias:
-                _fix_pipe_bias_process()
+
+            fix_pipe_bias = self.gemm_params.TENSOR_MAP.get("fix_pipe_bias")
+            if fix_pipe_bias is not None:
+                _buffer_table_bias_process()
+
             self.gemm_params.print_ir_matmul("before attach aub bub", sch)
 
             def _attach_aub_bub(al1_at_tensor, bl1_at_tensor):

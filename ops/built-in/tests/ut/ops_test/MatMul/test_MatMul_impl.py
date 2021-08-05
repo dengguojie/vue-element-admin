@@ -255,7 +255,7 @@ def test_matmul_trans_data_fusion_920_1(test_arg):
         tensor_b_ori = tvm.placeholder((12288, 1024), name="tensor_b_ori", dtype="int8")
         tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
         tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
-        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "ND", "ori_format": "ND"}
+        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, True, False, 0)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
@@ -274,9 +274,10 @@ def test_matmul_trans_data_fusion_920_2(test_arg):
     with cce():
         tensor_a_ori = tvm.placeholder((128, 768, 16, 32), name="tensor_a", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND"})
         tensor_b_ori = tvm.placeholder((32, 768, 16, 32), name="tensor_b", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND"})
-        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "ND", "ori_format": "ND"}
-        matmul_out = mat_mul_compute(tensor_a_ori, tensor_b_ori, None, None, output_y, True, False, 0)
-        tensor_list = [tensor_a_ori, tensor_b_ori, matmul_out]
+        bias = tvm.placeholder((1024,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND"})
+        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(tensor_a_ori, tensor_b_ori, bias, None, output_y, True, False, 0)
+        tensor_list = [tensor_a_ori, tensor_b_ori, bias, matmul_out]
         sch = auto_schedule(matmul_out)
         config = {
             "print_ir": False,
