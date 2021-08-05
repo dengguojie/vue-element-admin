@@ -116,7 +116,6 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
 
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
-    axis = shape_util.axis_check(len(shape), axis)
     if isinstance(axis, int):
         axis = [axis]
     input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
