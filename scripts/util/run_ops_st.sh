@@ -34,9 +34,9 @@ set_st_env() {
   local soc_version="$2"
   # atc
   export PATH=$install_path/atc/ccec_compiler/bin:$install_path/atc/bin:$PATH
-  export PYTHONPATH=$install_path/atc/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH
-  export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
   export ASCEND_OPP_PATH=$install_path/opp
+  export PYTHONPATH=$install_path/atc/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH:${ASCEND_OPP_PATH}/op_impl/built-in/ai_core/tbe
+  export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
   # acl
   if [[ $soc_version == "Ascend310" ]]; then
     export DDK_PATH=$install_path
@@ -111,6 +111,24 @@ run_st() {
         echo "[INFO] get results for ${op_type}:" && cat "${op_result}"
     fi
   done
+
+  custom_cases=$(find "${op_dir}" -name *custom.py 2>/dev/null)
+
+  if [[ ! -d "cov_result" ]]; then
+    mkdir cov_result
+  fi
+
+  for custom_case in $(echo $custom_cases); do
+    echo "[INFO] run case file: $custom_case"
+    coverage run $custom_case
+    if [[ $? -ne 0 ]]; then
+      echo "[ERROR] run ops custom case failed, case file is: $custom_case."
+      st_failed="true"
+    fi
+    file_name=`basename $custom_case`
+    flag=${file_name%.*}
+    mv .coverage cov_result/.coverage.$flag
+  done
 }
 
 delete_unmatch_cases() {
@@ -169,8 +187,8 @@ main() {
   get_results
   clear_tmp
 
-  if [[ "$st_failed"=="true" ]];then
-    echo "Some TestCase failed! Please check log with keyword \"[failed]\""
+  if [[ "$st_failed" = "true" ]];then
+    echo "Some TestCase failed! Please check log with keyword \"[fail]\""
     exit $STATUS_FAILED
   fi
 }

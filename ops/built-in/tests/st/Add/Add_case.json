@@ -2592,6 +2592,62 @@
     "op": "Add",
     "input_desc": [
       {
+        "format": "ND",
+        "shape": [[4, 3, 4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[4, 3, 4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[4, 3, 4]],
+        "type": ["float16"]
+      }
+    ],
+    "case_name" : "test_add_048"
+  },
+  {
+    "op": "Add",
+    "calc_expect_func_file": "test_add_golden.py:calc_expect_func",
+    "input_desc": [
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x1"
+        },
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "name": "x2"
+        }
+    ],
+    "output_desc": [
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "name": "y1"
+        }
+    ],
+    "case_name" : "test_add_049"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
         "shape": [
           1,
           1
