@@ -17,12 +17,24 @@ gru v2 hidden
 import operator
 import math
 
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te import tik
-from te import tvm
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe
+from te.lang.cce import broadcast
+from te.lang.cce import cast_to
+from te.lang.cce import vabs
+from te.lang.cce import vadd
+from te.lang.cce import vadds
+from te.lang.cce import vdiv
+from te.lang.cce import vexp
+from te.lang.cce import vmul
+from te.lang.cce import vmuls
+from te.lang.cce import vrec
+from te.lang.cce import vsub
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from te.platform.cce_conf import api_check_support
 from te.domain.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 
@@ -36,8 +48,8 @@ def _sigmoid_compute(input_x):
     """
     data_input = input_x
     dtype = input_x.dtype
-    exp_support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32")
-    mul_support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls", "float32")
+    exp_support = api_check_support("te.lang.cce.vexp", "float32")
+    mul_support = api_check_support("te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
                                                           "vmuls should support float32",
@@ -45,19 +57,19 @@ def _sigmoid_compute(input_x):
 
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)
-    tmp_negative = tbe.vmuls(data_input, const_num_neg_one)
+    tmp_negative = vmuls(data_input, const_num_neg_one)
     if dtype == "float32" and not exp_support:
-        tmp_negative = tbe.cast_to(tmp_negative, "float16")
-    tmp_exp = tbe.vexp(tmp_negative)
+        tmp_negative = cast_to(tmp_negative, "float16")
+    tmp_exp = vexp(tmp_negative)
     if dtype == "float32" and not exp_support:
-        tmp_exp = tbe.cast_to(tmp_exp, "float32")
-    tmp_sum = tbe.vadds(tmp_exp, const_num_one)
+        tmp_exp = cast_to(tmp_exp, "float32")
+    tmp_sum = vadds(tmp_exp, const_num_one)
     if dtype == "float32":
         inp_shape = tmp_sum.shape
-        tensor_one = tbe.broadcast(tvm.const(1, dtype), inp_shape)
-        res = tbe.vdiv(tensor_one, tmp_sum)
+        tensor_one = broadcast(tvm.const(1, dtype), inp_shape)
+        res = vdiv(tensor_one, tmp_sum)
     else:
-        res = tbe.vrec(tmp_sum)
+        res = vrec(tmp_sum)
 
     return res
 
@@ -77,26 +89,26 @@ def _tanh_compute(input_x):
 
     has_improve_precision = False
 
-    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("vexp", "float32"):
-        input_x = tbe.cast_to(input_x, "float32")
+    if input_dtype == "float16" and api_check_support("vexp", "float32"):
+        input_x = cast_to(input_x, "float32")
         has_improve_precision = True
         const_dtype = "float32"
 
-    input_abs = tbe.vabs(input_x)
-    power_val = tbe.vmuls(input_abs, tvm.const(-2, const_dtype))
-    exp_val = tbe.vexp(power_val)
+    input_abs = vabs(input_x)
+    power_val = vmuls(input_abs, tvm.const(-2, const_dtype))
+    exp_val = vexp(power_val)
 
-    up_val_tmp = tbe.vmul(exp_val, input_x)
-    up_val = tbe.vsub(input_x, up_val_tmp)
+    up_val_tmp = vmul(exp_val, input_x)
+    up_val = vsub(input_x, up_val_tmp)
 
-    input_x_tmp = tbe.vadds(input_abs, min_fp_data)
-    down_val_tmp = tbe.vadds(exp_val, tvm.const(1, const_dtype))
-    down_val = tbe.vmul(down_val_tmp, input_x_tmp)
+    input_x_tmp = vadds(input_abs, min_fp_data)
+    down_val_tmp = vadds(exp_val, tvm.const(1, const_dtype))
+    down_val = vmul(down_val_tmp, input_x_tmp)
 
-    res = tbe.vdiv(up_val, down_val)
+    res = vdiv(up_val, down_val)
 
     if has_improve_precision:
-        res = tbe.cast_to(res, "float16")
+        res = cast_to(res, "float16")
 
     return res
 
@@ -211,10 +223,15 @@ def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
                                                           "x_weight_input.shape[2] == output_h.shape[2]",
                                                           "output_h.shape[2]", output_h["shape"][2])
 
-    if seq_length is not None and (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
-        error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
+    if seq_length is not None:
+        if seq_length.get("dtype").lower() == "int32":
+            if (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
+                error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
                                                           "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
                                                           "seq_length.shape[0]", output_h["shape"][2])
+        else:
+            if seq_length["shape"] != output_h["shape"]:
+                error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden: seq_length.shape != output_h.shape")
 
     # k_size
     if weight_hidden["shape"][0] != output_h["shape"][1]:
@@ -338,9 +355,21 @@ def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_nam
         bias2 = tik_instance.Tensor(shape=shape_bias, dtype=bias_dtype, scope=tik.scope_gm, name="bias2")
     else:
         bias2 = None
+
+    is_using_seq_mask = False
+    is_valid_mask = False
     if seq_length is not None:
-        seq_len = tik_instance.Tensor(shape=seq_length.get("shape"), scope=tik.scope_gm,
-                                      dtype="int32", name='seq_length')
+        is_using_seq_mask = True
+        if seq_length.get("dtype").lower() == "int32":
+            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=tik.scope_gm,
+                                              dtype="int32", name='seq_mask_gm')
+        else:
+            is_valid_mask = True
+            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=tik.scope_gm,
+                                          dtype="float16", name='seq_mask_gm')
+    else:
+        seq_mask_gm = None
+
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_h_init, dtype=bias_dtype, scope=tik.scope_gm, name="s_init_h_gm")
     update_h_gm = tik_instance.Tensor(shape=shape_h, dtype=bias_dtype, scope=tik.scope_gm, name="update_h_gm")
@@ -356,8 +385,10 @@ def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_nam
     build_input_list = [x_weight_input, weight2]
     if has_bias_hidden:
         build_input_list.append(bias2)
-    if seq_length is not None:
-        build_input_list.append(seq_len)
+
+    if is_using_seq_mask:
+        build_input_list.append(seq_mask_gm)
+
     if is_global_init:
         build_input_list.append(s_init_h_gm)
     build_output_list = [update_y_gm, update_h_gm]
@@ -391,7 +422,12 @@ def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_nam
             n_t_gm_var = None
             hn_t_gm_var = None
 
-        input_list = [x_weight_input_var, weight2, bias2, s_init_h_gm_var, last_h, sync]
+        if is_valid_mask:
+            seq_mask_gm_var = seq_mask_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+        else:
+            seq_mask_gm_var = None
+
+        input_list = [x_weight_input_var, weight2, bias2, s_init_h_gm_var, last_h, sync, seq_mask_gm_var]
         if is_gate_output:
             output_list = [update_y_gm_var, update_h_gm_var, i_t_gm_var, r_t_gm_var, n_t_gm_var, hn_t_gm_var]
         else:
@@ -430,6 +466,7 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     s_init_h_gm = input_list[3]
     s_state_h_gm_last = input_list[4]
     sync = input_list[5]
+    seq_mask_gm = input_list[6]
     is_gate_output = custom_list[0]
     is_first_round = custom_list[1]
     is_global_init = custom_list[2]
@@ -472,6 +509,12 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                          lambda *indices: tvm.const(0.0, dtype="float16"),
                                          name="s_state_h_fp16_ign",
                                          tag="broadcast")
+        if seq_mask_gm is not None:
+            s_state_h_ub_for_element = \
+                        tvm.compute(shape_i,
+                        lambda *indices: tvm.const(0.0, dtype="float32"),
+                        name='s_state_h_ub_for_element',
+                        tag="broadcast")
     else:
         last_h = s_init_h_gm if is_first_round else s_state_h_gm_last
         if fp16_input_output:
@@ -493,6 +536,15 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                         lambda *indices: s_state_h_tmp(*indices).astype("float32"),
                                         name="s_state_h_ign",
                                         tag="elewise_single_cast")
+            if seq_mask_gm is not None:
+                s_state_h_ub_for_element_fp16 = tvm.compute(shape_i,
+                                                      lambda *indices: last_h(*indices),
+                                                      name="s_state_h_ub_for_element_fp16",
+                                                      tag="out_to_ub")
+                s_state_h_ub_for_element = tvm.compute(shape_i,
+                                           lambda *indices: s_state_h_ub_for_element_fp16(*indices).astype("float32"),
+                                           name="s_state_h_ub_for_element",
+                                           tag="elewise_single_cast")
         else:
             s_state_h = tvm.compute(shape_i,
                                     lambda *indices: last_h(*indices),
@@ -512,6 +564,11 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                              lambda *indices: s_state_h_tmp(*indices).astype("float16"),
                                              name="s_state_h_fp16_ign",
                                              tag="elewise_single_cast")
+            if seq_mask_gm is not None:
+                s_state_h_ub_for_element = tvm.compute(shape_i,
+                                                      lambda *indices: last_h(*indices),
+                                                      name="s_state_h_ub_for_element",
+                                                      tag="out_to_ub")
 
     # second matmul
     # input and s_start_h is Nz, need trans to zZ, so change axis 1 and 2
@@ -548,8 +605,8 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                          lambda *indices: bias_ub_2(*indices).astype("float32"),
                                          name="bias_ub_2_fp32_ign",
                                          tag="elewise_single_cast")
-        bias_bc_ub_2 = tbe.broadcast(bias_ub_2_fp32, shape_c_2)
-        c_ub_bias_2 = tbe.vadd(c_ub_2, bias_bc_ub_2)
+        bias_bc_ub_2 = broadcast(bias_ub_2_fp32, shape_c_2)
+        c_ub_bias_2 = vadd(c_ub_2, bias_bc_ub_2)
     else:
         c_ub_bias_2 = c_ub_2
 
@@ -618,8 +675,8 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                        tag="out_to_ub")
             n_t_2_mid = hn_t_gm_back
 
-    r_t = tbe.vadd(r_t_1, r_t_2)
-    i_t = tbe.vadd(i_t_1, i_t_2)
+    r_t = vadd(r_t_1, r_t_2)
+    i_t = vadd(i_t_1, i_t_2)
     r_t_sigmoid = _sigmoid_compute(r_t)
     i_t_sigmoid = _sigmoid_compute(i_t)
 
@@ -688,8 +745,8 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
             r_t_mid = r_t_gm_back
             i_t_mid = i_t_gm_back
 
-    r_t_h = tbe.vmul(r_t_mid, n_t_2_mid)
-    n_t = tbe.vadd(n_t_1, r_t_h)
+    r_t_h = vmul(r_t_mid, n_t_2_mid)
+    n_t = vadd(n_t_1, r_t_h)
     n_t_tanh = _tanh_compute(n_t)
 
     # output n_t_tanh
@@ -724,9 +781,19 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                       tag="out_to_ub")
             n_t_tanh_mid = n_t_gm_back
 
-    c_t_tmp1 = tbe.vsub(s_state_h, n_t_tanh_mid)
-    c_t_tmp2 = tbe.vmul(c_t_tmp1, i_t_mid)
-    update_h = tbe.vadd(c_t_tmp2, n_t_tanh_mid)
+    c_t_tmp1 = vsub(s_state_h, n_t_tanh_mid)
+    c_t_tmp2 = vmul(c_t_tmp1, i_t_mid)
+    update_h = vadd(c_t_tmp2, n_t_tanh_mid)
+    if seq_mask_gm is not None:
+        seq_mask_ub = tvm.compute(shape_i, lambda *indices: seq_mask_gm(*indices),
+                                  name="seq_mask_ub")
+        seq_mask_ub_fp32 = tvm.compute(shape_i,
+                                    lambda *indices: seq_mask_ub(*indices).astype("float32"),
+                                    name="seq_mask_ub_fp32",
+                                    tag="elewise_single_cast")
+        update_h_diff = vsub(update_h, s_state_h_ub_for_element)
+        update_h_tmp = vmul(update_h_diff, seq_mask_ub_fp32)
+        update_h = vadd(update_h_tmp, s_state_h_ub_for_element)
     update_h_ub = update_h
     if fp16_input_output:
         update_h_fp16 = tvm.compute(shape_i_t,
@@ -801,6 +868,10 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
         sch[bias_bc_ub_2].set_scope(tbe_platform.scope_ubuf)
         if fp16_input_output:
             sch[bias_ub_2_fp32].set_scope(tbe_platform.scope_ubuf)
+    if seq_mask_gm is not None:
+        sch[s_state_h_ub_for_element].set_scope(tbe_platform.scope_ubuf)
+        if (not is_first_round or is_global_init) and fp16_input_output:
+            sch[s_state_h_ub_for_element_fp16].set_scope(tbe_platform.scope_ubuf)
     if is_gate_output:
         sch[r_t_gm_back].set_scope(tbe_platform.scope_ubuf)
         sch[i_t_gm_back].set_scope(tbe_platform.scope_ubuf)
@@ -822,6 +893,10 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     sch[r_t_1].set_scope(tbe_platform.scope_ubuf)
     sch[i_t_1].set_scope(tbe_platform.scope_ubuf)
     sch[n_t_1].set_scope(tbe_platform.scope_ubuf)
+
+    if seq_mask_gm is not None:
+        sch[seq_mask_ub].set_scope(tbe_platform.scope_ubuf)
+        sch[seq_mask_ub_fp32].set_scope(tbe_platform.scope_ubuf)
 
     # compute inline
     compute_inline_tensors = [i_t_2, r_t_2]
@@ -923,6 +998,13 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
         sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_m_inner)
         sch[s_state_h_fp16].compute_at(sch[update_h_gm], update_h_gm_m_inner)
 
+    if seq_mask_gm is not None:
+        sch[s_state_h_ub_for_element].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+        sch[seq_mask_ub].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+        sch[seq_mask_ub_fp32].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+        if (not is_first_round or is_global_init) and fp16_input_output:
+            sch[s_state_h_ub_for_element_fp16].compute_at(sch[update_h_gm], update_h_gm_m_inner)
+
     if reuse_type == ReuseType.REUSE_ALL:
         sch[update_h_gm].bind(update_h_gm_m_outer, tvm.thread_axis("blockIdx.x"))
     else:
@@ -955,6 +1037,8 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
         else:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "broadcast")
+        if seq_mask_gm is not None:
+                sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
     else:
         if fp16_input_output:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "dma_copy")
@@ -963,6 +1047,9 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                 sch[s_state_h_tmp].set_scope(tbe_platform.scope_ubuf)
                 sch[s_state_h_tmp].compute_at(sch[update_h_gm], update_h_gm_outer)
                 sch[s_state_h_tmp].emit_insn(s_state_h_tmp.op.axis[0], "dma_copy")
+            if seq_mask_gm is not None:
+                sch[s_state_h_ub_for_element_fp16].emit_insn(s_state_h_ub_for_element_fp16.op.axis[0], 'dma_copy')
+                sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'vector_conv')
         else:
             sch[s_state_h].emit_insn(s_state_h.op.axis[0], "dma_copy")
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
@@ -970,6 +1057,8 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                 sch[s_state_h_tmp].set_scope(tbe_platform.scope_ubuf)
                 sch[s_state_h_tmp].compute_at(sch[c_l0c_2], l1_k_outer_2)
                 sch[s_state_h_tmp].emit_insn(s_state_h_tmp.op.axis[0], "dma_copy")
+            if seq_mask_gm is not None:
+                sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'dma_copy')
 
     sch[a_l1_2].emit_insn(a_l1_2.op.axis[0], "dma_copy")
     sch[b_l1_2].emit_insn(b_l1_2.op.axis[0], "dma_copy")
@@ -1023,6 +1112,9 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
 
     if fp16_input_output:
         sch[update_h_fp16].emit_insn(update_h_fp16.op.axis[0], "vector_conv")
+    if seq_mask_gm is not None:
+        sch[seq_mask_ub].emit_insn(seq_mask_ub.op.axis[0], 'dma_copy')
+        sch[seq_mask_ub_fp32].emit_insn(seq_mask_ub_fp32.op.axis[0], 'vector_conv')
     sch[update_y_gm].emit_insn(update_y_gm.op.axis[0], "dma_copy")
     sch[update_y_gm_back].emit_insn(update_y_gm_back.op.axis[0], "phony_insn")
     sch[update_y_gm_back].reused_by(update_h_ub)
