@@ -4353,7 +4353,7 @@ class CceConvOp:
             """
             dma_im2col_tensor_map = ConvParam.tensor_map
             if self._l0a_dma_flag:
-                if self._aipp_fuse_flag or ConvParam.pre_relu_flag:
+                if self._aipp_fuse_flag or ConvParam.pre_relu_flag or ConvParam.strided_read_flag:
                     err_man.raise_err_specific("conv2d", "dma im2col not support pre fusion")
                 if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
                     err_man.raise_err_specific("conv2d", "dma im2col not support pooling fusion")
