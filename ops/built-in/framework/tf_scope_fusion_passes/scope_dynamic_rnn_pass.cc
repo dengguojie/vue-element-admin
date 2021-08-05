@@ -39,6 +39,7 @@ static const char* const kLstmTwoTransType = "lstm_two_transpose_scope";
 static const char* const kLstmCell = "ganeral_lstm_cell";
 static const char* const kMultiRNNCell = "ganeral_rnn_cell";
 static const char* const kRNNInWhile = "rnn_in_while";
+static const char* const kRNNTwoTransMaximumType = "lt_crnn_lstm";
 
 std::vector<ScopeFusionPatterns> ScopeDynamicRNNPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns_list;
@@ -53,6 +54,10 @@ std::vector<ScopeFusionPatterns> ScopeDynamicRNNPass::DefinePatterns() {
   ScopeFusionPatterns patterns3;
   GenChinaMobileScopePatterns(patterns3);
   patterns_list.push_back(patterns3);
+
+  ScopeFusionPatterns patterns4;
+  GenLTCRNNScopePatterns(patterns4);
+  patterns_list.push_back(patterns4);
 
   return patterns_list;
 }
@@ -191,6 +196,30 @@ void ScopeDynamicRNNPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   patterns.push_back(batch3);
 }
 
+void ScopeDynamicRNNPass::GenLTCRNNScopePatterns(ScopeFusionPatterns &patterns){
+  std::vector<ScopePattern *> batch1;
+  ScopePattern *lstm_crnn = new(std::nothrow) ScopePattern();
+  if (lstm_crnn == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch1);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+
+  lstm_crnn->SetSubType(kRNNTwoTransMaximumType);
+  // The number of BiasAdd is a multiple of 4.
+  lstm_crnn->AddNodeOpTypeFeature(NodeOpTypeFeature("BiasAdd", 0, 4));
+  // The number of MatMul is 8.
+  lstm_crnn->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 8, 0));
+  // The number of Maximum is a multiple of 5.
+  lstm_crnn->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", 0, 5));
+  // The number of Transpose is a multiple of 2.
+  lstm_crnn->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 0, 2));
+
+  batch1.push_back(lstm_crnn);
+  patterns.push_back(batch1);
+}
+
 void ScopeDynamicRNNPass::GenTacotronScopePatterns(ScopeFusionPatterns &patterns){
   // distinguish lstm
   std::vector<ScopePattern *> batch1;
@@ -326,7 +355,8 @@ Status ScopeDynamicRNNPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& s
   // Class ScopeGraph guarantees scope_tree is not empty.
   const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
   std::set<string> support_types = {kFwWhileType, kBwWhileType, kFwWhile_noTranposeType, kBwWhile_noTranposeType,
-                                    kRnnWhileType, kLstmNoTransType, kLstmTransType, kLstmTwoTransType, kMultiRNNCell};
+                                    kRnnWhileType, kLstmNoTransType, kLstmTransType, kLstmTwoTransType, kMultiRNNCell,
+                                    kRNNTwoTransMaximumType};
   for (auto& scope : scopes) {
     // Class ScopeTree guarantees scope is not empty.
     if (support_types.count(scope->SubType()) != 0) {
@@ -645,6 +675,100 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiLSTM(const Scope* scope, F
   return;
 }
 
+void ScopeDynamicRNNPass::GenerateFusionResultForLTCRNN(const Scope* scope, FusionScopesResult* fusion_rlt) {
+  OP_LOGD(kOpType, "Match DynamicRNN scope name is %s ", scope->Name().c_str());
+  const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map = scope->AllNodesMap();
+  fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});
+  fusion_rlt->InsertOutputs("transpose_1", {0});
+  fusion_rlt->SetType(kScopeToMultiNodes);
+  std::string scope_name = scope->Name();
+  fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
+  fusion_rlt->SetDescription("");
+
+  std::string w_in_node_name = GetNodeNameFromScope(nodes_map, "/kernel");
+  std::string w_recurrent_in_node_name = GetNodeNameFromScope(nodes_map, "/recurrent_kernel");
+  std::string b_in_node_name = GetNodeNameFromScope(nodes_map, "/bias");
+  std::string transpose_perm_name = GetNodeNameFromScope(nodes_map, "transpose/perm");
+  std::string transpose1_perm_name = GetNodeNameFromScope(nodes_map, "transpose_1/perm");
+  std::string transpose_name = GetNodeNameFromScope(nodes_map, "/transpose");
+  std::string transpose1_name = GetNodeNameFromScope(nodes_map, "/transpose_1");
+
+  auto perm_0 = fusion_rlt->AddInnerNode("perm_0", "Const");
+  CHECK_INNER_NODE_CONDITION(perm_0 != nullptr, fusion_rlt);
+  Status ret = perm_0->InsertOutput("transpose_0", 1).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, transpose_perm_name, perm_0->GetType(), perm_0->MutableOperator());
+
+  // transpose to dynamicrnn
+  auto transpose_0 = fusion_rlt->AddInnerNode("transpose_0", "Transpose");
+  CHECK_INNER_NODE_CONDITION(transpose_0 != nullptr, fusion_rlt);
+  ret = transpose_0->InsertInput(kInputFromFusionScope, 0)
+          .InsertInput("perm_0", 0)
+          .InsertOutput("DynamicRNN_0", 0)
+          .BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, transpose_name, transpose_0->GetType(), transpose_0->MutableOperator());
+
+  // kernel and recurrent kernel to concat
+  auto weight_0 = fusion_rlt->AddInnerNode("weight_0", "Const");
+  CHECK_INNER_NODE_CONDITION(weight_0 != nullptr, fusion_rlt);
+  ret = weight_0->InsertOutput("DynamicRNN_0", 1).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, w_in_node_name, weight_0->GetType(), weight_0->MutableOperator());
+
+  auto weight_1 = fusion_rlt->AddInnerNode("weight_1", "Const");
+  CHECK_INNER_NODE_CONDITION(weight_1 != nullptr, fusion_rlt);
+  ret = weight_1->InsertOutput("DynamicRNN_0", 2).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, w_recurrent_in_node_name, weight_1->GetType(), weight_1->MutableOperator());
+
+  // bias to dynamicrnn
+  auto bias_0 = fusion_rlt->AddInnerNode("bias_0", "Const");
+  CHECK_INNER_NODE_CONDITION(bias_0 != nullptr, fusion_rlt);
+  ret = bias_0->InsertOutput("DynamicRNN_0", 3).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, b_in_node_name, bias_0->GetType(), bias_0->MutableOperator());
+
+  // dynamicrnn, input x,w,b output transpose
+  auto DynamicRNN_0 = fusion_rlt->AddInnerNode("DynamicRNN_0", "DynamicRNNV2");
+  CHECK_INNER_NODE_CONDITION(DynamicRNN_0 != nullptr, fusion_rlt);
+  ret = DynamicRNN_0->InsertInput("transpose_0", 0)
+          .InsertInput("weight_0", 0)
+          .InsertInput("weight_1", 0)
+          .InsertInput("bias_0", 0)
+          .InsertOutput("transpose_1", 0)
+          .BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  auto rnnNode = DynamicRNN_0->MutableOperator();
+  rnnNode->SetAttr("activation", "clip");
+  rnnNode->SetAttr("recurrent_activation", "hard_sigmoid");
+  rnnNode->SetAttr("gate_order", "ifco");
+
+  // transpose to out
+  auto perm_1 = fusion_rlt->AddInnerNode("perm_1", "Const");
+  CHECK_INNER_NODE_CONDITION(perm_1 != nullptr, fusion_rlt);
+  ret = perm_1->InsertOutput("transpose_1", 1).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, transpose1_perm_name, perm_1->GetType(), perm_1->MutableOperator());
+
+  auto transpose_1 = fusion_rlt->AddInnerNode("transpose_1", "Transpose");
+  CHECK_INNER_NODE_CONDITION(transpose_1 != nullptr, fusion_rlt);
+  ret = transpose_1->InsertInput("DynamicRNN_0", 0)
+          .InsertInput("perm_1", 0)
+          .InsertOutput(kOutputToFusionScope, 0)
+          .BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  DynamicRNNPassParserParams(nodes_map, transpose1_name, transpose_1->GetType(), transpose_1->MutableOperator());
+
+  DynamicRNN_0->SetInputFormat("weight_input", "ND");
+  DynamicRNN_0->SetInputFormat("weight_hidden", "ND");
+  DynamicRNN_0->SetInputFormat("b", "ND");
+  ret = fusion_rlt->CheckInnerNodesInfo();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  OP_LOGI(kOpType, "Set fusion multi-to-multi result successfully.");
+  return;
+}
+
 void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt){
   OP_LOGD(kOpType, "Match DynamicRNN scope name is %s ", scope->Name().c_str());
   const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map = scope->AllNodesMap();
@@ -764,6 +888,10 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
     return;
   }
   for (auto& scope : scopes) {
+    if (scope->SubType() == kRNNTwoTransMaximumType) {
+      GenerateFusionResultForLTCRNN(scope, fusion_rlt);
+      return;
+    }
     if (scope->SubType() == kMultiRNNCell) {
       GenerateFusionResultForMultiLSTM(scope, fusion_rlt);
       return;

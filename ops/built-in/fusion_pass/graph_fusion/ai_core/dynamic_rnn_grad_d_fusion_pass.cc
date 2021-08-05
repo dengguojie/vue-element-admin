@@ -66,69 +66,6 @@ vector<FusionPattern*> DynamicRNNGradDFusionPass::DefinePatterns() {
 }
 
 
-ge::OpDescPtr DynamicRNNGradDFusionPass::CreateConstDesc(const std::string &name, int32_t value,
-                                                         const std::string &dtype) {
-  OpDescPtr const_op_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-      (const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")),
-       return nullptr);
-  if (const_op_desc == nullptr) {
-    return nullptr;
-  }
-  GeTensorDesc data_desc = GeTensorDesc(GeShape(), FORMAT_ND, DT_INT32);
-  GeTensorPtr const_value = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-      (const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t *>(&value),
-                                                           sizeof(int32_t))),
-       return nullptr);
-  if (dtype == "int64") {
-    data_desc = GeTensorDesc(GeShape(), FORMAT_ND, DT_INT64);
-    FUSION_PASS_MAKE_SHARED(
-      (const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t *>(&value),
-                                                 sizeof(int64_t))),
-       return nullptr);
-  }
-
-  if (const_value == nullptr) {
-    return nullptr;
-  }
-  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
-    return nullptr;
-  }
-
-  if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
-    return nullptr;
-  }
-
-  return const_op_desc;
-}
-
-ge::OpDescPtr DynamicRNNGradDFusionPass::CreateListConstDesc(const std::string &name, std::vector<int64_t> values) {
-  OpDescPtr const_op_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-       (const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")),
-       return nullptr);
-
-  GeTensorDesc data_desc(GeShape({static_cast<int64_t>(values.size())}), FORMAT_ND, DT_INT64);
-  GeTensorPtr const_value = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-       (const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t *>(values.data()),
-                                                     sizeof(int64_t) * values.size())),
-       return nullptr);
-  if (const_value == nullptr) {
-    return nullptr;
-  }
-  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
-    return nullptr;
-  }
-
-  if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
-    return nullptr;
-  }
-
-  return const_op_desc;
-}
-
 ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildCondGraph(ge::NodePtr &whileNode, int32_t argNum)
 {
   string condName = DynamicRNNGradName + "cond";
@@ -167,6 +104,68 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildCondGraph(ge::NodePtr &while
   return cond_graph;
 }
 
+ge::OpDescPtr DynamicRNNGradDFusionPass::CreateListConstDesc(const std::string &name, std::vector<int64_t> values) {
+  OpDescPtr const_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+       (const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")),
+       return nullptr);
+
+  GeTensorDesc data_desc(GeShape({static_cast<int64_t>(values.size())}), FORMAT_ND, DT_INT64);
+  GeTensorPtr const_value = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+       (const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t *>(values.data()),
+                                                     sizeof(int64_t) * values.size())),
+       return nullptr);
+  if (const_value == nullptr) {
+    return nullptr;
+  }
+  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
+    return nullptr;
+  }
+
+  if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
+    return nullptr;
+  }
+
+  return const_op_desc;
+}
+
+ge::OpDescPtr DynamicRNNGradDFusionPass::CreateConstDesc(const std::string &name, int32_t value,
+                                                         const std::string &dtype) {
+  OpDescPtr const_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")),
+       return nullptr);
+  if (const_op_desc == nullptr) {
+    return nullptr;
+  }
+  GeTensorDesc data_desc = GeTensorDesc(GeShape(), FORMAT_ND, DT_INT32);
+  GeTensorPtr const_value = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t *>(&value),
+                                                           sizeof(int32_t))),
+       return nullptr);
+  if (dtype == "int64") {
+    data_desc = GeTensorDesc(GeShape(), FORMAT_ND, DT_INT64);
+    FUSION_PASS_MAKE_SHARED(
+      (const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t *>(&value),
+                                                 sizeof(int64_t))),
+       return nullptr);
+  }
+
+  if (const_value == nullptr) {
+    return nullptr;
+  }
+  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
+    return nullptr;
+  }
+
+  if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
+    return nullptr;
+  }
+
+  return const_op_desc;
+}
 
 ge::NodePtr DynamicRNNGradDFusionPass::GetDynamicReshapeDxNode(std::string& reshapeNodeName,
                                                                ge::NodePtr dynamicRNNGradNode,
@@ -1349,284 +1348,6 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::BuildT0Graph(ge::NodePtr dynamicR
   return {t0CellNode, t0SplitNode};
 }
 
-
-vector<ge::NodePtr> DynamicRNNGradDFusionPass::DynamicAddLSTMInputGradNode(ge::NodePtr dynamicRNNGradNode,
-                                                                           ge::ComputeGraph& graph,
-                                                                           vector<ge::NodePtr>& newNodes,
-                                                                           bool& failStatus){
-  ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
-  ge::OpDescPtr currTConst = CreateConstDesc(DynamicRNNGradName + "currT", 1, "int32");
-  ge::NodePtr currTNode = graph.AddNode(currTConst);
-  FUSION_PASS_CHECK(currTNode == nullptr, OP_LOGE("Create Const Op operator error"), return {});
-  newNodes.push_back(currTNode);
-  ge::NodePtr shapeNode = BuildTShape(dynamicRNNGradDesc->GetInputDesc(0).Clone(),
-                                      dynamicRNNGradNode, graph, failStatus);
-  ge::NodePtr tSplitNode = BuildTSplit(shapeNode->GetOpDesc()->GetOutputDesc(0).Clone(),
-                                       dynamicRNNGradNode, graph, failStatus);
-  vector<ge::NodePtr> t0Nodes = BuildT0Graph(dynamicRNNGradNode, currTConst->GetOutputDesc(0).Clone(),
-                                             graph, newNodes, failStatus);
-
-  ge::NodePtr cellT0Node = t0Nodes[0];
-  ge::NodePtr splitT0Node = t0Nodes[1];
-
-  string dxReshapeNodeName = DynamicRNNGradName + "dxReshapeNode";
-  ge::NodePtr dxReshapeNode = GetDynamicReshapeDxNode(dxReshapeNodeName, dynamicRNNGradNode,
-                                                      splitT0Node->GetOpDesc()->GetOutputDesc(0).Clone(),
-                                                      cellT0Node->GetOpDesc()->GetOutputDesc(0).Clone(),
-                                                      graph, failStatus);
-  ge::GeShape shapeShape = ge::GeShape({1,});
-  auto shapeDesc = ge::GeTensorDesc(shapeShape, ge::FORMAT_ND, ge::DT_INT64);
-  shapeDesc.SetOriginShape(shapeShape);
-  shapeDesc.SetOriginFormat(ge::FORMAT_ND);
-
-  ge::GeTensorPtr shapeDescTensor = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-       (shapeDescTensor = std::make_shared<ge::GeTensor>(shapeDesc)),
-        failStatus=true; return {});
-  vector<int64_t> shapeValue;
-  int64_t dim1 = -1;
-  shapeValue.push_back(static_cast<int64_t>(dim1));
-
-  shapeDescTensor->SetData(reinterpret_cast<uint8_t *>(shapeValue.data()), shapeValue.size() * sizeof(int64_t));
-  ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(shapeDescTensor);
-  ge::NodePtr dxreshape_const_node = graph.AddNode(const_opdesc);
-  FUSION_PASS_CHECK(dxreshape_const_node == nullptr, OP_LOGE("Create Const Op operator error"), return {});
-  std::string reshapeDxNodeName = "TDxConcat";
-  ge::NodePtr dxReshapeConcatNode = BuildDxReshapeSizeConcatNode(dynamicRNNGradNode, reshapeDxNodeName,
-                                                                 dxreshape_const_node, graph, failStatus);
-  newNodes.push_back(dxReshapeConcatNode);
-  ge::GeTensorDesc concatOriDesc = t0Nodes[1]->GetOpDesc()->GetOutputDesc(0).Clone();
-  concatOriDesc.SetShape(concatOriDesc.GetOriginShape());
-  concatOriDesc.SetFormat(ge::FORMAT_ND);
-  vector<int64_t> dxConcatDims = {-1, batch_size, concatOriDesc.GetOriginShape().GetDim(1)};
-
-  concatOriDesc.SetShape(GeShape(dxConcatDims));
-  concatOriDesc.SetOriginShape(GeShape(dxConcatDims));
-
-  ge::GeTensorDesc concatDgateOriDesc = t0Nodes[0]->GetOpDesc()->GetOutputDesc(0).Clone();
-  vector<int64_t> dgateConcatDims = {-1, batch_size, concatDgateOriDesc.GetShape().GetDim(1)};
-  concatDgateOriDesc.SetShape(GeShape(dgateConcatDims));
-  concatDgateOriDesc.SetOriginShape(GeShape(dgateConcatDims));
-
-  ge::OpDescPtr totalTConst = CreateConstDesc(DynamicRNNGradName + "totalT", 2, "int32");
-  ge::NodePtr totalTNode = graph.AddNode(totalTConst);
-  FUSION_PASS_CHECK(totalTNode == nullptr, OP_LOGE("Create Const Op operator error"), return {});
-  newNodes.push_back(totalTNode);
-  ge::GeShape shapeBodyShape = ge::GeShape({1,});
-  auto shapeBodyDesc = ge::GeTensorDesc(shapeBodyShape, ge::FORMAT_ND, ge::DT_INT64);
-  shapeBodyDesc.SetOriginShape(shapeBodyShape);
-  shapeBodyDesc.SetOriginFormat(ge::FORMAT_ND);
-  ge::GeTensorPtr shapeBodyDescTensor = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-       (shapeBodyDescTensor = std::make_shared<ge::GeTensor>(shapeBodyDesc)),
-        failStatus=true; return {});
-  vector<int64_t> shapeBodyValue;
-  shapeBodyValue.push_back(static_cast<int64_t>(1));
-
-  shapeBodyDescTensor->SetData(reinterpret_cast<uint8_t *>(shapeBodyValue.data()),
-                                               shapeBodyValue.size() * sizeof(int64_t));
-  ge::OpDescPtr const_body_opdesc = ge::OpDescUtils::CreateConstOp(shapeBodyDescTensor);
-  ge::NodePtr dxreshape_body_const_node = graph.AddNode(const_body_opdesc);
-  FUSION_PASS_CHECK(dxreshape_body_const_node == nullptr, OP_LOGE("Create Const Op operator error"), return {});
-  std::string reshapeBodyDxNodeName = "TDxBodyConcat";
-  ge::NodePtr dxBodyReshapeConcatNode = BuildDxReshapeSizeConcatNode(dynamicRNNGradNode, reshapeBodyDxNodeName,
-                                                                     dxreshape_body_const_node, graph, failStatus);
-  newNodes.push_back(dxBodyReshapeConcatNode);
-  vector<ge::NodePtr> whileNodes = BuildWhileNodes(dynamicRNNGradNode, graph, newNodes, failStatus, concatOriDesc,
-                                                   concatDgateOriDesc, currTConst->GetOutputDesc(0).Clone(),
-                                                   totalTConst->GetOutputDesc(0).Clone()
-                                                   , dxBodyReshapeConcatNode->GetOpDesc()->GetOutputDesc(0).Clone(),
-                                                   dxBodyReshapeConcatNode->GetOpDesc()->GetOutputDesc(0).Clone());
-
-  int whileNodeSize = whileNodes.size();
-  for (int i = 0; i < whileNodeSize; i++) {
-    newNodes.push_back(whileNodes[i]);
-  }
-
-  string reshapeNodeName = "dgateReshapeNode";
-  vector<ge::NodePtr> dgateReshapeResult = GetDynamicReshapeNode(reshapeNodeName, dynamicRNNGradNode, cellT0Node,
-                                                                 whileNodes[0]->GetOpDesc()->GetOutputDesc(13).Clone(),
-                                                                 shapeNode, graph, failStatus);
-  ge::NodePtr dgateReshapeNode = dgateReshapeResult[0];
-  ge::NodePtr dgateBodyReshapeConcatNode = dgateReshapeResult[1];
-  ge::NodePtr whileNode = whileNodes[whileNodeSize - 1];
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(0)->GetPeerOutAnchor(), shapeNode->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(shapeNode->GetOutDataAnchor(0), tSplitNode->GetInDataAnchor(0));
-
-  ge::GraphUtils::AddEdge(dxreshape_const_node->GetOutDataAnchor(0), dxReshapeConcatNode->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(1), dxReshapeConcatNode->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(dxReshapeConcatNode->GetOutDataAnchor(0), dxReshapeNode->GetInDataAnchor(1));
-
-  ge::GraphUtils::AddEdge(splitT0Node->GetOutDataAnchor(0), dxReshapeNode->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(dxReshapeNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(0));
-
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(1)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(1));
-
-  if (dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"]).
-                                                     GetShape().GetDims().size() == 3) {
-    ge::GraphUtils::AddEdge(reshapeInitC->GetOutDataAnchor(0), whileNode->GetInDataAnchor(2));
-  } else {
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(5)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(2));
-  }
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(7)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(3));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(8)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(4));
-
-  ge::GraphUtils::AddEdge(splitT0Node->GetOutDataAnchor(1), whileNode->GetInDataAnchor(5));
-  ge::GraphUtils::AddEdge(cellT0Node->GetOutDataAnchor(1), whileNode->GetInDataAnchor(6));
-
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(11)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(7));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(12)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(8));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(9));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(14)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(10));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(15)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(11));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(16)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(12));
-  ge::GraphUtils::AddEdge(cellT0Node->GetOutDataAnchor(0), dgateReshapeNode->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(dgateReshapeNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(13));
-  ge::GraphUtils::AddEdge(currTNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(14));
-  ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(15));
-
-  ge::GraphUtils::AddEdge(dxreshape_body_const_node->GetOutDataAnchor(0), dxBodyReshapeConcatNode->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(1), dxBodyReshapeConcatNode->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(dxBodyReshapeConcatNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(16));
-  ge::GraphUtils::AddEdge(dgateBodyReshapeConcatNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(17));
-  if (dynamicRNNGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors()) {  // dw
-      inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(whileNode->GetOutDataAnchor(0), inAnchorPtr);
-    }
-  }
-
-  if (dynamicRNNGradNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {  // dw
-      inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(whileNode->GetOutDataAnchor(5), inAnchorPtr);
-    }
-  }
-
-  if (dynamicRNNGradNode->GetOutDataAnchor(4)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(4)->GetPeerInDataAnchors()) {  // dw
-      inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(whileNode->GetOutDataAnchor(6), inAnchorPtr);
-    }
-  }
-  vector<ge::NodePtr> res = {whileNode, tSplitNode};
-
-  return res;
-}
-
-Status DynamicRNNGradDFusionPass::DynamicAddDbReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr &while_node,
-                                                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes) {
-  // create reduce_sum desc
-  ge::OpDescPtr reduceSumDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-      (reduceSumDesc = std::make_shared<ge::OpDesc>(dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Db/ReduceSumD",
-                                                    "ReduceSumD")),
-      return FAILED);
-  ge::GeTensorDesc reduceInputTensorDescDgate =
-           ge::GeTensorDesc(while_node->GetOpDesc()->GetOutputDesc(13).GetOriginShape(), ge::FORMAT_ND, ge::DT_FLOAT16);
-  reduceInputTensorDescDgate.SetOriginShape(while_node->GetOpDesc()->GetOutputDesc(13).GetOriginShape());
-  reduceInputTensorDescDgate.SetOriginFormat(ge::FORMAT_ND);
-
-  reduceSumDesc->AddInputDesc("input_dgate", reduceInputTensorDescDgate);
-
-  vector<int64_t> reduce_output_origin_dims;
-  reduce_output_origin_dims.push_back(1);
-  reduce_output_origin_dims.push_back(1);
-  reduce_output_origin_dims.push_back(4*hidden_size);
-  ge::GeShape reduce_output_origin_shape(reduce_output_origin_dims);
-
-  ge::GeTensorDesc outputTensorDescDgate = ge::GeTensorDesc(reduce_output_origin_shape, ge::FORMAT_ND, ge::DT_FLOAT16);
-  outputTensorDescDgate.SetOriginShape(reduce_output_origin_shape);
-  outputTensorDescDgate.SetOriginFormat(ge::FORMAT_ND);
-  reduceSumDesc->AddOutputDesc("y", outputTensorDescDgate);
-  // attr
-  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {0, 1});
-  ge::AttrUtils::SetBool(reduceSumDesc, "keep_dims", false);
-
-  // create reduce_sum node
-  ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
-  FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                      reduceSumNode->GetName().c_str()),
-                    return FAILED);
-  newNodes.push_back(reduceSumNode);
-
-  // Edge
-  ge::GraphUtils::AddEdge(while_node->GetOutDataAnchor(13), reduceSumNode->GetInDataAnchor(0));
-  if (dynamicRNNGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {  // dw
-      inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
-    }
-  }
-
-  return SUCCESS;
-}
-
-
-Status DynamicRNNGradDFusionPass::DynamicAddDwReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr matmulNode,
-                                                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes) {
-  // create reduce_sum desc
-  ge::OpDescPtr reduceSumDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-      (reduceSumDesc = std::make_shared<ge::OpDesc>(dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Dw/ReduceSumD",
-                                                    "ReduceSumD")),
-      return FAILED);
-  vector<int64_t> input_dims;
-  input_dims.push_back(t_size);
-  input_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1));
-  input_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2));
-  input_dims.push_back(16);
-  input_dims.push_back(16);
-
-  vector<int64_t> input_ori_dims;
-  input_ori_dims.push_back(t_size);
-  input_ori_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) * 16);
-  input_ori_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1) * 16);
-
-  ge::GeShape input_shape(input_dims);
-  ge::GeTensorDesc inputTensorDescMatmul = ge::GeTensorDesc(input_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
-  inputTensorDescMatmul.SetOriginShape(GeShape(input_ori_dims));
-  inputTensorDescMatmul.SetOriginFormat(ge::FORMAT_ND);
-  reduceSumDesc->AddInputDesc("input_matmul", inputTensorDescMatmul);
-
-  vector<int64_t> output_dims;
-  output_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1)));
-  output_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2)));
-  output_dims.push_back(16);
-  output_dims.push_back(16);
-
-  vector<int64_t> output_ori_dims;
-  output_ori_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) * 16));
-  output_ori_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1) * 16));
-
-  ge::GeShape output_shape(output_dims);
-  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(output_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
-  outputTensorDesc.SetOriginShape(GeShape(output_ori_dims));
-  outputTensorDesc.SetOriginFormat(ge::FORMAT_ND);
-  reduceSumDesc->AddOutputDesc("y", outputTensorDesc);
-  // attr
-  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {0});
-  ge::AttrUtils::SetBool(reduceSumDesc, "keep_dims", false);
-
-  // create reduce_sum node
-  ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
-  FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                      reduceSumNode->GetName().c_str()),
-                    return FAILED);
-  newNodes.push_back(reduceSumNode);
-
-  // Edge
-  ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(0), reduceSumNode->GetInDataAnchor(0));
-  if (dynamicRNNGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {  // dw
-      inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
-    }
-  }
-
-  return SUCCESS;
-}
-
 ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddMatmulNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr concatNode,
                                                             ge::NodePtr &while_node, ge::ComputeGraph& graph,
                                                             vector<ge::NodePtr>& newNodes, bool& failStatus) {
@@ -1906,6 +1627,283 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInputReshapeNode(ge::NodePtr dy
   FUSION_PASS_CHECK(myReshape_node==nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create node error"), return nullptr);
 
   return myReshape_node;
+}
+
+vector<ge::NodePtr> DynamicRNNGradDFusionPass::DynamicAddLSTMInputGradNode(ge::NodePtr dynamicRNNGradNode,
+                                                                           ge::ComputeGraph& graph,
+                                                                           vector<ge::NodePtr>& newNodes,
+                                                                           bool& failStatus){
+  ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
+  ge::OpDescPtr currTConst = CreateConstDesc(DynamicRNNGradName + "currT", 1, "int32");
+  ge::NodePtr currTNode = graph.AddNode(currTConst);
+  FUSION_PASS_CHECK(currTNode == nullptr, OP_LOGE("Create Const Op operator error"), return {});
+  newNodes.push_back(currTNode);
+  ge::NodePtr shapeNode = BuildTShape(dynamicRNNGradDesc->GetInputDesc(0).Clone(),
+                                      dynamicRNNGradNode, graph, failStatus);
+  ge::NodePtr tSplitNode = BuildTSplit(shapeNode->GetOpDesc()->GetOutputDesc(0).Clone(),
+                                       dynamicRNNGradNode, graph, failStatus);
+  vector<ge::NodePtr> t0Nodes = BuildT0Graph(dynamicRNNGradNode, currTConst->GetOutputDesc(0).Clone(),
+                                             graph, newNodes, failStatus);
+
+  ge::NodePtr cellT0Node = t0Nodes[0];
+  ge::NodePtr splitT0Node = t0Nodes[1];
+
+  string dxReshapeNodeName = DynamicRNNGradName + "dxReshapeNode";
+  ge::NodePtr dxReshapeNode = GetDynamicReshapeDxNode(dxReshapeNodeName, dynamicRNNGradNode,
+                                                      splitT0Node->GetOpDesc()->GetOutputDesc(0).Clone(),
+                                                      cellT0Node->GetOpDesc()->GetOutputDesc(0).Clone(),
+                                                      graph, failStatus);
+  ge::GeShape shapeShape = ge::GeShape({1,});
+  auto shapeDesc = ge::GeTensorDesc(shapeShape, ge::FORMAT_ND, ge::DT_INT64);
+  shapeDesc.SetOriginShape(shapeShape);
+  shapeDesc.SetOriginFormat(ge::FORMAT_ND);
+
+  ge::GeTensorPtr shapeDescTensor = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+       (shapeDescTensor = std::make_shared<ge::GeTensor>(shapeDesc)),
+        failStatus=true; return {});
+  vector<int64_t> shapeValue;
+  int64_t dim1 = -1;
+  shapeValue.push_back(static_cast<int64_t>(dim1));
+
+  shapeDescTensor->SetData(reinterpret_cast<uint8_t *>(shapeValue.data()), shapeValue.size() * sizeof(int64_t));
+  ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(shapeDescTensor);
+  ge::NodePtr dxreshape_const_node = graph.AddNode(const_opdesc);
+  FUSION_PASS_CHECK(dxreshape_const_node == nullptr, OP_LOGE("Create Const Op operator error"), return {});
+  std::string reshapeDxNodeName = "TDxConcat";
+  ge::NodePtr dxReshapeConcatNode = BuildDxReshapeSizeConcatNode(dynamicRNNGradNode, reshapeDxNodeName,
+                                                                 dxreshape_const_node, graph, failStatus);
+  newNodes.push_back(dxReshapeConcatNode);
+  ge::GeTensorDesc concatOriDesc = t0Nodes[1]->GetOpDesc()->GetOutputDesc(0).Clone();
+  concatOriDesc.SetShape(concatOriDesc.GetOriginShape());
+  concatOriDesc.SetFormat(ge::FORMAT_ND);
+  vector<int64_t> dxConcatDims = {-1, batch_size, concatOriDesc.GetOriginShape().GetDim(1)};
+
+  concatOriDesc.SetShape(GeShape(dxConcatDims));
+  concatOriDesc.SetOriginShape(GeShape(dxConcatDims));
+
+  ge::GeTensorDesc concatDgateOriDesc = t0Nodes[0]->GetOpDesc()->GetOutputDesc(0).Clone();
+  vector<int64_t> dgateConcatDims = {-1, batch_size, concatDgateOriDesc.GetShape().GetDim(1)};
+  concatDgateOriDesc.SetShape(GeShape(dgateConcatDims));
+  concatDgateOriDesc.SetOriginShape(GeShape(dgateConcatDims));
+
+  ge::OpDescPtr totalTConst = CreateConstDesc(DynamicRNNGradName + "totalT", 2, "int32");
+  ge::NodePtr totalTNode = graph.AddNode(totalTConst);
+  FUSION_PASS_CHECK(totalTNode == nullptr, OP_LOGE("Create Const Op operator error"), return {});
+  newNodes.push_back(totalTNode);
+  ge::GeShape shapeBodyShape = ge::GeShape({1,});
+  auto shapeBodyDesc = ge::GeTensorDesc(shapeBodyShape, ge::FORMAT_ND, ge::DT_INT64);
+  shapeBodyDesc.SetOriginShape(shapeBodyShape);
+  shapeBodyDesc.SetOriginFormat(ge::FORMAT_ND);
+  ge::GeTensorPtr shapeBodyDescTensor = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+       (shapeBodyDescTensor = std::make_shared<ge::GeTensor>(shapeBodyDesc)),
+        failStatus=true; return {});
+  vector<int64_t> shapeBodyValue;
+  shapeBodyValue.push_back(static_cast<int64_t>(1));
+
+  shapeBodyDescTensor->SetData(reinterpret_cast<uint8_t *>(shapeBodyValue.data()),
+                                               shapeBodyValue.size() * sizeof(int64_t));
+  ge::OpDescPtr const_body_opdesc = ge::OpDescUtils::CreateConstOp(shapeBodyDescTensor);
+  ge::NodePtr dxreshape_body_const_node = graph.AddNode(const_body_opdesc);
+  FUSION_PASS_CHECK(dxreshape_body_const_node == nullptr, OP_LOGE("Create Const Op operator error"), return {});
+  std::string reshapeBodyDxNodeName = "TDxBodyConcat";
+  ge::NodePtr dxBodyReshapeConcatNode = BuildDxReshapeSizeConcatNode(dynamicRNNGradNode, reshapeBodyDxNodeName,
+                                                                     dxreshape_body_const_node, graph, failStatus);
+  newNodes.push_back(dxBodyReshapeConcatNode);
+  vector<ge::NodePtr> whileNodes = BuildWhileNodes(dynamicRNNGradNode, graph, newNodes, failStatus, concatOriDesc,
+                                                   concatDgateOriDesc, currTConst->GetOutputDesc(0).Clone(),
+                                                   totalTConst->GetOutputDesc(0).Clone()
+                                                   , dxBodyReshapeConcatNode->GetOpDesc()->GetOutputDesc(0).Clone(),
+                                                   dxBodyReshapeConcatNode->GetOpDesc()->GetOutputDesc(0).Clone());
+
+  int whileNodeSize = whileNodes.size();
+  for (int i = 0; i < whileNodeSize; i++) {
+    newNodes.push_back(whileNodes[i]);
+  }
+
+  string reshapeNodeName = "dgateReshapeNode";
+  vector<ge::NodePtr> dgateReshapeResult = GetDynamicReshapeNode(reshapeNodeName, dynamicRNNGradNode, cellT0Node,
+                                                                 whileNodes[0]->GetOpDesc()->GetOutputDesc(13).Clone(),
+                                                                 shapeNode, graph, failStatus);
+  ge::NodePtr dgateReshapeNode = dgateReshapeResult[0];
+  ge::NodePtr dgateBodyReshapeConcatNode = dgateReshapeResult[1];
+  ge::NodePtr whileNode = whileNodes[whileNodeSize - 1];
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(0)->GetPeerOutAnchor(), shapeNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(shapeNode->GetOutDataAnchor(0), tSplitNode->GetInDataAnchor(0));
+
+  ge::GraphUtils::AddEdge(dxreshape_const_node->GetOutDataAnchor(0), dxReshapeConcatNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(1), dxReshapeConcatNode->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(dxReshapeConcatNode->GetOutDataAnchor(0), dxReshapeNode->GetInDataAnchor(1));
+
+  ge::GraphUtils::AddEdge(splitT0Node->GetOutDataAnchor(0), dxReshapeNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(dxReshapeNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(0));
+
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(1)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(1));
+
+  if (dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"]).
+                                                     GetShape().GetDims().size() == 3) {
+    ge::GraphUtils::AddEdge(reshapeInitC->GetOutDataAnchor(0), whileNode->GetInDataAnchor(2));
+  } else {
+    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(5)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(2));
+  }
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(7)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(3));
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(8)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(4));
+
+  ge::GraphUtils::AddEdge(splitT0Node->GetOutDataAnchor(1), whileNode->GetInDataAnchor(5));
+  ge::GraphUtils::AddEdge(cellT0Node->GetOutDataAnchor(1), whileNode->GetInDataAnchor(6));
+
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(11)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(7));
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(12)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(8));
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(9));
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(14)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(10));
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(15)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(11));
+  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(16)->GetPeerOutAnchor(), whileNode->GetInDataAnchor(12));
+  ge::GraphUtils::AddEdge(cellT0Node->GetOutDataAnchor(0), dgateReshapeNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(dgateReshapeNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(13));
+  ge::GraphUtils::AddEdge(currTNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(14));
+  ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(15));
+
+  ge::GraphUtils::AddEdge(dxreshape_body_const_node->GetOutDataAnchor(0), dxBodyReshapeConcatNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(1), dxBodyReshapeConcatNode->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(dxBodyReshapeConcatNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(16));
+  ge::GraphUtils::AddEdge(dgateBodyReshapeConcatNode->GetOutDataAnchor(0), whileNode->GetInDataAnchor(17));
+  if (dynamicRNNGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors()) {  // dw
+      inAnchorPtr->UnlinkAll();
+      ge::GraphUtils::AddEdge(whileNode->GetOutDataAnchor(0), inAnchorPtr);
+    }
+  }
+
+  if (dynamicRNNGradNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {  // dw
+      inAnchorPtr->UnlinkAll();
+      ge::GraphUtils::AddEdge(whileNode->GetOutDataAnchor(5), inAnchorPtr);
+    }
+  }
+
+  if (dynamicRNNGradNode->GetOutDataAnchor(4)->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(4)->GetPeerInDataAnchors()) {  // dw
+      inAnchorPtr->UnlinkAll();
+      ge::GraphUtils::AddEdge(whileNode->GetOutDataAnchor(6), inAnchorPtr);
+    }
+  }
+  vector<ge::NodePtr> res = {whileNode, tSplitNode};
+
+  return res;
+}
+
+Status DynamicRNNGradDFusionPass::DynamicAddDbReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr &while_node,
+                                                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes) {
+  // create reduce_sum desc
+  ge::OpDescPtr reduceSumDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (reduceSumDesc = std::make_shared<ge::OpDesc>(dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Db/ReduceSumD",
+                                                    "ReduceSumD")),
+      return FAILED);
+  ge::GeTensorDesc reduceInputTensorDescDgate =
+           ge::GeTensorDesc(while_node->GetOpDesc()->GetOutputDesc(13).GetOriginShape(), ge::FORMAT_ND, ge::DT_FLOAT16);
+  reduceInputTensorDescDgate.SetOriginShape(while_node->GetOpDesc()->GetOutputDesc(13).GetOriginShape());
+  reduceInputTensorDescDgate.SetOriginFormat(ge::FORMAT_ND);
+
+  reduceSumDesc->AddInputDesc("input_dgate", reduceInputTensorDescDgate);
+
+  vector<int64_t> reduce_output_origin_dims;
+  reduce_output_origin_dims.push_back(1);
+  reduce_output_origin_dims.push_back(1);
+  reduce_output_origin_dims.push_back(4*hidden_size);
+  ge::GeShape reduce_output_origin_shape(reduce_output_origin_dims);
+
+  ge::GeTensorDesc outputTensorDescDgate = ge::GeTensorDesc(reduce_output_origin_shape, ge::FORMAT_ND, ge::DT_FLOAT16);
+  outputTensorDescDgate.SetOriginShape(reduce_output_origin_shape);
+  outputTensorDescDgate.SetOriginFormat(ge::FORMAT_ND);
+  reduceSumDesc->AddOutputDesc("y", outputTensorDescDgate);
+  // attr
+  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {0, 1});
+  ge::AttrUtils::SetBool(reduceSumDesc, "keep_dims", false);
+
+  // create reduce_sum node
+  ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
+  FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                                                      reduceSumNode->GetName().c_str()),
+                    return FAILED);
+  newNodes.push_back(reduceSumNode);
+
+  // Edge
+  ge::GraphUtils::AddEdge(while_node->GetOutDataAnchor(13), reduceSumNode->GetInDataAnchor(0));
+  if (dynamicRNNGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {  // dw
+      inAnchorPtr->UnlinkAll();
+      ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
+    }
+  }
+
+  return SUCCESS;
+}
+
+
+Status DynamicRNNGradDFusionPass::DynamicAddDwReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr matmulNode,
+                                                            ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes) {
+  // create reduce_sum desc
+  ge::OpDescPtr reduceSumDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (reduceSumDesc = std::make_shared<ge::OpDesc>(dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Dw/ReduceSumD",
+                                                    "ReduceSumD")),
+      return FAILED);
+  vector<int64_t> input_dims;
+  input_dims.push_back(t_size);
+  input_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1));
+  input_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2));
+  input_dims.push_back(16);
+  input_dims.push_back(16);
+
+  vector<int64_t> input_ori_dims;
+  input_ori_dims.push_back(t_size);
+  input_ori_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) * 16);
+  input_ori_dims.push_back(matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1) * 16);
+
+  ge::GeShape input_shape(input_dims);
+  ge::GeTensorDesc inputTensorDescMatmul = ge::GeTensorDesc(input_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  inputTensorDescMatmul.SetOriginShape(GeShape(input_ori_dims));
+  inputTensorDescMatmul.SetOriginFormat(ge::FORMAT_ND);
+  reduceSumDesc->AddInputDesc("input_matmul", inputTensorDescMatmul);
+
+  vector<int64_t> output_dims;
+  output_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1)));
+  output_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2)));
+  output_dims.push_back(16);
+  output_dims.push_back(16);
+
+  vector<int64_t> output_ori_dims;
+  output_ori_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) * 16));
+  output_ori_dims.push_back((matmulNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(1) * 16));
+
+  ge::GeShape output_shape(output_dims);
+  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(output_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  outputTensorDesc.SetOriginShape(GeShape(output_ori_dims));
+  outputTensorDesc.SetOriginFormat(ge::FORMAT_ND);
+  reduceSumDesc->AddOutputDesc("y", outputTensorDesc);
+  // attr
+  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {0});
+  ge::AttrUtils::SetBool(reduceSumDesc, "keep_dims", false);
+
+  // create reduce_sum node
+  ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
+  FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                                                      reduceSumNode->GetName().c_str()),
+                    return FAILED);
+  newNodes.push_back(reduceSumNode);
+
+  // Edge
+  ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(0), reduceSumNode->GetInDataAnchor(0));
+  if (dynamicRNNGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {  // dw
+      inAnchorPtr->UnlinkAll();
+      ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
+    }
+  }
+
+  return SUCCESS;
 }
 
 Status DynamicRNNGradDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {

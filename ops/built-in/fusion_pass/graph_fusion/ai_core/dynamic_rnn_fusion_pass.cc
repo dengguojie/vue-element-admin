@@ -42,6 +42,141 @@ vector<FusionPattern*> DynamicRNNFusionPass::DefinePatterns() {
   return patterns;
 }
 
+Status DynamicRNNFusionPass::AddSplitEdge(ge::NodePtr splitNode, ge::NodePtr forwardRNNNode,
+                                          ge::NodePtr backwardRNNNode, string nodeName, int64_t index) {
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(0), forwardRNNNode->GetInDataAnchor(index)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to forwardRNNNode's w failed."), return FAILED);
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(1), backwardRNNNode->GetInDataAnchor(index)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to backwardRNNNode's w failed."), return FAILED);
+
+  return SUCCESS;
+}
+
+Status DynamicRNNFusionPass::AddConcatEdge(ge::NodePtr concatNode, ge::NodePtr dynamicRNNNode,
+                                           ge::NodePtr forwardRNNNode, ge::NodePtr backwardRNNNode, string nodeName,
+                                           int64_t index) {
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(forwardRNNNode->GetOutDataAnchor(index), concatNode->GetInDataAnchor(0)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add forwardRNNNode's y to " + nodeName + "'s x failed."), return FAILED);
+
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(backwardRNNNode->GetOutDataAnchor(index), concatNode->GetInDataAnchor(1)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add backwardRNNNode's y to " + nodeName + "'s x failed."), return FAILED);
+
+  OutDataAnchor::Vistor<InDataAnchorPtr> outputAnchors =
+      dynamicRNNNode->GetOutDataAnchor(index)->GetPeerInDataAnchors();
+
+  for (auto& in_anchor : outputAnchors) {
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(dynamicRNNNode->GetOutDataAnchor(index), in_anchor),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove dynamicRNNNode's outDataAnchor failed."), return FAILED);
+
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), in_anchor),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to dynamicRNNNode's y failed."),
+                      return FAILED);
+  }
+
+  return SUCCESS;
+}
+
+Status DynamicRNNFusionPass::AddInputEdge(ge::NodePtr dynamicRNNNode, ge::NodePtr forwardRNNNode,
+                                          ge::NodePtr backwardRNNNode, ge::NodePtr splitWNode, ge::NodePtr splitBNode,
+                                          ge::NodePtr splitHNode, ge::NodePtr splitCNode, InputIndexInfo inputIndexInfo,
+                                          bool has_seq, bool has_h0, bool has_c0) {
+  // edge for tensor x
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                       forwardRNNNode->GetInDataAnchor(inputIndexInfo.xIndex)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's x edge to forwardRNNNode's x failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                       backwardRNNNode->GetInDataAnchor(inputIndexInfo.xIndex)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's x edge to backwardRNNNode's x failed."),
+                    return FAILED);
+
+  // edge for tensor w
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                                       splitWNode->GetInDataAnchor(0)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's w edge to splitWNode's x failed."),
+                    return FAILED);
+
+  // edge for tensor b
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
+                                                       splitBNode->GetInDataAnchor(0)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's b edge to splitBNode's x failed."),
+                    return FAILED);
+
+  // edge for tensor seq
+  if (has_seq) {
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(3)->GetPeerOutAnchor(),
+                                                         forwardRNNNode->GetInDataAnchor(inputIndexInfo.sIndex)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's seq edge to forwardRNNNode's seq failed."),
+                      return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(3)->GetPeerOutAnchor(),
+                                                         backwardRNNNode->GetInDataAnchor(inputIndexInfo.sIndex)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's seq edge to backwardRNNNode's seq failed."),
+                      return FAILED);
+  }
+
+  // edge for tensor init_h
+  if (has_h0) {
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
+                                                         splitHNode->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's init_h edge to splitHNode's x failed."),
+                      return FAILED);
+  }
+
+  // edge for tensor init_c
+  if (has_c0) {
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(5)->GetPeerOutAnchor(),
+                                                         splitCNode->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's init_c edge to splitCNode's x failed."),
+                      return FAILED);
+  }
+  return SUCCESS;
+}
+
+ge::OpDescPtr DynamicRNNFusionPass::CreateSplitDesc(ge::OpDescPtr splitDesc, ge::OpDescPtr dynamicRNNDesc,
+                                                    string tensorName, int64_t splitDim) {
+  ge::GeTensorDesc tensorDesc = dynamicRNNDesc->GetInputDesc(tensorName).Clone();
+  splitDesc->AddInputDesc(tensorDesc);
+  ge::AttrUtils::SetInt(splitDesc, "split_dim", splitDim);
+  ge::AttrUtils::SetInt(splitDesc, "num_split", 2);
+  vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
+
+  tensorDims[splitDim] = tensorDims[splitDim] / 2;
+
+  ge::GeShape tensorShape(tensorDims);
+  tensorDesc.SetShape(tensorShape);
+  tensorDesc.SetOriginShape(tensorShape);
+
+  splitDesc->AddOutputDesc(tensorDesc);
+  splitDesc->AddOutputDesc(tensorDesc);
+
+  return splitDesc;
+}
+
+ge::OpDescPtr DynamicRNNFusionPass::CreateConcatDesc(ge::OpDescPtr concatDesc, ge::OpDescPtr dynamicRNNDesc,
+                                                     string tensorName, int64_t concatDim) {
+  ge::GeTensorDesc tensorDesc = dynamicRNNDesc->GetOutputDesc(tensorName).Clone();
+  concatDesc->AddOutputDesc(tensorDesc);
+  vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
+
+  tensorDims[concatDim] = tensorDims[concatDim] / 2;
+
+  ge::GeShape tensorShape(tensorDims);
+  tensorDesc.SetShape(tensorShape);
+  tensorDesc.SetOriginShape(tensorShape);
+  tensorDesc.SetOriginFormat(ge::FORMAT_ND);
+
+  concatDesc->AddInputDesc(tensorDesc);
+  concatDesc->AddInputDesc(tensorDesc);
+
+  ge::AttrUtils::SetInt(concatDesc, "concat_dim", concatDim);
+
+  return concatDesc;
+}
+
 ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpDescPtr dynamicRNNDesc, string direction,
                                                   bool has_seq, bool has_h0, bool has_c0) {
   // for inputs
@@ -183,141 +318,6 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
   }
 
   return RNNDesc;
-}
-
-ge::OpDescPtr DynamicRNNFusionPass::CreateSplitDesc(ge::OpDescPtr splitDesc, ge::OpDescPtr dynamicRNNDesc,
-                                                    string tensorName, int64_t splitDim) {
-  ge::GeTensorDesc tensorDesc = dynamicRNNDesc->GetInputDesc(tensorName).Clone();
-  splitDesc->AddInputDesc(tensorDesc);
-  ge::AttrUtils::SetInt(splitDesc, "split_dim", splitDim);
-  ge::AttrUtils::SetInt(splitDesc, "num_split", 2);
-  vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
-
-  tensorDims[splitDim] = tensorDims[splitDim] / 2;
-
-  ge::GeShape tensorShape(tensorDims);
-  tensorDesc.SetShape(tensorShape);
-  tensorDesc.SetOriginShape(tensorShape);
-
-  splitDesc->AddOutputDesc(tensorDesc);
-  splitDesc->AddOutputDesc(tensorDesc);
-
-  return splitDesc;
-}
-
-ge::OpDescPtr DynamicRNNFusionPass::CreateConcatDesc(ge::OpDescPtr concatDesc, ge::OpDescPtr dynamicRNNDesc,
-                                                     string tensorName, int64_t concatDim) {
-  ge::GeTensorDesc tensorDesc = dynamicRNNDesc->GetOutputDesc(tensorName).Clone();
-  concatDesc->AddOutputDesc(tensorDesc);
-  vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
-
-  tensorDims[concatDim] = tensorDims[concatDim] / 2;
-
-  ge::GeShape tensorShape(tensorDims);
-  tensorDesc.SetShape(tensorShape);
-  tensorDesc.SetOriginShape(tensorShape);
-  tensorDesc.SetOriginFormat(ge::FORMAT_ND);
-
-  concatDesc->AddInputDesc(tensorDesc);
-  concatDesc->AddInputDesc(tensorDesc);
-
-  ge::AttrUtils::SetInt(concatDesc, "concat_dim", concatDim);
-
-  return concatDesc;
-}
-
-Status DynamicRNNFusionPass::AddInputEdge(ge::NodePtr dynamicRNNNode, ge::NodePtr forwardRNNNode,
-                                          ge::NodePtr backwardRNNNode, ge::NodePtr splitWNode, ge::NodePtr splitBNode,
-                                          ge::NodePtr splitHNode, ge::NodePtr splitCNode, InputIndexInfo inputIndexInfo,
-                                          bool has_seq, bool has_h0, bool has_c0) {
-  // edge for tensor x
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                                       forwardRNNNode->GetInDataAnchor(inputIndexInfo.xIndex)),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's x edge to forwardRNNNode's x failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                                       backwardRNNNode->GetInDataAnchor(inputIndexInfo.xIndex)),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's x edge to backwardRNNNode's x failed."),
-                    return FAILED);
-
-  // edge for tensor w
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                                                       splitWNode->GetInDataAnchor(0)),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's w edge to splitWNode's x failed."),
-                    return FAILED);
-
-  // edge for tensor b
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
-                                                       splitBNode->GetInDataAnchor(0)),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's b edge to splitBNode's x failed."),
-                    return FAILED);
-
-  // edge for tensor seq
-  if (has_seq) {
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(3)->GetPeerOutAnchor(),
-                                                         forwardRNNNode->GetInDataAnchor(inputIndexInfo.sIndex)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's seq edge to forwardRNNNode's seq failed."),
-                      return FAILED);
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(3)->GetPeerOutAnchor(),
-                                                         backwardRNNNode->GetInDataAnchor(inputIndexInfo.sIndex)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's seq edge to backwardRNNNode's seq failed."),
-                      return FAILED);
-  }
-
-  // edge for tensor init_h
-  if (has_h0) {
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
-                                                         splitHNode->GetInDataAnchor(0)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's init_h edge to splitHNode's x failed."),
-                      return FAILED);
-  }
-
-  // edge for tensor init_c
-  if (has_c0) {
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNNode->GetInDataAnchor(5)->GetPeerOutAnchor(),
-                                                         splitCNode->GetInDataAnchor(0)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicRNNNode's init_c edge to splitCNode's x failed."),
-                      return FAILED);
-  }
-  return SUCCESS;
-}
-
-Status DynamicRNNFusionPass::AddSplitEdge(ge::NodePtr splitNode, ge::NodePtr forwardRNNNode,
-                                          ge::NodePtr backwardRNNNode, string nodeName, int64_t index) {
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(0), forwardRNNNode->GetInDataAnchor(index)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to forwardRNNNode's w failed."), return FAILED);
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(1), backwardRNNNode->GetInDataAnchor(index)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to backwardRNNNode's w failed."), return FAILED);
-
-  return SUCCESS;
-}
-
-Status DynamicRNNFusionPass::AddConcatEdge(ge::NodePtr concatNode, ge::NodePtr dynamicRNNNode,
-                                           ge::NodePtr forwardRNNNode, ge::NodePtr backwardRNNNode, string nodeName,
-                                           int64_t index) {
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(forwardRNNNode->GetOutDataAnchor(index), concatNode->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add forwardRNNNode's y to " + nodeName + "'s x failed."), return FAILED);
-
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(backwardRNNNode->GetOutDataAnchor(index), concatNode->GetInDataAnchor(1)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add backwardRNNNode's y to " + nodeName + "'s x failed."), return FAILED);
-
-  OutDataAnchor::Vistor<InDataAnchorPtr> outputAnchors =
-      dynamicRNNNode->GetOutDataAnchor(index)->GetPeerInDataAnchors();
-
-  for (auto& in_anchor : outputAnchors) {
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(dynamicRNNNode->GetOutDataAnchor(index), in_anchor),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove dynamicRNNNode's outDataAnchor failed."), return FAILED);
-
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), in_anchor),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to dynamicRNNNode's y failed."),
-                      return FAILED);
-  }
-
-  return SUCCESS;
 }
 
 Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
