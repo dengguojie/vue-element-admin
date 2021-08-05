@@ -313,7 +313,7 @@ class VectorSchedule(object):
             self._double_buffer_tensors.append(read_buffer)
 
             if self._op_type == "layer_norm_x_backprop_v2":
-                if i.op.name == "data_dy":
+                if i.op.name == "data_dy" and self._need_db:
                     self._schedule[read_buffer].preload()
 
             if self._op_type == OpSpecTypes.RELU_GRAD_V2:
