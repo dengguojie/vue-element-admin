@@ -107,41 +107,37 @@ def op_select_format(input_dy, input_x,
 
     if _check_dynamic_format(shape_dy, shape_gamma, c_0):
         input0 = util_select_op_base.gen_param(classify="input0", name="dy",
-                                               datatype="float,float,float,float,float,"
-                                                        "float,float,float",
-                                               format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
+                                               datatype="float,float,float",
+                                               format="NCHW,NHWC,ND")
         input1 = util_select_op_base.gen_param(classify="input1", name="res_for_gamma",
-                                               datatype="float,float,float,float,float,"
-                                                        "float,float,float",
-                                               format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
+                                               datatype="float,float,float",
+                                               format="NCHW,NHWC,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="pd_gamma",
-                                                datatype="float,float,float,float,float,float,"
-                                                         "float,float",
-                                                format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
+                                                datatype="float,float,float",
+                                                format="NCHW,NHWC,ND")
         output1 = util_select_op_base.gen_param(classify="output1", name="pd_beta",
-                                                datatype="float,float,float,float,float,float,"
-                                                         "float,float",
-                                                format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
+                                                datatype="float,float,float",
+                                                format="NCHW,NHWC,ND")
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="dy",
-                                               datatype="float16,float,float16,float16,float16,"
-                                                        "float16,float,float,float,float",
-                                               format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,"
-                                                      "ND,NCHW,NC1HWC0,NHWC,ND")
+                                               datatype="float16,float,float16,float16,"
+                                                        "float16,float,float,float",
+                                               format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,"
+                                                      "ND,NCHW,NHWC,ND")
         input1 = util_select_op_base.gen_param(classify="input1", name="res_for_gamma",
-                                               datatype="float,float,float,float,float,"
-                                                        "float,float,float,float,float",
-                                               format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,"
-                                                      "ND,NCHW,NC1HWC0,NHWC,ND")
+                                               datatype="float,float,float,float,"
+                                                        "float,float,float,float",
+                                               format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,"
+                                                      "ND,NCHW,NHWC,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="pd_gamma",
-                                                datatype="float,float,float,float,float,float,"
+                                                datatype="float,float,float,float,"
                                                          "float,float,float,float",
-                                                format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
+                                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
                                                        "NHWC,ND")
         output1 = util_select_op_base.gen_param(classify="output1", name="pd_beta",
-                                                datatype="float,float,float,float,float,float,"
-                                                         "float,float,float,float",
-                                                format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
+                                                datatype="float,float,float,float,float,"
+                                                         "float,float,float",
+                                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
                                                        "NHWC,ND")
 
     param_list = [input0, input1, output0, output1]
