@@ -88,9 +88,9 @@ template <typename T>
 uint32_t InplaceTopKDistanceCpuKernel::DoCompute(CpuKernelContext& ctx, Inputs& inputs) {
   uint64_t topk_elements_num = inputs.topk_pq_distance->NumElements();
   std::vector<Item<T>> items;
-  T *topk_value_ptr = static_cast<T*>(inputs.topk_pq_distance->GetData());
-  int32_t *topk_index_ptr = static_cast<int32_t*>(inputs.topk_pq_index->GetData());
-  int32_t *topk_ivf_ptr = static_cast<int32_t*>(inputs.topk_pq_ivf->GetData());
+  T *topk_value_ptr = static_cast<T *>(inputs.topk_pq_distance->GetData());
+  int32_t *topk_index_ptr = static_cast<int32_t *>(inputs.topk_pq_index->GetData());
+  int32_t *topk_ivf_ptr = static_cast<int32_t *>(inputs.topk_pq_ivf->GetData());
   for (uint64_t i = 0; i < topk_elements_num; i++) {
     T topk_value = topk_value_ptr[i];
     int32_t topk_index = topk_index_ptr[i];
@@ -99,9 +99,9 @@ uint32_t InplaceTopKDistanceCpuKernel::DoCompute(CpuKernelContext& ctx, Inputs& 
   }
 
   uint64_t elements_num = inputs.pq_distance->NumElements();
-  T *new_value_ptr = static_cast<T*>(inputs.pq_distance->GetData());
-  int32_t *new_index_ptr = static_cast<int32_t*>(inputs.pq_index->GetData());
-  int32_t *new_ivf_ptr = static_cast<int32_t*>(inputs.pq_ivf->GetData());
+  T *new_value_ptr = static_cast<T *>(inputs.pq_distance->GetData());
+  int32_t *new_index_ptr = static_cast<int32_t *>(inputs.pq_index->GetData());
+  int32_t *new_ivf_ptr = static_cast<int32_t *>(inputs.pq_ivf->GetData());
   for (uint64_t i = 0; i < elements_num; i++) {
     T new_value = new_value_ptr[i];
     int32_t new_index = new_index_ptr[i];
@@ -117,17 +117,17 @@ template <typename T>
 uint32_t InplaceTopKDistanceCpuKernel::ModifyInput(std::vector<Item<T>> items_vec, Inputs& inputs,
                                                    CpuKernelContext& ctx) {
   uint64_t topk_elements_num = inputs.topk_pq_distance->NumElements();
-  T *topk_value_ptr = static_cast<T*>(inputs.topk_pq_distance->GetData());
-  int32_t *topk_index_ptr = static_cast<int32_t*>(inputs.topk_pq_index->GetData());
-  int32_t *topk_ivf_ptr = static_cast<int32_t*>(inputs.topk_pq_ivf->GetData());
+  T *topk_value_ptr = static_cast<T *>(inputs.topk_pq_distance->GetData());
+  int32_t *topk_index_ptr = static_cast<int32_t *>(inputs.topk_pq_index->GetData());
+  int32_t *topk_ivf_ptr = static_cast<int32_t *>(inputs.topk_pq_ivf->GetData());
 
   std::string order = inputs.order->GetString();
-  KERNEL_LOG_INFO("InplaceTopKDistance attr order is[%s]", order.c_str());
+  KERNEL_LOG_INFO("InplaceTopKDistance attr order is [%s]", order.c_str());
 
   if ("asc" == order) {
     KERNEL_LOG_INFO("InplaceTopKDistance modifyInput asc begin");
     uint64_t j = 0;
-    for (auto i = items_vec.end() - topk_elements_num; i < items_vec.end(); i++, j++) {
+    for (auto i = items_vec.begin(); i < items_vec.begin() + topk_elements_num; i++, j++) {
       topk_value_ptr[j] = (*i).value;
       topk_index_ptr[j] = (*i).index;
       topk_ivf_ptr[j] = (*i).ivf;
