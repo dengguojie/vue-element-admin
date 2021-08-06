@@ -1,22 +1,29 @@
 # CMake minimum version number requirements
 cmake_minimum_required(VERSION 3.5)
 project(kernel)
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 set(TOOLCHAIN_DIR $ENV{TOOLCHAIN_DIR})
-if (NOT "x${TOOLCHAIN_DIR}" STREQUAL "x")
-    if (NOT IS_DIRECTORY ${TOOLCHAIN_DIR})
-        message(FATAL_ERROR "specify cross compile toolchain directory(${TOOLCHAIN_DIR}) is not exist")
-    endif()
-endif()
-message(STATUS "TOOLCHAIN_DIR=${TOOLCHAIN_DIR}")
 
 #Specify cross compiler
-if (MINRC)
-    set(CMAKE_C_COMPILER /usr/bin/aarch64-linux-gnu-gcc)
-    set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++)
+if (LMIX)
+        add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}-g++)
+        set(CMAKE_C_COMPILER   ${TOOLCHAIN_DIR}-gcc)
 else()
-    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
-    set(CMAKE_C_COMPILER   ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
+    if (NOT "x${TOOLCHAIN_DIR}" STREQUAL "x")
+        if (NOT IS_DIRECTORY ${TOOLCHAIN_DIR})
+            message(FATAL_ERROR "specify cross compile toolchain directory(${TOOLCHAIN_DIR}) is not exist")
+        endif()
+    endif()
+    message(STATUS "TOOLCHAIN_DIR=${TOOLCHAIN_DIR}")
+    if (MINRC)
+        add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+        set(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-linux-gnu-gcc)
+        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-linux-gnu-g++)
+    else()
+        add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
+        set(CMAKE_C_COMPILER   ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
+    endif()
 endif()
 add_custom_target(third_kernel)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../third_party/secure_c_kernel.cmake)
@@ -151,6 +158,17 @@ target_compile_options(${AICPU_KERNEL_TARGET} PRIVATE
 )
 set(AICPU_SOC_VERSION $ENV{AICPU_SOC_VERSION})
 message(STATUS "AICPU_SOC_VERSION=${AICPU_SOC_VERSION}")
+
+if(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/${AICPU_SOC_VERSION}/libascend_protobuf.a")
+    target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
+        -Wl,--whole-archive
+        ${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/${AICPU_SOC_VERSION}/libascend_protobuf.a
+        -Wl,--no-whole-archive
+        -s
+        -Wl,-Bsymbolic
+        -Wl,--exclude-libs=libascend_protobuf.a
+    )
+endif()
 
 if(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/${AICPU_SOC_VERSION}/libcpu_kernels_context.a")
     target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
