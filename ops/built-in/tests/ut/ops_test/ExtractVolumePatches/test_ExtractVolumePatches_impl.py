@@ -246,6 +246,31 @@ case_big_shape_large_multicore_num_not_aligned_fp16 = {
     "expect": "success"
 }
 
+case_big_shape_large_multicore_num_aligned_fp16 = {
+    "params":
+        [
+            {
+                "shape": (53, 121, 5, 75, 35, 16),
+                "format": "NDC1HWC0",
+                "dtype": "float16",
+                "ori_shape": (53, 121, 75, 35, 80),
+                "ori_format": "NDHWC"
+            },
+            {
+                "shape": (53, 7, 20400, 3, 3, 16),
+                "format": "NDC1HWC0",
+                "dtype": "float16",
+                "ori_shape": (53, 7, 3, 3, 326400),
+                "ori_format": "NDHWC"
+            },
+            (1, 15, 16, 17, 1),
+            (1, 18, 30, 16, 1),
+            "SAME"
+        ],
+    "case_name": 'test_extract_volume_patches_big_shape_large_multicore_num_aligned_fp16',
+    "expect": "success"
+}
+
 # ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_same_not_aligned_uint8)
 ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_same_not_aligned_int8)
 ut_case.add_case(["Ascend910", "Ascend310"], case_infer_bound_shape_same_not_aligned_int8)
@@ -255,6 +280,7 @@ ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_same_aligned_multi
 ut_case.add_case(["Ascend910", "Ascend310"], case_medium_shape_same_howo_not_aligned_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_same_howo_aligned_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_large_multicore_num_not_aligned_fp16)
+ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_large_multicore_num_aligned_fp16)
 
 # ut_case.add_case(["Ascend310"], case1)
 

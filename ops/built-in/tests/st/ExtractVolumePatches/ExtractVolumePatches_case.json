@@ -393,5 +393,84 @@
       }
     ],
     "case_name": "test_ExtractVolumePatches_006"
+  },
+  {
+    "op": "ExtractVolumePatches",
+    "input_desc": [
+      {
+        "shape": [
+          53,
+          121,
+          5,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          53,
+          121,
+          1,
+          1,
+          80
+        ],
+        "ori_format": "NDHWC",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          53,
+          7,
+          75,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          53,
+          7,
+          1,
+          1,
+          1200
+        ],
+        "ori_format": "NDHWC",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksizes",
+        "type": "list_int",
+        "value": [
+          1,
+          15,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          18,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "padding",
+        "type": "string",
+        "value": "SAME"
+      }
+    ],
+    "case_name": "test_ExtractVolumePatches_007"
   }
 ]

@@ -1,0 +1,83 @@
+[
+  {
+    "op": "MaxPoolGradGradWithArgmax",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          184,
+          315,
+          16
+        ],
+        "format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          184,
+          315,
+          16
+        ],
+        "format": "NHWC",
+        "name": "grad",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          24,
+          432,
+          1
+        ],
+        "format": "NC1HWC0",
+        "name": "argmax",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          16,
+          26,
+          16
+        ],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "type": "list_int",
+        "value": [
+          1,
+          2,
+          12,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          12,
+          12,
+          1
+        ]
+      },
+      {
+        "name": "padding",
+        "type": "string",
+        "value": "VALID"
+      }
+    ],
+    "case_name": "test_MaxPoolGradGradWithArgmax_000"
+  }
+]

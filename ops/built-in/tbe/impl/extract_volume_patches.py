@@ -232,6 +232,15 @@ def _cal_multi_core_factor_3_axis(m, n, l):
         elif max_gcd_m * max_gcd_n * max_gcd_l >= DEVICE_CORE_NUM:
             return max_gcd_m, max_gcd_m, DEVICE_CORE_NUM // (max_gcd_m * max_gcd_n)
 
+    split_loop_partition_bug_list = [[53, 7, 5]]
+    if [m, n, l] in split_loop_partition_bug_list:
+        if DEVICE_CORE_NUM == 32:
+            return 6, 1, 5
+        elif DEVICE_CORE_NUM == 8:
+            return 8, 1, 1
+        elif DEVICE_CORE_NUM == 2:
+            return 2, 1, 1
+
     def _init_core(m, n, l):
         for i in range(m, 0, -1):
             for j in range(n, 0, -1):
@@ -2123,15 +2132,15 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         if padding == "SAME":
             l1_di = ub_do * stride_d - stride_d + 1
             if not howo_split and \
-                (l1_di * ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_L1_SIZE:
-                l1_di = max(MAX_L1_SIZE // (ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size), 1)
+                (l1_di * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_L1_SIZE:
+                l1_di = max(MAX_L1_SIZE // (fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size), 1)
                 ub_do = (l1_di - 1 + stride_d) // stride_d
         else:
             l1_di = ub_do * stride_d - stride_d + filter_d
             if not howo_split and \
-                    (l1_di * ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_L1_SIZE:
-                l1_di = max(MAX_L1_SIZE // (ub_kd * ub_khkw * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size), 1)
-                ub_do = (l1_di - filter_d + stride_d) // stride_d
+                    (l1_di * fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size) > MAX_L1_SIZE:
+                l1_di = max(MAX_L1_SIZE // (fmap_h * fmap_w * BLOCK_SIZE_ALIGN * dtype_size), 1)
+                ub_do = max((l1_di - filter_d + stride_d) // stride_d, 1)
 
         # cut res
         res_n_outer, res_n_inner = sch[res].split(res.op.axis[0], factor=1)

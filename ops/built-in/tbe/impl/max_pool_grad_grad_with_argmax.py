@@ -38,6 +38,21 @@ def _ceil_to(value, ceil_value):
     return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
+def _get_output_length(l1_hi, l1_wi, stride, kernel_size, output_h, output_w, input_h, input_w):
+    '''
+    Return the corresponding input hi and wi szie according to the size of the output ho and wo size.
+    '''
+    if input_h == l1_hi:
+        tile_l1_ho = output_h
+    else:
+        tile_l1_ho = (l1_hi + stride[0] - kernel_size[0]) // stride[0]
+    if input_w == l1_wi:
+        tile_l1_wo = output_w
+    else:
+        tile_l1_wo = (l1_wi + stride[1] - kernel_size[1]) // stride[1]
+    return tile_l1_ho, tile_l1_wo
+
+
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements,too-many-branches
 def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, max_next_valid_size, dtype):
     """
@@ -91,7 +106,16 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
 
     max_hiwi_l1 = max_l1_valid_num // fmap_c0
     # hi' = ho' * stride_h + filter_h - stride_h
-    max_ho_l1 = (max_hiwi_l1 // fmap_w - (kernel_h - stride_h)) // stride_h
+    if padding == "SAME":
+        max_hi_l1 = max_hiwi_l1 // fmap_w
+        max_ho_l1 = (max_hi_l1 + stride_h - 1) // stride_h
+        infer_hi_l1 = min(max_ho_l1 * stride_h, fmap_h)
+    else:
+        max_hi_l1 = max_hiwi_l1 // fmap_w
+        max_ho_l1 = (max_hi_l1 + stride_h - kernel_h) // stride_h
+        infer_hi_l1 = min(max_ho_l1 * stride_h + kernel_h - 1, fmap_h)
+
+    max_ho_l1 = max_ho_l1 - 1 if infer_hi_l1 > max_hi_l1 else max_ho_l1
 
     # The memory space of l1 is not enough.
     if max_hiwi_l1 < 1 or max_ho_l1 < 1:
@@ -162,6 +186,22 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     l0ub_howo *= fmap_c0  # multiplied by c0
     # get min howo in l1 and l0/ub
     l0ub_howo = min(l0ub_howo, max_ho_l1 * output_w)
+
+    tile_l1_ho, tile_l1_wo, = _get_output_length(l1_hi, l1_wi, (stride_h, stride_w), (kernel_h, kernel_w),
+                                                 output_h, output_w, fmap_h, fmap_w)
+
+    def _cal_infer_hi_l1_2():
+        loop_inner_outer = (tile_l1_ho * tile_l1_wo + l0ub_howo - 1) // l0ub_howo
+        l1_i1 = min(
+         ((l0ub_howo // BLOCK_SIZE - 1) + (loop_inner_outer - 1) * (l0ub_howo // BLOCK_SIZE)) * BLOCK_SIZE + BLOCK_SIZE,
+         output_h * output_w)
+        infer_hi_l1_2 = (l1_i1 - 1) // output_w * stride_h + kernel_h
+        return infer_hi_l1_2
+
+    infer_hi_l1_2 = _cal_infer_hi_l1_2()
+    while infer_hi_l1_2 > max_hi_l1:
+        l0ub_howo = l0ub_howo - BLOCK_SIZE
+        infer_hi_l1_2 = _cal_infer_hi_l1_2()
 
     return True, (l1_n, l1_c1, l1_hi, l1_wi, l1_c0), l1_double_buffer, (l0ub_n, l0ub_howo, l0ub_c1, l0ub_khkw,
                                                                         l0ub_c0), l0_double_buffer
@@ -548,18 +588,10 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
 
     _, _, l1_hi, l1_wi, _ = shape_in_l1
 
-    def _get_output_length(l1_hi, l1_wi, stride, kernel_size):
-        if fmap_shape[2].value == l1_hi:
-            tile_l1_ho = shape_max_pool_h
-        else:
-            tile_l1_ho = (l1_hi + stride[0] - kernel_size[0]) // stride[0]
-        if fmap_shape[3].value == l1_wi:
-            tile_l1_wo = shape_max_pool_w
-        else:
-            tile_l1_wo = (l1_wi + stride[1] - kernel_size[1]) // stride[1]
-        return tile_l1_ho, tile_l1_wo
+    tile_l1_ho, tile_l1_wo, = _get_output_length(l1_hi, l1_wi, (stride_h, stride_w), (kernel_h, kernel_w),
+                                                 shape_max_pool_h, shape_max_pool_w,
+                                                 fmap_shape[2].value, fmap_shape[3].value)
 
-    tile_l1_ho, tile_l1_wo, = _get_output_length(l1_hi, l1_wi, (stride_h, stride_w), (kernel_h, kernel_w))
     (_, ub_howo, _, ub_khkw, _) = shape_after_load3d
 
     # tiling
