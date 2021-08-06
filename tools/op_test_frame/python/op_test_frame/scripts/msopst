@@ -108,7 +108,7 @@ def _do_mi_cmd(args, cmd, report):
         sys.exit(ex.error_info)
 
 
-def _do_run_cmd(args, report, op_case_list):
+def _do_run_cmd(args, report):
     try:
         if args.soc_version == '':
             utils.print_error_log(
@@ -119,7 +119,7 @@ def _do_run_cmd(args, report, op_case_list):
         if args.config_file != "":
             # check config_file invalid
             utils.check_path_valid(args.config_file)
-            _gen_build_convert_run(args, report, op_case_list)
+            _gen_build_convert_run(args, report)
         else:
             case_list = _generate_op_project(args, report, False)
             _runner_and_compare(args, case_list, report)
@@ -128,7 +128,7 @@ def _do_run_cmd(args, report, op_case_list):
         sys.exit(ex.error_info)
 
 
-def _gen_build_convert_run(args, report, op_case_list):
+def _gen_build_convert_run(args, report):
     output_path = os.path.realpath(args.output_path)
     get_advance_args = AdvanceIniParser(args.config_file)
     get_advance_args.get_advance_args_option()
@@ -145,18 +145,24 @@ def _gen_build_convert_run(args, report, op_case_list):
             acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
         # only build & convert & execute the project.
         # when the report is input,should avoid update the report
-        op_type = op_case_list[0].get('op')
-        st_mode = op_case_list[0].get('st_mode')
-        path = os.path.join(output_path, op_type)
         global abnormal_termination
         abnormal_termination = True
-        report_path = os.path.join(path, 'st_report.json')
+        report_path = os.path.join(output_path, 'st_report.json')
         utils.check_path_valid(report_path)
         report.load(report_path)
         utils.print_info_log("Load %s success." % report_path)
+        op_case_list = utils.load_json_file(args.input_file)
+        if len(op_case_list) == 0:
+            utils.print_error_log("Failed to get %s, please check."
+                                  % args.input_file)
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+        op_name = op_case_list[0].get('op')
+        st_mode = op_case_list[0].get('st_mode')
         # run operator
+        path = os.path.join(output_path, op_name)
         if st_mode == 'ms_python_train':
-            op_name_fixed = utils.fix_name_lower_with_under(op_type)
+            op_name_fixed = utils.fix_name_lower_with_under(op_name)
             runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
             runner.process()
         else:
@@ -298,21 +304,6 @@ def save_report(report, output_path):
     utils.print_info_log('The st report saved in: %s.' % report_file)
 
 
-def get_op_case_list(args):
-    op_case_list = utils.load_json_file(args.input_file)
-    if len(op_case_list) == 0:
-        utils.print_error_log("Failed to get %s, please check."
-                              % args.input_file)
-        raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_PATH_ERROR)
-    op_type = op_case_list[0].get('op')
-    if op_type is None:
-        utils.print_error_log("The operator name is none, please check.")
-        raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_PATH_ERROR)
-    return op_case_list, op_type
-
-
 def main():
     """
     main function
@@ -337,20 +328,19 @@ def main():
     args = parse.parse_args(sys.argv[1:])
     # run/mi gen command generator report.
     report = st_report.OpSTReport(" ".join(sys.argv))
+    register(save_report, report=report, output_path=args.output_path)
     if sys.argv[1] == 'create':
         # generate test_case.json
         try:
+            global abnormal_termination
+            abnormal_termination = True
             generator = CaseGenerator(args)
             generator.generate()
         except utils.OpTestGenException as ex:
             sys.exit(ex.error_info)
     elif sys.argv[1] == 'run':
-        op_case_list, op_type = get_op_case_list(args)
-        report_json_save_path = os.path.join(args.output_path, op_type)
-        register(save_report, report=report, output_path=report_json_save_path)
-        _do_run_cmd(args, report, op_case_list)
+        _do_run_cmd(args, report)
     else:
-        register(save_report, report=report, output_path=args.output_path)
         _do_mi_cmd(args, sys.argv[2], report)
     utils.print_info_log("Process finished!")
     sys.exit(utils.OP_TEST_GEN_NONE_ERROR)
