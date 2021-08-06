@@ -340,6 +340,7 @@ set(_tf_plugins
   rsqrt_plugin.cc
   scatter_add_plugin.cc
   scatter_div_plugin.cc
+  scatter_elements_plugin.cc
   scatter_max_plugin.cc
   scatter_min_plugin.cc
   scatter_mul_plugin.cc
