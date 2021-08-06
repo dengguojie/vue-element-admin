@@ -131,6 +131,7 @@ set(_onnx_plugins
   reduce_log_sum_plugin.cc
   lppool_plugin.cc
   compress_plugin.cc
+  xor_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
