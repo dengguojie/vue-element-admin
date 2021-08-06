@@ -13,6 +13,7 @@ set(local_kernels_src_files
     kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
     kernels/normalized/coordinates_1d_to_2d.cc
+    kernels/normalized/cosh.cc
     kernels/normalized/diag.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
@@ -33,9 +34,9 @@ set(local_kernels_src_files
     kernels/normalized/masked_select_grad.cc
     kernels/normalized/mul.cc
     kernels/normalized/neg.cc
+    kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/ones_like.cc
-    kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc

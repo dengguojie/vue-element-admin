@@ -75,24 +75,30 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/matmul.cc
   ${CPU_KERNELS_DIR}/kernels/host/matrix_triangular_solve.cc
   ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
-  ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/host/trans_data_rnn.cc
+  ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/case_condition.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/cosh.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/greater.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/greater_equal.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/greater.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/greater_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/image_warp_offsets.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/index_to_addr.cc
@@ -122,19 +128,14 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sub.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
   ${CPU_KERNELS_DIR}/utils/kernel_util.cc
+  ${CPU_KERNELS_DIR}/utils/range_sampler.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
-  ${CPU_KERNELS_DIR}/utils/range_sampler.cc
 )
 
 set(cpu_kernels_llt_src
@@ -197,6 +198,8 @@ set(_cpu_kernels_ut_files
   testcase/assign/src/assign_utest.cpp
   testcase/atan/src/atan_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
+  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
+  testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
   testcase/case_condition/src/case_condition_utest.cpp
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
@@ -211,16 +214,20 @@ set(_cpu_kernels_ut_files
   testcase/common/src/node_def_utest.cpp
   testcase/common/src/sharder_utest.cpp
   testcase/common/src/tensor_utest.cpp
+  testcase/compute_accidental_hits/src/compute_accidental_hits_kernel_utest.cpp
   testcase/concatv2/src/concatv2_utest.cpp
   testcase/coordinates_1d_to_2d/src/coordinates_1d_to_2d_utest.cpp
+  testcase/cosh/src/cosh_utest.cpp
   testcase/diag/src/diag_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
-  testcase/greater/src/greater_utest.cpp
-  testcase/greater_equal/src/greater_equal_utest.cpp
+  testcase/edit_distance/src/edit_distance_kernel_utest.cpp
+  testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
   testcase/gemm/src/gemm_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
+  testcase/greater/src/greater_utest.cpp
+  testcase/greater_equal/src/greater_equal_utest.cpp
   testcase/identity/src/identity_utest.cpp
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
   testcase/index_to_addr/src/index_to_addr_utest.cpp
@@ -254,14 +261,8 @@ set(_cpu_kernels_ut_files
   testcase/top_k/src/top_k_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
-  testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
   testcase/where/src/where_utest.cpp
-  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
-  testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
-  testcase/compute_accidental_hits/src/compute_accidental_hits_kernel_utest.cpp
-  testcase/edit_distance/src/edit_distance_kernel_utest.cpp
-  testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
