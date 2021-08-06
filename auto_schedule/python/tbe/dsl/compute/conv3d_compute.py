@@ -53,7 +53,10 @@ _FMAP_HW_MAX = 4096
 _DILATION_MIN = 1
 _DILATION_MAX = 255
 
-
+# Dtype list
+_FMAP_DTYPE = ('float16')
+_W_DTYPE = ('float16')
+_RES_DTYPE = ('float16', 'float32')
 class Conv3DParam(object):
     """
     ConvParam
@@ -725,46 +728,6 @@ def _bias_add(in_tensor0, in_tensor1, attrs={}):
     return c_add_vector
 
 
-def _loc_bias_add(c_col, bias, conv_shape, group_dict, w_dtype=None):
-    """
-    calculate conv res + bias in l0c
-    Parameters
-    ----------
-    c_col: fmap & filter matrix multi res tensor
-
-    bias: bias vector
-
-    Returns
-    -------
-    c_col_bias tensor
-    """
-    block_size = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
-
-    cout_g = group_dict["cout_g"]
-    cout1_g = cout_g // block_size
-
-
-    bias_ub_brc_tensor = tvm.compute(conv_shape,
-                                     lambda i, j, k, l: bias(
-                                         j * block_size + l),
-                                     name=_OP_TAG + 'bias_ub_brc')
-    _TENSOR_MAP["bias_ub_brc"] = bias_ub_brc_tensor
-
-    bias_l0c = tvm.compute(conv_shape,
-                           lambda *indices: bias(*indices),
-                           name=_OP_TAG + 'bias_l0c')
-    _TENSOR_MAP["bias_l0c"] = bias_l0c
-
-    c_col_bias = tvm.compute(conv_shape,
-                             lambda i, j, k, l: c_col(j // cout1_g, i,
-                                                      j % cout1_g, k, l) + \
-                                                bias_l0c(i, j, k, l),
-                             name=_OP_TAG + 'c_col_bias')
-    _TENSOR_MAP["c_col_bias"] = c_col_bias
-
-    return c_col_bias
-
-
 def _remove_pad(res, res_remove_pad_shape):
     """
     remove pad
@@ -1072,6 +1035,29 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
             '[{}, {}]'.format(_DILATION_MIN, _DILATION_MAX), str(dilation_w))
 
 
+def _check_conv3d_dtype(fmap_dtype, filter_dtype, res_dtype):
+    """
+    Check the input parameters ' type of Conv3D
+    
+    Parameters
+    ----------
+    fmap_dtype: The dtype of feature map
+
+    filter_dtype: The dtype of weight/filter
+
+    res_dtype: The dtype of output
+
+    """
+    if fmap_dtype not in _FMAP_DTYPE:
+        cube_err.raise_err_check_type("Conv3D", "feature map", _FMAP_DTYPE, fmap_dtype)
+
+    if filter_dtype not in _W_DTYPE:
+        cube_err.raise_err_check_type("Conv3D", "weight", _W_DTYPE, filter_dtype)
+    
+    if res_dtype not in _RES_DTYPE:
+        cube_err.raise_err_check_type("Conv3D", "res dtype", _RES_DTYPE, res_dtype)
+
+
 @tvm.target.generic_func
 def conv3d(x, filter, filter_size, para_dict):
     """
@@ -1119,7 +1105,8 @@ def conv3d(x, filter, filter_size, para_dict):
 
     mad_dtype = para_dict["mad_dtype"]
     res_dtype = para_dict["res_dtype"]
-
+    # Check Dtype
+    _check_conv3d_dtype(in_dtype, w_dtype, res_dtype)
     block_size_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
 
     # for tiling

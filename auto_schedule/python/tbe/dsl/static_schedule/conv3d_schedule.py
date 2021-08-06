@@ -28,12 +28,6 @@ from tbe.dsl.compute import util as compute_util
 
 
 # tiling check
-_TILING_L1_SHAPE_DIM = 4
-_TILING_AL0_MATRIX_DIM = [6]
-_TILING_BL0_MATRIX_DIM = [6, 0]
-_TILING_CL0_MATRIX_DIM = [6]
-_TILING_CUB_MATRIX_DIM = [6]
-_TILING_BLOCK_DIM_DIM = [4]
 _TILING_FLOAT16_MKN = 16
 _VALID_TILING_NUM = 32
 _CONV_NUM = 5
@@ -504,23 +498,9 @@ class CceConv3dOp:
         if tiling["AL0_matrix"][2] == _VALID_TILING_NUM:
             return False
 
-        l1_shape = ["AL1_shape", "BL1_shape"]
-        for shape in l1_shape:
-            if tiling[shape] and len(tiling[shape]) != _TILING_L1_SHAPE_DIM:
-                cube_err.raise_err_three_paras('E62304', 'conv3d', shape,
-                        str(_TILING_L1_SHAPE_DIM), str(len(tiling[shape])))
-
         matrix_list = [
             "AL0_matrix", "BL0_matrix", "CL0_matrix", "CUB_matrix", "block_dim"
         ]
-        matrix_dim = [
-            _TILING_AL0_MATRIX_DIM, _TILING_BL0_MATRIX_DIM,
-            _TILING_CL0_MATRIX_DIM, _TILING_CUB_MATRIX_DIM, _TILING_BLOCK_DIM_DIM
-        ]
-        for matrix, dim in zip(matrix_list, matrix_dim):
-            if len(tiling[matrix]) not in dim:
-                cube_err.raise_err_three_paras('E62304', 'conv3d', matrix,
-                        str(dim[0]), str(len(tiling[matrix])))
 
         matrix_cab = ["CL0_matrix", "AL0_matrix", "BL0_matrix"]
         for index0, index1 in zip(matrix_list[0:3], matrix_cab):
@@ -528,16 +508,6 @@ class CceConv3dOp:
                 if tiling[index0][0] != tiling[index1][1]:
                     cube_err.raise_err_specific('conv3d',
                         "tiling['%s'][0] must equal to tiling['%s'][1]" % (index0, index1))
-
-        if w_dtype != "float16":
-            dict_args = {
-                'errCode': 'E60005',
-                'param_name': 'weight',
-                'expected_dtype_list': 'float16',
-                'dtype': w_dtype
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
 
         for matrix in matrix_list[0:3]:
             if tiling[matrix] != []:
@@ -1204,7 +1174,6 @@ class CceConv3dOp:
         -------
         True for sucess, False for no schedule
         """
-        opti_flag = False
 
         tensor_map = self._tensor_map
         dim_map = self._dim_map
@@ -1296,18 +1265,6 @@ class CceConv3dOp:
             return _fuse_fmap_tensor, _fmap_col_before, _fmap_col, _al1
 
         fuse_fmap_tensor, fmap_col_before, fmap_col, al1 = _load2d_process()
-
-        if 'bias' in tensor_map.keys() and opti_flag:
-            bias = tensor_map["bias"]
-            bias_l0c = tensor_map["bias_l0c"]
-            c_col_bias = tensor_map["c_col_bias"]
-            bias_ub_brc = tensor_map["bias_ub_brc"]
-
-            sch[bias_l0c].set_scope(tbe_platform_info.scope_cc)
-            sch[c_col_bias].set_scope(tbe_platform_info.scope_cc)
-            sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
-            bias_ub = sch.cache_read(bias, tbe_platform_info.scope_ubuf,
-                                     [bias_ub_brc])
 
         sch[c_ub].buffer_align((1, 1), (1, 1),
                                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
@@ -1552,13 +1509,6 @@ class CceConv3dOp:
         compute_at_axis.append(m_outer_inner_outer)
 
         sch[c_col].compute_at(sch[res_c], c_slice_axis)
-
-        def _bias_compute_at():
-            if 'bias' in tensor_map.keys() and opti_flag:
-                sch[bias_l0c].compute_at(sch[res_c], c_slice_axis)
-                sch[c_col_bias].compute_at(sch[res_c], c_slice_axis)
-
-        _bias_compute_at()
 
         _, reduce_kk = sch[c_col].op.reduce_axis
 

@@ -43,28 +43,6 @@ _DYNAMIC_DEPTH = 0X0002
 _DYNAMIC_HEIGHT = 0X0004
 _DYNAMIC_WIDTH = 0X0008
 
-def _print_ir_conv(process, sch):
-    """
-    print ir for input sch
-
-    Parameter:
-    --------------------------------------------------------------
-    :param process: tag
-    :param sch: schedule
-    :return: IR process
-    ---------------------------------------------------------------
-    """
-
-    with build_config():
-        sch1 = sch.normalize()
-        start = process + " IR start"
-        end = process + " IR end\n"
-        print(start)
-        bounds = tvm.schedule.InferBound(sch1)
-        stmt = tvm.schedule.ScheduleOps(sch1, bounds, True)
-        print(stmt)
-        print(end)
-
 
 class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-methods
     """
