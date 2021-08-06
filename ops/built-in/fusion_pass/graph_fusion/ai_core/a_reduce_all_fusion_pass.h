@@ -34,6 +34,7 @@ class AReduceAllFusionPass : public PatternFusionBasePass {
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
+  const char* KEEPDIMS = "keep_dims";
   const string FUSED_OP_TYPE = "ReduceAll";
 };
 }  // namespace fe

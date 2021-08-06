@@ -83,6 +83,14 @@ Status AReduceAllFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(allNode);
   Tensor data;
+  bool keep_dims0 = true;
+  FUSION_PASS_CHECK(GRAPH_SUCCESS != op.GetAttr(KEEPDIMS, keep_dims0),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get attr keepdims failed."),
+                    return GRAPH_FAILED);
+  FUSION_PASS_CHECK(!keep_dims0,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "the attr keep_dims of reduce_all is not true, not changed"),
+                    return NOT_CHANGED);
   if (GRAPH_SUCCESS != op.GetInputConstData("axes", data)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "GetInputConstData of axes failed.");
     return false;
