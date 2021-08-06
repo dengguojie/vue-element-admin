@@ -574,7 +574,7 @@ def resize_nearest_neighbor_grad_multicore(grads_shape, y_shape,
     return tik_instance
 
 
-def check_supported(grads, y, size, align_corners=False,
+def check_supported(grads, y, size, align_corners=False, half_pixel_centers=False,
                     kernel_name="resize_nearest_neighbor_v2_grad"):
     """
     algorithm: floor
