@@ -21,10 +21,6 @@
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace aicpu {
-template <typename T>
-using TensorMap =
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>,
-                     Eigen::Aligned>;
 
 class NegCpuKernel : public CpuKernel {
  public:

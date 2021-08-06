@@ -39,7 +39,7 @@ void Coordinates1DTo2D(const T *x_data, const T *shape_data, T *row_data,
       "output row index[%lld], output col index[%lld], output n[%lld].",
       static_cast<int64_t>(x), static_cast<int64_t>(shape_data[2]),
       static_cast<int64_t>(shape_data[3]), static_cast<int64_t>(*row_data),
-      static_cast<int64_t>(*col_data), *n_data);
+      static_cast<int64_t>(*col_data), static_cast<int64_t>(*n_data));
 }
 }  // namespace
 

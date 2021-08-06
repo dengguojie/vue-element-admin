@@ -16,7 +16,6 @@
 #include "neg.h"
 
 #include <complex>
-#include <iostream>
 
 #include "cpu_kernel_utils.h"
 #include "kernel_util.h"
@@ -29,27 +28,36 @@ namespace {
 const char *kNeg = "Neg";
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
+
+template <typename T>
+void RangeNeg(int64_t start, int64_t end, T *input, T *out) {
+  for (int64_t i = start; i < end; ++i) {
+    out[i] = -input[i];
+  }
+}
 }  // namespace
 
 namespace aicpu {
 template <typename T>
 uint32_t NegCpuKernel::DoCompute(CpuKernelContext &ctx) {
-  auto input0_tensor = ctx.Input(0);
+  auto input_tensor = ctx.Input(0);
   auto output_tensor = ctx.Output(0);
-  DataType input_type = input0_tensor->GetDataType();
+  DataType input_type = input_tensor->GetDataType();
   DataType output_type = output_tensor->GetDataType();
   KERNEL_CHECK_FALSE((input_type == output_type), KERNEL_STATUS_INNER_ERROR,
                      "Input data type[%s], output data type[%s] "
                      "must be same",
                      DTypeStr(input_type).c_str(),
                      DTypeStr(output_type).c_str());
-  auto input0_elements_num = input0_tensor->NumElements();
-  TensorMap<T> input0(reinterpret_cast<T *>(input0_tensor->GetData()),
-                      input0_elements_num);
-  auto output_elements_num = output_tensor->NumElements();
-  TensorMap<T> output(reinterpret_cast<T *>(output_tensor->GetData()),
-                      output_elements_num);
-  output = -input0;
+  auto shardCopy = [&](int64_t start, int64_t end) {
+    RangeNeg(start, end, static_cast<T *>(input_tensor->GetData()),
+             static_cast<T *>(output_tensor->GetData()));
+  };
+  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, input_tensor->NumElements(),
+                                             1, shardCopy);
+  if (ret != KERNEL_STATUS_OK) {
+    return ret;
+  }
   return KERNEL_STATUS_OK;
 }
 
