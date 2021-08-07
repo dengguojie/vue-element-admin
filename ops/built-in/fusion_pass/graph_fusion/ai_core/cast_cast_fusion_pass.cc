@@ -62,10 +62,17 @@ Status CastCastFusionPass::IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2)
     FUSION_PASS_CHECK(cast2Op == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "cast2Op is null"), return FAILED);
 
     ge::GeTensorDesc cast1InputTensor = cast1Op->GetInputDesc(0);
+    ge::GeTensorDesc cast1OutputTensor = cast1Op->GetOutputDesc(0);
     ge::GeTensorDesc cast2OutputTensor = cast2Op->GetOutputDesc(0);
     DataType cast1InputDataType = cast1InputTensor.GetDataType();
+    DataType cast1OutputDataType = cast1OutputTensor.GetDataType();
     DataType cast2OutputDataType = cast2OutputTensor.GetDataType();
-    if (cast1InputDataType != ge::DT_FLOAT16 && cast2OutputDataType != ge::DT_INT32) {
+    if (cast1OutputDataType == ge::DT_BOOL) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 output type is bool, can not do fusion.");
+        return FAILED;
+    }
+    if ((cast1InputDataType != ge::DT_FLOAT16 && cast2OutputDataType != ge::DT_INT32)
+        && (cast1InputDataType != ge::DT_INT32 && cast2OutputDataType != ge::DT_FLOAT16)) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 input type is u% Cast2 output data type is u%",
                 cast1InputDataType, cast2OutputDataType);
         return FAILED;
