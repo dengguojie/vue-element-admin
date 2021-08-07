@@ -75,7 +75,6 @@ class GEMM_Params:
         self.MAT_MUL = False
         self.fusion_type = FusionType.DEFAULT_MODE
         self.nd_trans_nz_in = False
-        self.nz_trans_nd_out = False
 
 
     def print_debug(self, *info):
@@ -114,6 +113,9 @@ class FusionType(Enum):
     DEFAULT_MODE = 0
     ELEWISE_FUSION = 1
     REDUCE_FUSION = 2
+    DEQUANT = 3
+    REQUANT = 4
+    TRANSDADA = 5
 
 
 class GEMM_Schedule:
@@ -153,7 +155,7 @@ class GEMM_Schedule:
         elif a_type == "float16" and c_type == "float32":
             self.gemm_params.ops_mode = "fp16fp32"
             self.gemm_params.block_reduce = tbe_platform.BLOCK_REDUCE
-        elif a_type == "int8" and c_type == "int32":
+        elif a_type == "int8" and c_type in ("int32", "float16", "int8"):
             self.gemm_params.ops_mode = "int8int32"
             self.gemm_params.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
         elif a_type == "int8" and c_type == "float32":
@@ -989,7 +991,17 @@ class GEMM_Schedule:
             mad_type = self.gemm_params.MAD_TYPE.get(self.gemm_params.ops_mode)
             bias_flag = self.gemm_params.MAT_MUL and self.gemm_params.TENSOR_MAP.get("bias_ub") is not None
             transpose_op_a, transpose_op_b = self._get_transpose()
-            trans_flag = self._get_trans_flag(not transpose_op_a, not transpose_op_b) if self.gemm_params.MAT_MUL else 1
+            trans_flag = 1
+            strideh_expand = 1
+            if self.gemm_params.MAT_MUL:
+                trans_flag = self._get_trans_flag(not transpose_op_a, not transpose_op_b)
+            if self.gemm_params.cube_vector_split:
+                trans_flag = self._get_trans_flag(transpose_op_a, transpose_op_b)
+                if self.gemm_params.TENSOR_MAP.get("fix_pipe_bias") is not None:
+                    bias_flag = True
+                    strideh_expand += 1
+            if c_type == "int8":
+                b_shape[1] = self._int_ceil_div(b_shape[1], 2) * 2
             info_dict = {
                 "op_type": "matmul",
                 "A_shape": a_shape,
@@ -1005,7 +1017,7 @@ class GEMM_Schedule:
                 "padd": 0,
                 "strideH": 1,
                 "strideW": 1,
-                "strideH_expand": 1,
+                "strideH_expand": strideh_expand,
                 "strideW_expand": 1,
                 "dilationH": trans_flag,
                 "dilationW": 1,
@@ -1238,7 +1250,8 @@ class GEMM_Schedule:
         )
 
         # check tilling in UB
-        _check_tiling_ub()
+        if self.gemm_params.cube_vector_split:
+            _check_tiling_ub()
 
 
     def _get_ub_pos(self):
@@ -1276,7 +1289,11 @@ class GEMM_Schedule:
                 tilling factor from ddr to AL1
                 tilling factor from ddr to Bl1
         """
-        l0c_tiling_factor = [self.gemm_params.TILING["CL0_matrix"][0], self.gemm_params.TILING["CL0_matrix"][1]]
+        l0c_tiling_factor = self.gemm_params.TILING["CL0_matrix"][0:2]
+        l0c_ub_tiling_factor = self.gemm_params.TILING["CUB_matrix"][0:2]
+        if self.gemm_params.fusion_type == FusionType.REQUANT:
+            l0c_tiling_factor[0] /= 2
+            l0c_ub_tiling_factor[0] /= 2
 
         # From LOC to GM [NumOfparts for N axis, NumOfparts for M axis ]
         l0c_parts = [
@@ -1290,7 +1307,6 @@ class GEMM_Schedule:
             )
         ]
 
-        l0c_ub_tiling_factor = self.gemm_params.TILING["CUB_matrix"]
         l0c_ub_parts = [
             self._int_ceil_div(l0c_tiling_factor[0], l0c_ub_tiling_factor[0]),
             self._int_ceil_div(l0c_tiling_factor[1], l0c_ub_tiling_factor[1])
@@ -2041,22 +2057,29 @@ class GEMM_Schedule:
                 int(i) for i in self.gemm_params.TENSOR_MAP["b_placehold"].shape
             ]
 
+        if "dequant" in res.op.tag:
+            self.gemm_params.fusion_type = FusionType.DEQUANT
+        elif "requant" in res.op.tag:
+            self.gemm_params.fusion_type = FusionType.REQUANT
+        elif "Nz_trans_ND" in res.op.attrs:
+            self.gemm_params.fusion_type = FusionType.TRANSDADA
+
+        for tensor in all_tensor.values():
+            if "ND_trans_Nz" in tensor.op.attrs:
+                self.gemm_params.nd_trans_nz_in = True
+                break
+
 
         self.gemm_params.TENSOR_MAP["c_gm"] = res
         self.gemm_params.TENSOR_MAP["a_l0a"] = all_tensor.get("tensor_a_matrix")
         sch[self.gemm_params.TENSOR_MAP["a_l0a"]].set_scope(tbe_platform_info.scope_ca)
         self.gemm_params.TENSOR_MAP["b_l0b"] = all_tensor.get("tensor_b_matrix")
         sch[self.gemm_params.TENSOR_MAP["b_l0b"]].set_scope(tbe_platform_info.scope_cb)
+        self.gemm_params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
+        sch[self.gemm_params.TENSOR_MAP["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
 
-        self.gemm_params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
-        self.gemm_params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
-
-        for tensor in all_tensor.values():
-            if "ND_trans_Nz" in tensor.op.attrs:
-                self.gemm_params.nd_trans_nz_in = True
-                break
-        if "Nz_trans_ND" in res.op.attrs:
-            self.gemm_params.nz_trans_nd_out = True
+        if len(all_tensor.get("tensor_c_matrix").op.input_tensors) == 3:
+            self.gemm_params.TENSOR_MAP["fix_pipe_bias"] = all_tensor.get("tensor_c_matrix").op.input_tensors[2]
 
         if self.gemm_params.nd_trans_nz_in:
             self.gemm_params.TENSOR_MAP["a_l1"] = self.gemm_params.TENSOR_MAP["a_l0a"].op.input_tensors[0]
@@ -2066,28 +2089,28 @@ class GEMM_Schedule:
             self.gemm_params.TENSOR_MAP["a_placehold"] = self.gemm_params.TENSOR_MAP["a_l1"].op.input_tensors[0]
             self.gemm_params.TENSOR_MAP["b_placehold"] = self.gemm_params.TENSOR_MAP["b_l1"].op.input_tensors[0]
         else:
-            if "tensor_a_fract" in all_tensor and "tensor_b_fract" in all_tensor:
-                self.gemm_params.TENSOR_MAP["a_l1"] = all_tensor.get("tensor_a_fract")
-                sch[self.gemm_params.TENSOR_MAP["a_l1"]].set_scope(tbe_platform_info.scope_cbuf)
-                self.gemm_params.TENSOR_MAP["b_l1"] = all_tensor.get("tensor_b_fract")
-                sch[self.gemm_params.TENSOR_MAP["b_l1"]].set_scope(tbe_platform_info.scope_cbuf)
-                self.gemm_params.nd_trans_nz_in = True
-            else:
-                self.gemm_params.TENSOR_MAP["a_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["a_placehold"],
-                                                        tbe_platform_info.scope_cbuf,
-                                                        [self.gemm_params.TENSOR_MAP["a_l0a"]])
-                self.gemm_params.TENSOR_MAP["b_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["b_placehold"],
-                                                        tbe_platform_info.scope_cbuf,
-                                                        [self.gemm_params.TENSOR_MAP["b_l0b"]])
-                self.gemm_params.nd_trans_nz_in = False
+            self.gemm_params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a_matrix").op.input_tensors[0]
+            self.gemm_params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b_matrix").op.input_tensors[0]
+            self.gemm_params.TENSOR_MAP["a_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["a_placehold"],
+                                                                 tbe_platform_info.scope_cbuf,
+                                                                 [self.gemm_params.TENSOR_MAP["a_l0a"]])
+            self.gemm_params.TENSOR_MAP["b_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["b_placehold"],
+                                                                 tbe_platform_info.scope_cbuf,
+                                                                 [self.gemm_params.TENSOR_MAP["b_l0b"]])
 
-        if self.gemm_params.nz_trans_nd_out:
-            self.gemm_params.TENSOR_MAP["origin_gm"] = res.op.input_tensors[0]
-            sch[self.gemm_params.TENSOR_MAP["origin_gm"]].compute_inline()
+        if self.gemm_params.fusion_type != FusionType.DEFAULT_MODE:
+            self.gemm_params.TENSOR_MAP["matmul_c_gm"] = all_tensor.get("tensor_c_gm")
+            sch[self.gemm_params.TENSOR_MAP["matmul_c_gm"]].compute_inline()
+            if self.gemm_params.fusion_type == FusionType.DEQUANT:
+                self.gemm_params.TENSOR_MAP["quant"] = all_tensor.get("dequant")
+            if self.gemm_params.fusion_type == FusionType.REQUANT:
+                self.gemm_params.TENSOR_MAP["quant"] = all_tensor.get("s32_to_s8")
+                self.gemm_params.TENSOR_MAP["data_transfer"] = all_tensor.get("data_transfer")
+                sch[self.gemm_params.TENSOR_MAP["data_transfer"]].compute_inline()
+            if self.gemm_params.TENSOR_MAP.get("quant") is not None:
+                self.gemm_params.TENSOR_MAP["deq"] = self.gemm_params.TENSOR_MAP["quant"].op.input_tensors[1]
+                sch[self.gemm_params.TENSOR_MAP["quant"]].compute_inline()
 
-        self.gemm_params.TENSOR_MAP["fix_pipe_bias"] = all_tensor.get("tensor_bias")
-        self.gemm_params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
-        sch[self.gemm_params.TENSOR_MAP["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
         self._get_ops_mode()
         _init_map()
 
@@ -2266,11 +2289,10 @@ class GEMM_Schedule:
         self._set_data_layout_enter(res, sch)
 
         self.gemm_params.print_ir_matmul("orgin", sch)
-        if self.gemm_params.fusion_type == FusionType.DEFAULT_MODE or self.gemm_params.cube_vector_split:
-            if "Nz_trans_ND" in res.op.attrs:
-                kernel_name = self.gemm_params.TENSOR_MAP["origin_gm"].op.attrs["kernel_name"]
-            else:
-                kernel_name = self.gemm_params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
+        if self.gemm_params.cube_vector_split and self.gemm_params.fusion_type != FusionType.DEFAULT_MODE:
+            kernel_name = self.gemm_params.TENSOR_MAP["matmul_c_gm"].op.attrs["kernel_name"]
+        elif self.gemm_params.fusion_type == FusionType.DEFAULT_MODE:
+            kernel_name = self.gemm_params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
         else:
             kernel_name = self.gemm_params.TENSOR_MAP["c_ub"].op.attrs["kernel_name"]
         self._get_trans_flag_cv_split()
@@ -2345,7 +2367,8 @@ class GEMM_Schedule:
                 self.gemm_params.TENSOR_MAP.get("zn_b_ub")
             )
 
-        if self.gemm_params.ops_mode == "int8int32" and self.gemm_params.ops_format_mode != "ND" and not self.gemm_params.MAT_MUL:
+        if self.gemm_params.ops_mode == "int8int32" and self.gemm_params.ops_format_mode != "ND" \
+            and not self.gemm_params.MAT_MUL:
             bias_ub_fract = self.gemm_params.TENSOR_MAP.get("bias_ub_fract")
 
         def _nd_process():  # pylint: disable=R0914,R0915
@@ -2353,44 +2376,6 @@ class GEMM_Schedule:
             gemm nd schdule enter
             """
             # -------------------------------------boost_schedule_kit----------#
-            def _tiling_check_none():
-                if (
-                    (tiling.get("AL1_shape") is None)
-                    or (tiling.get("BL1_shape") is None)
-                    or (tiling.get("CUB_matrix") is None)
-                ):
-                    args_dict = {
-                        "errCode": "E60114",
-                        "reason": "AL1_shape/BL1_shape/CUB_matrix can't be None",
-                        "value": "AL1_shape = {al1_shape}, BL1_shape = {bl1_shape},"
-                        " CUB_matrix = {cub_matrix}".format(
-                            al1_shape=tiling.get("AL1_shape"),
-                            bl1_shape=tiling.get("BL1_shape"),
-                            cub_matrix=tiling.get("CUB_matrix")
-                        )
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-                if (
-                    (tiling.get("AL0_matrix") is None)
-                    or (tiling.get("BL0_matrix") is None)
-                    or (tiling.get("CL0_matrix") is None)
-                ):
-                    args_dict = {
-                        "errCode": "E60114",
-                        "reason": "AL0_matrix/BL0_matrix/CL0_matrix can't be None",
-                        "value": "AL0_matrix = {al0_matrix}, BL0_matrix = "
-                        "{bl0_matrix}, CL0_matrix = {cl0_matrix}".format(
-                            al0_matrix=tiling.get("AL0_matrix"),
-                            bl0_matrix=tiling.get("BL0_matrix"),
-                            cl0_matrix=tiling.get("CL0_matrix")
-                        )
-                    }
-                    raise RuntimeError(
-                        args_dict, error_manager_util.get_error_message(args_dict)
-                    )
-
             def _tiling_l0_process():
                 if tiling.get("BL0_matrix") != []:
                     (
@@ -2713,7 +2698,7 @@ class GEMM_Schedule:
                 l1_ka = (al1_tiling_k + al0_tiling_k0 - 1) // al0_tiling_k0
                 al1_shape = list(i.value for i in a_l1.shape)
                 if self.gemm_params.cube_vector_split:
-                    tiling_ori_al1 = l1_ka, l1_ma,  al0_tiling_m0, al0_tiling_k0
+                    tiling_ori_al1 = l1_ka, l1_ma, al0_tiling_m0, al0_tiling_k0
                     al1_shape[1] = al1_shape[1] // tiling.get("block_dim")[2]
                 else:
                     if self.gemm_params.ops_mode == "int8int32":
@@ -3099,14 +3084,6 @@ class GEMM_Schedule:
                     _bl1_process()
                     _al1_process()
 
-            def _do_ub_process():
-                if aub_tiling_k < bub_tiling_k:
-                    _aub_process()
-                    _bub_process()
-                else:
-                    _bub_process()
-                    _aub_process()
-
             def _do_l1_ub_process():
                 if self.gemm_params.cube_vector_split:
                     _do_l1_process()
@@ -3348,7 +3325,7 @@ class GEMM_Schedule:
                     sch_agent[c_ub_temp].reorder(outer1, outer2, inner1, inner2)
                     sch_agent[c_ub_temp].emit_insn(inner1, "vector_add")
 
-                if self.gemm_params.nz_trans_nd_out:
+                if self.gemm_params.fusion_type == FusionType.TRANSDADA:
                     dma_dict = {"layout_transform": "nz2nd"}
                     sch_agent[c_gm].emit_insn(scope_c, "dma_copy", dma_dict)
                 else:
@@ -3795,6 +3772,20 @@ class GEMM_Schedule:
                     sch[bias_l1].compute_at(sch[c_l0c], bl0_n_outer)
                 sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
 
+            def _fix_pipe_deq_process():
+                deq = self.gemm_params.TENSOR_MAP.get("deq")
+                quant = self.gemm_params.TENSOR_MAP.get("quant")
+                deq_l1 = sch.cache_read(deq, tbe_platform_info.scope_cbuf, [quant])
+                deq_fb = sch.cache_read(deq_l1, "local.FB0", [quant])
+                sch[deq_fb].compute_at(sch[c_gm], c_slice_axis)
+                sch[deq_fb].emit_insn(deq_fb.op.axis[0], "dma_copy")
+                if bl1_parts[1] == 1:
+                    sch[deq_l1].compute_at(sch[c_gm], batch_in_out_axis)
+                else:
+                    sch[deq_l1].compute_at(sch[c_gm], c_slice_axis)
+                sch[deq_l1].emit_insn(deq_l1.op.axis[0], "dma_copy")
+                
+
             def _attach_ub(sch, c_gm, at_axis):
                 """
                 tensor cub
@@ -3954,7 +3945,8 @@ class GEMM_Schedule:
             fix_pipe_bias = self.gemm_params.TENSOR_MAP.get("fix_pipe_bias")
             if fix_pipe_bias is not None:
                 _buffer_table_bias_process()
-
+            if self.gemm_params.TENSOR_MAP.get("deq") is not None:
+                _fix_pipe_deq_process()
             self.gemm_params.print_ir_matmul("before attach aub bub", sch)
 
             def _attach_aub_bub(al1_at_tensor, bl1_at_tensor):
@@ -4221,6 +4213,9 @@ class GEMM_Schedule:
 
                 for temp_tensor in temp_tensor_list:
                     sch[temp_tensor].emit_insn(temp_tensor.op.axis[0], "dma_copy")
+                if self.gemm_params.fusion_type == FusionType.REQUANT:
+                    n_block_outer, n_block_inner = sch[c_gm].split(c_gm.op.axis[-1], 16)
+                    m_axis = sch[c_gm].fuse(l0c_m_inner, c_gm.op.axis[-2])
 
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
@@ -4307,9 +4302,11 @@ class GEMM_Schedule:
                 al1_axis = None
                 bl1_axis = None
             _do_double_buffer_common()
-            _do_double_buffer_ub()
+            if not self.gemm_params.cube_vector_split:
+                _do_double_buffer_ub()
             _do_intrin_mapping_common(al1_axis, bl1_axis)
-            _do_intrin_mapping_ub(zn_b_ub_k_out)
+            if not self.gemm_params.cube_vector_split:
+                _do_intrin_mapping_ub(zn_b_ub_k_out)
             self.gemm_params.print_ir_matmul("finish", sch)
 
         if self.gemm_params.ops_format_mode == "ND":

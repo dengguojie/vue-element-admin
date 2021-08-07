@@ -77,7 +77,8 @@ def _is_support_v200_instruction():
                                                              "Ascend610",
                                                              "Ascend615",
                                                              "Hi3796CV300CS",
-                                                             "SD3403"):
+                                                             "SD3403",
+                                                             "Ascend920"):
         return True
     return False
 
@@ -554,7 +555,7 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
     if x.op.tag != "depthwise_conv2d":
         align_shape[2] = (align_shape[2] + 15) // 16 * 16
 
-    if x.op.tag == "matmul" or x.op.tag == "matmul_gemv" or x.op.tag == "matmul_gevm":
+    if x.op.tag in ("matmul", "matmul_gemv", "matmul_gevm", "gemm"):
         shape_matmul_origin = x.op.attrs["shape"]
         c1_index = len(x_shape) - 4
         res = _matmul_compute(x, x_shape, deq_scale, sqrt_mode, relu_flag, shape_matmul_origin, c1_index, tensor_flag)

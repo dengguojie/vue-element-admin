@@ -4108,7 +4108,14 @@ class MatMulCompute:
         temp_tensor_b = self.tensor_b
 
         # to Zn
-        if self.src_dtype == "float16" or (self.src_dtype == "int8" and self.trans_b):
+        if self.format_b == "FRACTAL_Z":
+            b_matrix = tvm.compute(
+                temp_tensor_b.shape,
+                lambda *indices: temp_tensor_b(*indices),
+                name="tensor_b_matrix",
+                attrs={"transpose_b": "false"}
+            )
+        elif self.src_dtype == "float16" or (self.src_dtype == "int8" and self.trans_b):
             b_matrix_shape = [kn_shape, n_shape, block_out, block_reduce]
             if self.batch_shape_b:
                 b_matrix_shape.insert(0, self.batch_shape_b)
@@ -4198,11 +4205,14 @@ class MatMulCompute:
         nd_ori_out_shape = [self.origin_m_shape, self.origin_n_shape]
         if self.batch_shape_a:
             nz_out_shape.insert(0, self.batch_shape_a)
+            nd_ori_out_shape.insert(0, self.batch_shape_a)
         tensor_c_gm = tvm.compute(nz_out_shape,
-                                    lambda *indices: tensor_c_matrix(*indices).astype(self.dst_dtype),
-                                    tag="gemm",
-                                    name="tensor_c_gm",
-                                    attrs={"kernel_name": self.kernel_name, "ori_nd_shape": nd_ori_out_shape})
+                                  lambda *indices: tensor_c_matrix(*indices).astype(self.dst_dtype),
+                                  tag="gemm",
+                                  name="tensor_c_gm",
+                                  attrs={"kernel_name": self.kernel_name,
+                                         "ori_nd_shape": nd_ori_out_shape,
+                                         "shape": nz_out_shape})
 
         return tensor_c_gm
 

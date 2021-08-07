@@ -14,6 +14,8 @@ from impl.leaky_relu import leaky_relu_compute
 from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from impl.trans_data import trans_data_compute
+from impl.ascend_dequant import ascend_dequant_compute
+from impl.ascend_requant import ascend_requant_compute
 from te.platform.cce_conf import te_set_version
 ut_case = OpUT("MatMul", None, None)
 
@@ -288,6 +290,48 @@ def test_matmul_trans_data_fusion_920_2(test_arg):
         cce_build_code(sch, config)
     te_set_version('Ascend910A')
 
+def test_matmul_dequant(test_arg):
+    te_set_version("Ascend920A")
+    with cce():
+        input_x1 = tvm.placeholder((4, 2, 16, 32), name="x1", dtype="int8", attrs={"ori_shape": (32, 128), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        input_x2 = tvm.placeholder((4, 2, 16, 32), name="x2", dtype="int8", attrs={"ori_shape": (128, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
+        bias = tvm.placeholder((32,), name="bias", dtype="int32", attrs={"ori_shape": (32,), "format": "ND", "ori_format": "ND"})
+        output_y = {"shape": (2, 2, 16, 16), "ori_shape": (32, 32), "dtype": "int32", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(input_x1, input_x2, bias, None, output_y, False, False, 0)
+        deq_scale = tvm.placeholder((1, 2, 1, 1, 16), name="deq_scale", dtype="uint64", attrs={"ori_shape": (32,), "format": "NC1HWC0", "ori_format": "ND"})
+        out = ascend_dequant_compute(matmul_out, deq_scale, None, False, False)
+        tensor_list = [input_x1, input_x2, bias, deq_scale, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_transdata_fusion_1",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version('Ascend910A')
+
+def test_matmul_requant(test_arg):
+    te_set_version("Ascend920A")
+    with cce():
+        input_x1 = tvm.placeholder((4, 2, 16, 32), name="x1", dtype="int8", attrs={"ori_shape": (32, 128), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        input_x2 = tvm.placeholder((4, 2, 16, 32), name="x2", dtype="int8", attrs={"ori_shape": (128, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
+        bias = tvm.placeholder((32,), name="bias", dtype="int32", attrs={"ori_shape": (32,), "format": "ND", "ori_format": "ND"})
+        output_y = {"shape": (2, 2, 16, 16), "ori_shape": (32, 32), "dtype": "int32", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(input_x1, input_x2, bias, None, output_y, False, False, 0)
+        req_scale = tvm.placeholder((1, 2, 1, 1, 16), name="deq_scale", dtype="uint64", attrs={"ori_shape": (32,), "format": "NC1HWC0", "ori_format": "ND"})
+        out = ascend_requant_compute(matmul_out, req_scale, None, False)
+        tensor_list = [input_x1, input_x2, bias, req_scale, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_transdata_fusion_1",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version('Ascend910A')
+
 
 def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
@@ -339,6 +383,8 @@ ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
 ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
+ut_case.add_cust_test_func(test_func=test_matmul_dequant)
+ut_case.add_cust_test_func(test_func=test_matmul_requant)
 
 def test_check_support(test_arg):
     from tbe.common.context import op_context

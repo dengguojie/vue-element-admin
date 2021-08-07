@@ -47,7 +47,7 @@ def is_nz_format(tensor, is_quant=False):
     """
     check is nz format
     """
-    if "matmul" in tensor.op.tag:
+    if "matmul" in tensor.op.tag or "gemm" in tensor.op.tag:
         return True
 
     tensor_format = "NC1HWC0"

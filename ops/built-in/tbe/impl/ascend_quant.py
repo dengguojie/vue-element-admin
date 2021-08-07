@@ -343,7 +343,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     -------
     None
     """
-    dtype = x.dtype
+    x_dtype = x.dtype
     in_shape, l1_fusion_flag = _get_input_l1_info(x)
     y_addr_type = _get_out_l1_info(y)
 
@@ -369,7 +369,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
 
     input_ub = _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index, c1_transform)
     attr_list = (scale, offset, sqrt_mode, y_dtype)
-    if dtype == "float32":
+    if x_dtype == "float32":
         cast_f16_ub = tvm.compute(read_shape, lambda *indice: shape_util.cast(input_ub(*indice), "float16"),
                                   name="cast_f16_ub")
         cast_i8_or_i4_ub = _compute_scale(cast_f16_ub, in_shape, out_shape, attr_list, nz_format_flag)
