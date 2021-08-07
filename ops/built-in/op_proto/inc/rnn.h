@@ -822,7 +822,7 @@ REG_OP(DynamicGRU)
 *@li weight_hidden:Must be one of the following types: float16. The format must be FRACTAL_Z.
 *@li bias_input:Must be one of the following types: float16, float32. The format must be ND.
 *@li bias_hidden:Must be one of the following types: float16, float32. The format must be ND.
-*@li seq_length:Must be one of the following types: int32, float16. The format must be ND.
+*@li seq_length:Must be one of the following types: int32. The format must be ND.
 *@li init_h:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 
 *@par Attributes:
@@ -852,7 +852,7 @@ REG_OP(DynamicGRUV2)
     .INPUT(weight_hidden, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(bias_input, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(bias_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32, DT_FLOAT16}))
+    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32}))
     .OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -880,7 +880,7 @@ REG_OP(DynamicGRUV2)
 *@li x_weight_input:Must be one of the following types: float32. The format must be FRACTAL_NZ.
 *@li weight_hidden:Must be one of the following types: float16. The format must be FRACTAL_Z.
 *@li bias_hidden:Must be one of the following types: float16, float32. The format must be ND.
-*@li seq_length:Must be one of the following types: int32, float16. The format must be ND.
+*@li seq_length:Must be one of the following types: int32. The format must be ND.
 *@li init_h:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 
 *@par Attributes:
@@ -913,7 +913,7 @@ REG_OP(DynamicGRUV2Hidden)
     .INPUT(x_weight_input, TensorType({DT_FLOAT32}))
     .INPUT(weight_hidden, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(bias_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32, DT_FLOAT16}))
+    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32}))
     .OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))

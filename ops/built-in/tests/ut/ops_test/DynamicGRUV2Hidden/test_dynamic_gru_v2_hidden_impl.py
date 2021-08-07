@@ -472,3 +472,9 @@ ut_case.add_case("all", {
 ut_case.add_case("all", {
     "params": [cache, w2, b2, seq, None, output_y, output_h, None, None, None, None]
 })
+shape_seq = [2, 32, 32, 16, 16]
+seq_wrong = {"shape":shape_seq, "dtype":'float16', "param_type": "input", "value_range": [0.01, 0.1], "ori_format": "NC1HWC0", "format": "FRACTAL_NZ", "ori_shape": shape_seq}
+ut_case.add_case("all", {
+    "params": [cache, w2, b2, seq_wrong, None, output_y, output_h, None, None, None, None],
+    "expect": RuntimeError
+})

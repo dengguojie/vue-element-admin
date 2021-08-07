@@ -227,11 +227,13 @@ def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
         if seq_length.get("dtype").lower() == "int32":
             if (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
                 error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
-                                                          "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
-                                                          "seq_length.shape[0]", output_h["shape"][2])
+                                                          "(seq_length.shape[0] + 15)/16 == output_h.shape[2]",
+                                                          "output_h.shape[2]", output_h["shape"][2])
         else:
             if seq_length["shape"] != output_h["shape"]:
-                error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden: seq_length.shape != output_h.shape")
+                error_manager_vector.raise_err_check_params_rules("DynamicGRUV2Hidden",
+                                                           "seq_length.shape == output_h.shape",
+                                                           "output_h.shape", output_h["shape"])
 
     # k_size
     if weight_hidden["shape"][0] != output_h["shape"][1]:
