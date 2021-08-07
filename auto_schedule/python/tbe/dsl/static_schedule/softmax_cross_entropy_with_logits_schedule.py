@@ -1219,6 +1219,21 @@ def _get_tiling_large_axis_workspace(shape, dtype):
 
     ub_factor = get_nearest_factor(c_size, temp_size)
 
+    # calculation error between cores
+    def _cal_tail_num():
+        loop_time = c_size // ub_factor
+        tail_num = c_size - loop_time * ub_factor
+        return tail_num
+
+    tail_num = _cal_tail_num()
+    while tail_num < min_num_size_one_core and ub_factor > 1:
+        ub_factor = ub_factor - 1
+        tail_num = _cal_tail_num()
+
+    if ub_factor == 1:
+        block_outer = 1
+        block_factor = batch
+
     return block_outer, block_factor, ub_factor
 
 

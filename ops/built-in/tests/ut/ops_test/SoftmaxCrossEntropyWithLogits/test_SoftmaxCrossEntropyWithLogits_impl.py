@@ -133,6 +133,22 @@ case16 = {"params": [{"shape": (14, 11760), "dtype": "float32", "format": "NHWC"
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case17 = {"params": [{"shape": (2125, 10881), "dtype": "float32", "format": "NHWC", "ori_shape": (2125, 10881),"ori_format": "NHWC"},
+                     {"shape": (2125, 10881), "dtype": "float32", "format": "NHWC", "ori_shape": (14, 11760),"ori_format": "NHWC"},
+                     {"shape": (2125,), "dtype": "float32", "format": "NHWC", "ori_shape": (2125,),"ori_format": "NHWC"},
+                     {"shape": (2125, 10881), "dtype": "float32", "format": "NHWC", "ori_shape": (2125, 10881),"ori_format": "NHWC"}],
+         "case_name": "softmax_cross_entropy_with_logits_17",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case18 = {"params": [{"shape": (17660, 8), "dtype": "float16", "format": "NHWC", "ori_shape": (17660, 8),"ori_format": "NHWC"},
+                     {"shape": (17660, 8), "dtype": "float16", "format": "NHWC", "ori_shape": (17660, 8),"ori_format": "NHWC"},
+                     {"shape": (17660,), "dtype": "float16", "format": "NHWC", "ori_shape": (17660,),"ori_format": "NHWC"},
+                     {"shape": (17660, 8), "dtype": "float16", "format": "NHWC", "ori_shape": (17660, 8),"ori_format": "NHWC"}],
+         "case_name": "softmax_cross_entropy_with_logits_18",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 def test_get_op_support_info(test_arg):
     from impl.softmax_cross_entropy_with_logits import get_op_support_info
     get_op_support_info({"shape": (16, 16, 256, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 256, 16), "ori_format": "NCHW"},
@@ -172,6 +188,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case13)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case14)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case15)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case16)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case17)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case18)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 def calc_expect_func(x1, x2, y1, y2):
