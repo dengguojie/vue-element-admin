@@ -53,8 +53,6 @@ TEST_F(DynamicGruTest, dynamic_gru_test_case_1) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
   std::vector<int64_t> expected_output_shape = {t, batch, outputSize};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  EXPECT_EQ(dynamic_gru_op.GetInputDesc("w").GetFormat(), ge::FORMAT_HWCN);
-  EXPECT_EQ(dynamic_gru_op.GetInputDesc("cw").GetFormat(), ge::FORMAT_HWCN);
 }
 
 TEST_F(DynamicGruTest, dynamic_gru_test_case_2) {

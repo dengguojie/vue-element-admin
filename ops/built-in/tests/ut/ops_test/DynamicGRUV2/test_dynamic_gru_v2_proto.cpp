@@ -67,8 +67,6 @@ TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_2) {
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {t, batch, hidden_size};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-    EXPECT_EQ(op.GetInputDesc("weight_input").GetFormat(), ge::FORMAT_HWCN);
-    EXPECT_EQ(op.GetInputDesc("weight_hidden").GetFormat(), ge::FORMAT_HWCN);
 }
 
 TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_3) {
@@ -103,6 +101,4 @@ TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_3) {
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {t, batch, hidden_size};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-    EXPECT_EQ(op.GetInputDesc("weight_input").GetFormat(), ge::FORMAT_HWCN);
-    EXPECT_EQ(op.GetInputDesc("weight_hidden").GetFormat(), ge::FORMAT_HWCN);
 }

@@ -763,73 +763,6 @@ IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
 INFER_FUNC_REG(BasicRNNCell, BasicRNNCellInferShape);
 VERIFY_FUNC_REG(BasicRNNCell, BasicRNNCellVerify);
 
-IMPLEMT_VERIFIER(DynamicGRU, DynamicGRUVerify) {
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_INFERFUNC(DynamicGRU, DynamicGRUInferShape) {
-  ge::TensorDesc x_tensor_desc = op.GetInputDesc("x");
-  ge::TensorDesc w_tensor_desc = op.GetInputDesc("w");
-  ge::TensorDesc cw_tensor_desc = op.GetInputDesc("cw");
-  ge::TensorDesc b_tensor_desc = op.GetInputDesc("b");
-  ge::Shape shape_x = x_tensor_desc.GetShape();
-  ge::Shape shape_w = w_tensor_desc.GetShape();
-  DataType bias_dtype = b_tensor_desc.GetDataType();
-
-  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
-  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
-  TensorDesc r_tensor_desc = op.GetOutputDesc("r");
-  TensorDesc i_tensor_desc = op.GetOutputDesc("i");
-  TensorDesc n_tensor_desc = op.GetOutputDesc("n");
-
-  int64_t dim_num = shape_x.GetDimNum();
-  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
-        OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3"),
-        return GRAPH_FAILED);
-
-  int64_t num_step = shape_x.GetDims().at(0);
-  int64_t batch_size = shape_x.GetDims().at(1);
-  int64_t hidden_size = shape_w.GetDims().at(1) / 2;
-
-  vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
-
-  y_tensor_desc.SetShape(ge::Shape(output_dims));
-  h_tensor_desc.SetShape(ge::Shape(output_dims));
-  r_tensor_desc.SetShape(ge::Shape(output_dims));
-  i_tensor_desc.SetShape(ge::Shape(output_dims));
-  n_tensor_desc.SetShape(ge::Shape(output_dims));
-
-  y_tensor_desc.SetDataType(bias_dtype);
-  h_tensor_desc.SetDataType(bias_dtype);
-  r_tensor_desc.SetDataType(bias_dtype);
-  i_tensor_desc.SetDataType(bias_dtype);
-  n_tensor_desc.SetDataType(bias_dtype);
-
-  CHECK(op.UpdateOutputDesc("y", y_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-
-  CHECK(op.UpdateOutputDesc("output_h", h_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-  CHECK(op.UpdateOutputDesc("r", r_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-  CHECK(op.UpdateOutputDesc("i", i_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-  CHECK(op.UpdateOutputDesc("n", n_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-
-  w_tensor_desc.SetFormat(ge::FORMAT_HWCN);
-  cw_tensor_desc.SetFormat(ge::FORMAT_HWCN);
-  CHECK(op.UpdateInputDesc("w", w_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateInputDesc failed."), return GRAPH_FAILED);
-  CHECK(op.UpdateInputDesc("cw", cw_tensor_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-
-  return GRAPH_SUCCESS;
-}
-
-INFER_FUNC_REG(DynamicGRU, DynamicGRUInferShape);
-VERIFY_FUNC_REG(DynamicGRU, DynamicGRUVerify);
-
 IMPLEMT_VERIFIER(DynamicGRUV2, DynamicGRUV2Verify) {
   return GRAPH_SUCCESS;
 }
@@ -864,6 +797,7 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
 
   int64_t num_step = shape_x.GetDims().at(0);
   int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t input_size = shape_x.GetDims().at(2);
   int64_t hidden_size = shape_w_hidden.GetDims().at(0);
 
   vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
@@ -895,18 +829,92 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
   CHECK(op.UpdateOutputDesc("hidden_new", new_tensor_desc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
-  w_input_tensor_desc.SetFormat(FORMAT_HWCN);
-  w_hidden_tensor_desc.SetFormat(FORMAT_HWCN);
+  w_input_tensor_desc.SetFormat(FORMAT_ND);
+  w_hidden_tensor_desc.SetFormat(FORMAT_ND);
   CHECK(op.UpdateInputDesc("weight_input", w_input_tensor_desc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateIntputDesc failed."), return GRAPH_FAILED);
   CHECK(op.UpdateInputDesc("weight_hidden", w_hidden_tensor_desc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  ge::AttrUtils::SetInt(op_desc, "input_size", input_size);
+  ge::AttrUtils::SetInt(op_desc, "hidden_size", hidden_size);
 
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(DynamicGRUV2, DynamicGRUV2InferShape);
 VERIFY_FUNC_REG(DynamicGRUV2, DynamicGRUV2Verify);
+
+IMPLEMT_VERIFIER(DynamicGRU, DynamicGRUVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicGRU, DynamicGRUInferShape) {
+  ge::TensorDesc x_tensor_desc = op.GetInputDesc("x");
+  ge::TensorDesc w_tensor_desc = op.GetInputDesc("w");
+  ge::TensorDesc cw_tensor_desc = op.GetInputDesc("cw");
+  ge::TensorDesc b_tensor_desc = op.GetInputDesc("b");
+  ge::Shape shape_x = x_tensor_desc.GetShape();
+  ge::Shape shape_w = w_tensor_desc.GetShape();
+  DataType bias_dtype = b_tensor_desc.GetDataType();
+
+  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
+  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
+  TensorDesc r_tensor_desc = op.GetOutputDesc("r");
+  TensorDesc i_tensor_desc = op.GetOutputDesc("i");
+  TensorDesc n_tensor_desc = op.GetOutputDesc("n");
+
+  int64_t dim_num = shape_x.GetDimNum();
+  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
+        OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3"),
+        return GRAPH_FAILED);
+
+  int64_t num_step = shape_x.GetDims().at(0);
+  int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t input_size = shape_x.GetDims().at(2);
+  int64_t hidden_size = shape_w.GetDims().at(1) / 2;
+
+  vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
+
+  y_tensor_desc.SetShape(ge::Shape(output_dims));
+  h_tensor_desc.SetShape(ge::Shape(output_dims));
+  r_tensor_desc.SetShape(ge::Shape(output_dims));
+  i_tensor_desc.SetShape(ge::Shape(output_dims));
+  n_tensor_desc.SetShape(ge::Shape(output_dims));
+
+  y_tensor_desc.SetDataType(bias_dtype);
+  h_tensor_desc.SetDataType(bias_dtype);
+  r_tensor_desc.SetDataType(bias_dtype);
+  i_tensor_desc.SetDataType(bias_dtype);
+  n_tensor_desc.SetDataType(bias_dtype);
+
+  CHECK(op.UpdateOutputDesc("y", y_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  CHECK(op.UpdateOutputDesc("output_h", h_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("r", r_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("i", i_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("n", n_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  w_tensor_desc.SetFormat(ge::FORMAT_ND);
+  cw_tensor_desc.SetFormat(ge::FORMAT_ND);
+  CHECK(op.UpdateInputDesc("w", w_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateInputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateInputDesc("cw", cw_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::AttrUtils::SetInt(op_desc, "input_size", input_size);
+  ge::AttrUtils::SetInt(op_desc, "hidden_size", hidden_size);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicGRU, DynamicGRUInferShape);
+VERIFY_FUNC_REG(DynamicGRU, DynamicGRUVerify);
 
 IMPLEMT_VERIFIER(DynamicGRUV2Grad, DynamicGRUV2GradVerify) {
   return GRAPH_SUCCESS;
@@ -1245,8 +1253,6 @@ IMPLEMT_INFERFUNC(CommonGRU, CommonGRUInferShape) {
   (void) op.UpdateOutputDesc("y", y_tensor_desc);
   (void) op.UpdateOutputDesc("y_h", y_h_tensor_desc);
 
-  w_tensor_desc.SetFormat(FORMAT_HWCN);
-  r_tensor_desc.SetFormat(FORMAT_HWCN);
   (void) op.UpdateInputDesc("w", w_tensor_desc);
   (void) op.UpdateInputDesc("r", r_tensor_desc);
 
