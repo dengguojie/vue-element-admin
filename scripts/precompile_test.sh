@@ -73,6 +73,10 @@ install_all_stest() {
   rm -rf "${TEST_INSTALL_PATH}/aicpu*"
 }
 
+install_sch_all_stest(){
+  cp -rf "$SCH_ST_SOURCE_DIR" "${TEST_INSTALL_PATH}"
+}
+
 install_script() {
   echo "[INFO] install run_ops_test.sh"
   cp -f "${CUR_PATH}/util/run_ops_st.sh" "${TEST_BIN_PATH}"
@@ -102,6 +106,9 @@ main() {
       echo "[ERROR] A input file that contains files changed is required"
       exit $STATUS_SUCCESS
     fi
+  elif [[ "${pr_file}" == "auto_schedule" ]];then
+      install_sch_all_stest
+      install_sch_script
   else
     ops_str=`cat ${pr_file} | awk -F\/ '{print $1}' | grep -v "auto_schedule"`
     if [[ -n "${ops_str}" ]]; then
