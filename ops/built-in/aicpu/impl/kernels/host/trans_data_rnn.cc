@@ -33,6 +33,27 @@ namespace aicpu {
 
 TransDataRNNCpuKernel::TransDataRNNCpuKernel() {}
 
+template <typename T>
+static uint32_t DealBiasData(T *outputData, T *inputData, int32_t dstLen, 
+                             int32_t hiddenSize, int32_t hiddenCnt, int32_t hiddenSizeAlign) {
+  auto retMem = memset_s(outputData, dstLen * sizeof(T), 0, dstLen * sizeof(T));
+  if (retMem != 0) {
+    KERNEL_LOG_ERROR("TransDataRNN, GenDataNdRnnBias, memset_s failed");
+    return KERNEL_STATUS_INNER_ERROR;
+  }
+
+  int32_t dstIndex = 0;
+  int32_t srcIndex = 0;
+  for (int32_t i = 0; i < hiddenCnt; i++) {
+    for (int32_t j = 0; j < hiddenSize; j++) {
+      srcIndex = i * hiddenSize + j;
+      dstIndex = i * hiddenSizeAlign + j;
+      outputData[dstIndex] = inputData[srcIndex];
+    }
+  }
+  return KERNEL_STATUS_OK;
+}
+
 uint32_t TransDataRNNCpuKernel::GenDataNdRnnBias(std::vector<int64_t> &dims, int32_t hiddenSize,
                                                  const Tensor *srcTensor, Tensor *dstTensor) {
   if (dims.size() != 1) {
@@ -49,32 +70,28 @@ uint32_t TransDataRNNCpuKernel::GenDataNdRnnBias(std::vector<int64_t> &dims, int
   int32_t hiddenCnt = shape0 / hiddenSize;
   int32_t hiddenSizeAlign = (hiddenSize + (ALIGN_16 - 1)) / ALIGN_16 * ALIGN_16;
   int32_t dstLen = hiddenSizeAlign * hiddenCnt;
+  int32_t dtSize = 0;
 
   auto srcData = srcTensor->GetData();
   KERNEL_CHECK_NULLPTR(srcData, KERNEL_STATUS_PARAM_INVALID, "TransDataRNN, get src data failed");
-  Eigen::half *inputData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(srcData));
-
   auto dstData = dstTensor->GetData();
   KERNEL_CHECK_NULLPTR(dstData, KERNEL_STATUS_PARAM_INVALID, "TransDataRNN, get output data failed");
-  Eigen::half *outputData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(dstData));
 
-  auto retMem = memset_s(outputData, dstLen, 0, dstLen);
-  if (retMem != 0) {
-    KERNEL_LOG_ERROR("TransDataRNN, GenDataNdRnnBias, memset_s failed");
-    return KERNEL_STATUS_INNER_ERROR;
+  DataType dt = static_cast<DataType>(srcTensor->GetDataType());
+  uint32_t ret = KERNEL_STATUS_INNER_ERROR;
+  if (dt == DT_FLOAT16) {
+    Eigen::half *inputData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(srcData));
+    Eigen::half *outputData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(dstData));
+    ret = DealBiasData<Eigen::half>(outputData, inputData, dstLen, hiddenSize, hiddenCnt, hiddenSizeAlign);
+  } else if (dt == DT_FLOAT) {
+    float *inputData = const_cast<float *>(reinterpret_cast<const float *>(srcData));
+    float *outputData = const_cast<float *>(reinterpret_cast<const float *>(dstData));
+    ret = DealBiasData<float>(outputData, inputData, dstLen, hiddenSize, hiddenCnt, hiddenSizeAlign);
+  } else {
+    KERNEL_LOG_ERROR("TransDataRNN, GenDataNdRnnBias, src dtype must be float16 or float32");
+    ret = KERNEL_STATUS_PARAM_INVALID;
   }
-
-  int32_t dstIndex = 0;
-  int32_t srcIndex = 0;
-  for (int32_t i = 0; i < hiddenCnt; i++) {
-    for (int32_t j = 0; j < hiddenSize; j++) {
-      srcIndex = i * hiddenSize + j;
-      dstIndex = i * hiddenSizeAlign + j;
-      outputData[dstIndex] = inputData[srcIndex];
-    }
-  }
-
-  return KERNEL_STATUS_OK;
+  return ret;
 }
 
 uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims, int32_t hiddenSize, int32_t inputSize,
@@ -257,8 +274,8 @@ uint32_t TransDataRNNCpuKernel::Compute(CpuKernelContext &ctx) {
 
   DataType srcDtype = static_cast<DataType>(srcTensor->GetDataType());
   DataType dstDtype = static_cast<DataType>(dstTensor->GetDataType());
-  if (srcDtype != DT_FLOAT16 || dstDtype != DT_FLOAT16) {
-    KERNEL_LOG_ERROR("TransdataRNN, src and dst dtype must be float16");
+  if (dstFormat == "FRACTAL_ZN_RNN" && (srcDtype != DT_FLOAT16 || dstDtype != DT_FLOAT16)) {
+    KERNEL_LOG_ERROR("TransdataRNN, dst format FRACTAL_ZN_RNN src and dst dtype must be float16");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
