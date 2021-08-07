@@ -335,9 +335,9 @@ def test_conv2d_compress(test_arg):
 
     def test_cce_conv200():
         global bin_path_val
-        cceconf.cce_conf.te_set_version("Hi3796CV300ES")
-        testcases = tc.gen_dict_4_op("conv_compress", platform="Hi3796CV300ES")
-        print("Hi3796CV300ES:", testcases)
+        cceconf.cce_conf.te_set_version("Hi3796CV300CS")
+        testcases = tc.gen_dict_4_op("conv_compress", platform="Hi3796CV300CS")
+        print("Hi3796CV300CS:", testcases)
         bin_path_val = "./llt/ops/common/kernel_bin/conv_compress/"
         print("bin_path_val:", bin_path_val)
         run_testcase(testcases, _test_conv_lhisi)

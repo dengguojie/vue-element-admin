@@ -73,6 +73,7 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
     """
     if groups != 1:
         err_man_cube.raise_err_specific("conv2d_compress", "conv2dcompress_compute only supports groups=1")
+    util_conv2d.check_soc_and_dtype({"conv2d_compress": [inputs, weight_compress, compress_index]})
     compress_index_shape = compress_index.shape[0]
 
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
@@ -138,6 +139,7 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
     if groups != 1:
         err_man_cube.raise_err_three_paras("E62305", "conv2d_compress",
                                            "groups", "1", "groups={}".format(groups))
+    util_conv2d.check_soc_and_dtype({"conv2d_compress": [inputs, weight_compress, compress_index]})
     in_dtype = inputs.get("dtype")
     w_dtype = weight_compress.get("dtype")
     res_dtype = outputs.get("dtype")

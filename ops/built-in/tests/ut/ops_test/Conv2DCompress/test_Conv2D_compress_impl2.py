@@ -18,7 +18,8 @@ def test_conv2d_compress_impl2(test_arg):
     from impl.ascend_dequant import ascend_dequant_compute
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
-    # cce_conf.te_set_version(["Hi3796CV300ES", "Hi3796CV300CS"])
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    cce_conf.te_set_version("Hi3796CV300CS")
 
     def conv2d_compress_test(fmap_shape, filters_shape, bias_flag, strides, pads, dilations, dtype="int8"):
         if dtype == "int8":
@@ -44,13 +45,13 @@ def test_conv2d_compress_impl2(test_arg):
         output_shape_5hd = [batch, channel_out1, height_out, width_out, channel_out0]
 
         inputs = {"shape": fmap_shape_5hd, "ori_shape": fmap_shape, "format": "NC1HWC0", "ori_format": "NCHW",
-                  "dtype": "float16"}
+                  "dtype": "int8"}
         weight = {"shape": filters_shape_fz, "ori_shape": filters_shape, "format": "FRACTAL_Z", "ori_format": "NCHW",
-                  "dtype": "float16"}
+                  "dtype": "int8"}
         index = {"shape": [channel_out1 * channel_out0], "ori_shape": [channel_out], "format": "ND", "ori_format": "ND",
-                 "dtype": "float16"}
+                 "dtype": "int8"}
         outputs = {"shape": output_shape_5hd, "ori_shape": output_shape, "format": "NC1HWC0", "ori_format": "NCHW",
-                   "dtype": "float16"}
+                   "dtype": "int32"}
         bias = None
         offset_w = None
         groups = 1
@@ -83,5 +84,5 @@ ut_case.add_cust_test_func(test_func=test_conv2d_compress_impl2)
 
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=test_conv2d_compress_impl2)
-    ut_case.run(["Hi3796CV300ES", "Hi3796CV300CS"])
+    ut_case.run(["Hi3796CV300CS"])
     exit(0)

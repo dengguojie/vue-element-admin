@@ -8,6 +8,7 @@ provide common function used by conv2d
 """
 
 import math
+from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import CUBE_MKN
@@ -637,3 +638,63 @@ def use_v200_c04_check(shape_fm, shape_filter, params):
     if minimum_load_L1 < get_soc_spec("L1_SIZE"):
         use_v200_c04_flg = True
     return use_v200_c04_flg
+
+def check_soc_and_dtype(op_params):
+    """
+    simply check op support version and input dtype
+
+    Notice
+    ------
+    data type only check required tensors
+
+    Parameters
+    ----------
+    op_params: op name and input tensors
+        {
+            "conv2d_compress": [inputs, weight_compress, compress_index]
+        }
+
+    Returns
+    -------
+    None
+    """
+    valid = isinstance(op_params, dict) and len(op_params) > 0
+    if not valid:
+        err_man.raise_err_message_cube(f"input op_params {op_params} is invalid")
+    # "soc_version" is required, should be list and "All" means support all version
+    # "data_type" is required, should be list and length be equal to input tensors
+    support_info = {
+        "conv2d_compress": {
+            "soc_version": ["Hi3796CV300CS", "SD3403"],
+            "data_type": [
+                ["int8", "int8", "int8"],
+            ],
+        },
+    }
+    version = get_soc_spec("SOC_VERSION")
+    for op_name, tensor_list in op_params.items():
+        if op_name not in support_info:
+            err_man.raise_err_message_cube(f"op_name should be in {list(support_info.keys())}, actual is {op_name}")
+        # >>> start: soc version support check
+        support_soc = support_info[op_name]["soc_version"]
+        valid = "All" in support_soc or version in support_soc
+        if not valid:
+            err_man.raise_err_common(op_name, f"only support {support_soc}", version)
+        # <<< end: soc version support check
+
+        # >>> start: data type support check
+        type_list = []
+        # traverse all required tensor and record in order
+        for tensor in tensor_list:
+            if isinstance(tensor, dict):
+                type_list.append(tensor.get("dtype"))
+            elif isinstance(tensor, (tvm.tensor.Tensor, tvm.var)):
+                type_list.append(tensor.dtype)
+        support_dtype = support_info[op_name]["data_type"]
+        # confirm whether tensor dtype as expected or not
+        valid = type_list in support_dtype
+        if not valid:
+            err_man.raise_err_common(op_name,
+                                     f"input tensor dtype combination should be in {list(support_dtype)}",
+                                     type_list)
+        # <<< end: data type support check

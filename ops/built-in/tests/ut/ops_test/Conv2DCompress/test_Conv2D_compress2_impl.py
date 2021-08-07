@@ -18,7 +18,8 @@ def test_conv2d_compress_impl1(test_arg):
     from impl.ascend_dequant import ascend_dequant_compute
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
-    # cce_conf.te_set_version("Hi3796CV300ES")
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    cce_conf.te_set_version("Hi3796CV300CS")
 
     def conv2d_compress_compute_fusion(fmap_shape, filters_shape, bias_flag, strides, pads, dilations, dtype="int8"):
         if dtype == "int8":
@@ -102,7 +103,7 @@ def test_conv2d_compress_impl1(test_arg):
             total_input_tensors += input_tensors
 
             dequant_res, input_tensors = dequant_compute_fusion(conv_res, sqrt_mode=False,
-                                                                relu_flag=False, platform="v100")
+                                                                relu_flag=False, platform="v200")
             total_input_tensors += input_tensors
 
             total_input_tensors.append(dequant_res)
@@ -119,10 +120,12 @@ def test_conv2d_compress_impl1(test_arg):
     ]
     fusion_conv2dcompress_compute(testcases)
 
+    cce_conf.te_set_version(soc_version)
+
 print("conv2d_compress fusion ut testcases")
 ut_case.add_cust_test_func(test_func=test_conv2d_compress_impl1)
 
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=test_conv2d_compress_impl1)
-    ut_case.run(["Hi3796CV300ES"])
+    ut_case.run(["Hi3796CV300CS"])
     exit(0)
