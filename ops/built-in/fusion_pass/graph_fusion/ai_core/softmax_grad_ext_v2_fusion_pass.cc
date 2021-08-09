@@ -118,7 +118,7 @@ vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
                        \    /
                          sub    input1
                            \      /
-                  input2     mul1      
+                  input2     mul1
                      \        /
                       mul_grad
   */
@@ -249,12 +249,10 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
 
   size_t gradInputId = 2;
   for (size_t i = 0; i < 2; i++) {
-    for (size_t j = 0; j < 2; j++) {
-      if (mulGradNode->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode()->GetName() ==
-          mul1Node->GetOutDataAnchor(j)->GetOwnerNode()->GetName()) {
-        gradInputId = 1 - i;
-        break;
-      }
+    if (mulGradNode->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode()->GetName() ==
+        mul1Node->GetOutDataAnchor(0)->GetOwnerNode()->GetName()) {
+      gradInputId = 1 - i;
+      break;
     }
     if (gradInputId != 2) {
       break;
@@ -330,20 +328,20 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(mulInputId)->GetPeerOutAnchor(), newNode->GetInDataAnchor(0)) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-              mulNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+              mulNode->GetInDataAnchor(mulInputId)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
               newNode->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(1 -mulInputId)->GetPeerOutAnchor(), newNode->GetInDataAnchor(1)) != SUCCESS,
+      ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(1 - mulInputId)->GetPeerOutAnchor(), newNode->GetInDataAnchor(1)) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-              mulNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+              mulNode->GetInDataAnchor(1 - mulInputId)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
               newNode->GetName().c_str()),
       return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulGradNode->GetInDataAnchor(gradInputId)->GetPeerOutAnchor(),
                                             newNode->GetInDataAnchor(2)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                            mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                            mulGradNode->GetInDataAnchor(gradInputId)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                             newNode->GetName().c_str()),
                     return FAILED);
 
