@@ -80,6 +80,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/asinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
@@ -195,6 +196,7 @@ set(_cpu_kernels_ut_files
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
   testcase/add/src/add_utest.cpp
   testcase/asin/src/asin_utest.cpp
+  testcase/asinh/src/asinh_utest.cpp
   testcase/assign/src/assign_utest.cpp
   testcase/atan/src/atan_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp

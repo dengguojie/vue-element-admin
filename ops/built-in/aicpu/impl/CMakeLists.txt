@@ -4,6 +4,7 @@ set(local_kernels_src_files
     kernels/normalized/adaptive_max_pool_2d.cc
     kernels/normalized/add.cc
     kernels/normalized/asin.cc
+    kernels/normalized/asinh.cc
     kernels/normalized/atan.cc
     kernels/normalized/cache_swap_table.cc
     kernels/normalized/candidate_sampler.cc
