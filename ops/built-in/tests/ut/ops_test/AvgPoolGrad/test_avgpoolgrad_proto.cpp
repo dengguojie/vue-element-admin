@@ -327,8 +327,6 @@ TEST_F(AvgPoolGradProtoTest, avg_pool_grad_fix){
     op.SetAttr("padding", "VALID");
     op.SetAttr("data_format", "NHWC");
 
-    auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

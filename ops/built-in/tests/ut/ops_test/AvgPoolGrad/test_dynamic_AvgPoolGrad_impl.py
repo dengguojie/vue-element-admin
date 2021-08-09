@@ -316,6 +316,50 @@ def test_avg_pool_grad_fuzzy_compile_generaliation(test_arg):
     ]
     avg_pool_grad_generalization(*input_list)
 
+def test_avg_pool_grad_fuzzy_compile_dedy_w_too_large(test_arg):
+    from impl.dynamic.avg_pool_grad import avg_pool_grad_generalization
+    print("test_avg_pool_grad_fuzzy_compile_dedy_w_too_large")
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'format': 'NCHW',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        }, {
+            'shape': (3, 1, 281, 590, 16),
+            'ori_shape': (3, 1, 281, 590),
+            'format': 'NC1HWC0',
+            'ori_format': 'NCHW',
+            'dtype': 'float16',
+            'range': ((2, 3), (1, 1), (256, 511), (512, 767), (16, 16)),
+            'ori_range': ((2, 3), (1, 1), (256, 511), (512, 767))
+        }, {
+            'shape': (288, 1, 16, 16),
+            'ori_shape': (18, 16, 1, 1),
+            'format': 'FRACTAL_Z',
+            'ori_format': 'HWCN',
+            'dtype': 'float16'
+        }, {
+            'shape': (3, 1, 841, 1768, 16),
+            'ori_shape': (3, 1, 841, 1768),
+            'format': 'NC1HWC0',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        },
+        (1, 1, 18, 16),
+        (1, 1, 3, 3),
+        'SAME',
+        'NCHW',
+        'avg_pool_grad_fuzzy_compile_generaliation',
+        {'mode': 'keep_rank'}
+    ]
+
+    try:
+        avg_pool_grad_generalization(*input_list)
+    except Exception as e:
+        print(e)
+
 ut_case.add_case(["Ascend910A"], dynamic_nw_SAME_NCHW_range_None)
 ut_case.add_case(["Ascend910A"], dynamic_nhw_VALID_NHWC)
 ut_case.add_case(["Ascend910A"], dx_hw_dynamic_dy_n)
@@ -340,6 +384,7 @@ ut_case.add_case(["Ascend910A"], dx_h_range_lower_bound_grest_than_upper_bound)
 ut_case.add_case(["Ascend910A"], data_format_ND)
 ut_case.add_case(["Ascend910A"], filter_ori_format_ND)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_generaliation)
+ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_dedy_w_too_large)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

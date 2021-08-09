@@ -413,12 +413,6 @@ def avg_pool_grad_generalization(orig_input_shape,
         error_manager_cube.raise_err_specific_user("input_grad", "not support unknow_rank under mode {}".format(
             generalize_config["mode"]))
     correct_fuzzy_build_range(input_grad, strides, data_format)
-    have_range = {"input_grad": input_grad, "out_grad": out_grad}
-    for name, tensor in have_range.items():
-        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor["ori_format"] == "NCHW" \
-            else [-1, -1, -1, tensor["ori_shape"][3]]
-        tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
-
     # if over l1 size then modify dy h/w range
     dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(out_grad,
                                                                          kernel_matrix,
@@ -459,6 +453,10 @@ def avg_pool_grad_generalization(orig_input_shape,
         dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
     else:
         dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
+    if input_grad["ori_shape"][input_grad.get("ori_format").find("W")] > dy_range_nchw[3][1]:
+        error_manager_cube.raise_err_specific_user("AvgPoolGrad",
+                                                   "invalid input_grad ori_shape {}, w should not larger than {}"
+                                                   .format(str(input_grad.get("shape")), dy_range_nchw[3][1]))
 
     dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
     out_grad["range"] = [dx_range_nchw[0],
@@ -473,6 +471,12 @@ def avg_pool_grad_generalization(orig_input_shape,
     input_grad["range"][input_grad.get("format").find("W") - 1] = new_dy_range_nchw[3]
     input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[2]
     input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[3]
+
+    have_range = {"input_grad": input_grad, "out_grad": out_grad}
+    for name, tensor in have_range.items():
+        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor["ori_format"] == "NCHW" \
+            else [-1, -1, -1, tensor["ori_shape"][3]]
+        tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
 
     result.append([orig_input_shape,
                    input_grad,

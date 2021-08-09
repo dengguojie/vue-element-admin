@@ -5587,21 +5587,6 @@ static void reset_avg_pool_grad_out_shape(ge::Operator& op, const std::vector<in
 }
 
 IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
-  TensorDesc tensordesc_input = op.GetInputDesc("input_grad");
-  auto input_grad_shape = tensordesc_input.GetShape().GetDims();
-  Tensor orig_input_shape_tensor;
-  std::vector<int64_t> orig_input_size;
-  if (!IsUnKnownShape(input_grad_shape) && !IsUnknownRankShape(input_grad_shape)) {
-    if (op.GetInputConstData("orig_input_shape", orig_input_shape_tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Get constdata filed");
-      return GRAPH_FAILED;
-    }
-    DataType dtype = op.GetInputDesc("orig_input_shape").GetDataType();
-    GetConstValue(op, orig_input_shape_tensor, dtype, orig_input_size);
-    if (!CheckListEmpty(op.GetName(), orig_input_size, "orig_input_shape")) {
-      return GRAPH_FAILED;
-    }
-  }
   std::vector<int64_t> ksize;
   ksize = GetAttrValue(op, "ksize");
   if (!CheckListEmpty(op.GetName(), ksize, "ksize")) {
@@ -5658,22 +5643,6 @@ IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
     return GRAPH_FAILED;
   }
 
-  if (!IsUnKnownShape(input_grad_shape) && !IsUnknownRankShape(input_grad_shape)) {
-    std::vector<std::string::size_type> position{n_position, c_position, h_position, w_position};
-    std::vector<int64_t> ori_output_shape;
-    if (!GetOriOutput(op, position, orig_input_size, ksize, strides, padding, ori_output_shape)) {
-      OP_LOGE(op.GetName().c_str(), "Get origin output failed.");
-      return GRAPH_FAILED;
-    }
-
-    if (input_grad_shape[n_position] != ori_output_shape[0] ||
-        input_grad_shape[c_position] != ori_output_shape[1] ||
-        input_grad_shape[h_position] != ori_output_shape[2] ||
-        input_grad_shape[w_position] != ori_output_shape[3]) {
-      OP_LOGE(op.GetName().c_str(), "Input grad shape is wrong!");
-      return GRAPH_FAILED;
-    }
-  }
   return GRAPH_SUCCESS;
 }
 

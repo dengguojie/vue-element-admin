@@ -1,0 +1,287 @@
+[
+    {
+        "compile_flag": 1
+    },
+    {
+        "op": "AvgPoolGrad",
+        "case_name": "Test_AvgPoolGrad_Fuzzy_Compile_SAME",
+        "input_desc": [
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [
+                    4
+                ],
+                "ori_shape": [
+                    4
+                ],
+                "type": "int32",
+                "value": [
+                    1,
+                    5,
+                    4,
+                    66
+                ],
+                "name": "orig_input_shape"
+            },
+            {
+                "format": "NCHW",
+                "ori_format": "NCHW",
+                "shape": [
+                    1,
+                    5,
+                    2,
+                    17
+                ],
+                "ori_shape": [
+                    1,
+                    5,
+                    2,
+                    17
+                ],
+                "type": "float16",
+                "name": "input_grad"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "ori_format": "NCHW",
+                "shape": [
+                    1,
+                    5,
+                    4,
+                    66
+                ],
+                "ori_shape": [
+                    1,
+                    5,
+                    4,
+                    66
+                ],
+                "type": "float16",
+                "name": "out_grad"
+            }
+        ],
+        "attr": [
+            {
+                "name": "ksize",
+                "value": [
+                    1,
+                    1,
+                    7,
+                    7
+                ],
+                "type": "list_int"
+            },
+            {
+                "name": "strides",
+                "value": [
+                    1,
+                    1,
+                    3,
+                    4
+                ],
+                "type": "list_int"
+            },
+            {
+                "name": "padding",
+                "value": "SAME",
+                "type": "string"
+            },
+            {
+                "name": "data_format",
+                "value": "NCHW",
+                "type": "string"
+            }
+        ]
+    },
+    {
+        "op": "AvgPoolGrad",
+        "case_name": "Test_AvgPoolGrad_Fuzzy_Compile_VALID",
+        "input_desc": [
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [
+                    4
+                ],
+                "ori_shape": [
+                    4
+                ],
+                "type": "int32",
+                "value": [
+                    4,
+                    1,
+                    49,
+                    27
+                ],
+                "name": "orig_input_shape"
+            },
+            {
+                "format": "NCHW",
+                "ori_format": "NCHW",
+                "shape": [
+                    4,
+                    1,
+                    49,
+                    10
+                ],
+                "ori_shape": [
+                    4,
+                    1,
+                    49,
+                    10
+                ],
+                "type": "float16",
+                "name": "input_grad"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "ori_format": "NCHW",
+                "shape": [
+                    4,
+                    1,
+                    49,
+                    27
+                ],
+                "ori_shape": [
+                    4,
+                    1,
+                    49,
+                    27
+                ],
+                "type": "float16",
+                "name": "out_grad"
+            }
+        ],
+        "attr": [
+            {
+                "name": "ksize",
+                "value": [
+                    1,
+                    1,
+                    1,
+                    18
+                ],
+                "type": "list_int"
+            },
+            {
+                "name": "strides",
+                "value": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "type": "list_int"
+            },
+            {
+                "name": "padding",
+                "value": "VALID",
+                "type": "string"
+            },
+            {
+                "name": "data_format",
+                "value": "NCHW",
+                "type": "string"
+            }
+        ]
+    },
+    {
+        "op": "AvgPoolGrad",
+        "case_name": "Test_AvgPoolGrad_Fuzzy_Compile_NHWC",
+        "input_desc": [
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [
+                    4
+                ],
+                "ori_shape": [
+                    4
+                ],
+                "type": "int32",
+                "value": [
+                    1,
+                    1,
+                    1024,
+                    1
+                ],
+                "name": "orig_input_shape"
+            },
+            {
+                "format": "NHWC",
+                "ori_format": "NHWC",
+                "shape": [
+                    1,
+                    1,
+                    1024,
+                    1
+                ],
+                "ori_shape": [
+                    1,
+                    1,
+                    1024,
+                    1
+                ],
+                "type": "float16",
+                "name": "input_grad"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "ori_format": "NHWC",
+                "shape": [
+                    1,
+                    1,
+                    1024,
+                    1
+                ],
+                "ori_shape": [
+                    1,
+                    1,
+                    1024,
+                    1
+                ],
+                "type": "float16",
+                "name": "out_grad"
+            }
+        ],
+        "attr": [
+            {
+                "name": "ksize",
+                "value": [
+                    1,
+                    16,
+                    1,
+                    1
+                ],
+                "type": "list_int"
+            },
+            {
+                "name": "strides",
+                "value": [
+                    1,
+                    2,
+                    1,
+                    1
+                ],
+                "type": "list_int"
+            },
+            {
+                "name": "padding",
+                "value": "SAME",
+                "type": "string"
+            },
+            {
+                "name": "data_format",
+                "value": "NHWC",
+                "type": "string"
+            }
+        ]
+    }
+]
