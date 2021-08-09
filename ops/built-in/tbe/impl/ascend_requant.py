@@ -246,7 +246,8 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
             if tensor_flag:
                 new_indice[4] = indice[c0_index]
                 new_indice[1] = indice[c1_index]
-
+            if is_support_v220() and tensor_flag:
+                return tvm.vdeq_cast(x(*indice), req_scale(*new_indice), "int8", do_relu=relu_flag)
             if tensor_flag:
                 return tvm.select(indice[c1_index] < x_shape_list[c1_index],
                                   tvm.vdeq_cast(x(*indice), req_scale(*new_indice), "int8", do_relu=relu_flag),

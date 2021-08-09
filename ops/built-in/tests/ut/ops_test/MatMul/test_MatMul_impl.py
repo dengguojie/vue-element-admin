@@ -445,6 +445,7 @@ not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
 
 ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
 
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)

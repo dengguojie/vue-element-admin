@@ -4184,18 +4184,18 @@ class GEMM_Schedule:
                 temp_tensor_list = []
 
                 if self.gemm_params.cube_vector_split:
-                     a_dtype = self.gemm_params.TENSOR_MAP["a_placehold"].dtype
-                     if a_dtype == "int8" and self.gemm_params.trans_a:
-                         a_l0a_outer, a_l0a_inner = sch[a_l0a].split(a_l0a.op.axis[0], 2)
-                         sch[a_l0a].emit_insn(a_l0a_inner, "dma_copy")
-                     else:
-                         sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
-                     b_dtype = self.gemm_params.TENSOR_MAP["b_placehold"].dtype
-                     if b_dtype == "int8" and not self.gemm_params.trans_b:
-                         b_l0b_outer, b_l0b_inner = sch[b_l0b].split(b_l0b.op.axis[1], 2)
-                         sch[b_l0b].emit_insn(b_l0b_inner, "dma_copy")
-                     else:
-                         sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
+                    a_dtype = self.gemm_params.TENSOR_MAP["a_placehold"].dtype
+                    if a_dtype == "int8" and self.gemm_params.trans_a:
+                        a_l0a_outer, a_l0a_inner = sch[a_l0a].split(a_l0a.op.axis[0], 2)
+                        sch[a_l0a].emit_insn(a_l0a_inner, "dma_copy")
+                    else:
+                        sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
+                    b_dtype = self.gemm_params.TENSOR_MAP["b_placehold"].dtype
+                    if b_dtype == "int8" and not self.gemm_params.trans_b:
+                        b_l0b_outer, b_l0b_inner = sch[b_l0b].split(b_l0b.op.axis[1], 2)
+                        sch[b_l0b].emit_insn(b_l0b_inner, "dma_copy")
+                    else:
+                        sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
                 else:
                     temp_tensor_list.append(a_l0a)
                     temp_tensor_list.append(b_l0b)
@@ -4216,7 +4216,8 @@ class GEMM_Schedule:
                 if self.gemm_params.fusion_type == FusionType.REQUANT:
                     n_block_outer, n_block_inner = sch[c_gm].split(c_gm.op.axis[-1], 16)
                     m_axis = sch[c_gm].fuse(l0c_m_inner, c_gm.op.axis[-2])
-
+                    n_shape = self._int_ceil_div(c_l0c.shape[-4].value, 2) * 2
+                    sch[c_l0c].storage_align(c_l0c.op.axis[-4], n_shape, 0)
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
                 if (self.gemm_params.ops_mode == "int8fp32"
