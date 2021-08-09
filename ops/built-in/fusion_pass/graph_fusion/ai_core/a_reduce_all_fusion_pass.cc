@@ -88,7 +88,7 @@ Status AReduceAllFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get attr keepdims failed."),
                     return GRAPH_FAILED);
   FUSION_PASS_CHECK(!keep_dims0,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
                     "the attr keep_dims of reduce_all is not true, not changed"),
                     return NOT_CHANGED);
   if (GRAPH_SUCCESS != op.GetInputConstData("axes", data)) {
