@@ -213,6 +213,164 @@ def test_deconvolution_fuzz_build_generalization_range_max_fixed(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_generalization_range_max_fixed)
 
+
+def test_deconvolution_fuzz_build_support_mode_error(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'test_deconvolution_fuzz_build_support_mode_error', {"mode": "mode"}]
+    try:
+        deconvolution_generalization(*input_list)
+    except RuntimeError:
+        print("support mode error")
+
+
+def test_deconvolution_fuzz_build_neg_two(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (-2,),
+            'ori_shape': (-2,),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'test_deconvolution_fuzz_build_neg_two']
+    try:
+        deconvolution_generalization(*input_list)
+    except RuntimeError:
+        print("not support unknown rank")
+
+
+def test_deconvolution_fuzz_build_ori_format_error(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'ND',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'test_deconvolution_fuzz_build_ori_format_error']
+    try:
+        deconvolution_generalization(*input_list)
+    except RuntimeError:
+        print("not support ND")
+
+
+def test_deconvolution_fuzz_build_shape_len_error(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (16, 3, 14, 12),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'test_deconvolution_fuzz_build_shape_len_error']
+    try:
+        deconvolution_generalization(*input_list)
+    except RuntimeError:
+        print("shape len is error")
+
+
+def test_deconvolution_fuzz_build_ori_shape_len_error(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'test_deconvolution_fuzz_build_ori_shape_len_error']
+    try:
+        deconvolution_generalization(*input_list)
+    except RuntimeError:
+        print("ori_shape len is error")
+
+
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_support_mode_error)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_ori_shape_len_error)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_shape_len_error)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_ori_format_error)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_neg_two)
+
+
 def test_get_op_support_info_dynamic_deconv(test_arg):
     x = {"ori_shape": (1, 16, -1, -1), "dtype": "float16", "ori_format": "NCHW", "shape": (1, 1, -1, -1, 16), "format":"NC1HWC0",
          "range": ((1, 1), (1, 1), (10, 20), (10, 20), (16, 16))}

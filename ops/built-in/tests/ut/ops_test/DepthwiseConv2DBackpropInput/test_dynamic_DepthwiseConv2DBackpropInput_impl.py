@@ -5,33 +5,22 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("DepthwiseConv2DBackpropInput", "impl.dynamic.depthwise_conv2d_backprop_input",
                "depthwise_conv2d_backprop_input")
 dynamic_depthwise_conv2d_bp_input_op_testcase = [
-    ((1, 192, 5, 5), (16, 192, -1, 28), (16, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", [0, 2], "success"),
-    ((3, 3, 256, 1), (2, 334, 502, 256), (2, 336, 504, 256), (1, 1), (0, 0, 0, 0), "NHWC", [0, 2, 3], "success"),
-    ((5, 5, 240, 1), (2, 1, 1, 240), (2, 2, 2, 240), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], "success"),
-    ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 1], "success"),
-    ((3, 3, 17, 1), (2, 5, 5, 17), (2, 5, 5, 17), (1, 1), (-1, -1, -1, -1), "NHWC", [1, 3], "success"),
-    ((2, 2, 16, 1), (2, 2, 1, 16), (2, 4, 2, 16), (2, 1), (0, 0, 0, 0), "NHWC", [2], "success"),
-    ((1, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", [0, 3], "success"),
-    ((3, 3, 16, 1), (2, 1, 2, 16), (2, 3, 5, 16), (1, 2), (0, 0, 0, 0), "NHWC", [0, 1, 2, 3], "success"),
-    ((1, 960, 3, 3), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], "success"),
-    ((1, 1, 32, 1), (1, 1, 1, 32), (1, 2, 2, 32), (2, 2), (0, 0, 0, 0), "NHWC", [2, 3], "success"),
-    ((1, 16, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], "success"),
+    ((1, 192, 5, 5), (16, 192, -1, 28), (16, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", [0, 2], None, "success", "depthwise_conv2d_bp_input_w_dim_upper_boud_None"),
+    ((3, 3, 256, 1), (2, 334, 502, 256), (2, 336, 504, 256), (1, 1), (0, 0, 0, 0), "NHWC", [0, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nhw_pad_valid"),
+    ((5, 5, 240, 1), (2, 1, 1, 240), (2, 2, 2, 240), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nhw_pad_same"),
+    ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 1], None, "success", "depthwise_conv2d_bp_input_dynamic_nc"),
+    ((3, 3, 17, 1), (2, 5, 5, 17), (2, 5, 5, 17), (1, 1), (-1, -1, -1, -1), "NHWC", [1, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_cw"),
+    ((2, 2, 16, 1), (2, 2, 1, 16), (2, 4, 2, 16), (2, 1), (0, 0, 0, 0), "NHWC", [2], None, "success", "depthwise_conv2d_bp_input_dynamic_h"),
+    ((1, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", [0, 3], None, "success", "depthwise_conv2d_bp_input_nw_dim_upper_boud_None"),
+    ((3, 3, 16, 1), (2, 1, 2, 16), (2, 3, 5, 16), (1, 2), (0, 0, 0, 0), "NHWC", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nchw_pad_valid"),
+    ((1, 960, 3, 3), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], None, "success", "depthwise_conv2d_bp_input_dynamic_n"),
+    ((1, 1, 32, 1), (1, 1, 1, 32), (1, 2, 2, 32), (2, 2), (0, 0, 0, 0), "NHWC", [2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_hw"),
+    ((1, 16, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_unknown_rank"),
     
-    ((3, 3, 16, 2), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], RuntimeError),
-    ((3, 3, 16, 1), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], RuntimeError),
-    ((1, 1, 14, 20), (-1, 1, 28, 3507), (-1, 1, 111, 3507), (4, 1), (-1, -1, -1, -1), "NCHW", None, RuntimeError),
+    ((3, 3, 16, 2), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, RuntimeError, "depthwise_conv2d_bp_input_dedx_c_not_equal_filer"),
+    ((3, 3, 16, 1), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], None, RuntimeError, "depthwise_conv2d_bp_input_dedy_nhw_large_than_1"),
+    ((1, 1, 14, 20), (1, 1, 28, 3507), (1, 1, 111, 3507), (4, 1), (-1, -1, -1, -1), "NCHW", [0, 2, 3], [[(1, 1),(1, 1), (27, 27), (2143, 2143)], [(1, 1),(1, 1), (120, 120), (2157, 2157)]], RuntimeError, "depthwise_conv2d_bp_input_dynamic_nhw_large_than_l1size"),
 ]
-
-def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads):
-    padding = "SAME" if -1 in pads else "VALID"
-    if dy_shape == [-2]:
-        dy_shape_info = "neg_2"
-    else:
-        dy_shape_info = '_'.join(map(str, dy_shape))
-    kernel_name = 'dynamic_dp_conv2dbp_input_' + '_'.join(map(str, filter_shape)) + '_' + dy_shape_info + '_' + '_'.join(
-        map(str, x_shape)) + '_' + '_'.join(map(str, strides)) + "_" + padding
-    kernel_name = kernel_name.replace('-1', 'x')
-    return kernel_name
 
 
 def _shape_to_NC1HWC0(shape, data_format, dtype):
@@ -67,34 +56,33 @@ def _get_range_from_shape(shape, dynamic_dim=None):
 
 def _trans_dynamic_shape(shape, format, dynamic_dim, tran_flag=False):
     shape = list(shape)
-    if dynamic_dim:
-        if len(format) == 4:
-            if 0 in dynamic_dim:
-                n_dim = format.index("N")
-                shape[n_dim] = -1
-            if 1 in dynamic_dim and tran_flag:
-                c_dim = format.index("C")
-                shape[c_dim] = -1
-            if 2 in dynamic_dim:
-                h_dim = format.index("H")
-                shape[h_dim] = -1
-            if 3 in dynamic_dim:
-                w_dim = format.index("W")
-                shape[w_dim] = -1
-        else:
-            if 0 in dynamic_dim:
-                shape[0] = -1
-            if 1 in dynamic_dim and tran_flag:
-                shape[1] = -1
-            if 2 in dynamic_dim:
-                shape[2] = -1
-            if 3 in dynamic_dim:
-                shape[3] = -1
+    if len(format) == 4:
+        if 0 in dynamic_dim:
+            n_dim = format.index("N")
+            shape[n_dim] = -1
+        if 1 in dynamic_dim and tran_flag:
+            c_dim = format.index("C")
+            shape[c_dim] = -1
+        if 2 in dynamic_dim:
+            h_dim = format.index("H")
+            shape[h_dim] = -1
+        if 3 in dynamic_dim:
+            w_dim = format.index("W")
+            shape[w_dim] = -1
+    else:
+        if 0 in dynamic_dim:
+            shape[0] = -1
+        if 1 in dynamic_dim and tran_flag:
+            shape[1] = -1
+        if 2 in dynamic_dim:
+            shape[2] = -1
+        if 3 in dynamic_dim:
+            shape[3] = -1
     return tuple(shape)
 
 
 def _gen_trans_data_case(param):
-    filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, data_format, dynamic_dim, expect_result = param
+    filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, data_format, dynamic_dim, dy_dx_range, expect_result, case_name = param
 
     dilations = (1, 1, 1, 1)
     dtype = "float16"
@@ -114,13 +102,20 @@ def _gen_trans_data_case(param):
         filter_shape = _shape_to_C1HWNCoC0(filter_ori_shape, filter_format, dtype),
         out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
         input_grad_shape = _shape_to_NC1HWC0(input_size, data_format, dtype)
+        x_range = _get_range_from_shape(input_grad_shape, dynamic_dim)
+        filter_range = _get_range_from_shape(filter_shape)
+        out_backprop_range = _get_range_from_shape(out_backprop_shape, dynamic_dim)
+        y_range = _get_range_from_shape(input_grad_shape, dynamic_dim)
+        if dy_dx_range:
+            out_backprop_range = dy_dx_range[0]
+            y_range = dy_dx_range[1]
         x = {
             "shape": [4],
             "format": "NC1HWC0",
             "ori_shape": [4],
             "ori_format": data_format,
             "dtype": dtype,
-            "range": _get_range_from_shape(input_grad_shape, dynamic_dim)
+            "range": x_range
         }
         filter = {
             "shape": filter_shape,
@@ -128,7 +123,7 @@ def _gen_trans_data_case(param):
             "ori_format": filter_format,
             "format": "C1HWNCoC0",
             "dtype": dtype,
-            "range": _get_range_from_shape(filter_shape)
+            "range": filter_range
         }
         out_backprop = {
             "shape": _trans_dynamic_shape(out_backprop_shape, "NC1HWC0", dynamic_dim, True),
@@ -136,7 +131,7 @@ def _gen_trans_data_case(param):
             "ori_shape": _trans_dynamic_shape(out_backprop_ori_shape, data_format, dynamic_dim, True),
             "ori_format": data_format,
             "dtype": dtype,
-            "range": _get_range_from_shape(out_backprop_shape, dynamic_dim)
+            "range": out_backprop_range
         }
         input_grad = {
             "shape": _trans_dynamic_shape(input_grad_shape, "NC1HWC0", dynamic_dim),
@@ -144,16 +139,14 @@ def _gen_trans_data_case(param):
             "ori_shape": _trans_dynamic_shape(input_size, data_format, dynamic_dim),
             "ori_format": data_format,
             "dtype": dtype,
-            "range": _get_range_from_shape(input_grad_shape, dynamic_dim)
+            "range": y_range
         }
     stride_h, stride_w = strides
     strides = [1, stride_h, stride_w, 1] if data_format == "NHWC" else [1, 1, stride_h, stride_w]
 
-    kernel_name = _get_kernel_name(
-        filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads)
     return {
         "params": [x, filter, out_backprop, input_grad, strides, dilations, pads, data_format],
-        "case_name": kernel_name,
+        "case_name": case_name,
         "expect": expect_result,
         "format_expect": [],
         "support_expect": True
@@ -270,6 +263,194 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_f
 
 
 ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed)
+
+
+def test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (11, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
+        'test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error', {"mode": "mode"}]
+    try:
+        depthwise_conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("support mode is error")
+
+
+def test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (11, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (-2,),
+            'ori_shape': (-2,),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
+        'test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two']
+    try:
+        depthwise_conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("not support unknwon_rank")
+
+
+def test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (11, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'ND',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
+        'test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error']
+    try:
+        depthwise_conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("not support ori_format")
+
+
+def test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (11, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14),
+            'ori_format': 'ND',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
+        'test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error']
+    try:
+        depthwise_conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("not support ori_shape")
+
+
+def test_depthwise_conv2d_backprop_input_fuzz_build_shape_error(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (11, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (16, 3, 14, 12),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
+        'test_depthwise_conv2d_backprop_input_fuzz_build_shape_error']
+    try:
+        depthwise_conv2d_backprop_input_generalization(*input_list)
+    except RuntimeError:
+        print("not support shape")
+
+
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error)
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two)
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error)
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error)
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_shape_error)
+
 
 if __name__ == '__main__':
     ut_case.run()

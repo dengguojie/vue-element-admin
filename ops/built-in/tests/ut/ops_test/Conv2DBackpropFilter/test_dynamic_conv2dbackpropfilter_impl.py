@@ -447,8 +447,8 @@ ut_case.add_case(
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 16384), (1024, 1024), "(1, 1)", (1, 1)],
                                         [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), "(1, 1)", (1, 1)],
                                         (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_h_range_str",
                                         RuntimeError))
@@ -460,8 +460,8 @@ ut_case.add_case(
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 16384), (1024, 1024), (1,), (1, 1)],
                                         [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1,), (1, 1)],
                                         (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_h_range_len_1",
                                         IndexError))
@@ -473,8 +473,8 @@ ut_case.add_case(
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 16384), (1024, 1024), ("1", 1), (1, 1)],
                                         [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), ("1", 1), (1, 1)],
                                         (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_h_range_low_bound_not_int",
                                         RuntimeError))
@@ -486,8 +486,8 @@ ut_case.add_case(
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 16384), (1024, 1024), (1, "1"), (1, 1)],
                                         [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, "1"), (1, 1)],
                                         (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_h_range_upper_bound_not_int",
                                         RuntimeError))
@@ -499,8 +499,8 @@ ut_case.add_case(
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 16384), (1024, 1024), (1, 4097), (1, 1)],
                                         [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, 4097), (1, 1)],
                                         (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_h_range_upper_bound_great_4096",
                                         RuntimeError))
@@ -518,18 +518,32 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_dedx_shape_fix",
                                         RuntimeError))
 
-# dedw h dim is -1
+# dilations len less than 4
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_filter_case([1024, 1024, -1, 1], [-1, 1024, 1, 1], [-1, 1024, 1, 1],
+    gen_dynamic_conv2d_backprop_filter_case([1024, 1024, 1, 1], [-1, 1024, 1, 1], [-1, 1024, 1, 1],
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 1), (1024, 1024), (1, 1), (1, 1)],
-                                        [(1, 1), (1024, 1024), (1, 1), (1, 1)],
-                                        (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
-                                        "dynamic_conv2d_backprop_filter_dedw_h_dim_neg_one",
+                                        [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        (1, 1, 1, 1), [0, 0, 0, 0], (1, 1),
+                                        "dynamic_conv2d_backprop_filter_dilations_len_less_than_4",
                                         RuntimeError))
+
+# pads len less than 4
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([1024, 1024, 1, 1], [-1, 1024, 1, 1], [-1, 1024, 1, 1],
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        (1, 1, 1, 1), [0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_pads_len_less_than_4",
+                                        RuntimeError))
+
 
 # dedx c dim is -1
 ut_case.add_case(
@@ -762,6 +776,216 @@ def test_conv2d_backprop_filter_fuzz_build_tilingcase(test_arg):
         conv2d_backprop_filter(*input_list)
 print("adding conv2d_backprop_filter test_conv2d_backprop_filter_fuzz_build_tilingcase testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_tilingcase)
+
+
+def test_conv2d_backprop_filter_fuzz_build_support_mode_error(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (1, 1), (16, 32), (16, 32), (16, 16)),
+            "ori_range": ((16, 32), (3, 3), (16, 32), (16, 32))
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32',
+            "range": [[4, 4]],
+            "ori_range": ()
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (3, 3), (4, 16), (4, 16), (16, 16)),
+            "ori_range": ((16, 32), (33, 33), (4, 16), (4, 16))
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [[33, 33], [3, 3], [3, 3], [5, 5]],
+            "ori_range": ()
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_filter_fuzz_build_generalization', {"mode": "keep"}]
+    try:
+        conv2d_bp_filter_generalization(*input_list)
+    except RuntimeError:
+        print("support mode error")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_support_mode_error)
+
+
+def test_conv2d_backprop_filter_fuzz_build_unknownrank(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (-2,),
+            'ori_shape': (-2,),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (1, 1), (16, 32), (16, 32), (16, 16)),
+            "ori_range": ((16, 32), (3, 3), (16, 32), (16, 32))
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32',
+            "range": [[4, 4]],
+            "ori_range": ()
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (3, 3), (4, 16), (4, 16), (16, 16)),
+            "ori_range": ((16, 32), (33, 33), (4, 16), (4, 16))
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [[33, 33], [3, 3], [3, 3], [5, 5]],
+            "ori_range": ()
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_filter_fuzz_build_generalization']
+    try:
+        conv2d_bp_filter_generalization(*input_list)
+    except RuntimeError:
+        print("not support unknown rank")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_unknownrank)
+
+
+def test_conv2d_backprop_filter_fuzz_build_ori_format_error(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'ND',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (1, 1), (16, 32), (16, 32), (16, 16)),
+            "ori_range": ((16, 32), (3, 3), (16, 32), (16, 32))
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32',
+            "range": [[4, 4]],
+            "ori_range": ()
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (3, 3), (4, 16), (4, 16), (16, 16)),
+            "ori_range": ((16, 32), (33, 33), (4, 16), (4, 16))
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [[33, 33], [3, 3], [3, 3], [5, 5]],
+            "ori_range": ()
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_filter_fuzz_build_generalization']
+    try:
+        conv2d_bp_filter_generalization(*input_list)
+    except RuntimeError:
+        print("not support ori format ND")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_ori_format_error)
+
+
+def test_conv2d_backprop_filter_fuzz_build_shape_len_less_than_5(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (16, 1, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (1, 1), (16, 32), (16, 32), (16, 16)),
+            "ori_range": ((16, 32), (3, 3), (16, 32), (16, 32))
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32',
+            "range": [[4, 4]],
+            "ori_range": ()
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (3, 3), (4, 16), (4, 16), (16, 16)),
+            "ori_range": ((16, 32), (33, 33), (4, 16), (4, 16))
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [[33, 33], [3, 3], [3, 3], [5, 5]],
+            "ori_range": ()
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_filter_fuzz_build_generalization']
+    try:
+        conv2d_bp_filter_generalization(*input_list)
+    except RuntimeError:
+        print("shape len less than 5")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_shape_len_less_than_5)
+
+
+def test_conv2d_backprop_filter_fuzz_build_ori_shape_len_less_than_4(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (1, 1), (16, 32), (16, 32), (16, 16)),
+            "ori_range": ((16, 32), (3, 3), (16, 32), (16, 32))
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32',
+            "range": [[4, 4]],
+            "ori_range": ()
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            "range": ((16, 32), (3, 3), (4, 16), (4, 16), (16, 16)),
+            "ori_range": ((16, 32), (33, 33), (4, 16), (4, 16))
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [[33, 33], [3, 3], [3, 3], [5, 5]],
+            "ori_range": ()
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_filter_fuzz_build_generalization']
+    try:
+        conv2d_bp_filter_generalization(*input_list)
+    except RuntimeError:
+        print("ori_shape len less than 4")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_ori_shape_len_less_than_4)
 
 
 gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [-1, -1, -1, 64], [-1, -1, -1, 64],

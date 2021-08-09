@@ -98,7 +98,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_n) {
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 1, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "tiling_range": {"10000": [1, 7]}, "block_dim": {"10000": 16}, "correct_range_flag": true, "_vars": {"10000": ["batch"]}})";  
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 1, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "tiling_range": {"10000": [1, 7]}, "block_dim": {"10000": 16}, "correct_range_flag": true, "_vars": {"10000": ["batch"]}})";
 
   ge::Graph graph("conv2dbackprop_filter_op_tiling_test_1");
 
@@ -140,6 +140,110 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_n) {
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_n", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+}
+
+TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_compile_info_empty) {
+  using namespace optiling;
+  std::string op_name = "Conv2DBackpropFilter";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"({})";
+
+  ge::Graph graph("conv2d_bp_filter_tiling_dynamic_compile_info_empty");
+
+  auto x_shape = vector<int64_t>({8, 5, 52, 635});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_size_shape = vector<int64_t>({257, 5, 1, 1});
+  ge::TensorDesc desc_filter_size(ge::Shape(filter_size_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter_size = op::Data("filter_size").set_attr_index(1);
+  filter_size.update_input_desc_x(desc_filter_size);
+  filter_size.update_output_desc_y(desc_filter_size);
+
+  auto out_backprop_shape = vector<int64_t>({8, 257, 13, 159});
+  ge::TensorDesc desc_out_backprop(ge::Shape(out_backprop_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto out_backprop = op::Data("out_backprop").set_attr_index(1);
+  out_backprop.update_input_desc_x(desc_out_backprop);
+  out_backprop.update_output_desc_y(desc_out_backprop);
+
+  auto conv2dbackpropfilter = op::Conv2DBackpropFilter(op_name)
+      .set_input_x(x)
+      .set_input_filter_size(filter_size)
+      .set_input_out_backprop(out_backprop);
+
+  auto y_shape = vector<int64_t>({257, 5, 1, 1});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  conv2dbackpropfilter.update_input_desc_out_backprop(desc_out_backprop);
+  conv2dbackpropfilter.update_input_desc_x(desc_x);
+  conv2dbackpropfilter.update_input_desc_filter_size(desc_filter_size);
+  conv2dbackpropfilter.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, out_backprop, filter_size};
+  std::vector<Operator> outputs{conv2dbackpropfilter};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_compile_info_empty", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+}
+
+TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_compile_info_not_have_vars) {
+  using namespace optiling;
+  std::string op_name = "Conv2DBackpropFilter";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 1, "tiling_type": "dynamic_tiling", "repo_seeds": {"10000": [8, 52, 635]}, "repo_range": {"10000": [8, 8, 52, 52, 635, 635]}, "cost_range": {}, "block_dim": {"10000": 16}, "correct_range_flag": false})";
+
+  ge::Graph graph("conv2d_bp_filter_tiling_dynamic_compile_info_not_have_vars");
+
+  auto x_shape = vector<int64_t>({8, 5, 52, 635});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_size_shape = vector<int64_t>({257, 5, 1, 1});
+  ge::TensorDesc desc_filter_size(ge::Shape(filter_size_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter_size = op::Data("filter_size").set_attr_index(1);
+  filter_size.update_input_desc_x(desc_filter_size);
+  filter_size.update_output_desc_y(desc_filter_size);
+
+  auto out_backprop_shape = vector<int64_t>({8, 257, 13, 159});
+  ge::TensorDesc desc_out_backprop(ge::Shape(out_backprop_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto out_backprop = op::Data("out_backprop").set_attr_index(1);
+  out_backprop.update_input_desc_x(desc_out_backprop);
+  out_backprop.update_output_desc_y(desc_out_backprop);
+
+  auto conv2dbackpropfilter = op::Conv2DBackpropFilter(op_name)
+      .set_input_x(x)
+      .set_input_filter_size(filter_size)
+      .set_input_out_backprop(out_backprop);
+
+  auto y_shape = vector<int64_t>({257, 5, 1, 1});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  conv2dbackpropfilter.update_input_desc_out_backprop(desc_out_backprop);
+  conv2dbackpropfilter.update_input_desc_x(desc_x);
+  conv2dbackpropfilter.update_input_desc_filter_size(desc_filter_size);
+  conv2dbackpropfilter.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, out_backprop, filter_size};
+  std::vector<Operator> outputs{conv2dbackpropfilter};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_compile_info_not_have_vars", compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
 }

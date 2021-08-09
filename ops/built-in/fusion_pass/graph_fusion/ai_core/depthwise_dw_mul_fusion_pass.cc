@@ -358,8 +358,9 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   std::vector<int64_t> filter_size;
   std::vector<int64_t> filter_size_reset(4);
   ge::AttrUtils::GetBool(depthwise_dw_desc, ge::ATTR_NAME_FUZZ_BUILD, is_fuzz_build);
-  if (std::find(dim_info.begin(), dim_info.end(), -1) != dim_info.end() || is_fuzz_build) {
-    is_dynamic = true;
+  is_dynamic = (dim_info.size() == 1 && dim_info[0] == -2) || 
+                std::find(dim_info.begin(), dim_info.end(), -1) != dim_info.end() || is_fuzz_build;
+  if (is_dynamic) {
     filter_size = out_dim_info;
   } else if (!ge::AttrUtils::GetListInt(depthwise_dw_desc, "filter_size", filter_size)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "can't get filter size");

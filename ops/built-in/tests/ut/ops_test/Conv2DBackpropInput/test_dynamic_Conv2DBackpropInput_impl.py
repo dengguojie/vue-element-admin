@@ -7,34 +7,23 @@ ut_case = OpUT("Conv2DBackpropInput", "impl.dynamic.conv2d_backprop_input",
                "conv2d_backprop_input")
 
 dynamic_conv2d_bp_input_op_testcase = [
-    ((192, 192, 5, 5), (1, 192, -1, 28), (1, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 2], "success"),
-    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 1], "success"),
-    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1, 3], "success"),
-    ((3, 3, 16, 16), (2, 1, 1, 16), (2, 4, 3, 16), (2, 1), (0, 0, 0, 0), "NHWC", 1, [1, 2], "success"),
-    ((96, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 3], "success"),
-    ((3, 3, 256, 256), (2, 34, 32, 256), (2, 36, 34, 256), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 2, 3], "success"),
-    ((5, 5, 240, 240), (2, 1, 1, 240), (2, 2, 1, 240), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], "success"),
-    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 1, 2, 3], "success"),
-    ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], "success"),
-    ((1, 32, 1, 1), (1, 1, 4096, 4096), (1, 32, 4096, 4096), (1, 1), (100, 100, 100, 100), "NCHW", 1, [2, 3], "success"),
-    ((1, 1, 55, 2), (1, 16, 55, 2), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NHWC", 1, [2, 3], "success"),
-    ((16, 7, 3, 3), [-2], (1, 7, 3, 3), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 1, 2, 3], "success"),
-    ((7, 6, 64, 10), [-2], (1, 7, 6, 64), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 1, 2, 3], "success"),
+    ((192, 192, 5, 5), (1, 192, -1, 28), (1, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 2], "success", "conv2d_bp_input_w_dim_upper_boud_None"),
+    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 1], "success", "conv2d_bp_input_dynamic_nc"),
+    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1, 3], "success", "conv2d_bp_input_dynamic_cw"),
+    ((3, 3, 16, 16), (2, 1, 1, 16), (2, 4, 3, 16), (2, 1), (0, 0, 0, 0), "NHWC", 1, [1, 2], "success", "conv2d_bp_input_dynamic_ch"),
+    ((96, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 3], "success", "conv2d_bp_input_nw_dim_upper_boud_None"),
+    ((3, 3, 256, 256), (2, 34, 32, 256), (2, 36, 34, 256), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 2, 3], "success", "conv2d_bp_input_dynamic_nhw_padding_valid"),
+    ((5, 5, 240, 240), (2, 1, 1, 240), (2, 2, 1, 240), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], "success", "conv2d_bp_input_dynamic_nhw_padding_same"),
+    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 1, 2, 3], "success", "conv2d_bp_input_dynamic_nchw_padding_same"),
+    ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], "success", "conv2d_bp_input_dynamic_n"),
+    ((1, 32, 1, 1), (1, 1, 4096, 4096), (1, 32, 4096, 4096), (1, 1), (100, 100, 100, 100), "NCHW", 1, [2, 3], "success", "conv2d_bp_input_dynamic_hw"),
+    ((1, 1, 55, 2), (1, 16, 55, 2), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NHWC", 1, [2, 3], "success", "conv2d_bp_input_dynamic_hw_padding_valid"),
+    ((16, 7, 3, 3), [-2], (1, 7, 3, 3), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 1, 2, 3], "success", "conv2d_bp_input_unknown_rank_padding_same"),
+    ((7, 6, 64, 10), [-2], (1, 7, 6, 64), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 1, 2, 3], "success", "conv2d_bp_input_unknown_rank_padding_valid"),
 
-    ((3, 3, 16, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], RuntimeError),
-    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1], RuntimeError),
+    ((3, 3, 16, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], RuntimeError, "conv2d_bp_input_dedy_c_not_equal_filer"),
+    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1], RuntimeError, "conv2d_bp_input_dedy_nhw_large_than_1"),
 ]
-
-def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads):
-    padding = "SAME" if -1 in pads else "VALID"
-    if dy_shape == [-2]:
-        dy_shape_info = "neg_2"
-    else:
-        dy_shape_info = '_'.join(map(str, dy_shape))
-    kernel_name = 'dynamic_conv2dbp_input_' + '_'.join(map(str, filter_shape)) + '_' + dy_shape_info + '_' + '_'.join(
-        map(str, x_shape)) + '_' + '_'.join(map(str, strides))  + "_" + padding
-    kernel_name = kernel_name.replace('-1', 'x')
-    return kernel_name
 
 
 def _shape_to_NC1HWC0(shape, data_format, dtype):
@@ -96,7 +85,7 @@ def _trans_dynamic_shape(shape, format, dynamic_dim, tran_flag=False):
 
 
 def _gen_trans_data_case(param):
-    filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, data_format, group, dynamic_dim, expect_result = param
+    filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, data_format, group, dynamic_dim, expect_result, case_name = param
     dilations = (1, 1, 1, 1)
     dtype = "float16"
     data_format = data_format.upper()
@@ -150,12 +139,10 @@ def _gen_trans_data_case(param):
     stride_h, stride_w = strides
     strides = [1, stride_h, stride_w, 1] if data_format == "NHWC" else [1, 1, stride_h, stride_w]
 
-    kernel_name = _get_kernel_name(filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads)
-
     print(x, filter, out_backprop, dx)
     return {
         "params": [x, filter, out_backprop, dx, strides, pads, dilations, group, data_format],
-        "case_name": kernel_name,
+        "case_name": case_name,
         "expect": expect_result,
         "format_expect": [],
         "support_expect": True

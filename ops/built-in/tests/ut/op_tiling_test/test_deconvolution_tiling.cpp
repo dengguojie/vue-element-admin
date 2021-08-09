@@ -134,6 +134,50 @@ TEST_F(DeConvlutionTiling, DeConvlution_tiling_dynamic_n) {
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 ");
 }
 
+TEST_F(DeConvlutionTiling, DeConvlution_tiling_compile_info_empty) {
+  using namespace optiling;
+  std::string op_name = "Deconvolution";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  
+  const ge::AscendString compileInfo = R"({})";
+
+  ge::Graph graph("deConvlution_tiling_compile_info_empty");
+
+  auto x_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x").set_attr_index(1);
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto deconvolution = op::Deconvolution(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  deconvolution.update_input_desc_x(desc_x);
+  deconvolution.update_input_desc_filter(desc_filter);
+  deconvolution.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{deconvolution};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("DeConvlution_tiling_compile_info_empty", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(deconvolution, op_compile_info, runInfo));
+}
+
 // fuzz build compile list input
 TEST_F(DeConvlutionTiling, DeConvlution_tiling_fuzz_build_list_input) {
   using namespace optiling;
