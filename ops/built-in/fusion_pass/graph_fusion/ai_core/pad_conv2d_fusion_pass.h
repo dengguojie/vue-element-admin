@@ -15,8 +15,8 @@
  */
 
 /*!
- * \file padd_conv2d_fusion_pass.h
- * \brief padd conv2d fusion pass
+ * \file pad_conv2d_fusion_pass.h
+ * \brief pad conv2d fusion pass
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PADD_CONV2D_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PADD_CONV2D_FUSION_PASS_H_
@@ -26,12 +26,13 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class PaddConv2dFusionPass : public PatternFusionBasePass {
+class PadConv2dFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
+  Status AddPaddingsForPadNode(ge::ComputeGraph& graph, ge::NodePtr pad_node);
   const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe
