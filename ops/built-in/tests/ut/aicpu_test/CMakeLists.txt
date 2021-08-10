@@ -82,6 +82,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/atanh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/case_condition.cc
@@ -199,6 +200,7 @@ set(_cpu_kernels_ut_files
   testcase/asinh/src/asinh_utest.cpp
   testcase/assign/src/assign_utest.cpp
   testcase/atan/src/atan_utest.cpp
+  testcase/atanh/src/atanh_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
   testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
   testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
