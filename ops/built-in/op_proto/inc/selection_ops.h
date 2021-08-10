@@ -1896,6 +1896,33 @@ REG_OP(Cummin)
     .OP_END_FACTORY_REG(Cummin)
 
 /**
+*@brief Returns a namedtuple (values, indices) where values is the cumulative 
+* the cumulative maximum of elements of input in the dimension dim. 
+* And indices is the index location of each maximum value found in the dimension dim. \n
+
+*@par Inputs:
+*One inputs, including:
+* x: A tensor . Must be one of the following types:
+*     float16, float32, int32, uint32, int8, uint8. \n
+
+*@par Attributes:
+* dim: Axis along which to cummax. \n
+
+*@par Outputs:
+* @li y: A Tensor with the same type and shape of x's.
+* @li indices: A Tensor with the int32/int64 type and the same shape of x's. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator Cummax. \n
+*/
+REG_OP(Cummax)
+    .INPUT(x, TensorType::BasicType())
+    .OUTPUT(y, TensorType::BasicType())
+    .OUTPUT(indices, TensorType::BasicType())
+    .REQUIRED_ATTR(dim, Int)
+    .OP_END_FACTORY_REG(Cummax)
+
+/**
 *@brief Extends the input with copies of data along a specified dimension. For example:
 *(1) If x = [[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]], with shape (2, 3, 2);
 *(2) axis = 1;

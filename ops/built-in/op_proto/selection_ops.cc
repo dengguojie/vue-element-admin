@@ -3031,6 +3031,31 @@ IMPLEMT_COMMON_INFERFUNC(CumminInferShape) {
     VERIFY_FUNC_REG(Cummin, CumminVerify);
 // ----------------Cummin END----------------------
 
+// ----------------Cummax------------------------
+IMPLEMT_COMMON_INFERFUNC(CummaxInferShape) {
+  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  TensorDesc output_desc_indices = op.GetOutputDesc("indices");
+  DataType predict_dtype = op.GetInputDesc("x").GetDataType();
+  Format predict_format = op.GetInputDesc("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  output_desc_y.SetDataType(predict_dtype);
+  output_desc_y.SetFormat(predict_format);
+  output_desc_y.SetShape(output_shape);
+  output_desc_indices.SetFormat(predict_format);
+  output_desc_indices.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("y", output_desc_y);
+  (void)op.UpdateOutputDesc("indices", output_desc_indices);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Cummax, CummaxVerify) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Cummax, CummaxInferShape);
+VERIFY_FUNC_REG(Cummax, CummaxVerify);
+// ----------------Cummax END----------------------
+
 // ----------------InplaceUpdate-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceUpdateInferShape) {
   auto output_desc = op.GetInputDesc("x");
