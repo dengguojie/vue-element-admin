@@ -1,6 +1,7 @@
 set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 
 set(local_kernels_src_files
+    kernels/normalized/acosh.cc
     kernels/normalized/adaptive_max_pool_2d.cc
     kernels/normalized/add.cc
     kernels/normalized/asin.cc
