@@ -185,9 +185,6 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     ori_format = grads.get("ori_format")
     _check_format_nd(data_format, ori_format)
 
-
-    shape_util.compare_tensor_dict_key(grads, x, "shape")
-    shape_util.compare_tensor_dict_key(batch_mean, batch_variance, "shape")
     if data_format == "NDC1HWC0":
         shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
         shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
