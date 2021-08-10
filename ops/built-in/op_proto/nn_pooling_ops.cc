@@ -1849,9 +1849,21 @@ static void InferHWAvgpool(int64_t kernel,int64_t stride, vector<int64_t>& outpu
 }
 
 IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
+  OP_LOGD(op.GetName().c_str(), "Enter AvgPoolInferDataSlice.");
   auto inputTensorDesc = op.GetInputDesc("x");
   auto shape = inputTensorDesc.GetShape();
   std::vector<int64_t> dims_input = shape.GetDims();
+  auto inputFormat = inputTensorDesc.GetFormat();
+
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+  if (inputFormat == FORMAT_NC1HWC0) {
+    inputH = dims_input[2];
+    inputW = dims_input[3];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Invalid inputFormat.");
+    return GRAPH_FAILED;
+  }
 
   std::vector<int64_t> ksizeList;
   std::vector<int64_t> stridesList;
@@ -1862,30 +1874,28 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
   op.GetAttr("data_format", dataFormat);
   op.GetAttr("padding", paddingMode);
 
-  int64_t inputH = 0;
-  int64_t inputW = 0;
   int64_t windowH = 0;
+  int64_t windowW = 0;
   int64_t strideH = 0;
-
   if (dataFormat == "NHWC") {
-    inputH = dims_input[1];
-    inputW = dims_input[2];
     windowH = ksizeList[1];
+    windowW = ksizeList[2];
     strideH = stridesList[1];
   } else if(dataFormat == "NCHW") {
-    inputH = dims_input[2];
-    inputW = dims_input[3];
     windowH = ksizeList[2];
+    windowW = ksizeList[3];
     strideH = stridesList[2];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Invalid dataFormat.");
+    return GRAPH_FAILED;
   }
 
-  if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
-    return NO_OVERLAP_DIM;
-  }
-  if (dataFormat == "NCHW" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+  if (windowH == inputH && windowW == inputW) {
+    OP_LOGD(op.GetName().c_str(), "Global pool can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
   if (paddingMode == "SAME") {
+    OP_LOGD(op.GetName().c_str(), "Padding mode is same, can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
 
@@ -1895,7 +1905,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
   GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
   GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
   if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    OP_LOGE(op.GetName().c_str(), "no data slice, use default.");
     return GRAPH_FAILED;
   }
 
@@ -1916,11 +1926,11 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
   for(unsigned i = 0; i < x_data_slice.size(); i++) {
     if (x_data_slice[i].size() > 0) {
       if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+        OP_LOGE(op.GetName().c_str(), "Set x data slice failed.");
         return GRAPH_FAILED;
       }
       return GRAPH_SUCCESS;
     }
-    return NO_OVERLAP_DIM;
   }
 
   return NO_OVERLAP_DIM;
@@ -3692,9 +3702,21 @@ static void InferHWMaxPool(int64_t kernel, int64_t stride, vector<int64_t>& outp
 }
 
 IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter MaxPoolInferDataSlice.");
   auto inputTensorDesc = op.GetInputDesc("x");
   auto shape = inputTensorDesc.GetShape();
   std::vector<int64_t> dims_input = shape.GetDims();
+  auto inputFormat = inputTensorDesc.GetFormat();
+
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+  if (inputFormat == FORMAT_NC1HWC0) {
+    inputH = dims_input[2];
+    inputW = dims_input[3];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Invalid inputFormat.");
+    return GRAPH_FAILED;
+  }
 
   std::vector<int64_t> ksizeList;
   std::vector<int64_t> stridesList;
@@ -3705,38 +3727,39 @@ IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
   op.GetAttr("data_format", dataFormat);
   op.GetAttr("padding", paddingMode);
 
-  int64_t inputH = 0;
-  int64_t inputW = 0;
   int64_t windowH = 0;
+  int64_t windowW = 0;
   int64_t strideH = 0;
 
   if (dataFormat == "NHWC") {
-    inputH = dims_input[1];
-    inputW = dims_input[2];
     windowH = ksizeList[1];
+    windowW = ksizeList[2];
+    strideH = stridesList[1];
   } else if (dataFormat == "NCHW") {
-    inputH = dims_input[2];
-    inputW = dims_input[3];
     windowH = ksizeList[2];
+    windowW = ksizeList[3];
+    strideH = stridesList[2];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Invalid dataFormat.");
+    return GRAPH_FAILED;
   }
 
-  if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
-    return NO_OVERLAP_DIM;
-  }
-  if (dataFormat == "NCHW" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
+  if (windowH == inputH && windowW == inputW) {
+    OP_LOGD(op.GetName().c_str(), "Global pool can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
   if (paddingMode == "SAME") {
+    OP_LOGD(op.GetName().c_str(), "Padding mode is same, can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
-
+  
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
   GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
   if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    OP_LOGE(op.GetName().c_str(), "no data slice, use default as.");
     return GRAPH_FAILED;
   }
 
@@ -3757,11 +3780,11 @@ IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
   for (unsigned i = 0; i < x_data_slice.size(); i++) {
     if (x_data_slice[i].size() > 0) {
       if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+        OP_LOGE(op.GetName().c_str(), "Set x data slice failed.");
         return GRAPH_FAILED;
       }
       return GRAPH_SUCCESS;
     }
-    return NO_OVERLAP_DIM;
   }
 
   return NO_OVERLAP_DIM;
