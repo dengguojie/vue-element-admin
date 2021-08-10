@@ -62,12 +62,8 @@ Status GenerateConstFP16Dynamic(const vector<int64_t> shape, const float areaFac
   float* output = &output1;
   float area_factor = static_cast<float>(areaFactor);
   for (int64_t i = 0; i < shape[0]; i++) {
-    for (int64_t k = 0; k < shape[2]; k++) {
-      for (int64_t l = 0; l < shape[3]; l++) {
-        if (k == l) {
-          output[i * (shape[2] * shape[3]) + k * shape[3] + l] = area_factor;
-        }
-      }
+    for (int64_t k = 0; (k < shape[2] && k < shape[3]); k++) {
+      output[i * (shape[2] * shape[3]) + k * shape[3] + k] = area_factor;
     }
   }
   return SUCCESS;
@@ -408,22 +404,22 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
       filter_size_reset[0] = filter_size[0];
       filter_size_reset[1] = filter_size[1];
       filter_size_reset[2] = 1;
-    } 
+    }
   } else {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "dim_info is not right, please check!");
     return NOT_CHANGED;
   }
   // when static op or dynamic op phase_running, is_dynamic = false
   OP_LOGD("After get output n, H, W, C");
-  graphStatus ret_res;
   vector<int64_t> dim_info2;
   if (!is_dynamic) {
+    graphStatus ret_res;
     ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
     depthwise_dw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
     depthwise_dw_output_tensor.SetShape(ge::GeShape(filter_size_reset));
     ret_res = depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
     dim_info2 = depthwise_dw_output_tensor.GetOriginShape().GetDims();
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0], 
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0],
 		    (int)dim_info2[1], (int)dim_info2[2], (int)dim_info2[3]);
   }
 

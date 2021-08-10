@@ -118,7 +118,6 @@ def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
         dict_args = {
             'errCode': 'E60023',
             'op_name': 'depthwise_conv2d_backprop_input',
-            'strides': str(strides[dim_s_n]),
             'strides': str(strides[dim_s_c])
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))

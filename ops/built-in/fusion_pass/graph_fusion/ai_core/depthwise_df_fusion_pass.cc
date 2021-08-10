@@ -106,7 +106,6 @@ Status DepthwiseDfFusionPass::SwapNumChn(OpDescPtr& op_desc, bool b_input, uint3
   auto get_all_input_candidate_desc = op_desc->GetAllInputsDesc();
 
   if (both) {
-    ge::Format origin_format;
     vector<int64_t> dim_info;
     for (auto iter=get_all_input_candidate_desc.begin(); iter!=get_all_input_candidate_desc.end(); ++iter) {
       tensor_desc = *iter;
@@ -114,7 +113,6 @@ Status DepthwiseDfFusionPass::SwapNumChn(OpDescPtr& op_desc, bool b_input, uint3
         FUSION_PASS_CHECK(SwapNumChnImpl(tensor_desc) != SUCCESS,
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
         ret_res = op_desc->UpdateInputDesc(index, tensor_desc);
-        origin_format = tensor_desc.GetOriginFormat();
         dim_info = tensor_desc.GetShape().GetDims();
         OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap: [%d, %d, %d, %d]", (int)dim_info[0],
                    (int)dim_info[1], (int)dim_info[2], (int)dim_info[3]);
@@ -126,7 +124,6 @@ Status DepthwiseDfFusionPass::SwapNumChn(OpDescPtr& op_desc, bool b_input, uint3
       FUSION_PASS_CHECK(SwapNumChnImpl(tensor_desc) != SUCCESS,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
       ret_res = op_desc->UpdateOutputDesc(index, tensor_desc);
-      origin_format = tensor_desc.GetOriginFormat();
       dim_info = tensor_desc.GetShape().GetDims();
       OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap: [%d, %d, %d, %d]", (int)dim_info[0],
               (int)dim_info[1], (int)dim_info[2], (int)dim_info[3]);
@@ -139,7 +136,6 @@ Status DepthwiseDfFusionPass::SwapNumChn(OpDescPtr& op_desc, bool b_input, uint3
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
       ret_res = op_desc->UpdateInputDesc(index, tensor_desc);
 
-      ge::Format origin_format = tensor_desc.GetOriginFormat();
       vector<int64_t> dim_info1 = tensor_desc.GetShape().GetDims();
       OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap input: [%d, %d, %d, %d]", (int)dim_info1[0],
               (int)dim_info1[1], (int)dim_info1[2], (int)dim_info1[3]);
@@ -150,7 +146,6 @@ Status DepthwiseDfFusionPass::SwapNumChn(OpDescPtr& op_desc, bool b_input, uint3
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
       ret_res = op_desc->UpdateOutputDesc(index, tensor_desc);
 
-      ge::Format origin_format = tensor_desc.GetOriginFormat();
       vector<int64_t> dim_info1 = tensor_desc.GetShape().GetDims();
       OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap output: [%d, %d, %d, %d]", (int)dim_info1[0],
               (int)dim_info1[1], (int)dim_info1[2], (int)dim_info1[3]);

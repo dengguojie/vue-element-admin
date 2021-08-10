@@ -120,23 +120,19 @@ Status DepthwiseconvClipByValueFusionPass::GetFusionNodes(const BufferFusionMapp
   FE_LOGD("Begin of DepthwiseConvClipByValue ub fusion pass!!");
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEMWISE, mapping);
   vector<ge::NodePtr> depthwiseconv_node = GetMatchedNodesByDescName(PATTERN_DEPTHWISECONV, mapping);
-  if (!depthwiseconv_node.empty()) {
-    if (depthwiseconv_node[0]->GetType() != "DepthwiseConv2D") {
-      FE_LOGI(
-        "The optype of node[%s] should be DepthwiseConvolution,"
-        "but actually is [%s], no need to do fusion.",
-        depthwiseconv_node[0]->GetName().c_str(), depthwiseconv_node[0]->GetType().c_str());
-      return SUCCESS;
-    }
+  if ((!depthwiseconv_node.empty()) && (depthwiseconv_node[0]->GetType() != "DepthwiseConv2D")) {
+    FE_LOGI(
+      "The optype of node[%s] should be DepthwiseConvolution,"
+      "but actually is [%s], no need to do fusion.",
+      depthwiseconv_node[0]->GetName().c_str(), depthwiseconv_node[0]->GetType().c_str());
+    return SUCCESS;
   }
-  if (!elemNode.empty()) {
-    if (elemNode[0]->GetType() != "ClipByValue") {
-      FE_LOGI(
-        "The optype of node[%s] should be ClipByValue,"
-        "but actually is [%s], no need to do fusion.",
-        elemNode[0]->GetName().c_str(), elemNode[0]->GetType().c_str());
-      return SUCCESS;
-    }
+  if ((!elemNode.empty()) && (elemNode[0]->GetType() != "ClipByValue")) {
+    FE_LOGI(
+      "The optype of node[%s] should be ClipByValue,"
+      "but actually is [%s], no need to do fusion.",
+      elemNode[0]->GetName().c_str(), elemNode[0]->GetType().c_str());
+    return SUCCESS;
   }
 
   fusionNodes = GetMatchedNodes(mapping);

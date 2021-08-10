@@ -50,8 +50,8 @@ def _ceil(x_size):
         return ((x_size + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
 
     dict_args = {
-        'errCode': 'E67006', 
-        'op_name': 'depthwise_conv2d_backprop_filter', 
+        'errCode': 'E67006',
+        'op_name': 'depthwise_conv2d_backprop_filter',
         'param_name': 'BLOCK_SIZE'
         }
     raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
@@ -111,7 +111,6 @@ def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
         dict_args = {
             'errCode': 'E60023',
             'op_name': 'depthwise_conv2d_backprop_filter',
-            'strides': str(strides[dim_n]),
             'strides': str(strides[dim_c])
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
@@ -119,7 +118,7 @@ def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
 
 # pylint: disable=invalid-name,
 @para_check.check_op_params(
-    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
+    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.REQUIRED_OUTPUT,
     para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
     para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -215,15 +214,15 @@ def depthwise_conv2d_backprop_filter_d(
     para_check.check_dtype(dout_dtype.lower(), ('float16', ), param_name="out_backprop")
     para_check.check_dtype(w_dtype.lower(), ('float32', ), param_name="filter_grad")
 
-    para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM, 
+    para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="input_fm")
-    para_check.check_shape(shape_w, min_rank=FILTER_DIM, 
+    para_check.check_shape(shape_w, min_rank=FILTER_DIM,
                            max_rank=FILTER_DIM, param_name="filter_grad")
-    para_check.check_shape(shape_dout, min_rank=FEATURE_MAP_DIM, 
+    para_check.check_shape(shape_dout, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
-    para_check.check_shape(strides, min_rank=STRIDES_DIM, 
+    para_check.check_shape(strides, min_rank=STRIDES_DIM,
                            max_rank=STRIDES_DIM, param_name="strides")
-    para_check.check_shape(dilations, min_rank=DILATION_DIM, 
+    para_check.check_shape(dilations, min_rank=DILATION_DIM,
                            max_rank=DILATION_DIM, param_name="dilations")
 
     # index of the origin dimension
@@ -251,10 +250,10 @@ def depthwise_conv2d_backprop_filter_d(
 
     n_size, c_size, h_size, w_size = shape_in
     groups = c_size
-    shape_in = [n_size, _ceil(c_size) // BLOCK_SIZE, 
+    shape_in = [n_size, _ceil(c_size) // BLOCK_SIZE,
                 h_size, w_size, BLOCK_SIZE]
     n_size, c_size, h_size, w_size = shape_dout
-    shape_dout = [n_size, _ceil(c_size) // BLOCK_SIZE, 
+    shape_dout = [n_size, _ceil(c_size) // BLOCK_SIZE,
                   h_size, w_size, BLOCK_SIZE]
 
     h_size, w_size, _, _ = shape_w

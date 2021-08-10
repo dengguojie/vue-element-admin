@@ -251,17 +251,14 @@ def depthwise_conv2d(
         x_c = x_shape[3]
     if filter["ori_format"] == "HWCN":
         filter_n = w_shape[3]*w_shape[2]
-        filter_c = 1
         filter_h = w_shape[0]
         filter_w = w_shape[1]
     elif filter["ori_format"] == "NCHW":
         filter_n = w_shape[0] * w_shape[1]
-        filter_c = 1
         filter_h = w_shape[2]
         filter_w = w_shape[3]
     elif filter["ori_format"] == "NHWC":
         filter_n = w_shape[0] * w_shape[3]
-        filter_c = 1
         filter_h = w_shape[1]
         filter_w = w_shape[2]
     else:
@@ -274,6 +271,7 @@ def depthwise_conv2d(
         }
         raise RuntimeError(
             dict_args, error_manager_util.get_error_message(dict_args))
+    filter_c = 1
 
     filter["ori_shape"] = [filter_n, filter_c, filter_h, filter_w]
     filter["ori_format"] = "NCHW"

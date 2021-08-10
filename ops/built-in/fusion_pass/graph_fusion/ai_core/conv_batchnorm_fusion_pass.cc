@@ -198,11 +198,8 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return NOT_CHANGED);
   ge::GeShape filterShape = filterInputDesc.GetShape();
   int64_t kernelNum = 0;
-  if (convNode->GetType() == "DepthwiseConv2D") {
-    kernelNum = filterInputDesc.GetShape().GetDim(kernelIndex) * filterInputDesc.GetShape().GetDim(channelIndex);
-  } else {
-    kernelNum = filterInputDesc.GetShape().GetDim(kernelIndex);
-  }
+  kernelNum = (convNode->GetType() == "DepthwiseConv2D") ? filterInputDesc.GetShape().GetDim(kernelIndex) * \
+              filterInputDesc.GetShape().GetDim(channelIndex) : filterInputDesc.GetShape().GetDim(kernelIndex);
 
   // create host op
   bool hasBias = true;
@@ -275,7 +272,7 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                         biasHostOpdesc->AddInputDesc(conv2dInputsName[1], conv2dInputs[1]) != SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const input of ConvBnBiasHost failed."), return FAILED);
   FUSION_PASS_CHECK(biasHostOpdesc->AddOutputDesc("y", biasOutputDesc) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const output of ConvBnBiasHost failed."), return FAILED);                  
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const output of ConvBnBiasHost failed."), return FAILED);
   vector<ge::GeTensorDesc> destConstInputs;
   vector<ge::InDataAnchorPtr> destdInputAncors;
   vector<ge::GeTensorDesc> destConstOutputs;
