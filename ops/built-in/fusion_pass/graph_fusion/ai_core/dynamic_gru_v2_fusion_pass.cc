@@ -157,8 +157,6 @@ void DynamicGRUV2FusionPass::SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_s
   std::string gate_order("zrh");
   bool reset_after = true;
   bool is_training = true;
-  int input_size = 0;
-  int hidden_size = 0;
   if (ge::AttrUtils::GetStr(gru_desc, "direction", direction)) {
     ge::AttrUtils::SetStr(gru_split_desc, "direction", direction);
   }
@@ -188,13 +186,6 @@ void DynamicGRUV2FusionPass::SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_s
   }
   if (ge::AttrUtils::GetBool(gru_desc, "is_training", is_training)) {
     ge::AttrUtils::SetBool(gru_split_desc, "is_training", is_training);
-  }
-  //set attr for transdatarnn
-  if (ge::AttrUtils::GetInt(gru_desc, "input_size", input_size)) {
-    ge::AttrUtils::SetInt(gru_split_desc, "input_size", input_size);
-  }
-  if (ge::AttrUtils::GetInt(gru_desc, "hidden_size", hidden_size)) {
-    ge::AttrUtils::SetInt(gru_split_desc, "hidden_size", hidden_size);
   }  
 }
 

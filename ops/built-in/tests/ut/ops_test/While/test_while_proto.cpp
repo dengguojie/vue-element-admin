@@ -123,13 +123,13 @@ TEST_F(While, while_infer_shape_second_time_get_unknown_shape) {
   EXPECT_NE(node, nullptr);
 
   ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
-  EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_FAILED); // local ok, online fail
-  /*
+  //EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_FAILED); // local ok, online fail
+  
   EXPECT_EQ(op.InferShapeAndType(), 50331647); // GRAPH_NODE_NEED_REPASS
   auto input_desc = while_op.GetDynamicInputDesc("input",0);
   // Check input is refreshed by output is unknown
   EXPECT_EQ(input_desc.GetShape().GetDims(), std::vector<int64_t>({-1}));
-  */
+
 }
 
 TEST_F(While, while_infer_shape_second_time_get_unknown_rank) {
@@ -170,13 +170,13 @@ TEST_F(While, while_infer_shape_second_time_get_unknown_rank) {
   EXPECT_NE(node, nullptr);
 
   ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
-  EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_FAILED); // local ok, online fail
-  /*
+  //EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_FAILED); // local ok, online fail
+  
   EXPECT_EQ(op.InferShapeAndType(), 50331647); // GRAPH_NODE_NEED_REPASS
   auto input_desc = while_op.GetDynamicInputDesc("input",0);
   // Check input is refreshed by output is unknown
   EXPECT_EQ(input_desc.GetShape().GetDims(), std::vector<int64_t>({-2}));
-  */
+  
 }
 
 TEST_F(While, while_infer_shape_in_num_not_equal_out_num_failed) {
