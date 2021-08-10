@@ -41,9 +41,9 @@ int64_t GetCeilFillB(int64_t uValue, int64_t dValue) {
   return resValue;
 }
 
-bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLeft, int64_t& dstCrLpCnt,
-                           int64_t& vncRowLeft, int64_t& llDstCrLeft, int64_t& coreNum,
-                           TransDataMode1010Param& params) {
+bool GetMcInfoPositive1010(int64_t& dstClLpCnt, int64_t& vncRowClLeft, int64_t& llDstClLeft, int64_t& cLpCnt,
+                           int64_t& cLeft, int64_t& dstCrLpCnt, int64_t& vncRowLeft, int64_t& llDstCrLeft,
+                           int64_t& coreNum, TransDataMode1010Param& params) {
   int64_t tmpFullLoopCntCr;
   tmpFullLoopCntCr = GetFloorDiv(dstCrLpCnt, coreNum) > 0 ? coreNum : 0;
   
@@ -63,8 +63,8 @@ bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLe
   int64_t fullLoopCntC = tmpFullLoopCntC + reminderLoopCntC;
 
   int64_t tmpFullLoopCntLeft;
-  tmpFullLoopCntLeft = GetFloorDiv(axisDstClSize, coreNum) > 0 ? coreNum : 0;
-  int64_t reminderLoopCntLeft = axisDstClSize % coreNum;
+  tmpFullLoopCntLeft = GetFloorDiv(dstClLpCnt, coreNum) > 0 ? coreNum : 0;
+  int64_t reminderLoopCntLeft = dstClLpCnt % coreNum;
   if (reminderLoopCntLeft == 0) {
     tmpFullLoopCntLeft += coreNum;
   }
@@ -72,11 +72,15 @@ bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLe
 
   vector<int64_t> loopCntList = {fullLoopCntLeft, fullLoopCntCr, fullLoopCntC};
   if (max_element(loopCntList.begin(), loopCntList.end()) - loopCntList.begin() == 0) {
-    params.usedCoreCnt = GetCeilDiv(axisDstClSize, GetCeilDiv(axisDstClSize, coreNum));
-    params.nlcDstClLpCnt = GetCeilDiv(axisDstClSize, params.usedCoreCnt);
-    params.lcDstClLpCnt = axisDstClSize - params.nlcDstClLpCnt * (params.usedCoreCnt - 1);
+    params.usedCoreCnt = GetCeilDiv(dstClLpCnt, GetCeilDiv(dstClLpCnt, coreNum));
+    params.nlcDstClLpCnt = GetCeilDiv(dstClLpCnt, params.usedCoreCnt);
+    params.lcDstClLpCnt = dstClLpCnt - params.nlcDstClLpCnt * (params.usedCoreCnt - 1);
     params.coreStepIn = params.nlcDstClLpCnt * params.dstClLpStepIn;
     params.coreStepOut = params.nlcDstClLpCnt * params.dstClLpStepOut;
+    params.nlcVncRowClLeft = 0;
+    params.lcVncRowClLeft = vncRowClLeft;
+    params.nlcLastLineClCnt = llDstClLeft;
+    params.lcLastLineClCnt = llDstClLeft;
     params.nlcCLpCnt = cLpCnt;
     params.lcCLpCnt = cLpCnt;
     params.nlcCLeft = cLeft;
@@ -101,8 +105,12 @@ bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLe
     params.lcCLpCnt = cLpCnt;
     params.nlcCLeft = cLeft;
     params.lcCLeft = cLeft;
-    params.nlcDstClLpCnt = axisDstClSize;
-    params.lcDstClLpCnt = axisDstClSize;
+    params.nlcDstClLpCnt = dstClLpCnt;
+    params.lcDstClLpCnt = dstClLpCnt;
+    params.nlcVncRowClLeft = vncRowClLeft;
+    params.lcVncRowClLeft = vncRowClLeft;
+    params.nlcLastLineClCnt = llDstClLeft;
+    params.lcLastLineClCnt = llDstClLeft;
   } else {
     params.usedCoreCnt = GetCeilDiv(cLpCnt, GetCeilDiv(cLpCnt, coreNum));
     params.nlcCLpCnt = GetCeilDiv(cLpCnt, params.usedCoreCnt);
@@ -111,8 +119,12 @@ bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLe
     params.coreStepOut = params.nlcCLpCnt * params.cLpStepOut;
     params.nlcCLeft = 0;
     params.lcCLeft = cLeft;
-    params.nlcDstClLpCnt = axisDstClSize;
-    params.lcDstClLpCnt = axisDstClSize;
+    params.nlcDstClLpCnt = dstClLpCnt;
+    params.lcDstClLpCnt = dstClLpCnt;
+    params.nlcVncRowClLeft = vncRowClLeft;
+    params.lcVncRowClLeft = vncRowClLeft;
+    params.nlcLastLineClCnt = llDstClLeft;
+    params.lcLastLineClCnt = llDstClLeft;
     params.nlcDstCrLpCnt = dstCrLpCnt;
     params.lcDstCrLpCnt = dstCrLpCnt;
     params.nlcVncRowLeft = vncRowLeft;
@@ -122,6 +134,7 @@ bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLe
   }
   return true;
 }
+
 bool GetCommonParam(int64_t& ubSize, int64_t& blockElemCnt, int64_t& c0Len, int64_t& axisCSize,
                     TransDataMode1010Param& params) {
   int64_t halfUbSize;
@@ -159,19 +172,9 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
 
   params.tilingMode = 1010;
   params.vncLineSize = params.vncLineSize / c0Len * c0Len;
-  // target axis c-left tiling parameters
-  int32_t dstAxisPosC = std::strchr(dstFormat.c_str(), 'C') - dstFormat.c_str();
-  int64_t axisDstClSize = 1;
-  for (int32_t i = 0; i < dstAxisPosC; i++) {
-    axisDstClSize *= outShape[i];
-  }
-  char dstClChar = dstFormat[dstAxisPosC - 1];
 
-  params.dstClLpUnit = 1;
-  params.dstClLpStepIn = GetShapeSize(inShape, std::strchr(srcFormat.c_str(), dstClChar) - srcFormat.c_str() + 1);
-  params.dstClLpStepOut = GetShapeSize(outShape, dstAxisPosC);
-  
   // source axis c tiling parameters
+  int32_t dstAxisPosC = std::strchr(dstFormat.c_str(), 'C') - dstFormat.c_str();
   if (axisCSize < params.vncLineSize) {
     params.cLpUnit = axisCSize;
   } else {
@@ -184,7 +187,7 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
   int64_t cLpCnt = GetCeilDiv(axisCSize, params.cLpUnit);
   int64_t cLeft = axisCSize % params.cLpUnit;
 
-  // arget axis c-right tiling parameters
+  // target axis c-right tiling parameters
   int32_t tmpSrcPos = std::strchr(srcFormat.c_str(), dstFormat[dstFormat.length() - 2]) - srcFormat.c_str();
   int64_t axisDstCrSize = GetShapeSize(inShape, tmpSrcPos) / inShape[inShape.size() - 1];
 
@@ -207,7 +210,77 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
   params.dstCrLpStepOut = GetShapeSize(outShape, tmpDstPos + 1) * perVncDstCrCnt;
   params.dstCrStepIn = GetShapeSize(inShape, -1);
 
-  ret = GetMcInfoPositive1010(axisDstClSize, cLpCnt, cLeft, dstCrLpCnt, vncRowLeft, llDstCrLeft, coreNum, params);
+  // target axis c-left tiling parameters
+  int64_t axisDstClSize = 1;
+  int64_t perVncDstClCnt = 1;
+  int64_t dstClLpCnt = 1;
+  int64_t dstClLeft = 0;
+  int64_t vncRowClLeft = 0;
+  int64_t tmpDstClLeft = 0;
+  int64_t llDstClLeft = 0;
+  for (int32_t i = 0; i < dstAxisPosC; i++) {
+    axisDstClSize *= outShape[i];
+  }
+  char dstClChar = dstFormat[dstAxisPosC - 1];
+
+  if (dstCrLpCnt == 1 && params.cLpUnit == axisCSize && vncRowLeft <= GetFloorDiv(VNC_LINES, 2)) {
+    // nc is less than vnchwconv col size
+    if (vncRowLeft == 1) {
+      params.ncLeVCol = 1;
+      params.plnDstClSize = GetFloorDiv(params.plnDstCrSize, axisDstCrSize);
+    } else {
+      params.ncLeVCol = 2;
+      params.plnDstClSize = 1;
+      // adjust c-right parameters
+      dstCrLpCnt = GetCeilDiv(axisDstCrSize, params.plnDstCrSize);
+      vncRowLeft = axisDstCrSize % params.plnDstCrSize;
+      if (vncRowLeft > 0) {
+        llDstCrLeft = vncRowLeft;
+      } else {
+        llDstCrLeft = params.plnDstCrSize;
+      }
+      params.dstCrLpStepIn = inShape[inShape.size() - 1] * params.plnDstCrSize;
+      params.dstCrLpStepOut = GetShapeSize(outShape, tmpDstPos + 1) * params.plnDstCrSize;
+    }
+
+    perVncDstClCnt = params.plnDstClSize * params.vncRowSize;
+    dstClLpCnt = GetCeilDiv(axisDstClSize, perVncDstClCnt);
+    // adjust c-left parameters
+    int64_t fourInCoreCnt = 4;
+    int64_t plnClGate = 64;
+    if ((dstClLpCnt < GetFloorDiv(coreNum, fourInCoreCnt)) && (params.plnDstClSize > plnClGate)) {
+      params.plnDstClSize = GetFloorDiv(params.plnDstClSize, plnClGate);
+      perVncDstClCnt = params.plnDstClSize * params.vncRowSize;
+      dstClLpCnt = GetCeilDiv(axisDstClSize, perVncDstClCnt);
+    }
+    dstClLeft = axisDstClSize % perVncDstClCnt;
+    vncRowClLeft = GetCeilDiv(dstClLeft, params.plnDstClSize);
+    tmpDstClLeft = dstClLeft % params.plnDstClSize;
+    if (tmpDstClLeft > 0) {
+      llDstClLeft = tmpDstClLeft;
+    } else {
+      llDstClLeft = params.plnDstClSize;
+    }
+
+  } else {
+    params.ncLeVCol = 0;
+    params.plnDstClSize = 1;
+    dstClLpCnt = axisDstClSize;
+    vncRowClLeft = params.plnDstClSize;
+    llDstClLeft = params.plnDstClSize;
+  }
+  params.dstClStepIn = GetShapeSize(inShape, std::strchr(srcFormat.c_str(), dstClChar) - srcFormat.c_str() + 1);
+  params.dstClStepOut = GetShapeSize(outShape, dstAxisPosC);
+  if (params.ncLeVCol == 0) {
+    params.dstClLpStepIn = params.dstClStepIn;
+    params.dstClLpStepOut = params.dstClStepOut;
+  } else {
+    params.dstClLpStepIn = params.dstClStepIn * perVncDstClCnt;
+    params.dstClLpStepOut = params.dstClStepOut * perVncDstClCnt;
+  }
+
+  ret = GetMcInfoPositive1010(dstClLpCnt, vncRowClLeft, llDstClLeft, cLpCnt, cLeft,
+                              dstCrLpCnt, vncRowLeft, llDstCrLeft, coreNum, params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1010 Failed.");
     return ret;
@@ -224,12 +297,15 @@ void SetRunningMode1010Params(const TransDataMode1010Param& runParams, OpRunInfo
 
   ByteBufferPut(runInfo.tiling_data, runParams.dstClLpStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.dstClLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClLpUnit);
+  ByteBufferPut(runInfo.tiling_data, runParams.dstClStepIn);
+  ByteBufferPut(runInfo.tiling_data, runParams.dstClStepOut);
   ByteBufferPut(runInfo.tiling_data, runParams.dstCrLpStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.dstCrLpStepOut);
   ByteBufferPut(runInfo.tiling_data, runParams.dstCrStepIn);
+  ByteBufferPut(runInfo.tiling_data, runParams.ncLeVCol);
   ByteBufferPut(runInfo.tiling_data, runParams.vncLineSize);
 
+  ByteBufferPut(runInfo.tiling_data, runParams.plnDstClSize);
   ByteBufferPut(runInfo.tiling_data, runParams.plnDstCrSize);
   ByteBufferPut(runInfo.tiling_data, runParams.vncRowSize);
   ByteBufferPut(runInfo.tiling_data, runParams.cLpStepIn);
@@ -239,12 +315,16 @@ void SetRunningMode1010Params(const TransDataMode1010Param& runParams, OpRunInfo
   ByteBufferPut(runInfo.tiling_data, runParams.cModC0);
   ByteBufferPut(runInfo.tiling_data, runParams.cLpUnit);
   ByteBufferPut(runInfo.tiling_data, runParams.nlcDstClLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcVncRowClLeft);
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcLastLineClCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.nlcDstCrLpCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.nlcVncRowLeft);
   ByteBufferPut(runInfo.tiling_data, runParams.nlcLastLineCrCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.nlcCLpCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.nlcCLeft);
   ByteBufferPut(runInfo.tiling_data, runParams.lcDstClLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcVncRowClLeft);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcLastLineClCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.lcDstCrLpCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.lcVncRowLeft);
   ByteBufferPut(runInfo.tiling_data, runParams.lcLastLineCrCnt);
@@ -261,13 +341,15 @@ void PrintTilingMode1010Params(const std::string& opType, const TransDataMode101
 
   OP_LOGD(opType.c_str(), "dstClLpStepIn=%d", params.dstClLpStepIn);
   OP_LOGD(opType.c_str(), "dstClLpStepOut=%d", params.dstClLpStepOut);
-  OP_LOGD(opType.c_str(), "dstClLpUnit=%d", params.dstClLpUnit);
+  OP_LOGD(opType.c_str(), "dstClStepIn=%d", params.dstClStepIn);
+  OP_LOGD(opType.c_str(), "dstClStepOut=%d", params.dstClStepOut);
   OP_LOGD(opType.c_str(), "dstCrLpStepIn=%d", params.dstCrLpStepIn);
   OP_LOGD(opType.c_str(), "dstCrLpStepOut=%d", params.dstCrLpStepOut);
   OP_LOGD(opType.c_str(), "dstCrStepIn=%d", params.dstCrStepIn);
+  OP_LOGD(opType.c_str(), "ncLeVCol=%d", params.ncLeVCol);
   OP_LOGD(opType.c_str(), "vncLineSize=%d", params.vncLineSize);
 
-
+  OP_LOGD(opType.c_str(), "plnDstClSize=%d", params.plnDstClSize);
   OP_LOGD(opType.c_str(), "plnDstCrSize=%d", params.plnDstCrSize);
   OP_LOGD(opType.c_str(), "vncRowSize=%d", params.vncRowSize);
   OP_LOGD(opType.c_str(), "cLpStepIn=%d", params.cLpStepIn);
@@ -276,14 +358,19 @@ void PrintTilingMode1010Params(const std::string& opType, const TransDataMode101
   OP_LOGD(opType.c_str(), "c0Size=%d", params.c0Size);
   OP_LOGD(opType.c_str(), "cModC0=%d", params.cModC0);
   OP_LOGD(opType.c_str(), "cLpUnit=%d", params.cLpUnit);
+
   OP_LOGD(opType.c_str(), "nlcDstClLpCnt=%d", params.nlcDstClLpCnt);
+  OP_LOGD(opType.c_str(), "nlcVncRowClLeft=%d", params.nlcVncRowClLeft);
+  OP_LOGD(opType.c_str(), "nlcLastLineClCnt=%d", params.nlcLastLineClCnt);
   OP_LOGD(opType.c_str(), "nlcDstCrLpCnt=%d", params.nlcDstCrLpCnt);
   OP_LOGD(opType.c_str(), "nlcVncRowLeft=%d", params.nlcVncRowLeft);
   OP_LOGD(opType.c_str(), "nlcLastLineCrCnt=%d", params.nlcLastLineCrCnt);
-
   OP_LOGD(opType.c_str(), "nlcCLpCnt=%d", params.nlcCLpCnt);
   OP_LOGD(opType.c_str(), "nlcCLeft=%d", params.nlcCLeft);
+
   OP_LOGD(opType.c_str(), "lcDstClLpCnt=%d", params.lcDstClLpCnt);
+  OP_LOGD(opType.c_str(), "lcVncRowClLeft=%d", params.lcVncRowClLeft);
+  OP_LOGD(opType.c_str(), "lcLastLineClCnt=%d", params.lcLastLineClCnt);
   OP_LOGD(opType.c_str(), "lcDstCrLpCnt=%d", params.lcDstCrLpCnt);
   OP_LOGD(opType.c_str(), "lcVncRowLeft=%d", params.lcVncRowLeft);
   OP_LOGD(opType.c_str(), "lcLastLineCrCnt=%d", params.lcLastLineCrCnt);

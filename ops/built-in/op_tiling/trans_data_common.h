@@ -188,11 +188,14 @@ struct TransDataMode1010Param {
   int64_t coreStepOut;
   int64_t dstClLpStepIn;
   int64_t dstClLpStepOut;
-  int64_t dstClLpUnit;
+  int64_t dstClStepIn;
+  int64_t dstClStepOut;
   int64_t dstCrLpStepIn;
   int64_t dstCrLpStepOut;
   int64_t dstCrStepIn;
+  int64_t ncLeVCol;
   int64_t vncLineSize;
+  int64_t plnDstClSize;
   int64_t plnDstCrSize;
   int64_t vncRowSize;
   int64_t cLpStepIn;
@@ -202,12 +205,16 @@ struct TransDataMode1010Param {
   int64_t cModC0;
   int64_t cLpUnit;
   int64_t nlcDstClLpCnt;
+  int64_t nlcVncRowClLeft;
+  int64_t nlcLastLineClCnt;
   int64_t nlcDstCrLpCnt;
   int64_t nlcVncRowLeft;
   int64_t nlcLastLineCrCnt;
   int64_t nlcCLpCnt;
   int64_t nlcCLeft;
   int64_t lcDstClLpCnt;
+  int64_t lcVncRowClLeft;
+  int64_t lcLastLineClCnt;
   int64_t lcDstCrLpCnt;
   int64_t lcVncRowLeft;
   int64_t lcLastLineCrCnt;
@@ -410,6 +417,8 @@ struct TransDataTc201Param {
   int64_t dstR2ndIn1SrcRsize;
   int64_t dstR2ndIn1SrcAsize;
   int64_t dstR2ndDims;
+  int64_t vncColSize;
+  int64_t allR2ndIn;
 };
 
 struct TransDataMode201Param {

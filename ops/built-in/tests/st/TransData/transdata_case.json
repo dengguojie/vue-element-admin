@@ -1,0 +1,438 @@
+[
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_001",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nd_2_nz",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [4, 3, 4],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [4, 1, 1, 16, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "ND",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_002",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nd_2_nz",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [21, 30, 100],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [21, 7, 2, 16, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "ND",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_003",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nd_2_nz",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [2100, 30, 1],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [2100, 1, 2, 16, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "ND",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_004",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nd_2_nz",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [2100, 30, 1],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [2100, 1, 2, 16, 16],
+        "type": "float32",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "ND",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_006",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nd_2_nz",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-1, -1, -1],
+        "shape_range": [[0,-1], [0, -1], [0, -1]],
+        "typical_shape": [4, 3, 3],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [-1, -1, -1, -1, -1],
+        "shape_range": [[0, -1], [0, -1], [0, -1], [0, -1], [0, -1]],
+        "typical_shape": [4, 1, 1, 16, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "ND",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_008",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nz_2_nd",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [21, 100, 1, 16, 16],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [21, 3, 1591],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "ND",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_009",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nz_2_nd",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [21, 1, 10, 16, 16],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [21, 152, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "ND",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_010",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nz_2_nd",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [21, 2, 10, 16, 16],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [21, 152, 31],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "FRACTAL_NZ",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "ND",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_011",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_ndhwc_2_z3d",
+    "input_desc": [
+      {
+        "format": "NDHWC",
+        "shape": [7, 1, 1, 2, 4243],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_Z_3D",
+        "shape": [1, 266, 1, 2, 1, 16, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "NDHWC",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_Z_3D",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_012",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_ndhwc_2_z3d",
+    "input_desc": [
+      {
+        "format": "NDHWC",
+        "shape": [9973, 1, 253, 2, 3],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_Z_3D",
+        "shape": [1, 1, 253, 2, 624, 16, 16],
+        "type": "float32",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "NDHWC",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_Z_3D",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_014",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_z3d_2_ndhwc",
+    "input_desc": [
+      {
+        "format": "FRACTAL_Z_3D",
+        "shape": [1024, 1, 16, 16],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NDHWC",
+        "shape": [10, 8, 16, 8, 11],
+        "type": "float32",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "FRACTAL_Z_3D",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "NDHWC",
+                  "type": "string"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_015",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_z3d_2_ndhwc",
+    "input_desc": [
+      {
+        "format": "FRACTAL_Z_3D",
+        "shape": [6250, 1, 16, 16],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NDHWC",
+        "shape": [1, 1, 1, 1, 100000],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "FRACTAL_Z_3D",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "NDHWC",
+                  "type": "string"
+              }
+          ]
+
+  }
+]

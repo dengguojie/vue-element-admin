@@ -108,7 +108,8 @@ def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
     get multiple core axis position for tiling mode 1010
     """
 
-    axis_dst_cl_size, tp_1010_dst_cl_lp_step_in, tp_1010_dst_cl_lp_step_out = cl_args
+    (dst_cl_lp_cnt, tp_1010_dst_cl_lp_step_in, tp_1010_dst_cl_lp_step_out,
+     pln_dst_cl_size, vnc_row_cl_left, ll_dst_cl_left) = cl_args
     c_lp_cnt, tp_1010_c_lp_step_in, tp_1010_c_lp_step_out, c_left = c_args
     (dst_cr_lp_cnt, tp_1010_dst_cr_lp_step_in, tp_1010_dst_cr_lp_step_out,
      pln_dst_cr_size, vnc_row_size, vnc_row_left, ll_dst_cr_left) = cr_args
@@ -125,19 +126,23 @@ def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
         tmp_full_lp_cnt_c += tdc.CORE_DIM_NUM
     full_lp_cnt_c = tmp_full_lp_cnt_c + reminder_lp_cnt_c
 
-    tmp_full_lp_cnt_left = tdc.CORE_DIM_NUM if tdc.floor_div(axis_dst_cl_size, tdc.CORE_DIM_NUM) > 0 else 0
-    reminder_lp_cnt_left = axis_dst_cl_size % tdc.CORE_DIM_NUM
+    tmp_full_lp_cnt_left = tdc.CORE_DIM_NUM if tdc.floor_div(dst_cl_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
+    reminder_lp_cnt_left = dst_cl_lp_cnt % tdc.CORE_DIM_NUM
     if reminder_lp_cnt_left == 0:
         tmp_full_lp_cnt_left += tdc.CORE_DIM_NUM
     full_lp_cnt_left = tmp_full_lp_cnt_left + reminder_lp_cnt_left
 
     lp_cnt_list = (full_lp_cnt_left, full_lp_cnt_cr, full_lp_cnt_c)
     if lp_cnt_list.index(max(lp_cnt_list)) == 0:
-        tp_1010_used_core_cnt = tdc.ceil_div(axis_dst_cl_size, tdc.ceil_div(axis_dst_cl_size, tdc.CORE_DIM_NUM))
-        tp_1010_nlc_dst_cl_lp_cnt = tdc.ceil_div(axis_dst_cl_size, tp_1010_used_core_cnt)
-        tp_1010_lc_dst_cl_lp_cnt = axis_dst_cl_size - tp_1010_nlc_dst_cl_lp_cnt * (tp_1010_used_core_cnt - 1)
+        tp_1010_used_core_cnt = tdc.ceil_div(dst_cl_lp_cnt, tdc.ceil_div(dst_cl_lp_cnt, tdc.CORE_DIM_NUM))
+        tp_1010_nlc_dst_cl_lp_cnt = tdc.ceil_div(dst_cl_lp_cnt, tp_1010_used_core_cnt)
+        tp_1010_lc_dst_cl_lp_cnt = dst_cl_lp_cnt - tp_1010_nlc_dst_cl_lp_cnt * (tp_1010_used_core_cnt - 1)
         tp_1010_core_step_in = tp_1010_nlc_dst_cl_lp_cnt * tp_1010_dst_cl_lp_step_in
         tp_1010_core_step_out = tp_1010_nlc_dst_cl_lp_cnt * tp_1010_dst_cl_lp_step_out
+        tp_1010_nlc_vnc_row_cl_left = 0
+        tp_1010_lc_vnc_row_cl_left = vnc_row_cl_left
+        tp_1010_nlc_last_line_cl_cnt = ll_dst_cl_left
+        tp_1010_lc_last_line_cl_cnt = ll_dst_cl_left
         tp_1010_nlc_c_lp_cnt = c_lp_cnt
         tp_1010_lc_c_lp_cnt = c_lp_cnt
         tp_1010_nlc_c_left = c_left
@@ -162,8 +167,12 @@ def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
         tp_1010_lc_c_lp_cnt = c_lp_cnt
         tp_1010_nlc_c_left = c_left
         tp_1010_lc_c_left = c_left
-        tp_1010_nlc_dst_cl_lp_cnt = axis_dst_cl_size
-        tp_1010_lc_dst_cl_lp_cnt = axis_dst_cl_size
+        tp_1010_nlc_dst_cl_lp_cnt = dst_cl_lp_cnt
+        tp_1010_lc_dst_cl_lp_cnt = dst_cl_lp_cnt
+        tp_1010_nlc_vnc_row_cl_left = vnc_row_cl_left
+        tp_1010_lc_vnc_row_cl_left = vnc_row_cl_left
+        tp_1010_nlc_last_line_cl_cnt = ll_dst_cl_left
+        tp_1010_lc_last_line_cl_cnt = ll_dst_cl_left
     else:
         tp_1010_used_core_cnt = tdc.ceil_div(c_lp_cnt, tdc.ceil_div(c_lp_cnt, tdc.CORE_DIM_NUM))
         tp_1010_nlc_c_lp_cnt = tdc.ceil_div(c_lp_cnt, tp_1010_used_core_cnt)
@@ -172,8 +181,12 @@ def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
         tp_1010_core_step_out = tp_1010_nlc_c_lp_cnt * tp_1010_c_lp_step_out
         tp_1010_nlc_c_left = 0
         tp_1010_lc_c_left = c_left
-        tp_1010_nlc_dst_cl_lp_cnt = axis_dst_cl_size
-        tp_1010_lc_dst_cl_lp_cnt = axis_dst_cl_size
+        tp_1010_nlc_dst_cl_lp_cnt = dst_cl_lp_cnt
+        tp_1010_lc_dst_cl_lp_cnt = dst_cl_lp_cnt
+        tp_1010_nlc_vnc_row_cl_left = vnc_row_cl_left
+        tp_1010_lc_vnc_row_cl_left = vnc_row_cl_left
+        tp_1010_nlc_last_line_cl_cnt = ll_dst_cl_left
+        tp_1010_lc_last_line_cl_cnt = ll_dst_cl_left
         tp_1010_nlc_dst_cr_lp_cnt = dst_cr_lp_cnt
         tp_1010_lc_dst_cr_lp_cnt = dst_cr_lp_cnt
         tp_1010_nlc_vnc_row_left = vnc_row_left
@@ -182,10 +195,12 @@ def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
         tp_1010_lc_last_line_cr_cnt = ll_dst_cr_left
 
     tiling_params = [tp_1010_used_core_cnt, tp_1010_core_step_in, tp_1010_core_step_out] + \
-                    [tp_1010_nlc_dst_cl_lp_cnt, tp_1010_nlc_dst_cr_lp_cnt, tp_1010_nlc_vnc_row_left,
-                     tp_1010_nlc_last_line_cr_cnt, tp_1010_nlc_c_lp_cnt, tp_1010_nlc_c_left] + \
-                    [tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_dst_cr_lp_cnt, tp_1010_lc_vnc_row_left,
-                     tp_1010_lc_last_line_cr_cnt, tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left]
+                    [tp_1010_nlc_dst_cl_lp_cnt, tp_1010_nlc_vnc_row_cl_left, tp_1010_nlc_last_line_cl_cnt,
+                     tp_1010_nlc_dst_cr_lp_cnt, tp_1010_nlc_vnc_row_left, tp_1010_nlc_last_line_cr_cnt,
+                     tp_1010_nlc_c_lp_cnt, tp_1010_nlc_c_left] + \
+                    [tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_vnc_row_cl_left, tp_1010_lc_last_line_cl_cnt,
+                     tp_1010_lc_dst_cr_lp_cnt, tp_1010_lc_vnc_row_left, tp_1010_lc_last_line_cr_cnt,
+                     tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left]
 
     return tiling_params
 
@@ -291,13 +306,6 @@ def _get_tiling_params_1010(tiling_args):
     tp_101_tiling_mode = 1010
     one_vnc_line_size = one_vnc_line_size // c0_len * c0_len
 
-    # target axis c-left tiling parameters
-    axis_dst_cl_size = tdc.get_shape_size(out_shape[:dst_format.index("C")])
-    dst_cl_char = dst_format[dst_format.index("C") - 1]
-    tp_1010_dst_cl_lp_unit = 1
-    tp_1010_dst_cl_lp_step_in = tdc.get_shape_size(in_shape[src_format.index(dst_cl_char) + 1:])
-    tp_1010_dst_cl_lp_step_out = tdc.get_shape_size(out_shape[dst_format.index("C"):])
-
     # source axis c tiling parameters
     tp_1010_c_lp_unit = axis_c_size if axis_c_size < one_vnc_line_size else one_vnc_line_size
     tp_1010_c_lp_step_in = tp_1010_c_lp_unit
@@ -322,27 +330,73 @@ def _get_tiling_params_1010(tiling_args):
                                                     [per_vnc_dst_cr_cnt])
     tp_1010_dst_cr_step_in = tdc.get_shape_size(in_shape[-1:])
 
-    cl_args = axis_dst_cl_size, tp_1010_dst_cl_lp_step_in, tp_1010_dst_cl_lp_step_out
+    # target axis c-left tiling parameters
+    axis_dst_cl_size = tdc.get_shape_size(out_shape[:dst_format.index("C")])
+    dst_cl_char = dst_format[dst_format.index("C") - 1]
+    if dst_cr_lp_cnt == 1 and tp_1010_c_lp_unit == axis_c_size and vnc_row_left <= tdc.VNC_LINES//2:
+        if vnc_row_left == 1:  # nc size is less than one_vnc_line_size
+            tp_1010_nc_le_vcol = 1
+            tp_1010_pln_dst_cl_size = tp_1010_pln_dst_cr_size // axis_dst_cr_size
+        else:  # c size is less than one_vnc_line_size
+            tp_1010_nc_le_vcol = 2
+            tp_1010_pln_dst_cl_size = 1
+            dst_cr_lp_cnt = tdc.ceil_div(axis_dst_cr_size, tp_1010_pln_dst_cr_size)
+            vnc_row_left = axis_dst_cr_size % tp_1010_pln_dst_cr_size
+            ll_dst_cr_left = vnc_row_left if vnc_row_left > 0 else tp_1010_pln_dst_cr_size
+            tp_1010_dst_cr_lp_step_in = tdc.get_shape_size(in_shape[-1:] + [tp_1010_pln_dst_cr_size])
+            tp_1010_dst_cr_lp_step_out = tdc.get_shape_size(out_shape[dst_format.index(src_format[-2]) + 1:] +
+                                                            [tp_1010_pln_dst_cr_size])
+        per_vnc_dst_cl_cnt = tp_1010_pln_dst_cl_size * tp_1010_vnc_row_size
+        dst_cl_lp_cnt = tdc.ceil_div(axis_dst_cl_size, per_vnc_dst_cl_cnt)
+        # adjust per line cl size when used core count is too small
+        if dst_cl_lp_cnt < tdc.CORE_DIM_NUM // 4 and tp_1010_pln_dst_cl_size > 64:
+            tp_1010_pln_dst_cl_size = tp_1010_pln_dst_cl_size // 4
+            per_vnc_dst_cl_cnt = tp_1010_pln_dst_cl_size * tp_1010_vnc_row_size
+            dst_cl_lp_cnt = tdc.ceil_div(axis_dst_cl_size, per_vnc_dst_cl_cnt)
+        dst_cl_left = axis_dst_cl_size % per_vnc_dst_cl_cnt
+        vnc_row_cl_left = tdc.ceil_div(dst_cl_left, tp_1010_pln_dst_cl_size)
+        tmp_dst_cl_left = dst_cl_left % tp_1010_pln_dst_cl_size
+        ll_dst_cl_left = tmp_dst_cl_left if tmp_dst_cl_left > 0 else tp_1010_pln_dst_cl_size
+    else:
+        tp_1010_nc_le_vcol = 0
+        tp_1010_pln_dst_cl_size = 1
+        dst_cl_lp_cnt = axis_dst_cl_size
+        vnc_row_cl_left = tp_1010_pln_dst_cl_size
+        ll_dst_cl_left = tp_1010_pln_dst_cl_size
+    tp_1010_dst_cl_step_in = tdc.get_shape_size(in_shape[src_format.index(dst_cl_char) + 1:])
+    tp_1010_dst_cl_step_out = tdc.get_shape_size(out_shape[dst_format.index("C"):])
+    if tp_1010_nc_le_vcol == 0:
+        tp_1010_dst_cl_lp_step_in = tp_1010_dst_cl_step_in
+        tp_1010_dst_cl_lp_step_out = tp_1010_dst_cl_step_out
+    else:
+        tp_1010_dst_cl_lp_step_in = tdc.get_shape_size([tp_1010_dst_cl_step_in, per_vnc_dst_cl_cnt])
+        tp_1010_dst_cl_lp_step_out = tdc.get_shape_size([tp_1010_dst_cl_step_out, per_vnc_dst_cl_cnt])
+
+    cl_args = (dst_cl_lp_cnt, tp_1010_dst_cl_lp_step_in, tp_1010_dst_cl_lp_step_out,
+               tp_1010_pln_dst_cl_size, vnc_row_cl_left, ll_dst_cl_left)
     c_args = c_lp_cnt, tp_1010_c_lp_step_in, tp_1010_c_lp_step_out, c_left
     cr_args = (dst_cr_lp_cnt, tp_1010_dst_cr_lp_step_in, tp_1010_dst_cr_lp_step_out,
                tp_1010_pln_dst_cr_size, tp_1010_vnc_row_size, vnc_row_left, ll_dst_cr_left)
-    (tp_1010_used_core_cnt, tp_1010_core_step_in, tp_1010_core_step_out, tp_1010_nlc_dst_cl_lp_cnt,
-     tp_1010_nlc_dst_cr_lp_cnt, tp_1010_nlc_vnc_row_left, tp_1010_nlc_last_line_cr_cnt, tp_1010_nlc_c_lp_cnt,
-     tp_1010_nlc_c_left, tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_dst_cr_lp_cnt, tp_1010_lc_vnc_row_left,
-     tp_1010_lc_last_line_cr_cnt, tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left) = _get_mc_info_positive_1010(cl_args,
-                                                                                                       c_args, cr_args)
+    (tp_1010_used_core_cnt, tp_1010_core_step_in, tp_1010_core_step_out,
+     tp_1010_nlc_dst_cl_lp_cnt, tp_1010_nlc_vnc_row_cl_left, tp_1010_nlc_last_line_cl_cnt,
+     tp_1010_nlc_dst_cr_lp_cnt, tp_1010_nlc_vnc_row_left, tp_1010_nlc_last_line_cr_cnt,
+     tp_1010_nlc_c_lp_cnt, tp_1010_nlc_c_left,
+     tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_vnc_row_cl_left, tp_1010_lc_last_line_cl_cnt,
+     tp_1010_lc_dst_cr_lp_cnt, tp_1010_lc_vnc_row_left, tp_1010_lc_last_line_cr_cnt,
+     tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left) = _get_mc_info_positive_1010(cl_args, c_args, cr_args)
 
     sub_tiling_params = [tp_101_tiling_mode, tp_101_ub_offset, tp_1010_used_core_cnt, tp_1010_core_step_in,
                          tp_1010_core_step_out, tp_1010_dst_cl_lp_step_in, tp_1010_dst_cl_lp_step_out,
-                         tp_1010_dst_cl_lp_unit, tp_1010_dst_cr_lp_step_in, tp_1010_dst_cr_lp_step_out,
-                         tp_1010_dst_cr_step_in, tp_101_vnc_line_size, tp_1010_pln_dst_cr_size, tp_1010_vnc_row_size,
-                         tp_1010_c_lp_step_in, tp_1010_c_lp_step_out, tp_1010_c_step_out, tp_101_c0_size,
-                         tp_101_c_mod_c0, tp_1010_c_lp_unit, tp_1010_nlc_dst_cl_lp_cnt, tp_1010_nlc_dst_cr_lp_cnt,
-                         tp_1010_nlc_vnc_row_left, tp_1010_nlc_last_line_cr_cnt, tp_1010_nlc_c_lp_cnt,
-                         tp_1010_nlc_c_left, tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_dst_cr_lp_cnt,
-                         tp_1010_lc_vnc_row_left, tp_1010_lc_last_line_cr_cnt, tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left]
-    pad_params = [1, 1, 0, 1, 1, 0]
-    return sub_tiling_params + pad_params
+                         tp_1010_dst_cl_step_in, tp_1010_dst_cl_step_out, tp_1010_dst_cr_lp_step_in,
+                         tp_1010_dst_cr_lp_step_out, tp_1010_dst_cr_step_in, tp_1010_nc_le_vcol, tp_101_vnc_line_size,
+                         tp_1010_pln_dst_cl_size, tp_1010_pln_dst_cr_size, tp_1010_vnc_row_size, tp_1010_c_lp_step_in,
+                         tp_1010_c_lp_step_out, tp_1010_c_step_out, tp_101_c0_size, tp_101_c_mod_c0, tp_1010_c_lp_unit,
+                         tp_1010_nlc_dst_cl_lp_cnt, tp_1010_nlc_vnc_row_cl_left, tp_1010_nlc_last_line_cl_cnt,
+                         tp_1010_nlc_dst_cr_lp_cnt, tp_1010_nlc_vnc_row_left, tp_1010_nlc_last_line_cr_cnt,
+                         tp_1010_nlc_c_lp_cnt, tp_1010_nlc_c_left, tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_vnc_row_cl_left,
+                         tp_1010_lc_last_line_cl_cnt, tp_1010_lc_dst_cr_lp_cnt, tp_1010_lc_vnc_row_left,
+                         tp_1010_lc_last_line_cr_cnt, tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left]
+    return sub_tiling_params
 
 
 # pylint: disable=unbalanced-tuple-unpacking
@@ -482,21 +536,27 @@ def _vnchwconv_pad_c_c0_align(args):
     do ncdh to ndhc transform by twice vnchwconv
     """
 
-    tik_inst, src_ub, ub_offset, vnc_col_size, pln_dst_cr_size, pl_c_size, c_mod_c0, c0_size, ele_per_block = args
+    (tik_inst, src_ub, dst_ub, vnc_col_size, pln_dst_cr_size, pl_c_size, c_mod_c0, c0_size, ele_per_block,
+     nc_le_vcol, pln_dst_cl_size, ll_cr_size) = args
     tensor_dtype = src_ub.dtype.lower()
     size_factor = tdc.get_dtype_factor(tensor_dtype)
     if tensor_dtype in ("float32", "int8", "uint8", "int32", "uint32"):
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
+        dst_ub_casted = dst_ub.reinterpret_cast_to("float16")
     else:
         src_ub_casted = src_ub
-    ub_offset_casted = ub_offset * size_factor
+        dst_ub_casted = dst_ub
     vnc_col_len = vnc_col_size * size_factor
+    repeat_cnt = tik_inst.Scalar(name="repeat_cnt")
+    with tik_inst.if_scope(nc_le_vcol == 0):
+        repeat_cnt.set_as(tdc.ceil_div(pln_dst_cr_size * pl_c_size * size_factor, c0_size))
+    with tik_inst.else_scope():
+        repeat_cnt.set_as(tdc.ceil_div(pln_dst_cl_size * ll_cr_size * pl_c_size * size_factor, c0_size))
 
     # do hhc -> hch
     if tensor_dtype not in ("int8", "uint8"):
         src_addr_list = [src_ub_casted[vnc_col_len * i] for i in tdc.ADDR_IDX_LIST]
-        dst_addr_list = [src_ub_casted[ub_offset_casted + c0_size * i] for i in tdc.ADDR_IDX_LIST]
-        repeat_cnt = tdc.ceil_div(pln_dst_cr_size * pl_c_size * size_factor, c0_size)
+        dst_addr_list = [dst_ub_casted[c0_size * i] for i in tdc.ADDR_IDX_LIST]
         with tik_inst.new_stmt_scope():
             src_stride = tik_inst.Scalar()
             dst_stride = tik_inst.Scalar()
@@ -510,8 +570,7 @@ def _vnchwconv_pad_c_c0_align(args):
     else:
         with tik_inst.if_scope(pl_c_size % c0_size == 0):
             src_addr_list = [src_ub_casted[vnc_col_len // 2 * i] for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [src_ub_casted[ub_offset // 2 + tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
-            repeat_cnt = tdc.ceil_div(pln_dst_cr_size * pl_c_size, c0_size)
+            dst_addr_list = [dst_ub_casted[tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
             with tik_inst.new_stmt_scope():
                 src_stride = tik_inst.Scalar()
                 dst_stride = tik_inst.Scalar()
@@ -534,23 +593,28 @@ def _vnchwconv_pad_c_c0_align(args):
                 with tik_inst.else_scope():
                     src_stride.set_as(1)
                     dst_stride.set_as(32)
-                dst_addr_list = [src_ub[ub_offset + c0_size * i] for i in tdc.ADDR_IDX_LIST]
+                dst_addr_list = [dst_ub[c0_size * i] for i in tdc.ADDR_IDX_LIST]
                 tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
-                dst_addr_list = [src_ub[ub_offset + tdc.C0_16 * ele_per_block + c0_size * i] for i in tdc.ADDR_IDX_LIST]
+                dst_addr_list = [dst_ub[tdc.C0_16 * ele_per_block + c0_size * i] for i in tdc.ADDR_IDX_LIST]
                 tik_inst.vnchwconv(False, True, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
-    with tik_inst.if_scope(pl_c_size % c0_size == 0):
-        tik_inst.data_move(src_ub, src_ub[ub_offset],
-                           0, 1, tdc.ceil_div(pln_dst_cr_size * pl_c_size * tdc.C0_16, ele_per_block), 0, 0)
-    with tik_inst.else_scope():  # pad c_mod_c0 to c0
-        clean_len = pln_dst_cr_size * tdc.ceil_fill(pl_c_size, c0_size) * c0_size
-        if tensor_dtype in ("int8", "uint8"):  # vector_dup does not support int8
-            src_ub_int32 = src_ub.reinterpret_cast_to("int32")
-            tdc.clean_ubuf(tik_inst, src_ub_int32, 0, tdc.ceil_div(clean_len, 4))
-        else:
-            tdc.clean_ubuf(tik_inst, src_ub, 0, clean_len)
-        tik_inst.data_move(src_ub, src_ub[ub_offset], 0, pln_dst_cr_size,
-                           pl_c_size * c0_size // ele_per_block, 0, (c0_size - c_mod_c0) * size_factor)
+    def _inner_data_move(lr_size):
+        with tik_inst.if_scope(pl_c_size % c0_size == 0):
+            tik_inst.data_move(src_ub, dst_ub,
+                               0, 1, tdc.ceil_div(lr_size * pl_c_size * tdc.C0_16, ele_per_block), 0, 0)
+        with tik_inst.else_scope():  # pad c_mod_c0 to c0
+            clean_len = lr_size * tdc.ceil_fill(pl_c_size, c0_size) * c0_size
+            if tensor_dtype in ("int8", "uint8"):  # vector_dup does not support int8
+                src_ub_int32 = src_ub.reinterpret_cast_to("int32")
+                tdc.clean_ubuf(tik_inst, src_ub_int32, 0, tdc.ceil_div(clean_len, 4))
+            else:
+                tdc.clean_ubuf(tik_inst, src_ub, 0, clean_len)
+            tik_inst.data_move(src_ub, dst_ub, 0, lr_size,
+                               pl_c_size * c0_size // ele_per_block, 0, (c0_size - c_mod_c0) * size_factor)
+    with tik_inst.if_scope(nc_le_vcol == 0):
+        _inner_data_move(pln_dst_cr_size)
+    with tik_inst.else_scope():
+        _inner_data_move(pln_dst_cl_size * ll_cr_size)
 
 
 def _update_input_offset(args):
@@ -584,18 +648,35 @@ def _copy_data_in_1010(args):
     copy data from gm to ub for tiling mode 1010
     """
 
-    (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, dst_cr_step_in,
-     vnc_line_cnt, ll_cr_size, pln_dst_cr_size, pl_c_size, vnc_col_size, ele_per_block) = args
+    (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, dst_cr_step_in, vnc_line_cnt,
+     ll_cr_size, pln_dst_cr_size, pl_c_size, vnc_col_size, ele_per_block, nc_le_vcol,
+     vnc_cl_line_cnt, ll_cl_size, pln_dst_cl_size, dst_cl_step_in) = args
 
-    with tik_inst.for_range(0, vnc_line_cnt) as vnc_idx:
-        with tik_inst.if_scope(vnc_idx != vnc_line_cnt - 1):
-            tik_inst.data_move(src_ub[in_ub_offset + vnc_idx * vnc_col_size],
-                               src_in_gm[in_gm_offset + vnc_idx * pln_dst_cr_size * dst_cr_step_in],
-                               0, 1, tdc.ceil_div(pln_dst_cr_size * pl_c_size, ele_per_block), 0, 0)
-        with tik_inst.else_scope():  # data maybe not enough for last line
-            tik_inst.data_move(src_ub[in_ub_offset + vnc_idx * vnc_col_size],
-                               src_in_gm[in_gm_offset + vnc_idx * pln_dst_cr_size * dst_cr_step_in],
-                               0, 1, tdc.ceil_div(ll_cr_size * pl_c_size, ele_per_block), 0, 0)
+    def _inner_copy_data_in(copy_args):
+        vnc_row_cnt, loop_offset, data_size, last_data_size = copy_args
+        with tik_inst.for_range(0, vnc_row_cnt) as vnc_idx:
+            with tik_inst.if_scope(vnc_idx != vnc_row_cnt - 1):
+                tik_inst.data_move(src_ub[in_ub_offset + vnc_idx * vnc_col_size],
+                                   src_in_gm[in_gm_offset + vnc_idx * loop_offset],
+                                   0, 1, tdc.ceil_div(data_size, ele_per_block), 0, 0)
+            with tik_inst.else_scope():  # data maybe not enough for last line
+                tik_inst.data_move(src_ub[in_ub_offset + vnc_idx * vnc_col_size],
+                                   src_in_gm[in_gm_offset + vnc_idx * loop_offset],
+                                   0, 1, tdc.ceil_div(last_data_size, ele_per_block), 0, 0)
+
+    with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.if_scope(nc_le_vcol == 0):  # for others except belows
+            copy_in_args = (vnc_line_cnt, pln_dst_cr_size*dst_cr_step_in,
+                            pln_dst_cr_size*pl_c_size, ll_cr_size*pl_c_size)
+            _inner_copy_data_in(copy_in_args)
+        with tik_inst.if_scope(nc_le_vcol == 1):  # for nc is less than vnc col size and vnc row size is one
+            copy_in_args = (vnc_cl_line_cnt, pln_dst_cl_size*dst_cl_step_in,
+                            pln_dst_cl_size*dst_cl_step_in, ll_cl_size*dst_cl_step_in)
+            _inner_copy_data_in(copy_in_args)
+        with tik_inst.if_scope(nc_le_vcol == 2):  # for c is less than vnc col size and vnc row size <= 8
+            copy_in_args = (vnc_cl_line_cnt, dst_cl_step_in,
+                            ll_cr_size*pl_c_size, ll_cr_size*pl_c_size)
+            _inner_copy_data_in(copy_in_args)
 
 
 def _gather_c0_for_out(args):
@@ -603,26 +684,28 @@ def _gather_c0_for_out(args):
     put data in hwc0 format for output
     """
 
-    (tik_inst, src_ub, ub_offset, pl_c_size, c0_size, pln_dst_cr_size,
-     c1_idx, src_stride, dst_stride, dst_gap, stride_value) = args
+    (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size, pln_dst_cr_size,
+     src_ub_offset, src_stride, dst_stride, dst_gap, stride_value) = args
 
     repeat_cnt = pln_dst_cr_size
     tensor_dtype = src_ub.dtype.lower()
     size_factor = tdc.get_dtype_factor(tensor_dtype)
-    ub_offset_casted = ub_offset * size_factor
+    ub_offset_casted = dst_ub_offset * size_factor
     if tensor_dtype in ("float32", "int8", "uint8", "int32", "uint32"):
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
+        dst_ub_casted = dst_ub.reinterpret_cast_to("float16")
     else:
         src_ub_casted = src_ub
+        dst_ub_casted = dst_ub
 
-    src_c1_step = c1_idx * c0_size * c0_size * size_factor
+    src_c1_step = src_ub_offset * size_factor
     if tensor_dtype not in ("int8", "uint8"):
         with tik_inst.for_range(0, size_factor) as factor_idx:
             src_factor_step = factor_idx * tdc.VNC_LINES * c0_size
             dst_factor_step = factor_idx * c0_size
             src_addr_list = [src_ub_casted[src_factor_step + src_c1_step + c0_size * i]
                              for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [src_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i]
+            dst_addr_list = [dst_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i]
                              for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
@@ -635,7 +718,7 @@ def _gather_c0_for_out(args):
     else:
         with tik_inst.if_scope(pl_c_size % c0_size == 0):  # two int8 data in one line
             src_addr_list = [src_ub_casted[(src_c1_step // 2 + c0_size * i) // 2] for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [src_ub_casted[(ub_offset_casted + dst_gap * i) // 2]
+            dst_addr_list = [dst_ub_casted[(ub_offset_casted + dst_gap * i) // 2]
                              for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
@@ -646,7 +729,7 @@ def _gather_c0_for_out(args):
             tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
         with tik_inst.else_scope():  # one int8 data in one line
-            dst_addr_list = [src_ub[ub_offset + dst_gap * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [dst_ub[dst_ub_offset + dst_gap * i] for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
                 dst_stride.set_as(0)
@@ -665,26 +748,28 @@ def _gather_c0_with_gap_for_out(args):
     put data in hwc0 format with gap for output
     """
 
-    (tik_inst, src_ub, ub_offset, pl_c_size, c0_size, pln_dst_cr_size,
-     cr_idx, src_stride, dst_stride, dst_gap, stride_value) = args
+    (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size,
+     src_ub_offset, src_stride, dst_stride, dst_gap, stride_value) = args
 
     repeat_cnt = tdc.ceil_div(pl_c_size, c0_size)
     tensor_dtype = src_ub.dtype.lower()
     size_factor = tdc.get_dtype_factor(tensor_dtype)
-    ub_offset_casted = ub_offset * size_factor
+    ub_offset_casted = dst_ub_offset * size_factor
     if tensor_dtype in ("float32", "int8", "uint8", "int32", "uint32"):
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
+        dst_ub_casted = dst_ub.reinterpret_cast_to("float16")
     else:
         src_ub_casted = src_ub
+        dst_ub_casted = dst_ub
 
-    src_c1_step = cr_idx * tdc.ceil_fill(pl_c_size, c0_size) * c0_size * size_factor
+    src_c1_step = src_ub_offset * size_factor
     if tensor_dtype not in ("int8", "uint8"):
         with tik_inst.for_range(0, size_factor) as factor_idx:
             src_factor_step = factor_idx * tdc.VNC_LINES * c0_size
             dst_factor_step = factor_idx * c0_size
             src_addr_list = [src_ub_casted[src_factor_step + src_c1_step + c0_size * i]
                              for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [src_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i]
+            dst_addr_list = [dst_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i]
                              for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
@@ -697,7 +782,7 @@ def _gather_c0_with_gap_for_out(args):
     else:
         with tik_inst.if_scope(pl_c_size % c0_size == 0):  # two int8 data in one line
             src_addr_list = [src_ub_casted[(src_c1_step // 2 + c0_size * i) // 2] for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [src_ub_casted[(ub_offset_casted + dst_gap * i) // 2]
+            dst_addr_list = [dst_ub_casted[(ub_offset_casted + dst_gap * i) // 2]
                              for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
@@ -708,7 +793,7 @@ def _gather_c0_with_gap_for_out(args):
             tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
         with tik_inst.else_scope():  # one int8 data in one line
-            dst_addr_list = [src_ub[ub_offset + dst_gap * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [dst_ub[dst_ub_offset + dst_gap * i] for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
                 dst_stride.set_as(0)
@@ -728,7 +813,7 @@ def _copy_data_out_1010(copy_out_args):
     copy data from ub to gm for tiling mode 1010
     """
 
-    (tik_inst, dst_out_gm, src_ub, ub_offset, c_step_out, vnc_line_cnt,
+    (tik_inst, dst_out_gm, src_ub, dst_ub, c_step_out, vnc_line_cnt,
      pln_dst_cr_size, ll_cr_size, pl_c_size, c0_size, ele_per_block) = copy_out_args
     vnc_dst_col_size = pln_dst_cr_size * c0_size
     repeat_stride = pln_dst_cr_size * tdc.VNC_LINES * c0_size
@@ -742,24 +827,103 @@ def _copy_data_out_1010(copy_out_args):
 
         with tik_inst.if_scope(pln_dst_cr_size > c1_cnt):
             with tik_inst.for_range(0, c1_cnt) as c1_idx:
-                gather_c0_args = (tik_inst, src_ub, ub_offset + c1_idx * repeat_stride, pl_c_size,
-                                  c0_size, pln_dst_cr_size, c1_idx, src_stride, dst_stride, vnc_dst_col_size, 1)
+                dst_ub_offset = c1_idx * repeat_stride
+                src_ub_offset = c1_idx * c0_size * c0_size
+                gather_c0_args = (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size, pln_dst_cr_size,
+                                  src_ub_offset, src_stride, dst_stride, vnc_dst_col_size, 1)
                 _gather_c0_for_out(gather_c0_args)  # transfer hc0h to hhc0
         with tik_inst.else_scope():
             with tik_inst.for_range(0, pln_dst_cr_size) as cr_idx:
-                gather_c0_args = (tik_inst, src_ub, ub_offset + cr_idx * c0_size, pl_c_size, c0_size, pln_dst_cr_size,
-                                  cr_idx, src_stride, dst_stride, vnc_dst_col_size, repeat_stride // c0_size)
+                dst_ub_offset = cr_idx * c0_size
+                src_ub_offset = cr_idx * c1_cnt * c0_size * c0_size
+                gather_c0_args = (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size,
+                                  src_ub_offset, src_stride, dst_stride, vnc_dst_col_size, repeat_stride // c0_size)
                 _gather_c0_with_gap_for_out(gather_c0_args)  # transfer hc0h to hhc0
 
         with tik_inst.if_scope(dst_stride_gap > tdc.STRIDE_LIMIT_MTE):
             with tik_inst.new_stmt_scope(disable_sync=True):
                 with tik_inst.for_range(0, c1_cnt) as c1_idx_1:
-                    tik_inst.data_move(dst_out_gm[c1_idx_1 * c_step_out], src_ub[ub_offset + c1_idx_1 * repeat_stride],
+                    tik_inst.data_move(dst_out_gm[c1_idx_1 * c_step_out], dst_ub[c1_idx_1 * repeat_stride],
                                        0, 1, out_crc_cnt // ele_per_block, 0, 0)
         with tik_inst.else_scope():
-            tik_inst.data_move(dst_out_gm[0], src_ub[ub_offset],
+            tik_inst.data_move(dst_out_gm[0], dst_ub[0],
                                0, c1_cnt, out_crc_cnt // ele_per_block,
                                (repeat_stride - out_crc_cnt) // ele_per_block, dst_stride_gap)
+
+
+# pylint: disable=unused-variable
+def _copy_data_out_1010_align_c0(copy_out_args):
+    """
+    copy data from ub to gm without padding axis C for tiling mode 1010
+    """
+
+    (tik_inst, dst_out_gm, src_ub, dst_ub, c_step_out, vnc_line_cnt,
+     pln_dst_cr_size, ll_cr_size, pl_c_size, c0_size, ele_per_block) = copy_out_args
+    c1_cnt = tdc.ceil_div(pl_c_size, c0_size)
+    cr_cnt = ((vnc_line_cnt - 1) * pln_dst_cr_size + ll_cr_size)
+    out_crc_cnt = cr_cnt * c0_size
+    dst_stride_gap = (c_step_out - out_crc_cnt) // ele_per_block
+
+    with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.if_scope(cr_cnt > c1_cnt):
+            with tik_inst.for_range(0, c1_cnt) as c1_idx:
+                tik_inst.data_move(dst_ub[c1_idx * cr_cnt * c0_size], src_ub[c1_idx * c0_size],
+                                   0, cr_cnt, c0_size // ele_per_block, (pl_c_size - c0_size) // ele_per_block, 0)
+        with tik_inst.else_scope():
+            with tik_inst.for_range(0, cr_cnt) as cr_idx:
+                tik_inst.data_move(dst_ub[cr_idx * c0_size], src_ub[cr_idx * pl_c_size],
+                                   0, c1_cnt, c0_size // ele_per_block, 0, (cr_cnt - 1) * c0_size // ele_per_block)
+
+    with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.if_scope(dst_stride_gap > tdc.STRIDE_LIMIT_MTE):
+            with tik_inst.for_range(0, c1_cnt) as c1_idx_1:
+                tik_inst.data_move(dst_out_gm[c1_idx_1 * c_step_out], dst_ub[c1_idx_1 * out_crc_cnt],
+                                   0, 1, out_crc_cnt // ele_per_block, 0, 0)
+        with tik_inst.else_scope():
+            tik_inst.data_move(dst_out_gm, dst_ub, 0, c1_cnt, out_crc_cnt // ele_per_block, 0, dst_stride_gap)
+
+
+# pylint: disable=unused-variable
+def _copy_data_out_1010_le_vcol(copy_out_args):
+    """
+    copy data from ub to gm when axis n*c is less than or equal to vnchwconv col size for tiling mode 1010
+    """
+
+    (tik_inst, dst_out_gm, src_ub, dst_ub, c_step_out, ll_cr_size, pl_c_size, c0_size, ele_per_block,
+     vnc_cl_line_cnt, ll_cl_size, pl_cl_size, nc_le_vcol) = copy_out_args
+    c1_cnt = tdc.ceil_div(pl_c_size, c0_size)
+    vnc_dst_col_size = pl_cl_size * c1_cnt * ll_cr_size * c0_size
+    repeat_stride = ll_cr_size * c0_size
+    out_crc_cnt = ll_cr_size * c0_size
+    dst_stride_gap = (c_step_out - out_crc_cnt) // ele_per_block
+    h_cnt = ((vnc_cl_line_cnt - 1)*pl_cl_size + ll_cl_size)
+
+    with tik_inst.new_stmt_scope():
+        src_stride = tik_inst.Scalar()
+        dst_stride = tik_inst.Scalar()
+
+        with tik_inst.for_range(0, pl_cl_size) as cl_idx:
+            with tik_inst.if_scope(ll_cr_size > c1_cnt):
+                with tik_inst.for_range(0, c1_cnt) as c1_idx:
+                    dst_ub_offset = (c1_idx + cl_idx*c1_cnt) * repeat_stride
+                    src_ub_offset = c1_idx*c0_size*c0_size + cl_idx*c1_cnt*repeat_stride*c0_size
+                    gather_c0_args = (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size, ll_cr_size,
+                                      src_ub_offset, src_stride, dst_stride, vnc_dst_col_size, 1)
+                    _gather_c0_for_out(gather_c0_args)  # transfer hc0h to hhc0
+            with tik_inst.else_scope():
+                with tik_inst.for_range(0, ll_cr_size) as cr_idx:
+                    dst_ub_offset = cr_idx*c0_size + cl_idx*c1_cnt*repeat_stride
+                    src_ub_offset = cr_idx*c1_cnt*c0_size*c0_size + cl_idx*c1_cnt*repeat_stride*c0_size
+                    gather_c0_args = (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size, src_ub_offset,
+                                      src_stride, dst_stride, vnc_dst_col_size, repeat_stride // c0_size)
+                    _gather_c0_with_gap_for_out(gather_c0_args)  # transfer hc0h to hhc0
+
+        hc1_cnt = h_cnt * c1_cnt
+        with tik_inst.if_scope(tik.any(ll_cr_size % tdc.NI_16 > 0, nc_le_vcol == 2)):
+            tik_inst.data_move(dst_out_gm, dst_ub, 0, hc1_cnt, out_crc_cnt // ele_per_block,
+                               (repeat_stride - out_crc_cnt) // ele_per_block, dst_stride_gap)
+        with tik_inst.else_scope():
+            tik_inst.data_move(dst_out_gm, dst_ub, 0, 1, hc1_cnt * out_crc_cnt // ele_per_block, 0, 0)
 
 
 def _func_transform_1010(tensor_args, tp_args):
@@ -767,20 +931,36 @@ def _func_transform_1010(tensor_args, tp_args):
     transform function for tiling mode 100
     """
 
-    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block = tensor_args
-    (ub_offset, used_core_cnt, core_step_in, core_step_out, dst_cl_lp_step_in, dst_cl_lp_step_out, dst_cl_lp_unit,
-     dst_cr_lp_step_in, dst_cr_lp_step_out, dst_cr_step_in, vnc_col_size, pln_dst_cr_size, vnc_row_size,
-     c_lp_step_in, c_lp_step_out, c_step_out, c0_size, c_mod_c0, c_lp_unit, nlc_dst_cl_lp_cnt, nlc_dst_cr_lp_cnt,
-     nlc_vnc_row_left, nlc_last_line_cr_cnt, nlc_c_lp_cnt, nlc_c_left, lc_dst_cl_lp_cnt, lc_dst_cr_lp_cnt,
-     lc_vnc_row_left, lc_last_line_cr_cnt, lc_c_lp_cnt, lc_c_left) = tp_args
+    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, dst_ub, ele_per_block = tensor_args
+    (ub_offset, used_core_cnt, core_step_in, core_step_out, dst_cl_lp_step_in, dst_cl_lp_step_out, dst_cl_step_in,
+     dst_cl_step_out, dst_cr_lp_step_in, dst_cr_lp_step_out, dst_cr_step_in, nc_le_vcol, vnc_col_size,
+     pln_dst_cl_size, pln_dst_cr_size, vnc_row_size, c_lp_step_in, c_lp_step_out, c_step_out, c0_size, c_mod_c0,
+     c_lp_unit, nlc_dst_cl_lp_cnt, nlc_vnc_row_cl_left, nlc_last_line_cl_cnt, nlc_dst_cr_lp_cnt, nlc_vnc_row_left,
+     nlc_last_line_cr_cnt, nlc_c_lp_cnt, nlc_c_left, lc_dst_cl_lp_cnt, lc_vnc_row_cl_left, lc_last_line_cl_cnt,
+     lc_dst_cr_lp_cnt, lc_vnc_row_left, lc_last_line_cr_cnt, lc_c_lp_cnt, lc_c_left) = tp_args
 
     def _inner_func(args):
-        dst_cl_lp_cnt, dst_cr_lp_cnt, vnc_row_left, last_line_cr_cnt, c_lp_cnt, c_left = args
+        (dst_cl_lp_cnt, vnc_row_cl_left, last_line_cl_cnt,
+         dst_cr_lp_cnt, vnc_row_left, last_line_cr_cnt, c_lp_cnt, c_left) = args
         pl_c_size = tik_inst.Scalar(name="pl_c_size")
         vnc_line_cnt = tik_inst.Scalar(name="vnc_line_cnt")
+        vnc_cl_line_cnt = tik_inst.Scalar(name="vnc_cl_line_cnt")
         ll_cr_size = tik_inst.Scalar(name="ll_cr_size")
+        ll_cl_size = tik_inst.Scalar(name="ll_cl_size")
+        pl_cl_size = tik_inst.Scalar(name="pl_cl_size")
 
         with tik_inst.for_range(0, dst_cl_lp_cnt) as cl_lp_idx:
+            with tik_inst.if_scope(tik.any(cl_lp_idx != dst_cl_lp_cnt - 1, vnc_row_cl_left == 0)):
+                vnc_cl_line_cnt.set_as(vnc_row_size)
+                ll_cl_size.set_as(pln_dst_cl_size)
+            with tik_inst.else_scope():
+                vnc_cl_line_cnt.set_as(vnc_row_cl_left)
+                ll_cl_size.set_as(last_line_cl_cnt)
+            with tik_inst.if_scope(vnc_cl_line_cnt == 1):
+                pl_cl_size.set_as(ll_cl_size)
+            with tik_inst.else_scope():
+                pl_cl_size.set_as(pln_dst_cl_size)
+
             with tik_inst.for_range(0, c_lp_cnt) as c_lp_idx:
                 with tik_inst.if_scope(tik.any(c_lp_idx != c_lp_cnt - 1, c_left == 0)):
                     pl_c_size.set_as(c_lp_unit)
@@ -799,27 +979,48 @@ def _func_transform_1010(tensor_args, tp_args):
                                       cr_lp_idx, dst_cr_lp_step_in, block_idx * core_step_in)
                     in_gm_offset = _update_input_offset(in_offset_args)
                     in_ub_offset = 0
-                    copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, dst_cr_step_in,
-                                    vnc_line_cnt, ll_cr_size, pln_dst_cr_size, pl_c_size, vnc_col_size, ele_per_block)
-                    with tik_inst.new_stmt_scope(disable_sync=True):
-                        _copy_data_in_1010(copy_in_args)
-
-                    vnc_args = (tik_inst, src_ub, ub_offset, vnc_col_size,
-                                pln_dst_cr_size, pl_c_size, c_mod_c0, c0_size, ele_per_block)
-                    _vnchwconv_pad_c_c0_align(vnc_args)
                     out_gm_args = (cl_lp_idx, dst_cl_lp_step_out, c_lp_idx, c_lp_step_out,
                                    cr_lp_idx, dst_cr_lp_step_out, block_idx * core_step_out)
                     out_gm_offset = _update_output_offset(out_gm_args)
-                    copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub, ub_offset, c_step_out, vnc_line_cnt,
-                                     pln_dst_cr_size, ll_cr_size, pl_c_size, c0_size, ele_per_block)
-                    _copy_data_out_1010(copy_out_args)
+
+                    with tik_inst.if_scope(tik.any(pl_c_size % c0_size > 0,
+                                                   vnc_line_cnt > vnc_row_size // 2, nc_le_vcol > 0)):
+                        copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset,
+                                        dst_cr_step_in, vnc_line_cnt, ll_cr_size, pln_dst_cr_size, pl_c_size,
+                                        vnc_col_size, ele_per_block, nc_le_vcol, vnc_cl_line_cnt, ll_cl_size,
+                                        pl_cl_size, dst_cl_step_in)
+                        _copy_data_in_1010(copy_in_args)
+                        vnc_args = (tik_inst, src_ub, dst_ub, vnc_col_size, pln_dst_cr_size, pl_c_size, c_mod_c0,
+                                    c0_size, ele_per_block, nc_le_vcol, pl_cl_size, ll_cr_size)
+                        _vnchwconv_pad_c_c0_align(vnc_args)
+                        with tik_inst.if_scope(nc_le_vcol == 0):
+                            copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub, dst_ub,
+                                             c_step_out, vnc_line_cnt, pln_dst_cr_size, ll_cr_size,
+                                             pl_c_size, c0_size, ele_per_block)
+                            _copy_data_out_1010(copy_out_args)
+                        with tik_inst.else_scope():
+                            copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub, dst_ub, c_step_out,
+                                             ll_cr_size, pl_c_size, c0_size, ele_per_block, vnc_cl_line_cnt,
+                                             ll_cl_size, pl_cl_size, nc_le_vcol)
+                            _copy_data_out_1010_le_vcol(copy_out_args)
+
+                    with tik_inst.else_scope():  # no need padding axis c
+                        copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset,
+                                        dst_cr_step_in, vnc_line_cnt, ll_cr_size, pln_dst_cr_size, pl_c_size,
+                                        pln_dst_cr_size*pl_c_size, ele_per_block, 0, vnc_cl_line_cnt, ll_cl_size,
+                                        pl_cl_size, dst_cl_step_in)
+                        _copy_data_in_1010(copy_in_args)
+                        copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub, dst_ub, c_step_out,
+                                         vnc_line_cnt, pln_dst_cr_size, ll_cr_size, pl_c_size, c0_size, ele_per_block)
+                        _copy_data_out_1010_align_c0(copy_out_args)
 
     with tik_inst.if_scope(block_idx != used_core_cnt - 1):
-        nlc_args = (nlc_dst_cl_lp_cnt, nlc_dst_cr_lp_cnt, nlc_vnc_row_left,
-                    nlc_last_line_cr_cnt, nlc_c_lp_cnt, nlc_c_left)
+        nlc_args = (nlc_dst_cl_lp_cnt, nlc_vnc_row_cl_left, nlc_last_line_cl_cnt,
+                    nlc_dst_cr_lp_cnt, nlc_vnc_row_left, nlc_last_line_cr_cnt, nlc_c_lp_cnt, nlc_c_left)
         _inner_func(nlc_args)
     with tik_inst.else_scope():
-        lc_args = (lc_dst_cl_lp_cnt, lc_dst_cr_lp_cnt, lc_vnc_row_left, lc_last_line_cr_cnt, lc_c_lp_cnt, lc_c_left)
+        lc_args = (lc_dst_cl_lp_cnt, lc_vnc_row_cl_left, lc_last_line_cl_cnt,
+                   lc_dst_cr_lp_cnt, lc_vnc_row_left, lc_last_line_cr_cnt, lc_c_lp_cnt, lc_c_left)
         _inner_func(lc_args)
 
 
@@ -831,10 +1032,11 @@ def _copy_data_in_1011(args):
     (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, vnc_line_cnt,
      dst_r2nd_step_in, pln_cl_size, pl_c_size, vnc_col_size, ele_per_block) = args
 
-    with tik_inst.for_range(0, vnc_line_cnt) as vnc_idx:
-        tik_inst.data_move(src_ub[in_ub_offset + vnc_idx * vnc_col_size],
-                           src_in_gm[in_gm_offset + vnc_idx * dst_r2nd_step_in],
-                           0, 1, tdc.ceil_div(pln_cl_size * pl_c_size, ele_per_block), 0, 0)
+    with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.for_range(0, vnc_line_cnt) as vnc_idx:
+            tik_inst.data_move(src_ub[in_ub_offset + vnc_idx * vnc_col_size],
+                               src_in_gm[in_gm_offset + vnc_idx * dst_r2nd_step_in],
+                               0, 1, tdc.ceil_div(pln_cl_size * pl_c_size, ele_per_block), 0, 0)
 
 
 def _get_cl_offset(cl_offset_args, cl_idx):
@@ -851,34 +1053,128 @@ def _get_cl_offset(cl_offset_args, cl_idx):
     return cl_out_offset
 
 
+def _split_left(args):
+    """
+    split left dimensions into three parts when it has two dimensions
+    """
+
+    tik_inst, cl_out_idx_0_size, last_left_size, mid_lp_cnt, next_left_size, cl_beg, pln_cl_size = args
+    next_cl_gap = cl_out_idx_0_size - cl_beg % cl_out_idx_0_size
+    with tik_inst.if_scope(next_cl_gap == cl_out_idx_0_size):
+        last_left_size.set_as(0)
+    with tik_inst.else_scope():
+        with tik_inst.if_scope(next_cl_gap <= pln_cl_size):
+            last_left_size.set_as(next_cl_gap)
+        with tik_inst.else_scope():
+            last_left_size.set_as(pln_cl_size)
+    mid_lp_cnt.set_as((pln_cl_size - last_left_size) // cl_out_idx_0_size)
+    next_left_size.set_as(pln_cl_size - last_left_size - mid_lp_cnt * cl_out_idx_0_size)
+
+
 # pylint: disable=unused-variable
 def _copy_data_out_1011(copy_out_args, cl_offset_args):
     """
     copy data from ub to gm for tiling mode 1011
     """
 
-    (tik_inst, dst_out_gm, src_ub, ub_offset, c_step_out, vnc_line_cnt, cl_lp_idx, nlc_src_cl_lp_cnt,
+    (tik_inst, dst_out_gm, src_ub, dst_ub, c_step_out, vnc_line_cnt, cl_lp_idx, nlc_src_cl_lp_cnt,
      src_cl_lp_unit, pln_cl_size, pl_c_size, c0_size, ele_per_block, mc_on_cl, block_idx) = copy_out_args
+    (cl_out_idx_0_size, cl_out_idx_0_src_rsize, cl_out_idx_0_dst_asize,
+     cl_out_idx_1_size, cl_out_idx_1_src_rsize, cl_out_idx_1_dst_asize) = cl_offset_args
+    move_out_size = vnc_line_cnt * c0_size
+    cl_0_c0_gap = (cl_out_idx_0_dst_asize - move_out_size) // ele_per_block
+    ni_gap = (tdc.VNC_LINES - vnc_line_cnt)*c0_size // ele_per_block
+    vnc_dst_col_size = c0_size
+    repeat_stride = pln_cl_size * tdc.VNC_LINES * c0_size
+
+    def _inner_data_move_by_repeat(lp_cnt, dst_offset, src_offset):
+        tik_inst.data_move(dst_out_gm[dst_offset], dst_ub[src_offset],
+                           0, lp_cnt, move_out_size // ele_per_block, ni_gap, cl_0_c0_gap)
+
+    def _inner_data_move_by_loop(lp_cnt, dst_offset, src_offset):
+        with tik_inst.for_range(0, lp_cnt) as lp_idx:
+            lp_gm_offset = lp_idx * cl_out_idx_0_dst_asize
+            lp_ub_offset = lp_idx * tdc.VNC_LINES * c0_size
+            tik_inst.data_move(dst_out_gm[dst_offset + lp_gm_offset], dst_ub[src_offset + lp_ub_offset],
+                               0, 1, move_out_size // ele_per_block, 0, 0)
+
+    def _move_data_out(_inner_func):
+        """
+        in order to get better performance for dynamic case
+        """
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.if_scope(last_left_size > 0):
+                is_last_left_nz.set_as(1)
+                with tik_inst.for_range(0, c1_cnt) as c1_idx_1:
+                    c1_ub_offset = c1_idx_1 * repeat_stride
+                    c1_gm_offset = c1_idx_1 * c_step_out + cl_out_offset
+                    _inner_func(last_left_size, c1_gm_offset, c1_ub_offset)
+            with tik_inst.else_scope():
+                is_last_left_nz.set_as(0)
+
+            last_gm_end_offset = is_last_left_nz * ((last_left_size - cl_out_idx_0_size) * cl_out_idx_0_dst_asize +
+                                                    cl_out_idx_1_dst_asize)
+            last_ub_end_offset = last_left_size * tdc.VNC_LINES * c0_size
+            with tik_inst.if_scope(mid_lp_cnt > 0):
+                with tik_inst.if_scope(cl_out_idx_0_size <= tdc.REPEAT_LIMIT_MTE):
+                    renew_cl_0_size.set_as(cl_out_idx_0_size)
+                with tik_inst.else_scope():  # to avoid compile failed
+                    renew_cl_0_size.set_as(1)
+
+                with tik_inst.for_range(0, c1_cnt) as c1_idx_2:
+                    mid_ub_offset = c1_idx_2 * repeat_stride + last_ub_end_offset
+                    mid_gm_offset = c1_idx_2 * c_step_out + cl_out_offset + last_gm_end_offset
+                    with tik_inst.for_range(0, mid_lp_cnt) as mid_lp_idx:
+                        mid_lp_gm_offset = mid_lp_idx*cl_out_idx_1_dst_asize + mid_gm_offset
+                        mid_lp_ub_offset = mid_lp_idx*cl_out_idx_0_size*tdc.VNC_LINES*c0_size + mid_ub_offset
+                        _inner_func(renew_cl_0_size, mid_lp_gm_offset, mid_lp_ub_offset)
+
+            mid_gm_end_offset = mid_lp_cnt*cl_out_idx_1_dst_asize + last_gm_end_offset
+            mid_ub_end_offset = mid_lp_cnt*cl_out_idx_0_size*tdc.VNC_LINES*c0_size + last_ub_end_offset
+            with tik_inst.if_scope(next_left_size > 0):
+                with tik_inst.for_range(0, c1_cnt) as c1_idx_3:
+                    next_ub_offset = c1_idx_3 * repeat_stride + mid_ub_end_offset
+                    next_gm_offset = c1_idx_3 * c_step_out + cl_out_offset + mid_gm_end_offset
+                    _inner_func(next_left_size, next_gm_offset, next_ub_offset)
 
     with tik_inst.new_stmt_scope():
-        src_stride = tik_inst.Scalar()
-        dst_stride = tik_inst.Scalar()
-        cur_cl_idx = tik_inst.Scalar()
+        src_stride = tik_inst.Scalar(name="src_stride")
+        dst_stride = tik_inst.Scalar(name="dst_stride")
+        cur_cl_beg = tik_inst.Scalar(name="cur_cl_beg")
+        last_left_size = tik_inst.Scalar(name="last_left_size")
+        is_last_left_nz = tik_inst.Scalar(name="is_last_left_nz")
+        mid_lp_cnt = tik_inst.Scalar(name="mid_lp_cnt")
+        next_left_size = tik_inst.Scalar(name="next_left_size")
+        cl_out_offset = tik_inst.Scalar(name="cl_out_offset")
+        renew_cl_0_size = tik_inst.Scalar(name="renew_cl_0_size")
         c1_cnt = tdc.ceil_div(pl_c_size, c0_size)
-        with tik_inst.for_range(0, c1_cnt) as c1_idx:
-            gather_c0_args = (tik_inst, src_ub, ub_offset, pl_c_size, c0_size,
-                              pln_cl_size, c1_idx, src_stride, dst_stride, c0_size, vnc_line_cnt)
-            _gather_c0_for_out(gather_c0_args)  # transfer dhc0n to dhnc0
+        with tik_inst.if_scope(pln_cl_size >= c1_cnt):
+            with tik_inst.for_range(0, c1_cnt) as c1_idx:
+                dst_ub_offset = c1_idx * repeat_stride
+                src_ub_offset = c1_idx * c0_size * c0_size
+                gather_c0_args = (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size,
+                                  pln_cl_size, src_ub_offset, src_stride, dst_stride, c0_size, tdc.VNC_LINES)
+                _gather_c0_for_out(gather_c0_args)  # transfer dhc1c0n to c1dhnc0
+        with tik_inst.else_scope():
+            with tik_inst.for_range(0, pln_cl_size) as cl_idx:
+                dst_ub_offset = cl_idx * c0_size * tdc.VNC_LINES
+                src_ub_offset = cl_idx * c1_cnt * c0_size * c0_size
+                gather_c0_args = (tik_inst, src_ub, dst_ub, dst_ub_offset, pl_c_size, c0_size,
+                                  src_ub_offset, src_stride, dst_stride, vnc_dst_col_size, repeat_stride // c0_size)
+                _gather_c0_with_gap_for_out(gather_c0_args)  # transfer hc0h to hhc0
 
-            with tik_inst.for_range(0, pln_cl_size) as cl_idx:  # dhwnc0, move out nc0 per loop
-                with tik_inst.if_scope(mc_on_cl == 1):
-                    cur_cl_idx.set_as((cl_lp_idx + block_idx * nlc_src_cl_lp_cnt) * src_cl_lp_unit + cl_idx)
-                with tik_inst.else_scope():
-                    cur_cl_idx.set_as(cl_lp_idx * src_cl_lp_unit + cl_idx)
-                cl_out_offset = _get_cl_offset(cl_offset_args, cur_cl_idx)
-                tik_inst.data_move(dst_out_gm[c1_idx * c_step_out + cl_out_offset],
-                                   src_ub[ub_offset + cl_idx * vnc_line_cnt * c0_size],
-                                   0, 1, vnc_line_cnt * c0_size // ele_per_block, 0, 0)
+        with tik_inst.if_scope(mc_on_cl == 1):
+            cur_cl_beg.set_as((cl_lp_idx + block_idx * nlc_src_cl_lp_cnt) * src_cl_lp_unit)
+        with tik_inst.else_scope():
+            cur_cl_beg.set_as(cl_lp_idx * src_cl_lp_unit)
+        cl_out_offset.set_as(_get_cl_offset(cl_offset_args, cur_cl_beg))  # to avoid scalar_ldst
+        split_args = (tik_inst, cl_out_idx_0_size, last_left_size, mid_lp_cnt, next_left_size, cur_cl_beg, pln_cl_size)
+        _split_left(split_args)  # split axis left into three parts
+
+        with tik_inst.if_scope(cl_0_c0_gap <= tdc.STRIDE_LIMIT_MTE):
+            _move_data_out(_inner_data_move_by_repeat)
+        with tik_inst.else_scope():
+            _move_data_out(_inner_data_move_by_loop)
 
 
 def _func_transform_1011(tensor_args, tp_args):
@@ -886,7 +1182,7 @@ def _func_transform_1011(tensor_args, tp_args):
     transform function for tiling mode 100
     """
 
-    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block = tensor_args
+    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, dst_ub, ele_per_block = tensor_args
     (ub_offset, used_core_cnt, mc_on_cl, core_step_in, core_step_out, dst_r2nd_lp_step_in, dst_r2nd_lp_step_out,
      dst_r2nd_step_in, dst_r2nd_lp_unit, src_cl_lp_step_in, vnc_col_size, src_cl_lp_unit, src_cl_lp_step_out,
      c_lp_step_in, c_lp_step_out, c_step_out, c0_size, c_mod_c0, c_lp_unit, nlc_dst_r2nd_lp_cnt, nlc_dst_r2nd_left,
@@ -924,17 +1220,16 @@ def _func_transform_1011(tensor_args, tp_args):
                     in_ub_offset = 0
                     copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, vnc_line_cnt,
                                     dst_r2nd_step_in, pln_cl_size, pl_c_size, vnc_col_size, ele_per_block)
-                    with tik_inst.new_stmt_scope(disable_sync=True):
-                        _copy_data_in_1011(copy_in_args)
+                    _copy_data_in_1011(copy_in_args)
 
-                    vnc_args = (tik_inst, src_ub, ub_offset, vnc_col_size,
-                                pln_cl_size, pl_c_size, c_mod_c0, c0_size, ele_per_block)
+                    vnc_args = (tik_inst, src_ub, dst_ub, vnc_col_size,
+                                pln_cl_size, pl_c_size, c_mod_c0, c0_size, ele_per_block, 0, 1, 1)
                     _vnchwconv_pad_c_c0_align(vnc_args)
 
                     out_gm_args = (cl_lp_idx, src_cl_lp_step_out, c_lp_idx, c_lp_step_out,
                                    r2nd_lp_idx, dst_r2nd_lp_step_out, block_idx * core_step_out)
                     out_gm_offset = _update_output_offset(out_gm_args)
-                    copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub, ub_offset, c_step_out,
+                    copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub, dst_ub, c_step_out,
                                      vnc_line_cnt, cl_lp_idx, nlc_src_cl_lp_cnt, src_cl_lp_unit, pln_cl_size,
                                      pl_c_size, c0_size, ele_per_block, mc_on_cl, block_idx)
                     cl_offset_args = (cl_out_idx_0_size, cl_out_idx_0_src_rsize, cl_out_idx_0_dst_asize,
@@ -993,19 +1288,22 @@ def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name=
         dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm")
     else:
         dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm", is_atomic_add=True)
-    src_ub = tik_inst.Tensor(in_dtype, (ub_size,), tik.scope_ubuf, "total_ub")
+    half_ub = ub_size // 2
+    src_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "src_ub")
+    dst_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "dst_ub")
 
     tiling_mode = tiling_params[0]
     used_core_cnt = tiling_params[2]
     with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
         with tik_inst.if_scope(block_idx < used_core_cnt):
-            tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt]
-            with tik_inst.if_scope(tiling_mode == 1010):
-                tp_args = tiling_params[1:-6]
+            tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, dst_ub, block_elem_cnt]
+            if tiling_mode == 1010:
+                tp_args = tiling_params[1:]
                 _func_transform_1010(tensor_args, tp_args)
-            with tik_inst.if_scope(tiling_mode == 1011):
+            if tiling_mode == 1011:
                 tp_args = tiling_params[1:]
                 _func_transform_1011(tensor_args, tp_args)
 
     # build cce
-    tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[src_in_gm], outputs=[dst_out_gm])
+    tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[src_in_gm], outputs=[dst_out_gm],
+                      config={"dynamic_tik": True, "out_of_bound_sync_check": True})

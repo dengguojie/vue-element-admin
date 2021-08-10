@@ -28,7 +28,7 @@ PAD_IDX_LIST = (0, 1)
 # frame up levels
 FRAME_LEVEL = 2
 # used for tiling data
-TILING_CTRL_PARAM = ("int64", 128)
+TILING_CTRL_PARAM = ("int64", 96)
 
 
 def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes):
@@ -534,7 +534,7 @@ def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name
     in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bool" else "int8"
     in_dtype_bytes = tdc.get_dtype_len(in_dtype)
     tiling_dtype_bytes = tdc.get_dtype_len("int64")
-    ub_size = tdc.get_max_element_in_ub(in_dtype, 1) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
+    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
     
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 

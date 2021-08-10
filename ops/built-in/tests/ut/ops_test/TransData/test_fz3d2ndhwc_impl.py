@@ -88,8 +88,8 @@ case1 = {"params": [{"shape": (27, 1, 16, 16), "dtype": "float16",
                      "ori_shape": (27, 1, 16, 16), "format": "FRACTAL_Z_3D",
                      "ori_format": "FRACTAL_Z_3D",
                      "param_type": "input", "value_range": [-10.0, 10.0]},
-                    {"shape": (16, 3, 3, 3, 5), "dtype": "float16",
-                     "ori_shape": (16, 3, 3, 3, 5), "format": "NDHWC", "ori_format": "NDHWC",
+                    {"shape": (15, 3, 3, 3, 5), "dtype": "float16",
+                     "ori_shape": (15, 3, 3, 3, 5), "format": "NDHWC", "ori_format": "NDHWC",
                      "param_type": "output"},
                     "FRACTAL_Z_3D", "NDHWC"],
          "expect": "success",
@@ -209,7 +209,7 @@ ut_case.add_case(["Ascend910"], err2)
 ut_case.add_case(["Ascend910"], err3)
 ut_case.add_case(["Ascend910"], err4)
 ut_case.add_case(["Ascend910"], err5)
-#ut_case.add_precision_case(["Ascend910"], case1)
+ut_case.add_precision_case(["Ascend910A"], case1)
 #ut_case.add_precision_case(["Ascend910"], case2)
 #ut_case.add_precision_case(["Ascend910"], case3)
 #ut_case.add_precision_case(["Ascend910"], case4)

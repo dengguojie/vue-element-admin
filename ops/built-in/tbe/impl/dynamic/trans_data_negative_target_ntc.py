@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-trans_data_negative_target_tc
+trans_data_negative_target_ntc
 """
 
 from __future__ import absolute_import
@@ -23,7 +23,7 @@ from .. import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context
 
 # used for tiling data
-TILING_CTRL_PARAM = ("int64", 128)
+TILING_CTRL_PARAM = ("int64", 96)
 INT8_DTYPES = ("int8", "uint8")
 NEED_CAST_DTYPES = ("float32", "int32")
 VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
@@ -866,7 +866,7 @@ def trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name
     groups: int
         groups count for conv case, default value is 1
     kernel_name : str
-        kernel name, default value is "trans_data_negative_target_tc"
+        kernel name, default value is "trans_data_negative_target_ntc"
 
     Returns
     -------
@@ -877,7 +877,7 @@ def trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name
     in_dtype = src.get("dtype").lower()
     in_dtype_bytes = tdc.get_dtype_len(in_dtype)
     tiling_dtype_bytes = tdc.get_dtype_len("int64")
-    ub_size = tdc.get_max_element_in_ub(in_dtype, 1) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
+    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
     tik_inst = tik.Tik()

@@ -186,7 +186,7 @@ def clean_ubuf(tik_inst, src, src_offset, dup_len):
     """
 
     dtype = src.dtype.lower()
-    if dtype == "float16":
+    if dtype in ("float16", "int16", "uint16"):
         dtype_factor = 2
     elif dtype in ("float32", "int32", "uint32"):
         dtype_factor = 1
@@ -267,7 +267,7 @@ def get_dtype_len(in_dtype):
     return byte_len
 
 
-def get_max_element_in_ub(in_dtype, ub_part):
+def get_max_element_in_ub(in_dtype, ub_part, deduct_size=1024):
     """
     get the up limit elements in one part of UB
 
@@ -277,6 +277,8 @@ def get_max_element_in_ub(in_dtype, ub_part):
         data type name
     ub_part : int
         count of UB will be split
+    deduct_size: int
+        count of UB will be deducted
 
     Returns
     -------
@@ -287,7 +289,11 @@ def get_max_element_in_ub(in_dtype, ub_part):
         return CORE_UB_SIZE
 
     byte_len = get_dtype_len(in_dtype)
-    ub_upper_limit = 255 * 1024 // ub_part if CORE_UB_SIZE > 255 * 1024 else (CORE_UB_SIZE - 1024) // ub_part  # the unit is Byte
+    max_ub_size = 256 * 1024  # the unit is Byte
+    if CORE_UB_SIZE >= max_ub_size:
+        ub_upper_limit = (max_ub_size - deduct_size) // ub_part
+    else:
+        ub_upper_limit = (CORE_UB_SIZE - deduct_size) // ub_part
     element_size = ub_upper_limit // byte_len
 
     return element_size

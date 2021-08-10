@@ -23,7 +23,7 @@ from impl.dynamic.transpose import Transpose
 from . import trans_data_positive_source_tc
 from . import trans_data_negative_target_ntc
 from . import trans_data_positive_source_ntc
-from . import trans_data_negative_target_tc_new
+from . import trans_data_negative_target_tc
 
 TILING_MAX_SIZE_GM = 2048  # 16KB
 MAX_INT64_VALUE = 2 ** 64 - 1
@@ -69,8 +69,7 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
         (src_format == "FRACTAL_NZ" and dst_format in ("ND", "NHWC", "NCHW", "NC1HWC0")) or
         (src_format == "FRACTAL_Z_3D" and dst_format == "NDHWC") or
         (src_format == "NDC1HWC0" and dst_format == "NDHWC")):
-        trans_data_negative_target_tc_new.trans_data_negative_target_tc_new(src, dst,
-                                                                            src_format, dst_format, kernel_name)
+        trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     elif (((src_format == "NC1HWC0" and dst_format == "NCHW") or
            (src_format == "FRACTAL_Z_3D" and dst_format == "NCDHW") or
            (src_format == "NDC1HWC0" and dst_format == "NCDHW") or

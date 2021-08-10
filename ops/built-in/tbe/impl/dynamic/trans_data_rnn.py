@@ -25,7 +25,7 @@ from .. import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context
 
 # max num of tiling params
-TILING_ARG_NUM = 128
+TILING_ARG_NUM = 96
 
 def ceil_32bytes_align_count(count, dtype):
     type_size = common_util.get_data_size(dtype)
@@ -133,7 +133,7 @@ class TransData:
         self.hidden_size = hidden_size
         dtype_bytes = tdc.get_dtype_len(self.dtype)
         tiling_dtype_bytes = tdc.get_dtype_len(self.tiling_dtype)
-        self.ub_size = tdc.get_max_element_in_ub(self.dtype, 1) - TILING_ARG_NUM * tiling_dtype_bytes // dtype_bytes
+        self.ub_size = tdc.get_max_element_in_ub(self.dtype, 1, 256) - TILING_ARG_NUM * tiling_dtype_bytes // dtype_bytes
         tiling_gm_size = TILING_ARG_NUM
 
         tiling_gm_size_align = ceil_32bytes_align_count(tiling_gm_size, self.tiling_dtype)

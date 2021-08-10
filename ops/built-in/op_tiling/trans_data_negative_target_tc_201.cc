@@ -175,11 +175,28 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   // output ub offset
   params.ubOffset = ubSize / 2 / blockElemCnt * blockElemCnt;
   // axis c1 tiling parameters
-  int64_t vncColSize = params.ubOffset / VNC_LINES / blockElemCnt * blockElemCnt;
+  int64_t vncColBlockCnt = GetFloorDiv(params.ubOffset / VNC_LINES, blockElemCnt);
+  if (vncColBlockCnt % 2 == 0) {
+    vncColBlockCnt -= 1;
+  }
+  int64_t vncColSize = vncColBlockCnt * blockElemCnt;
+  params.vncColSize = vncColSize;
   int64_t tmpSrcClLpUnit;
-  if (axisSrcC1Size * c0Len >= 16 * blockElemCnt) {
+  int64_t cGate = 0;
+  if (axisDstCSize % params.c0Len == 0) {
+    cGate = 16 * params.c0Len;
+  } else {
+    cGate = 56 * params.c0Len;
+  }
+
+  if (axisSrcC1Size * c0Len >= cGate || axisDstCSize == c0Len) {
     params.tilingMode = 2010;
-    tmpSrcClLpUnit = params.ubOffset / c0Len / blockElemCnt * blockElemCnt;
+    if (axisDstR2ndSize < NI_16) {
+      tmpSrcClLpUnit = GetFloorDiv(params.ubOffset, axisDstR2ndSize * params.c0Len);
+    } else {
+      tmpSrcClLpUnit = GetFloorDiv(params.ubOffset, NI_16 * params.c0Len);
+    }
+
   } else if (dtype != "int8" && dtype != "uint8") {
     if (axisDstCSize * axisDstR2ndSize >= vncColSize / VNC_LINES) {
       params.tilingMode = 2011;
@@ -213,16 +230,44 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   // axis -2 tiling parameters
   params.dstR2ndDims = 2;
   int64_t tmpDstR2ndLpUnit;
+  int64_t maxR2ndLpSize = 63;
+  int64_t dtypeFactor = 1;
+  // to make sure the rep_stride of vor is less than limit
   if (params.tilingMode == 2010) {
-    tmpDstR2ndLpUnit = params.ubOffset / (params.srcClLpUnit * c0Len);
+    if (dtype == "float32" || dtype == "int32" || dtype == "uint32") {
+      if (axisDstCSize == params.c0Len and axisSrcLeftSize <= C0_16) {
+        // for vor in copy data in
+        maxR2ndLpSize = 63;
+      } else {
+        // for vor in reorder
+        maxR2ndLpSize = 31;
+      }
+      dtypeFactor = 2;
+    } else if (axisDstCSize == params.c0Len and axisSrcLeftSize <= C0_16) {
+      maxR2ndLpSize = 127;
+    }
+    tmpDstR2ndLpUnit = GetFloorDiv(params.ubOffset, params.srcClLpUnit * c0Len);
+    if (tmpDstR2ndLpUnit > maxR2ndLpSize) {
+      tmpDstR2ndLpUnit = maxR2ndLpSize;
+    }
   } else if (dtype != "int8" && dtype != "uint8") {
     tmpDstR2ndLpUnit = vncColSize / (params.srcClLpUnit * c0Len);
   } else {
     tmpDstR2ndLpUnit = vncColSize / 2 / (params.srcClLpUnit * c0Len);
   }
   params.dstR2ndLpUnit = axisDstR2ndSize > tmpDstR2ndLpUnit ? tmpDstR2ndLpUnit : axisDstR2ndSize;
+  // to avoid bank conflict
+  if (params.tilingMode == 2010 && params.dstR2ndLpUnit*dtypeFactor % NI_16 == 0 &&
+      (params.dstR2ndLpUnit < params.srcClLpUnit || params.srcClLpUnit*dtypeFactor % NI_16 == 0)) {
+    params.dstR2ndLpUnit -= 1;
+  }
   int64_t dstR2ndLpCnt = GetCeilDiv(axisDstR2ndSize, params.dstR2ndLpUnit);
   int64_t dstR2ndLeft = axisDstR2ndSize % params.dstR2ndLpUnit;
+  if (dstR2ndLpCnt == 1) {
+    params.allR2ndIn = 1;
+  } else {
+    params.allR2ndIn = 0;
+  }
 
   reverse(dstR2ndFormat.begin(), dstR2ndFormat.end());
   for (size_t i = 0; i < dstR2ndFormat.length(); i++) {
@@ -335,6 +380,8 @@ void SetRunningTc201Params(const TransDataTc201Param& runParams, OpRunInfo& runI
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn1SrcRsize);
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn1SrcAsize);
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndDims);
+  ByteBufferPut(runInfo.tiling_data, runParams.vncColSize);
+  ByteBufferPut(runInfo.tiling_data, runParams.allR2ndIn);
 }
 
 void PrintTilingModeTc201Params(const std::string& opType, const TransDataTc201Param& params) {
@@ -382,6 +429,8 @@ void PrintTilingModeTc201Params(const std::string& opType, const TransDataTc201P
   OP_LOGD(opType.c_str(), "dstR2ndIn1SrcRsize=%d", params.dstR2ndIn1SrcRsize);
   OP_LOGD(opType.c_str(), "dstR2ndIn1SrcAsize=%d", params.dstR2ndIn1SrcAsize);
   OP_LOGD(opType.c_str(), "dstR2ndDims=%d", params.dstR2ndDims);
+  OP_LOGD(opType.c_str(), "vncColSize=%d", params.vncColSize);
+  OP_LOGD(opType.c_str(), "allR2ndIn=%d", params.allR2ndIn);
 }
 
 }  // namespace optiling

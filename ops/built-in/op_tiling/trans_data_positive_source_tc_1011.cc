@@ -178,10 +178,11 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
   params.dstR2ndStepIn = GetShapeSize(inShape, dstR2ndInSrcIdx + 1);
 
   // source axis c tiling parameters
-  if (axisCSize < params.vncLineSize) {
+  int64_t usedVncLineSize = GetFloorDiv(params.vncLineSize, params.c0Size) * params.c0Size;
+  if (axisCSize < usedVncLineSize) {
     params.cLpUnit = axisCSize;
   } else {
-    params.cLpUnit = params.vncLineSize;
+    params.cLpUnit = usedVncLineSize;
   }
   params.cLpStepIn = params.cLpUnit;
   int64_t lpC1Cnt = GetCeilDiv(params.cLpUnit, c0Len);
@@ -203,7 +204,7 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
   }
   srcLeftShape.push_back(1);
   int64_t axisSrcClSize = GetShapeSize(srcLeftShape, 0);
-  int64_t plnSrcClCnt = params.vncLineSize / GetCeilFillC(params.cLpUnit, c0Len);
+  int64_t plnSrcClCnt = usedVncLineSize / GetCeilFillC(params.cLpUnit, c0Len);
   if (axisSrcClSize < plnSrcClCnt) {
     params.srcClLpUnit = axisSrcClSize;
   } else {

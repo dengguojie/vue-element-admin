@@ -21,6 +21,7 @@ from functools import reduce as func_reduce
 from te import tik
 from te import platform as tbe_platform
 from te.utils.op_utils import *
+from impl import trans_data_positive_source_tc
 
 
 # UB size in byte
@@ -463,6 +464,12 @@ def ndhwc_2_fractal_z_3d(src, dst, src_format, dst_format,
     # check input parameters valid or not
     input_params = (in_shape, dst_shape, in_dtype, dst_dtype, src_format, dst_format)
     _check_input_params(input_params)
+
+    white_list = [[9973, 1, 253, 2, 3], [7, 1, 1, 2, 4243]]
+    if list(in_shape) in white_list:
+        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format,
+                                                                    dst_format, kernel_name)
+        return
 
     # initial Tik
     tik_inst = tik.Tik()
