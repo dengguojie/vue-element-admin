@@ -97,8 +97,8 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
   std::vector<int64_t> strides;
   TbeFusionPassUtil::GetConstIntData(op, "strides", strides);
 
-  if (!strides.empty() && strides[strides.size() - 1] != 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSlice last value of strides is not 1, graph not changed.");
+  if (strides[strides.size() - 1] < 1) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSlice last value of strides is less than 1, graph not changed.");
     return NOT_CHANGED;
   }
 

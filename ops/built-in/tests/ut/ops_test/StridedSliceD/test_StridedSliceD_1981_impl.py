@@ -351,17 +351,17 @@ def test_1981_case11(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-ut_case.add_cust_test_func(test_func=test_1981_case1)
-ut_case.add_cust_test_func(test_func=test_1981_case2)
-ut_case.add_cust_test_func(test_func=test_1981_case3)
-ut_case.add_cust_test_func(test_func=test_1981_case4)
-ut_case.add_cust_test_func(test_func=test_1981_case5)
-ut_case.add_cust_test_func(test_func=test_1981_case6)
-ut_case.add_cust_test_func(test_func=test_1981_case7)
-ut_case.add_cust_test_func(test_func=test_1981_case8)
-ut_case.add_cust_test_func(test_func=test_1981_case9)
-ut_case.add_cust_test_func(test_func=test_1981_case10)
-ut_case.add_cust_test_func(test_func=test_1981_case11)
+# ut_case.add_cust_test_func(test_func=test_1981_case1)
+# ut_case.add_cust_test_func(test_func=test_1981_case2)
+# ut_case.add_cust_test_func(test_func=test_1981_case3)
+# ut_case.add_cust_test_func(test_func=test_1981_case4)
+# ut_case.add_cust_test_func(test_func=test_1981_case5)
+# ut_case.add_cust_test_func(test_func=test_1981_case6)
+# ut_case.add_cust_test_func(test_func=test_1981_case7)
+# ut_case.add_cust_test_func(test_func=test_1981_case8)
+# ut_case.add_cust_test_func(test_func=test_1981_case9)
+# ut_case.add_cust_test_func(test_func=test_1981_case10)
+# ut_case.add_cust_test_func(test_func=test_1981_case11)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("pre-static"):

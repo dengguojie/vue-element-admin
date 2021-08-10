@@ -197,6 +197,176 @@ case21 = {"params": [{"shape": (32, 3, 16, 16), "dtype": "int32", "format": "ND"
           "expect": "success",
           "support_expect": True}
 
+case22 = {"params": [{"shape": (32, 3, 16, 16), "dtype": "float16", "format": "ND",
+                      "ori_shape": (32, 3, 16, 16), "ori_format": "ND"},
+                     {"shape": (32, 2, 8, 5), "dtype": "float16", "format": "ND",
+                      "ori_shape": (32, 3, 8, 5), "ori_format": "ND"},
+                     [0, 0, 0, 0], [32, 3, 16, 15], [1, 2, 2, 3], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_22",
+          "expect": "success",
+          "support_expect": True}
+
+case23 = {"params": [{"shape": (32, 3, 16, 16), "dtype": "int32", "format": "ND",
+                      "ori_shape": (32, 3, 16, 16), "ori_format": "ND"},
+                     {"shape": (32, 3, 16, 15), "dtype": "int32", "format": "ND",
+                      "ori_shape": (32, 3, 16, 15), "ori_format": "ND"},
+                     [0, 0, 0, 0], [32, 3, 16, 15], [1, 2, 2, 0], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_23",
+          "expect": RuntimeError,
+          "support_expect": True}
+
+case24 = {"params": [{"shape": (16,), "dtype": "int32", "format": "ND",
+                      "ori_shape": (16,), "ori_format": "ND"},
+                     {"shape": (3,), "dtype": "int32", "format": "ND",
+                      "ori_shape": (3,), "ori_format": "ND"},
+                     [0], [15], [5], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_24",
+          "expect": "success",
+          "support_expect": True}
+
+case25 = {"params": [{"shape": (32, 3, 16, 32), "dtype": "float16", "format": "ND",
+                      "ori_shape": (32, 3, 16, 32), "ori_format": "ND"},
+                     {"shape": (32, 2, 8, 16), "dtype": "float16", "format": "ND",
+                      "ori_shape": (32, 3, 8, 16), "ori_format": "ND"},
+                     [0, 0, 0, 0], [32, 3, 16, 32], [1, 2, 2, 2], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_25",
+          "expect": "success",
+          "support_expect": True}
+
+case26 = {"params": [{"shape": (1, 5, 7, 705), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 7, 705), "ori_format": "ND"},
+                     {"shape": (1, 5, 7, 23), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 7, 23), "ori_format": "ND"},
+                     [0, 0, 0, 206], [1, 5, 7, 273], [1, 1, 1, 3], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_26",
+          "expect": "success",
+          "support_expect": True}
+
+case27 = {"params": [{"shape": (1, 5, 7, 1705), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 5, 7, 1705), "ori_format": "ND"},
+                     {"shape": (1, 5, 7, 64), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 5, 7, 64), "ori_format": "ND"},
+                     [0, 0, 0, 206], [1, 5, 7, 653], [1, 1, 1, 7], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_27",
+          "expect": "success",
+          "support_expect": True}
+
+case28 = {"params": [{"shape": (49999,), "dtype": "float16", "format": "ND",
+                      "ori_shape": (49999,), "ori_format": "ND"},
+                     {"shape": (22727,), "dtype": "float16", "format": "ND",
+                      "ori_shape": (22727,), "ori_format": "ND"},
+                     [3,], [45456,], [2,], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_28",
+          "expect": "success",
+          "support_expect": True}
+
+case29 = {"params": [{"shape": (32, 16, 16, 4277), "dtype": "int32", "format": "ND",
+                      "ori_shape": (32, 16, 16, 4277), "ori_format": "ND"},
+                     {"shape": (16, 8, 8, 806), "dtype": "int32", "format": "ND",
+                      "ori_shape": (16, 8, 8, 806), "ori_format": "ND"},
+                     [0, 0, 0, 7], [32, 16, 16, 2423], [2, 2, 2, 3], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_29",
+          "expect": "success",
+          "support_expect": True}
+
+case30 = {"params": [{"shape": (37, 502), "dtype": "int32", "format": "ND",
+                      "ori_shape": (7, 502), "ori_format": "ND"},
+                     {"shape": (37, 3), "dtype": "int32", "format": "ND",
+                      "ori_shape": (37, 3), "ori_format": "ND"},
+                     [0, 280], [6, 502], [1, 87], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_30",
+          "expect": "success",
+          "support_expect": True}
+
+case31 = {"params": [{"shape": (864,), "dtype": "float32", "format": "ND",
+                      "ori_shape": (864,), "ori_format": "ND"},
+                     {"shape": (5,), "dtype": "float32", "format": "ND",
+                      "ori_shape": (5,), "ori_format": "ND"},
+                     [441,], [864,], [91,], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_31",
+          "expect": "success",
+          "support_expect": True}
+
+case32 = {"params": [{"shape": (427670, 864), "dtype": "float16", "format": "ND",
+                      "ori_shape": (427670, 864), "ori_format": "ND"},
+                     {"shape": (213835, 5), "dtype": "float16", "format": "ND",
+                      "ori_shape": (213835, 5), "ori_format": "ND"},
+                     [0, 441], [427670, 864], [2, 91], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_32",
+          "expect": "success",
+          "support_expect": True}
+
+case33 = {"params": [{"shape": (1, 1, 3, 360560, 944), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 1, 3, 360560, 944), "ori_format": "ND"},
+                     {"shape": (1, 1, 1, 360560, 2), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 1, 1, 360560, 2), "ori_format": "ND"},
+                     [0, 0, 1, 0, 878], [1, 1, 2, 360560, 942], [2, 1, 1, 1, 34], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_33",
+          "expect": "success",
+          "support_expect": True}
+
+case34 = {"params": [{"shape": (3, 36), "dtype": "int8", "format": "ND",
+                      "ori_shape": (3, 36), "ori_format": "ND"},
+                     {"shape": (3, 6), "dtype": "int8", "format": "ND",
+                      "ori_shape": (3, 6), "ori_format": "ND"},
+                     [0, 23], [3, 35], [2, 2], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_34",
+          "expect": "success",
+          "support_expect": True}
+
+case35 = {"params": [{"shape": (128,), "dtype": "uint8", "format": "ND",
+                      "ori_shape": (128,), "ori_format": "ND"},
+                     {"shape": (64,), "dtype": "uint8", "format": "ND",
+                      "ori_shape": (64,), "ori_format": "ND"},
+                     [0,], [127,], [2,], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_35",
+          "expect": "success",
+          "support_expect": True}
+
+case36 = {"params": [{"shape": (11, 342, 923), "dtype": "uint8", "format": "ND",
+                      "ori_shape": (11, 342, 923), "ori_format": "ND"},
+                     {"shape": (10, 341, 8), "dtype": "uint8", "format": "ND",
+                      "ori_shape": (10, 341, 8), "ori_format": "ND"},
+                     [0, 0, 280], [10, 341, 923], [1, 1, 82], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_36",
+          "expect": "success",
+          "support_expect": True}
+
+case37 = {"params": [{"shape": (11, 2, 2, 32, 32, 1, 715), "dtype": "int8", "format": "ND",
+                      "ori_shape": (11, 2, 2, 32, 32, 1, 715), "ori_format": "ND"},
+                     {"shape": (2, 1, 2, 32, 32, 1, 38), "dtype": "int8", "format": "ND",
+                      "ori_shape": (2, 1, 2, 32, 32, 1, 38), "ori_format": "ND"},
+                     [8, -2, 0, 0, 0, 0, -679], [11, -1, 2, 32, 32, 1, 302], [2, 1, 1, 1, 1, 1, 7], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_37",
+          "expect": "success",
+          "support_expect": True}
+
+case38 = {"params": [{"shape": (7, 502), "dtype": "int8", "format": "ND",
+                      "ori_shape": (7, 502), "ori_format": "ND"},
+                     {"shape": (6, 6), "dtype": "int8", "format": "ND",
+                      "ori_shape": (6, 6), "ori_format": "ND"},
+                     [0, 102], [6, 502], [1, 37], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_38",
+          "expect": "success",
+          "support_expect": True}
+
+case39 = {"params": [{"shape": (5591, 19, 426), "dtype": "int32", "format": "ND",
+                      "ori_shape": (5591, 19, 426), "ori_format": "ND"},
+                     {"shape": (1977, 19, 4), "dtype": "int32", "format": "ND",
+                      "ori_shape": (1977, 19, 4), "ori_format": "ND"},
+                     [201, 0, 144], [2178, 19, 426], [1, 1, 77], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_39",
+          "expect": "success",
+          "support_expect": True}
+
+case40 = {"params": [{"shape": (71,), "dtype": "float32", "format": "ND",
+                      "ori_shape": (71,), "ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1,), "ori_format": "ND"},
+                     [32,], [71,], [50,], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_40",
+          "expect": "success",
+          "support_expect": True}
 
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
@@ -222,7 +392,6 @@ def test_op_select_format(test_arg):
                      {"shape": (1, 80), "dtype": "float32", "format": "ND", "ori_shape": (1, 80), "ori_format": "ND"},
                      [0, 40], [1, 120], [1, 1], 0, 0, 0, 0, 0)
 
-
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
@@ -244,6 +413,25 @@ ut_case.add_case(["all"], case18)
 ut_case.add_case(["all"], case19)
 ut_case.add_case(["all"], case20)
 ut_case.add_case(["all"], case21)
+ut_case.add_case(["all"], case22)
+ut_case.add_case(["all"], case23)
+ut_case.add_case(["all"], case24)
+ut_case.add_case(["all"], case25)
+ut_case.add_case(["all"], case26)
+ut_case.add_case(["all"], case27)
+ut_case.add_case(["all"], case28)
+ut_case.add_case(["all"], case29)
+ut_case.add_case(["all"], case30)
+ut_case.add_case(["all"], case31)
+ut_case.add_case(["all"], case32)
+ut_case.add_case(["all"], case33)
+ut_case.add_case(["all"], case34)
+ut_case.add_case(["all"], case35)
+ut_case.add_case(["all"], case36)
+ut_case.add_case(["all"], case37)
+ut_case.add_case(["all"], case38)
+ut_case.add_case(["all"], case39)
+ut_case.add_case(["all"], case40)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):

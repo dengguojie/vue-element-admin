@@ -28,11 +28,13 @@ from te.domain.rl_bank import rl_bank
 from te.utils.error_manager import error_manager_vector
 from impl import strided_slice_for_last_dim
 from impl import copy_only
+from impl import common_util
 from impl import strided_slice_two_turn_one
 from impl import strided_slice_fast_last_dim
 from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
 from impl import strided_slice_last_dim_with_vreducev2
+from impl import strided_slice_strides_larger_than_one
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -415,9 +417,6 @@ def strided_slice_d_compute(input_data,
     end_shape = copy.deepcopy(end)
     stride_shape = copy.deepcopy(stride_shape)
     input_list = _shape_to_list(input_data.shape)
-    if stride_shape[-1] != 1:
-        error_manager_vector.raise_err_input_value_invalid("strided_slice_d", "stride_shape[-1]",
-                                                           "1", str(stride_shape[-1]))
 
     # Estimate the value of shrink_axis_mask, to avoid the dimension of output with size 0
     shrink_axis_mask_temp = 0
@@ -461,8 +460,7 @@ def strided_slice_d_compute(input_data,
 
 
 # pylint: disable=locally-disabled,too-many-return-statements
-def _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
-                     new_axis_mask, shrink_axis_mask):
+def _check_parameter(input_shape, begin, end, strides, ellipsis_mask, new_axis_mask, shrink_axis_mask):
     """
     check if the input parameters shape
     """
@@ -483,6 +481,9 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
                 ellipsis_dim += 1
         if ellipsis_dim > 1:
             return False
+
+    if strides[-1] <= 0:
+        return False
     return True
 
 
@@ -811,6 +812,20 @@ def _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, stride
         return True
 
 
+def _check_strides_larger_than_one(strides):
+    """
+    check strides larger than one
+    """
+    flag = True
+    for value in strides:
+        if value < 1:
+            flag = False
+    for value in strides:
+        if value > 1 and flag:
+            return True
+    return False
+
+
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -933,7 +948,6 @@ def op_select_format(input_x,
         strides = _fill_list_with_ones(len(input_shape))
     else:
         strides = list(strides)
-
     base_data_type = ["float", "float16", "int8", "int32", "uint8", "bool"]
     other_data_type = ["float", "float16", "int32"]
     vadd_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
@@ -1149,8 +1163,7 @@ def strided_slice_d(input_x,
     end = list(end)
     strides = list(strides)
 
-    if not _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask,
-                            new_axis_mask, shrink_axis_mask):
+    if not _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask, new_axis_mask, shrink_axis_mask):
         error_manager_vector.raise_err_specific_reson("strided_slice_d", "Parameter Invalid!")
 
     # update input_shape, begin_shape, end_shape
@@ -1237,15 +1250,28 @@ def strided_slice_d(input_x,
             tvm.build(sch, [input_tensor, out_tensor], "cce", name=kernel_name)
         return
 
+    if _check_strides_larger_than_one(strides):
+        begin_shape = copy.deepcopy(begin)
+        end_shape = copy.deepcopy(end)
+        strides_shape = copy.deepcopy(strides)
+        res = strided_slice_strides_larger_than_one.strided_slice_strides_larger_than_one(input_shape,
+                                                                                          input_dtype,
+                                                                                          begin_shape,
+                                                                                          end_shape,
+                                                                                          strides_shape,
+                                                                                          kernel_name)
+        if res:
+            return
+
     if _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, strides, input_dtype):
         begin_shape = copy.deepcopy(begin)
         end_shape = copy.deepcopy(end)
         strides_shape = copy.deepcopy(strides)
-        res = strided_slice_last_dim_with_vreducev2.strided_slice_last_dim_with_vreducev2(input_shape, 
-                                                                                          input_dtype, 
-                                                                                          begin_shape, 
-                                                                                          end_shape, 
-                                                                                          strides_shape, 
+        res = strided_slice_last_dim_with_vreducev2.strided_slice_last_dim_with_vreducev2(input_shape,
+                                                                                          input_dtype,
+                                                                                          begin_shape,
+                                                                                          end_shape,
+                                                                                          strides_shape,
                                                                                           kernel_name)
         if res:
             return
