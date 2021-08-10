@@ -2737,6 +2737,7 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
   }
   td.SetShape(ge::Shape(y_shape));
   td.SetDataType(input_dtype);
+  td.SetFormat(input_format);
   (void)op.UpdateOutputDesc("y", td);
   return GRAPH_SUCCESS;
 }

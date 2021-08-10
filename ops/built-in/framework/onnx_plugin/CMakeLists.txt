@@ -132,6 +132,7 @@ set(_onnx_plugins
   lppool_plugin.cc
   compress_plugin.cc
   xor_plugin.cc
+  upsample_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
