@@ -2521,25 +2521,4 @@ IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
 
 COMMON_INFER_FUNC_REG(ExpandD, ExpandDInferShape);
 // ----------------ExpandD END---------------------
-
-// ----------------UniqueWithCountsAndSorting END---------------------
-IMPLEMT_INFERFUNC(UniqueWithCountsAndSorting, UniqueWithCountsAndSortingInfer) {
-  OP_LOGD(op.GetName().c_str(), "UniqueWithCountsAndSortingInfer Start.");
-  TensorDesc output_desc = op.GetInputDesc("x");
-  output_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
-  std::vector<std::pair<int64_t, int64_t>> range_vector;
-  range_vector.push_back(std::make_pair(1, -1));
-
-  output_desc.SetShapeRange(range_vector);
-
-  op.UpdateOutputDesc("y1", output_desc);
-  output_desc.SetDataType(DT_INT32);
-  op.UpdateOutputDesc("y2", output_desc);
-  op.UpdateOutputDesc("y3", output_desc);
-  
-  return GRAPH_SUCCESS;
-}
-
-INFER_FUNC_REG(UniqueWithCountsAndSorting, UniqueWithCountsAndSortingInfer);
-// ----------------UniqueWithCountsAndSorting END---------------------
 }  // namespace ge
