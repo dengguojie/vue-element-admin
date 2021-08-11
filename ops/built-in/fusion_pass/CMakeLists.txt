@@ -104,6 +104,8 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/pooling/tbe_antiquant_maxpooling_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/pooling/tbe_pooling_quant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv_clipByValue_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_eltwise_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_fusion_pass.cc
   graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
   graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
   graph_fusion/ai_core/adaptive_max_pool2d_fusion_pass.cc
