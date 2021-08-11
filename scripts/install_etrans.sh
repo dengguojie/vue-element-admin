@@ -54,7 +54,7 @@ download_run(){
     test_net_addr=$net_addr
     network_test
     #<tr><td class="link"><a href="20210728/" title="20210728">20210728/</a></td><td class="size">-</td><td class="date">2021-Jul-29 10:59</td></tr>
-    day=`cat index.html  | grep title |tail -n 4| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}' | grep 20`
+    day=`grep 202[0-9][0,1] index.html |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}' | grep 20`
     rm -rf index.html
     
     eval net=$(echo ${net_addr}${day}/x86_ubuntu_os_devtoolset_package.zip)
