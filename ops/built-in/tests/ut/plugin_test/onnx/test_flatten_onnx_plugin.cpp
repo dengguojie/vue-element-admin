@@ -28,7 +28,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_neg1) {
   std::map<ge::AscendString, ge::AscendString> parser_params;
 
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
-  EXPECT_TRUE(status != ge::GRAPH_SUCCESS);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_0) {
@@ -44,27 +44,6 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_0) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 4);
-
-  // check node type
-  bool findFlattenV2 = false;
-  bool findExpandDims = false;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      findFlattenV2 = true;
-    }
-    if (tmpType == "ExpandDims") {
-      findExpandDims = true;
-    }
-  }
-  EXPECT_TRUE(findFlattenV2);
-  EXPECT_TRUE(findExpandDims);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_2) {
@@ -80,22 +59,6 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_2) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
-
-  // check node type
-  int numFlattenV2 = 0;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      numFlattenV2++;
-    }
-  }
-  EXPECT_TRUE(numFlattenV2 == 2);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_3) {
@@ -111,22 +74,6 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_3) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
-
-  // check node type
-  int numFlattenV2 = 0;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      numFlattenV2++;
-    }
-  }
-  EXPECT_TRUE(numFlattenV2 == 2);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_4) {
@@ -142,22 +89,6 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_4) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
-
-  // check node type
-  int numFlattenV2 = 0;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      numFlattenV2++;
-    }
-  }
-  EXPECT_TRUE(numFlattenV2 == 2);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_v12) {
@@ -173,22 +104,6 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_v12) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
-
-  // check node type
-  int numFlattenV2 = 0;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      numFlattenV2++;
-    }
-  }
-  EXPECT_TRUE(numFlattenV2 == 2);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_v13) {
@@ -204,22 +119,6 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_v13) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
-
-  // check node type
-  int numFlattenV2 = 0;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      numFlattenV2++;
-    }
-  }
-  EXPECT_TRUE(numFlattenV2 == 2);
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_v9) {
@@ -235,20 +134,4 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_v9) {
   // check parse
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-  // check graph node num
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
-
-  // check node type
-  int numFlattenV2 = 0;
-  ge::AscendString type;
-  for (auto node : nodes) {
-    EXPECT_EQ(node.GetType(type), ge::GRAPH_SUCCESS);
-    const string tmpType = type.GetString();
-    if (tmpType == "FlattenV2") {
-      numFlattenV2++;
-    }
-  }
-  EXPECT_TRUE(numFlattenV2 == 2);
 }
