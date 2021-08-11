@@ -3564,6 +3564,7 @@ def roi_align(feature_map_dict,
                              output, scale, pool_h, pool_w,
                              sample_ratio, roi_end_mode, kernel_name)
     if (dtype == "float16") and \
+            (sample_ratio > 0) and \
             (cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
                              tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)):
         return roi_align_cce(feature_map_dict, rois_dict, roisn_dict,
