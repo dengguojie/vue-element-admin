@@ -30,7 +30,7 @@ from impl import ascend_quant_util as quant_util
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
 @register_operator_compute("AscendQuant", op_mode="dynamic", support_fusion=True)
-def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round",
+def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2,
                          kernel_name="ascend_quant"):
     """
     float16/float32 -> int8
@@ -48,6 +48,8 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     sqrt_mode : the sqrt mode when true the result to do sqrt
 
     round_mode : the data conversion mode
+
+    dst_type : the output data type
 
     kernel_name : cce kernel name, default value is "ascend_quant"
 
@@ -393,8 +395,8 @@ def _get_variable_shape(x):
 @register_operator("AscendQuant", pattern="quant")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
-                            para_check.KERNEL_NAME)
-def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kernel_name="ascend_quant"):
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2, kernel_name="ascend_quant"):
     """
     float16/float32 -> int8
 
@@ -412,6 +414,8 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kerne
 
     round_mode : the data conversion mode
 
+    dst_type : the output data type
+
     kernel_name : cce kernel name, default value is "ascend_quant"
 
     Returns:
@@ -425,7 +429,7 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kerne
         input_shape, var_index_list = _get_variable_shape(x)
         tbe_context.get_context().add_compile_info("var_index_list", var_index_list)
         input_x = tvm.placeholder(input_shape, name="input_x", dtype=input_dtype)
-        res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, kernel_name)
+        res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name)
 
     schedules = []
     with tvm.target.cce():

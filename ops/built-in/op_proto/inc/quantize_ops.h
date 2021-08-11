@@ -96,18 +96,19 @@ REG_OP(Quantize)
 *@li dst_type: A optional int32, specifying the output data type. Defaults to "DT_INT8" . \n
 
 *@par Outputs:
-*y: The quantized output tensor of type int8 and with format NC1HWC0 . \n
+*y: The quantized output tensor of type int8 or int4 and with format NC1HWC0 . \n
 
 *@par Third-party framework compatibility
 * It is a custom operator. It has no corresponding operator in Caffe.
 */
 REG_OP(AscendQuant)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32}))
-    .OUTPUT(y, TensorType({DT_INT8}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))
     .REQUIRED_ATTR(scale, Float)
     .REQUIRED_ATTR(offset, Float)
     .ATTR(sqrt_mode, Bool, false)
     .ATTR(round_mode, String, "Round")
+    .ATTR(dst_type, Int, DT_INT8)
     .OP_END_FACTORY_REG(AscendQuant)
 
 /**
