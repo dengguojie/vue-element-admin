@@ -81,13 +81,14 @@ endif()
 
 set(OUTPUT_FILES "")
 
+if (UNIX)
+    GEN_OPS_INFO_FILE("" ${AICPU_OP_INFO_CFG_OUT_DIR} cust)
 
-GEN_OPS_INFO_FILE("" ${AICPU_OP_INFO_CFG_OUT_DIR} cust)
-
-if ("x${OUTPUT_FILES}" STREQUAL "x")
-    add_custom_target(${AICPU_CONFIG_JSON_TARGET}
-            COMMAND echo "can not find ini file in ${CMAKE_CURRENT_SOURCE_DIR}/aicpu.")
-    return(0)
+    if ("x${OUTPUT_FILES}" STREQUAL "x")
+        add_custom_target(${AICPU_CONFIG_JSON_TARGET}
+                COMMAND echo "can not find ini file in ${CMAKE_CURRENT_SOURCE_DIR}/aicpu.")
+        return(0)
+    endif()
 endif()
 
 add_custom_target(${AICPU_CONFIG_JSON_TARGET} ALL DEPENDS ${OUTPUT_FILES}
@@ -124,9 +125,11 @@ if("x${ASCEND_OPP_PATH}" STREQUAL "x")
         message(FATAL_ERROR "ENV ASCEND_OPP_PATH is not set")
 endif()
 
-set(ASCEND_AICPU_PATH $ENV{ASCEND_AICPU_PATH})
-if("x${ASCEND_AICPU_PATH}" STREQUAL "x")
-        message(FATAL_ERROR "ENV ASCEND_AICPU_PATH is not set")
+if (UNIX)
+    set(ASCEND_AICPU_PATH $ENV{ASCEND_AICPU_PATH})
+    if("x${ASCEND_AICPU_PATH}" STREQUAL "x")
+            message(FATAL_ERROR "ENV ASCEND_AICPU_PATH is not set")
+    endif()
 endif()
 
 include_directories(${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/inc)

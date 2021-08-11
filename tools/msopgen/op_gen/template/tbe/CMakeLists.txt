@@ -33,7 +33,9 @@ endmacro(GEN_OPS_INFO_FILE)
 
 set(OUTPUT_FILES "")
 
-GEN_OPS_INFO_FILE(ai_core ${AIC_OP_INFO_CFG_OUT_DIR} aic)
+if (UNIX)
+    GEN_OPS_INFO_FILE(ai_core ${AIC_OP_INFO_CFG_OUT_DIR} aic)
+endif ()
 
 message(STATUS "OUTPUT_FILES=${OUTPUT_FILES}")
 if ("x${OUTPUT_FILES}" STREQUAL "x")

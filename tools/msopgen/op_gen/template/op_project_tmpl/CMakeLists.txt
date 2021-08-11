@@ -35,11 +35,13 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/tbe")
     add_subdirectory(tbe)
 endif()
 
-if (NOT "x$ENV{ADD_TESTCASE}" STREQUAL "x")
-  # add testcases subdirectory
-  if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/testcases")
-    add_subdirectory(testcases)
-  endif()
+if (UNIX)
+    if (NOT "x$ENV{ADD_TESTCASE}" STREQUAL "x")
+      # add testcases subdirectory
+      if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/testcases")
+        add_subdirectory(testcases)
+      endif()
+    endif()
 endif()
 
 message(STATUS "operation system is ${CMAKE_HOST_SYSTEM_NAME}")

@@ -32,6 +32,8 @@ if (UNIX)
     endif ()
 
     message(STATUS "SYSTEM_INFO=${SYSTEM_INFO}")
+elseif (WIN32)
+    message(STATUS "System is Windows. Only for pre-build.")
 else ()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} not support.")
 endif ()
