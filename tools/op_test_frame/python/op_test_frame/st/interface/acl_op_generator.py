@@ -42,6 +42,8 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
                 'format': desc_dic.get('format'),
                 'type': desc_dic.get('type'),
                 'shape': desc_dic.get('shape')}
+        # add is_const in acl_op.json
+        utils.ConstInput.add_const_info_in_acl_json(desc_dic, res_desc_dic)
         # Add name field for input*.paramType = optional or dynamic scenarios.
         input_name = desc_dic.get('name')
         if input_name is not None:
@@ -261,6 +263,8 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     # do acl input op description
     input_shape_data, input_data_type, input_format, input_file_path = \
         _get_input_desc(testcase_struct)
+    # do acl const_status op description
+    const_status = utils.ConstInput.get_acl_const_status(testcase_struct)
     # do acl output op description
     output_shape_data, output_data_type, output_format, output_file_path_list = \
         _get_output_desc(testcase_struct)
@@ -276,6 +280,7 @@ def _create_exact_testcase_content(testcase_struct, device_id):
         input_format=input_format,
         input_file_path=input_file_path,
         output_file_path=output_file_path,
+        is_const=const_status,
         output_shape_data=output_shape_data,
         output_data_type=output_data_type,
         output_format=output_format,

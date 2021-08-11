@@ -14,6 +14,8 @@ import time
 import re
 import stat
 import json
+import numpy as np
+from op_test_frame.st.interface.data_generator import DataGenerator
 
 # error code for user:success
 OP_TEST_GEN_NONE_ERROR = 0
@@ -82,10 +84,15 @@ TYPE_UNDEFINED = "UNDEFINED"
 
 INPUT_DESC = 'input_desc'
 OUTPUT_DESC = 'output_desc'
+VALUE_RANGE = 'value_range'
+DATA_DISTRIBUTE = 'data_distribute'
 # dynamic shape scenario add keys as follows
 SHAPE_RANGE = 'shape_range'
 TYPICAL_SHAPE = 'typical_shape'
 VALUE = 'value'
+IS_CONST = 'is_const'
+CONST_VALUE = 'const_value'
+FALSE = 'false'
 # Two dynamic scenarios: shape value is -1 or -2
 SHAPE_DYNAMIC_SCENARIOS_ONE = -1
 SHAPE_DYNAMIC_SCENARIOS_TWO = -2
@@ -619,6 +626,17 @@ def fix_name_lower_with_under(name):
     return fix_name
 
 
+def add_new_key_to_cross_list(tensor, cross_key_list):
+    """
+    Function: Add new key in cross key list.
+    return:
+    """
+    new_key_list = [SHAPE_RANGE, VALUE, IS_CONST]
+    for key in new_key_list:
+        if tensor.get(key):
+            cross_key_list.append(key)
+
+
 class ScanFile:
     """
     The class for scanning path to get subdirectories.
@@ -655,3 +673,82 @@ class ScanFile:
         :return: prefix
         """
         return self.prefix
+
+
+class ConstInput:
+    """
+    The class for dealing with const input.
+    attr: is_const is a bool type.
+    """
+    def __init__(self, is_const=None):
+        self.is_const = is_const
+
+    def _check_is_const(self):
+        if self.is_const is None:
+            return False
+        else:
+            if not isinstance(self.is_const, bool):
+                print_error_log('The value of "is_const" only support bool '
+                                'type: true or false.')
+                raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)
+        return True
+
+    def deal_with_const(self, input_desc):
+        """
+        Function: Update is_const field in input_desc dict.
+        return:
+        """
+        if self._check_is_const():
+            input_desc.update({IS_CONST: [self.is_const]})
+
+    @staticmethod
+    def add_const_info_in_acl_json(desc_dict, res_desc_dic):
+        """
+        Function:Check whether there is an is_const field in the desc_dict,
+        and then check whether there is a value field. Otherwise, use the
+        data distribution and value range to generate constant value.
+        Finally, deposit is_const and constant value to acl_op.json.
+        return:
+        """
+        input_shape = desc_dict.get('shape')
+        dtype = desc_dict.get('type')
+        if desc_dict.get(IS_CONST) is True:
+            case_value = desc_dict.get(VALUE)
+            if case_value:
+                if isinstance(case_value, str):
+                    np_type = getattr(np, dtype)
+                    data = np.fromfile(case_value, np_type)
+                    const_value = data.tolist()
+                else:
+                    const_value = desc_dict.get(VALUE)
+            else:
+                range_min, range_max = desc_dict.get(VALUE_RANGE)
+                data = DataGenerator.gen_data(
+                    input_shape, range_min, range_max, dtype,
+                    desc_dict.get(DATA_DISTRIBUTE))
+                const_value = data.tolist()
+            const_value_dict = {
+                IS_CONST: desc_dict.get(IS_CONST),
+                CONST_VALUE: const_value}
+            res_desc_dic.update(const_value_dict)
+
+    @staticmethod
+    def get_acl_const_status(testcase_struct):
+        """
+        Function:Check input whether is a constant, and generate constant status
+        for inputConst variable in testcase.cpp.
+        return: const_status
+        """
+        input_const_list = []
+        const_status = ""
+        acl_const_list = []
+        for input_desc_dic in testcase_struct.get(INPUT_DESC):
+            if input_desc_dic.get(IS_CONST):
+                input_const_list.append(
+                    str(input_desc_dic.get(IS_CONST)).lower())
+            else:
+                input_const_list.append(FALSE)
+        for acl_const in input_const_list:
+            acl_const_list.append(acl_const)
+        const_status += ", ".join(acl_const_list)
+        return const_status

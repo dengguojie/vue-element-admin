@@ -163,6 +163,9 @@ class SubCaseDesign:
                 one_input_desc.update({"value": value_list[0]})
             else:
                 one_input_desc.update({"value": value_list})
+        # check is_const flag and deal with const input.
+        const_input = utils.ConstInput(input_desc.get(utils.IS_CONST))
+        const_input.deal_with_const(one_input_desc)
 
     def _check_list_list_valid(self, json_obj, key, tensor):
         self._check_key_exist(json_obj, key, tensor)

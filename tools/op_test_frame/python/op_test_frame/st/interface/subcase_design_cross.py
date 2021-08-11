@@ -199,10 +199,8 @@ class SubCaseDesignCross(SD.SubCaseDesign):
             cross_key_list = []
             for key in op_cross_key_list:
                 cross_key_list.append(key)
-            if tensor.get(utils.SHAPE_RANGE):
-                dynamic_handle.add_key_in_cross_key_list(cross_key_list)
-            if tensor.get(utils.VALUE):
-                cross_key_list.append(utils.VALUE)
+            # add new key in cross_key_list
+            utils.add_new_key_to_cross_list(tensor, cross_key_list)
             if tensor.get('ori_format') and tensor.get('ori_shape'):
                 ori_field_cross_key_list, result_cross_list = combine_ori_field_to_cross(tensor, cross_key_list)
                 for case in result_cross_list:

@@ -1,0 +1,56 @@
+[
+  {
+    "attr": [
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "name": "x",
+        "shape": [
+          4,
+          16,
+          16,
+          16
+        ],
+        "type": "float16"
+      },
+      {
+        "const_value": [
+          0,
+          0
+        ],
+        "format": "NHWC",
+        "is_const": true,
+        "name": "x2",
+        "shape": [
+          2
+        ],
+        "type": "int32"
+      }
+    ],
+    "op": "ResizeBilinearV2",
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "name": "y",
+        "shape": [
+          4,
+          48,
+          48,
+          16
+        ],
+        "type": "float"
+      }
+    ]
+  }
+]

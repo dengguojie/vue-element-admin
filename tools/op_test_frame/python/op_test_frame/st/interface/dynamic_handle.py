@@ -46,12 +46,6 @@ def check_not_dynamic_shape(shape_list):
     return False
 
 
-def add_key_in_cross_key_list(key_list):
-    """add new key in cross_key_list"""
-    for key in NEW_STR_KEY:
-        key_list.append(key)
-
-
 def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):
     """update cur_params dict"""
     shape_list = cur_params.get('shape')

@@ -23,6 +23,7 @@ OP_TEST(Add, Test_Add_001_case_001)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_case_001_input_0", "test_data/data/Test_Add_001_case_001_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{4}};
     opTestDesc.outputDataType = {ACL_FLOAT16};

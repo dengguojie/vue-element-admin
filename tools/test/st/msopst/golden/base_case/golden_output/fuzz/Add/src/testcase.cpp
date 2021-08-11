@@ -23,6 +23,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_001)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_001_input_0", "test_data/data/Test_Add_001_fuzz_case_001_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -47,6 +48,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_002)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_002_input_0", "test_data/data/Test_Add_001_fuzz_case_002_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -71,6 +73,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_003)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_003_input_0", "test_data/data/Test_Add_001_fuzz_case_003_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -95,6 +98,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_004)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_004_input_0", "test_data/data/Test_Add_001_fuzz_case_004_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -119,6 +123,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_005)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_005_input_0", "test_data/data/Test_Add_001_fuzz_case_005_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -143,6 +148,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_006)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_006_input_0", "test_data/data/Test_Add_001_fuzz_case_006_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -167,6 +173,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_007)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_007_input_0", "test_data/data/Test_Add_001_fuzz_case_007_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -191,6 +198,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_008)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_008_input_0", "test_data/data/Test_Add_001_fuzz_case_008_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -215,6 +223,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_009)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_009_input_0", "test_data/data/Test_Add_001_fuzz_case_009_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -239,6 +248,7 @@ OP_TEST(Add, Test_Add_001_fuzz_case_010)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_010_input_0", "test_data/data/Test_Add_001_fuzz_case_010_input_1"};
+    opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};

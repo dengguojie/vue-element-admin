@@ -55,6 +55,7 @@ TESTCASE_CONTENT = """
     opTestDesc.inputDataType = {{{input_data_type}}};
     opTestDesc.inputFormat = {{{input_format}}};
     opTestDesc.inputFilePath = {{{input_file_path}}};
+    opTestDesc.inputConst = {{{is_const}}};
     // output parameter init
     opTestDesc.outputShape = {{{output_shape_data}}};
     opTestDesc.outputDataType = {{{output_data_type}}};

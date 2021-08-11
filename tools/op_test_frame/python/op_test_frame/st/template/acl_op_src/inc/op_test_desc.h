@@ -86,6 +86,7 @@ struct OpTestDesc {
     std::vector<aclFormat> inputFormat;
     std::vector<std::string> inputFilePath;
     std::vector<aclTensorDesc *> inputDesc;
+    std::vector<bool> inputConst;
     std::vector<std::vector<int64_t>> outputShape;
     std::vector<aclDataType> outputDataType;
     std::vector<aclFormat> outputFormat;

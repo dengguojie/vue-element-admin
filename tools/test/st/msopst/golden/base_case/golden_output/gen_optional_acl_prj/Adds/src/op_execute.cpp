@@ -74,6 +74,14 @@ bool SetInputData(OpRunner &runner)
             ERROR_LOG("The file '%s' is not exist.", filePath.c_str());
             return false;
         }
+        bool isConst = runner.GetOpTestDesc().inputConst[i];
+        if (isConst) {
+            int setConstStatus = aclSetTensorConst(runner.GetOpTestDesc().inputDesc[i], runner.GetInputBuffer<void>(i), runner.GetInputSize(i));
+            if (setConstStatus != 0) {
+                ERROR_LOG("Set Const[%d] failed.", setConstStatus);
+                return false;
+            }
+        }
     }
 
     return true;

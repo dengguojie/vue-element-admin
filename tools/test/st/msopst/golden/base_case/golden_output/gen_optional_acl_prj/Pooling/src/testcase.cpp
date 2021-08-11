@@ -23,6 +23,7 @@ OP_TEST(Pooling, Test_Pooling_001_case_001)
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_DT_UNDEFINED};
     opTestDesc.inputFormat = {(aclFormat)3, (aclFormat)-1, (aclFormat)-1};
     opTestDesc.inputFilePath = {"test_data/data/Test_Pooling_001_case_001_input_0", "", ""};
+    opTestDesc.inputConst = {false, false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2, 64, 64, 16}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
