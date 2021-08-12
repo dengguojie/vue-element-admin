@@ -521,9 +521,9 @@ void GetTilingDataNonAllReduceND(std::vector<int64_t> input_x,
            * ub_fuse_factor < ub_size                  /
            *
            * not open:
-           * ub_fuse_factor = 1
+           * ub_fuse_factor = 0
            ***/
-
+          tilingparams.ub_fuse_factor = block_inner;
           if (block_inner < input_x[0] && block_inner > block) {
             for (int32_t n = block_inner; n > block; n--) {
               if (n < max_ub_size && block_inner % n > block) {
@@ -531,8 +531,6 @@ void GetTilingDataNonAllReduceND(std::vector<int64_t> input_x,
                 break;
               }
             }
-          } else {
-            tilingparams.ub_fuse_factor = block_inner;
           }
           compileinfo.is_normal = false;
         } else if (isexceedub && !isworkspace) {

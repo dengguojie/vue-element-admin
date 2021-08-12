@@ -99,6 +99,8 @@ class WorkspaceLayerNormSchedule:
         self.sub_gm_tensor = sub_gm_tensor
         self.shape_dim = len(self.sub_gm_tensor.shape)
         shape = shape_util.shape_to_list(self.sub_gm_tensor.shape)
+        if shape[0] == 1:
+            self.shape_dim -= 1
         if shape[-1] == 1:
             self.shape_dim -= 1
             self.is_last_dim_one = True

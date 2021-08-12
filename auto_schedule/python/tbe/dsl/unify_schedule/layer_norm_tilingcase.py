@@ -491,16 +491,21 @@ class LayerNormInfo:
 def _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce, reduce_axis_index, tiling_case_list, dim_ln_range):
     # last dim is one case
     shape_list = shape_util.shape_to_list(shape_before_reduce)
+    index = 0
+    len_shape = len(shape_list)
+    len_reduce = len(reduce_axis_index)
     if tuple(dim_ln_range) == (1, 1):
-        new_reduce_axis_index = reduce_axis_index[:-1]
-    else:
-        new_reduce_axis_index = reduce_axis_index
+        index += 1
+        for i in range(len_shape - 2, -1, -1):
+            if shape_list[i] != 1:
+                break
+            index += 1
+    # all reduce axis are one case
+    new_reduce_axis_index = [] if index >= len_reduce else reduce_axis_index[:(len_reduce - index)]
+    new_shape_before_reduce = shape_before_reduce[:(len_shape - index)]
     for wj in new_reduce_axis_index:
         # workspace tilingcase
         ub_split_axis = wj
-        # specail not block_split_axis is one, is not as ub_split axis
-        if shape_list[ub_split_axis] == 1 and ub_split_axis != block_split_axis:
-            continue
         for k in range(len(new_reduce_axis_index)):
             ub_split_axis_index_reduce = k
             workspace_tiling_case = LayerNormTilingCase()
@@ -513,13 +518,10 @@ def _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce,
             workspace_tiling_case.format = input_format
             workspace_tiling_case.reduce_axis_list = reduce_axis_index
             tiling_case_list.append(workspace_tiling_case)
-    for nj in range(block_split_axis, len(shape_before_reduce)):
+    for nj in range(block_split_axis, len(new_shape_before_reduce)):
         # Normal tilingcase
         n_ub_split_axis = nj
-        # specail not block_split_axis is one, is not as ub_split axis
-        if shape_list[n_ub_split_axis] == 1 and n_ub_split_axis != block_split_axis:
-            continue
-        if n_ub_split_axis in reduce_axis_index:
+        if n_ub_split_axis in reduce_axis_index and n_ub_split_axis != block_split_axis:
             continue
         normal_tiling_case = LayerNormTilingCase()
         normal_tiling_case.block_split_axis_index = block_split_axis
@@ -561,7 +563,10 @@ def _gen_tiling_case(info: LayerNormInfo, input_format, dim_ln_range):
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indexes
     tiling_case_list = []
-    for i in range(0, len(shape_before_reduce)):
+    shape_list = shape_util.shape_to_list(shape_before_reduce)
+    # skip all dims are one in tilingcase
+    len_shape = 0 if dim_ln_range == (1, 1) and set(shape_list[:-1]) == {1} else len(shape_before_reduce)
+    for i in range(0, len_shape):
         # if i not in reduce_axis_index: NOT ALL REDUCE CASE
         # ELSE: ALL REDUCE
         block_split_axis = i
