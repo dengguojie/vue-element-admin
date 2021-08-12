@@ -25,16 +25,25 @@ from topi.cce import util
 from functools import reduce as functools_reduce
 import te.platform as tbe_platform
 
+# proposal struct contains 8 elements
 PROPOSAL_NUM = 8
-BLOCK = 16
+# use this idx in proposal struct for val
 VAL_IDX = 4
+# use this idx in proposal struct for idx's merchant part
 INT_IDX = 0
+# use this idx in proposal struct for idx's remainder part
 REM_IDX = 1
+# min val in fp16
 MIN_VAL = -65504
+# max val in fp16
 MAX_VAL = 65504
+# sorting threshold for normal data volume 
+BLOCK = 16
+# sorting threshold for data volume over 2048
 NUM_BLOCK = 2048
+# sorting limit for data volume
 DATA_LIMITE = 100000
-TASK_LIMITE = 10000
+
 
 def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
     """
@@ -46,10 +55,6 @@ def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
         reason = "The date in sort axis is over 100K."
         return False, reason
 
-    allnum = functools_reduce(lambda x, y: x * y, input_shape)
-    if allnum // input_shape[-1] > TASK_LIMITE:
-        reason = "The task for sort op is over 10K."
-        return False, reason
     return True, ""
 
 
@@ -455,10 +460,11 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
             tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, 2 * repeat_times, 0, 0)
 
     else:
+        num_res_align = ((num % NUM_BLOCK) + BLOCK - 1) // BLOCK * BLOCK
         repeat_times = NUM_BLOCK // BLOCK
-        threadNum = 2 if num_gm > 1 else 1
+        threadNum = 2 if num_gm > 2 else 1
         with tik_instance.for_range(0, rounds) as i:
-            with tik_instance.for_range(0, num_gm, thread_num=threadNum) as j:
+            with tik_instance.for_range(0, num_gm - 1, thread_num=threadNum) as j:
                 float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
                 int_ub = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
                 tik_instance.data_move(float_ub[0], data_out[i * num_2048 + j * NUM_BLOCK], 0, 1,
@@ -470,6 +476,18 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
                                        2 * repeat_times, 0, 0)
                 tik_instance.data_move(data_indices_[i * num + j * NUM_BLOCK], int_ub[0], 0, 1,
                                        2 * repeat_times, 0, 0)
+            # for last block in 32Byte align                  
+            float_ub = tik_instance.Tensor("float16", [num_res_align], name="float_ub", scope=tik.scope_ubuf)
+            int_ub = tik_instance.Tensor("int32", [num_res_align], name="int_ub", scope=tik.scope_ubuf)
+            tik_instance.data_move(float_ub[0], data_out[i * num_2048 + (num_gm - 1) * NUM_BLOCK], 0, 1,
+                                   num_res_align // BLOCK, 0, 0)
+            tik_instance.data_move(data_out_[i * num + (num_gm - 1) * NUM_BLOCK], float_ub[0], 0, 1,
+                                   num_res_align // BLOCK, 0, 0)
+
+            tik_instance.data_move(int_ub[0], data_indices[i * num_2048 + (num_gm - 1) * NUM_BLOCK], 0, 1,
+                                   2 * num_res_align // BLOCK, 0, 0)
+            tik_instance.data_move(data_indices_[i * num + (num_gm - 1) * NUM_BLOCK], int_ub[0], 0, 1,
+                                   2 * num_res_align // BLOCK, 0, 0)
 
     return data_out_, data_indices_
 
@@ -631,7 +649,7 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     batch_num_per_aicore = rounds // used_aicore_num
     batch_tail = rounds % used_aicore_num
 
-    temp = tik_instance.Tensor(dtype, [used_aicore_num * num_gm * NUM_BLOCK * PROPOSAL_NUM], name="temp",
+    temp = tik_instance.Tensor(dtype, [used_aicore_num * num_2048 * PROPOSAL_NUM], name="temp",
                                scope=tik.scope_gm, is_workspace=True)
 
     version = tik.Dprofile().get_product_name()
