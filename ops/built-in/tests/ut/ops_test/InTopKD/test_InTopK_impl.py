@@ -109,12 +109,12 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
 
 if __name__ == '__main__':
     import tbe
     with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run()
+        ut_case.run(["Ascend310", "Ascend910A"])
         exit(0)

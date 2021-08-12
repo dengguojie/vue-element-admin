@@ -33,6 +33,7 @@ V_MAX_REPEAT = 255
 # size of one block
 BLOCK_SIZE = 32
 FP_MIN = -3.40282346638528860E38
+MAX_BLOCK_NUM = 65535
 
 
 # pylint: disable=unused-argument
@@ -348,110 +349,158 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
             scalar_value.set_as(prediction_tensor_ub[i * column_aligned + scalar_target])
             tik_instance.vector_dup(column_reduce_remainder, data_ub[i * column_aligned], scalar_value, 1, 1, 1, 0)
 
-    # step 2, prediction_tensor subtract data_ub.
-    column_remainder = int(column % half_mask_value)
-    reduce_times = int(column // half_mask_value)
+    if tbe_platform.api_check_support("tik.vcmp_gt", "float32"):
+        data_zeros = tik_instance.Tensor("float32", (half_mask_value, 1), name="data_zeros", scope=tik.scope_ubuf)
+        zero = tik_instance.Scalar(dtype="float32", name="zeros")
+        zero.set_as(0)
+        tik_instance.vector_dup(half_mask_value, data_zeros, zero, 1, 1, 1, 0)
+        data_ones = tik_instance.Tensor("float32", (half_mask_value, 1), name="data_ones", scope=tik.scope_ubuf)
+        one = tik_instance.Scalar(dtype="float32", name="ones")
+        one.set_as(1)
+        tik_instance.vector_dup(half_mask_value, data_ones, one, 1, 1, 1, 0)
 
-    repeat_times = int((carry * tensor_size) // mask_value)
-    tail_mask = int((carry * tensor_size) % mask_value)
+        data_sign = tik_instance.Tensor("float32", (row_nums, column_aligned), name="data_sign", scope=tik.scope_ubuf)
+        repeat_times = int(tensor_size // half_mask_value)
+        tail_mask = int(tensor_size % half_mask_value)
+        if repeat_times > 0:
+            tik_instance.vector_dup(half_mask_value, data_sign, 0, repeat_times, 1, 8)
+        if tail_mask != 0:
+            tik_instance.vector_dup(tail_mask, data_sign[repeat_times * half_mask_value], 0, 1, 1, 8)
 
-    half_sub = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="half_sub", scope=tik.scope_ubuf)
-
-    if reduce_times > 0:
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vsub(half_mask_value, prediction_tensor_ub[i * column_aligned],
-                              prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], reduce_times, 1, 1,
-                              1, 8, 8, 8)
-            if column_remainder != 0:
-                index = reduce_times * half_mask_value + i * column_aligned
-                tik_instance.vsub(column_remainder, prediction_tensor_ub[index], prediction_tensor_ub[index],
-                                  data_ub[index], 1, 1, 1, 1, 8, 8, 8)
-
-    else:
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vsub(column_remainder, prediction_tensor_ub[i * column_aligned],
-                              prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], 1, 1, 1, 1, 8, 8,
-                              8)
-
-    if repeat_times > 0:
-        tik_instance.vector_dup(mask_value, half_sub, 0, repeat_times, 1, 8)
-    if tail_mask != 0:
-        tik_instance.vector_dup(tail_mask, half_sub[repeat_times * mask_value], 0, 1, 1, 8)
-
-    if column_reduce_times > 0:
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(half_mask_value, '', half_sub[i * column_aligned * carry],
-                               prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 4, 8)
-        if column_reduce_remainder != 0:
+        if column_reduce_times > 0:
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vconv(column_reduce_remainder, '',
-                                   half_sub[column_reduce_times * half_mask_value + carry * i * column_aligned],
-                                   prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
-                                   1, 1, 4, 8)
+                with tik_instance.for_range(0, column_reduce_times) as j:
+                    srcmask = tik_instance.vcmp_gt(half_mask_value,
+                                                   prediction_tensor_ub[i * column_aligned + half_mask_value * j],
+                                                   data_ub[i * column_aligned + half_mask_value * j], 1, 1)
+                    tik_instance.vsel(half_mask_value, 0, data_sign[i * column_aligned + half_mask_value * j], srcmask,
+                                      data_ones, data_zeros, 1, 1, 1, 1)
+                if column_reduce_remainder != 0:
+                    srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
+                                                   prediction_tensor_ub[i * column_aligned +
+                                                                        column_reduce_times * half_mask_value],
+                                                   data_ub[i * column_aligned + column_reduce_times * half_mask_value],
+                                                   1, 1)
+                    tik_instance.vsel(column_reduce_remainder, 0,
+                                      data_sign[i * column_aligned + column_reduce_times * half_mask_value],
+                                      srcmask, data_ones, data_zeros, 1, 1, 1, 1)
+        else:
+            with tik_instance.for_range(0, core_row_num) as i:
+                srcmask = tik_instance.vcmp_gt(column_reduce_remainder, prediction_tensor_ub[i * column_aligned],
+                                               data_ub[i * column_aligned], 1, 1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned], srcmask, data_ones,
+                                  data_zeros, 1, 1, 1, 1)
+
+        mid_result_ub = data_sign
     else:
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(column_reduce_remainder, '', half_sub[carry * i * column_aligned],
-                               prediction_tensor_ub[i * column_aligned], 1, 1, 1, 4, 8)
+        # step 2, prediction_tensor subtract data_ub.
+        column_remainder = int(column % half_mask_value)
+        reduce_times = int(column // half_mask_value)
 
-    # step 3, if half_sub[i, j] > 0, then the according element data_sign[i, j] set 1, else 0.
-    column_reduce_times = int(column_aligned // mask_value)
-    column_reduce_remainder = int(column_aligned % mask_value)
+        repeat_times = int((carry * tensor_size) // mask_value)
+        tail_mask = int((carry * tensor_size) % mask_value)
 
-    data_sign = tik_instance.Tensor("float16", (shape[0], (shape[1] * carry)), name="data_sign", scope=tik.scope_ubuf)
-    data_zeros = tik_instance.Tensor("float16", (mask_value, 1), name="data_zeros", scope=tik.scope_ubuf)
-    if repeat_times > 0:
-        tik_instance.vector_dup(mask_value, data_sign, 0, repeat_times, 1, 8)
-    if tail_mask != 0:
-        tik_instance.vector_dup(tail_mask, data_sign[repeat_times * mask_value], 0, 1, 1, 8)
+        half_sub = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="half_sub", scope=tik.scope_ubuf)
 
-    zero = tik_instance.Scalar(dtype="float16", name="zeros")
-    zero.set_as(0)
-    tik_instance.vector_dup(mask_value, data_zeros, zero, 1, 1, 1, 0)
-    one = tik_instance.Scalar(dtype="float16", name="ones")
-    one.set_as(1)
-    data_ones = tik_instance.Tensor("float16", (mask_value, 1), name="data_ones", scope=tik.scope_ubuf)
-    tik_instance.vector_dup(mask_value, data_ones, one, 1, 1, 1, 0)
+        if reduce_times > 0:
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vsub(half_mask_value, prediction_tensor_ub[i * column_aligned],
+                                  prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], reduce_times,
+                                  1, 1, 1, 8, 8, 8)
+                if column_remainder != 0:
+                    index = reduce_times * half_mask_value + i * column_aligned
+                    tik_instance.vsub(column_remainder, prediction_tensor_ub[index], prediction_tensor_ub[index],
+                                      data_ub[index], 1, 1, 1, 1, 8, 8, 8)
 
-    if column_reduce_times > 0:
-        with tik_instance.for_range(0, core_row_num) as i:
-            with tik_instance.for_range(0, column_reduce_times) as j:
-                srcmask = tik_instance.vcmp_gt(mask_value, half_sub[i * column_aligned * carry + mask_value * j],
-                                               data_zeros, 1, 1)
-                tik_instance.vsel(mask_value, 0, data_sign[i * column_aligned * carry + mask_value * j], srcmask,
-                                  data_ones, data_zeros, 1, 1, 1, 1)
+        else:
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vsub(column_remainder, prediction_tensor_ub[i * column_aligned],
+                                  prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], 1, 1, 1, 1, 8,
+                                  8, 8)
+
+        if repeat_times > 0:
+            tik_instance.vector_dup(mask_value, half_sub, 0, repeat_times, 1, 8)
+        if tail_mask != 0:
+            tik_instance.vector_dup(tail_mask, half_sub[repeat_times * mask_value], 0, 1, 1, 8)
+
+        if column_reduce_times > 0:
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vconv(half_mask_value, '', half_sub[i * column_aligned * carry],
+                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 4, 8)
             if column_reduce_remainder != 0:
-                srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
-                                               half_sub[i * column_aligned * carry + column_reduce_times * mask_value],
-                                               data_zeros, 1, 1)
-                tik_instance.vsel(column_reduce_remainder, 0,
-                                  data_sign[i * column_aligned * carry + column_reduce_times * mask_value], srcmask,
-                                  data_ones, data_zeros, 1, 1, 1, 1)
-    else:
-        with tik_instance.for_range(0, core_row_num) as i:
-            srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[i * column_aligned * carry], data_zeros, 1,
-                                           1)
-            tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned * carry], srcmask, data_ones,
-                              data_zeros, 1, 1, 1, 1)
-
-    # step 4: do reduce sum in each row of data_sign to count the number which larger than the element indexing from
-    # the target.
-    column_reduce_times = int(column_aligned // half_mask_value)
-    column_reduce_remainder = int(column_aligned % half_mask_value)
-
-    if column_reduce_times > 0:
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(half_mask_value, '', prediction_tensor_ub[i * column_aligned],
-                               data_sign[i * column_aligned * carry], column_reduce_times, 1, 1, 8, 4)
-        if column_reduce_remainder != 0:
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vconv(column_reduce_remainder, '',
+                                       half_sub[column_reduce_times * half_mask_value + carry * i * column_aligned],
+                                       prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value],
+                                       1, 1, 1, 4, 8)
+        else:
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vconv(column_reduce_remainder, '',
-                                   prediction_tensor_ub[column_reduce_times * half_mask_value + i * column_aligned],
-                                   data_sign[carry * i * column_aligned + column_reduce_times * half_mask_value], 1, 1,
-                                   1, 8, 4)
-    else:
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(column_reduce_remainder, '', prediction_tensor_ub[i * column_aligned],
-                               data_sign[carry * i * column_aligned], 1, 1, 1, 8, 4)
+                tik_instance.vconv(column_reduce_remainder, '', half_sub[carry * i * column_aligned],
+                                   prediction_tensor_ub[i * column_aligned], 1, 1, 1, 4, 8)
+
+        # step 3, if half_sub[i, j] > 0, then the according element data_sign[i, j] set 1, else 0.
+        column_reduce_times = int(column_aligned // mask_value)
+        column_reduce_remainder = int(column_aligned % mask_value)
+
+        data_sign = tik_instance.Tensor("float16", (shape[0], (shape[1] * carry)), name="data_sign",
+                                        scope=tik.scope_ubuf)
+        data_zeros = tik_instance.Tensor("float16", (mask_value, 1), name="data_zeros", scope=tik.scope_ubuf)
+        if repeat_times > 0:
+            tik_instance.vector_dup(mask_value, data_sign, 0, repeat_times, 1, 8)
+        if tail_mask != 0:
+            tik_instance.vector_dup(tail_mask, data_sign[repeat_times * mask_value], 0, 1, 1, 8)
+
+        zero = tik_instance.Scalar(dtype="float16", name="zeros")
+        zero.set_as(0)
+        tik_instance.vector_dup(mask_value, data_zeros, zero, 1, 1, 1, 0)
+        one = tik_instance.Scalar(dtype="float16", name="ones")
+        one.set_as(1)
+        data_ones = tik_instance.Tensor("float16", (mask_value, 1), name="data_ones", scope=tik.scope_ubuf)
+        tik_instance.vector_dup(mask_value, data_ones, one, 1, 1, 1, 0)
+
+        if column_reduce_times > 0:
+            with tik_instance.for_range(0, core_row_num) as i:
+                with tik_instance.for_range(0, column_reduce_times) as j:
+                    srcmask = tik_instance.vcmp_gt(mask_value, half_sub[i * column_aligned * carry + mask_value * j],
+                                                   data_zeros, 1, 1)
+                    tik_instance.vsel(mask_value, 0, data_sign[i * column_aligned * carry + mask_value * j], srcmask,
+                                      data_ones, data_zeros, 1, 1, 1, 1)
+                if column_reduce_remainder != 0:
+                    srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
+                                                   half_sub[i * column_aligned * carry +
+                                                            column_reduce_times * mask_value],
+                                                   data_zeros, 1, 1)
+                    tik_instance.vsel(column_reduce_remainder, 0,
+                                      data_sign[i * column_aligned * carry + column_reduce_times * mask_value], srcmask,
+                                      data_ones, data_zeros, 1, 1, 1, 1)
+        else:
+            with tik_instance.for_range(0, core_row_num) as i:
+                srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[i * column_aligned * carry],
+                                               data_zeros, 1, 1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned * carry], srcmask, data_ones,
+                                  data_zeros, 1, 1, 1, 1)
+
+        # step 4: do reduce sum in each row of data_sign to count the number which larger than the element indexing from
+        # the target.
+        column_reduce_times = int(column_aligned // half_mask_value)
+        column_reduce_remainder = int(column_aligned % half_mask_value)
+
+        if column_reduce_times > 0:
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vconv(half_mask_value, '', prediction_tensor_ub[i * column_aligned],
+                                   data_sign[i * column_aligned * carry], column_reduce_times, 1, 1, 8, 4)
+            if column_reduce_remainder != 0:
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vconv(column_reduce_remainder, '',
+                                       prediction_tensor_ub[column_reduce_times * half_mask_value + i * column_aligned],
+                                       data_sign[carry * i * column_aligned + column_reduce_times * half_mask_value],
+                                       1, 1, 1, 8, 4)
+        else:
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vconv(column_reduce_remainder, '', prediction_tensor_ub[i * column_aligned],
+                                   data_sign[carry * i * column_aligned], 1, 1, 1, 8, 4)
+
+        mid_result_ub = prediction_tensor_ub
 
     if column_reduce_remainder != 0:
         reduce_mask = column_reduce_times + 1
@@ -465,12 +514,11 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     if reduce_mask == 1:
         if column_reduce_remainder != 0:
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vcadd(column_reduce_remainder, data_bool[i], prediction_tensor_ub[i * column_aligned], 1,
+                tik_instance.vcadd(column_reduce_remainder, data_bool[i], mid_result_ub[i * column_aligned], 1,
                                    1, 1, 1, 0)
         else:
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vcadd(half_mask_value, data_bool[i], prediction_tensor_ub[i * column_aligned], 1, 1, 1, 1,
-                                   0)
+                tik_instance.vcadd(half_mask_value, data_bool[i], mid_result_ub[i * column_aligned], 1, 1, 1, 1, 0)
     elif reduce_mask <= half_mask_value:
         tensor_sec_reduce = tik_instance.Tensor("float32", (row_nums, half_mask_value),
                                                 name="tensor_sec_reduce",
@@ -481,17 +529,17 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
             tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
             with tik_instance.for_range(0, core_row_num) as i:
                 tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                                   mid_result_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
                 tik_instance.vcadd(column_reduce_remainder,
                                    tensor_sec_reduce[i * half_mask_value + column_reduce_times],
-                                   prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
+                                   mid_result_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
                                    1, 1, 1, 0)
             tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
         else:
             tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
             with tik_instance.for_range(0, core_row_num) as i:
                 tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                                   mid_result_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
             tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
     else:
         tensor_third_reduce = tik_instance.Tensor("float32", (row_nums, V_SIZE_BYTES),
@@ -509,9 +557,9 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
         if column_reduce_remainder != 0:
             with tik_instance.for_range(0, core_row_num) as i:
                 tik_instance.vcadd(half_mask_value, tensor_third_reduce[i * V_SIZE_BYTES],
-                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                                   mid_result_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
                 tik_instance.vcadd(column_reduce_remainder, tensor_third_reduce[i * V_SIZE_BYTES + column_reduce_times],
-                                   prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
+                                   mid_result_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
                                    1, 1, 8, 0)
                 tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
                                    tensor_third_reduce[i * V_SIZE_BYTES], 4, 1, 1, 8, 0)
@@ -519,7 +567,7 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
         else:
             with tik_instance.for_range(0, core_row_num) as i:
                 tik_instance.vcadd(half_mask_value, tensor_third_reduce[i * V_SIZE_BYTES],
-                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                                   mid_result_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
                 tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
                                    tensor_third_reduce[i * V_SIZE_BYTES], 4, 1, 1, 8, 0)
             tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
@@ -680,79 +728,119 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
         tik_instance.vector_dup(column_reduce_remainder, data_ub[column_reduce_times * half_mask_value], scalar_value,
                                 1, 1, 1, 0)
 
-    # step 2: prediction_tensor_ub subtract data_ub.
-    half_repeat_times = int(column_num // half_mask_value)
-    half_tail_mask = int(column_num % half_mask_value)
+    if tbe_platform.api_check_support("tik.vcmp_gt", "float32"):
+        data_zeros = tik_instance.Tensor("float32", (half_mask_value, 1), name="data_zeros", scope=tik.scope_ubuf)
+        zero = tik_instance.Scalar(dtype="float32", name="zeros")
+        zero.set_as(0)
+        tik_instance.vector_dup(half_mask_value, data_zeros, zero, 1, 1, 1, 0)
+        data_ones = tik_instance.Tensor("float32", (half_mask_value, 1), name="data_ones", scope=tik.scope_ubuf)
+        one = tik_instance.Scalar(dtype="float32", name="ones")
+        one.set_as(1)
+        tik_instance.vector_dup(half_mask_value, data_ones, one, 1, 1, 1, 0)
 
-    half_sub = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="half_sub", scope=tik.scope_ubuf)
+        data_sign = tik_instance.Tensor("float32", (column_num,), name="data_sign", scope=tik.scope_ubuf)
+        repeat_times = int(column_num // half_mask_value)
+        tail_mask = int(column_num % half_mask_value)
+        if repeat_times > 0:
+            tik_instance.vector_dup(half_mask_value, data_sign, 0, repeat_times, 1, 8)
+        if tail_mask != 0:
+            tik_instance.vector_dup(tail_mask, data_sign[repeat_times * half_mask_value], 0, 1, 1, 8)
 
-    if half_repeat_times != 0:
-        tik_instance.vsub(half_mask_value, prediction_tensor_ub, prediction_tensor_ub, data_ub, half_repeat_times, 1,
-                          1, 1, 8, 8, 8)
-    if half_tail_mask != 0:
-        index = half_repeat_times * half_mask_value
-        tik_instance.vsub(half_tail_mask, prediction_tensor_ub[index], prediction_tensor_ub[index], data_ub[index], 1,
-                          1, 1, 1, 8, 8, 8)
+        if column_reduce_times > 0:
+            with tik_instance.for_range(0, column_reduce_times) as j:
+                srcmask = tik_instance.vcmp_gt(half_mask_value, prediction_tensor_ub[half_mask_value * j],
+                                               data_ub, 1, 1)
+                tik_instance.vsel(half_mask_value, 0, data_sign[half_mask_value * j], srcmask, data_ones, data_zeros,
+                                  1, 1, 1, 1)
+            if column_reduce_remainder != 0:
+                srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
+                                               prediction_tensor_ub[column_reduce_times * half_mask_value],
+                                               data_ub[column_reduce_times * half_mask_value], 1, 1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[column_reduce_times * half_mask_value], srcmask,
+                                  data_ones, data_zeros, 1, 1, 1, 1)
+        else:
+            srcmask = tik_instance.vcmp_gt(column_reduce_remainder, prediction_tensor_ub, data_ub, 1, 1)
+            tik_instance.vsel(column_reduce_remainder, 0, data_sign, srcmask, data_ones, data_zeros, 1, 1, 1, 1)
 
-    repeat_times = int((carry * column_num) // mask_value)
-    tail_mask = int((carry * column_num) % mask_value)
-
-    if repeat_times > 0:
-        tik_instance.vector_dup(mask_value, half_sub, 0, repeat_times, 1, 8)
-    if tail_mask != 0:
-        tik_instance.vector_dup(tail_mask, half_sub[repeat_times * mask_value], 0, 1, 1, 8)
-
-    if column_reduce_times > 0:
-        tik_instance.vconv(half_mask_value, '', half_sub, prediction_tensor_ub, column_reduce_times, 1, 1, 4, 8)
-        if column_reduce_remainder != 0:
-            index = half_mask_value * column_reduce_times
-            tik_instance.vconv(column_reduce_remainder, '', half_sub[index], prediction_tensor_ub[index], 1, 1, 1, 4, 8)
+        mid_result_ub = data_sign
     else:
-        tik_instance.vconv(column_reduce_remainder, '', half_sub, prediction_tensor_ub, 1, 1, 1, 4, 8)
+        # step 2: prediction_tensor_ub subtract data_ub.
+        half_repeat_times = int(column_num // half_mask_value)
+        half_tail_mask = int(column_num % half_mask_value)
 
-    # step 3: if half_sub[i, j] > 0, then the accoding element data_sign[i, j]
-    # set 1, else set 0.
-    column_reduce_times = int(column_num // mask_value)
-    column_reduce_remainder = int(column_num % mask_value)
+        half_sub = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="half_sub", scope=tik.scope_ubuf)
 
-    data_sign = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="data_sign", scope=tik.scope_ubuf)
-    data_zeros = tik_instance.Tensor("float16", (mask_value, 1), name="data_zeros", scope=tik.scope_ubuf)
-    if repeat_times > 0:
-        tik_instance.vector_dup(mask_value, data_sign, 0, repeat_times, 1, 8)
-    if tail_mask != 0:
-        tik_instance.vector_dup(tail_mask, data_sign[repeat_times * mask_value], 0, 1, 1, 8)
+        if half_repeat_times != 0:
+            tik_instance.vsub(half_mask_value, prediction_tensor_ub, prediction_tensor_ub, data_ub, half_repeat_times,
+                              1, 1, 1, 8, 8, 8)
+        if half_tail_mask != 0:
+            index = half_repeat_times * half_mask_value
+            tik_instance.vsub(half_tail_mask, prediction_tensor_ub[index], prediction_tensor_ub[index], data_ub[index],
+                              1, 1, 1, 1, 8, 8, 8)
 
-    zero = tik_instance.Scalar(dtype="float16", name="zeros")
-    zero.set_as(0)
-    tik_instance.vector_dup(mask_value, data_zeros, zero, 1, 1, 1, 0)
-    one = tik_instance.Scalar(dtype="float16", name="ones")
-    one.set_as(1)
-    data_ones = tik_instance.Tensor("float16", (mask_value, 1), name="data_ones", scope=tik.scope_ubuf)
-    tik_instance.vector_dup(mask_value, data_ones, one, 1, 1, 1, 0)
+        repeat_times = int((carry * column_num) // mask_value)
+        tail_mask = int((carry * column_num) % mask_value)
 
-    if column_reduce_times > 0:
-        with tik_instance.for_range(0, column_reduce_times) as j:
-            srcmask = tik_instance.vcmp_gt(mask_value, half_sub[mask_value * j], data_zeros, 1, 1)
-            tik_instance.vsel(mask_value, 0, data_sign[mask_value * j], srcmask, data_ones, data_zeros, 1, 1, 1, 1)
-        if column_reduce_remainder != 0:
-            srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[column_reduce_times * mask_value],
-                                           data_zeros, 1, 1)
-            tik_instance.vsel(column_reduce_remainder, 0, data_sign[column_reduce_times * mask_value], srcmask,
-                              data_ones, data_zeros, 1, 1, 1, 1)
-    else:
-        srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub, data_zeros, 1, 1)
-        tik_instance.vsel(column_reduce_remainder, 0, data_sign, srcmask, data_ones, data_zeros, 1, 1, 1, 1)
+        if repeat_times > 0:
+            tik_instance.vector_dup(mask_value, half_sub, 0, repeat_times, 1, 8)
+        if tail_mask != 0:
+            tik_instance.vector_dup(tail_mask, half_sub[repeat_times * mask_value], 0, 1, 1, 8)
 
-    column_reduce_times = int(column_num // half_mask_value)
-    column_reduce_remainder = int(column_num % half_mask_value)
+        if column_reduce_times > 0:
+            tik_instance.vconv(half_mask_value, '', half_sub, prediction_tensor_ub, column_reduce_times, 1, 1, 4, 8)
+            if column_reduce_remainder != 0:
+                index = half_mask_value * column_reduce_times
+                tik_instance.vconv(column_reduce_remainder, '', half_sub[index], prediction_tensor_ub[index],
+                                   1, 1, 1, 4, 8)
+        else:
+            tik_instance.vconv(column_reduce_remainder, '', half_sub, prediction_tensor_ub, 1, 1, 1, 4, 8)
 
-    if column_reduce_times > 0:
-        tik_instance.vconv(half_mask_value, '', prediction_tensor_ub, data_sign, column_reduce_times, 1, 1, 8, 4)
-        if column_reduce_remainder != 0:
-            tik_instance.vconv(column_reduce_remainder, '', prediction_tensor_ub[column_reduce_times * half_mask_value],
-                               data_sign[column_reduce_times * half_mask_value], 1, 1, 1, 8, 4)
-    else:
-        tik_instance.vconv(column_reduce_remainder, '', prediction_tensor_ub, data_sign, 1, 1, 1, 8, 4)
+        # step 3: if half_sub[i, j] > 0, then the accoding element data_sign[i, j]
+        # set 1, else set 0.
+        column_reduce_times = int(column_num // mask_value)
+        column_reduce_remainder = int(column_num % mask_value)
+
+        data_sign = tik_instance.Tensor("float16", (shape[0], shape[1] * carry), name="data_sign", scope=tik.scope_ubuf)
+        data_zeros = tik_instance.Tensor("float16", (mask_value, 1), name="data_zeros", scope=tik.scope_ubuf)
+        if repeat_times > 0:
+            tik_instance.vector_dup(mask_value, data_sign, 0, repeat_times, 1, 8)
+        if tail_mask != 0:
+            tik_instance.vector_dup(tail_mask, data_sign[repeat_times * mask_value], 0, 1, 1, 8)
+
+        zero = tik_instance.Scalar(dtype="float16", name="zeros")
+        zero.set_as(0)
+        tik_instance.vector_dup(mask_value, data_zeros, zero, 1, 1, 1, 0)
+        one = tik_instance.Scalar(dtype="float16", name="ones")
+        one.set_as(1)
+        data_ones = tik_instance.Tensor("float16", (mask_value, 1), name="data_ones", scope=tik.scope_ubuf)
+        tik_instance.vector_dup(mask_value, data_ones, one, 1, 1, 1, 0)
+
+        if column_reduce_times > 0:
+            with tik_instance.for_range(0, column_reduce_times) as j:
+                srcmask = tik_instance.vcmp_gt(mask_value, half_sub[mask_value * j], data_zeros, 1, 1)
+                tik_instance.vsel(mask_value, 0, data_sign[mask_value * j], srcmask, data_ones, data_zeros, 1, 1, 1, 1)
+            if column_reduce_remainder != 0:
+                srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[column_reduce_times * mask_value],
+                                               data_zeros, 1, 1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[column_reduce_times * mask_value], srcmask,
+                                  data_ones, data_zeros, 1, 1, 1, 1)
+        else:
+            srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub, data_zeros, 1, 1)
+            tik_instance.vsel(column_reduce_remainder, 0, data_sign, srcmask, data_ones, data_zeros, 1, 1, 1, 1)
+
+        column_reduce_times = int(column_num // half_mask_value)
+        column_reduce_remainder = int(column_num % half_mask_value)
+
+        if column_reduce_times > 0:
+            tik_instance.vconv(half_mask_value, '', prediction_tensor_ub, data_sign, column_reduce_times, 1, 1, 8, 4)
+            if column_reduce_remainder != 0:
+                tik_instance.vconv(column_reduce_remainder, '',
+                                   prediction_tensor_ub[column_reduce_times * half_mask_value],
+                                   data_sign[column_reduce_times * half_mask_value], 1, 1, 1, 8, 4)
+        else:
+            tik_instance.vconv(column_reduce_remainder, '', prediction_tensor_ub, data_sign, 1, 1, 1, 8, 4)
+
+        mid_result_ub = prediction_tensor_ub
 
     if column_reduce_remainder != 0:
         reduce_mask = column_reduce_times + 1
@@ -763,9 +851,9 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
 
     if reduce_mask == 1:
         if column_reduce_remainder != 0:
-            tik_instance.vcadd(column_reduce_remainder, data_bool, prediction_tensor_ub, 1, 1, 1, 1, 0)
+            tik_instance.vcadd(column_reduce_remainder, data_bool, mid_result_ub, 1, 1, 1, 1, 0)
         else:
-            tik_instance.vcadd(half_mask_value, data_bool, prediction_tensor_ub, 1, 1, 1, 1, 0)
+            tik_instance.vcadd(half_mask_value, data_bool, mid_result_ub, 1, 1, 1, 1, 0)
     elif reduce_mask <= half_mask_value:
         tensor_sec_reduce = tik_instance.Tensor("float32", (1, half_mask_value),
                                                 name="tensor_sec_reduce",
@@ -774,15 +862,13 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
         zeros_init.set_as(0)
         if column_reduce_remainder != 0:
             tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, 1, 1, 8, 0)
-            tik_instance.vcadd(half_mask_value, tensor_sec_reduce, prediction_tensor_ub, column_reduce_times, 1, 1, 8,
-                               0)
+            tik_instance.vcadd(half_mask_value, tensor_sec_reduce, mid_result_ub, column_reduce_times, 1, 1, 8, 0)
             tik_instance.vcadd(column_reduce_remainder, tensor_sec_reduce[column_reduce_times],
-                               prediction_tensor_ub[column_reduce_times * half_mask_value], 1, 1, 1, 1, 0)
+                               mid_result_ub[column_reduce_times * half_mask_value], 1, 1, 1, 1, 0)
             tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, 1, 1, 1, 8, 0)
         else:
             tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, 1, 1, 8, 0)
-            tik_instance.vcadd(half_mask_value, tensor_sec_reduce, prediction_tensor_ub, column_reduce_times, 1, 1, 8,
-                               0)
+            tik_instance.vcadd(half_mask_value, tensor_sec_reduce, mid_result_ub, column_reduce_times, 1, 1, 8, 0)
             tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, 1, 1, 1, 8, 0)
     else:
         tensor_third_reduce = tik_instance.Tensor("float32", (1, V_SIZE_BYTES),
@@ -797,15 +883,13 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
         tik_instance.vector_dup(half_mask_value, tensor_third_reduce, zeros_init, 4, 1, 8, 0)
         tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, 1, 1, 8, 0)
         if column_reduce_remainder != 0:
-            tik_instance.vcadd(half_mask_value, tensor_third_reduce, prediction_tensor_ub, column_reduce_times, 1, 1, 8,
-                               0)
+            tik_instance.vcadd(half_mask_value, tensor_third_reduce, mid_result_ub, column_reduce_times, 1, 1, 8, 0)
             tik_instance.vcadd(column_reduce_remainder, tensor_third_reduce[column_reduce_times],
-                               prediction_tensor_ub[column_reduce_times * half_mask_value], 1, 1, 1, 1, 0)
+                               mid_result_ub[column_reduce_times * half_mask_value], 1, 1, 1, 1, 0)
             tik_instance.vcadd(half_mask_value, tensor_sec_reduce, tensor_third_reduce, 4, 1, 1, 8, 0)
             tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, 1, 1, 1, 8, 0)
         else:
-            tik_instance.vcadd(half_mask_value, tensor_third_reduce, prediction_tensor_ub, column_reduce_times, 1, 1, 8,
-                               0)
+            tik_instance.vcadd(half_mask_value, tensor_third_reduce, mid_result_ub, column_reduce_times, 1, 1, 8, 0)
             tik_instance.vcadd(half_mask_value, tensor_sec_reduce, tensor_third_reduce, 4, 1, 1, 8, 0)
             tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, 1, 1, 1, 8, 0)
 
@@ -955,27 +1039,38 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
                                             scope=tik.scope_gm)
     target_tensor = tik_instance.Tensor(target_dtype, target_shape, name="target_tensor", scope=tik.scope_gm)
     tensor_output = tik_instance.Tensor("uint8", (row, ), name="tensor_output", scope=tik.scope_gm)
+    
+    loop_num = 1
+    actual_core_nums = core_nums
+    if actual_core_nums > MAX_BLOCK_NUM:
+        actual_core_nums = mini_cloud_core_nums
+        loop_num = (core_nums + actual_core_nums - 1) // actual_core_nums
+
     # copy predictions to ub from gm,
     # if the last dimension is not divided by 32bytes,just aligned
-    with tik_instance.for_range(0, core_nums, block_num=core_nums) as outer_loop:
-        shape_info = {
-            "core_loop": core_loop,
-            "outer_loop": outer_loop,
-            "core_nums": core_nums,
-            "row_remainder": row_remainder,
-            "row_nums": row_nums,
-            "column": column,
-            "column_aligned": column_aligned,
-            "split_rows_nums": split_rows_nums
-        }
-        tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
-        tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
-        length = tik_instance.Scalar("int64")
-        with tik_instance.if_scope(outer_loop < tail_block):
-            length.set_as(row_nums + BLOCK_SIZE - 1)
-        with tik_instance.else_scope():
-            length.set_as(row_remainder + BLOCK_SIZE - 1)
-        tik_instance.data_move(tensor_output[outer_loop * row_nums], tensor_output_ub, 0, 1, length // BLOCK_SIZE, 0, 0)
+    with tik_instance.for_range(0, actual_core_nums, block_num=actual_core_nums) as outer_loop:
+        with tik_instance.for_range(0, loop_num) as inner_loop:
+            block_idx = outer_loop * loop_num + inner_loop
+            with tik_instance.if_scope(block_idx < core_nums):
+                shape_info = {
+                    "core_loop": core_loop,
+                    "outer_loop": block_idx,
+                    "core_nums": core_nums,
+                    "row_remainder": row_remainder,
+                    "row_nums": row_nums,
+                    "column": column,
+                    "column_aligned": column_aligned,
+                    "split_rows_nums": split_rows_nums
+                }
+                tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
+                tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
+                length = tik_instance.Scalar("int64")
+                with tik_instance.if_scope(block_idx < tail_block):
+                    length.set_as(row_nums + BLOCK_SIZE - 1)
+                with tik_instance.else_scope():
+                    length.set_as(row_remainder + BLOCK_SIZE - 1)
+                tik_instance.data_move(tensor_output[block_idx * row_nums], tensor_output_ub, 0, 1,
+                                       length // BLOCK_SIZE, 0, 0)
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[prediction_tensor, target_tensor], outputs=[tensor_output])
     return tik_instance
 
@@ -1035,58 +1130,67 @@ def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
     target_tensor = tik_instance.Tensor(target_dtype, target_shape, name="target_tensor", scope=tik.scope_gm)
     tensor_output = tik_instance.Tensor("uint8", (row, ), name="tensor_output", scope=tik.scope_gm)
 
-    with tik_instance.for_range(0, split_core_nums, block_num=split_core_nums) as core_loop:
+    loop_num = 1
+    actual_core_nums = split_core_nums
+    if actual_core_nums > MAX_BLOCK_NUM:
+        actual_core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        loop_num = (split_core_nums + actual_core_nums - 1) // actual_core_nums
 
-        tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
+    with tik_instance.for_range(0, actual_core_nums, block_num=actual_core_nums) as core_loop:
+        with tik_instance.for_range(0, loop_num) as inner_loop:
+            block_idx = core_loop * loop_num + inner_loop
+            tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
 
-        # step 0: set some shape value of tensor in UB
-        outer_core_num = tik_instance.Scalar("int64")
-        output_ub = tik_instance.Tensor("uint8", (BLOCK_SIZE, ), name="output_ub", scope=tik.scope_ubuf)
-        with tik_instance.if_scope(core_loop < non_tail_core):
-            outer_core_num.set_as(split_rows_nums)
-            with tik_instance.for_range(0, single_core_times) as outer_loop:
-                core_row_num = tik_instance.Scalar("int64")
-                with tik_instance.if_scope(outer_loop < non_tail_block):
-                    core_row_num.set_as(row_nums)
-                with tik_instance.else_scope():
-                    core_row_num.set_as(row_remainder)
-                shape_info = {
-                    "core_loop": core_loop,
-                    "outer_loop": outer_loop,
-                    "core_nums": single_core_times,
-                    "row_remainder": row_remainder,
-                    "row_nums": row_nums,
-                    "column": column,
-                    "column_aligned": column_aligned,
-                    "split_rows_nums": split_rows_nums
-                }
-                tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
-                with tik_instance.for_range(0, core_row_num) as i:
-                    output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
+            # step 0: set some shape value of tensor in UB
+            outer_core_num = tik_instance.Scalar("int64")
+            output_ub = tik_instance.Tensor("uint8", (BLOCK_SIZE, ), name="output_ub", scope=tik.scope_ubuf)
+            with tik_instance.if_scope(block_idx < non_tail_core):
+                outer_core_num.set_as(split_rows_nums)
+                with tik_instance.for_range(0, single_core_times) as outer_loop:
+                    core_row_num = tik_instance.Scalar("int64")
+                    with tik_instance.if_scope(outer_loop < non_tail_block):
+                        core_row_num.set_as(row_nums)
+                    with tik_instance.else_scope():
+                        core_row_num.set_as(row_remainder)
+                    shape_info = {
+                        "core_loop": block_idx,
+                        "outer_loop": outer_loop,
+                        "core_nums": single_core_times,
+                        "row_remainder": row_remainder,
+                        "row_nums": row_nums,
+                        "column": column,
+                        "column_aligned": column_aligned,
+                        "split_rows_nums": split_rows_nums
+                    }
+                    tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
+                    with tik_instance.for_range(0, core_row_num) as i:
+                        output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
 
-        with tik_instance.else_scope():
-            outer_core_num.set_as(split_remainder)
-            with tik_instance.for_range(0, last_single_core_times) as outer_loop:
-                core_row_num = tik_instance.Scalar("int64")
-                shape_info = {
-                    "core_loop": core_loop,
-                    "outer_loop": outer_loop,
-                    "core_nums": last_single_core_times,
-                    "row_remainder": last_row_remainder,
-                    "row_nums": row_nums,
-                    "column": column,
-                    "column_aligned": column_aligned,
-                    "split_rows_nums": split_rows_nums
-                }
-                with tik_instance.if_scope(outer_loop < last_non_tail_block):
-                    core_row_num.set_as(row_nums)
-                with tik_instance.else_scope():
-                    core_row_num.set_as(last_row_remainder)
-                tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
-                with tik_instance.for_range(0, core_row_num) as i:
-                    output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
-        index = core_loop * BLOCK_SIZE
-        tik_instance.data_move(tensor_output[index], output_ub, 0, 1, 1, 0, 0)
+            with tik_instance.if_scope(block_idx == non_tail_core):
+                outer_core_num.set_as(split_remainder)
+                with tik_instance.for_range(0, last_single_core_times) as outer_loop:
+                    core_row_num = tik_instance.Scalar("int64")
+                    shape_info = {
+                        "core_loop": block_idx,
+                        "outer_loop": outer_loop,
+                        "core_nums": last_single_core_times,
+                        "row_remainder": last_row_remainder,
+                        "row_nums": row_nums,
+                        "column": column,
+                        "column_aligned": column_aligned,
+                        "split_rows_nums": split_rows_nums
+                    }
+                    with tik_instance.if_scope(outer_loop < last_non_tail_block):
+                        core_row_num.set_as(row_nums)
+                    with tik_instance.else_scope():
+                        core_row_num.set_as(last_row_remainder)
+                    tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
+                    with tik_instance.for_range(0, core_row_num) as i:
+                        output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
+
+            with tik_instance.if_scope(block_idx <= non_tail_core):
+                index = block_idx * BLOCK_SIZE
+                tik_instance.data_move(tensor_output[index], output_ub, 0, 1, 1, 0, 0)
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[prediction_tensor, target_tensor], outputs=[tensor_output])
     return tik_instance

@@ -26,6 +26,7 @@ from te.utils.error_manager import error_manager_vector
 
 # 16, 32B = 16 * sizeof(float16)
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
+MAX_BLOCK_NUM = 65535
 
 
 def _ceil_to(value, ceil_value):
@@ -620,9 +621,17 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
 
     res_fused_n_c1_howo_outer = sch[res].fuse(res_n_outer, res_c1_outer, res_howo_outer)
 
-    sch[grad_in_l1].compute_at(sch[res], res_fused_n_c1_howo_outer)
-    sch[grad_im2col].compute_at(sch[res], res_fused_n_c1_howo_outer)
-    sch[tensor_zero_ub].compute_at(sch[res], res_fused_n_c1_howo_outer)
+    core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    res_fused_n_c1_howo_outer_o, res_fused_n_c1_howo_outer_i = res_fused_n_c1_howo_outer, res_fused_n_c1_howo_outer
+    output_shape = [int(i) for i in res.shape]
+    howo_factor = tile_l1_ho * tile_l1_wo
+    if (output_shape[0] * output_shape[1] * ((output_shape[2] + howo_factor - 1) // howo_factor)) > MAX_BLOCK_NUM:
+        res_fused_n_c1_howo_outer_o, res_fused_n_c1_howo_outer_i = sch[res].split(res_fused_n_c1_howo_outer,
+                                                                                  nparts=core_num)
+
+    sch[grad_in_l1].compute_at(sch[res], res_fused_n_c1_howo_outer_i)
+    sch[grad_im2col].compute_at(sch[res], res_fused_n_c1_howo_outer_i)
+    sch[tensor_zero_ub].compute_at(sch[res], res_fused_n_c1_howo_outer_i)
     sch[grad_fractal].compute_at(sch[grad_grad], grad_grad_k_outer)
     sch[argmax_ub].compute_at(sch[grad_grad], grad_grad_k_outer)
     sch[grad_grad_col].compute_at(sch[grad_grad], grad_grad_k_outer)
@@ -649,7 +658,7 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
 
     # for multi cores
     block = tvm.thread_axis("blockIdx.x")
-    sch[res].bind(res_fused_n_c1_howo_outer, block)
+    sch[res].bind(res_fused_n_c1_howo_outer_o, block)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,too-many-statements

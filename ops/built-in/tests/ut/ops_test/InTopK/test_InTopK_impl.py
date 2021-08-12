@@ -107,6 +107,22 @@ case11 = {"params": [{"shape": (1216, 1), "dtype": "float32", "ori_shape":(1216,
           "expect": "success",
           "format_expect": [],
           "support_expect": True}
+case12 = {"params": [{"shape": (2097155, 180), "dtype": "float32", "ori_shape":(2097155, 180), "ori_format":"ND", "format":"ND"},
+                    {"shape": (2097155, ), "dtype": "int32", "ori_shape":(2097155,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (2097155, 180), "dtype": "float32", "ori_shape":(2097155, 180), "ori_format":"ND", "format":"ND"},
+                    1],
+          "case_name": "in_top_k_12",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+case13 = {"params": [{"shape": (2097155, 1800), "dtype": "float32", "ori_shape":(2097155, 1800), "ori_format":"ND", "format":"ND"},
+                    {"shape": (2097155, ), "dtype": "int32", "ori_shape":(2097155,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (2097155, 1800), "dtype": "float32", "ori_shape":(2097155, 1800), "ori_format":"ND", "format":"ND"},
+                    1],
+          "case_name": "in_top_k_13",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
 
     
 
@@ -121,6 +137,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
+ut_case.add_case(["Ascend910A"], case12)
+ut_case.add_case(["Ascend910A"], case13)
 
 def calc_expect_func(predictions, targets, precision, k):
     x = predictions["value"]
@@ -177,5 +195,5 @@ ut_case.add_precision_case("all", {
 })
 """
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run(["Ascend310", "Ascend910A"])
     exit(0)

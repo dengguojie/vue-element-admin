@@ -326,6 +326,7 @@ def get_argmax(x, ksize, strides, pad, dtype):
     bitmask = trans_argmax(argmax)
     return argmax.shape, bitmask
 
+"""
 ori_x = np.random.uniform(1.0, 2.0, (1, 1, 5, 5, 16)).astype("float16")
 argmax_shape, bitmask = get_argmax(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME","float16")
 ut_case.add_precision_case("all", {
@@ -374,6 +375,7 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
+"""
 
 inputShape, argmax_shape, outputShape, dtype, ksize, pad, strides, format = case_gen(inputShape=(1, 768, 768, 16), ksize=(1, 3, 3, 1), strides=(1, 1, 1, 1), pad="SAME")
 

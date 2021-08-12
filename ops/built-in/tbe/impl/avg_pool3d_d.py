@@ -26,6 +26,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
+MAX_BLOCK_NUM = 65535
 
 # pylint: disable = unused-argument,redefined-builtin
 def get_op_support_info(x,
@@ -305,8 +306,13 @@ def _avg_pool3d_schedule(res, sch, ksize, strides):
 
     ax_fused = sch[res].fuse(ax_res_n, ax_res_c1_o)
 
+    ax_fused_o = ax_fused
+    output_shape = [int(i) for i in res.shape]
+    if (output_shape[0] * ((output_shape[2] + factor_c1 - 1) // factor_c1)) > MAX_BLOCK_NUM:
+        ax_fused_o, ax_fused_i = sch[res].split(ax_fused, nparts=core_num)
+
     block = tvm.thread_axis("blockIdx.x")
-    sch[res].bind(ax_fused, block)
+    sch[res].bind(ax_fused_o, block)
 
     sch[tensor_in_ub].compute_at(sch[tensor_d_hw], reduce_hw_o)
     sch[tensor_in_ub_cast].compute_at(sch[tensor_d_hw], reduce_hw_o)
