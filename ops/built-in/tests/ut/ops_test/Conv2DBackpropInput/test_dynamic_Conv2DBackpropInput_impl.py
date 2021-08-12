@@ -20,6 +20,7 @@ dynamic_conv2d_bp_input_op_testcase = [
     ((1, 1, 55, 2), (1, 16, 55, 2), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NHWC", 1, [2, 3], "success", "conv2d_bp_input_dynamic_hw_padding_valid"),
     ((16, 7, 3, 3), [-2], (1, 7, 3, 3), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 1, 2, 3], "success", "conv2d_bp_input_unknown_rank_padding_same"),
     ((7, 6, 64, 10), [-2], (1, 7, 6, 64), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 1, 2, 3], "success", "conv2d_bp_input_unknown_rank_padding_valid"),
+    ((128, 256, 1, 1), (32, 128, 56, 56), (32, 256, 56, 56), (1, 1), (0, 0, 0, 0), "NCHW", 1, [2, 3], "success", "conv2d_bp_input_opti_dynamic_hw"),
 
     ((3, 3, 16, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], RuntimeError, "conv2d_bp_input_dedy_c_not_equal_filer"),
     ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1], RuntimeError, "conv2d_bp_input_dedy_nhw_large_than_1"),
@@ -475,7 +476,7 @@ def test_conv2d_backprop_input_fuzz_build_tilingcase(test_arg):
             }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'test_conv2d_fuzz_build_tilingcase']
         conv2d_backprop_input(*input_list)
 print("adding conv2d_backprop_input test_conv2d_backprop_input_fuzz_build_tilingcase testcase")
-ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_tilingcase)
+ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=test_conv2d_backprop_input_fuzz_build_tilingcase)
 
 def test_get_op_support_info_dynamic_dx_0(test_arg):
     y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),

@@ -360,6 +360,103 @@ def test_avg_pool_grad_fuzzy_compile_dedy_w_too_large(test_arg):
     except Exception as e:
         print(e)
 
+def test_avg_pool_grad_fuzzy_compile_strideHW_1_dedy_w_too_large(test_arg):
+    from impl.dynamic.avg_pool_grad import avg_pool_grad_generalization
+    print("test_avg_pool_grad_fuzzy_compile_dedy_w_too_large")
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'format': 'NCHW',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        }, {
+            'shape': (1, 1, 1, 1024, 16),
+            'ori_shape': (1, 1, 1, 1024),
+            'format': 'NC1HWC0',
+            'ori_format': 'NCHW',
+            'dtype': 'float16',
+            'range': ((1, 1), (1, 1), (1, 3), (1024, 4096), (16, 16)),
+            'ori_range': ((1, 1), (1, 1), (1, 3), (1024, 4096))
+        }, {
+            'shape': (16, 1, 16, 16),
+            'ori_shape': (16, 1, 1, 1),
+            'format': 'FRACTAL_Z',
+            'ori_format': 'HWCN',
+            'dtype': 'float16'
+        }, {
+            'shape': (1, 1, 1, 1024, 16),
+            'ori_shape': (1, 1, 1, 1024),
+            'format': 'NC1HWC0',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        },
+        (16, 1, 16, 16),
+        (1, 1, 2, 1),
+        'SAME',
+        'NCHW',
+        'avg_pool_grad_fuzzy_compile_generaliation',
+        {'mode': 'keep_rank'}
+    ]
+
+    try:
+        avg_pool_grad_generalization(*input_list)
+    except Exception as e:
+        print(e)
+def test_conv2d_backprop_input_fuzz_build_compile_strideHW_1_dedy_w_too_large(test_arg):
+    import json
+    from impl.dynamic.avg_pool_grad import avg_pool_grad
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 1,
+                                "tensor": [{
+                                    "range": [
+                                        [1, 1],
+                                        [1, 1],
+                                        [1, 3],
+                                        [1024, 1025]
+                                    ],
+                                    "shape": [-1, 1, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (4,),
+                'ori_shape': (4,),
+                'ori_format': 'ND',
+                'format': 'ND',
+                'dtype': 'int32',
+                'range': ()
+            }, {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((1, 1), (1, 1), (1, 3), (1024, 1025), (16, 16))
+            }, {
+                'shape': (1, 1, 16, 1),
+                'ori_shape': (1, 1, 16, 1),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((1, 1), (1, 1), (1, 3), (1024, 1025), (16, 16))
+            }, (1, 1, 16, 1), (1, 1, 2, 1), "SAME", 'NCHW', 'test_conv2d_fuzz_build_tilingcase']
+        avg_pool_grad(*input_list)
+
 ut_case.add_case(["Ascend910A"], dynamic_nw_SAME_NCHW_range_None)
 ut_case.add_case(["Ascend910A"], dynamic_nhw_VALID_NHWC)
 ut_case.add_case(["Ascend910A"], dx_hw_dynamic_dy_n)
@@ -385,6 +482,8 @@ ut_case.add_case(["Ascend910A"], data_format_ND)
 ut_case.add_case(["Ascend910A"], filter_ori_format_ND)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_generaliation)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_dedy_w_too_large)
+ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_strideHW_1_dedy_w_too_large)
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_compile_strideHW_1_dedy_w_too_large)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

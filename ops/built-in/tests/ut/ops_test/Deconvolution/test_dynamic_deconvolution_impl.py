@@ -363,7 +363,266 @@ def test_deconvolution_fuzz_build_ori_shape_len_error(test_arg):
     except RuntimeError:
         print("ori_shape len is error")
 
+def test_deconvolution_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.deconvolution import deconvolution
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [2, 2],
+                                        [1, 1],
+                                        [91, 91],
+                                        [2, 2]
+                                    ],
+                                    "shape": [-1, 1, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (1, 3), (16, 16))
+            }, {
+                'shape': (1, 1, 15, 4),
+                'ori_shape': (1, 1, 15, 4),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, None, None,{
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (4, 7), (16, 16))
+            }, (1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_conv2d_fuzz_build_tilingcase']
+        deconvolution(*input_list)
 
+def test_deconvolution_fuzz_build_invalid_support_info(test_arg):
+    import json
+    from impl.dynamic.deconvolution import deconvolution
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = []
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (1, 3), (16, 16))
+            }, {
+                'shape': (1, 1, 15, 4),
+                'ori_shape': (1, 1, 15, 4),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, None, None,{
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (4, 7), (16, 16))
+            }, (1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_deconvolution_fuzz_build_invalid_support_info']
+        try:
+            deconvolution(*input_list)
+        except RuntimeError:
+            print("invalid_support_info")
+
+def test_deconvolution_fuzz_build_tilingcase_input_None(test_arg):
+    import json
+    from impl.dynamic.deconvolution import deconvolution
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": ""
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (1, 3), (16, 16))
+            }, {
+                'shape': (1, 1, 15, 4),
+                'ori_shape': (1, 1, 15, 4),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, None, None,{
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (4, 7), (16, 16))
+            }, (1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_deconvolution_fuzz_build_tilingcase_input_None']
+        try:
+            deconvolution(*input_list)
+        except RuntimeError:
+            print("invalid_support_info")
+
+def test_deconvolution_fuzz_build_tilingcase_input_tensor_None(test_arg):
+    import json
+    from impl.dynamic.deconvolution import deconvolution
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [""]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (1, 3), (16, 16))
+            }, {
+                'shape': (1, 1, 15, 4),
+                'ori_shape': (1, 1, 15, 4),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, None, None,{
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (4, 7), (16, 16))
+            }, (1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_deconvolution_fuzz_build_tilingcase_input_tensor_None']
+        try:
+            deconvolution(*input_list)
+        except RuntimeError:
+            print("invalid_support_info")
+
+def test_deconvolution_fuzz_build_tilingcase_invalid_support_info_tensor(test_arg):
+    import json
+    from impl.dynamic.deconvolution import deconvolution
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": ""
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (1, 3), (16, 16))
+            }, {
+                'shape': (1, 1, 15, 4),
+                'ori_shape': (1, 1, 15, 4),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, None, None,{
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (4, 7), (16, 16))
+            }, (1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_deconvolution_fuzz_build_tilingcase_invalid_support_info_tensor']
+        try:
+            deconvolution(*input_list)
+        except RuntimeError:
+            print("invalid_support_info")
+
+def test_deconvolution_fuzz_build_invalid_support_info_tensor_range(test_arg):
+    import json
+    from impl.dynamic.deconvolution import deconvolution
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [2,],
+                                        [1, 1],
+                                        [91, 91],
+                                        [2, 2]
+                                    ],
+                                    "shape": [-1, 1, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (1, 3), (16, 16))
+            }, {
+                'shape': (1, 1, 15, 4),
+                'ori_shape': (1, 1, 15, 4),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, None, None,{
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 1, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (64, 128), (4, 7), (16, 16))
+            }, (1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_deconvolution_fuzz_build_invalid_support_info_tensor_range']
+        try:
+            deconvolution(*input_list)
+        except RuntimeError:
+            print("invalid_support_info")
+
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_invalid_support_info_tensor_range)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_tilingcase_invalid_support_info_tensor)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_tilingcase_input_tensor_None)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_tilingcase_input_None)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_invalid_support_info)
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_tilingcase)
 ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_support_mode_error)
 ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_ori_shape_len_error)
 ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_shape_len_error)
