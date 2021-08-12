@@ -116,6 +116,10 @@ IMPLEMT_COMMON_INFERFUNC(FastGeluInferShape) {
 COMMON_INFER_FUNC_REG(FastGelu, FastGeluInferShape);
 // ----------------------FastGelu END------------------
 
+// ----------------Hardswish-------------------
+COMMON_INFER_FUNC_REG(Hardswish, OneInOneOutCommonInferShape);
+// --------------Hardswish END-----------------
+
 // ----------------TanhGrad Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(TanhGradInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("z");
