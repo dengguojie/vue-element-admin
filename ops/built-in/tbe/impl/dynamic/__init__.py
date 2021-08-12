@@ -356,5 +356,5 @@ from .ascend_requant import ascend_requant
 from .ascend_requant_s16 import ascend_requant_s16
 from .ascend_anti_quant import ascend_anti_quant
 from .avg_pool_v2 import avg_pool_v2
-
+from .global_lppool import global_lppool
 from .is_finite import is_finite

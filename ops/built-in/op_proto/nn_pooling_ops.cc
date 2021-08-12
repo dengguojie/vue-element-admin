@@ -8000,4 +8000,53 @@ COMMON_INFER_FUNC_REG(SubSampleLabels, SubSampleLabelsInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(SubSampleLabels, SubSampleLabelsVerify);
 // ----------------SubSampleLabels end-------------------
+// ----------------GlobalLpPool start-------------------
+IMPLEMT_COMMON_INFERFUNC(GlobalLpPoolInfer) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto output = op_info->MutableOutputDesc("y");
+  auto shape = input_desc->MutableShape();
+  DataType input_dtype = input_desc->GetDataType();
+
+  std::vector<int64_t> input_dims = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_dims, input_range);
+
+  std::vector<int64_t> output_shape;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  std::pair<int64_t, int64_t> range_dim;
+  range_dim = std::pair<int64_t, int64_t>{1, 1};
+
+  int batch_size = shape.GetDim(0);
+  int c_size = shape.GetDim(1);
+
+  output_shape.push_back(batch_size);
+  output_shape.push_back(c_size);
+  output_range.push_back(input_range[0]);
+  output_range.push_back(input_range[1]);
+
+  if (input_dims.size() == 4) {
+    output_shape.push_back(1);
+    output_shape.push_back(1);
+    output_range.push_back(range_dim);
+    output_range.push_back(range_dim);
+  } else {
+    output_shape.push_back(1);
+    output_shape.push_back(1);
+    output_shape.push_back(1);
+    output_range.push_back(range_dim);
+    output_range.push_back(range_dim);
+    output_range.push_back(range_dim);
+  }
+
+  output->SetShape(GeShape(output_shape));
+  output->SetShapeRange(output_range);
+  output->SetDataType(input_dtype);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(GlobalLpPool, GlobalLpPoolInfer);
+// ----------------GlobalLpPool end------------------
 }  // namespace ge
