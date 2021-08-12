@@ -335,21 +335,6 @@ IMPLEMT_INFERFUNC(UniqueWithCountsExt2, UniqueWithCountsExt2Infer) {
 
 INFER_FUNC_REG(UniqueWithCountsExt2, UniqueWithCountsExt2Infer);
 
-IMPLEMT_INFERFUNC(MirrorPad, MirrorPadInfer) {
-  if (PadShapeFn(op) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  DataType type = op.GetInputDesc("x").GetDataType();
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetDataType(type);
-  if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-INFER_FUNC_REG(MirrorPad, MirrorPadInfer);
-
 IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_desc->MutableInputDesc(0);

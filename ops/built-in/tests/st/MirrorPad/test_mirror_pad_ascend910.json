@@ -1,0 +1,41 @@
+[
+    {
+        "op": "MirrorPad",
+        "case_name": "test_mirror_pad_001",
+        "calc_expect_func_file": "test_mirror_pad_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 32, 32],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[0, 100]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [4,2],
+                "type": "int32",
+                "value": [[1,1],[1,1],[4,0],[2,2]],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [4, 4, 36, 36],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "REFLECT",
+                "type": "string"
+            }
+        ]
+    }
+]

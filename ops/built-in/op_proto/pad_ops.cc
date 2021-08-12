@@ -127,7 +127,7 @@ static graphStatus PadInferShapeAndType(ge::Operator& op, std::vector<int64_t>& 
       input_shape.push_back(1);
     }
     if (input_shape.size() * 2 != paddings.size()) {
-      OP_LOGE("OP[Pad]", "the num of paddings must be double the input dim size");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("the num of paddings must be double the input dim size"));
       return GRAPH_FAILED;
     }
 
@@ -177,7 +177,7 @@ static graphStatus PadInferShapeAndType(ge::Operator& op, std::vector<int64_t>& 
 }
 
 IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
-  OP_LOGD("OP[Pad]", "PadInferShape Begin.");
+  OP_LOGD(op.GetName().c_str(), "InferShape Begin.");
   const vector<string> depend_names = {"paddings"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
@@ -186,7 +186,7 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorPtr paddings_tensor = nullptr;
   if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
-    OP_LOGW("OP[Pad]", "the node paddings is not const node, will set the output dynamic");
+    OP_LOGW(op.GetName().c_str(), "the node paddings is not const node, will set the output dynamic");
     auto input_desc = op_info->MutableInputDesc("x");
     auto input_shape = input_desc->MutableShape().GetDims();
     DataType input_dtype = input_desc->GetDataType();
@@ -194,7 +194,7 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
 
     // shape_x is UNKNOWN_RANK
     if (IsUnknownRankShape(input_shape)) {
-      OP_LOGW("OP[Pad]", "shape_x is UNKNOWN_RANK. Set output UNKNOWN_RANK");
+      OP_LOGW(op.GetName().c_str(), "shape_x is UNKNOWN_RANK. Set output UNKNOWN_RANK");
       output_desc->SetShape(GeShape(input_shape));
       output_desc->SetDataType(input_dtype);
       return GRAPH_SUCCESS;
@@ -530,6 +530,12 @@ IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
 
 COMMON_INFER_FUNC_REG(PadV3, PadV3InferShape);
 // ----------------PadV3 Op End-------------------
+
+
+// ----------------MirrorPad Op Begin-------------------
+COMMON_INFER_FUNC_REG(MirrorPad, PadInferShape);
+// ----------------MirrorPad Op End-------------------
+
 
 // ----------------Fill Op Begin-------------------
 template <typename T>

@@ -271,6 +271,7 @@ set(_tf_plugins
   max_pool_with_argmax_plugin.cc
   minimum_grad_plugin.cc
   minimum_plugin.cc
+  mirror_pad_plugin.cc
   mod_plugin.cc
   mul_no_nan_plugin.cc
   mul_plugin.cc

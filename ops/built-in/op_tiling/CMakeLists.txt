@@ -167,6 +167,7 @@ set(_optiling_files
   square_sum_all.cc
   is_finite.cc
   ifmr.cc
+  mirror_pad.cc
 )
 
 set(_op_tiling_include
