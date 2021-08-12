@@ -118,7 +118,7 @@ bool GetInplaceIndexAddCompileParams(const std::string& opType, const nlohmann::
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get vconv_size error.");
     return false;
   }
-  indicesSize = allVars["vconv_size"].get<std::int32_t>();
+  vconvSize = allVars["vconv_size"].get<std::int32_t>();
 
   if (allVars.count("axis") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get axis error.");
@@ -165,6 +165,10 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
     return false;
   }
 
+  if (axis < 0) {
+    axis = axis + updatesShape.size();
+  }
+ 
   InplaceIndexAddTilingParam runParams;
   InitRunningParams(runParams);
   runParams.indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
@@ -193,20 +197,20 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
 
   int32_t updatesSizeBytes = varSize * runParams.updateDataNum;
   int32_t indicesSizeBytes = indicesSize * runParams.indicesNum;
-  int32_t vconvSizeBtytes = runParams.updateDataNum * vconvSize;
+  int32_t vconvSizeBtytes = vconvSize * runParams.updateDataNum;
 
-  if (inputDtype == "int8_t" || inputDtype == "uint8_t") {
-    if ((updatesSizeBytes + vconvSizeBtytes) * 2 < ubSize) {
+  if (inputDtype == "int8" || inputDtype == "uint8") {
+    if (indicesSizeBytes < ubSize / 9) {
       runParams.tilingMode = TILING_MODE_4;
-    } else if (indicesSizeBytes < ubSize) {
+    } else if (indicesSizeBytes < ubSize / 9 * 2) {
       runParams.tilingMode = TILING_MODE_5;
     } else {
       runParams.tilingMode = TILING_MODE_6;
     }
   } else {
-    if (updatesSizeBytes * 2 < ubSize) {
+    if (indicesSizeBytes < ubSize / 9) {
       runParams.tilingMode = TILING_MODE_1;
-    } else if (indicesSize < ubSize) {
+    } else if (indicesSizeBytes < ubSize / 9 * 2) {
       runParams.tilingMode = TILING_MODE_2;
     } else {
       runParams.tilingMode = TILING_MODE_3;

@@ -67,12 +67,55 @@ case5 = {"params": [{"shape": (-1, 3, 2), "dtype": "int8", "format": "ND", "ori_
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (-1, 8, 375), "dtype": "int8", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND", "range": [(1, 16000)]},
+                    {"shape": (-1, 16000, 375), "dtype": "int8", "format": "ND", "ori_shape": (16, 16000, 375), "ori_format": "ND", "range": [(15, 16), (16000, 16000), (375, 375)]},
+                    {"shape": (16, 8, 375), "dtype": "int8", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(16, 16), (8, 8), (375, 375)]},
+                    1,
+                    ],
+         "case_name": "InplaceIndexAdd_dynamic_6",
+         "expect": "success",
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (-1, 256, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 256, 256, 256, 24), "ori_format": "ND", "range": [(63, 64), (256, 256), (256, 256), (256, 256), (24, 24)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND", "range": [(1, 16000)]},
+                    {"shape": (-1, 16000, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 16000, 256, 256, 24), "ori_format": "ND", "range": [(63, 64), (16000, 16000), (256, 256), (256, 256), (24, 24)]},
+                    {"shape": (64, 256, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 256, 256, 256, 24), "ori_format": "ND", "range": [(63, 64), (256, 256), (256, 256), (256, 256), (24, 24)]},
+                    1,
+                    ],
+         "case_name": "InplaceIndexAdd_dynamic_7",
+         "expect": "success",
+         "support_expect": True}
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
+ut_case.add_case(["Ascend910A"], case7)
+
+
+def test_get_op_support_info(test_arg):
+    from impl.dynamic.inplace_index_add import get_op_support_info
+    get_op_support_info({"shape": (-1, 256, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 256, 256, 256, 24), "ori_format": "ND"},
+                        {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND"},
+                        {"shape": (-1, 16000, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 16000, 256, 256, 24), "ori_format": "ND"},
+                        {"shape": (64, 256, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 256, 256, 256, 24), "ori_format": "ND"},
+                        1,)
+    get_op_support_info({"shape": (-1, 8, 375), "dtype": "int32", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND"},
+                        {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (3,), "ori_format": "ND"}, 
+                        {"shape": (-1, 3, 375), "dtype": "int32", "format": "ND", "ori_shape": (16, 3, 375), "ori_format": "ND"},
+                        {"shape": (16, 8, 375), "dtype": "int32", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND"},
+                        1,)
+    get_op_support_info({"shape": (-1, 32, 32, 375), "dtype": "int32", "format": "ND", "ori_shape": (64, 32, 32, 375), "ori_format": "ND"},
+                        {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16,), "ori_format": "ND"},
+                        {"shape": (-1, 16, 32, 375), "dtype": "int32", "format": "ND", "ori_shape": (64, 16, 32, 375), "ori_format": "ND"},
+                        {"shape": (64, 32, 32, 375), "dtype": "int32", "format": "ND", "ori_shape": (64, 32, 32, 375), "ori_format": "ND"},
+                        1,)
+
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 
 if __name__ == "__main__":

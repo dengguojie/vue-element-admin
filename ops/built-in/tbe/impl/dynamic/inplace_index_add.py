@@ -24,6 +24,10 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
+
 
 # max int64 value
 MAX_INT64_VALUE = 2**64 -1
@@ -39,10 +43,54 @@ ONE_VECTOR_CALC_SIZE = 256
 TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
 # bytes of one block
 ONE_BLOCK_SIZE = 32
+# bytes of two block
+TWO_BLOCK_SIZE = 64
 # max repeat times
 MAX_REPEAT_TIMES = 255
 # use rate of max ubsize use
 MAX_UBSIZE_USE_RATE = 0.9
+# when tiling_mode is 1 or 4
+# ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_1
+# updates_num occupied allocation block: UPDATE_NUMS_BLOCK_1
+# indices_num occupied allocation block: INDICES_NUMS_BLOCK_1
+UBSIZE_ALLOCATED_BLOCK_1 = 100
+UPDATE_NUMS_BLOCK_1 = 45
+INDICES_NUMS_BLOCK_1 = 10
+# when tiling_mode is 2 or 5
+# ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_2
+# updates_num occupied allocation block: UPDATE_NUMS_BLOCK_2
+# indices_num occupied allocation block: INDICES_NUMS_BLOCK_2
+UBSIZE_ALLOCATED_BLOCK_2 = 10
+UPDATE_NUMS_BLOCK_2 = 4
+INDICES_NUMS_BLOCK_2 = 2
+# when tiling_mode is 3 or 6
+# ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_3
+# updates_num occupied allocation block: UPDATE_NUMS_BLOCK_3
+# indices_num occupied allocation block: INDICES_NUMS_BLOCK_3
+UBSIZE_ALLOCATED_BLOCK_3 = 96
+UPDATE_NUMS_BLOCK_3 = INDICES_NUMS_BLOCK_3 = 32
+
+
+def get_op_support_info(var, indices, updates, var_out, axis, kernel_name="index_add"):
+    """
+    get_op_support_info
+    """
+    format_var = var.get("format").upper()
+    format_indices = indices.get("format").upper()
+    format_updates = updates.get("format").upper()
+    shape_indices_len = len(indices.get("shape"))
+    if format_var == "ND" and format_indices == "ND" and format_updates == "ND":
+        axis_split_matrix = []
+        for j in range(shape_indices_len):
+            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [j]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes
@@ -65,7 +113,7 @@ class InplaceIndexAdd():
         :param updates: dict
             data of updates
             datatype supports float32,float16,int32,int8,uint8
-        :param var_out: dict
+        :param var_out: dicts
             data of input
         :param axis: int
             which axis to compute index add
@@ -192,86 +240,91 @@ class InplaceIndexAdd():
         :return:
         """
         with self.tik_instance.if_scope(self.tiling_mode == 1):
-            # if updates size * 2 is smaller than 0.9 ub size
-            self.updates_ub_number = self.ub_size_bytes // 96 * 48 // self.var_dtype_bytes_size
+            # if indices size is smaller than 0.1 ub size
+            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * UPDATE_NUMS_BLOCK_1 // self.var_dtype_bytes_size
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // 10 // self.indices_dtype_bytes_size
+            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * INDICES_NUMS_BLOCK_1 // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
             if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
                 self.updates_ub_number -= self.var_data_each_block
+        
         with self.tik_instance.if_scope(self.tiling_mode == 2):
-            # if indices size is smaller than 0.9 ub size
-            self.indices_ub_number = self.ub_size_bytes // self.indices_dtype_bytes_size
-            self.indices_ub_number = math.ceil(
-                self.indices_ub_number /
-                self.indices_data_each_block) * self.indices_data_each_block
-            self.updates_ub_number = self.ub_size_bytes // 10 // 2 // self.var_dtype_bytes_size
+            # if indices size is smaller than 0.2 ub size
+            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * UPDATE_NUMS_BLOCK_2 // self.var_dtype_bytes_size
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
+            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * INDICES_NUMS_BLOCK_2 // self.indices_dtype_bytes_size
+            self.indices_ub_number = math.ceil(
+                self.indices_ub_number /
+                self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
             if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
                 self.updates_ub_number -= self.var_data_each_block
+
         with self.tik_instance.if_scope(self.tiling_mode == 3):
-            self.updates_ub_number = self.ub_size_bytes // 96 * 24 // self.var_dtype_bytes_size
+            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * UPDATE_NUMS_BLOCK_3 // self.var_dtype_bytes_size
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // 96 * 48 // self.indices_dtype_bytes_size
+            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * INDICES_NUMS_BLOCK_3 // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
             if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
                 self.updates_ub_number -= self.var_data_each_block
+        
         with self.tik_instance.if_scope(self.tiling_mode == 4):
-            self.updates_ub_number = self.ub_size_bytes // 96 * 48 // self.var_dtype_bytes_size // 2
+            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * UPDATE_NUMS_BLOCK_1 // self.var_dtype_bytes_size // 2
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
 
-            self.vconv_ub_number = self.ub_size_bytes // 96 * 48 // self.vconv_data_each_block // 2
+            self.vconv_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * UPDATE_NUMS_BLOCK_1 // self.vconv_data_each_block // 2
             self.vconv_ub_number = math.ceil(
                 self.vconv_ub_number /
                 self.vconv_data_each_block) * self.vconv_data_each_block
 
-            self.indices_ub_number = self.ub_size_bytes // 10 // self.indices_dtype_bytes_size // 2
+            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * INDICES_NUMS_BLOCK_1 // self.indices_dtype_bytes_size // 2
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
+
         with self.tik_instance.if_scope(self.tiling_mode == 5):
-            self.indices_ub_number = self.ub_size_bytes // self.indices_dtype_bytes_size
-            self.indices_ub_number = math.ceil(
-                self.indices_ub_number /
-                self.indices_data_each_block) * self.indices_data_each_block
-            
-            self.updates_ub_number = self.ub_size_bytes // 10 // 2 // self.var_dtype_bytes_size // 2
+            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * UPDATE_NUMS_BLOCK_2 // self.var_dtype_bytes_size // 2
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
 
-            self.vconv_ub_number = self.ub_size_bytes // 10 // 2 // self.vconv_data_each_block // 2
+            self.vconv_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * UPDATE_NUMS_BLOCK_2 // self.vconv_data_each_block // 2
             self.vconv_ub_number = math.ceil(
                 self.vconv_ub_number /
                 self.vconv_data_each_block) * self.vconv_data_each_block
+
+            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * INDICES_NUMS_BLOCK_2 // self.indices_dtype_bytes_size
+            self.indices_ub_number = math.ceil(
+                self.indices_ub_number /
+                self.indices_data_each_block) * self.indices_data_each_block
+
         with self.tik_instance.if_scope(self.tiling_mode == 6):
-            self.updates_ub_number = self.ub_size_bytes // 96 * 24 // self.var_dtype_bytes_size // 2
+            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * UPDATE_NUMS_BLOCK_3 // self.var_dtype_bytes_size // 2
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // 96 * 48 // self.indices_dtype_bytes_size // 2
+            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * INDICES_NUMS_BLOCK_3 // self.indices_dtype_bytes_size // 2
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             self.vconv_ub_number = self.updates_ub_number
         with self.tik_instance.if_scope(self.tiling_mode == 7):
             self.updates_ub_number = self.var_data_each_block
-            self.indices_ub_number = (self.ub_size_bytes - 64) // self.indices_dtype_bytes_size // \
+            self.indices_ub_number = (self.ub_size_bytes - TWO_BLOCK_SIZE) // self.indices_dtype_bytes_size // \
                                      self.indices_data_each_block * self.indices_data_each_block
             self.vconv_ub_number = self.updates_ub_number
 
@@ -711,11 +764,7 @@ class InplaceIndexAdd():
         """
         self.inplace_index_add_computer_tiling()
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.var_gm, self.indices_gm, self.updates_gm),
-                                   outputs=(self.var_out_gm),
-                                   flowtable=[self.tiling_gm],
-                                   config=opt_config)
+
         ub_size_bytes = self.ub_size_bytes
         tbe_context.get_context().add_compile_info(
             "vars", {
@@ -727,6 +776,12 @@ class InplaceIndexAdd():
                 "axis": self.axis
         })
 
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.var_gm, self.indices_gm, self.updates_gm),
+                                   outputs=(self.var_out_gm),
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
+                                   
         return self.tik_instance
 
 
