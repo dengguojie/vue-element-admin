@@ -491,6 +491,27 @@ IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
     OP_LOGI(op.GetName().c_str(), "Get attr [paddings_contiguous] failed");
   }
 
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  auto input_shape_max = input_shape.size();
+  auto paddings_shape = paddings.size();
+
+  // expand paddings by 0
+  auto expand_num = input_shape_max * 2 - paddings_shape;
+  for(size_t dim = 0; dim < expand_num; dim++) {
+    paddings.push_back(0);
+  }
+
+  if (expand_num > 0) {
+    std::vector<int64_t> pad_vec;
+    for (int i = input_shape_max; i > 0; i--) {
+      pad_vec.push_back(paddings[i * 2 - 2]);
+      pad_vec.push_back(paddings[i * 2 - 1]);
+    }
+    paddings = pad_vec;
+  }
+
   if (!paddings_contiguous) {
     std::vector<int64_t> pads;
     int64_t rank = paddings.size() / 2;

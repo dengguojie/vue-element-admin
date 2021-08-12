@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
+ **/
 
 /*!
  * \file reflection_pad_v3.cc
@@ -30,9 +30,8 @@
 namespace optiling {
 
 static const int64_t TILING_MODE_0 = 0;
-
 static const int64_t TILING_MODE_1 = 1;
-
+static const int64_t TILING_MODE_2 = 2;
 struct ReflectionPadV3CompileParams {
   int64_t core_num;
   std::string op_type;
@@ -175,15 +174,16 @@ static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num) {
   auto nc_total = x_shape[0] * x_shape[1];
   auto hc_total = x_shape[2] * x_shape[3];
   auto block = 16;
-  auto ele_per_core = (nc_total - 1) / core_num + 1;
-  auto core_used = (nc_total - 1) / ele_per_core + 1;
-  if (hc_total < 256) {
-    while ((hc_total * ele_per_core < block) && (core_used > 1)) {
-      core_used -= 1;
-      ele_per_core = (nc_total - 1) / core_used + 1;
+  auto diff = 1;
+  auto ele_per_core = (nc_total - diff) / core_num + diff;
+  auto core_used = (nc_total - diff) / ele_per_core + diff;
+  if (hc_total < (block * block)) {
+    while ((hc_total * ele_per_core < block) && (core_used > diff)) {
+      core_used -= diff;
+      ele_per_core = (nc_total - diff) / core_used + diff;
     }
   }
-  core_used = (nc_total - 1) / ele_per_core + 1; 
+  core_used = (nc_total - diff) / ele_per_core + diff; 
   return core_used;
 }
 
@@ -198,16 +198,21 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   int64_t core_used = 1;
   int64_t not_last_core_numel = 0;
   int64_t last_core_numel = 0;
+  auto diff = 1;
+  auto block = 16;
   auto nc_total = input_shape[0] * input_shape[1];
   auto hc_total = input_shape[2] * input_shape[3];
   core_used = get_core_num(input_shape, compile_params.core_num);
-  not_last_core_numel = (nc_total - 1) / core_used + 1;
-  last_core_numel = nc_total - (core_used - 1) * not_last_core_numel;
-  if (hc_total < 256) {
-    tiling_key = 0;
+  not_last_core_numel = (nc_total - diff) / core_used + diff;
+  last_core_numel = nc_total - (core_used - diff) * not_last_core_numel;
+  if (input_shape[2] < block && input_shape[3] < block) {
+    tiling_key = TILING_MODE_0;
+  }
+  else if (input_shape[2] >= block && input_shape[3] >= block) {
+    tiling_key = TILING_MODE_1;
   }
   else {
-    tiling_key = 1;
+    tiling_key = TILING_MODE_2;
   }
   tiling_params.tiling_key = tiling_key;
   tiling_params.tiling_input_dim_0 = input_shape[0];
