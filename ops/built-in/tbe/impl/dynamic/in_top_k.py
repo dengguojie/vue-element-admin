@@ -674,15 +674,13 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, mask):
 
     if mask == BIG_DIM0_TYPE:
         with tik_instance.if_scope(column_reduce_remainder != 0):
-            with tik_instance.new_stmt_scope(disable_sync=True):
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(column_reduce_remainder, data_bool[i], prediction_tensor_ub[i * column_aligned], 1,
-                                       1, 1, 1, 0)
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vcadd(column_reduce_remainder, data_bool[i], prediction_tensor_ub[i * column_aligned], 1,
+                                   1, 1, 1, 0)
         with tik_instance.else_scope():
-            with tik_instance.new_stmt_scope(disable_sync=True):
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(half_mask_value, data_bool[i], prediction_tensor_ub[i * column_aligned], 1, 1, 1, 1,
-                                       0)
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vcadd(half_mask_value, data_bool[i], prediction_tensor_ub[i * column_aligned], 1, 1, 1, 1,
+                                   0)
     elif mask == BIG_DIM1_TYPE:
         tensor_sec_reduce = tik_instance.Tensor(dtype="float32",
                                                 shape=(max_tensor_size // element_bytes // 72, half_mask_value),
@@ -702,10 +700,9 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, mask):
             tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
         with tik_instance.else_scope():
             tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
-            with tik_instance.new_stmt_scope(disable_sync=True):
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                       prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
+                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
             tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
     else:
         tensor_third_reduce = tik_instance.Tensor(dtype="float32",
