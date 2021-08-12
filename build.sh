@@ -592,7 +592,7 @@ main() {
     create_lib
     exit 0
   fi
-  if [ "$CHANGED_FILES" != ""  &&  "$UT_TEST_ALL"=="TRUE" ]; then
+  if [[ "$CHANGED_FILES" != ""  &&  "$UT_TEST_ALL" == "TRUE" ]]; then
     UT_TEST_ALL=FALSE
     parse_changed_files $CHANGED_FILES
   fi
