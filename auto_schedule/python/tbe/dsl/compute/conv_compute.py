@@ -29,7 +29,7 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute.conv_compute_v2 import conv_v220_compute
 from tbe.tvm.buffer_manager import get_buffer_manager
-from tbe.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 
 
 # fmapH, fmapW must be in [1,4096]
