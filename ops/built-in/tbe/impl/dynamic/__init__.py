@@ -345,6 +345,7 @@ from .acts_ulq_input_grad import acts_ulq_input_grad
 from .act_ulq_clamp_max_grad import act_ulq_clamp_max_grad
 from .act_ulq_clamp_min_grad import act_ulq_clamp_min_grad
 from .wts_arq import wts_arq
+from .ifmr import ifmr
 from .inplace_index_add import inplace_index_add
 from .square_sum_all import square_sum_all
 

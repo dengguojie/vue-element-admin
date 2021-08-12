@@ -5,7 +5,7 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT('ifmr', None, None)
 
 ut_case.add_case(
-    ['Ascend910'],
+    ['Ascend910A'],
     {'params': [
         {'shape': (32, 3, 5, 5), 'dtype': 'float16', 'format': 'ND',
          'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
@@ -28,7 +28,7 @@ ut_case.add_case(
         'case_name': 'test_ifmr_float16_with_offset'})
 
 ut_case.add_case(
-    ['Ascend910'],
+    ['Ascend910A'],
     {'params': [
         {'shape': (32, 3, 5, 5), 'dtype': 'float32', 'format': 'ND',
          'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
@@ -51,7 +51,7 @@ ut_case.add_case(
         'case_name': 'test_ifmr_float32_with_offset'})
 
 ut_case.add_case(
-    ['Ascend910'],
+    ['Ascend910A'],
     {'params': [
         {'shape': (32, 3, 5, 5), 'dtype': 'float16', 'format': 'ND',
          'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},

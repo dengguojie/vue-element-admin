@@ -166,6 +166,7 @@ set(_optiling_files
   inplace_index_add.cc
   square_sum_all.cc
   is_finite.cc
+  ifmr.cc
 )
 
 set(_op_tiling_include
