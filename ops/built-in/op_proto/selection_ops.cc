@@ -2911,12 +2911,8 @@ COMMON_INFER_FUNC_REG(StridedSliceAssignD, StridedSliceAssignDInferShape);
 
 // ----------------Cumprod-------------------
 IMPLEMT_COMMON_INFERFUNC(CumprodInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
-  op.UpdateOutputDesc("y", output_desc);
-
-  return GRAPH_SUCCESS;
+  TensorDesc desc = op.GetInputDesc("x");
+  return op.UpdateOutputDesc("y", desc);
 }
 
 COMMON_INFER_FUNC_REG(Cumprod, CumprodInferShape);

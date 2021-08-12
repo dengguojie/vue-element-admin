@@ -793,14 +793,8 @@ IMPLEMT_INFERFUNC(Real, RealInfer) {
 INFER_FUNC_REG(Real, RealInfer);
 
 IMPLEMT_INFERFUNC(Conj, ConjInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("output");
-  out_desc.SetDataType(op.GetInputDesc("input").GetDataType());
-  if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-        std::string("update output[output] desc failed."));
-    return GRAPH_FAILED;
-  }
-  return UnchangedShape(op, "input", "output");
+  TensorDesc desc = op.GetInputDesc("input");
+  return op.UpdateOutputDesc("output", desc);
 }
 
 INFER_FUNC_REG(Conj, ConjInfer);
