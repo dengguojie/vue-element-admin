@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file lu_case_key_ops.h
+ * \file case_condition_ops.h
  * \brief
  */
 #ifndef OPS_BUILT_IN_OP_PROTO_INC_CASE_CONDITION_OPS_H_
@@ -36,8 +36,8 @@ use for lu decomposition
 *@par Inputs:
 *x: A Tensor of type int32/int64/uint64. \n
 
-*@par Attributes: A string, only support LU now
-*algorithm：onl
+*@par Attributes:
+*algorithm: A string, only support LU now
 *@par Outputs:
 *y: A Tensor of type int32
 */
