@@ -45,6 +45,7 @@ class BnupdateEltwiseEltwiseFusionPass : public BufferFusionPassBase {
    * @param [out] mapping: nodes matched by pattern
    * @return bool: fusion status ok or not.
    */
+  std::vector<ge::NodePtr> GetMatchedNodes(const BufferFusionMapping &mapping, ge::NodePtr &eltwise_0, ge::NodePtr &bn);
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
 };
 }  // namespace fe

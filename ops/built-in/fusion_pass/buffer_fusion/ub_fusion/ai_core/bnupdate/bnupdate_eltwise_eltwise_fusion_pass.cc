@@ -79,6 +79,22 @@ vector<BufferFusionPattern *> BnupdateEltwiseEltwiseFusionPass::DefinePatterns()
   return patterns;
 }
 
+std::vector<ge::NodePtr> BnupdateEltwiseEltwiseFusionPass::GetMatchedNodes(
+  const BufferFusionMapping &mapping, ge::NodePtr &eltwise_0, ge::NodePtr &bn) {
+    std::vector<ge::NodePtr> nodes;
+    for (const auto &item : mapping) {
+      if (item.first->desc_name == kPatternEltwise0) {
+        eltwise_0 = item.second[0];
+      }
+      if (item.first->desc_name == kPatternBnupdate) {
+        bn = item.second[0];
+      }
+      for (const auto &node : item.second) {
+        nodes.push_back(node);
+      }
+    }
+    return nodes;
+  }
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -104,7 +120,9 @@ Status BnupdateEltwiseEltwiseFusionPass::GetFusionNodes(const BufferFusionMappin
     }
   }
 
-  fusion_nodes = GetMatchedNodes(mapping);
+  ge::NodePtr bn;
+  ge::NodePtr eltwise0;
+  fusion_nodes = GetMatchedNodes(mapping, eltwise0, bn);
   for (auto &item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
     if (opdesc != item.first->types.end()) {
@@ -116,6 +134,20 @@ Status BnupdateEltwiseEltwiseFusionPass::GetFusionNodes(const BufferFusionMappin
       }
     }
   }
+
+  ge::NodePtr second_bn = nullptr;
+  for (auto input_node : eltwise0->GetInDataNodes()) {
+    if (input_node == bn) {
+      continue;
+    }
+    if (input_node->GetType() == "BNTrainingUpdate") {
+      second_bn = input_node;
+    }
+  }
+  if (second_bn != nullptr) {
+    fusion_nodes.emplace_back(second_bn);
+  }
+
   OP_LOGD(kFusedOpType.c_str(), "End to do BNUpdateEltwiseEltwiseFusionPass!");
   return SUCCESS;
 }
