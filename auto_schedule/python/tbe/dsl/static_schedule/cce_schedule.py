@@ -401,7 +401,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
             if option is not None and isinstance(option, dict):
                 schedule, tensor_list, real_outs = rl_search_proc(outs, option)
             enable_bank_query = True
-            if get_context() and (get_context().get_addition("enable_bank_query") is False):
+            if get_context() and (get_context().get_addition("enable_rl_bank_query") is False):
                 enable_bank_query = False
             if schedule is None and enable_bank_query:
                 ret, schedule = rl_bank.query_rl_bank(outs, op_info=op_info)
