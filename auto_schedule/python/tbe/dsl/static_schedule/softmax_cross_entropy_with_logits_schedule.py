@@ -1226,7 +1226,7 @@ def _get_tiling_large_axis_workspace(shape, dtype):
         return tail_num
 
     tail_num = _cal_tail_num()
-    while tail_num < min_num_size_one_core and ub_factor > 1:
+    while 0 < tail_num < min_num_size_one_core and ub_factor > 1:
         ub_factor = ub_factor - 1
         tail_num = _cal_tail_num()
 
