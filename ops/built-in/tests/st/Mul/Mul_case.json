@@ -210,5 +210,541 @@
     ],
     "attr": [],
     "case_name": "test_Mul_013"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_014"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_015"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_016"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_017"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_018"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_019"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_020"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_021"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_022"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "int8"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_023"
   }
 ]

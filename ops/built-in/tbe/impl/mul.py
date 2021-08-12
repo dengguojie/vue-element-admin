@@ -511,6 +511,10 @@ def op_select_format(x, y, output, kernel_name="mul"):
     shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_y = shape_util.scalar2tensor_one(shape_y)
 
+    size_x = functools.reduce(lambda x, y: x * y, shape_x)
+    size_y = functools.reduce(lambda x, y: x * y, shape_y)
+    temp_format = None
+
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     dtype_list = ["float16", "float", "int32", "int16", "uint8", "int8"]
@@ -564,8 +568,45 @@ def op_select_format(x, y, output, kernel_name="mul"):
         elif x_cdim == y_cdim and x_ndim == y_ndim:
             format_list.append("FRACTAL_Z_3D")
 
+    if (len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1):
+        temp_format = format_x if len(shape_x) == 4 and size_y == 1 else format_y
+    if ((len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1)) and temp_format in format_4d_list:
+        temp_shape = shape_x if len(shape_x) == 4 and size_y == 1 else shape_y
+        dim_c = temp_shape[temp_format.index("C")]
+        dim_n = temp_shape[temp_format.index("N")]
+        second_last_dim = temp_shape[-2]
+        last_dim = temp_shape[-1]
+        format_list.append("NC1HWC0")
+        if last_dim % 16 == 0 and second_last_dim % 16 == 0:
+            format_list.append("FRACTAL_NZ")
+        if dim_c % 16 == 0 and dim_n % 16 == 0:
+            format_list.append("FRACTAL_Z")
+        for dtype in dtype_list:
+            dtype_total = dtype_total + [dtype] * len(format_list)
+        format_list = format_list * len_format_list
+        if len(shape_x) == 4 and size_y == 1:
+            x1_format_list = format_list
+            x2_format_list = ["ND"] * len(format_list)
+        else:
+            x1_format_list = ["ND"] * len(format_list)
+            x2_format_list = format_list
+        y_format_list = format_list
+
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="x1",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(x1_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x2",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(x2_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype=",".join(dtype_total),
+                                                format=",".join(y_format_list))
+
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
-    if len(shape_x) >= 2 and len(shape_y) >= 2:
+    elif len(shape_x) >= 2 and len(shape_y) >= 2:
         if shape_x[-2:] == shape_y[-2:]:
             format_list.append("FRACTAL_NZ")
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
@@ -724,13 +765,22 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                         format=",".join(format_list1))
 
     # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
-    elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
+    elif (len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1) or (
+          len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and shape_x[0] % 16 == 0):
         if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             format_list.append("FRACTAL_Z")
-        if shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0:
-            format_list.append("FRACTAL_NZ")
+        if len(shape_x) >= 2:
+            if shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_x) == 2 and len(shape_y) == 1:
+            x_1dim = shape_x[-1]
+            x_2dim = shape_x[-2]
+            if x_1dim % 16 == 0 and x_2dim % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and shape_x[0] % 16 == 0:
+            format_list.append("NC1HWC0")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
@@ -768,13 +818,22 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                     format=",".join(format_list0))
 
     # ND+ND,scalar+5HD,scalar+FZ,scalar+6D,ND+NZ
-    elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
+    elif (len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1) or (
+          len(shape_y) == 1 and len(shape_x) == 1 and shape_x[0] == 1 and shape_y[0] % 16 == 0):
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             format_list.append("FRACTAL_Z")
-        if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
-            format_list.append("FRACTAL_NZ")
+        if len(shape_y) >= 2:
+            if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_y) == 2 and len(shape_x) == 1:
+            y_1dim = shape_y[-1]
+            y_2dim = shape_y[-2]
+            if y_1dim % 16 == 0 and y_2dim % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_y) == 1 and len(shape_x) == 1 and shape_x[0] == 1 and shape_y[0] % 16 == 0:
+            format_list.append("NC1HWC0")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
@@ -1042,7 +1101,6 @@ def mul_compute(input_x, input_y, output_data, is_scene_1D=False, kernel_name="m
 
         input_x = tbe.broadcast(input_x, shape_max)
         input_y = tbe.broadcast(input_y, shape_max)
-
     res = tbe.vmul(input_x, input_y)
 
     if x_dtype in ("uint8", "int8"):
