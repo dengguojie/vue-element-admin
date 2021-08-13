@@ -63,8 +63,13 @@ function(protobuf_generate project cc_files h_files)
 
   set(${h_files})
   set(${cc_files})
+  set(_add_target FALSE)
 
   foreach(_file ${ARGN})
+    if("${_file}" STREQUAL "TARGET")
+      set(_add_target TRUE)
+      continue()
+    endif()
     if(NOT EXISTS ${_file})
       message(SEND_ERROR "Error: files ars not exist ${_file}")
       return()
@@ -95,6 +100,12 @@ function(protobuf_generate project cc_files h_files)
       COMMENT "Running Protubuf to generate ${_proto_pb_cc} and ${_proto_pb_h}"
     )
   endforeach()
+
+  if(_add_target)
+    add_custom_target(
+      ${project} DEPEND ${${cc_files}} ${${h_files}}
+    )
+  endif()
 
   set(${h_files}  ${${h_files}} PARENT_SCOPE)
   set(${cc_files} ${${cc_files}} PARENT_SCOPE)

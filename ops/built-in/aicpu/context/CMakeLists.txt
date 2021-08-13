@@ -7,7 +7,7 @@ set(proto_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor.proto
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/proto/cpu_tensor_shape.proto
 )
-protobuf_generate(aicpu PROTO_SRCS PROTO_HDRS ${proto_src_files})
+protobuf_generate(aicpu_proto PROTO_SRCS PROTO_HDRS ${proto_src_files} TARGET)
 
 set (local_context_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto/node_def.cc
@@ -37,7 +37,7 @@ set(local_context_stub_files
 )
 
 if(BUILD_OPEN_PROJECT)
-  set(_proto_include "${PROTO_BINARY_DIR}/aicpu")
+  set(_proto_include "${PROTO_BINARY_DIR}/aicpu_proto")
 
   set(local_context_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -120,20 +120,22 @@ set(local_context_inc_path
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/open_source/eigen
     ${TOP_DIR}/out/${product}
-    ${CMAKE_BINARY_DIR}/proto/aicpu/proto/cpu_proto/proto
-    ${CMAKE_BINARY_DIR}/proto/aicpu/proto
-    ${CMAKE_BINARY_DIR}/proto/aicpu
+    ${CMAKE_BINARY_DIR}/proto/aicpu_proto/proto/cpu_proto/proto
+    ${CMAKE_BINARY_DIR}/proto/aicpu_proto/proto
+    ${CMAKE_BINARY_DIR}/proto/aicpu_proto
 )
 
 add_library(cpu_kernels_context SHARED
     ${local_context_src_files}
     ${local_context_stub_files}
 )
+add_dependencies(cpu_kernels_context aicpu_proto)
 
 add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
     ${local_context_stub_files}
 )
+add_dependencies(cpu_kernels_context_static aicpu_proto)
 
 target_link_libraries(cpu_kernels_context PRIVATE
     $<BUILD_INTERFACE:intf_pub>
