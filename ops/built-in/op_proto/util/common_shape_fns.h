@@ -27,9 +27,19 @@
 #include "graph/operator.h"
 #include "graph/op_desc.h"
 #include "graph/ge_tensor.h"
+#include "graph/resource_context.h"
 #include "error_code.h"
 
 namespace ge {
+
+struct ShapeAndRange {
+  Shape shape_;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_;
+};
+
+struct AicpuResourceContext : ResourceContext {
+  std::vector<ShapeAndRange> shape_and_range_;
+};
 
 /**
  * Check whether Shape's rank is at least rank
@@ -135,6 +145,41 @@ graphStatus Merge(const Shape& s0, const Shape& s1, Shape& out, const char* op_n
  * @return status whether this operation success
  */
 graphStatus Merge(const GeShape& s0, const GeShape& s1, GeShape& out, const char* op_name);
+
+/**
+ * Merge two shapes
+ * @param shared_shape first Geshape val
+ * @param value_shape second Geshape val
+ * @param out merged shape val
+ * @param shape_changed status whether shape has changed
+ */
+void MergeShape(const Shape &shared_shape, const Shape &value_shape,
+                std::vector<int64_t> out, bool &shape_changed);
+
+/**
+ * Merge two shape ranges
+ * @param shared_shape_range first shape range val
+ * @param value_shape_range second shape range val
+ * @param out merged shape range val
+ * @param shape_changed status whether shape range has changed
+ */
+void MergeRange(const std::vector<std::pair<int64_t, int64_t>> &shared_shape_range,
+                const std::vector<std::pair<int64_t, int64_t>> &value_shape_range,
+                std::vector<std::pair<int64_t, int64_t>> &out, bool &shape_changed);
+
+/**
+ * Merge two shapes and ranges
+ * @param shared_shape_and_range first shape and range val
+ * @param value_shape_and_range second shape and range val
+ * @param out merged shape and range val
+ * @param shape_changed status whether shape and range has changed
+ * @return status whether this operation success
+ */
+graphStatus MergeShapeAndRange(const ShapeAndRange &shared_shape_and_range,
+                               const ShapeAndRange &value_shape_and_range,
+                               ShapeAndRange &out,
+                               bool &shape_changed,
+                               const char* op_name);
 
 /**
  * Replace one dim in a given shape

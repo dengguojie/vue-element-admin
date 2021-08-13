@@ -388,6 +388,80 @@ graphStatus Merge(const GeShape& s0, const GeShape& s1, GeShape& out, const char
   return GRAPH_SUCCESS;
 }
 
+void MergeShape(const Shape &shared_shape, const Shape &value_shape,
+                std::vector<int64_t> out, bool &shape_changed) {
+  for (size_t i = 0; i < out.size(); ++i) {
+    if (shared_shape.GetDim(i) == value_shape.GetDim(i) ||
+        shared_shape.GetDim(i) == -1) {
+      out[i] = shared_shape.GetDim(i);
+    } else {
+      out[i] = -1;
+      shape_changed = true;
+    }
+  }
+}
+
+void MergeRange(const std::vector<std::pair<int64_t, int64_t>> &shared_shape_range,
+                const std::vector<std::pair<int64_t, int64_t>> &value_shape_range,
+                std::vector<std::pair<int64_t, int64_t>> &out, bool &shape_changed) {
+  for (size_t i = 0; i < out.size(); ++i) {
+    auto &shared_range = shared_shape_range[i];
+    auto &value_range = value_shape_range[i];
+    if (shared_range.first <= value_range.first) {
+      out[i].first = shared_range.first;
+    } else {
+      out[i].first = value_range.first;
+      shape_changed = true;
+    }
+    if (shared_range.second == -1 ||
+        (value_range.second != -1 && shared_range.second >= value_range.second)) {
+      out[i].second = shared_range.second;
+    } else {
+      out[i].second = value_range.second;
+      shape_changed = true;
+    }
+  }
+}
+
+graphStatus MergeShapeAndRange(const ShapeAndRange &shared_shape_and_range,
+                               const ShapeAndRange &value_shape_and_range,
+                               ShapeAndRange &out,
+                               bool &shape_changed,
+                               const char* op_name) {
+  if (!RankKnown(shared_shape_and_range.shape_)) {
+    out = {Shape(UNKNOWN_RANK), {}};
+    return GRAPH_SUCCESS;
+  }
+  if (!RankKnown(value_shape_and_range.shape_) ||
+      (shared_shape_and_range.shape_.GetDimNum() != value_shape_and_range.shape_.GetDimNum())) {
+    out = {Shape(UNKNOWN_RANK), {}};
+    shape_changed = true;
+    return GRAPH_SUCCESS;
+  }
+  if (shared_shape_and_range.shape_.GetDimNum() != shared_shape_and_range.shape_range_.size()) {
+    std::string err_msg = ConcatString("the dim num[", shared_shape_and_range.shape_.GetDimNum(),
+      "] of shared shape is not same as that[", shared_shape_and_range.shape_range_.size(),
+      "] of shared shape range.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (value_shape_and_range.shape_.GetDimNum() != value_shape_and_range.shape_range_.size()) {
+    std::string err_msg = ConcatString("the dim num[", value_shape_and_range.shape_.GetDimNum(),
+      "] of value shape is not same as that[", value_shape_and_range.shape_range_.size(),
+      "] of value shape range.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
+    return GRAPH_FAILED;
+  }
+  const size_t rank = value_shape_and_range.shape_.GetDimNum();
+  std::vector<int64_t> dims(rank);
+  std::vector<std::pair<int64_t, int64_t>> shape_range(rank);
+  MergeShape(shared_shape_and_range.shape_, value_shape_and_range.shape_, dims, shape_changed);
+  MergeRange(shared_shape_and_range.shape_range_, value_shape_and_range.shape_range_, shape_range,
+    shape_changed);
+  out = {Shape(dims), shape_range};
+  return GRAPH_SUCCESS;
+}
+
 graphStatus ReplaceDim(const Shape& s, int64_t dim_index_in, int64_t new_dim, Shape& out, const char* op_name) {
   if (!RankKnown(s)) {
     out = Shape(ge::UNKNOWN_SHAPE);

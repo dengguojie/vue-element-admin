@@ -24,6 +24,7 @@
 #include <algorithm>
 #include "graph/operator_reg.h"
 #include "graph/operator.h"
+#include "../util/common_shape_fns.h"
 
 namespace ge {
 

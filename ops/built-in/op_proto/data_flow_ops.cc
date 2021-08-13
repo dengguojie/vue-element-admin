@@ -140,6 +140,79 @@ graphStatus DequeueManyShape(Operator& op,
   }
   return GRAPH_SUCCESS;
 }
+
+graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_range) {
+  AscendString op_name;
+  op.GetName(op_name);
+  auto context = op.GetInferenceContext();
+  std::vector<AscendString> marks;
+  context->GetMarks(marks);
+  if (!marks.empty()) {
+    bool shape_changed = false;
+    auto aicpu_resource_context = reinterpret_cast<AicpuResourceContext*>(
+      context->GetResourceContext(marks[0]));
+    if (aicpu_resource_context == nullptr) {
+      aicpu_resource_context = new (std::nothrow) AicpuResourceContext();
+      if (aicpu_resource_context == nullptr) {
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("new AicpuResourceContext failed."));
+        return GRAPH_FAILED;
+      }
+      aicpu_resource_context->shape_and_range_.push_back(feed_shape_and_range);
+      if (context->SetResourceContext(marks[0], aicpu_resource_context) != GRAPH_SUCCESS) {
+        delete aicpu_resource_context;
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("set resource context failed."));
+        return GRAPH_FAILED;
+      }
+      shape_changed = true;
+    } else {
+      auto &shape_and_range = aicpu_resource_context->shape_and_range_;
+      if (shape_and_range.empty()) {
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get resource context shape and ranges failed."));
+        return GRAPH_FAILED;
+      }
+      if (MergeShapeAndRange(shape_and_range[0], feed_shape_and_range, shape_and_range[0],
+                             shape_changed, op_name.GetString()) != GRAPH_SUCCESS) {
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("merge shape and range failed."));
+        return GRAPH_FAILED;
+      }
+    }
+    if (shape_changed) {
+      if (context->AddChangedResourceKey(marks[0]) != GRAPH_SUCCESS) {
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("add change resource key failed."));
+        return GRAPH_FAILED;
+      }
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus GetShapeAndRange(Operator& op, ShapeAndRange& out, bool& geted) {
+  AscendString op_name;
+  op.GetName(op_name);
+  auto infer_context = op.GetInferenceContext();
+  std::vector<AscendString> marks;
+  infer_context->GetMarks(marks);
+  if (!marks.empty()) {
+    if (infer_context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("register relied on resource key failed."));
+      return GRAPH_FAILED;
+    }
+    auto aicpu_resource_context = reinterpret_cast<AicpuResourceContext*>(
+      infer_context->GetResourceContext(marks[0]));
+    if (aicpu_resource_context != nullptr) {
+      auto &shape_and_range = aicpu_resource_context->shape_and_range_;
+      if (shape_and_range.empty()) {
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()),
+          std::string("get resource context shape and ranges failed."));
+        return GRAPH_FAILED;
+      }
+      out.shape_ = shape_and_range[0].shape_;
+      out.shape_range_ = shape_and_range[0].shape_range_;
+      geted = true;
+    }
+  }
+  return GRAPH_SUCCESS;
+}
 }  // namespace
 
 IMPLEMT_INFERFUNC(QueueIsClosed, QueueIsClosedInfer) {
@@ -527,20 +600,26 @@ IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
     return GRAPH_FAILED;
   }
 
+  AscendString op_name;
+  op.GetName(op_name);
+  auto infer_context = op.GetInferenceContext();
+  if (infer_context == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("get context failed, context is nullptr."));
+    return GRAPH_FAILED;
+  }
+
   Shape elemShape(std::move(elem_dims));
-  if (ShapeFullDefined(elemShape) || identical_shapes) {
+  if ((ShapeFullDefined(elemShape) || identical_shapes) && RankKnown(elemShape)) {
     ShapeAndType shape_and_type(elemShape, dtype);
     std::vector<ShapeAndType> handle_shapes_and_types;
     handle_shapes_and_types.reserve(1);
     handle_shapes_and_types.emplace_back(shape_and_type);
     std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
     shapes_and_types[0] = handle_shapes_and_types;
-    auto infer_context = op.GetInferenceContext();
-    if (infer_context == nullptr) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
-      return GRAPH_FAILED;
-    }
     infer_context->SetOutputHandleShapesAndTypes(shapes_and_types);
+  } else {
+    std::vector<AscendString> marks = {op_name};
+    infer_context->SetMarks(marks);
   }
   return GRAPH_SUCCESS;
 }
@@ -634,6 +713,20 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
     }
     input_or_attr_shape = Shape(std::move(elem_dims));
   }
+
+  ShapeAndRange shape_and_range;
+  bool geted = false;
+  if (!RankKnown(input_or_attr_shape)) {
+    if (GetShapeAndRange(op, shape_and_range, geted) != GRAPH_SUCCESS) {
+      AscendString op_name;
+      op.GetName(op_name);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
+      return GRAPH_FAILED;
+    }
+    if (geted) {
+      input_or_attr_shape = shape_and_range.shape_;
+    }
+  }
   Shape output_shape;
   if (Concatenate(indices_shape, input_or_attr_shape, output_shape) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call Concatenate function, 1th shape",
@@ -651,6 +744,19 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
   TensorDesc value_desc = op.GetOutputDesc("value");
   value_desc.SetDataType(dtype);
   value_desc.SetShape(output_shape);
+  if (geted && RankKnown(output_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> indices_shape_range;
+    op.GetInputDesc(1).GetShapeRange(indices_shape_range);
+    std::vector<std::pair<int64_t, int64_t>> value_shape_range;
+    for (size_t i = 0; i < indices_shape_range.size(); i++) {
+      value_shape_range.push_back(indices_shape_range[i]);
+    }
+    const std::vector<std::pair<int64_t, int64_t>> &shape_range = shape_and_range.shape_range_;
+    for (size_t i = 0; i < shape_range.size(); i++) {
+      value_shape_range.push_back(shape_range[i]);
+    }
+    value_desc.SetShapeRange(value_shape_range);
+  }
   if (op.UpdateOutputDesc("value", value_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[value] desc failed."));
     return GRAPH_FAILED;
@@ -733,16 +839,26 @@ IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
     return GRAPH_FAILED;
   }
   std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
+  Shape value_shape = op.GetInputDesc(2).GetShape();
 
   if (!shapes_and_types.empty() && !shapes_and_types.at(0).empty()) {
     ShapeAndType shape_and_type = shapes_and_types.at(0).at(0);
-    Shape value_shape = op.GetInputDesc(2).GetShape();
 
     if (Merge(shape_and_type.GetShape(), value_shape, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("failed to call Merge function, 2th shape",
                                          DebugString(value_shape.GetDims()), " of input[value] can't merge context' shape",
                                          DebugString(shape_and_type.GetShape().GetDims()));
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+  } else {
+    std::vector<std::pair<int64_t, int64_t>> value_shape_range;
+    op.GetInputDesc(2).GetShapeRange(value_shape_range);
+    ShapeAndRange feed_shape_and_range = {value_shape, value_shape_range};
+    if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
+      AscendString op_name;
+      op.GetName(op_name);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("set shape and range failed."));
       return GRAPH_FAILED;
     }
   }
@@ -864,7 +980,20 @@ IMPLEMT_INFERFUNC(TensorArrayRead, TensorArrayReadInfer) {
     Shape output_shape = shapes_and_types.at(0).at(0).GetShape();
     output_desc.SetShape(output_shape);
   } else {
-    output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
+    ShapeAndRange shape_and_range;
+    bool geted = false;
+    if (GetShapeAndRange(op, shape_and_range, geted) != GRAPH_SUCCESS) {
+      AscendString op_name;
+      op.GetName(op_name);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
+      return GRAPH_FAILED;
+    }
+    if (geted) {
+      output_desc.SetShape(shape_and_range.shape_);
+      output_desc.SetShapeRange(shape_and_range.shape_range_);
+    } else {
+      output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
+    }
   }
 
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
@@ -923,26 +1052,40 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
+
+  Shape fed_shape;
+  AscendString op_name;
+  op.GetName(op_name);
+  if (SubShape(value_shape, 1, value_shape.GetDimNum(), 1, fed_shape, op_name.GetString()) != GRAPH_SUCCESS) {
+    err_msg = ConcatString("failed to call SubShape function to subshape from 1 to ",
+        value_shape.GetDimNum(), " of input[value] shape", DebugString(value_shape.GetDims()));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), ConcatString("get ", err_msg));
+    return GRAPH_FAILED;
+  }
   std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
   if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
     Shape tensor_shape = shapes_and_types.at(0).at(0).GetShape();
-    Shape fed_shape;
-    if (SubShape(value_shape, 1, value_shape.GetDimNum(), 1, fed_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      err_msg = ConcatString("failed to call SubShape function to subshape from 1 to ",
-          value_shape.GetDimNum(), " of input[value] shape", DebugString(value_shape.GetDims()));
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("get ", err_msg));
-      return GRAPH_FAILED;
-    }
 
-    if (Merge(tensor_shape, fed_shape, fed_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    if (Merge(tensor_shape, fed_shape, fed_shape, op_name.GetString()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("failed to call Merge function, sub shape",
                                          DebugString(fed_shape.GetDims()), " of input[value] can't merge context' shape",
                                          DebugString(tensor_shape.GetDims()));
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
+  } else {
+    std::vector<std::pair<int64_t, int64_t>> value_shape_range;
+    op.GetInputDesc(2).GetShapeRange(value_shape_range);
+    std::vector<std::pair<int64_t, int64_t>> feed_shape_range;
+    for (size_t i = 1; i < value_shape_range.size(); ++i) {
+      feed_shape_range.push_back(value_shape_range[i]);
+    }
+    ShapeAndRange feed_shape_and_range = {fed_shape, feed_shape_range};
+    if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("set shape and range failed."));
+      return GRAPH_FAILED;
+    }
   }
-
   TensorDesc output_desc = op.GetOutputDesc("flow_out");
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_FLOAT);
