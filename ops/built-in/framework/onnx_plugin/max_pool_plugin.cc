@@ -117,7 +117,6 @@ void MaybeChangeAttr(std::vector<int64_t>& value, int64_t length, int64_t num) {
 }
 
 Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
-  ONNX_PLUGIN_LOGI("MaxPool", "[PLUGIN_MaxPool]--------------ParseParamsMaxPool  start---------------");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
     ONNX_PLUGIN_LOGE("MaxPool", "Dynamic cast op_src to NodeProto failed.");
@@ -199,7 +198,7 @@ Status UpdateTbeAttrFromOp(const Operator& op, TbeAttr& tbe_attr, int dims) {
     return FAILED;
   };
   if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
-    ONNX_PLUGIN_LOGW("MaxPool", "get trans_2d from op failed, use default.");
+    OP_LOGW("MaxPool", "get trans_2d from op failed, use default.");
   };
   return SUCCESS;
 }
@@ -260,7 +259,7 @@ Status UpdateFormat(Operator& op, Format format) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update input x format failed.");
     return FAILED;
   }
-  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
+  OP_LOGD(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
 
   // update output format
   ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -271,7 +270,7 @@ Status UpdateFormat(Operator& op, Format format) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update output y format failed.");
     return FAILED;
   }
-  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
+  OP_LOGD(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
   return SUCCESS;
 }
 
@@ -318,7 +317,7 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
         ONNX_PLUGIN_LOGE(transposeOut.GetName().c_str(), "update output y format failed.");
         return FAILED;
       }
-      ONNX_PLUGIN_LOGI(transposeOut.GetName().c_str(), "update output y format success, now is %d",
+      OP_LOGD(transposeOut.GetName().c_str(), "update output y format success, now is %d",
               op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {

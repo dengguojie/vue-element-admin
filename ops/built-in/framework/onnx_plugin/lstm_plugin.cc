@@ -41,7 +41,7 @@ Status ParseParamsCommonLSTM(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   if (!hidden_size_flag) {
-    ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "onnx LSTM op has no hidden_size attr.");
+    OP_LOGD(op_dest.GetName().c_str(), "onnx LSTM op has no hidden_size attr.");
     hidden_size = 0;
   }
   op_dest.SetAttr("hidden_size", hidden_size);

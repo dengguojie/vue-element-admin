@@ -16,7 +16,6 @@ using namespace ge;
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest) {
-  ONNX_PLUGIN_LOGI("DeformableConv2D", "Start into the ParseParamsDeformableConv2D!");
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     ONNX_PLUGIN_LOGE("DeformableConv2D", "Dynamic cast op_src to NodeProto failed");

@@ -62,7 +62,7 @@ static uint8_t* ParseTensorValue(const ge::onnx::TensorProto &tp)
 {
   const uint8_t *data = nullptr;
   auto data_type = tp.data_type();
-  ONNX_PLUGIN_LOGI("ConstantOfShape", "Datatype[%d.]", data_type);
+  OP_LOGD("ConstantOfShape", "Datatype[%d.]", data_type);
   switch (data_type) {
     case ge::onnx::TensorProto::DataType::TensorProto_DataType_INT64:
       data = reinterpret_cast<const uint8_t *>(tp.int64_data().data());

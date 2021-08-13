@@ -215,12 +215,12 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   auto ret_dilations = op.GetAttr("dilations", convAttr.dilations);
   op.GetAttr("auto_pad", pad_mode);
   if (pad_mode != "NOTSET") {
-    ONNX_PLUGIN_LOGW("Conv",
+    OP_LOGW("Conv",
             "The attr of auto_pad is not NOTSET, unsupported other value for now,transform failed, may cause precision "
             "error.");
   }
   if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Conv",
+    OP_LOGW("Conv",
             "get attr of strides or pads or dilations from op failed, can not distinguish 2D/3D, use default 2D,"
             " please set one of them obviously.");
   }
@@ -244,7 +244,7 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   }
 
   if (op.GetAttr("trans_2d", convAttr.trans_2d) != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Conv", "get the flag of convert 1d to 2d failed, use default.");
+    OP_LOGW("Conv", "get the flag of convert 1d to 2d failed, use default.");
   }
 
   std::vector<int64_t> strides_list_default = {1, 1, 1, 1};

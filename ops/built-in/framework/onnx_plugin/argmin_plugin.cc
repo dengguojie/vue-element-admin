@@ -39,13 +39,13 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       axis = attr.i();
-      ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "set dimension = %d", axis);
+      OP_LOGD(op_dest.GetName().c_str(), "set dimension = %d", axis);
     }
     if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
       keep_dims = attr.i();
     }
     if (attr.name() == "select_last_index" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
-      ONNX_PLUGIN_LOGW(op_dest.GetName().c_str(), "select_last_index should be 0, but now it's 1");
+      OP_LOGW(op_dest.GetName().c_str(), "select_last_index should be 0, but now it's 1");
     }
   }
 

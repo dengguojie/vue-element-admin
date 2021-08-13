@@ -45,7 +45,7 @@ Status SetAttrToDesc(ge::Operator& op_dest, MeanVarianceNormalizationAttr& node_
   if (node_attr.set_axes_flag) {
     op_dest.SetAttr("axes", node_attr.v_axes);
   } else {
-    ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "onnx MeanVarianceNormalization op has no axes attr, set it to [0, 2, 3].");
+    OP_LOGD(op_dest.GetName().c_str(), "onnx MeanVarianceNormalization op has no axes attr, set it to [0, 2, 3].");
     op_dest.SetAttr("axes", node_attr.DefaultAxes);
   }
 

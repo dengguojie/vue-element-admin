@@ -25,21 +25,12 @@ rights reserved.
 #include "graph/operator.h"
 #include "graph.h"
 #include "all_ops.h"
+#include "op_log.h"
 
 namespace domi {
 #define ONNX_PLUGIN_LOGE(op_name, err_msg, ...) \
   do { \
       REPORT_INNER_ERROR("E79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
-  } while(0)
-
-#define ONNX_PLUGIN_LOGW(op_name, err_msg, ...) \
-  do { \
-      REPORT_INNER_ERROR("W79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
-  } while(0)
-
-#define ONNX_PLUGIN_LOGI(op_name, err_msg, ...) \
-  do { \
-      REPORT_INNER_ERROR("I79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
 template<typename T>

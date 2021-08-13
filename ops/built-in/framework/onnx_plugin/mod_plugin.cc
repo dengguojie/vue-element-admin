@@ -33,7 +33,7 @@ Status ParseParamsMod(const Message* op_src, ge::Operator& op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "fmod") {
       fmod = attr.i();
-      ONNX_PLUGIN_LOGW(op_dest.GetName().c_str(), "Current optype not surpport fmod, please ignore");
+      OP_LOGW(op_dest.GetName().c_str(), "Current optype not surpport fmod, please ignore");
     }
   }
   op_dest.SetAttr("fmod", fmod);

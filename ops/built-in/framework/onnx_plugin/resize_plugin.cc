@@ -90,7 +90,7 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
 
   std::string coordinate_transformation_mode_value = "pytorch_half_pixel";
   if (op.GetAttr("coordinate_transformation_mode",coordinate_transformation_mode_value) != GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGW(op.GetName().c_str(),"Get attr coordinate transformation mode failed, set to default.");
+    OP_LOGW(op.GetName().c_str(),"Get attr coordinate transformation mode failed, set to default.");
   }
   bool half_pixel_centers = false;
   bool align_corners = false;

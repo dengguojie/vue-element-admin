@@ -65,7 +65,7 @@ Status ParseParamsInt8Fc(const Message* op_src, ge::Operator& op_dest) {
   for (auto iter = offset_map.begin(); iter != offset_map.end(); ++iter) {
     if (o_counter == 3) {
       if (iter->second != 0) {
-        ONNX_PLUGIN_LOGW("Int8Fc", "The offset of operator AscendDequant in NPU must 0.");
+        OP_LOGW("Int8Fc", "The offset of operator AscendDequant in NPU must 0.");
       }
       op_dest.SetAttr("ascend_dequant_offset", 0);
     } else if (o_counter == 0) {

@@ -61,7 +61,6 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseParamsConcatCall(const Message* op_src, ge::Operator& op_dest) {
-  ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "ParseParams Concat start");
   if (OpConcatUpdateInfo(op_src, op_dest) != SUCCESS) {
     return FAILED;
   }

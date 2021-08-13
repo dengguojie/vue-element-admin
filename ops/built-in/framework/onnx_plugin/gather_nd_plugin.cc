@@ -33,7 +33,7 @@ Status ParseParamsGatherNd(const Message* op_src, ge::Operator& op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "batch_dims") {
       batch_dims = attr.i();
-      ONNX_PLUGIN_LOGW(op_dest.GetName().c_str(), "Current optype not surpport batch_dims, please ignore");
+      OP_LOGW(op_dest.GetName().c_str(), "Current optype not surpport batch_dims, please ignore");
     }
   }
   op_dest.SetAttr("batch_dims", batch_dims);

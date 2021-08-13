@@ -16,7 +16,6 @@ using namespace ge;
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsArgMax(const Message* op_src, ge::Operator& op_dest) {
-  ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "Start into the ParseParamsArgMax!");
   // 1.add dynamic input and out
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
@@ -44,7 +43,7 @@ Status ParseParamsArgMax(const Message* op_src, ge::Operator& op_dest) {
       keep_dims = attr.i();
     }
     if (attr.name() == "select_last_index" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
-      ONNX_PLUGIN_LOGW(op_dest.GetName().c_str(), "Only support select_last_index=0, but 1 is obtained now");
+      OP_LOGW(op_dest.GetName().c_str(), "Only support select_last_index=0, but 1 is obtained now");
     }
   }
   op_dest.SetAttr("dimension", axis);

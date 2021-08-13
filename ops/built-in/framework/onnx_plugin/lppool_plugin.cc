@@ -160,12 +160,12 @@ Status AvgUpdateTbeAttrFromOp(const Operator& op, AvgLpPoolTbeAttr& tbe_attr) {
   };
 
   if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
-    ONNX_PLUGIN_LOGW(op.GetName().c_str(), "get trans_2d from op failed, use default.");
+    OP_LOGW(op.GetName().c_str(), "get trans_2d from op failed, use default.");
     return FAILED;
   };
 
   if (op.GetAttr("p", tbe_attr.p) != SUCCESS) {
-    ONNX_PLUGIN_LOGW(op.GetName().c_str(), "get p from op failed, use default.");
+    OP_LOGW(op.GetName().c_str(), "get p from op failed, use default.");
     return FAILED;
   }
   return SUCCESS;
@@ -230,7 +230,7 @@ Status AvgLpPoolUpdateFormat(Operator& op, Format format) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update input x format failed.");
     return FAILED;
   }
-  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
+  OP_LOGD(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
 
   // update output format
   ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -241,7 +241,7 @@ Status AvgLpPoolUpdateFormat(Operator& op, Format format) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update output y format failed.");
     return FAILED;
   }
-  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
+  OP_LOGD(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
   return SUCCESS;
 }
 

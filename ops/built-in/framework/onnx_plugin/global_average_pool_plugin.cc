@@ -25,7 +25,6 @@ namespace domi {
 static const int DEFAULT_AXIS = 0;
 
 Status ParseParamsGlobalAveragePool(const Message* op_src, ge::Operator& op_dest) {
-  ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "[PLUGIN_GLOBALAVERAGEPOOL]---------ParseParams GlobalAveragePool start----------");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");

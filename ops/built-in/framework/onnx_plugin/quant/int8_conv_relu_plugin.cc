@@ -93,7 +93,7 @@ Status SetAttrToInt8Op(const ge::onnx::NodeProto* node, ge::Operator& op) {
     }
   }
   if (scale_map.size() < 4) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "The number of scales is less then 4.");
+    OP_LOGW("Int8ConvRelu", "The number of scales is less then 4.");
   }
   unsigned int s_conter = 0;
   for (auto iter = scale_map.begin(); iter != scale_map.end(); ++iter) {
@@ -105,13 +105,13 @@ Status SetAttrToInt8Op(const ge::onnx::NodeProto* node, ge::Operator& op) {
     ++s_conter;
   }
   if (offset_map.size() < 4) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "The number of offset is less then 4.");
+    OP_LOGW("Int8ConvRelu", "The number of offset is less then 4.");
   }
   unsigned int o_counter = 0;
   for (auto iter = offset_map.begin(); iter != offset_map.end(); ++iter) {
     if (o_counter == 3) {
       if (iter->second != 0) {
-        ONNX_PLUGIN_LOGW("Int8ConvRelu", "The offset of operator AscendDequant in NPU must 0.");
+        OP_LOGW("Int8ConvRelu", "The offset of operator AscendDequant in NPU must 0.");
       }
       op.SetAttr("ascend_dequant_offset", 0);
     } else if (o_counter == 0) {
@@ -209,7 +209,7 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
   auto ret_kernels = op.GetAttr("kernels", convAttr.kernels);
 
   if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS && ret_kernels != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get attr of kernels from op failed, data of filter is missing,please set it obviously.");
+    OP_LOGW("Int8ConvRelu", "get attr of kernels from op failed, data of filter is missing,please set it obviously.");
   }
   if (op.GetAttr("dim_size", convAttr.dim_size) != SUCCESS) {
     ONNX_PLUGIN_LOGE("Int8ConvRelu", "get dim size from op failed");
@@ -229,16 +229,16 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
   }
 
   if (op.GetAttr("ascend_dequant_scale", convAttr.ascend_dequant_scale) != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendDequant scale failed.");
+    OP_LOGW("Int8ConvRelu", "get the attr of ascendDequant scale failed.");
   }
   if (op.GetAttr("ascend_dequant_offset", convAttr.ascend_dequant_offset) != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendDequant offset failed.");
+    OP_LOGW("Int8ConvRelu", "get the attr of ascendDequant offset failed.");
   }
   if (op.GetAttr("ascend_quant_scale", convAttr.ascend_quant_scale) != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendQuant scale failed.");
+    OP_LOGW("Int8ConvRelu", "get the attr of ascendQuant scale failed.");
   }
   if (op.GetAttr("ascend_quant_offset", convAttr.ascend_quant_offset) != SUCCESS) {
-    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendQuant offset failed.");
+    OP_LOGW("Int8ConvRelu", "get the attr of ascendQuant offset failed.");
   }
   unsigned int stride_size = convAttr.strides.size();
   unsigned int dilation_size = convAttr.dilations.size();
@@ -250,7 +250,7 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
       convAttr.strides.insert(convAttr.strides.begin(), 1);
       convAttr.strides.push_back(1);
     } else if (convAttr.data_format.find("C") == std::string::npos) {
-      ONNX_PLUGIN_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
+      OP_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
     }
   }
   if (dilation_size == 2) {
@@ -261,7 +261,7 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
       convAttr.dilations.insert(convAttr.dilations.begin(), 1);
       convAttr.dilations.push_back(1);
     } else if (convAttr.data_format.find("C") == std::string::npos) {
-      ONNX_PLUGIN_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
+      OP_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
     }
   }
   std::vector<int64_t> strides_list_default = {1, 1, 1, 1};

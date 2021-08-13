@@ -105,7 +105,7 @@ Status ParseParamsInt8Conv(const Message* op_src, ge::Operator& op_dest) {
     dilations.insert(dilations.begin(), temp_num);
     dilations.insert(dilations.end(), temp_num);
   } else {
-    ONNX_PLUGIN_LOGW("Int8Conv", "get attr order foramt is failed.");
+    OP_LOGW("Int8Conv", "get attr order foramt is failed.");
   }
 
   op_dest.SetAttr("strides", strides);
