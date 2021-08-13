@@ -2373,6 +2373,35 @@ REG_OP(InplaceTopKDistance)
     .INPUT(pq_ivf, TensorType({DT_INT32}))
     .ATTR(order, String, "asc")
     .OP_END_FACTORY_REG(InplaceTopKDistance)
+
+/**
+* @brief After a set of sorted data and a new set of data are re-sorted, get the first k data. \n
+*
+* @par Inputs:
+* @li sorted_distance: A sorted Tensor, Will be updated after calculation. Must be one of the following types: float16. 
+* @li pq_ivf: A Tensor of type int32, index corresponding to sorted_distance.
+* @li pq_index: A Tensor of type int32 , the bucket number corresponding to sorted_distance. \n
+*
+*@par Outputs:
+* @li topk_distance: A Tensor of type float16, the new data set will be reordered with sorted_distance and updated to topk_distance.
+* @li topk_ivf: A Tensor of type int32, index corresponding to topk_distance. 
+* @li topk_index: A scalar of type int32 , the bucket number corresponding to topk_distance. \n
+*
+* @par Attributes:
+* k: get the first k data of sorted_distance. \n
+*
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+REG_OP(TopKPQDistanceMerge)
+    .INPUT(sorted_distance, TensorType({DT_FLOAT16}))
+    .INPUT(pq_ivf, TensorType({DT_INT32}))
+    .INPUT(pq_index, TensorType({DT_INT32}))
+    .OUTPUT(topk_distance, TensorType({DT_FLOAT16}))
+    .OUTPUT(topk_ivf, TensorType({DT_INT32}))
+    .OUTPUT(topk_index, TensorType({DT_INT32}))
+    .REQUIRED_ATTR(k, Int)
+    .OP_END_FACTORY_REG(TopKPQDistanceMerge)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_SELECTION_OPS_H_

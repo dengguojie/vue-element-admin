@@ -358,6 +358,7 @@ from .square_sum_v1 import square_sum_v1
 from .square_sum_v2 import square_sum_v2
 from .clip_by_norm_no_div_sum import clip_by_norm_no_div_sum
 from .space_to_depth import space_to_depth
+from .top_k_pq_distance_merge import top_k_pq_distance_merge
 # caffe it2
 from .yolo_v3_detection_output_d import yolo_v3_detection_output_d
 from .upsample import upsample

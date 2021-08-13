@@ -4719,5 +4719,86 @@ COMMON_INFER_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceVerify);
 // ----------------InplaceTopKDistance END---------------------
+
+//-----------------TopKPQDistanceMerge Begin----------------------
+IMPLEMT_INFERFUNC(TopKPQDistanceMerge, TopKPQDistanceMergeInferShape) {
+  int32_t topK = 0;
+  if(op.GetAttr("k", topK) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr k from op failed");
+    return GRAPH_FAILED;
+  }
+  ge::TensorDesc inputDistanceTensorDesc = op.GetInputDescByName("sorted_distance");
+  ge::TensorDesc inputPqivfTensorDesc = op.GetInputDescByName("pq_ivf");
+  ge::TensorDesc inputPqindexTensorDesc = op.GetInputDescByName("pq_index");
+  DataType distanceDtype = inputDistanceTensorDesc.GetDataType();
+  DataType pqIvfDtype = inputPqivfTensorDesc.GetDataType();
+  DataType pqIndexDtype = inputPqindexTensorDesc.GetDataType();
+ 
+  vector<int64_t> outputDims = {topK};
+
+  ge::TensorDesc outputDistanceDesc = op.GetOutputDescByName("topk_distance");
+  ge::TensorDesc outputIvfDesc = op.GetOutputDescByName("topk_ivf");
+  ge::TensorDesc outputIndexDesc = op.GetOutputDescByName("topk_index");
+  outputDistanceDesc.SetShape(ge::Shape(outputDims));
+  outputIvfDesc.SetShape(ge::Shape(outputDims));
+  outputIndexDesc.SetShape(ge::Shape(outputDims));
+  outputDistanceDesc.SetDataType(distanceDtype);
+  outputIvfDesc.SetDataType(pqIvfDtype);
+  outputIndexDesc.SetDataType(pqIndexDtype);
+ 
+  CHECK(op.UpdateOutputDesc("topk_distance", outputDistanceDesc) != GRAPH_SUCCESS,
+    OP_LOGE(op.GetName().c_str(), "Update topk_distance outputDesc failed."),
+    return GRAPH_FAILED
+  );
+  CHECK(op.UpdateOutputDesc("topk_ivf", outputIvfDesc) != GRAPH_SUCCESS,
+    OP_LOGE(op.GetName().c_str(), "Update topk_ivf outputDesc failed."),
+    return GRAPH_FAILED
+  );
+  CHECK(op.UpdateOutputDesc("topk_index", outputIndexDesc) != GRAPH_SUCCESS,
+    OP_LOGE(op.GetName().c_str(), "Update topk_index outputDesc failed."),
+    return GRAPH_FAILED
+  );	 
+ 
+  return GRAPH_SUCCESS;
+ 
+}
+ 
+IMPLEMT_VERIFIER(TopKPQDistanceMerge, TopKPQDistanceMergeVerify) {
+  const int32_t maxK = 1024;
+  std::vector<int64_t> sortedDistanceDims = op.GetInputDescByName("sorted_distance").GetShape().GetDims();
+  std::vector<int64_t> pqIvfDims = op.GetInputDescByName("pq_ivf").GetShape().GetDims();
+  std::vector<int64_t> pqIndexDims = op.GetInputDescByName("pq_index").GetShape().GetDims();
+ 
+  if (!(sortedDistanceDims == pqIvfDims && pqIvfDims == pqIndexDims)) {
+    string msg = ConcatString("The shape of sorted_distance is:", DebugString(sortedDistanceDims),
+                              "The shape of pq_ivf is:", DebugString(pqIvfDims),
+                              "The shape of pq_index is:", DebugString(pqIndexDims), ".They must be the same");
+   
+    std::string  err_msg = OtherErrMsg(msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+							   
+  }
+ 
+  int32_t topK = 0;
+  if (op.GetAttr("k", topK) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr k from op failed");
+    return GRAPH_FAILED;
+  }
+  if (topK > maxK) {
+    string correctValue = ConcatString("not greater than 1024");
+    std::string errMsg = GetAttrValueErrMsg("k", ConcatString(topK), correctValue); 
+	 
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
+    return GRAPH_FAILED; 
+  }
+  return GRAPH_SUCCESS;
+}
+// Registered infershape function 
+INFER_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeInferShape);
+// Registered verify function 
+VERIFY_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeVerify);
+//-----------------TopKPQDistanceMerge END----------------------
+
 }  // namespace ge
 
