@@ -1,0 +1,194 @@
+[
+    {
+      "op": "MaxPoolV3",
+      "case_name" : "test_max_pool_v3_001",
+      "calc_expect_func_file": "test_max_pool_v3_st.py:max_pooling_forward",
+       "input_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [-1, 4, 56, 56, 16],
+           "typical_shape": [1, 4, 56, 56, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "value_range": [[0, 1]],
+           "data_distribute" : "uniform",
+           "name": "x"
+         }
+       ],
+       "output_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [-1, 4, 28, 28, 16],
+           "typical_shape": [1, 4, 28, 28, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "name": "y"
+         }
+       ],
+       "attr": [
+           {
+            "name": "ksize",
+            "value": [1, 1, 3, 3],
+            "type": "list_int"
+           },
+           {
+            "name": "strides",
+            "value": [1, 1, 2, 2],
+            "type": "list_int"
+           },
+           {
+            "name": "padding_mode",
+            "value": "CALCULATED",
+            "type": "string"
+           },
+           {
+            "name": "pads",
+            "value": [1, 1, 1, 1],
+            "type": "list_int"
+           },
+           {
+            "name": "data_format",
+            "value": "NCHW",
+            "type": "string"
+           },
+           {
+            "name": "global_pooling",
+            "value": false,
+            "type": "bool"
+           },
+           {
+            "name": "ceil_mode",
+            "value": false,
+            "type": "bool"
+           }
+       ]
+    },
+    {
+      "op": "MaxPoolV3",
+      "case_name" : "test_max_pool_v3_002",
+      "calc_expect_func_file": "test_max_pool_v3_st.py:max_pooling_forward",
+       "input_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [-1, 4, 56, 56, 16],
+           "typical_shape": [1, 4, 56, 56, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "value_range": [[0, 1]],
+           "data_distribute" : "uniform",
+           "name": "x"
+         }
+       ],
+       "output_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [-1, 4, 29, 29, 16],
+           "typical_shape": [1, 4, 29, 29, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "name": "y"
+         }
+       ],
+       "attr": [
+           {
+            "name": "ksize",
+            "value": [1, 1, 3, 3],
+            "type": "list_int"
+           },
+           {
+            "name": "strides",
+            "value": [1, 1, 2, 2],
+            "type": "list_int"
+           },
+           {
+            "name": "padding_mode",
+            "value": "CALCULATED",
+            "type": "string"
+           },
+           {
+            "name": "pads",
+            "value": [1, 1, 1, 1],
+            "type": "list_int"
+           },
+           {
+            "name": "data_format",
+            "value": "NCHW",
+            "type": "string"
+           },
+           {
+            "name": "global_pooling",
+            "value": false,
+            "type": "bool"
+           },
+           {
+            "name": "ceil_mode",
+            "value": true,
+            "type": "bool"
+           }
+       ]
+    },
+    {
+      "op": "MaxPoolV3",
+      "case_name" : "test_max_pool_v3_003",
+      "calc_expect_func_file": "test_max_pool_v3_st.py:max_pooling_forward",
+       "input_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [-1, 4, 3, 3, 16],
+           "typical_shape": [1, 4, 3, 3, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "value_range": [[0, 1]],
+           "data_distribute" : "uniform",
+           "name": "x"
+         }
+       ],
+       "output_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [-1, 4, 1, 1, 16],
+           "typical_shape": [1, 4, 1, 1, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "name": "y"
+         }
+       ],
+       "attr": [
+           {
+            "name": "ksize",
+            "value": [1, 1, 3, 3],
+            "type": "list_int"
+           },
+           {
+            "name": "strides",
+            "value": [1, 1, 2, 2],
+            "type": "list_int"
+           },
+           {
+            "name": "padding_mode",
+            "value": "CALCULATED",
+            "type": "string"
+           },
+           {
+            "name": "pads",
+            "value": [1, 1, 1, 1],
+            "type": "list_int"
+           },
+           {
+            "name": "data_format",
+            "value": "NCHW",
+            "type": "string"
+           },
+           {
+            "name": "global_pooling",
+            "value": true,
+            "type": "bool"
+           },
+           {
+            "name": "ceil_mode",
+            "value": true,
+            "type": "bool"
+           }
+       ]
+    }
+  ]

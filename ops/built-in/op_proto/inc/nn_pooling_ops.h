@@ -1402,6 +1402,7 @@ REG_OP(MaxPoolGradWithArgmaxV2)
 * @li pads:A required list of int8, int16, int32, or int64 values,
 * a data to caculate when padding_mode is "CALCULATED".
 * @li data_format: An optional string. Defaults to "NHWC" .
+* If data_format = "NC1HWC0", ori_format must be "NCHW".
 * @li global_pooling bool, Whether to use the global pooling.
 * If global_pooling = true, kernel size and paddings will be ignored.
 * Default False

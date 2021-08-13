@@ -359,3 +359,4 @@ from .ascend_anti_quant import ascend_anti_quant
 from .avg_pool_v2 import avg_pool_v2
 from .global_lppool import global_lppool
 from .is_finite import is_finite
+from .max_pool_v3 import max_pool_v3

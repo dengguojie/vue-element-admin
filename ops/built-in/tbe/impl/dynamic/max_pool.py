@@ -23,7 +23,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int32
-MAX_INT32 = 2 ** 31 - 1
+MAX_INT32 = 2**31 - 1
 # tiling param num
 TILING_ARG_NUM = 24
 # reserved ub size
@@ -39,7 +39,9 @@ REPEAT_LIMIT = 255
 # mask length
 MASK = 128
 # min fp16
-MIN_FP16 = -65400.0
+MIN_FP16 = -65504.0
+# compare times in each block
+BLOCK_PROCESS_NUM = 7
 
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-statements
@@ -442,24 +444,36 @@ class MaxPool:
         self.size_2.set_as(self.pad_b * self.pad_w * C_ZERO + self.pad_r * C_ZERO)
         self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
         self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
-        with self.tik_instance.if_scope(self.pad_h <= self.input_h):
-            self.nburst.set_as(self.pad_h)
+        # when pad and cut at same time
+        with self.tik_instance.if_scope((self.pad_t > 0)&((self.pad_h - self.pad_t) < self.input_h)):    
+            self.nburst.set_as(self.pad_h - self.pad_t)
         with self.tik_instance.else_scope():
-            self.nburst.set_as(self.input_h)
-        with self.tik_instance.if_scope(self.pad_w <= self.input_w):
-            self.repeat_3.set_as(0)
-            self.src_stride.set_as(self.input_w - self.pad_w)
-            self.dst_stride.set_as(0)
-            with self.tik_instance.if_scope(self.pad_w < self.input_w):
-                self.burst_len.set_as(self.pad_w)
+            with self.tik_instance.if_scope(self.pad_h <= self.input_h):
+                self.nburst.set_as(self.pad_h)
             with self.tik_instance.else_scope():
-                self.burst_len.set_as(self.nburst * self.pad_w)
-                self.nburst.set_as(1)
+                self.nburst.set_as(self.input_h)
+        with self.tik_instance.if_scope((self.pad_l > 0)&((self.pad_w - self.pad_l) < self.input_w)):
+            self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_l - self.pad_r) * C_ZERO)
+            self.src_stride.set_as(self.input_w - self.pad_w + self.pad_l)
+            self.dst_stride.set_as(self.pad_l)
+            self.burst_len.set_as(self.pad_w - self.pad_l)
+            self.repeat_3.set_as(self.pad_h - 1 - self.pad_t)
         with self.tik_instance.else_scope():
-            self.repeat_3.set_as(self.pad_h - 1)
-            self.burst_len.set_as(self.input_w)
-            self.src_stride.set_as(0)
-            self.dst_stride.set_as(self.pad_r + self.pad_l)
+            with self.tik_instance.if_scope(self.pad_w <= self.input_w):
+                self.repeat_3.set_as(0)
+                self.src_stride.set_as(self.input_w - self.pad_w)
+                self.dst_stride.set_as(0)
+                with self.tik_instance.if_scope(self.pad_w < self.input_w):
+                    self.burst_len.set_as(self.pad_w)
+                with self.tik_instance.else_scope():
+                    self.burst_len.set_as(self.nburst * self.pad_w)
+                    self.nburst.set_as(1)
+            with self.tik_instance.else_scope():
+                self.repeat_3.set_as(self.pad_h - 1)
+                self.burst_len.set_as(self.input_w)
+                self.src_stride.set_as(0)
+                self.dst_stride.set_as(self.pad_r + self.pad_l)
+
         # run loop
         self.init_ub_tensor()
         with self.tik_instance.for_range(0, loop_num // 2) as loop_idx:
@@ -560,30 +574,40 @@ class MaxPool:
                 self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
-        with self.tik_instance.if_scope(self.pad_w <= self.input_w):
-            self.src_stride.set_as(self.input_w - self.pad_w)
-            self.dst_stride.set_as(0)
-            with self.tik_instance.if_scope(self.pad_w < self.input_w):
-                self.burst_len.set_as(self.pad_w)
-            with self.tik_instance.else_scope():
-                self.burst_len.set_as(self.nburst * self.pad_w)
-                self.nburst.set_as(1)
+        # when pad and cut at same time
+        with self.tik_instance.if_scope((self.pad_l > 0) & ((self.pad_w - self.pad_l) < self.input_w)):
+            self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_l - self.pad_r) * C_ZERO)
+            self.src_stride.set_as(self.input_w - self.pad_w + self.pad_l)
+            self.dst_stride.set_as(self.pad_l)
+            self.burst_len.set_as(self.pad_w - self.pad_l)
         with self.tik_instance.else_scope():
-            self.burst_len.set_as(self.input_w)
-            self.src_stride.set_as(0)
-            self.dst_stride.set_as(self.pad_r + self.pad_l)
+            with self.tik_instance.if_scope(self.pad_w <= self.input_w):
+                self.src_stride.set_as(self.input_w - self.pad_w)
+                self.dst_stride.set_as(0)
+                with self.tik_instance.if_scope(self.pad_w < self.input_w):
+                    self.burst_len.set_as(self.pad_w)
+                with self.tik_instance.else_scope():
+                    self.burst_len.set_as(self.nburst * self.pad_w)
+                    self.nburst.set_as(1)
+            with self.tik_instance.else_scope():
+                self.burst_len.set_as(self.input_w)
+                self.src_stride.set_as(0)
+                self.dst_stride.set_as(self.pad_r + self.pad_l)
 
         def _inner(ub_x, ub_y, ub_z, ele_idx):
             offset_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * C_ZERO + self.offset_gm
             offset_out = (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * C_ZERO + \
                          loop_idx * self.h_factor * self.output_w * C_ZERO
             # vector dup and move in
-            with self.tik_instance.new_stmt_scope(disable_sync=True):
-                self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst, self.burst_len,
-                                            self.src_stride, self.dst_stride)
-                self.vector_dup_continuous(ub_x, self.size_1)
-                self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
-                self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
+            with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
+                with self.tik_instance.new_stmt_scope(disable_sync=True):
+                    self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst,
+                                                self.burst_len, self.src_stride, self.dst_stride)
+                    self.vector_dup_continuous(ub_x, self.size_1)
+                    self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
+                    self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
+            with self.tik_instance.else_scope():
+                self.vector_dup_continuous(ub_x, self.len_h * self.pad_w * C_ZERO)
             # reduce max width
             if self.ksize_w == 1:
                 self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.len_h, self.output_w * C_ZERO,
@@ -630,6 +654,11 @@ class MaxPool:
                 self.size_2.set_as(0)
                 self.repeat_3.set_as(self.after_h - self.pad_t)
                 self.nburst.set_as(self.after_h - self.pad_t)
+                with self.tik_instance.if_scope(self.after_h > self.pad_t + self.input_h):
+                    self.offset_2.set_as((self.pad_t - self.before_h + self.input_h) * self.len_h * C_ZERO)
+                    self.size_2.set_as((self.after_h - self.pad_t - self.input_h) * self.len_w * C_ZERO)
+                    self.repeat_3.set_as(self.input_h)
+                    self.nburst.set_as(self.input_h)
                 with self.tik_instance.if_scope(self.before_w < self.pad_l):
                     with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
                         self.offset_3.set_as(self.size_1)
@@ -698,12 +727,15 @@ class MaxPool:
                 offset_out = (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * C_ZERO + \
                              h_idx * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO
                 # vector dup and move in
-                with self.tik_instance.new_stmt_scope(disable_sync=True):
-                    self.tik_instance.data_move(ub_x[self.offset_ub], self.input_gm[offset_in], 0, self.nburst,
-                                                self.burst_len, self.src_stride, self.dst_stride)
-                    self.vector_dup_continuous(ub_x, self.size_1)
-                    self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
-                    self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.len_w)
+                with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
+                    with self.tik_instance.new_stmt_scope(disable_sync=True):
+                        self.tik_instance.data_move(ub_x[self.offset_ub], self.input_gm[offset_in], 0, self.nburst,
+                                                    self.burst_len, self.src_stride, self.dst_stride)
+                        self.vector_dup_continuous(ub_x, self.size_1)
+                        self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
+                        self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.len_w)
+                with self.tik_instance.else_scope():
+                    self.vector_dup_continuous(ub_x, (self.before_h - self.after_h) * self.len_w * C_ZERO)
                 # reduce max width
                 if self.ksize_w == 1:
                     self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.ksize_h, ele * C_ZERO,
@@ -779,30 +811,41 @@ class MaxPool:
                 self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
-        with self.tik_instance.if_scope(self.pad_w <= self.input_w):
-            self.src_stride.set_as(self.input_w - self.pad_w)
-            self.dst_stride.set_as(0)
-            with self.tik_instance.if_scope(self.pad_w < self.input_w):
-                self.burst_len.set_as(self.pad_w)
-            with self.tik_instance.else_scope():
-                self.burst_len.set_as(self.nburst * self.pad_w)
-                self.nburst.set_as(1)
+
+        # when pad and cut at same time
+        with self.tik_instance.if_scope((self.pad_l > 0) & ((self.pad_w - self.pad_l) < self.input_w)):
+            self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_l - self.pad_r) * C_ZERO)
+            self.src_stride.set_as(self.input_w - self.pad_w + self.pad_l)
+            self.dst_stride.set_as(self.pad_l)
+            self.burst_len.set_as(self.pad_w - self.pad_l)
         with self.tik_instance.else_scope():
-            self.burst_len.set_as(self.input_w)
-            self.src_stride.set_as(0)
-            self.dst_stride.set_as(self.pad_r + self.pad_l)
+            with self.tik_instance.if_scope(self.pad_w <= self.input_w):
+                self.src_stride.set_as(self.input_w - self.pad_w)
+                self.dst_stride.set_as(0)
+                with self.tik_instance.if_scope(self.pad_w < self.input_w):
+                    self.burst_len.set_as(self.pad_w)
+                with self.tik_instance.else_scope():
+                    self.burst_len.set_as(self.nburst * self.pad_w)
+                    self.nburst.set_as(1)
+            with self.tik_instance.else_scope():
+                self.burst_len.set_as(self.input_w)
+                self.src_stride.set_as(0)
+                self.dst_stride.set_as(self.pad_r + self.pad_l)
 
         def _inner(ub_x, ub_y, ub_z, idx):
             offset_in = idx * self.input_h * self.input_w * C_ZERO + self.offset_gm
             offset_out = idx * self.output_h * self.output_w * C_ZERO + (
-                    core_idx * self.one_core_ele + loop_idx * self.h_factor) * self.output_w * C_ZERO
+                core_idx * self.one_core_ele + loop_idx * self.h_factor) * self.output_w * C_ZERO
             # vector dup and move in
-            with self.tik_instance.new_stmt_scope(disable_sync=True):
-                self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst, self.burst_len,
-                                            self.src_stride, self.dst_stride)
-                self.vector_dup_continuous(ub_x, self.size_1)
-                self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
-                self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
+            with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
+                with self.tik_instance.new_stmt_scope(disable_sync=True):
+                    self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst,
+                                                self.burst_len, self.src_stride, self.dst_stride)
+                    self.vector_dup_continuous(ub_x, self.size_1)
+                    self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
+                    self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
+            with self.tik_instance.else_scope():
+                self.vector_dup_continuous(ub_x, self.len_h * self.pad_w * C_ZERO)
             # reduce max width
             if self.ksize_w == 1:
                 self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.len_h, self.output_w * C_ZERO,
@@ -849,6 +892,11 @@ class MaxPool:
                 self.size_2.set_as(0)
                 self.repeat_3.set_as(self.after_h - self.pad_t)
                 self.nburst.set_as(self.after_h - self.pad_t)
+                with self.tik_instance.if_scope(self.after_h > self.pad_t + self.input_h):
+                    self.offset_2.set_as((self.pad_t - self.before_h + self.input_h) * self.len_w * C_ZERO)
+                    self.size_2.set_as((self.after_h - self.pad_t - self.input_h) * self.len_w * C_ZERO)
+                    self.repeat_3.set_as(self.input_h)
+                    self.nburst.set_as(self.input_h)
                 with self.tik_instance.if_scope(self.before_w < self.pad_l):
                     with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
                         self.offset_3.set_as(self.size_1)
@@ -914,14 +962,17 @@ class MaxPool:
             def _inner(ub_x, ub_y, ub_z, idx):
                 offset_in = idx * self.input_h * self.input_w * C_ZERO + self.offset_gm
                 offset_out = idx * self.output_h * self.output_w * C_ZERO + (
-                        core_idx * self.one_core_ele + h_idx) * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO
+                    core_idx * self.one_core_ele + h_idx) * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO
                 # vector dup and move in
-                with self.tik_instance.new_stmt_scope(disable_sync=True):
-                    self.tik_instance.data_move(ub_x[self.offset_ub], self.input_gm[offset_in], 0, self.nburst,
-                                                self.burst_len, self.src_stride, self.dst_stride)
-                    self.vector_dup_continuous(ub_x, self.size_1)
-                    self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
-                    self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.len_w)
+                with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
+                    with self.tik_instance.new_stmt_scope(disable_sync=True):
+                        self.tik_instance.data_move(ub_x[self.offset_ub], self.input_gm[offset_in], 0, self.nburst,
+                                                    self.burst_len, self.src_stride, self.dst_stride)
+                        self.vector_dup_continuous(ub_x, self.size_1)
+                        self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
+                        self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.len_w)
+                with self.tik_instance.else_scope():
+                    self.vector_dup_continuous(ub_x, (self.before_h - self.after_h) * self.len_w * C_ZERO)
                 # reduce max width
                 if self.ksize_w == 1:
                     self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.ksize_h, ele * C_ZERO,
@@ -943,6 +994,82 @@ class MaxPool:
                 _inner(self.ub_d, self.ub_e, self.ub_f, idx * 2 + 1)
             with self.tik_instance.if_scope(self.n_c1 % 2 == 1):
                 _inner(self.ub_a, self.ub_b, self.ub_c, self.n_c1 - 1)
+
+    def init_ub_global(self):
+        """
+        init ub when tiling mode is 6 or 7
+        """
+        self.ub_in = self.tik_instance.Tensor(self.dtype, (self.ub_ele,), name="ub_in", scope=tik.scope_ubuf)
+        self.ub_tmp = self.tik_instance.Tensor(self.dtype, (MASK,), name="ub_tmp", scope=tik.scope_ubuf)
+        self.ub_out = self.tik_instance.Tensor(self.dtype, (C_ZERO,), name="ub_out", scope=tik.scope_ubuf)
+
+    def vector_dup_ub(self):
+        """
+        set an initial value
+        """
+        self.tik_instance.vector_dup(MASK, self.ub_tmp, MIN_FP16, 1, 1, 8)
+        self.tik_instance.vector_dup(C_ZERO, self.ub_out, MIN_FP16, 1, 1, 8)
+
+    def get_hw_max(self, tmp_ub, ub_in, size):
+        """
+        get max from dim h and dim w
+        """
+        size_loop = size // MASK
+        size_left = size % MASK
+        repeat_loop = size_loop // REPEAT_LIMIT
+        repeat_left = size_loop % REPEAT_LIMIT
+        with self.tik_instance.for_range(0, repeat_loop) as repeat_loop_index:
+            self.tik_instance.vmax(MASK, tmp_ub, ub_in[repeat_loop_index * MASK * REPEAT_LIMIT], tmp_ub, 255, 1, 1, 1,
+                                   0, 8, 0)
+        with self.tik_instance.if_scope(repeat_left > 0):
+            self.tik_instance.vmax(MASK, tmp_ub, ub_in[repeat_loop * MASK * REPEAT_LIMIT], tmp_ub, repeat_left, 1, 1, 1,
+                                   0, 8, 0)
+        with self.tik_instance.if_scope(size_left > 0):
+            self.tik_instance.vmax(size_left, tmp_ub, ub_in[size_loop * MASK], tmp_ub, 1, 1, 1, 1, 0, 8, 0)
+        for i in range(BLOCK_PROCESS_NUM):
+            self.tik_instance.vmax(C_ZERO, tmp_ub, tmp_ub[16 + i * 16], tmp_ub, 1, 1, 1, 1, 8, 8, 8)
+
+    def global_ub_store_all(self, core_idx, core_ele):
+        """
+        tiling mode when ub can store all h w c0
+        """
+        self.init_ub_global()
+        self.vector_dup_ub()
+        with self.tik_instance.for_range(0, core_ele) as core_ele_index:
+            in_gm_offset = core_idx * self.one_core_ele * self.input_h * self.input_w * C_ZERO + \
+                           core_ele_index * self.input_h * self.input_w * C_ZERO
+            out_gm_offset = core_idx * self.one_core_ele * C_ZERO + core_ele_index * C_ZERO
+            self.tik_instance.data_move(self.ub_in, self.input_gm[in_gm_offset], 0, 1, self.input_h * self.input_w, 0,
+                                        0)
+            self.get_hw_max(self.ub_tmp, self.ub_in, self.input_h * self.input_w * C_ZERO)
+            self.tik_instance.vmax(C_ZERO, self.ub_out, self.ub_tmp, self.ub_out, 1, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.data_move(self.output_gm[out_gm_offset], self.ub_out, 0, 1, 1, 0, 0)
+            self.vector_dup_ub()
+
+    def global_ub_tiling_hw(self, core_idx, core_ele, loop_num, loop_left):
+        """
+        tiling mode when ub can not store all h w c0, tiling dim h and w
+        """
+        self.init_ub_global()
+        self.vector_dup_ub()
+        with self.tik_instance.for_range(0, core_ele) as core_ele_index:
+            in_gm_offset = core_idx * self.one_core_ele * self.input_h * self.input_w * C_ZERO + \
+                           core_ele_index * self.input_h * self.input_w * C_ZERO
+            out_gm_offset = core_idx * self.one_core_ele * C_ZERO + core_ele_index * C_ZERO
+            with self.tik_instance.for_range(0, loop_num) as loop_num_index:
+                in_gm_offset_tiling_hw = in_gm_offset + loop_num_index * self.h_factor * C_ZERO
+                self.tik_instance.data_move(self.ub_in, self.input_gm[in_gm_offset_tiling_hw], 0, 1, self.h_factor, 0,
+                                            0)
+                self.get_hw_max(self.ub_tmp, self.ub_in, self.h_factor * C_ZERO)
+                self.tik_instance.vmax(C_ZERO, self.ub_out, self.ub_tmp, self.ub_out, 1, 1, 1, 1, 8, 8, 8)
+                self.tik_instance.vector_dup(MASK, self.ub_tmp, MIN_FP16, 1, 1, 8)
+            with self.tik_instance.if_scope(loop_left > 0):
+                in_gm_offset_tiling_hw = in_gm_offset + loop_num * self.h_factor * C_ZERO
+                self.tik_instance.data_move(self.ub_in, self.input_gm[in_gm_offset_tiling_hw], 0, 1, loop_left, 0, 0)
+                self.get_hw_max(self.ub_tmp, self.ub_in, loop_left * C_ZERO)
+                self.tik_instance.vmax(C_ZERO, self.ub_out, self.ub_tmp, self.ub_out, 1, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.data_move(self.output_gm[out_gm_offset], self.ub_out, 0, 1, 1, 0, 0)
+            self.vector_dup_ub()
 
     def max_pool_compute_tiling(self):
         """Maxpool compute tiling
@@ -990,6 +1117,14 @@ class MaxPool:
                 with self.tik_instance.if_scope(self.tiling_mode == 5):
                     with self.tik_instance.new_stmt_scope():
                         self.tiling_w_dim_core_h(core_idx, self.core_ele, self.loop_num, self.loop_left)
+                # global pooling, ub can store all hwc0
+                with self.tik_instance.if_scope(self.tiling_mode == 6):
+                    with self.tik_instance.new_stmt_scope():
+                        self.global_ub_store_all(core_idx, self.core_ele)
+                # global pooling ub can not store all hwc0
+                with self.tik_instance.if_scope(self.tiling_mode == 7):
+                    with self.tik_instance.new_stmt_scope():
+                        self.global_ub_tiling_hw(core_idx, self.core_ele, self.loop_num, self.loop_left)
 
     def max_pool_operator(self):
         """Maxpool operator
@@ -1010,7 +1145,13 @@ class MaxPool:
                 "ksize_w": self.ksize_w,
                 "strides_h": self.strides_h,
                 "strides_w": self.strides_w,
-                "padding": self.padding
+                "padding": self.padding,
+                "ceil_mode": 0,
+                "pad_top": 0,
+                "pad_bottom": 0,
+                "pad_left": 0,
+                "pad_right": 0,
+                "global": 0
             })
 
         return self.tik_instance

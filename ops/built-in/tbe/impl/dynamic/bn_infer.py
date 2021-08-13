@@ -177,14 +177,18 @@ def bn_infer(x, scale, offset, mean, variance, y,
         dict of input, A 5HD Tensor for input data.
     scale: dict
         dict of scale, A 5HD Tensor for scale.
+        can be broadcast to x.shape
     offset: dict
         dict of offset, A 5HD Tensor for offset.
+        can be broadcast to x.shape
     mean: dict
         dict of mean, A `Tensor`.
         dict of scale, A 5HD Tensor for mean.
+        can be broadcast to x.shape
     variance: dict
         dict of batch_variance, A `Tensor`.
         dict of offset, A 5HD Tensor for variance.
+        can be broadcast to x.shape
     y: dict
         dict of output, A `Tensor`. Has the same type as `x`.
     epsilon: float
