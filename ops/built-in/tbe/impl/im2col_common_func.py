@@ -426,16 +426,20 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
 
 # pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
-                                           c_in_real, align_block_size):
+                                           c_in_real, align_block_size, dilated_kernel_h):
     # cut howo col partially
     c_in_align = _ceil_div(c_in_real, align_block_size) * align_block_size
     max_v_ub = avg_split_ub_size // (khkw * c_in_align * align_block_size)
     max_v_load3d_limit = LOAD3D_REPEAT_TIME_LIMIT // khkw
     if max_v_ub > max_v_load3d_limit:
         max_v_ub = 0
-    max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * c_in_align * type_size * DOUBLE_BUFFER)
-    if max_v_l1 * BLOCK_SIZE > fmap_w:
-        max_v_l1 = SIZE_L1 // ((cut_h_row + stride_h - 1) * fmap_w * c_in_align * type_size * DOUBLE_BUFFER)
+
+    w_size = fmap_w * c_in_align * type_size * DOUBLE_BUFFER
+    max_v_l1 = SIZE_L1 // (dilated_kernel_h * w_size)
+    if SIZE_L1 < (_ceil_div(max_v_l1 * BLOCK_SIZE, out_w) + 1) * stride_h * w_size \
+            or cut_h_row > stride_h + dilated_kernel_h - 1:
+        max_v_l1 = SIZE_L1 // (cut_h_row * w_size)
+
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
     cut_hw_up_w = (max_v_ub * align_block_size + out_w - 1) // out_w * out_w
@@ -485,7 +489,7 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
 
     max_v_cut_col_p, move_rate_cut_col_p = \
         _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
-                                               c_in_real, align_block_size)
+                                               c_in_real, align_block_size, dilated_kernel_h)
 
     max_v_cut_min = _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row,
                                                    align_block_size)
@@ -569,7 +573,7 @@ def im2col_schedule(res, sch_list):
         cut_h_col = fmap_h
     # cut_h_col while cut_hw = BLOCK_SIZE
     cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
-    cut_h_row_s = (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1
+    cut_h_row_s = max(stride_h, (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1)
     cut_w_row = cut_w_row_s + dilated_kernel_w - 1
     cut_h_row = cut_h_row_s + dilated_kernel_h - 1
     if lcm_out_w > out_hw_up16:
