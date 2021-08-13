@@ -1,0 +1,78 @@
+[
+    {
+        "case_name": "Test_Fill_001",
+        "op": "Fill",
+        "input_desc": [
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [-1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "shape_range": [
+                    [
+                        1,
+                        2
+                    ]
+                ],
+                "typical_shape": [
+                    2
+                ],
+                "name": "dims"
+            },
+            {
+                "format": [
+                    "NHWC"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "value"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "NHWC"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [
+                    -1
+                ],
+                "shape_range": [
+                    [
+                        1,
+                        2
+                    ]
+                ],
+                "typical_shape": [
+                    2
+                ],
+                "name": "y"
+            }
+        ]
+    }
+]

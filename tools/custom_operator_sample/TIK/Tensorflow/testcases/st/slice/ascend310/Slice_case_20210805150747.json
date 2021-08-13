@@ -1,0 +1,103 @@
+[
+    {
+        "case_name": "Test_Slice_001",
+        "op": "Slice",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    38,
+                    -1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "shape_range": [
+                    [
+                        38,
+                        38
+                    ]
+                ],
+                "typical_shape": [
+                    38,
+                    38
+                ],
+                "name": "x"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "offsets"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    38,
+                    -1
+                ],
+                "shape_range": [
+                    [
+                        38,
+                        38
+                    ]
+                ],
+                "typical_shape": [
+                    38,
+                    38
+                ],
+                "name": "y"
+            }
+        ]
+    }
+]

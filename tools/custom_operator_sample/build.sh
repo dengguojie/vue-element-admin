@@ -136,7 +136,7 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DS
 # copy cann/ops dependency
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/Tensorflow/op_proto
 cp -r ${CODE_ROOT_DIR}/cann/ops/built-in/op_proto/strided_slice_infer_shape.h ${DST_DIR}/DSL/Tensorflow/op_proto
-cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/tbe/impl/util ${DST_DIR}/DSL/Tensorflow/tbe/impl/
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/util ${DST_DIR}/DSL/Tensorflow/tbe/impl/
 
 # copy op_log.h log.h
 mkdir -p ${DST_DIR}/DSL/Tensorflow/log
@@ -161,12 +161,15 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_D
 cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/DSL/PyTorch/framework
 # copy cann/ops dependency.
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/PyTorch/op_proto
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/util ${DST_DIR}/DSL/PyTorch/tbe/impl/
 # copy op_log.h
 mkdir -p ${DST_DIR}/DSL/PyTorch/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/PyTorch/log
 # copy CMakeList.txt modified for dependency.
-cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/PyTorch/op_proto/CMakeLists.txt ${DST_DIR}/DSL/PyTorch/op_proto
-
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/DSL/PyTorch/op_proto
+# prepare thirdparty path
+mkdir -p ${DST_DIR}/DSL/PyTorch/third_party
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/DSL/PyTorch/third_party
 #2.3 MindSpore
 #NA
 
@@ -214,7 +217,7 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DS
 mkdir -p ${DST_DIR}/TIK/Tensorflow/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/TIK/Tensorflow/log
 #copy impl/util
-cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/tbe/impl/util ${DST_DIR}/TIK/Tensorflow/tbe/impl
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/util ${DST_DIR}/TIK/Tensorflow/tbe/impl
 #3.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/TIK/PyTorch/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/PyTorch/tbe
@@ -230,8 +233,10 @@ cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/TIK/Py
 mkdir -p ${DST_DIR}/TIK/PyTorch/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/TIK/PyTorch/log
 #copy CMakeList.txt modified for dependency.
-cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/PyTorch/op_proto/CMakeLists.txt ${DST_DIR}/TIK/PyTorch/op_proto
-
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/TIK/PyTorch/op_proto
+# prepare thirdparty path
+mkdir -p ${DST_DIR}/TIK/PyTorch/third_party
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/TIK/PyTorch/third_party
 #3.3 Mindspore
 #NA
 
