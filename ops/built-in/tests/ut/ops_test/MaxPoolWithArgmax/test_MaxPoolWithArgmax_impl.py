@@ -75,36 +75,36 @@ case7 = {"params": [{"shape": (2,2,17,52,16), "dtype": "float16", "format": "NHW
          "format_expect": [],
          "support_expect": True}
 
-def test_max_pool_with_argmax_resnet50(test_arg):
+#def test_max_pool_with_argmax_resnet50(test_arg):
+#
+#    from impl.max_pool_with_argmax import max_pool_with_argmax
+#
+#    from te import platform as cce_conf
+#
+#    cce_conf.cce_conf.te_set_version("Ascend910A", core_type="VectorCore")
+#
+#    max_pool_with_argmax({"shape": (32,4,112,112,16), "dtype": "float16", "format": "NHWC", "ori_shape": (32,4,112,112,16),"ori_format": "NHWC"},
+#
+#                         {"shape": (32,4,56,56,16), "dtype": "float16", "format": "NHWC", "ori_shape": (32,4,56,56,16),"ori_format": "NHWC"},
+#
+#                         {"shape": (32,4,9,197,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (32,4,9,197,16),"ori_format": "NHWC"},
+#
+#                         [1, 3, 3, 1],
+#
+#                         [1, 2, 2, 1],
+#
+#                         "SAME")
+#
+#    cce_conf.cce_conf.te_set_version(test_arg)
 
-    from impl.max_pool_with_argmax import max_pool_with_argmax
-
-    from te import platform as cce_conf
-
-    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
-
-    max_pool_with_argmax({"shape": (32,4,112,112,16), "dtype": "float16", "format": "NHWC", "ori_shape": (32,4,112,112,16),"ori_format": "NHWC"},
-
-                         {"shape": (32,4,56,56,16), "dtype": "float16", "format": "NHWC", "ori_shape": (32,4,56,56,16),"ori_format": "NHWC"},
-
-                         {"shape": (32,4,9,197,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (32,4,9,197,16),"ori_format": "NHWC"},
-
-                         [1, 3, 3, 1],
-
-                         [1, 2, 2, 1],
-
-                         "SAME")
-
-    cce_conf.cce_conf.te_set_version(test_arg)
-
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
-ut_case.add_cust_test_func(test_func=test_max_pool_with_argmax_resnet50)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+#ut_case.add_cust_test_func(test_func=test_max_pool_with_argmax_resnet50)
 
 from impl.max_pool_with_argmax import check_supported
 

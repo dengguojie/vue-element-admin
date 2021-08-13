@@ -19,8 +19,8 @@ def calc_expect_func(x, y, output):
     res = np.greater_equal(x['value'], y['value']).astype(np.int8)
     return res
 
-ut_case.add_precision_case("Ascend910", gen_greater_equal_case((28, 28), (28, 28), "float32"))
-ut_case.add_precision_case("Ascend910", gen_greater_equal_case((1, 2), (1, 2), "float32"))
-ut_case.add_precision_case("Ascend910", gen_greater_equal_case((32, 2, 7), (32, 2, 7), "float32"))
-ut_case.add_precision_case("Ascend910", gen_greater_equal_case((10, 11), (10, 11), "float32"))
+ut_case.add_precision_case("Ascend910A", gen_greater_equal_case((28, 28), (28, 28), "float32"))
+ut_case.add_precision_case("Ascend910A", gen_greater_equal_case((1, 2), (1, 2), "float32"))
+ut_case.add_precision_case("Ascend910A", gen_greater_equal_case((32, 2, 7), (32, 2, 7), "float32"))
+ut_case.add_precision_case("Ascend910A", gen_greater_equal_case((10, 11), (10, 11), "float32"))
 

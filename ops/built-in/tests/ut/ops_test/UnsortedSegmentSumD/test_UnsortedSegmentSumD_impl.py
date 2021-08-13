@@ -71,13 +71,13 @@ def test_op_select_format(test_arg):
                      {"shape": (300, 28, 16, 16), "dtype": "uint8", "format": "NCHW", "ori_shape": (300,28, 16, 16),"ori_format": "NCHW"},300)
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
     exit(0)

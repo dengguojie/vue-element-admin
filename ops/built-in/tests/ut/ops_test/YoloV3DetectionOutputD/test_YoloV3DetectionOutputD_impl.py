@@ -86,11 +86,11 @@ case4 = gen_data_err(2, 6, 6, 6, 6, 6, 1, "float16", 1, 2, True, 0.5, 0.5, 0.45,
                  biases1, biases2, biases3, 1024, 512, 1024, 4)
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend910"], case2)
-ut_case.add_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
     exit(0)

@@ -326,12 +326,12 @@ case_multi_core_single_not_aligned_fp16 = {
 }
 
 
-ut_case.add_case(["Ascend910"], case_small_shape_scalar_fp16)
-ut_case.add_case(["Ascend910"], case_not_aligned_gt_one_block_scalar_fp16)
-ut_case.add_case(["Ascend910"], case_multi_dim_aligned_fp16)
-ut_case.add_case(["Ascend910"], case_big_prime_scalar_scalar_fp16)
-ut_case.add_case(["Ascend910"], case_big_shape_not_aligned_fp16)
-ut_case.add_case(["Ascend910"], case_multi_core_single_not_aligned_fp16)
+ut_case.add_case(["Ascend910A"], case_small_shape_scalar_fp16)
+ut_case.add_case(["Ascend910A"], case_not_aligned_gt_one_block_scalar_fp16)
+ut_case.add_case(["Ascend910A"], case_multi_dim_aligned_fp16)
+ut_case.add_case(["Ascend910A"], case_big_prime_scalar_scalar_fp16)
+ut_case.add_case(["Ascend910A"], case_big_shape_not_aligned_fp16)
+ut_case.add_case(["Ascend910A"], case_multi_core_single_not_aligned_fp16)
 
 precision_case1 = {
     "params":
@@ -479,7 +479,7 @@ precision_case3 = {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 }
 
-ut_case.add_precision_case("Ascend910", precision_case1)
-ut_case.add_precision_case("Ascend910", precision_case2)
-ut_case.add_precision_case("Ascend910", precision_case3)
+ut_case.add_precision_case("Ascend910A", precision_case1)
+ut_case.add_precision_case("Ascend910A", precision_case2)
+ut_case.add_precision_case("Ascend910A", precision_case3)
 

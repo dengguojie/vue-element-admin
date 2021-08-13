@@ -45,10 +45,10 @@ case5 = {"params": [{"shape": (3,3,2,2,16), "dtype": "float32", "format": "NHWC"
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend710", "Ascend910A"], case4)
 ut_case.add_case(["Ascend710", "Ascend910"], case5)
 
 

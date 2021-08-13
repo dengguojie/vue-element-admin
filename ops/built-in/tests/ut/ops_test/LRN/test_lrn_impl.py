@@ -249,12 +249,6 @@ ut_case.add_case(["Ascend910"],
 '''
 
 if __name__ == '__main__':
-    # aa = np.ones((2,16,2,2), dtype=np.float16)
-    # bb = nchw2nc1hwc0(aa)
-    # print(bb)
-    ut_case.run("Ascend910")
-    # for i in range(3, 5):
-    #     print(i)
-    # print(range(3, 5))
-    # ut_case.run("all")
-    # exit(0)
+
+    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
+

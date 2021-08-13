@@ -67,10 +67,10 @@ case1 = common_cce(2, [[6, 6], [6, 6], [6, 6]], "float16", 1, 2, True,
                    0.5, 0.5, 0.45, TEST_BIASES, True,
                    "test_yolo_v3_float32", "Ascend910")
 
-ut_case.add_case(["Ascend910"], case1)
+ut_case.add_case(["Ascend910A"], case1)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910"])
+    ut_case.run(["Ascend910A"])
     exit(0)
 
 
