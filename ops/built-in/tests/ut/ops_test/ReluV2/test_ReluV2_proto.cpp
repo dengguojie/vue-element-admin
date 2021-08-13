@@ -63,3 +63,16 @@ TEST_F(relu_v2, relu_v2_infer_shape_01) {
   std::vector<int64_t> expected_mask_shape = {2, 1, 10, 11, 2};
   EXPECT_EQ(mask_desc.GetShape().GetDims(), expected_mask_shape);
 }
+
+TEST_F(relu_v2, relu_v2_infer_shape_02) {
+  ge::op::ReluV2 op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 2}, {1, 1}, {1, 10}, {1, 11}, {1,16}};
+  auto tensor_desc = create_desc_shape_range({-1, -1, -1, -1, 16},
+                                             ge::DT_FLOAT16, ge::FORMAT_NHWC,
+                                             {2, 10},
+                                             ge::FORMAT_NHWC, shape_range);
+
+  op.UpdateInputDesc("x", tensor_desc);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

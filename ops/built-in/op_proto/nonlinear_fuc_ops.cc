@@ -197,8 +197,7 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
   std::vector<int64_t> dims_mask;
   std::vector<int64_t> dims = origin_shape.GetDims();
   if (dims.size() != 4) {
-    OpsAttrValueErrReport(op.GetName(), "x's origin shape dim", "4", ConcatString(dims.size()));
-    OP_LOGI("The origin shape dim is must be 4");
+    OP_LOGW("The origin shape dim is must be 4, which is needed by DreluFusionPass");
     return GRAPH_FAILED;
   }
   if (origin_format == FORMAT_NHWC) {
