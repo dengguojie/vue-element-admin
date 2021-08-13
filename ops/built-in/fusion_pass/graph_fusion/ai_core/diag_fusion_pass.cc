@@ -128,6 +128,15 @@ Status DiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   // Format
   Format assitMatrixFormat = diagInputTensor.GetFormat();
 
+  // dynamic diag fusion
+  auto x_input_shape = diagInputShape.GetDims();
+  auto x_dim = x_input_shape.size();
+  for (size_t i = 0; i < x_dim; i++) {
+    FUSION_PASS_CHECK((x_input_shape[i] < 0),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:dynamic diag does not need fusion."),
+                      return NOT_CHANGED);
+  }
+
   ge::GeTensorPtr assitPtr = nullptr;
   ge::GeTensorDesc tensorDesc;
   if (dataType == ge::DT_FLOAT) {

@@ -160,6 +160,7 @@ set(_optiling_files
   smooth_l1_loss_grad_v2.cc
   nll_loss.cc
   nll_loss_grad.cc
+  diag.cc
   confusion_softmax_grad.cc
   sort.cc
   as_strided.cc

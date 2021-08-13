@@ -36,6 +36,7 @@ from .avg_pool3d_grad import avg_pool3d_grad
 from .ascend_quant import ascend_quant
 from .broadcast_to import broadcast_to
 from .softsign import softsign
+from .diag import diag
 from .softplus_grad import softplus_grad
 from .softplus import softplus
 from .unsorted_segment_sum import unsorted_segment_sum

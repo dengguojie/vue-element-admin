@@ -755,21 +755,52 @@ COMMON_INFER_FUNC_REG(DiagD, ELMTWISE_INFER_SHAPEANDTYPE("assist", "y"));
 
 // ---------------------Diag--------------------------
 IMPLEMT_COMMON_INFERFUNC(DiagInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  vector<int64_t> dimInfo = shape.GetDims();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x_desc = op_info->MutableInputDesc("x");
+  if (input_x_desc == nullptr) {
+    std::string err_msg = GetInputInvalidErrMsg("x");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  auto output_desc = op_info->MutableOutputDesc("y");
+  auto shape_x = input_x_desc->MutableShape().GetDims();
+  DataType input_dtype = input_x_desc->GetDataType();
+  vector<int64_t> dimInfo = shape_x;
   vector<int64_t> assitDimInfo;
-  for (size_t i = 0; i < 2; ++i) {
-    for (size_t j = 0; j < dimInfo.size(); ++j) {
-      assitDimInfo.push_back(dimInfo[j]);
+  if (!IsUnknown(shape_x)) {
+    for (size_t i = 0; i < 2; ++i) {
+      for (size_t j = 0; j < dimInfo.size(); ++j) {
+        assitDimInfo.push_back(dimInfo[j]);
+      }
+    }
+    output_desc->SetShape(GeShape(assitDimInfo));
+  }
+  else {
+    if (IsUnknownRankShape(shape_x)) {
+      output_desc->SetShape(GeShape(shape_x));
+    }
+    else {
+      std::vector<std::pair<int64_t, int64_t>> shape_range;
+      input_x_desc->GetShapeRange(shape_range);
+      for (size_t i = 0; i < 2; ++i) {
+        for (size_t j = 0; j < dimInfo.size(); ++j) {
+          assitDimInfo.push_back(dimInfo[j]);
+        }
+      }
+      output_desc->SetShape(GeShape(assitDimInfo));
+      for (int i = 0; i < shape_range.size(); i++) {
+        if(shape_range[i].first > 0){
+          shape_range[i].first = shape_range[i].first * shape_range[i].first;
+        }
+        if(shape_range[i].second > 0){
+          shape_range[i].second = shape_range[i].second * shape_range[i].second;
+        }
+      }
+      MakeUpShapeRange(shape_x, shape_range);
+      output_desc->SetShapeRange(shape_range);
     }
   }
-
-  shape = Shape(assitDimInfo);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  output_desc->SetDataType(input_dtype);
   return GRAPH_SUCCESS;
 }
 
