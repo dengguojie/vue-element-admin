@@ -58,5 +58,15 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 
+def test_op_select_format(test_arg):
+    from impl.inplace_update import check_supported
+    check_supported(
+        {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+        {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+        {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+        {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"}
+    )
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 if __name__ == '__main__':
     ut_case.run("Ascend910")

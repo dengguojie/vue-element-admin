@@ -42,7 +42,7 @@ def check_supported(x, indices, v, y, kernel_name="inplace_update"):
 
     try:
         if len(shape_indices) != 1 or (reg_v_size % 32 != 0):
-            reason = "the input_shape is not supported, shape_indices:%s, reg_v_size % 32:"\
+            reason = "the input_shape is not supported, shape_indices:%s, reg_v_size:%s"\
                       % (str(shape_indices), str(reg_v_size % 32)) 
             return False, reason 
 
