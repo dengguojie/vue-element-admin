@@ -2470,7 +2470,7 @@ class GemmSchedule(object):
         return affine_shape
 
     def _renew_aub_m(self, a_ub_ori_shape):
-        index_offset = 1 if self.have_batch else 0
+        index_offset = 1 if self.have_batch_a else 0
         if self.format_a == "ND":
             if self.transpose_a:
                 a_ub_ori_shape[1 + index_offset] = self._int_ceil_div(a_ub_ori_shape[1 + index_offset],
@@ -2596,7 +2596,6 @@ class GemmSchedule(object):
             cl0_tiling_shape.insert(0, self.cl0_tiling_batch)
             tiling_ori_aub_with_l1.insert(0, self.aub_tiling_batch)
         elif self.have_batch:
-            aub_l1_affine_shape.insert(0, None)
             aub_out_affine_shape.insert(0, None)
             aub_l0c_affine_shape.insert(0, None)
 
@@ -2774,9 +2773,8 @@ class GemmSchedule(object):
             bub_l0c_affine_shape.insert(0, self.bub_tiling_batch)
             tiling_ori_bub_with_l1.insert(0, self.bub_tiling_batch)
         elif self.have_batch:
-            bub_l1_affine_shape(0, None)
-            bub_out_affine_shape(0, None)
-            bub_l0c_affine_shape(0, None)
+            bub_out_affine_shape.insert(0, None)
+            bub_l0c_affine_shape.insert(0, None)
 
         status_ori = Compare.compare(tiling_ori_bub, b_ub_ori_shape)
         status_l1 = Compare.compare(tiling_ori_bub_with_l1, tiling_ori_bl1)

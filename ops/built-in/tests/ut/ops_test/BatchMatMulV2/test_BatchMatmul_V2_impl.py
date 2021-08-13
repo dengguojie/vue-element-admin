@@ -189,6 +189,27 @@ case15 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": 
          "expect": "success",
          "support_expect": True}
 
+case16 = {"params": [{"shape": (96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (96, 32),"ori_format": "NHWC"}, #x
+                    {"shape": (3, 64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3,64, 96),"ori_format": "NHWC"},
+                    {"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                     None,
+                    {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    True,True
+                    ],
+         "case_name": "BatchMatmulv2_16",
+         "expect": "success",
+         "support_expect": True}
+
+case17 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"}, #x
+                    {"shape": (64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (64, 96),"ori_format": "NHWC"},
+                    {"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                     None,
+                    {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    True,True
+                    ],
+         "case_name": "BatchMatmulv2_17",
+         "expect": "success",
+         "support_expect": True}
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
@@ -198,6 +219,8 @@ ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend920A"], case14)
 ut_case.add_case(["Ascend920A"], case15)
+ut_case.add_case(["Ascend910A"], case16)
+ut_case.add_case(["Ascend910A"], case17)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}

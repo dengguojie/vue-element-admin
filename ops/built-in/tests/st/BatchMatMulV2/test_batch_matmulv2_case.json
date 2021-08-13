@@ -305,5 +305,161 @@
         "type": "bool"
       }
     ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_005",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "shape": [
+          3,
+          96,
+          32
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NHWC",
+        "shape": [
+          64,
+          96
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      },
+      {
+        "format": "NHWC",
+        "shape": [
+          64
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "bias"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "shape": [
+          3,
+          96,
+          32
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": true,
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_006",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "shape": [
+          96,
+          32
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NHWC",
+        "shape": [
+          3,
+          64,
+          96
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      },
+      {
+        "format": "NHWC",
+        "shape": [
+          64
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "bias"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "shape": [
+          3,
+          96,
+          32
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": true,
+        "type": "bool"
+      }
+    ]
   }
 ]
