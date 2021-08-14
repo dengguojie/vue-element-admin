@@ -2,6 +2,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "data_flow_ops.h"
+#include "../util/common_shape_fns.h"
 #include "inference_context.h"
 
 #include <string>
