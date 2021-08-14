@@ -6,7 +6,7 @@
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -3165,13 +3165,13 @@ VERIFY_FUNC_REG(IndexAdd, IndexAddVerify);
 
 // ----------------IndexPut Begin-------------------
 bool InferShapeAndTypeIndexPut(Operator& op) {
-  TensorDesc output_desc = op.GetOutputDescByName("y");
-  DataType x1_dtype = op.GetInputDescByName("x1").GetDataType();
-  Format x1_format = op.GetInputDescByName("x1").GetFormat();
-  ge::Shape x1_shape = op.GetInputDescByName("x1").GetShape();
+  TensorDesc output_desc = op.GetOutputDesc(0);
+  DataType x1_dtype = op.GetInputDesc(0).GetDataType();
+  Format x1_format = op.GetInputDesc(0).GetFormat();
+  ge::Shape x1_shape = op.GetInputDesc(0).GetShape();
   std::vector<int64_t> x1_dims = x1_shape.GetDims();
   
-  ge::Shape x2_shape = op.GetInputDescByName("x2").GetShape();
+  ge::Shape x2_shape = op.GetInputDesc(1).GetShape();
   std::vector<int64_t> x2_dims = x2_shape.GetDims();
 
   AscendString op_name_str;
@@ -3180,14 +3180,13 @@ bool InferShapeAndTypeIndexPut(Operator& op) {
     return false;
   }
   const char *op_name = op_name_str.GetString();
-
+  
   if (x2_dims != x1_dims) {
     OP_LOGE(op_name, "x1_dims not equal x2_dims");
     return false;
   }
 
-  ge::Shape output_shape = ge::Shape(x1_dims);
-  output_desc.SetShape(output_shape);
+  output_desc.SetShape(x1_shape);
   output_desc.SetDataType(x1_dtype);
   output_desc.SetFormat(x1_format);
   op.UpdateOutputDesc("y", output_desc);
@@ -3196,9 +3195,8 @@ bool InferShapeAndTypeIndexPut(Operator& op) {
 }
 
 IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
-  DataType x1_dtype = op.GetInputDescByName("x1").GetDataType();
-  DataType x2_dtype = op.GetInputDescByName("x2").GetDataType();
-  DataType indices_dtype = op.GetInputDescByName("indices").GetDataType();
+  DataType x1_dtype = op.GetInputDesc(0).GetDataType();
+  DataType x2_dtype = op.GetInputDesc(1).GetDataType();
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
     OP_LOGE("get op name faild!");
