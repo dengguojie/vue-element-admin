@@ -17,6 +17,7 @@ local_normalized_kernels := kernels/normalized/cast_kernels.cc \
                             kernels/normalized/spatial_transformer.cc \
                             kernels/normalized/strided_slice.cc \
                             kernels/normalized/top_k.cc \
+                            kernels/normalized/top_k_v2_d.cc \
                             utils/bcast.cc \
                             utils/broadcast_iterator.cc \
                             utils/eigen_tensor.cc \

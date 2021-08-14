@@ -26,7 +26,6 @@ class TopKCpuKernel : public CpuKernel {
 
   uint32_t Compute(CpuKernelContext &ctx) override;
 
- private:
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
