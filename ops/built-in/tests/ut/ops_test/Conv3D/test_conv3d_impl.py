@@ -286,6 +286,60 @@ def test_conv3d_mock_tiling(test_args):
 
 ut_case.add_cust_test_func(test_func=test_conv3d_mock_tiling)
 
+# Ho!=1Wo=1 for ub
+def test_conv3d_mul_fusion_load3d_special_case(test_args):
+    from tvm.target import cce
+    from impl.util.platform_adapter import tvm
+    from impl.util.platform_adapter import tbe
+    from impl.conv3d import conv3d_fusion_compute
+    _, _, bias, offset_w, output, _,\
+        _, _, _, data_format, offset_x = _run_api_end_with_d()
+    strides = [1, 51, 26, 12, 1]
+    pads = [0, 0, 0, 0, 0, 0]
+    fmap = tvm.placeholder((52, 3, 1, 1855, 4, 16),
+                             name="filter",
+                             dtype="float16",
+                             attrs={"ori_shape": (52, 3, 1855, 4, 12),
+                                    "ori_format": "NDHWC",
+                                    "data_type": "float16"})
+    weight = tvm.placeholder((48, 4, 16, 16),
+                            name="grads",
+                            dtype="float16",
+                            attrs={"ori_shape": (3, 4, 4, 12, 59),
+                                   "ori_format": "DHWCN",
+                                   "data_type": "float16"})
+    mul_tensor = tvm.placeholder((52, 4, 72, 16),
+                                 name="mul",
+                                 dtype="float16",
+                                 attrs={"ori_shape": (52, 4, 72, 16),
+                                        "ori_format": "NDHWC",
+                                        "data_type": "float16"})
+
+    res = conv3d_fusion_compute(fmap,
+                          weight,
+                          bias,
+                          offset_w,
+                          output,
+                          strides,
+                          pads,
+                          dilations=(1, 1, 1, 1, 1),
+                          groups=1,
+                          data_format="NDHWC",
+                          offset_x=0,
+                          kernel_name="conv3d")
+
+    mul_res = tbe.vmul(res, mul_tensor)
+    tensor_list = [fmap, weight, mul_tensor, mul_res]
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(mul_res)
+
+    config = {
+            "name": "test_conv3d_mul_fusion_load3d_special_case",
+            "tensor_list": tensor_list,
+        }
+    tbe.build(sch, config)
+ut_case.add_cust_test_func(test_func=test_conv3d_mul_fusion_load3d_special_case)
+
 # test_conv3d_succ_d
 success_case1 = _run_api_end_with_d()
 
@@ -524,7 +578,6 @@ weight = {'ori_shape': (3, 3, 3, 4, 32), 'shape': (3, 3, 3, 4, 32),
 strides = (1, 1, 1, 1, 1)
 pads = [1, 1, 1, 1, 1, 1]
 cycle_buffer_case = _run_api_end_with_d(fmap=fmap, weight=weight, strides=strides, pads=pads)
-
 
 # Add test Cases
 # Params is the input params of the operator.

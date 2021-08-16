@@ -427,6 +427,62 @@ def test_conv3d_dx_mul_fusion_ub(test_args):
         tbe.build(sch, config)
 ut_case.add_cust_test_func(test_func=test_conv3d_dx_mul_fusion_ub)
 
+# Ho!=1Wo=1 for ub
+def test_conv3d_dx_mul_fusion_load3d_special_case(test_args):
+    from tvm.target import cce
+    from impl.util.platform_adapter import tvm
+    from impl.util.platform_adapter import tbe
+    from impl.conv3d_backprop_input_d import conv3d_backprop_input_fusion_compute
+    _, _, _, _, _, _, dilations, groups, data_format = _run_api_end_with_d()
+    y_input = {'ori_shape': (12, 119, 982, 1, 47),
+               'shape': (12, 119, 3, 982, 1, 16),
+               'ori_format': 'NDHWC', 'format': 'NDC1HWC0', 'dtype': 'float16'}
+    input_sizes = (12, 119, 982, 1, 47)
+    pads = (0, 0, 3, 3, 6, 6)
+    strides = (1, 6, 4, 3, 1)
+    filter = tvm.placeholder((312, 3, 16, 16),
+                             name="filter",
+                             dtype="float16",
+                             attrs={"ori_shape": (1, 8, 13, 47, 42),
+                                    "ori_format": "DHWCN",
+                                    "data_type": "float16"})
+    grads = tvm.placeholder((12, 20, 3, 246, 1, 16),
+                            name="grads",
+                            dtype="float16",
+                            attrs={"ori_shape": (12, 20, 246, 1, 42),
+                                   "ori_format": "NDHWC",
+                                   "data_type": "float16"})
+    mul_tensor = tvm.placeholder((1428, 3, 982, 16),
+                                 name="mul",
+                                 dtype="float16",
+                                 attrs={"ori_shape": (1, 16, 120, 176, 32),
+                                        "ori_format": "NDHWC",
+                                        "data_type": "float16"})
+
+    res = conv3d_backprop_input_fusion_compute(filter,
+                                               grads,
+                                               y_input,
+                                               input_sizes,
+                                               strides,
+                                               pads,
+                                               dilations,
+                                               groups=groups,
+                                               data_format=data_format,
+                                               kernel_name="dx_leakrelugrad_fusion_test")
+
+    mul_res = tbe.vmul(res, mul_tensor)
+    tensor_list = [grads, filter, mul_tensor, mul_res]
+    with cce():
+        sch = tbe.auto_schedule(mul_res)
+        config = {
+            "print_ir":False,
+            "need_build":True,
+            "name":"test_conv3d_dx_mul_fusion_load3d_special_case",
+            "tensor_list":tensor_list,
+        }
+        tbe.build(sch, config)
+ut_case.add_cust_test_func(test_func=test_conv3d_dx_mul_fusion_load3d_special_case)
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A", "Ascend310"],

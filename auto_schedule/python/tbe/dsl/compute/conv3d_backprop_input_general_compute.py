@@ -406,11 +406,18 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dx_ub_vn = _add_bias_in_ub(dx_ub_vn, tensor_bias)
 
         if self.dsl_flag:
+            if self._flag_load3d_special_case:
+                lambda_express = lambda batch_d_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:\
+                                        dx_ub_vn[batch_d_idx // dx_d, batch_d_idx % dx_d,
+                                                 dx_cin1_idx, 2 * dx_hw_idx, dx_cin0_idx]
+            else:
+                lambda_express = lambda batch_d_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:\
+                                        dx_ub_vn[batch_d_idx // dx_d, batch_d_idx % dx_d,
+                                                 dx_cin1_idx, dx_hw_idx, dx_cin0_idx]
+
             dx_ub_out = tvm.compute(
                 (dx_batch * dx_deep, dx_cin1, dx_h * dx_w, dx_cin0),
-                lambda batch_d_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-                dx_ub_vn[batch_d_idx // dx_d, batch_d_idx % dx_d,
-                         dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
+                lambda_express,
                 name="c_ub_exact_hw",
                 tag="c_ub_exact_hw",
                 attrs={"output_shape": self.output_shape,

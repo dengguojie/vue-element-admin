@@ -402,9 +402,6 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             else:  # both fully loaded
                 dw_k = compute_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
-            if flag_load3d_special_case:
-                dw_k = max(1, dw_k // 2)
-
             tiling_patrs_dict = dict()
             tiling_patrs_dict["dw_tiling_factor"] = dw_tiling_factor
             tiling_patrs_dict["dw_tiling_nparts"] = dw_tiling_nparts
@@ -1101,7 +1098,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
             # K of AL1 and BL1 can be different, there are 2 split methods
             # on which one is larger
-            k_1_axis_sc_out_size = k_1_axis_sc.dom.extent // dw_k
+            k_1_axis_sc_out_size = compute_util.int_ceil_div(k_1_axis_sc.dom.extent, dw_k)
             batch_insn_o_size = batch_axis_sc.dom.extent
 
             if grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:

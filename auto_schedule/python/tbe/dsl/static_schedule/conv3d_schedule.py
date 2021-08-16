@@ -931,6 +931,11 @@ class CceConv3dOp:
         -------
 
         """
+        if self.flag_load3d_special_case:
+            tiling_mc = tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2] // 2
+        else:
+            tiling_mc = tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
+
         for lop in bodyops:
             if "conv3d" not in lop["op"] or "convolution_A" in lop["op"] or \
                 (self.dsl_flag and (lop["op"] == "conv3d_C")):
@@ -941,7 +946,7 @@ class CceConv3dOp:
                     compute_at_axis[1])
                 self._schedule[lop["dst_buffer"]].buffer_align(
                     (1, 1), (1, 1),
-                    (1, tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]),
+                    (1, tiling_mc),
                     (1, 1))
 
         for lop in inputops:

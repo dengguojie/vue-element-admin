@@ -773,11 +773,19 @@ def _handle_res_c(res, conv_shape):
     -------
     res_c tensor
     """
-    res_c = tvm.compute(conv_shape,
-                        lambda batch, cout1, howo, cout0:
-                        res(batch, cout1, howo, cout0),
-                        name='C',
-                        tag=_OP_TAG + "C")
+    if _TENSOR_MAP["flag_load3d_special_case"]:
+        conv_shape[2] //= 2
+        res_c = tvm.compute(conv_shape,
+                            lambda batch, cout1, howo, cout0:
+                            res(batch, cout1, 2 * howo, cout0),
+                            name='C',
+                            tag=_OP_TAG + "C")
+    else:
+        res_c = tvm.compute(conv_shape,
+                            lambda batch, cout1, howo, cout0:
+                            res(batch, cout1, howo, cout0),
+                            name='C',
+                            tag=_OP_TAG + "C")
 
     _TENSOR_MAP["C"] = res_c
     return res_c
