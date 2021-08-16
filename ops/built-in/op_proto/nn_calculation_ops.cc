@@ -4069,30 +4069,43 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   padb = pads_list[1];
   padl = pads_list[2];
   padr = pads_list[3];
+  // >>> start: cut off right/bottom pad when output size is 1
   AscendString op_type;
   CHECK(op.GetOpType(op_type) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_type"), return false);
-  if(string(op_type.GetString()) == "Conv2D") {
-    int32_t ho = (ih + padt + padb - (kh - 1) * dilh - 1) / strh + 1;
-    int32_t wo = (iw + padl + padr - (kw - 1) * dilw - 1) / strw + 1;
-    int32_t hr = (ih + padt + padb - (kh - 1) * dilh - 1) % strh;
-    int32_t wr = (iw + padl + padr - (kw - 1) * dilw - 1) % strw;
-    if ((ho == 1 && hr <= padb) || (wo == 1 && wr <= padr)) {
-      if (ho == 1 && hr <= padb) {
-          padb -= hr;
-          pads_list[1] = padb;
+  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  bool valid = !unknown_rank && string(op_type.GetString()) == "Conv2D";
+  if(valid) {
+    bool cut_pad = false;
+    if (ih != -1) {
+      int32_t ho = (ih + padt + padb - (kh - 1) * dilh - 1) / strh + 1;
+      int32_t hr = (ih + padt + padb - (kh - 1) * dilh - 1) % strh;
+      cut_pad = ho == 1 && hr <= padb;
+      if (cut_pad) {
+        padb -= hr;
       }
-      if (wo == 1 && wr <= padr) {
-          padr -= wr;
-          pads_list[3] = padr;
+    }
+    if (iw != -1) {
+      int32_t wo = (iw + padl + padr - (kw - 1) * dilw - 1) / strw + 1;
+      int32_t wr = (iw + padl + padr - (kw - 1) * dilw - 1) % strw;
+      cut_pad = wo == 1 && wr <= padr;
+      if (cut_pad) {
+        padr -= wr;
       }
+    }
+    cut_pad = pads_list[1] != padb || pads_list[3] != padr;
+    if (cut_pad) {
+      pads_list[1] = padb;
+      pads_list[3] = padr;
+      OP_LOGD(op_name.GetString(),
+            "pads after cutting off is [%d,%d,%d,%d].",
+            pads_list[0], pads_list[1], pads_list[2], pads_list[3]);
       op.SetAttr("pads", pads_list);
     }
   }
-  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
+  // <<< end: cut off right/bottom pad when output size is 1
   bool negative_pad = (padt < 0 || padb < 0 || padl < 0 || padr < 0);
-  bool unknown_rank = IsUnknownRankShape(x_shape);
   bool unknown_shape = IsUnKnownShape(x_shape);
-
   if ((!unknown_shape) && (!unknown_rank) && negative_pad) {
     OP_LOGE(op_name.GetString(),
             "pads should be positive, "

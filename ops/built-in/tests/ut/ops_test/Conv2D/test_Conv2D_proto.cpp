@@ -246,6 +246,26 @@ TEST_F(Conv2DProtoTest, conv2dBasePadTest) {
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
+// static shape cut right/bottom pad
+TEST_F(Conv2DProtoTest, conv2dCutoutRightbottomPadTest) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, -1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, 1, 16}, ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({3, 3, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {3, 3, 16, 1}, ge::FORMAT_HWCN));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, 1, 1, 1}, ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 2, 2, 1});
+    conv2d.SetAttr("pads", {1, 2, 1, 2});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = conv2d.InferShapeAndType();
+    std::vector<int32_t> pads_list;
+    conv2d.GetAttr("pads", pads_list);
+    std::vector<int32_t> expect_pads = {1, 2, 1, 1};
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    EXPECT_EQ((pads_list == expect_pads), true);
+}
+
 // strides list should be 4D
 TEST_F(Conv2DProtoTest, conv2dBaseStridesTest1) {
     ge::op::Conv2D conv2d;
