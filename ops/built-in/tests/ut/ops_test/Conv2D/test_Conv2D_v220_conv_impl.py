@@ -792,4 +792,4 @@ def test_conv2d_v220(test_arg):
 
 
 print("adding Conv2D v220 ut testcases")
-ut_case.add_cust_test_func(test_func=test_conv2d_v220)
+# ut_case.add_cust_test_func(test_func=test_conv2d_v220)

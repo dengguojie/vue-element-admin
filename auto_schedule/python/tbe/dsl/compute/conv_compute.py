@@ -358,7 +358,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         check for not bigger than L1
         """
 
-        m_bit_ratio = {"float16": 2, "int8": 1, "float32": 4, "bfloat16": 2}
+        m_bit_ratio = {"float16": 2, "int8": 1, "float32": 4, "bfloat16": 2, "int4": 0.5}
         if "fmap_w" in ConvParam.dyn_var_map and ConvParam.dynamic_flag:
             fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
             if fmap_w_upper:
@@ -1863,7 +1863,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a tvm.tensor.Tensor")
         if len(data.shape) != 5:
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a 5 dim tvm.tensor.Tensor")
-        check_dtype_list = ("int8", "float16", "bfloat16", "float32")
+        check_dtype_list = ("int4", "int8", "float16", "bfloat16", "float32")
         util.check_dtype_rule(data.dtype, check_dtype_list)
 
         if optim_dict.get("use_v200_c04_flg") or optim_dict.get("v220_c04_mode") == "first_layer_c04":
@@ -1883,7 +1883,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a tvm.tensor.Tensor")
         if len(weight.shape) != 4:
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a 4 dim tvm.tensor.Tensor")
-        check_dtype_list = ("int8", "float16", "bfloat16", "float32")
+        check_dtype_list = ("int4", "int8", "float16", "bfloat16", "float32")
 
         util.check_dtype_rule(weight.dtype, check_dtype_list)
         block_size_k = CUBE_MKN[weight.dtype]['mac'][1]
@@ -2268,7 +2268,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_check_type("conv2d", "the third Input", "dict", "not dict")
 
         if "mad_dtype" not in para_dict:
-            if weight.dtype == "int8":
+            if weight.dtype == "int8" or weight.dtype == "int4":
                 mad_dtype = "int32"
             elif get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 mad_dtype = "float16"
@@ -2394,6 +2394,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         res_dtype = "int32"
     if (in_dtype, w_dtype) == ("float32", "float32"):
         res_dtype = "float32"
+    if (in_dtype, w_dtype) == ("int4", "int4"):
+        res_dtype = "int32"
     #====================fetch L1fusion information from pass interface=============
     l1_fusion_enable_flag = get_current_build_config("enable_L1_fusion")
     l2_fusion_enable_flag = get_current_build_config("enable_L2_fusion") and get_current_build_config("l2_mode") == 1
@@ -2481,7 +2483,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             buffer_manager.set_tensor_list(tensor_list)
         return conv_res
 
-    if in_dtype == "int8":  # quant
+    if in_dtype == "int8" or in_dtype == "int4":  # quant
         if dsl_flag:  # quant fusion
             conv_res = _cube_compute(data, weight, mad_dtype,
                                      tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)

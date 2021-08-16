@@ -242,20 +242,20 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                                                         unknownshape_format="NC1HWC0,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,int8",
-                                                       format="NC1HWC0,NC1HWC0")
+                                                       datatype="float16,int8,int4",
+                                                       format="NC1HWC0,NC1HWC0,NC1HWC0")
                 input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                                       datatype="float16,int8",
-                                                       format="FRACTAL_Z,FRACTAL_Z")
+                                                       datatype="float16,int8,int4",
+                                                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z")
                 input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                       datatype="float16,int32",
-                                                       format="ND,ND")
+                                                       datatype="float16,int32,int32",
+                                                       format="ND,ND,ND")
                 input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                       datatype="int8,int8",
-                                                       format="ND,ND")
+                                                       datatype="int8,int8,int8",
+                                                       format="ND,ND,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,int32",
-                                                        format="NC1HWC0,NC1HWC0")
+                                                        datatype="float16,int32,int32",
+                                                        format="NC1HWC0,NC1HWC0,NC1HWC0")
         return [input0, input1, input2, input3, output0]
 
     params = [inputs, weights, bias, offset_w, outputs, strides,

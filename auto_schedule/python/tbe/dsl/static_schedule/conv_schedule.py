@@ -276,22 +276,22 @@ def check_doubleout_dequant(outs):
     if len(outs) != 2:
         return False
 
-    out_fp16, out_s8 = outs
+    out_fp16, out_quant = outs
 
     if out_fp16.op.tag == "conv2d_data_rm":
         ori_out_fp16 = out_fp16.op.input_tensors[0]
     else:
         ori_out_fp16 = out_fp16
 
-    if out_s8.op.tag == "conv2d_data_rm":
-        ori_out_s8 = out_s8.op.input_tensors[0]
+    if out_quant.op.tag == "conv2d_data_rm":
+        ori_out_quant = out_quant.op.input_tensors[0]
     else:
-        ori_out_s8 = out_s8
+        ori_out_quant = out_quant
 
-    if "quant" not in ori_out_s8.op.tag:
+    if "quant" not in ori_out_quant.op.tag:
         return False
 
-    if ori_out_fp16.dtype != "float16" or ori_out_s8.dtype != "int8":
+    if ori_out_fp16.dtype != "float16" or ori_out_quant.dtype not in ("int8", "int4"):
         return False
 
     return True
@@ -370,6 +370,7 @@ def reget_tensor_list(outs):
         ConvParam.tensor_map["res_remove_pad_s16"] = res_remove_pad_s16
 
         ConvParam.tensor_map["c_ub_reform"] = out_s8
+        ConvParam.tensor_map["res_out_quant"] = out_s8
         ConvParam.tensor_map["c_double_output_s16"] = relu_s16
 
         virtual_res = tvm.compute(out_s8.shape,
@@ -511,30 +512,32 @@ def reget_tensor_list(outs):
     elif check_doubleout_quant_v200(outs):
         outputs = _process_doubleout_quant_v200(outs)
     elif check_doubleout_dequant(outs):
-        out_fp16, out_s8 = outs
+        out_fp16, out_quant = outs
         res_out_fp16 = tvm.compute(out_fp16.shape,
                                    lambda *indice: out_fp16(*indice),
                                    name='res_out_fp16',
                                    tag='res_out_fp16')
 
         ConvParam.tensor_map["res_out_fp16"] = res_out_fp16
-        ConvParam.tensor_map["res_out_s8"] = out_s8
+        ConvParam.tensor_map["res_out_quant"] = out_quant
         ConvParam.dequant_doubleout_flag = True
 
-        if len(out_s8.shape) == 4: # batch, cout1, hout*wout, cout0
-            virtual_res = tvm.compute(out_s8.shape,
+        quant_c0_dict = {"int8": 32, "int4": 64}
+        quant_c0 = quant_c0_dict[out_quant.dtype]
+        if len(out_quant.shape) == 4: # batch, cout1, hout*wout, cout0
+            virtual_res = tvm.compute(out_quant.shape,
                                       lambda i, j, k, l:
-                                      out_s8(i, j, k, l) +
-                                      res_out_fp16(i, (j*32 + l) // 16, k,
-                                                   (j*32 + l) % 16),
+                                      out_quant(i, j, k, l) +
+                                      res_out_fp16(i, (j*quant_c0 + l) // 16, k,
+                                                   (j*quant_c0 + l) % 16),
                                       name='conv_virtual_res',
                                       tag="conv_virtual_res")
-        elif len(out_s8.shape) == 5: # batch, cout1, hout, wout, cout0
-            virtual_res = tvm.compute(out_s8.shape,
+        elif len(out_quant.shape) == 5: # batch, cout1, hout, wout, cout0
+            virtual_res = tvm.compute(out_quant.shape,
                                       lambda i, j, h, w, l:
-                                      out_s8(i, j, h, w, l) +
-                                      res_out_fp16(i, (j*32 + l) // 16, h, w,
-                                                   (j*32 + l) % 16),
+                                      out_quant(i, j, h, w, l) +
+                                      res_out_fp16(i, (j*quant_c0 + l) // 16, h, w,
+                                                   (j*quant_c0 + l) % 16),
                                       name='conv_virtual_res',
                                       tag="conv_virtual_res")
         else:
@@ -542,7 +545,7 @@ def reget_tensor_list(outs):
 
         ConvParam.tensor_map["virtual_res"] = virtual_res
 
-        outputs = [virtual_res, res_out_fp16, out_s8]
+        outputs = [virtual_res, res_out_fp16, out_quant]
         ConvParam.conv_deq_req_double_out = True
     elif check_doubleout_reluv2(outs):
         outputs = _process_doubleout_reluv2(outs)
@@ -1168,7 +1171,7 @@ class CceConvOp:
                     pooling_shape = [POOLING_2_2_WINDOW, POOLING_2_2_WINDOW]
                     pooling_stride = [POOLING_STRIDE, POOLING_STRIDE]
                 if res.op.tag == "conv_virtual_res" and not ConvParam.conv_reluv2_flag:
-                    c_dtype = "int8"
+                    c_dtype = tensor_map["res_out_quant"].dtype
                 else:
                     c_dtype = res_dtype
 
@@ -1518,11 +1521,13 @@ class CceConvOp:
                     out_mem = list(map(int, self._output_memory_type))
 
                     if res.op.tag == "conv_virtual_res":
-                        c_dtype = "int8"
+                        c_dtype = tensor_map["res_out_quant"].dtype
                     else:
                         c_dtype = res.dtype
 
                     if self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION:
+                        if c_dtype == "int4":
+                            self._fused_double_operand_num -= 0.75 # quants4 occupies space of 0.25 CUB
                         fused_coefficient = [self._fused_ahead_operand_num, 0, self._fused_double_operand_num]
 
                     special_mode_dict = {"use_c04_mode": ConvC04Mode.DEFAULT_MODE.value}
@@ -1746,7 +1751,10 @@ class CceConvOp:
             else:
                 self._fused_double_operand_num = len(buffer_reuse_set_list) + 1 + operator_cast_num
             if self._conv_quant_fused_flag:
-                self._fused_double_operand_num += 1.5
+                if res.dtype == "int4":
+                    self._fused_double_operand_num += 1.25
+                else:
+                    self._fused_double_operand_num += 1.5
 
         def handle_max_pooling():
             """
@@ -2818,7 +2826,7 @@ class CceConvOp:
                         continue
                     if lop["op"] == "input_ub":
                         quant_input = tensor_map["quant_input"]
-                        if quant_input.op.attrs["c_out"].value % 2 == 1:
+                        if quant_input.op.attrs["c_out"].value % quant_input.op.attrs["c1_transform"].value != 0:
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
                             self._lhisi_dequant_quant_para["quant_padding"] = True
                         else:
@@ -3291,7 +3299,7 @@ class CceConvOp:
                 if _body_ops_compute_at_flag(lop):
                     if lop["op"] == "input_ub":
                         quant_input = tensor_map["quant_input"]
-                        if quant_input.op.attrs["c_out"].value % 2 == 1:
+                        if quant_input.op.attrs["c_out"].value % quant_input.op.attrs["c1_transform"].value != 0:
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
                             self._lhisi_dequant_quant_para["quant_padding"] = True
                         else:
@@ -4992,28 +5000,33 @@ class CceConvOp:
             noi_true = batch_inner_outer
             res_c = sum_x_ub_rf
         else:
-            if (res_c.dtype == "int8" or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
+            if (res_c.dtype in ("int8", "int4") or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
                     not ConvParam.conv_reluv2_flag:
+                if "virtual_res" in res_c.op.name:
+                    quant_nparts = 2 if tensor_map["res_out_quant"].dtype == "int8" else 4
+                else:
+                    quant_nparts = 2 if res_c.dtype == "int8" else 4
+
                 if tiling["CL0_matrix"][5] > 1:
                     cout1_group, cout1_ori = sch[res_c].split(
-                        res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//2)
+                        res_c.op.axis[1],
+                        factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//quant_nparts)
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori,
+                        factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//quant_nparts)
                 else:
                     cout1_group, cout1_ori = sch[res_c].split(
-                        res_c.op.axis[1], factor=int_ceil_div(ConvParam.para_dict["cout1_opt"], 2))
+                        res_c.op.axis[1],
+                        factor=int_ceil_div(ConvParam.para_dict["cout1_opt"], quant_nparts))
+                    c_outer_outer, c_outer_inner = sch[res_c].split(
+                        cout1_ori,
+                        factor=c_tiling_factor[0] // quant_nparts)
             else:
                 cout1_group, cout1_ori = sch[res_c].split(
                     res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
-
-            if (res_c.dtype == "int8" or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
-                    not ConvParam.conv_reluv2_flag:
-                if tiling["CL0_matrix"][5] > 1:
-                    c_outer_outer, c_outer_inner = sch[res_c].split(
-                        cout1_ori, factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//2)
-                else:
-                    c_outer_outer, c_outer_inner = sch[res_c].split(cout1_ori, c_tiling_factor[0]//2)
-            else:
                 c_outer_outer, c_outer_inner = sch[res_c].split(
-                    cout1_ori, c_tiling_factor[0])
+                    cout1_ori,
+                    factor=c_tiling_factor[0])
 
             m_outer_outer, m_outer_inner = sch[res_c].split(
                 res_c.op.axis[2], c_tiling_factor[1])
@@ -5584,9 +5597,10 @@ class CceConvOp:
                 for lop in self._op_graph.input_ops:
                     l1_tensor_map[lop["dst_buffer"]] = tvm.var("dummy")
 
+                data_one_byte_num = {"uint4": 2, "int4": 2}
                 l1_tensor_map[fmap] = al1
                 if self._fmap_l1_valid_size > 0:
-                    sch[al1].set_storage_bound(self._fmap_l1_valid_size)
+                    sch[al1].set_storage_bound(int(self._fmap_l1_valid_size*data_one_byte_num.get(weight.dtype, 1)))
             else:
                 l1_tensor_map = None
         util.L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
@@ -5750,6 +5764,8 @@ class CceConvOp:
                         "Ascend910" in get_soc_spec("SOC_VERSION") or _is_depthwise_scene():
                     round_mode_emit_insn = 'vector_conv'
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, round_mode_emit_insn)
+            elif lop["op"] == "cast_i4_ub":
+                self._schedule[cache_buffer].emit_insn(tensorize_axis, 'vector_conv')
             elif lop["op"] == "conv_virtual_res":
                 # dynamic reluv2 virtual node
                 if ConvParam.conv_reluv2_flag and self._dynamic_flag:
@@ -5814,7 +5830,7 @@ class CceConvOp:
                 return True
             if lop["op"] in dma_move_list:
                 return True
-            if lop["op"] in ("cast_i8_ub", "conv_virtual_res", "input_ub"):
+            if lop["op"] in ("cast_i8_ub", "cast_i4_ub", "conv_virtual_res", "input_ub"):
                 return True
             if "reform" in lop["op"]:
                 return True
@@ -6132,7 +6148,7 @@ class AutoScheduleOp:
         ConvParam.tensor_map["v200_data_flow_type"] = None
         if out_src in tag_to_type_map.keys():
             ConvParam.tensor_map["v200_data_flow_type"] = tag_to_type_map[out_src]
-        elif is_support_v200() and weight.dtype == "int8" \
+        elif is_support_v200() and weight.dtype in ("int8", "int4") \
             and out_src not in ('convolution_C_UB', 'convolution_remove_padded_column'):
             ConvParam.tensor_map["v200_data_flow_type"] = DataFlowType.V200_GENERAL_FUSION
         if "pooling2d_max" in out_src:
@@ -6193,12 +6209,12 @@ class AutoScheduleOp:
                 buffer_manager.set_tensor_list(tensor_list)
 
                 res_fp16_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_out_fp16"], buffer_manager)
-                res_s8_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_out_s8"], buffer_manager)
-                ConvParam.fusion_para["output_memory_type"] = [res_fp16_scope, res_s8_scope]
+                res_quant_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_out_quant"], buffer_manager)
+                ConvParam.fusion_para["output_memory_type"] = [res_fp16_scope, res_quant_scope]
 
                 res_fp16_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_out_fp16"], buffer_manager, True)
-                res_s8_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_out_s8"], buffer_manager, True)
-                ConvParam.fusion_para["write_select_flag"] = res_fp16_wsinfo or res_s8_wsinfo
+                res_quant_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_out_quant"], buffer_manager, True)
+                ConvParam.fusion_para["write_select_flag"] = res_fp16_wsinfo or res_quant_wsinfo
 
             elif ConvParam.tensor_map["v200_data_flow_type"] == DataFlowType.S16ELTWISES8S16:
                 tensor_list[-2] = ConvParam.tensor_map["res_remove_pad_u8"]
@@ -6524,7 +6540,9 @@ class AutoScheduleOp:
             "res_remove_pad_u8": OpFusionype.DOUBLE_OUT,
             "res_remove_pad_s16": OpFusionype.DOUBLE_OUT,
             # relu + conv2d
-            "elewise_single_relu_convolution_A":OpFusionype.AHEAD_ELTWISE_ONE_OP
+            "elewise_single_relu_convolution_A":OpFusionype.AHEAD_ELTWISE_ONE_OP,
+            # quant_s4
+            "cast_i4_ub": OpFusionype.QUANT_S4
             }
 
         fusion_type_dict = {
@@ -6692,7 +6710,15 @@ class AutoScheduleOp:
             "fusion_type_5_4_1_2": 63,
             # relu + conv2d(bias)
             "fusion_type_1_15": 64,
-            "fusion_type_1_2_15": 65
+            "fusion_type_1_2_15": 65,
+            # conv2d_(relu)_quants4
+            "fusion_type_7_16_3_1": 66,
+            # conv2d_dequant_(relu)_quants4
+            "fusion_type_7_16_6_1": 67,
+            # conv2d_dequant_add_(relu)_quant_singleout
+            "fusion_type_7_16_3_4_6_1": 68,
+            # conv2d_dequant_add_(relu)_quant_dualout
+            "fusion_type_8_7_16_3_4_6_1": 69
         }
 
         fusion_type_list = __fusion_type_list_get()
@@ -6751,6 +6777,7 @@ class OpFusionype(Enum):
     DEQUANTS16_OP = 13
     REQUANTS16_OP = 14
     AHEAD_ELTWISE_ONE_OP = 15
+    QUANT_S4 = 16
     OP_EMPTY = 100
 
 

@@ -130,12 +130,13 @@ def _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index, c1_transf
     """
     dtype = x.dtype
     if c1_dim % c1_transform == 0:
-        input_ub = tvm.compute(in_shape, lambda *i: x(*i), name="input_ub", attrs={"c_out": c1_dim})
+        input_ub = tvm.compute(
+            in_shape, lambda *i: x(*i), name="input_ub", attrs={"c_out": c1_dim, "c1_transform": c1_transform})
     else:
         zero = tvm.const(0, dtype=dtype)
         input_ub = tvm.compute(read_shape,
                                lambda *indice: tvm.select(indice[c1_index] <= in_shape[c1_index] - 1, x(*indice), zero),
-                               name='input_ub', attrs={"c_out": c1_dim})
+                               name='input_ub', attrs={"c_out": c1_dim, "c1_transform": c1_transform})
     return input_ub
 
 

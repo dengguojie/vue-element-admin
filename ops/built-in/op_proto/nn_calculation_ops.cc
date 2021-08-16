@@ -4567,6 +4567,8 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   auto x_dtype = x_tensor->GetDataType();
   if (x_dtype == ge::DT_INT8) {
     y_tensor->SetDataType(ge::DT_INT32);
+  } else if (x_dtype == ge::DT_INT4) {
+    y_tensor->SetDataType(ge::DT_INT32);
   } else {
     y_tensor->SetDataType(x_dtype);
   }

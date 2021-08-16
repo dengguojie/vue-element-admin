@@ -443,9 +443,9 @@ def conv_layer_cce_para_check(shape_in,
     para_check.check_kernel_name(kernel_name)
     para_check.check_dtype_rule(offset_w_dtype, ['int32'])
     para_check.check_dtype_rule(in_dtype,
-                                ('int8', "float16", "bfloat16", "float32"))
+                                ("int4", 'int8', "float16", "bfloat16", "float32"))
     para_check.check_dtype_rule(w_dtype,
-                                ('int8', "float16", "bfloat16", "float32"))
+                                ("int4", 'int8', "float16", "bfloat16", "float32"))
     para_check.check_dtype_rule(res_dtype,
                                 ('int32', "float16", "bfloat16", "float32"))
 
