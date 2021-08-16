@@ -303,6 +303,7 @@ LOCAL_SRC_FILES := \
         built-in/op_proto/acts_ulq_input_grad.cc \
         built-in/op_proto/act_ulq_clamp_max_grad.cc \
         built-in/op_proto/act_ulq_clamp_min_grad.cc \
+        built-in/op_proto/vector_search.cc \
 
 
 LOCAL_C_INCLUDES := \

@@ -169,6 +169,7 @@ set(_optiling_files
   is_finite.cc
   ifmr.cc
   mirror_pad.cc
+  gen_adc.cc
 )
 
 set(_op_tiling_include

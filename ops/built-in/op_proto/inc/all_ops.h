@@ -77,4 +77,5 @@
 #include "transformation_ops.h"
 #include "condtake_ops.h"
 #include "warp_perspective_ops.h"
+#include "vector_search.h"
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ALL_OPS_H_
