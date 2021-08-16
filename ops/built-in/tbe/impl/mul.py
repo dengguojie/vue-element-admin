@@ -606,7 +606,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                 format=",".join(y_format_list))
 
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
-    if len(shape_x) >= 2 and len(shape_y) >= 2:
+    elif len(shape_x) >= 2 and len(shape_y) >= 2:
         if shape_x[-2:] == shape_y[-2:]:
             format_list.append("FRACTAL_NZ")
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
