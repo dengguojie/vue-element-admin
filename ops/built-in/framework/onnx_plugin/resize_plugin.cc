@@ -156,6 +156,7 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     if (input_size == 4) {
       resizeout_1.AddControlInput(resize_scales);
     }
+    ChangeFormatResize(resizeout_1, 0, ge::FORMAT_NCHW, false);
     output_indexs.emplace_back(resizeout_1, vector<std::size_t>{0});
   } else if (mode_value == "linear") {
     auto resizeout_2 = op::ResizeBilinearV2().set_input_x(resize_x)
@@ -166,6 +167,7 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     if (input_size == 4) {
       resizeout_2.AddControlInput(resize_scales);
     }
+    ChangeFormatResize(resizeout_2, 0, ge::FORMAT_NCHW, false);
     output_indexs.emplace_back(resizeout_2, vector<std::size_t>{0});
   } else {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Unsupported interpolation mode");

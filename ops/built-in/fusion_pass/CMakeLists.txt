@@ -323,6 +323,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/softmax_with_drop_out_do_mask_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_grad_d_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_seqlength_fusion_pass.cc
+  graph_fusion/ai_core/batchnorm3d_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

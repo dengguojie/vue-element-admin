@@ -119,3 +119,61 @@ TEST_F(batch_norm3d_fusion_test, batch_norm3d_fusion_test_1) {
     EXPECT_EQ(findBnreduce, true);
     EXPECT_EQ(findBnupdate, true);
 }
+
+TEST_F(batch_norm3d_fusion_test, batch_norm3d_fusion_test_2) {
+    ge::Graph graph("batch_norm3d_fusion_test_2");
+
+    auto bn_input_x_data = op::Data("bn_input_x_data");
+    std::vector<int64_t> dims_x{2,3,4,5,5};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_NCHW,  DT_FLOAT);
+    bn_input_x_data.update_input_desc_x(tensorDescX);
+    bn_input_x_data.update_output_desc_y(tensorDescX);
+
+    auto bn_input_scale_data = op::Data("bn_input_scale_data");
+    auto bn_input_offset_data = op::Data("bn_input_offset_data");
+    auto bn_input_mean_data = op::Data("bn_input_mean_data");
+    auto bn_input_variance_data = op::Data("bn_input_variance_data");
+
+    std::vector<int64_t> dims_scale{3};
+    ge::Shape shape_scale(dims_scale);
+    ge::TensorDesc tensorDescScale(shape_scale, FORMAT_NCHW,  DT_FLOAT);
+    bn_input_scale_data.update_input_desc_x(tensorDescScale);
+    bn_input_scale_data.update_output_desc_y(tensorDescScale);
+
+    bn_input_offset_data.update_input_desc_x(tensorDescScale);
+    bn_input_offset_data.update_output_desc_y(tensorDescScale);
+
+    bn_input_mean_data.update_input_desc_x(tensorDescScale);
+    bn_input_mean_data.update_output_desc_y(tensorDescScale);
+
+    bn_input_variance_data.update_input_desc_x(tensorDescScale);
+    bn_input_variance_data.update_output_desc_y(tensorDescScale);
+
+    auto bn_op = op::BatchNorm("batchnorm");
+    bn_op.set_input_x(bn_input_x_data)
+         .set_input_scale(bn_input_scale_data)
+         .set_input_offset(bn_input_offset_data)
+         .set_input_mean(bn_input_mean_data)
+         .set_input_variance(bn_input_variance_data)
+         .set_attr_epsilon(0.0001)
+         .set_attr_data_format("NCHW")
+         .set_attr_is_training(false);
+    
+    bn_op.SetAttr("onnx", "onnx");
+    std::vector<Operator> inputs{bn_input_x_data, bn_input_scale_data, bn_input_offset_data, bn_input_mean_data, bn_input_variance_data};
+    std::vector<Operator> outputs{bn_op};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("BatchNorm3DFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool bfind = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "BatchNorm3D") {
+            bfind = true;
+        }
+    }
+    EXPECT_EQ(bfind, true);
+}

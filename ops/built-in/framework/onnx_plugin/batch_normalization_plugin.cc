@@ -43,7 +43,7 @@ Status ParseParamsBatchNorm(const Message* op_src, ge::Operator& op_dest) {
 
   const bool is_training = false;
   op_dest.SetAttr("is_training", is_training);
-
+  op_dest.SetAttr("onnx", "onnx");
   return SUCCESS;
 }
 
