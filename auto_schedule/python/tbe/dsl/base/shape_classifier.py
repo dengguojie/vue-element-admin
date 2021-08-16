@@ -74,5 +74,6 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
     if mode == SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE:
         return classify_softmax_cross_entropy_with_logits(ins, support_reduce=True)
     if mode == NORM:
-        return classify_norm(ins)
+        return classify_norm(ins, extra_params)
+
     return [ins]

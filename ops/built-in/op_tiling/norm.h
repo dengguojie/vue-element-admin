@@ -49,12 +49,14 @@ struct CompileInfoNorm {
   bool is_const{false};
   bool is_const_post{false};
   bool is_keep_dims{false};
+  bool is_fuse_axis{true};
   int64_t max_ub_count{-1};
   int64_t workspace_max_ub_count{-1};
   int32_t core_num{-1};
   int32_t min_block_size{-1};
   std::vector<int32_t> workspace_type;
   std::vector<int32_t> workspace_bytes;
+  int32_t workspace_diff_count{0};
   std::vector<std::string> var_list;
 };
 
@@ -113,8 +115,12 @@ class Norm {
     bool is_last_axis_reduce{false};
     bool is_need_workspace{false};
     bool is_partial_reorder{false};
+    bool is_split_block{true};
     int64_t shape_after_reduce_product{-1};
     int64_t reduce_product{-1};
+    int32_t last_r_axis_index{-1};
+    int32_t first_a_axis_index{-1};
+
     int32_t pattern{-1};
     int32_t sch_type{0};
     int32_t db{0};

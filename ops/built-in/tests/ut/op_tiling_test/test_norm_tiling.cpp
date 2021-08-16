@@ -66,7 +66,7 @@ TEST_F(NormTiling, NormTiling1) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 1, 16080, 16120], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_vars": {"400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 1, 16080, 16120], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_vars": {"400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 
@@ -102,7 +102,7 @@ TEST_F(NormTiling, NormTiling2) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 8, 1, 12896, 12896], "_workspace_info": {"_workspace_type": [0], "_workspace_bytes": [4]}, "_vars": {"100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 8, 1, 12896, 12896], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_vars": {"100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 
@@ -138,7 +138,7 @@ TEST_F(NormTiling, NormTiling3) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 16336, 16360], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_vars": {"2100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 16336, 16360], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_vars": {"2100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 
@@ -174,7 +174,7 @@ TEST_F(NormTiling, NormTiling4) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "Norm", "_common_info": [32, 8, 1, 16336, 16360], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_vars": {"1000500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [0], "_pattern": "Norm", "_common_info": [32, 8, 1, 16336, 16360], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_vars": {"1000500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 
@@ -210,7 +210,7 @@ TEST_F(NormTiling, NormTiling5) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_ori_axis": [0, 2], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_vars": {"21001200": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [0, 2], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4], "_workspace_diff_count": 2}, "_vars": {"21001200": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 
@@ -222,7 +222,7 @@ TEST_F(NormTiling, NormTiling5) {
 TEST_F(NormTiling, NormTiling6) {
   using namespace optiling;
 
-  ge::Graph graph("NormTiling5");
+  ge::Graph graph("NormTiling6");
   std::vector<int64_t> input{1, 7, 543, 76};
   std::vector<int64_t> output{1, 7, 543, 76};
 
@@ -246,9 +246,115 @@ TEST_F(NormTiling, NormTiling6) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_ori_axis": [3], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_reduce_shape_known": true, "_const_shape_post": true, "_const_tiling_key": 10000400, "_block_dims": 32, "_vars": {"10000400": []}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [3], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": true, "_const_tiling_key": 10000400, "_block_dims": 32, "_vars": {"10000400": []}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 
   ASSERT_TRUE(iter->second(softmax_op, op_compile_info, runInfo));
+}
+
+TEST_F(NormTiling, NormTiling7) {
+  using namespace optiling;
+
+  ge::Graph graph("NormTiling7");
+  std::vector<int64_t> input{2, 10, 2, 3, 7};
+  std::vector<int64_t> output{2, 10, 2, 3, 7};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x = op::Data("x");
+  x.update_input_desc_x(tensor_input);
+  x.update_output_desc_y(tensor_output);
+
+  auto softmax_op = op::SoftmaxV2("SoftmaxV2_7");
+  softmax_op.set_input_x(x);
+  softmax_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x};
+  std::vector<Operator> outputs{softmax_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  std::string compileInfo = R"({ "_fuse_axis": false, "_ori_axis": [0, 1, 2, 3, 4], "_pattern": "Norm", "_common_info": [32, 8, 1, 21624, 21664], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_vars": {"62000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_ub_factor"]}})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_TRUE(iter->second(softmax_op, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 10 2 3 7 2 ");
+}
+
+TEST_F(NormTiling, NormTiling8) {
+  using namespace optiling;
+
+  ge::Graph graph("NormTiling8");
+  std::vector<int64_t> input{2, 3};
+  std::vector<int64_t> output{2, 3};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x = op::Data("x");
+  x.update_input_desc_x(tensor_input);
+  x.update_output_desc_y(tensor_output);
+
+  auto softmax_op = op::SoftmaxV2("SoftmaxV2_8");
+  softmax_op.set_input_x(x);
+  softmax_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x};
+  std::vector<Operator> outputs{softmax_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 21448, 21496], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": false})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_TRUE(iter->second(softmax_op, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 2 0 2 ");
+}
+
+TEST_F(NormTiling, NormTiling9) {
+  using namespace optiling;
+
+  ge::Graph graph("NormTiling9");
+  std::vector<int64_t> input{2, 3};
+  std::vector<int64_t> output{2, 3};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x = op::Data("x");
+  x.update_input_desc_x(tensor_input);
+  x.update_output_desc_y(tensor_output);
+
+  auto softmax_op = op::SoftmaxV2("SoftmaxV2_9");
+  softmax_op.set_input_x(x);
+  softmax_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x};
+  std::vector<Operator> outputs{softmax_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  std::string compileInfo = R"({ "_fuse_axis": false, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 21448, 21496], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": false})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_TRUE(iter->second(softmax_op, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 2 0 2 ");
 }

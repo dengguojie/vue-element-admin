@@ -22,6 +22,7 @@ import copy
 from tbe.common.buildcfg import get_current_build_config
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.operation import add_compile_info_inner
+from tbe.dsl.base.operation import get_context
 
 from . import reduce_helper as helper
 from . import util
@@ -30,6 +31,7 @@ CONST = "const"
 SPECIAL = "special"
 BEFORE = "before"
 AXIS = "axis"
+NORM = "Norm"
 
 
 def _check(ins, dim_len, min_dim_len):
@@ -94,12 +96,18 @@ def _infer_negative_two(ins, axis):
     return ins_list
 
 
-def classify(ins: list):
+def classify(ins: list, extra_params: dict):
     """
     classify
     :param ins:
     :return:
     """
+    fuse_axis = True
+    if extra_params is not None and isinstance(extra_params, dict) and "disable_optimization" in extra_params:
+        fuse_axis = not extra_params.get("disable_optimization")
+
+    get_context().set_pattern(NORM)
+    add_compile_info_inner("_fuse_axis", fuse_axis)
     axis = None
     for single_input in ins:
         if single_input.get("rel_pos_to_reduce") == AXIS:
@@ -110,7 +118,7 @@ def classify(ins: list):
     norm_classify_out = []
 
     for single_ins in ins_list:
-        for single_item in NormClassifier(single_ins).classify():
+        for single_item in NormClassifier(single_ins, fuse_axis).classify():
             norm_classify_out.append(single_item)
 
     return norm_classify_out
@@ -118,8 +126,9 @@ def classify(ins: list):
 
 class NormClassifier:
 
-    def __init__(self, ins: list):
+    def __init__(self, ins: list, fuse_axis: bool):
         self.ins = ins
+        self.fuse_axis = fuse_axis
         inputs_before_reduce, inputs_after_reduce, inputs_axis, self.inputs_classification = \
             helper.inputs_classify(ins)
         self.reduce_axes = inputs_axis[0].get("value") if inputs_axis[0].get("value") else \
@@ -143,7 +152,8 @@ class NormClassifier:
     def _normalize(self):
         shape, ranges = list(self.input_x["shape"]), self.input_x.get("range")
         ranges = list(ranges) if ranges else util.generate_range(shape)
-        reduce_axes = [x + len(shape) if x < 0 else x for x in self.reduce_axes]
+        reduce_axes = list(set([x + len(shape) if x < 0 else x for x in self.reduce_axes]))
+        reduce_axes.sort()
 
         return shape, ranges, reduce_axes
 
@@ -152,6 +162,9 @@ class NormClassifier:
         simplify shape, range, reduce axis.
         fuse continuous reduce axis or non-reduce axis.
         """
+        if not self.fuse_axis:
+            return self.n_shape, self.n_ranges, self.n_reduce_axes
+
         f_shape, f_ranges, f_reduce_axes = [], [], []
         state = "init"
         for i, (d, r) in enumerate(zip(self.n_shape, self.n_ranges)):
@@ -175,7 +188,7 @@ class NormClassifier:
 
     def _classify_const(self):
         # R -> 1,R
-        if len(self.f_reduce_axes) == len(self.f_shape):
+        if len(self.f_reduce_axes) == len(self.f_shape) and self.fuse_axis:
             out_axes = [i + 1 for i in self.f_reduce_axes]
             out_shape = [1] + self.f_shape
             out_range = [(1, 1)] + self.f_ranges
@@ -202,7 +215,7 @@ class NormClassifier:
 
     def _classify_var(self):
         # R -> 1,R
-        if len(self.f_reduce_axes) == len(self.f_shape):
+        if len(self.f_reduce_axes) == len(self.f_shape) and self.fuse_axis:
             out_axes = [i + 1 for i in self.f_reduce_axes]
             out_shape = [1] + self.f_shape
             out_range = [(1, 1)] + self.f_ranges

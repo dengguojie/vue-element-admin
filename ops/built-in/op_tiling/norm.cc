@@ -18,7 +18,6 @@
  * \file norm.cc
  * \brief tiling function of op
  */
-
 #include <algorithm>
 #include "norm.h"
 #include "error_log.h"
@@ -85,6 +84,8 @@ bool Norm::Init() {
 
     compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
                            op_info.at("_reduce_shape_known").get<bool>();
+    compileInfo.is_fuse_axis = op_info.count("_fuse_axis") > 0 &&
+                               op_info.at("_fuse_axis").get<bool>();
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func of Init error. Error message: %s", e.what());
     return false;
@@ -158,10 +159,16 @@ bool Norm::GetCompileInfo() {
     common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
     compileInfo.workspace_type = op_info.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
     compileInfo.workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
+    compileInfo.workspace_diff_count = op_info.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
     // CHECK VALUE
     V_CHECK_EQ(compileInfo.workspace_type.size(), compileInfo.workspace_bytes.size(),
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
                return false);
+    V_OP_TILING_CHECK(compileInfo.workspace_diff_count >= 0 &&
+                      (uint32_t)compileInfo.workspace_diff_count <= compileInfo.workspace_type.size(),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_diff_count is %d that is illegal",
+                                                      compileInfo.workspace_diff_count),
+                      return false);
     V_CHECK_EQ(common_info.size(), 5,
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 5"),
                return false);
@@ -212,6 +219,9 @@ int32_t Norm::CalcPattern(std::vector<int64_t>& shape, std::vector<int32_t>& axi
 }
 
 bool Norm::IsNeedWorkspace() {
+  if (!is_split_block) {
+    return true;
+  }
   int64_t shape_product = 1;
   for (std::size_t i = 0; i < input_shape.size(); i++) {
     if (IsInVector(reduce_axis, i)) {
@@ -223,9 +233,14 @@ bool Norm::IsNeedWorkspace() {
     }
   }
   // nlast reduce need judge r_product * align(last_a) and ub_size
-  if (!is_last_axis_reduce) {
-     shape_product = shape_product * input_align_shape.back();
+  for (int32_t i = last_r_axis_index + 1; i < (int32_t)input_shape.size(); i++) {
+    if (i == (int32_t)input_shape.size() - 1) {
+      shape_product = shape_product * input_align_shape.back();
+    } else {
+      shape_product = shape_product * input_shape[i];
+    }
   }
+
   return shape_product > compileInfo.max_ub_count ? true : false;
 }
 
@@ -236,8 +251,8 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
   int64_t right_product = shape_after_reduce_product;
   // if after shape product < block_size, block_dim = 1
   if (right_product < block_size) {
-    tilingInfo.block_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
-    tilingInfo.block_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+    tilingInfo.block_tiling_axis = first_a_axis_index;
+    tilingInfo.block_tiling_factor = input_shape[first_a_axis_index];
     return true;
   }
 
@@ -322,13 +337,13 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
 bool Norm::GetBlockTilingInfo() {
   if (is_partial_reorder) {
     // don't split block
-    tilingInfo.block_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
-    tilingInfo.block_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+    tilingInfo.block_tiling_axis = first_a_axis_index;
+    tilingInfo.block_tiling_factor = input_shape[first_a_axis_index];
     is_need_workspace = true;
     sch_type = 2;
     return true;
   }
-  if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
+  if (is_need_workspace) {
     return GetWorkspaceBlockTilingInfo();
   }
   int64_t right_product = shape_after_reduce_product;
@@ -337,16 +352,18 @@ bool Norm::GetBlockTilingInfo() {
   right_product = right_product * reduce_product;
   // if after shape product < block_size, block_dim = 1
   if (right_product < block_size) {
-    tilingInfo.block_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
-    tilingInfo.block_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+    tilingInfo.block_tiling_axis = first_a_axis_index;
+    tilingInfo.block_tiling_factor = input_shape[first_a_axis_index];
     return true;
   }
+  std::size_t a_axis_count = 0;
   for (std::size_t i = 0; i < input_shape.size(); i++) {
     // block split A
     if (IsInVector(reduce_axis, i)) {
       right_product = right_product / input_shape[i];
       continue;
     }
+    a_axis_count++;
     if (right_product / input_shape[i] <= block_size && left_product * input_shape[i] < compileInfo.core_num) {
       int64_t cur_block_factor =
           (block_size + right_product / input_shape[i] - 1) / (right_product / input_shape[i]);
@@ -397,8 +414,7 @@ bool Norm::GetBlockTilingInfo() {
       }
     }
     // before reduce shape product < core_num, which means split last a
-    // the min length of input_shape is 2, R,A or A,R
-    if (i == input_shape.size() - 1 || i == input_shape.size() - 2) {
+    if (a_axis_count == input_shape.size() - reduce_axis.size()) {
       tilingInfo.block_tiling_axis = i;
       tilingInfo.block_tiling_factor = 1;
       return true;
@@ -432,10 +448,9 @@ bool Norm::ProcessReorderAxis() {
    *                    |---> core = a0*a1
    *                    |---> fused_block_tiling_axis= a0
    * ReorderShape: |a0,a1,a2|r0,r1,r2,r3|a3
-   *                                   |---> last_reduce_axis_idx
+   *                                   |---> last_r_axis_index
    * */
   int32_t block_tiling_axis = tilingInfo.block_tiling_axis;
-  int32_t last_reduce_axis_idx = reduce_axis.back();
   reorderInfo.reorder_input_shape.resize(input_shape.size());
   reorderInfo.reorderPos_oriPos.resize(input_shape.size());
 
@@ -445,11 +460,11 @@ bool Norm::ProcessReorderAxis() {
     reduce_flag[item] = 1;
   }
   // position of first R index in reorder shape
-  int pos_r = num_a - ((int)input_shape.size() - (last_reduce_axis_idx + 1));
+  int pos_r = num_a - ((int)input_shape.size() - (last_r_axis_index + 1));
   int pos_a = 0;
 
-  // [0: last_reduce_axis_idx]
-  for (int32_t i = 0; i <= last_reduce_axis_idx; i++) {
+  // [0: last_r_axis_index]
+  for (int32_t i = 0; i <= last_r_axis_index; i++) {
     if (reduce_flag[i] == 1) {
       reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
       reorderInfo.reorderPos_oriPos[pos_r] = i;
@@ -465,7 +480,7 @@ bool Norm::ProcessReorderAxis() {
   }
 
   // order last normal axis, maybe several axis
-  for (size_t i = last_reduce_axis_idx + 1; i < input_shape.size(); i++) {
+  for (size_t i = last_r_axis_index + 1; i < input_shape.size(); i++) {
     if ((int32_t)i < block_tiling_axis) {
       reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
     }
@@ -516,7 +531,7 @@ int64_t Norm::CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_til
     }
   }
   // nlast reduce, axis is last A
-  if (axis_index == (int32_t)reorderInfo.reorder_input_shape.size() - 1 && !is_last_axis_reduce) {
+  if (axis_index > last_r_axis_index) {
     result = result * reduce_product;
   }
   return result;
@@ -556,8 +571,8 @@ bool Norm::GetUbTilingInfo() {
       break;
     }
   }
-  int32_t first_r_axis_in_reorder = input_shape.size() - reduce_axis.size() - (!is_last_axis_reduce);
-  int32_t last_r_axis_in_reorder = input_shape.size() - 1 - (!is_last_axis_reduce);
+  int32_t first_r_axis_in_reorder = last_r_axis_index - reduce_axis.size() + 1;
+  int32_t last_r_axis_in_reorder = last_r_axis_index;
   int64_t right_product = 1;
   int64_t right_product_align = 1;
   // normal, ub split A
@@ -603,8 +618,8 @@ bool Norm::GetUbTilingInfo() {
         }
       }
     }
-    tilingInfo.ub_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
-    tilingInfo.ub_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+    tilingInfo.ub_tiling_axis = first_a_axis_index;
+    tilingInfo.ub_tiling_factor = input_shape[first_a_axis_index];
     return true;
 
   } else {
@@ -646,6 +661,7 @@ bool Norm::GetUbTilingInfo() {
   return false;
 }
 
+// block split last common axis, block factor can refine to align
 bool Norm::NeedRefineBlockTiling() {
   if (is_last_axis_reduce || tilingInfo.block_tiling_axis != (int32_t)input_shape.size() - 1) {
     return false;
@@ -667,15 +683,20 @@ bool Norm::NeedRefineBlockTiling() {
 }
 
 bool Norm::ProcessTiling() {
-  bool ret = GetBlockTilingInfo();
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetBlockTilingInfo error");
-    return false;
+  bool ret = true;
+  if (is_split_block) {
+    ret = ret && GetBlockTilingInfo();
+    if (!ret) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetBlockTilingInfo error");
+      return false;
+    }
+    if (NeedRefineBlockTiling()) {
+      tilingInfo.block_tiling_factor = (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size;
+    }
+    tilingInfo.block_dim = GetBlockDim(tilingInfo.block_tiling_axis, tilingInfo.block_tiling_factor);
+  } else {
+    tilingInfo.block_dim = 1;
   }
-  if (NeedRefineBlockTiling()) {
-    tilingInfo.block_tiling_factor = (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size;
-  }
-  tilingInfo.block_dim = GetBlockDim(tilingInfo.block_tiling_axis, tilingInfo.block_tiling_factor);
   ret = ret && ProcessReorderAxis();
   ret = ret && GetUbTilingInfo();
   if (!ret) {
@@ -711,6 +732,9 @@ bool Norm::DoTiling() {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info error. Error message: %s", e.what());
       return false;
     }
+  } else if (!compileInfo.is_fuse_axis) {
+    reduce_axis = reduce_axis_ori;
+    input_shape = input_shape_ori;
   } else {
     // input(unknown)
     ret = ret && FusedReduceAxis();
@@ -719,12 +743,22 @@ bool Norm::DoTiling() {
   ret = ret && GetCompileInfo();
   // calculate some variables
   block_size = compileInfo.min_block_size;
+
   input_align_shape = input_shape;
   input_align_shape.back() = (input_align_shape.back() + block_size - 1) / block_size * block_size;
   shape_after_reduce_product = CalcAfterReduceShapeProduct(input_shape, reduce_axis);
   reduce_product = CalcReduceShapeProduct(input_shape, reduce_axis);
-  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
-  is_partial_reorder = reduce_axis.size() > 1 && input_shape.back() < block_size;
+
+  for (int32_t i = 0; i < (int32_t)input_shape.size(); i++) {
+    if (!IsInVector(reduce_axis, i)) {
+      first_a_axis_index = i;
+      break;
+    }
+  }
+  last_r_axis_index = (int32_t)*max_element(reduce_axis.begin(), reduce_axis.end());
+  is_last_axis_reduce = last_r_axis_index == (int32_t)input_shape.size() - 1;
+  is_split_block = !(reduce_axis.size() == input_shape.size());
+  is_partial_reorder = reduce_axis.size() > 1 && input_shape.back() < block_size && is_split_block;
   pattern = CalcPattern(input_shape, reduce_axis);
   is_need_workspace = IsNeedWorkspace();
   // calculate tiling info
@@ -734,8 +768,15 @@ bool Norm::DoTiling() {
 
 
 int32_t Norm::CalcTilingKey() {
-  std::vector<int> pos = {db, sch_type, tilingInfo.block_tiling_axis, tilingInfo.ub_tiling_axis, pattern};
-  std::vector<int> coefficient = {1000000000, 10000000, 1000000, 100000, 100};
+  std::vector<int> pos;
+  std::vector<int> coefficient;
+  if (is_split_block) {
+    pos = {db, sch_type, tilingInfo.block_tiling_axis, tilingInfo.ub_tiling_axis, pattern};
+    coefficient = {1000000000, 10000000, 1000000, 100000, 100};
+  } else {
+    pos = {db, sch_type, tilingInfo.ub_tiling_axis, pattern};
+    coefficient = {1000000000, 10000000, 1000000, 1000};
+  }
   int32_t key = 0;
   for (std::size_t i = 0; i < coefficient.size(); i++) {
     key += pos[i] * coefficient[i];
@@ -751,10 +792,15 @@ std::vector<int64_t> Norm::CalcWorkspace() {
                                                               std::multiplies<int64_t>());
   std::vector<int64_t> workspace;
   for (std::size_t i = 0; i < compileInfo.workspace_type.size(); i++) {
-    if (compileInfo.workspace_type[i] == 1) {
-      workspace.emplace_back(shape_before_reduce_align_product * compileInfo.workspace_bytes[i]);
+    // workspace sch may need fake workspace
+    if (!is_partial_reorder && i >= compileInfo.workspace_type.size() - (int32_t)compileInfo.workspace_diff_count) {
+      workspace.emplace_back(32);
     } else {
-      workspace.emplace_back(shape_after_reduce_align_product * compileInfo.workspace_bytes[i]);
+      if (compileInfo.workspace_type[i] == 1) {
+        workspace.emplace_back(shape_before_reduce_align_product * compileInfo.workspace_bytes[i]);
+      } else {
+        workspace.emplace_back(shape_after_reduce_align_product * compileInfo.workspace_bytes[i]);
+      }
     }
   }
   return workspace;
@@ -772,7 +818,7 @@ bool Norm::ConstInputProcPost() {
       }
     }
   } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s", 
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s",
                                     e.what());
     return false;
   }
@@ -788,8 +834,10 @@ bool Norm::WriteTilingData() {
 
   if (compileInfo.is_const) {
     // compile
-    run_info.AddTilingData((int32_t)tilingInfo.block_tiling_axis);
-    run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
+    if (is_split_block) {
+      run_info.AddTilingData((int32_t)tilingInfo.block_tiling_axis);
+      run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
+    }
     run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_axis);
     run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_factor);
     run_info.SetBlockDim(tilingInfo.block_dim);
@@ -830,7 +878,9 @@ bool Norm::WriteTilingData() {
     }
   }
 
-  run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
+  if (is_split_block) {
+    run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
+  }
   run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_factor);
   OP_LOGD(op_type.c_str(), "block tilling axis:%d", tilingInfo.block_tiling_axis);
   OP_LOGD(op_type.c_str(), "block tilling factor:%d", tilingInfo.block_tiling_factor);

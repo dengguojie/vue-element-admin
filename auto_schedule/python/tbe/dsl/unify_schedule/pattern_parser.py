@@ -139,6 +139,9 @@ def get_pattern(outs):
     """
     pattern = _get_custom_pattern()
     if pattern is None:
+        current_pattern = operation.get_context().get_pattern()
+        if current_pattern:
+            return current_pattern
         return _parse_pattern(outs)
     if callable(pattern):
         return pattern(outs)

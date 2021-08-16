@@ -95,7 +95,7 @@ class CalcNormTilingCase(Computation):
 
         tiling_case_list = []
         tiling_case_list += _add_tiling_case(norm_info)
-        _apply_compile_info(norm_compute_graph_info)
+        _apply_compile_info(norm_compute_graph_info, norm_info)
         # calc tiling key
         for tiling_case in tiling_case_list:
             _calc_tiling_key(norm_info, tiling_case)
@@ -142,7 +142,7 @@ def _raise_error(message):
     raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-def _apply_compile_info(graph_info):
+def _apply_compile_info(graph_info, norm_info):
     core_num = get_soc_spec("CORE_NUM")
     keep_dims = 1
     min_block_size = get_block_size(graph_info.min_type)
@@ -152,13 +152,18 @@ def _apply_compile_info(graph_info):
     workspace_type_list = []
     # number of occupied bytes
     workspace_bytes_list = []
-    for workspace_tensor in graph_info.workspace_tensor_set:
+    local_set = graph_info.workspace_and_reduce_tensor_set \
+        if norm_info.exist_partial_reorder else graph_info.workspace_tensor_set
+    for workspace_tensor in local_set:
         if workspace_tensor in graph_info.tensors_before_reduce:
             workspace_type_list.append(1)
         else:
             workspace_type_list.append(0)
         workspace_bytes_list.append(DTYPE_BYTE_MAPPING[workspace_tensor.dtype])
-    workspace_info = {"_workspace_type": workspace_type_list, "_workspace_bytes": workspace_bytes_list}
+    workspace_diff_count = len(local_set) - len(graph_info.workspace_tensor_set)
+    workspace_info = {"_workspace_type": workspace_type_list,
+                      "_workspace_bytes": workspace_bytes_list,
+                      "_workspace_diff_count": workspace_diff_count}
     add_compile_info_inner("_common_info", common_info)
     add_compile_info_inner("_workspace_info", workspace_info)
 
@@ -183,7 +188,7 @@ def _add_tiling_case(norm_info):
             tiling_case_list.append(tiling_case)
 
     # some special cases need workspace sch with partial reorder
-    if len(reduce_axis_index) > 1:
+    if norm_info.exist_partial_reorder:
         for block_split_axis in range(len(shape_before_reduce)):
             # block split on A axis
             if block_split_axis in reduce_axis_index:
@@ -196,10 +201,49 @@ def _add_tiling_case(norm_info):
                 tiling_case.is_partial_reorder_case = True
                 tiling_case_list.append(tiling_case)
 
+    # all reduce don't have A axis
+    if norm_info.is_all_reduce:
+        for ub_split_axis in range(len(shape_before_reduce)):
+            tiling_case = NormTilingCase()
+            tiling_case.ub_split_axis_index = ub_split_axis
+            tiling_case.multi_core = False
+            tiling_case_list.append(tiling_case)
+
     return tiling_case_list
 
 
 def _gen_const_tiling_case(norm_info, compute_graph_info):
+    def __add_workspace_info_in_json():
+        workspace_size = []
+        workspace_type = []
+
+        workspace_info = get_compile_info().get("_workspace_info")
+
+        before_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
+        before_reduce_align_shape[-1] = (before_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
+        after_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
+        after_reduce_align_shape[-1] = (after_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
+        before_reduce_product = functools.reduce(lambda x1, x2: x1 * x2, before_reduce_align_shape)
+        after_reduce_product = functools.reduce(lambda x1, x2: x1 * x2, after_reduce_align_shape)
+
+        workspace_num = len(workspace_info["_workspace_type"]) if const_tiling_case.is_partial_reorder_case else \
+            len(workspace_info["_workspace_type"]) - workspace_info["_workspace_diff_count"]
+        for i in range(workspace_num):
+            workspace_num += 1
+            if workspace_info["_workspace_type"][i] == 1:
+                workspace_size.append(before_reduce_product * workspace_info["_workspace_bytes"][i])
+            else:
+                workspace_size.append(after_reduce_product * workspace_info["_workspace_bytes"][i])
+            workspace_type.append(0)
+
+        if workspace_num != 0:
+            workspace_dict_in_json = {
+                "num": workspace_num,
+                "size": workspace_size,
+                "type": workspace_type
+            }
+            get_op_context().add_build_json_result("workspace", workspace_dict_in_json)
+
     add_compile_info_inner("_reduce_shape_known", True)
     const_tiling_case = NormTilingCase()
     ori_reduce_axis = get_compile_info().get("_ori_axis")
@@ -220,14 +264,16 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     add_compile_info_inner("_const_shape_post", False)
 
     run_info = do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
-    tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int"}
+    tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int"}\
+        if not norm_info.is_all_reduce else {"ub_axis": "int", "ub_factor": "int"}
     tiling_data = decode(run_info["tiling_data"], tiling_format)
-    const_tiling_case.block_split_axis_index = tiling_data["block_axis"]
-    const_tiling_case.block_factor = tiling_data["block_factor"]
-    const_tiling_case.ub_split_axis_index = tiling_data["ub_axis"]
-    const_tiling_case.ub_factor = tiling_data["ub_factor"]
-    const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
-    if len(reduce_axis_index) > 1 and util.shape_to_list(norm_info.shape_before_reduce)[-1] < block_size:
+    const_tiling_case.block_split_axis_index = tiling_data.get("block_axis")
+    const_tiling_case.block_factor = tiling_data.get("block_factor")
+    const_tiling_case.ub_split_axis_index = tiling_data.get("ub_axis")
+    const_tiling_case.ub_factor = tiling_data.get("ub_factor")
+    const_tiling_case.multi_core = True if run_info.get("block_dim") > 1 else False
+    if len(reduce_axis_index) > 1 and util.shape_to_list(norm_info.shape_before_reduce)[-1] < block_size and \
+            not norm_info.is_all_reduce:
         const_tiling_case.is_partial_reorder_case = True
 
     _calc_tiling_key(norm_info, const_tiling_case)
@@ -241,34 +287,7 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
 
     # add workspace info in json
     if tiling_data["ub_axis"] in reduce_axis_index and get_op_context():
-        workspace_num = 0
-        workspace_size = []
-        workspace_type = []
-
-        workspace_info = get_compile_info().get("_workspace_info")
-
-        before_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
-        before_reduce_align_shape[-1] = (before_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
-        after_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
-        after_reduce_align_shape[-1] = (after_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
-        before_reduce_product = functools.reduce(lambda x1, x2: x1 * x2, before_reduce_align_shape)
-        after_reduce_product = functools.reduce(lambda x1, x2: x1 * x2, after_reduce_align_shape)
-
-        for i in range(len(workspace_info["_workspace_type"])):
-            workspace_num += 1
-            if workspace_info["_workspace_type"][i] == 1:
-                workspace_size.append(before_reduce_product * workspace_info["_workspace_bytes"][i])
-            else:
-                workspace_size.append(after_reduce_product * workspace_info["_workspace_bytes"][i])
-            workspace_type.append(0)
-
-        if workspace_num != 0:
-            workspace_dict_in_json = {
-                "num": workspace_num,
-                "size": workspace_size,
-                "type": workspace_type
-            }
-            get_op_context().add_build_json_result("workspace", workspace_dict_in_json)
+        __add_workspace_info_in_json()
 
     return [const_tiling_case]
 
@@ -301,7 +320,7 @@ def _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index):
 
 
 def _reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index):
-    last_none_reduce_axis = len(shape_before_reduce) - 1
+    last_none_reduce_axis = max(reduce_axis_index) + 1
     ori_to_reorder_axis_map = {}
     reorder_to_ori_axis_map = {}
     reordered_shape = list(shape_before_reduce)[:]
@@ -359,8 +378,10 @@ def _get_tiling_key(db, sch_type, block_split_axis, ub_split_axis, shape, reduce
     """
 
     pattern = _get_pattern_key(shape, reduce_idx_list)
-    pos = (db, sch_type, block_split_axis, ub_split_axis, pattern)
-    val = (10 ** 9, 10 ** 7, 10 ** 6, 10 ** 5, 10 ** 2)
+    pos = (db, sch_type, block_split_axis, ub_split_axis, pattern) if block_split_axis is not None \
+        else (db, sch_type, ub_split_axis, pattern)
+    val = (10 ** 9, 10 ** 7, 10 ** 6, 10 ** 5, 10 ** 2) if block_split_axis is not None \
+        else (10 ** 9, 10 ** 7, 10 ** 6, 10 ** 3)
     key = 0
     for item, value in enumerate(pos):
         key += value * val[item]
@@ -407,8 +428,10 @@ class NormComputeGraphInfo:
         self.mid_tensor_set: Set[Tensor] = set()
         self.endpoint_output_tensor_set: Set[Tensor] = set()
         self.workspace_tensor_set: Set[Tensor] = set()
+        self.workspace_and_reduce_tensor_set: Set[Tensor] = set()
         # Extra workspace tensor and its info
         self.workspace_info_map: Dict[Tensor, Dict] = {}
+        self.workspace_tensor_and_sub_graph_map: Dict[Tensor, Dict] = {}
         # Extra split tensor and its sub_graph
         self.split_tensor_and_sub_graph_map: Dict[Tensor, Dict] = {}
         self.cache_clone_tensor_set: Set[Tensor] = set()
@@ -666,11 +689,32 @@ class NormComputeGraphInfo:
             judge_result, visited_tensor = _judge_workspace_or_cache_clone(single_tensor)
             if judge_result == "workspace":
                 self.workspace_tensor_set.add(single_tensor)
+                self.workspace_and_reduce_tensor_set.add(single_tensor)
             else:
                 self.cache_clone_tensor_set = self.cache_clone_tensor_set | visited_tensor
 
         for single_tensor in self.reduce_tensor_set:
-            self.workspace_tensor_set.add(single_tensor)
+            self.workspace_and_reduce_tensor_set.add(single_tensor)
+
+        # get the sub_graph of split tensor
+        for split_tensor in self.workspace_and_reduce_tensor_set:
+            other_split_tensor_set = self.workspace_and_reduce_tensor_set.copy()
+            other_split_tensor_set.remove(split_tensor)
+            tensor_list, tensor_consumers_map, tensor_producers_map = \
+                self.dfs_sub_compute_graph(split_tensor, other_split_tensor_set)
+            self.split_tensor_and_sub_graph_map[split_tensor] = {
+                "sub_tensor_list": tensor_list,
+                "sub_tensor_consumers_map": tensor_consumers_map,
+                "sub_tensor_producers_map": tensor_producers_map
+            }
+        tensor_list, tensor_consumers_map, tensor_producers_map = \
+            self.dfs_sub_compute_graph(tuple(self.endpoint_output_tensor_set)[0],
+            self.workspace_and_reduce_tensor_set)
+        self.split_tensor_and_sub_graph_map[tuple(self.endpoint_output_tensor_set)[0]] = {
+            "sub_tensor_list": tensor_list,
+            "sub_tensor_consumers_map": tensor_consumers_map,
+            "sub_tensor_producers_map": tensor_producers_map
+        }
 
         # get the sub_graph of workspace tensor
         for workspace_tensor in self.workspace_tensor_set:
@@ -678,14 +722,14 @@ class NormComputeGraphInfo:
             other_workspace_tensor_set.remove(workspace_tensor)
             tensor_list, tensor_consumers_map, tensor_producers_map = \
                 self.dfs_sub_compute_graph(workspace_tensor, other_workspace_tensor_set)
-            self.split_tensor_and_sub_graph_map[workspace_tensor] = {
+            self.workspace_tensor_and_sub_graph_map[workspace_tensor] = {
                 "sub_tensor_list": tensor_list,
                 "sub_tensor_consumers_map": tensor_consumers_map,
                 "sub_tensor_producers_map": tensor_producers_map
             }
         tensor_list, tensor_consumers_map, tensor_producers_map = \
             self.dfs_sub_compute_graph(tuple(self.endpoint_output_tensor_set)[0], self.workspace_tensor_set)
-        self.split_tensor_and_sub_graph_map[tuple(self.endpoint_output_tensor_set)[0]] = {
+        self.workspace_tensor_and_sub_graph_map[tuple(self.endpoint_output_tensor_set)[0]] = {
             "sub_tensor_list": tensor_list,
             "sub_tensor_consumers_map": tensor_consumers_map,
             "sub_tensor_producers_map": tensor_producers_map
@@ -763,7 +807,8 @@ class NormComputeGraphInfo:
                 _current_space = len(dependent_map) + 1
             if util.need_extent_node(_tensor):
                 _current_space += 1
-            if util.is_unified_broadcast(_tensor) and self.reduce_axis_len > 1:
+            if util.is_unified_broadcast(_tensor) and self.reduce_axis_len > 1 and\
+                    not (self.reduce_axis_len == len(self.tensors_before_reduce[0].shape)):
                 _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self.temp_ub_size += BLOCK_SIZE_BYTE
@@ -840,6 +885,14 @@ class NormComputeGraphInfo:
             if util.is_v100() and op_tag in support_vector_scalar_insns and _tensor.dtype == "int32":
                 return True
 
+        def _refine_coexisting_quantity(_coexisting_quantity, _workspace_tensor):
+            sub_tensor_list = self.workspace_tensor_and_sub_graph_map[_workspace_tensor]["sub_tensor_list"]
+            for reduce_tensor in self.reduce_tensor_set:
+                if reduce_tensor in sub_tensor_list:
+                     _coexisting_quantity += 1
+
+            return _coexisting_quantity
+
         coexisting_quantities = []
         dependent_map = {}
         _out = tuple(self.endpoint_output_tensor_set)[0]
@@ -866,26 +919,26 @@ class NormComputeGraphInfo:
         self.available_ub_size = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self.max_type]
 
         # calculate the number of coexisting quantities and available ub size of sub graph
-        for sub_graph_split_tensor in self.split_tensor_and_sub_graph_map:
+        for workspace_tensor in self.workspace_tensor_and_sub_graph_map:
             sub_tensor_producers_map = \
-                self.split_tensor_and_sub_graph_map[sub_graph_split_tensor]["sub_tensor_producers_map"]
+                self.workspace_tensor_and_sub_graph_map[workspace_tensor]["sub_tensor_producers_map"]
             sub_tensor_consumers_map = \
-                self.split_tensor_and_sub_graph_map[sub_graph_split_tensor]["sub_tensor_consumers_map"]
+                self.workspace_tensor_and_sub_graph_map[workspace_tensor]["sub_tensor_consumers_map"]
             coexisting_quantities = []
             dependent_map = {}
             self.temp_ub_size = 0
-            for tensor_i in sub_tensor_producers_map[sub_graph_split_tensor]:
+            for tensor_i in sub_tensor_producers_map[workspace_tensor]:
                 coexisting_quantities.append(_r_coexisting_sub_graph(tensor_i))
-            if util.is_vtranspose_broadcast(sub_graph_split_tensor):
+            if util.is_vtranspose_broadcast(workspace_tensor):
                 self.temp_ub_size += VTRANSPOSE_TEMP_SPACE
-            _local_current_space = _calc_current_space(sub_graph_split_tensor)
-            _correct_ub_size_by_cmp_sel(sub_graph_split_tensor)
-            _correct_ub_size_by_reduce(sub_graph_split_tensor)
+            _local_current_space = _calc_current_space(workspace_tensor)
+            _correct_ub_size_by_cmp_sel(workspace_tensor)
+            _correct_ub_size_by_reduce(workspace_tensor)
             coexisting_quantities.append(_local_current_space)
-            coexisting_quantity = max(coexisting_quantities)
+            coexisting_quantity = _refine_coexisting_quantity(max(coexisting_quantities), workspace_tensor)
             if coexisting_quantity == 1:
                 self.temp_ub_size += BLOCK_SIZE_BYTE
-            self.workspace_info_map[sub_graph_split_tensor] = {
+            self.workspace_info_map[workspace_tensor] = {
                 "temp_ub_size": self.temp_ub_size,
                 "coexisting_quantity": coexisting_quantity
             }
@@ -912,6 +965,12 @@ class NormInfo:
         self.reduce_axis_indices: List[int] = sorted(util.get_reduce_axis_indexes(self.reduce_tensor))
         self.keepdims: bool = len(self.shape_before_reduce) == len(self.shape_after_reduce)
         self.is_reduce_last_axis: bool = len(self.shape_before_reduce) - 1 in self.reduce_axis_indices
+        self.is_all_reduce: bool = len(self.shape_before_reduce) == len(self.reduce_axis_indices)
+        self.is_none_reduce = True
+        for reduce_axis in self.reduce_axis_indices:
+            if util.shape_to_list(self.shape_before_reduce)[reduce_axis] != 1:
+                self.is_none_reduce = False
+        self.exist_partial_reorder = len(self.reduce_axis_indices) > 1 and not self.is_all_reduce
 
 
 class NormTilingCase:
@@ -923,23 +982,3 @@ class NormTilingCase:
         self.multi_core = None
         self.tiling_key = 2**31 - 1
         self.is_partial_reorder_case = False
-
-    def __hash__(self):
-        return hash((self.block_split_axis_index, self.block_factor, self.ub_split_axis_index,
-                     self.ub_factor, self.multi_core))
-
-    def __eq__(self, other):
-        condition0 = other.block_split_axis == self.block_split_axis_index
-        condition1 = other.block_factor == self.block_factor
-        condition2 = other.ub_split_axis == self.ub_split_axis_index
-        condition3 = other.ub_factor == self.ub_factor
-        condition4 = other.multi_core == self.multi_core
-        return type(other) == type(self) and condition0 and condition1 and condition2 and condition3 and condition4
-
-    def __ne__(self, other):
-        condition0 = other.block_split_axis != self.block_split_axis_index
-        condition1 = other.block_factor != self.block_factor
-        condition2 = other.ub_split_axis != self.ub_split_axis_index
-        condition3 = other.ub_factor != self.ub_factor
-        condition4 = other.multi_core != self.multi_core
-        return type(other) != type(self) or condition0 or condition1 or condition2 or condition3 or condition4
