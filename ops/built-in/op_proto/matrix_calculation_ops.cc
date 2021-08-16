@@ -3478,9 +3478,6 @@ IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
         OP_LOGE(opName.GetString(), "GetOpAttr equation failed");
         return GRAPH_FAILED;
     }
-    // set tensor_size attr
-    int64_t tensor_size = op.GetInputsSize();
-    op.SetAttr("N", tensor_size);
     vector<vector<int64_t>> tensor_list;
     for (size_t i = 0; i < op.GetInputsSize(); i++) {
         auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
