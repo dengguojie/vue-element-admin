@@ -307,6 +307,8 @@ usage() {
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "    -a|--aicpu only compile aicpu task"
   echo "    -m|--minirc aicpu only compile aicpu task"
+  echo "    **************************************"
+  echo "    Next is the installation, download and configuration functions that build.sh can perform."
   echo "    --down_and_check_third_libs Download third party libs"
   echo "    --query_env query current env"
   echo "    --set_env_gitee set env for ascend,use gitee download python operator code"
@@ -320,6 +322,7 @@ usage() {
   echo "    --install_etrans  download and install Ascend, using package/etrans/ the latest extrans package"
   echo "        *** You must use a single quotation mark for your username and password.***"
   echo "        *** example ./build.sh --install_daily 'username' 'password'   ***"
+  echo "    **************************************"
   echo "    Next is the name that you can build directly"
   echo "    --sprotoc build sprotoc"
   echo "    --secure_c build secure_c"
@@ -614,4 +617,9 @@ main() {
   logging "---------------- CANN build finished ----------------"
 }
 set -o pipefail
-main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
+if [[ "$@" == "-h" ]];then
+  main "$@"
+else
+  main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
+fi
+

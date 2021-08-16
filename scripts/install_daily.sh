@@ -46,10 +46,16 @@ network_test(){
 }
 
 download_run(){
+    set +e
     wget -q --http-user=$username --http-passwd=$pwsswd $net_addr
     #http://121.36.71.102/package/daily/202107/
     #   20210701/
-    #   20210702/    
+    #   20210702/ 
+    set -e
+    if [ ! -f "./index.html" ];then 
+      echo "Your account name or password is incorrect"
+      exit -1
+    fi
     res_net=`echo $?`
     test_net_addr=$net_addr
     network_test $res_net $test_net_addr
@@ -88,13 +94,22 @@ download_run(){
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/Ascend-cann-toolkit_5.0.2.alpha005_linux-x86_64.run
     res_net=`echo $?`
     test_net_addr=$net
+	
     network_test $res_net $test_net_addr
     file_index_content=`cat index.html`
     file_name_fragment=${file_index_content#*Ascend-cann-toolkit_5}
     file_name_fragment1=${file_name_fragment#*=\"}
-    file_name=${file_name_fragment1%%.deb*}
-    rm -rf index.html
+	
+    if [[ "$arch" =~ "x86" ]];then
+      file_name=${file_name_fragment1%%.deb*}
+    elif [[ "$arch" =~ "aarch64" ]];then
+      file_name_fragment2=${file_name_fragment1%%.deb*}
+      echo $file_name_fragment2
+      file_name=${file_name_fragment2%%.run*}
+      echo %file_name
+    fi
 
+    rm -rf index.html
     eval net=$(echo ${net}${file_name}.run)
     echo $dotted_line
     echo "Starting download ${file_name}.run"
@@ -105,13 +120,14 @@ download_run(){
     network_test $res_net $test_net_addr
 }
 
-delete_ori_Ascend(){
+bak_ori_Ascend(){
+    bak_time=$(date "+%Y%m%d%H%M%S")
     echo $dotted_line
     echo "Delete the original Ascend" 
     if [ $UID -eq 0 ];then
-      rm -rf /usr/local/Ascend
+      mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
     else
-      rm -rf ~/Ascend
+      mv ~/Ascend  ~/Ascend_$bak_time
     fi
 }
 
@@ -151,7 +167,7 @@ install_Ascend(){
 network_test
 get_arch
 download_run
-delete_ori_Ascend
+bak_ori_Ascend
 extract_pack
 install_Ascend
 
@@ -160,7 +176,7 @@ echo $dotted_line
 echo "Successfully installed Ascend."
 echo "Using ${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run" 
 if [ $UID -eq 0 ];then
-  echo "The Ascend install path is /usr/local/Ascend"
+  echo "The Ascend install path is /usr/local/Ascend, the ori is /usr/local/Ascend_$bak_time"
 else
-  echo "The Ascend install path is ~/Ascend"
+  echo "The Ascend install path is ~/Ascend, the ori is ~/Ascend_$bak_time"
 fi
