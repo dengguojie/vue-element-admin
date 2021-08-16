@@ -578,5 +578,5 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling5) {
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
     EXPECT_EQ(runInfo.tiling_key, 5213400);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 16 16 2 16 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 16 16 2 1 ");
 }

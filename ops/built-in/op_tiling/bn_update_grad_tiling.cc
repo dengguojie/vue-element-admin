@@ -2,6 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <iostream>
+#include <math.h>
 
 #include "../op_proto/util/error_util.h"
 #include "graph/debug/ge_log.h"
@@ -132,6 +133,44 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     return true;
 }
 
+vector<int32_t> get_factors_of_positive_integer(int32_t value) {
+    vector<int32_t> factors;
+
+    int32_t sqrt_n = sqrt(value);
+    for(int32_t i = 1; i <= sqrt_n; i++) {
+        if(value % i == 0) {
+            int32_t tmp = value / i;
+            factors.push_back(i);
+            if (tmp != i) {
+                factors.push_back(tmp);
+            }
+        }
+    }
+    sort(factors.begin(), factors.end());
+    return factors;
+}
+
+int32_t find_closest_factor(vector<int32_t> factors, int32_t value) {
+    int32_t index = 0;
+    bool is_find = false;
+    for (int32_t i = 0; i < factors.size(); i++) {
+        if (factors[i] > value) {
+            index = i;
+            is_find = true;
+            break;
+        }
+    }
+    if (is_find) {
+        if (index > 0) {
+            index = index - 1;
+        }
+    } else {
+        index = factors.size() - 1;
+    }
+    int32_t closest_factor = factors[index];
+    return closest_factor;
+}
+
 bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_type, const nlohmann::json& op_info) {
     std::vector<int32_t> common_info;
     std::vector<int32_t> pattern_info;
@@ -182,6 +221,8 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     int32_t block_tiling_axis = -1;
     int32_t ub_tiling_axis = tilingInfo.ub_tiling_axis;
     int32_t ub_tiling_factor = tilingInfo.ub_tiling_factor;
+
+    int32_t inner_loop = input_shape[ub_tiling_axis];
     int32_t outer_loop = input_shape[ub_tiling_axis] / ub_tiling_factor;
 
     if (c1 >= core_num) {
@@ -189,17 +230,23 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) && 
                 outer_loop >= core_num &&
                 input_shape[ub_tiling_axis] % core_num == 0) {
+        inner_loop = input_shape[ub_tiling_axis] / core_num;
         block_tiling_axis = 2;
     } else if (ub_tiling_axis == 2 && 
                input_shape[ub_tiling_axis] >= half_core_num &&
                input_shape[ub_tiling_axis] % half_core_num == 0 &&
                input_shape[0] < core_num) {
+        inner_loop = input_shape[ub_tiling_axis] / half_core_num;
         block_tiling_axis = 5;
     } else if (n >= core_num) {
         block_tiling_axis = 0;
     } else {
         block_tiling_axis = 6;
     }
+
+    vector<int32_t> factors = get_factors_of_positive_integer(inner_loop);
+    ub_tiling_factor = find_closest_factor(factors, ub_tiling_factor);
+    tilingInfo.ub_tiling_factor = ub_tiling_factor;
 
     tilingInfo.block_tiling_axis = block_tiling_axis;
     tilingInfo.block_tiling_factor = (input_shape[block_tiling_axis] + core_num - 1) / core_num;

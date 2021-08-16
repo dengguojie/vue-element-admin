@@ -836,7 +836,8 @@ class BNUpdateGradSchedule():
                                     factor=self.ub_inner)
         fused = sch[final_out_tensor].fuse(final_out_tensor.op.reduce_axis[0],
                                            self.sum_x_block_outer)
-        self.final_out_tensor_ub_rf, _ = sch.rfactor(final_out_tensor, fused)
+        fused_outer, _ = sch[final_out_tensor].split(fused, nparts=core_num)
+        self.final_out_tensor_ub_rf, _ = sch.rfactor(final_out_tensor, fused_outer)
 
         final_out_tensor_global_list = self.schedule.cache_write(self.output_tensor_set, "")
         final_tensors_index_res = []
@@ -868,6 +869,7 @@ class BNUpdateGradSchedule():
             self.final_out_tensor_ub_rf.op.axis[1],
             self.final_out_tensor_ub_rf.op.reduce_axis[1],
             self.final_out_tensor_ub_rf.op.reduce_axis[2],
+            self.final_out_tensor_ub_rf.op.reduce_axis[3],
             self.final_out_tensor_ub_rf.op.reduce_axis[0],
             self.final_out_tensor_ub_rf.op.axis[5])
         
@@ -876,7 +878,7 @@ class BNUpdateGradSchedule():
             sum_x_global_c1_axis)
         
         final_compute_at_buffer = self.final_out_tensor_ub_rf
-        compute_at_axis = self.final_out_tensor_ub_rf.op.reduce_axis[1]
+        compute_at_axis = self.final_out_tensor_ub_rf.op.reduce_axis[2]
         self._do_compute_at(final_compute_at_buffer, final_compute_at_buffer, compute_at_axis, compute_at_axis)
 
         block = tvm.thread_axis("blockIdx.x")
@@ -891,7 +893,7 @@ class BNUpdateGradSchedule():
             self._do_const_double_buffer(outer_loop)
 
             sch[self.final_out_tensor_ub_rf].emit_insn(
-                self.final_out_tensor_ub_rf.op.reduce_axis[2], 
+                self.final_out_tensor_ub_rf.op.reduce_axis[3], 
                 "vector_reduce_sum")
             
             self._do_emit_insn()
@@ -908,7 +910,7 @@ class BNUpdateGradSchedule():
             self._do_emit_insn()
 
             sch[self.final_out_tensor_ub_rf].emit_insn(
-                self.final_out_tensor_ub_rf.op.reduce_axis[2], 
+                self.final_out_tensor_ub_rf.op.reduce_axis[3], 
                 "vector_reduce_sum")
 
             sch[self.final_out_tensor_global].emit_insn(
