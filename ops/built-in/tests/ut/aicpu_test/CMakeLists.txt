@@ -77,6 +77,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
   ${CPU_KERNELS_DIR}/kernels/host/trans_data_rnn.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/acos.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/acosh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
@@ -195,6 +196,7 @@ set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_test_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
   testcase/SpatialTransformer/src/SpatialTransformer_utest.cpp
+  testcase/acos/src/acos_utest.cpp
   testcase/acosh/src/acosh_utest.cpp
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
   testcase/add/src/add_utest.cpp
