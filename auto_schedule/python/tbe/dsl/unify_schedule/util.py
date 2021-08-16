@@ -199,6 +199,14 @@ def is_unified_broadcast(tensor: tvm.tensor.Tensor):
     return get_dsl_insn(tensor) == "unified_broadcast"
 
 
+def is_scalar_broadcast(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) == "broadcast"
+
+
 def is_placeholder(tensor: tvm.tensor.Tensor):
     """
     :param tensor:

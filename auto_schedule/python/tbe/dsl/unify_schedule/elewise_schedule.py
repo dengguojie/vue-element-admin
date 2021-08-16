@@ -694,6 +694,7 @@ class ElewiseSchedule(Schedule):
             cpt_schedule.add(CompileInfo.COEXISTING_QUANTITY, self._coexisting_quantity)
             cpt_schedule.add(CompileInfo.UB_SIZE, self._ub_size)
             cpt_schedule.add(CompileInfo.CORE_NUM, util.get_core_num())
+            cpt_schedule.add("_tiling_key", self._schedule.tiling_key)
 
         outs_contains_uint1 = "uint1" in self._outs_dtypes or \
                               operation.get_compile_info().get(CompileInfo.OUTS_UINT1, False)

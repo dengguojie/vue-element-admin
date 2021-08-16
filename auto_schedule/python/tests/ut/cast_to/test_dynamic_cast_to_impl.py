@@ -329,9 +329,12 @@ ut_case.add_case("all", case6)
 ut_case.add_case("all", case7)
 ut_case.add_case("all", case8)
 ut_case.add_case("all", case9)
+
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case10)
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case11)
+
 ut_case.add_case("all", case12)
+
 # ut_case.add_case(case=case13, support_soc="Ascend920A")
 # ut_case.add_case(case=case14, support_soc="Ascend920A")
 # ut_case.add_case(case=case15, support_soc="Ascend920A")

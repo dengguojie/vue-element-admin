@@ -93,9 +93,11 @@ class Broadcast {
   bool Init();
   bool GenerateOutputShape();
   bool TryMatchAllUnknown();
-  bool TrySwitchToPerfPattern();
+  void TrySwitchToPerfPattern();
+  void TrySwitchToPerfPatternMilan();
   void FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y);
-  bool MulTrySwitchToPerfPattern();
+  void MulTrySwitchToPerfPattern();
+  void MulTrySwitchToPerfPatternMilan();
   void MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length);
   void GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
                           const int64_t split_axis, const int64_t split_factor);
@@ -108,6 +110,8 @@ class Broadcast {
   int64_t SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_block);
   int64_t FindLowestMiddle();
   bool DoUbTiling();
+  bool MilanUbTiling();
+  bool DefaultUbTiling();
   void AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit);
   void CheckUpdateUbTiling();
   void OptimizeUbTiling();
@@ -137,6 +141,7 @@ class Broadcast {
   int64_t block_factor{1};
   int64_t max_available_ub{0};
   int64_t max_available_ub_db{0};
+  size_t original_dim_len{0};
   Pattern s_pattern{Pattern::ORIGINAL};
   ge::DataType in_type;
   ge::DataType out_type;
@@ -147,6 +152,7 @@ class Broadcast {
   bool need_double_buffer{false};
   bool is_multi_output{false};
   bool need_block_align{false};
+  bool is_milan_soc{false};
 };
 
 }  // namespace utils

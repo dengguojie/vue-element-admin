@@ -189,7 +189,8 @@ compile_case = {
     "8": [case8, None],
 }
 for _, item in compile_case.items():
-    ut_case.add_case(case=item[0], support_soc=item[1])
+    support_soc = ["Ascend910A", "Ascend310"],
+    ut_case.add_case(case=item[0], support_soc=support_soc)
 
 
 def calc_expect_func(x1, x2, y1, y2, z, operation):

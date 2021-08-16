@@ -44,6 +44,7 @@ static const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN{
 };
 
 static const std::string ALL_UNKNOWN_PATTERN = "999";
+static const std::string MILAN = "Ascend920";
 }
 
 const int64_t BGetElementByType(const ge::DataType& dtype) {
@@ -106,6 +107,15 @@ bool Broadcast::Init() {
     compileInfo.is_unknown_rank = flag_info[5];
     compileInfo.has_all_unknown = flag_info[6];
   }
+  if (op_info.contains("_soc_version")) {
+    try {
+      std::string soc_version = op_info.at("_soc_version");
+      is_milan_soc = soc_version == MILAN;
+    } catch (const std::exception &e) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_soc_version] error. Error message: %s", e.what());
+      return false;
+    }
+  }
   return true;
 }
 
@@ -144,12 +154,12 @@ void Broadcast::FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::v
   fusion_index.push_back(current_index);
 }
 
-bool Broadcast::TrySwitchToPerfPattern() {
+void Broadcast::TrySwitchToPerfPattern() {
   fusion_shapes.push_back({input_shapes[0][0]});
   fusion_shapes.push_back({input_shapes[1][0]});
   FusionContinuousAxis(fusion_shapes[0], fusion_shapes[1]);
-  if (fusion_shapes[0].size() > MAX_PATTERN_DIM || !compileInfo.use_special_pattern) {
-    return true;
+  if ((fusion_shapes[0].size() > MAX_PATTERN_DIM && !is_milan_soc) || !compileInfo.use_special_pattern) {
+    return ;
   }
   int64_t pattern_key = 0;
   int64_t base = 100;
@@ -175,8 +185,25 @@ bool Broadcast::TrySwitchToPerfPattern() {
       output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
     }
     broadcast_axis[b_axis] = true;
+  } else if (is_milan_soc && original_dim_len > fusion_shapes[0].size()) {
+    TrySwitchToPerfPatternMilan();
   }
-  return true;
+}
+
+void Broadcast::TrySwitchToPerfPatternMilan() {
+  s_pattern = Pattern::UNKNWON_UNKNOWN;
+  dim_len = fusion_shapes[0].size();
+  size_t start = original_dim_len - dim_len - 1;
+  for (size_t i = 0; i < start; i++) {
+    input_shapes[0][i] = 1;
+    input_shapes[1][i] = 1;
+    output_shape.push_back(1);
+  }
+  for (size_t i = 0; i < dim_len; i++) {
+    input_shapes[0][i + start] = fusion_shapes[0][i];
+    input_shapes[1][i + start] = fusion_shapes[1][i];
+    output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
+  }
 }
 
 void Broadcast::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length) {
@@ -218,13 +245,16 @@ void Broadcast::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusio
   fusion_index.push_back(current_index);
 }
 
-bool Broadcast::MulTrySwitchToPerfPattern() {
+void Broadcast::MulTrySwitchToPerfPattern() {
   std::vector<std::vector<int64_t>> shapes(input_num, std::vector<int64_t>{1});
   fusion_shapes = std::move(shapes);
   size_t fusion_length = 0;
   MulFusionContinuousAxis(fusion_shapes, fusion_length);
-  if (!compileInfo.use_special_pattern) {
-    return true;
+  if (!compileInfo.use_special_pattern && !is_milan_soc) {
+    return ;
+  }
+  if (is_milan_soc) {
+    return MulTrySwitchToPerfPatternMilan();
   }
   if (fusion_length <= (MAX_PATTERN_DIM - 1)) {
     int64_t pattern_key = 0;
@@ -263,7 +293,54 @@ bool Broadcast::MulTrySwitchToPerfPattern() {
       broadcast_axis[b_axis] = true;
     }
   }
-  return true;
+}
+
+void Broadcast::MulTrySwitchToPerfPatternMilan() {
+  if (original_dim_len == fusion_shapes[0].size()) {
+    return ;
+  }
+  int64_t pattern_key = 0;
+  int64_t base = 100;
+  for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
+    bool is_broadcast = false;
+    int64_t shape = fusion_shapes[0][i];
+    for (size_t j = 1; j < input_num; j++) {
+      if (shape != fusion_shapes[j][i]) {
+        is_broadcast = true;
+        break;
+      }
+    }
+    if (is_broadcast) {
+      pattern_key += (base * BROADCAST_BASE_KEY);
+      broadcast_axis[i] = true;
+    } else {
+      pattern_key += base;
+    }
+    base /= 10;
+  }
+  if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
+    s_pattern = SPECIAL_PATTERN.at(pattern_key);
+  } else {
+    s_pattern = Pattern::UNKNWON_UNKNOWN;
+  }
+  dim_len = fusion_shapes[0].size();
+  size_t start = original_dim_len - dim_len - 1;
+  for (size_t i = 0; i < start; i++) {
+    for (size_t j = 0; j < input_num; j++) {
+      input_shapes[j][i] = 1;
+      output_shape.push_back(1);
+    }
+  }
+  for (size_t i = 0; i < dim_len; i++) {
+    int64_t max_output = 1;
+    for (size_t j = 0; j < input_num; j++) {
+      input_shapes[j][i + start] = fusion_shapes[j][i];
+      if (input_shapes[j][i + start] > max_output) {
+        max_output = input_shapes[j][i + start];
+      }
+    }
+    output_shape.push_back(max_output);
+  }
 }
 
 bool Broadcast::GenerateOutputShape() {
@@ -285,10 +362,17 @@ bool Broadcast::GenerateOutputShape() {
     V_OP_TILING_CHECK(compileInfo.is_support_broadcast,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile shape and runtime shape not same"),
                       return false);
+    if (is_milan_soc) {
+      if (!op_info.contains("_fusion_index")) {
+        original_dim_len = dim_len;
+      } else {
+        original_dim_len = op_info.at("_fusion_index").size();
+      }
+    }
     if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
-      ret = ret && TrySwitchToPerfPattern();
+      TrySwitchToPerfPattern();
     } else {
-      ret = ret && MulTrySwitchToPerfPattern();
+      MulTrySwitchToPerfPattern();
     }
     if (s_pattern == Pattern::ORIGINAL) {
       ret = ret && RefineShapesForBroadcast();
@@ -498,7 +582,8 @@ bool Broadcast::RefineShapesForBroadcast() {
       broadcast_axis[i] = true;
     }
   }
-  if (compileInfo.has_all_unknown) {
+  bool maybe_all_unknown = !is_milan_soc && compileInfo.has_all_unknown;
+  if (maybe_all_unknown) {
     return TryMatchAllUnknown();
   }
   return true;
@@ -603,7 +688,7 @@ bool Broadcast::DoBlockTiling() {
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     output_shape[0] = block_factor;
     block_dims = std::ceil(multi_core_output * 1.0 / block_factor);
-  } else {
+  } else if (!is_milan_soc) {
     CheckUpdateBlockTiling();
   }
   return true;
@@ -733,7 +818,35 @@ int64_t Broadcast::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_bl
   return is_middle_optimize ? last_under_ub_shape : under_ub_shape;
 }
 
-bool Broadcast::DoUbTiling() {
+bool Broadcast::MilanUbTiling() {
+  int64_t limit = max_available_ub;
+  V_OP_TILING_CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo max_dtype not in SPLIT_FACTORS"),
+                    return false);
+  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
+  int64_t under_ub_shape = 1;
+  int64_t ele_in_block = BGetElementByType(out_type);
+  for (int64_t i = shape_len; i >= block_axis; i--) {
+    int64_t cur_shape = output_shape[i];
+    if (i == shape_len) {
+      cur_shape = std::ceil(cur_shape * 1.0 / ele_in_block) * ele_in_block;
+    }
+    if (cur_shape >= limit) {
+      ub_axis = i;
+      ub_factor = std::min(output_shape[i], limit);
+      break;
+    } else {
+      limit /= cur_shape;
+      under_ub_shape *= cur_shape;
+      ub_axis = i;
+      ub_factor = output_shape[i];
+    }
+  }
+  OptimizeUbTiling();
+  return true;
+}
+
+bool Broadcast::DefaultUbTiling() {
   int64_t limit = max_available_ub;
   V_OP_TILING_CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo max_dtype not in SPLIT_FACTORS"),
@@ -772,6 +885,13 @@ bool Broadcast::DoUbTiling() {
   }
   OptimizeUbTiling();
   return true;
+}
+
+bool Broadcast::DoUbTiling() {
+  if (is_milan_soc){
+    return MilanUbTiling();
+  }
+  return DefaultUbTiling();
 }
 
 void Broadcast::OptimizeUbTiling() {
