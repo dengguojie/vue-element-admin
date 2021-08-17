@@ -1610,8 +1610,8 @@ class MaxpoolGrad:
             self._vector_dup(col2img_fp16_ub, 0, col2img_fp16_ub.shape, self.scalar_zero_fp16, "float16")
             pad_top_offset = pad_top * wi * C0
             with self.tik_instance.for_range(0, hi) as re_times:
-                self.tik_instance.data_move(self.res_gm[self.offset_gm + re_times * wi * C0],
-                                            col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, wi * C0 // 16,
+                self.tik_instance.data_move(self.res_gm[self.offset_gm + re_times * self.wi * C0],
+                                            col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, self.wi * C0 // 16,
                                             pad_left + pad_right, 0)
             with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
                 self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
@@ -1661,7 +1661,7 @@ class MaxpoolGrad:
                                                            scope=tik.scope_ubuf)
                 self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
                 self.tik_instance.data_move(self.res_gm[self.offset_gm + col_index_ori], col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
-                                            self.kh, wi * C0 // 16, pad_left + pad_right, 0)
+                                            self.kh, self.wi * C0 // 16, pad_left + pad_right, 0)
             if offset_gm_block is not None:
                 with self.tik_instance.if_scope(start_threshold > pad_top):
                     self.tik_instance.data_move(self.res_gm[offset_gm_block],
