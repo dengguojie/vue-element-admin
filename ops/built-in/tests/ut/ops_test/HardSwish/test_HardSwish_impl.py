@@ -11,12 +11,12 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-Hardswish ut case
+HardSwish ut case
 """
 from op_test_frame.ut import OpUT
 import numpy as np
 
-ut_case = OpUT("Hardswish", None, None)
+ut_case = OpUT("HardSwish", None, None)
 
 # pylint: disable=unused-argument
 def calc_expect_func(input_x, output_y):

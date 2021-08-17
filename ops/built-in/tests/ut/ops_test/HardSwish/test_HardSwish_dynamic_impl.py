@@ -11,12 +11,12 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-Hardswish ut case
+HardSwish ut case
 """
 from op_test_frame.ut import OpUT
 
 
-ut_case = OpUT("Hardswish", "impl.dynamic.hardswish", "hardswish")
+ut_case = OpUT("HardSwish", "impl.dynamic.hard_swish", "hard_swish")
 
 case1 = {
     "params": [
@@ -25,7 +25,7 @@ case1 = {
         {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
          "ori_format": "ND", "range": [(1, 100)]},
     ],
-    "case_name": "Hardswish_1",
+    "case_name": "HardSwish_1",
     "expect": "success",
     "support_expect": True
 }
@@ -37,7 +37,7 @@ case2 = {
         {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (15, 32),
          "ori_format": "ND", "range": [(1, 100)]},
     ],
-    "case_name": "Hardswish_2",
+    "case_name": "HardSwish_2",
     "expect": "success",
     "support_expect": True
 }

@@ -87,6 +87,10 @@ IMPLEMT_COMMON_INFERFUNC(GeluInferShape) {
 COMMON_INFER_FUNC_REG(Gelu, GeluInferShape);
 // ----------------------Gelu END----------------------
 
+// ----------------HardSwish-------------------
+COMMON_INFER_FUNC_REG(HardSwish, OneInOneOutCommonInferShape);
+// --------------HardSwish END-----------------
+
 // ----------------------FastGeluGrad----------------------
 IMPLEMT_VERIFIER(FastGeluGrad, FastGeluGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "x", "dy")) {
@@ -115,10 +119,6 @@ IMPLEMT_COMMON_INFERFUNC(FastGeluInferShape) {
 }
 COMMON_INFER_FUNC_REG(FastGelu, FastGeluInferShape);
 // ----------------------FastGelu END------------------
-
-// ----------------Hardswish-------------------
-COMMON_INFER_FUNC_REG(Hardswish, OneInOneOutCommonInferShape);
-// --------------Hardswish END-----------------
 
 // ----------------TanhGrad Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(TanhGradInferShape) {

@@ -11,7 +11,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file test_Hardswish_proto.cpp
+ * @file test_HardSwish_proto.cpp
  *
  * @brief
  *
@@ -23,32 +23,32 @@
 #include "op_proto_test_util.h"
 #include "nonlinear_fuc_ops.h"
 
-class Hardswish : public testing::Test {
+class HardSwish : public testing::Test {
 protected:
     static void SetUpTestCase()
     {
-        std::cout << "Hardswish Proto Test SetUp" << std::endl;
+        std::cout << "HardSwish Proto Test SetUp" << std::endl;
     }
 
     static void TearDownTestCase()
     {
-        std::cout << "Hardswish Proto Test TearDown" << std::endl;
+        std::cout << "HardSwish Proto Test TearDown" << std::endl;
     }
 };
 
-TEST_F(Hardswish, hardswish_infershape_test){
-    ge::op::Hardswish hardswish_op;
+TEST_F(HardSwish, hard_swish_infershape_test){
+    ge::op::HardSwish hard_swish_op;
     std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}};
     auto tensor_desc = create_desc_shape_range({-1},
                                                ge::DT_FLOAT16, ge::FORMAT_ND,
                                                {64},
                                                ge::FORMAT_ND, shape_range);
-    hardswish_op.UpdateInputDesc("x", tensor_desc);
+    hard_swish_op.UpdateInputDesc("x", tensor_desc);
 
-    auto ret = hardswish_op.InferShapeAndType();
+    auto ret = hard_swish_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = hardswish_op.GetOutputDesc("y");
+    auto output_desc = hard_swish_op.GetOutputDesc("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {-1};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);

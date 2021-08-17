@@ -30,8 +30,8 @@ CONST_ONE_IN_SIX = 1 / 6
 
 
 # pylint: disable=unused-argument
-@fusion_manager.register("hardswish")
-def hardswish_compute(input_x, output_y, kernel_name="hardswish"):
+@fusion_manager.register("hard_swish")
+def hard_swish_compute(input_x, output_y, kernel_name="hard_swish"):
     """
     compute of hard_swish
 
@@ -66,7 +66,7 @@ def hardswish_compute(input_x, output_y, kernel_name="hardswish"):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def hardswish(input_x, output_y, kernel_name="hardswish"):
+def hard_swish(input_x, output_y, kernel_name="hard_swish"):
     """
        f(x)= 0(x <= -3)
        f(x)= x(x >= 3)
@@ -93,7 +93,7 @@ def hardswish(input_x, output_y, kernel_name="hardswish"):
 
     input_shape = [functools.reduce(lambda x, y: x * y, input_shape[:])]
     input_data = tvm.placeholder(input_shape, name="input_data", dtype=input_dtype)
-    final_res = hardswish_compute(input_data, output_y, kernel_name="hardswish")
+    final_res = hard_swish_compute(input_data, output_y, kernel_name="hard_swish")
 
     with tvm.target.cce():
         auto_sch = tbe.auto_schedule(final_res)

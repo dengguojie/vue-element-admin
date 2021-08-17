@@ -32,8 +32,8 @@ CONST_ONE_IN_SIX = 1 / 6
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
-@register_operator_compute("Hardswish", op_mode="dynamic", support_fusion=True)
-def hardswish_compute(input_x, output_y, kernel_name="hard_swish"):
+@register_operator_compute("HardSwish", op_mode="dynamic", support_fusion=True)
+def hard_swish_compute(input_x, output_y, kernel_name="hard_swish"):
     """
     compute of hard_swish
 
@@ -66,9 +66,9 @@ def hardswish_compute(input_x, output_y, kernel_name="hard_swish"):
         relu6_res_ov6 = tbe.vmuls(relu6_res, tvm.const(CONST_ONE_IN_SIX, "float32"))
         return tbe.vmul(input_x, relu6_res_ov6)
 
-@register_operator("Hardswish")
+@register_operator("HardSwish")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def hardswish(input_x, output_y, kernel_name="hard_swish"):
+def hard_swish(input_x, output_y, kernel_name="hard_swish"):
     """
        f(x)= 0(x <= -3)
        f(x)= x(x >= 3)
@@ -99,7 +99,7 @@ def hardswish(input_x, output_y, kernel_name="hard_swish"):
             x_shape = shape_util.variable_shape([_x])
             data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
                                          name="data_input")
-            res = hardswish_compute(data_input, output_y, kernel_name)
+            res = hard_swish_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
