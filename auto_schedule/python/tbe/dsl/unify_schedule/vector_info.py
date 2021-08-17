@@ -42,12 +42,36 @@ from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import is_placeholder
 from .util import shape_to_list
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import HI3796CV300CS
+from tbe.common.platform import HI3796CV300ES
+from tbe.common.platform import SD3403
+from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform.platform_info import get_soc_spec
 
+ASCEND_SHISI = "smallhisi"
+
+REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC = {
+    "Default": ("float16", "float32", "int32"),
+    ASCEND_310: ("float16",),
+    ASCEND_910: ("float16",),
+    ASCEND_920A: ("float16", "float32", "int32"),
+    ASCEND_710: ("float16",),
+    ASCEND_610: ("float16",),
+    ASCEND_615: ("float16",),
+    ASCEND_SHISI: ("float16",),
+}
 
 class ComputeGraphInfo:
     """
     Operator Compute Graph Info collector and container
     """
+
     def __init__(self, output_tensors: Iterable[Tensor]):
         """
         Initialize containers and try to collect info
@@ -87,7 +111,7 @@ class ComputeGraphInfo:
         self.output_tensor_set = set(output_tensors)
         self.tensor_list, self.tensor_consumers_map, self.tensor_producers_map = \
             self.dfs_compute_graph(self.output_tensor_set,
-                                   (   # self.input_tensor_set hook
+                                   (  # self.input_tensor_set hook
                                        (lambda _tensor: isinstance(_tensor.op, PlaceholderOp),
                                         lambda _tensor: self.input_tensor_set.add(_tensor),
                                         lambda _tensor: self.non_gm_input_tensor_set.add(_tensor)
@@ -231,6 +255,7 @@ class ComputeGraphInfo:
                                _tensor_consumers_map,
                                _tensor_producers_map,
                                _hooks)
+
         visited_list = set()
         tensor_consumers_map = {}
         tensor_producers_map = {}
@@ -288,6 +313,7 @@ class ComputeGraphInfo:
               tensors_before_reduce belong to bNode, tensors_after_reduce belong to sNode.
               sizeof(bNode) = coef * sizeof(sNode)
         """
+
         def _analysis_dependent(dependent):
             _dict = {"SubGraphBeforeReduce": False, "_bNodeNum": [], "_sNodeNum": []}
             for item in dependent.keys():
@@ -317,11 +343,40 @@ class ComputeGraphInfo:
                         _dict["_bNodeNum"].append(dtype)
                         self.soc_ub_size -= 2048
 
-            def _reduce_max_space(_reduce_tensor):
-                if dtype in ["float32", "int32"]:
-                    if all_axes[-1] not in reduce_axes:
+            def getDtypesSupportVcrossFunc():
+                """
+                getDtypesSupportVcrossFunc
+
+                the func get all dtypes that reduce_max and reduce_min supports vcross func (vcmax or vcmin)
+                by soc type
+                """
+                soc_ver = get_soc_spec(SOC_VERSION)
+                if soc_ver in (HI3796CV300CS, HI3796CV300ES, SD3403):
+                    soc_ver = ASCEND_SHISI
+                soc_support_dtype = REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC.get(soc_ver)
+                if soc_support_dtype is None:
+                    soc_support_dtype = REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC.get("Default")
+                    if soc_support_dtype is None:
+                        return []
+
+                return list(soc_support_dtype)
+
+            def lastReduce():
+                """
+                get last reduce axis
+                """
+                return all_axes[-1] in reduce_axes
+
+            def _reduce_max_min_space():
+                if not lastReduce():
+                    _dict["_sNodeNum"].append(dtype)
+                    self.soc_ub_size -= 64
+                else:
+                    dtypesSupportVcrossFunc = getDtypesSupportVcrossFunc()
+                    if dtype in dtypesSupportVcrossFunc:
                         _dict["_sNodeNum"].append(dtype)
-                        self.soc_ub_size -= 64
+                        _dict["_bNodeNum"].append(dtype)
+                        self.soc_ub_size -= 4096
                     else:
                         if len(reduce_axes) == 1:
                             _dict["_sNodeNum"].append(dtype)
@@ -330,16 +385,6 @@ class ComputeGraphInfo:
                             self.soc_ub_size -= 512
                             _dict["_sNodeNum"].append(dtype)
                             _dict["_bNodeNum"].append(dtype)
-                elif dtype in ["float16", ]:
-                    if all_axes[-1] not in reduce_axes:
-                        _dict["_sNodeNum"].append(dtype)
-                        self.soc_ub_size -= 64
-                    else:
-                        _dict["_sNodeNum"].append(dtype)
-                        _dict["_bNodeNum"].append(dtype)
-                        self.soc_ub_size -= 4096
-                else:
-                    raise RuntimeError("Not support dtype in reduce_max(min) is %s" % dtype)
 
             def _reduce_prod_space(_reduce_tensor):
                 if all_axes[-1] not in reduce_axes:
@@ -360,7 +405,7 @@ class ComputeGraphInfo:
                 if tag in ["reduce_sum", ]:
                     _reduce_sum_space(_tensor)
                 elif tag in ["reduce_max", "reduce_min"]:
-                    _reduce_max_space(_tensor)
+                    _reduce_max_min_space()
                 elif tag in ["reduce_prod", ]:
                     _reduce_prod_space(_tensor)
                 else:

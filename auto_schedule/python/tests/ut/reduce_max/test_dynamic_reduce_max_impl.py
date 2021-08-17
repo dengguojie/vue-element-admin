@@ -75,5 +75,5 @@ case2 = {
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710", "Ascend920A"], case1)
 ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)

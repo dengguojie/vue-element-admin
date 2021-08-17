@@ -60,21 +60,21 @@ DSL_SAME_API_MAP = {
 DSL_CHECK_SUPPORT_MAP = {
     "broadcast": {
         "AllSoc": ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                   "uint16", "int8", "uint8"),
         ASCEND_310: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                     "uint16", "int8", "uint8"),
         ASCEND_910: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                     "uint16", "int8", "uint8"),
         ASCEND_920A: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                      "uint16", "int8", "uint8"),
         ASCEND_710: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                     "uint16", "int8", "uint8"),
         ASCEND_610: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                     "uint16", "int8", "uint8"),
         ASCEND_615: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                     "uint16", "int8", "uint8"),
         ASCEND_SHISI: ("float16", "float32", "int32", "uint32", "int16",
-        "uint16", "int8", "uint8"),
+                       "uint16", "int8", "uint8"),
     },
 
     # segment
@@ -194,7 +194,7 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_310: ("float16", "f162s32"),
         ASCEND_910: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_920A: ("float16", "float32", "f162s32", "f322s32",
-                      "f322s64", "s642f32","f322bf16", "bf162s32"),
+                      "f322s64", "s642f32", "f322bf16", "bf162s32"),
         ASCEND_710: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_610: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_615: ("float16", "float32", "f162s32", "f322s32"),
@@ -240,7 +240,7 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32"),
-        ASCEND_610: ("float16", "float32"), # v200 int32: nlst support, last not
+        ASCEND_610: ("float16", "float32"),  # v200 int32: nlst support, last not
         ASCEND_615: ("float16", "float32"),
         ASCEND_SHISI: ("float16",),
     },
@@ -837,7 +837,7 @@ def dtype_check_decorator(func, *args, **kwargs):
     if func_name == "vsel":
         judge_dtype = _get_vsel_dtype(args[1], args[2])
 
-    if not dsl_check_support("tbe.dsl."+func_name, judge_dtype):
+    if not dsl_check_support("tbe.dsl." + func_name, judge_dtype):
         dict_args = dict()
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "tbe.dsl.%s is not supported %s!" \
