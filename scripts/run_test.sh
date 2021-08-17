@@ -37,8 +37,8 @@ set_ut_env() {
   export OPS_SOURCE_PATH="${CANN_ROOT}/ops/built-in/tbe"
   export ASCEND_OPP_PATH=$install_path/opp
   export PYTHONPATH=$OPS_SOURCE_PATH:$PYTHONPATH
-  export LD_LIBRARY_PATH=$install_path/atc/lib64:${CANN_ROOT}/lib:$LD_LIBRARY_PATH
-  export PATH=$PATH:$install_path/atc/ccec_compiler/bin
+  export LD_LIBRARY_PATH=$install_path/atc/lib64:$install_path/compiler/lib64:${CANN_ROOT}/lib:$LD_LIBRARY_PATH
+  export PATH=$PATH:$install_path/atc/ccec_compiler/bin:$install_path/compiler/ccec_compiler/bin
 }
 
 run_ut() {
