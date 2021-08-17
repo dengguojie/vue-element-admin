@@ -54,23 +54,26 @@ if(EXISTS "${tbe_whl}")
   )
 
   # install
-  set(TBE_ATC_PATH "${INSTALL_PATH}/atc/lib64")
-  set(TBE_FWK_PATH "${INSTALL_PATH}/fwkacllib/lib64")
-  set(TBE_COMPILER_PATH "${INSTALL_PATH}/compiler/lib64")
-  cann_install(
-    TARGET      repack_tbe
-    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
-    DESTINATION "${TBE_ATC_PATH}"
-  )
-  cann_install(
-    TARGET      repack_tbe
-    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
-    DESTINATION "${TBE_FWK_PATH}"
-  )
-  cann_install(
-    TARGET      repack_tbe
-    FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
-    DESTINATION "${TBE_COMPILER_PATH}"
-  )
+  if("$ENV{ALL_IN_ONE_ENABLE}" STREQUAL "1")
+    set(TBE_COMPILER_PATH "${INSTALL_PATH}/compiler/lib64")
+    cann_install(
+      TARGET      repack_tbe
+      FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
+      DESTINATION "${TBE_COMPILER_PATH}"
+    )
+  else()
+    set(TBE_ATC_PATH "${INSTALL_PATH}/atc/lib64")
+    set(TBE_FWK_PATH "${INSTALL_PATH}/fwkacllib/lib64")
+    cann_install(
+      TARGET      repack_tbe
+      FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
+      DESTINATION "${TBE_ATC_PATH}"
+    )
+    cann_install(
+      TARGET      repack_tbe
+      FILES       "${CMAKE_CURRENT_BINARY_DIR}/dist/${_tbe_whl_name}"
+      DESTINATION "${TBE_FWK_PATH}"
+    )
+  endif()
 
 endif()
