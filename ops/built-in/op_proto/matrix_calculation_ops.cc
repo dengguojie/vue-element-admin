@@ -3169,20 +3169,10 @@ bool InferShapeAndTypeIndexPut(Operator& op) {
   DataType x1_dtype = op.GetInputDesc(0).GetDataType();
   Format x1_format = op.GetInputDesc(0).GetFormat();
   ge::Shape x1_shape = op.GetInputDesc(0).GetShape();
-  std::vector<int64_t> x1_dims = x1_shape.GetDims();
-  
-  ge::Shape x2_shape = op.GetInputDesc(1).GetShape();
-  std::vector<int64_t> x2_dims = x2_shape.GetDims();
 
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
     OP_LOGE("get op name faild!");
-    return false;
-  }
-  const char *op_name = op_name_str.GetString();
-  
-  if (x2_dims != x1_dims) {
-    OP_LOGE(op_name, "x1_dims not equal x2_dims");
     return false;
   }
 
