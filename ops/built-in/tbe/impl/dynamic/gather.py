@@ -25,7 +25,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
 # pylint: disable=superfluous-parens
-def get_op_support_info(x, indices, y, validate_indices=True, kernel_name="Gather"):
+def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather"):
     """
     get_op_support_info
     """
@@ -48,8 +48,8 @@ def get_op_support_info(x, indices, y, validate_indices=True, kernel_name="Gathe
 
 @register_operator("Gather")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def gather(x, indices, y, validate_indices=True, kernel_name="Gather"):
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def gather(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather"):
     """
     gather interface
 
@@ -65,5 +65,5 @@ def gather(x, indices, y, validate_indices=True, kernel_name="Gather"):
     compile info
     """
     axis_dict = {"dtype": "int32"}
-    obj = gather_v2.GatherV2(x, indices, axis_dict, y, kernel_name)
+    obj = gather_v2.GatherV2(x, indices, axis_dict, y, batch_dims, kernel_name)
     return obj.gather_compute()

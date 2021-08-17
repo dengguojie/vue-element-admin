@@ -822,13 +822,14 @@ VERIFY_FUNC_REG(GatherNd, GatherNdVerify);
 // ----------------GatherNd END----------------
 
 // ----------------GatherV2-------------------
-static graphStatus GatherV2InferOptimize(ge::Operator& op, int64_t& axis, GeTensorDescPtr& x_desc,
-                                         GeTensorDescPtr& indices_desc, GeTensorDescPtr& y_desc,
-                                         std::vector<int64_t>& x_shape, std::vector<int64_t>& indices_shape,
-                                         std::vector<int64_t>& y_shape,
-                                         std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
-                                         std::vector<std::pair<int64_t, int64_t>>& shape_range_indices,
-                                         std::vector<std::pair<int64_t, int64_t>>& out_range) {
+static graphStatus GatherV2InferOptimize(ge::Operator &op, int64_t &axis, GeTensorDescPtr &x_desc,
+                                         GeTensorDescPtr &indices_desc, GeTensorDescPtr &y_desc,
+                                         std::vector <int64_t> &x_shape, std::vector <int64_t> &indices_shape,
+                                         std::vector <int64_t> &y_shape,
+                                         std::vector <std::pair<int64_t, int64_t>> &shape_range_x,
+                                         std::vector <std::pair<int64_t, int64_t>> &shape_range_indices,
+                                         std::vector <std::pair<int64_t, int64_t>> &out_range,
+                                         int64_t batch_dims) {
   // real dim cnt has no existing meaning .Original shape has replace its meaning now
   int64_t x_real_dim_cnt = static_cast<int64_t>(x_desc->GetOriginShape().GetDims().size());
 
@@ -842,72 +843,54 @@ static graphStatus GatherV2InferOptimize(ge::Operator& op, int64_t& axis, GeTens
   }
 
   if (x_real_dim_cnt < 1) {
-    std::string err_msg = GetAttrValueErrMsg("x_real_dim_cnt", std::to_string(x_real_dim_cnt), ConcatString("x_real_dim_cnt >= 1"));
+    std::string err_msg = GetAttrValueErrMsg("x_real_dim_cnt", std::to_string(x_real_dim_cnt),
+                                             ConcatString("x_real_dim_cnt >= 1"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (axis < 0) {
     if (x_real_dim_cnt < -axis) {
-      std::string err_msg = OtherErrMsg(ConcatString("x_desc RealDimCnt[",x_real_dim_cnt,"] < -axis[",-axis,"]"));
+      std::string err_msg = OtherErrMsg(ConcatString("x_desc RealDimCnt[", x_real_dim_cnt,
+                                                     "] < -axis[", -axis, "]"));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (x_real_dim_cnt < axis + 1) {
-    std::string err_msg = OtherErrMsg(ConcatString("x_desc RealDimCnt[",x_real_dim_cnt,"] < axis + 1[",axis + 1,"]"));
+    std::string err_msg = OtherErrMsg(
+        ConcatString("x_desc RealDimCnt[", x_real_dim_cnt, "] < axis + 1[", axis + 1, "]"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  int64_t end = axis;
-  if (end < 0) {
-    end = x_real_dim_cnt + end;
-    if (end < 0) {
-      std::string err_msg = OtherErrMsg(ConcatString("x_desc RealDimCnt[",x_real_dim_cnt,"] < axis + 1[",axis + 1,"]"));
+  if (axis < 0) {
+    axis = x_real_dim_cnt + axis;
+    if (batch_dims > axis) {
+      std::string err_msg = OtherErrMsg(ConcatString("batch_dims must be less than or equal to axis", axis));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
 
-  for (int i = 0; i < end; i++) {
+  for (int i = 0; i < axis; i++) {
     y_shape.push_back(x_shape[i]);
-    if ((size_t)i < shape_range_x.size()) {
+    if ((size_t) i < shape_range_x.size()) {
       out_range.push_back(shape_range_x[i]);
     }
   }
   // real dim cnt has no existing meaning .Original shape has replace its meaning now
   auto indices_dim_cnt_unsigned = indices_desc->GetOriginShape().GetDims().size();
-  for (size_t i = 0; i < indices_dim_cnt_unsigned; i++) {
+  for (size_t i = batch_dims; i < indices_dim_cnt_unsigned; i++) {
     y_shape.push_back(indices_shape[i]);
-    if ((size_t)i < shape_range_indices.size()) {
+    if ((size_t) i < shape_range_indices.size()) {
       out_range.push_back(shape_range_indices[i]);
     }
   }
 
-  if (axis != -1) {
-    int64_t start = axis + 1;
-    int64_t rank = x_real_dim_cnt;
-    if (start == 0) {
-      std::string err_msg = OtherErrMsg(ConcatString("start[",start,"] error.."));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-      return GRAPH_FAILED;
-    }
-    if (start > rank) {
-      start = rank;
-    }
-    if (start < 0) {
-      start = rank + start;
-      if (start < 0) {
-        std::string err_msg = OtherErrMsg(ConcatString("start[",start,"], rank[",rank,"], error."));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-        return GRAPH_FAILED;
-      }
-    }
-    for (int i = start; i < rank; i++) {
-      y_shape.push_back(x_shape[i]);
-      if ((size_t)i < shape_range_x.size()) {
-        out_range.push_back(shape_range_x[i]);
-      }
+  for (int i = axis + 1; i < x_real_dim_cnt; i++) {
+    y_shape.push_back(x_shape[i]);
+    if ((size_t) i < shape_range_x.size()) {
+      out_range.push_back(shape_range_x[i]);
     }
   }
 
@@ -918,88 +901,119 @@ static graphStatus GatherV2InferOptimize(ge::Operator& op, int64_t& axis, GeTens
 }
 
 IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  vector<string> input_infer_depends = {"axis"};
-  op_desc->SetOpInferDepends(input_infer_depends);
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    vector<string> input_infer_depends = { "axis" };
+    op_desc->SetOpInferDepends(input_infer_depends);
 
-  GeTensorDescPtr x_desc = op_desc->MutableInputDesc("x");
-  GeTensorDescPtr indices_desc = op_desc->MutableInputDesc("indices");
-  GeTensorDescPtr y_desc = op_desc->MutableOutputDesc("y");
+    GeTensorDescPtr x_desc = op_desc->MutableInputDesc("x");
+    GeTensorDescPtr indices_desc = op_desc->MutableInputDesc("indices");
+    GeTensorDescPtr y_desc = op_desc->MutableOutputDesc("y");
 
-  std::vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
-  std::vector<int64_t> indices_shape = indices_desc->MutableShape().GetDims();
+    std::vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
+    std::vector<int64_t> indices_shape = indices_desc->MutableShape().GetDims();
 
-  std::vector<int64_t> y_shape;
+    std::vector<int64_t> y_shape;
 
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op_desc->MutableInputDesc("x")->GetShapeRange(shape_range_x);
-  std::vector<std::pair<int64_t, int64_t>> shape_range_indices;
-  op_desc->MutableInputDesc("indices")->GetShapeRange(shape_range_indices);
-  std::vector<std::pair<int64_t, int64_t>> out_range;
+    std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+    op_desc->MutableInputDesc("x")->GetShapeRange(shape_range_x);
+    std::vector<std::pair<int64_t, int64_t>> shape_range_indices;
+    op_desc->MutableInputDesc("indices")->GetShapeRange(shape_range_indices);
+    std::vector<std::pair<int64_t, int64_t>> out_range;
 
-  MakeUpShapeRange(x_shape, shape_range_x);
-  MakeUpShapeRange(indices_shape, shape_range_indices);
+    MakeUpShapeRange(x_shape, shape_range_x);
+    MakeUpShapeRange(indices_shape, shape_range_indices);
 
-  Tensor axis_tensor;
-  int64_t axis = -1;
-  DataType axis_dtype = op_desc->MutableInputDesc("axis")->GetDataType();
-  graphStatus result = op.GetInputConstData("axis", axis_tensor);
-  if (result == GRAPH_SUCCESS) {
-    if (axis_dtype == ge::DT_INT64) {
-      axis = (int64_t)(*((int64_t*)axis_tensor.GetData()));
-    } else {
-      axis = (int32_t)(*((int32_t*)axis_tensor.GetData()));
+    Tensor axis_tensor;
+    int64_t axis = -1;
+    DataType axis_dtype = op_desc->MutableInputDesc("axis")->GetDataType();
+    graphStatus result = op.GetInputConstData("axis", axis_tensor);
+    if (result == GRAPH_SUCCESS) {
+      if (axis_dtype == ge::DT_INT64) {
+        axis = (int64_t)(*((int64_t *) axis_tensor.GetData()));
+      } else {
+        axis = (int32_t)(*((int32_t *) axis_tensor.GetData()));
+      }
     }
-  }
 
-  // unknown rank
-  if (IsUnknownRankShape(indices_shape) || IsUnknownRankShape(x_shape)) {
-    y_shape.push_back(-2);
-    y_desc->SetShape(ge::GeShape(y_shape));
-    y_desc->SetDataType(x_desc->GetDataType());
-  } else if (result != GRAPH_SUCCESS) {
-    // unknown shape
-    OP_LOGI(op.GetName().c_str(), "GetInputConstData(axis) [%d]", result);
     int64_t rank_x = static_cast<int64_t>(x_desc->GetOriginShape().GetDims().size());
     int64_t rank_indices = static_cast<int64_t>(indices_desc->GetOriginShape().GetDims().size());
-
-    // infer shape range
-    std::vector<std::pair<int64_t, int64_t>> range_tmp = shape_range_x;
-    range_tmp.insert(range_tmp.end(), shape_range_indices.begin(), shape_range_indices.end());
-    int64_t min_first, max_second;
-    for (size_t i = 0; i < range_tmp.size(); i++) {
-      if (i == 0) {
-        min_first = range_tmp[i].first;
-        max_second = range_tmp[i].second;
-      }
-      min_first = min_first < range_tmp[i].first ? min_first : range_tmp[i].first;
-      max_second = max_second > range_tmp[i].second ? max_second : range_tmp[i].second;
+    int64_t batch_dims = 0;
+    if (ge::GRAPH_SUCCESS != static_cast<int64_t>(op.GetAttr("batch_dims", batch_dims))) {
+      batch_dims = 0;
+      OP_LOGW(op.GetName().c_str(), "GetAttr(batch_dims) failed, set default value to 0.");
     }
-
-    std::pair<int64_t, int64_t> rank_unkown(1, -1);
-    int count_rank_x = std::count(shape_range_x.begin(), shape_range_x.end(), rank_unkown);
-    int count_rank_indices = std::count(shape_range_indices.begin(), shape_range_indices.end(), rank_unkown);
-
-    for (int i = 0; i < rank_x + rank_indices - 1; i++) {
-      y_shape.push_back(-1);
-      if (count_rank_x > 0 || count_rank_indices > 0) {
-        out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
-      } else {
-        out_range.push_back(std::pair<int64_t, int64_t>(min_first, max_second));
-      }
-    }
-
-    y_desc->SetDataType(x_desc->GetDataType());
-    y_desc->SetShapeRange(out_range);
-    y_desc->SetShape(ge::GeShape(y_shape));
-  } else {
-    if (GatherV2InferOptimize(op, axis, x_desc, indices_desc, y_desc, x_shape, indices_shape, y_shape, shape_range_x,
-                              shape_range_indices, out_range) != GRAPH_SUCCESS) {
+    if (batch_dims < -rank_indices || batch_dims >= rank_indices && rank_indices != 0) {
+      std::string err_msg = OtherErrMsg(ConcatString("Expected batch_dims in the range [", -rank_indices, ",",
+                                                     rank_indices, "), but got", batch_dims));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
-  }
+    if (batch_dims < 0) {
+      batch_dims = batch_dims + rank_indices;
+    }
+    if (batch_dims >= rank_x) {
+      std::string err_msg = OtherErrMsg(ConcatString("batch_dims must be less than rank(params)", rank_x));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+    for (int i = 0; i < batch_dims; i++) {
+      if (x_shape[i] != indices_shape[i]) {
+        std::string err_msg = OtherErrMsg(ConcatString("params.shape[", i, "]:", x_shape[i],
+                                                       "should be equal to indices.shape[", i, "]:",
+                                                       indices_shape[i]));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        return GRAPH_FAILED;
+      }
+    }
+    // unknown rank
+    if (IsUnknownRankShape(indices_shape) || IsUnknownRankShape(x_shape)) {
+      y_shape.push_back(-2);
+      y_desc->SetShape(ge::GeShape(y_shape));
+      y_desc->SetDataType(x_desc->GetDataType());
+    } else if (result != GRAPH_SUCCESS) {
+      // unknown shape
+      OP_LOGI(op.GetName().c_str(), "GetInputConstData(axis) [%d]", result);
 
-  return GRAPH_SUCCESS;
+      // infer shape range
+      std::vector <std::pair<int64_t, int64_t>> range_tmp = shape_range_x;
+      range_tmp.insert(range_tmp.end(), shape_range_indices.begin(), shape_range_indices.end());
+      int64_t min_first, max_second;
+      for (size_t i = 0; i < range_tmp.size(); i++) {
+        if (i == 0) {
+          min_first = range_tmp[i].first;
+          max_second = range_tmp[i].second;
+        }
+        min_first = min_first < range_tmp[i].first ? min_first : range_tmp[i].first;
+        max_second = max_second > range_tmp[i].second ? max_second : range_tmp[i].second;
+      }
+
+      std::pair <int64_t, int64_t> rank_unkown(1, -1);
+      int count_rank_x = std::count(shape_range_x.begin(), shape_range_x.end(), rank_unkown);
+      int count_rank_indices = std::count(shape_range_indices.begin(), shape_range_indices.end(), rank_unkown);
+
+      if (batch_dims != 0) {
+        rank_indices = rank_indices - batch_dims;
+      }
+      for (int i = 0; i < rank_x + rank_indices - 1; i++) {
+        y_shape.push_back(-1);
+        if (count_rank_x > 0 || count_rank_indices > 0) {
+          out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+        } else {
+          out_range.push_back(std::pair<int64_t, int64_t>(min_first, max_second));
+        }
+      }
+
+      y_desc->SetDataType(x_desc->GetDataType());
+      y_desc->SetShapeRange(out_range);
+      y_desc->SetShape(ge::GeShape(y_shape));
+    } else {
+      if (GatherV2InferOptimize(op, axis, x_desc, indices_desc, y_desc, x_shape, indices_shape, y_shape, shape_range_x,
+                                shape_range_indices, out_range, batch_dims) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
+      }
+    }
+
+    return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(GatherV2, GatherV2InferShape);
@@ -1159,7 +1173,18 @@ IMPLEMT_COMMON_INFERFUNC(GatherInferShape) {
   std::vector<std::pair<int64_t, int64_t>> y_shape_range;
 
   int64_t axis = 0;
-
+  int64_t batch_dims = 0;
+  int64_t rank_indices = static_cast<int64_t>(indices_desc->GetOriginShape().GetDims().size());
+  if (ge::GRAPH_SUCCESS != static_cast<int64_t>(op.GetAttr("batch_dims", batch_dims))) {
+    batch_dims = 0;
+    OP_LOGW(op.GetName().c_str(), "GetAttr(batch_dims) failed, set default value to 0.");
+  }
+  if (batch_dims < 0) {
+    batch_dims = batch_dims + rank_indices;
+  }
+  if (batch_dims != 0) {
+      axis = batch_dims;
+  }
   // unknown rank
   if (IsUnknownRankShape(indices_shape) || IsUnknownRankShape(x_shape)) {
     y_shape.push_back(-2);
@@ -1167,7 +1192,7 @@ IMPLEMT_COMMON_INFERFUNC(GatherInferShape) {
     y_desc->SetDataType(x_dtype);
   } else {
     if (GatherV2InferOptimize(op, axis, x_desc, indices_desc, y_desc, x_shape, indices_shape, y_shape, x_shape_range,
-                              indices_shape_range, y_shape_range) != GRAPH_SUCCESS) {
+                              indices_shape_range, y_shape_range, 0) != GRAPH_SUCCESS) {
       return GRAPH_FAILED;
     }
   }

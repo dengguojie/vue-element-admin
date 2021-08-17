@@ -63,7 +63,6 @@ set(_optiling_files
   broadcast.cc
   broadcast_v2.cc
   fill.cc
-  gather.cc
   gather_nd.cc
   gather_v2.cc
   gather_elements.cc

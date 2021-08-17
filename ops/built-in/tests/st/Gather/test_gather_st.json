@@ -1,0 +1,100 @@
+[
+  {
+    "op": "Gather",
+    "case_name" : "test_gather_without_batch_dims_001",
+    "calc_expect_func_file" : "test_gather_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-1],
+        "shape_range": [[87552, 87552]],
+        "typical_shape": [87552],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [-1,-1],
+        "shape_range": [[174, 174], [1,1]],
+        "typical_shape": [174,1],
+        "type": ["int32"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [-1,-1],
+        "shape_range": [[174, 174], [1,1]],
+        "typical_shape": [174,1],
+        "type": ["float16"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "validate_indices",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "batch_dims",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "Gather",
+    "case_name" : "test_gather_with_batch_dims_001",
+    "calc_expect_func_file" : "test_gather_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-1,-1],
+        "shape_range": [[87, 87], [552,552]],
+        "typical_shape": [87,552],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [-1,-1],
+        "shape_range": [[87, 87], [3,3]],
+        "typical_shape": [87,3],
+        "type": ["int32"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [-1,-1],
+        "shape_range": [[87, 87], [3,3]],
+        "typical_shape": [87,3],
+        "type": ["float16"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "validate_indices",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "batch_dims",
+        "value": 1,
+        "type": "int"
+      }
+    ]
+  }
+]
