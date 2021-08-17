@@ -28,7 +28,10 @@ CFG_INFO_TYPE_MAP = {
     'DT_UINT16': 'uint16',
     'DT_UINT32': 'uint32',
     'DT_UINT64': 'uint64',
-    'DT_BOOL': 'bool'
+    'DT_BOOL': 'bool',
+    "DT_COMPLEX64": "complex64",
+    "DT_COMPLEX128": "complex128",
+    "DT_DOUBLE": "double"
 }
 
 

@@ -138,7 +138,7 @@ rights reserved.
 
 namespace domi {left_braces}
 // Onnx ParseParams
-Status ParseParam{name}(const Message* op_src, ge::Operator& op_dest) {left_braces}
+Status ParseParam{name}(const ge::Operator& op_src, ge::Operator& op_dest) {left_braces}
     // To do: Implement the operator plugin by referring to the Onnx Operator Development Guide.
     return SUCCESS;
 {right_braces}
@@ -147,7 +147,7 @@ Status ParseParam{name}(const Message* op_src, ge::Operator& op_dest) {left_brac
 REGISTER_CUSTOM_OP("{name}")     // Set the registration name of operator
     .FrameworkType({fmk_type})   // Operator name with the original framework
     .OriginOpType("")      // Set the original frame type of the operator
-    .ParseParamsFn(ParseParam{name}); // Registering the callback function for parsing operator parameters
+    .ParseParamsByOperatorFn(ParseParam{name}); // Registering the callback function for parsing operator parameters
 {right_braces}  // namespace domi
 """
 

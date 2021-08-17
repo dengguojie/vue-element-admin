@@ -164,7 +164,8 @@ class CaseGenerator:
                     key0 = keys[0].strip()
                     if key0 not in self.op_info:
                         self.op_info[key0] = {}
-                    self.op_info[key0][keys[1].strip()] = key_value[1].strip()
+                    re_compile = re.compile(' ')
+                    self.op_info[key0][keys[1].strip()] = re_compile.sub('', key_value[1])
         if len(tbe_ops_info) != 1:
             utils.print_error_log(
                 'There are %d operator in file %s, only supports one operator '

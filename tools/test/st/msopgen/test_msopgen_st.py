@@ -49,7 +49,7 @@ class TestUtilsMethods(unittest.TestCase):
                 msopgen.main()
         self.assertEqual(error.value.code, utils.MS_OP_GEN_NONE_ERROR)
 
-    def test_gen_tf_caffe_from_ir_json_compare_success(self):
+    def test_gen_tf_caffe_onnx_from_ir_json_compare_success(self):
         test_utils.clear_out_path(IR_JSON_OUTPUT)
         args = ['msopgen.py', 'gen', '-i', IR_JSON_PATH, '-f', 'tf', '-c',
                 'ai_core-ascend310', '-op', 'Conv2D', '-out', IR_JSON_OUTPUT]
@@ -67,6 +67,18 @@ class TestUtilsMethods(unittest.TestCase):
                  '-m', '1']
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args2):
+                msopgen.main()
+        args3 = ['msopgen.py', 'gen', '-i', IR_JSON_PATH, '-f', 'onnx', '-c',
+                 'aicpu', '-op', 'Conv2D', '-out', IR_JSON_OUTPUT,
+                 '-m', '1']
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args3):
+                msopgen.main()
+        args4 = ['msopgen.py', 'gen', '-i', IR_JSON_PATH, '-f', 'onnx', '-c',
+                 'ai_core-ascend310', '-op', 'Conv2D', '-out', IR_JSON_OUTPUT,
+                 '-m', '1']
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args4):
                 msopgen.main()
         self.assertTrue(test_utils.check_result(IR_JSON_OUTPUT,
                                                 IR_JSON_GOLDEN_OUTPUT))

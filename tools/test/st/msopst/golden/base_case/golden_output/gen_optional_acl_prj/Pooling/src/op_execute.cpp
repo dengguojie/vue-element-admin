@@ -23,7 +23,7 @@
 
 bool CreateOpDesc(OpTestDesc &desc)
 {
-    if (desc.inputShape.size() <= 0 ||
+    if (desc.inputShape.size() < 0 ||
         desc.inputShape.size() != desc.inputDataType.size() ||
         desc.inputShape.size() != desc.inputFormat.size()) {
         ERROR_LOG("Input operator desc error");
