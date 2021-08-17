@@ -100,5 +100,221 @@
     ],
     "attr": [],
     "case_name": "test_AbsGrad_001"
+  },
+  {
+    "op": "AbsGrad",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4,
+          4
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4,
+          4
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AbsGrad_dynamic_000"
+  },
+  {
+    "op": "AbsGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4,
+          4
+        ]
+      },
+      {
+        "shape": [
+          2,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "z",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4,
+          4
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AbsGrad_dynamic_001"
   }
 ]

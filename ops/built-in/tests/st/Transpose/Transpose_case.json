@@ -1,0 +1,83 @@
+[
+  {
+    "op": "Transpose",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          32,
+          2,
+          2,
+          1,
+          7
+        ],
+        "typical_shape": [
+          1,
+          32,
+          2,
+          2,
+          1,
+          7
+        ],
+        "shape_range": [[1, 8]],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          32,
+          2,
+          2,
+          1,
+          7
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [6],
+        "typical_shape": [6],
+        "shape_range": [[6, 6]],
+        "format": "ND",
+        "ori_shape": [6],
+        "ori_format": "ND",
+        "name": "perm",
+        "type": "int32",
+        "value": [0, 1, 2, 4, 3, 5]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          32,
+          2,
+          1,
+          2,
+          7
+        ],
+        "typical_shape": [
+          1,
+          32,
+          2,
+          1,
+          2,
+          7
+        ],
+        "shape_range": [[1, 8]],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          32,
+          2,
+          1,
+          2,
+          7
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_Transpose_dynamic_000"
+  }
+]

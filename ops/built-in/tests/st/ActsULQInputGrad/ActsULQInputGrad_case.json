@@ -1,0 +1,179 @@
+[
+  {
+    "op": "ActsULQInputGrad",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "y_grad",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "clamp_min_mask",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "clamp_max_mask",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "x_grad",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ActsULQInputGrad_000"
+  }
+]

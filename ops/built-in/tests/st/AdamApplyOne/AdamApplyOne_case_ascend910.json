@@ -328,5 +328,323 @@
     ],
     "attr": [],
     "case_name": "test_AdamApplyOne_001"
+  },
+  {
+    "op": "AdamApplyOne",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input0",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            2000
+          ]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input1",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            2000
+          ]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input2",
+        "type": "float",
+        "shape_range": [
+          [1, 2000]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "input3",
+        "type": "float",
+        "shape_range": [
+          [1, 2000]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input4",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "mul0_x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "mul1_x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "mul2_x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "mul3_x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "add2_y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "output0",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "output1",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          8,
+          9
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          8,
+          9
+        ],
+        "ori_format": "ND",
+        "name": "output2",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1,
+          8,
+          9
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AdamApplyOne_dynamic_000"
   }
 ]

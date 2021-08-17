@@ -1,0 +1,110 @@
+[
+  {
+    "op": "ActULQClampMinGrad",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          8
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            200
+          ],
+          [
+            1,
+            128
+          ]
+        ],
+        "typical_shape": [
+          128,
+          8
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          8
+        ],
+        "ori_format": "ND",
+        "name": "input_y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            200
+          ],
+          [
+            1,
+            128
+          ]
+        ],
+        "typical_shape": [
+          128,
+          8
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          128,
+          8
+        ],
+        "ori_format": "ND",
+        "name": "input_z",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            200
+          ],
+          [
+            1,
+            128
+          ]
+        ],
+        "typical_shape": [
+          128,
+          8
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16",
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ActULQClampMinGrad_000"
+  }
+]

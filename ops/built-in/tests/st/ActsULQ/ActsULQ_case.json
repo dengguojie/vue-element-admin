@@ -1,0 +1,274 @@
+[
+  {
+    "op": "ActsULQ",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "data",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "clamp_min",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "clamp_max",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "clamp_min_mask",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "clamp_max_mask",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          32,
+          3,
+          5,
+          5
+        ],
+        "ori_format": "ND",
+        "name": "x_clamped_loss",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          3,
+          5,
+          5
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "fixed_min",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 8
+      }
+    ],
+    "case_name": "test_ActsULQ_000"
+  }
+]
