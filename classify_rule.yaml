@@ -1692,6 +1692,10 @@ cube-conv2d:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
+      - ops/built-in/op_proto/nn_calculation_ops.cc
+      - ops/built-in/op_proto/inc/nn_calculation_ops.h
+      - ops/built-in/op_proto/nn_pooling_ops.cc
+      - ops/built-in/op_proto/inc/nn_pooling_ops.h
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
