@@ -134,6 +134,7 @@ set(_onnx_plugins
   xor_plugin.cc
   upsample_plugin.cc
   global_lppool_plugin.cc
+  reduce_log_sum_exp_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
