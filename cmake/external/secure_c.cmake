@@ -21,7 +21,7 @@ endif()
 ExternalProject_Add(secure_c
   URL               ${_secure_c_url}
                     https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
-  URL_MD5           193f0ca5246c1dd84920db34d2d8249f
+  URL_MD5           ae4865cec1bfb52f7dca03f5c05ac98a
   DOWNLOAD_DIR      download/secure_c
   PREFIX            third_party
   CONFIGURE_COMMAND ""
