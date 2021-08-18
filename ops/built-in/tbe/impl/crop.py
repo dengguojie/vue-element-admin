@@ -824,14 +824,17 @@ def get_op_support_info(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     dim_x = len(x.get("shape"))
     format_x = x.get("format").upper()
     not_cut_dim = []
+    x_shape = x.get("shape")
+    size_shape = size.get("shape")
     if format_x == "NC1HWC0":
         not_cut_dim = [1, 4]
 
     if format_x in ("ND", "NC1HWC0"):
         axis_split_list = []
         for i in range(dim_x):
-            if i < axis and i not in not_cut_dim:
-                split = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
+            if i < axis and i not in not_cut_dim and x_shape[i] == size_shape[i]:
+                split = [util_select_op_base.SplitInput([0, [i], [-1], [-1]],
+                                                        [1, [i], [-1], [-1]]),
                          util_select_op_base.SplitOutput([0, [i]])]
                 axis_split_list.append(split)
     else:
