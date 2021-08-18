@@ -18,7 +18,7 @@
 concat_last_dim
 """
 import functools
-
+from te.utils import shape_util
 import te.platform as tbe_platform
 from te import tik
 
@@ -148,6 +148,7 @@ class ConcatWithVnchw:
         """
         get_tensor_size_in_fp16
         """
+        data_shape = shape_util.scalar2tensor_one(data_shape)
         data_size = functools.reduce(lambda x, y: x * y, data_shape)
         fp16_size = data_size
         if self.data_dtype == "float32":
@@ -493,6 +494,7 @@ class ConcatWith5HD:
         """
         get_tensor_size_in_fp16
         """
+        data_shape = shape_util.scalar2tensor_one(data_shape)
         data_size = functools.reduce(lambda x, y: x * y, data_shape)
         fp16_size = data_size
         if self.data_dtype == "float32":
