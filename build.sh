@@ -389,6 +389,8 @@ checkopts() {
   PLUGIN_UT=FALSE
   ONNX_PLUGIN_UT=FALSE
   UT_NO_EXEC=FALSE
+  EXEC_UT=FALSE
+  UT_MODE=FALSE
   CHANGED_FILES=""
   build_mode=FALSE
   cov=FALSE
@@ -401,7 +403,8 @@ checkopts() {
       h) usage
          exit 0 ;;
       j) THREAD_NUM=$OPTARG ;;
-      u) UT_TEST_ALL=TRUE ;;
+      u) UT_TEST_ALL=TRUE 
+	     UT_MODE=TRUE ;;
       s) ST_TEST=TRUE ;;
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
@@ -476,7 +479,7 @@ checkopts() {
                 if [[ "$no_all_ut" =~ "FALSE" ]];then
                    UT_TEST_ALL=TRUE
                 fi
-		lib=$OPTARG
+                lib=$OPTARG
                 create_lib_tag=TRUE
               else
                   if [[ "FALSE" =~ "$build_mode" ]];then
@@ -509,37 +512,69 @@ parse_changed_files() {
   related_ut=`python3.7 scripts/parse_changed_files.py $1`
   logging "related ut "$related_ut
 
-  if [[ $related_ut =~ "CPU_UT" ]];then
-    logging "CPU_UT is triggered!"
-    CPU_UT=TRUE
+  if [[ "$UT_MODE" == "TRUE" ]]; then 
+      if [[ $related_ut =~ "CPU_UT" ]];then
+        logging "CPU_UT is triggered!"
+        CPU_UT=TRUE
+        EXEC_UT=TRUE
+      fi
+      if [[ $related_ut =~ "PASS_UT" ]];then
+        logging "PASS_UT is triggered!"
+        PASS_UT=TRUE
+        EXEC_UT=TRUE
+      fi
+      if [[ $related_ut =~ "TILING_UT" ]];then
+        logging "TILING_UT is triggered!"
+        TILING_UT=TRUE
+        EXEC_UT=TRUE
+      fi
+      if [[ $related_ut =~ "PROTO_UT" ]];then
+        logging "PROTO_UT is triggered!"
+        PROTO_UT=TRUE
+        EXEC_UT=TRUE
+      fi
+      if [[ $related_ut =~ "PLUGIN_UT" ]];then
+        logging "PLUGIN_UT is triggered!"
+        PLUGIN_UT=TRUE
+        EXEC_UT=TRUE
+      fi
+      if [[ $related_ut =~ "ONNX_PLUGIN_UT" ]];then
+        logging "ONNX_PLUGIN_UT is triggered!"
+        ONNX_PLUGIN_UT=TRUE
+        EXEC_UT=TRUE
+      fi
   fi
-  if [[ $related_ut =~ "PASS_UT" ]];then
-    logging "PASS_UT is triggered!"
-    PASS_UT=TRUE
+  if [[ "$UT_MODE" == "TRUE" ]]; then 
+    if [[ "$EXEC_UT" =~ "FALSE" ]];then
+      logging "no ut matched! no need to run!"
+      logging "---------------- CANN build finished ----------------"
+      #for ci,2 means no need to run c++ ut;then ci will skip check coverage
+      exit 200
+    fi
   fi
-  if [[ $related_ut =~ "TILING_UT" ]];then
-    logging "TILING_UT is triggered!"
-    TILING_UT=TRUE
-  fi
-  if [[ $related_ut =~ "PROTO_UT" ]];then
-    logging "PROTO_UT is triggered!"
-    PROTO_UT=TRUE
-  fi
-  if [[ $related_ut =~ "PLUGIN_UT" ]];then
-    logging "PLUGIN_UT is triggered!"
-    PLUGIN_UT=TRUE
-  fi
-  if [[ $related_ut =~ "ONNX_PLUGIN_UT" ]];then
-    logging "ONNX_PLUGIN_UT is triggered!"
-    ONNX_PLUGIN_UT=TRUE
-  fi
-  reg='^\{.*?\}$'
-  if [[ ! "$related_ut" =~ $reg ]];then
-    logging "no ut matched! no need to run!"
-    logging "---------------- CANN build finished ----------------"
-    #for ci,2 means no need to run c++ ut;then ci will skip check coverage
-    exit 200
-  fi
+}
+
+compile_mod(){
+      mk_dir "${CMAKE_HOST_PATH}"
+      cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
+      
+      rely_PLUGIN=(ops_all_onnx_plugin ops_all_plugin)
+      rely_PASS=(ops_fusion_pass_aicore ops_fusion_pass_vectorcore)
+      rely_TILING=(optiling)
+      rely_PROTO=(opsproto)
+      
+      mods=(PLUGIN PASS TILING PROTO)
+      for mod in "${mods[@]}"
+        do
+          if [[ "$1" =~ "$mod" ]]; then
+          eval libs=('"${rely_'${mod}'[@]}"')
+          for lib in  ${libs[@]}
+            do
+              cmake --build . --target $lib -- -j ${THREAD_NUM}
+            done
+          fi
+          done
+      cmake --build . --target repack_tbe -- -j ${THREAD_NUM}
 }
 
 # create build path
@@ -572,22 +607,38 @@ build_cann() {
             -DBUILD_MODE=$build_mode"
 
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
+  
+  computer_arch=`uname -m`
+  if [[ "$UT_MODE" == "FALSE" &&  "$computer_arch" =~ "aarch64" ]] && [[ ! "$related_ut" =~ "OTHER_FILE" ]] && [[ ! "$related_ut" =~ "CPU" ]];then
+      compile_mod $related_ut
+      if [ "$UT_TEST_ALL" == "FALSE" -a "$CPU_UT" == "FALSE" \
+            -a "$PASS_UT" == "FALSE" -a "$TILING_UT" == "FALSE" \
+            -a "$PROTO_UT" == "FALSE" -a "$PLUGIN_UT" == "FALSE" \
+            -a "$ONNX_PLUGIN_UT" == "FALSE" ]; then
+        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
 
-  if [[ "$ST_TEST" == "FALSE" ]]; then
-    mk_dir "${CMAKE_HOST_PATH}"
-    cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
-    make ${VERBOSE} -j${THREAD_NUM}
-  fi
-  if [ "$UT_TEST_ALL" == "FALSE" -a "$CPU_UT" == "FALSE" \
-        -a "$PASS_UT" == "FALSE" -a "$TILING_UT" == "FALSE" \
-        -a "$PROTO_UT" == "FALSE" -a "$PLUGIN_UT" == "FALSE" \
-        -a "$ONNX_PLUGIN_UT" == "FALSE" ]; then
-    CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
+        logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+        mk_dir "${CMAKE_DEVICE_PATH}"
+        cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
+        make ${VERBOSE} -j${THREAD_NUM}
+      fi   
+   else
+      if [[ "$ST_TEST" == "FALSE" ]]; then
+        mk_dir "${CMAKE_HOST_PATH}"
+        cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
+        make ${VERBOSE} -j${THREAD_NUM}
+      fi
+      if [ "$UT_TEST_ALL" == "FALSE" -a "$CPU_UT" == "FALSE" \
+            -a "$PASS_UT" == "FALSE" -a "$TILING_UT" == "FALSE" \
+            -a "$PROTO_UT" == "FALSE" -a "$PLUGIN_UT" == "FALSE" \
+            -a "$ONNX_PLUGIN_UT" == "FALSE" ]; then
+        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
 
-    logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-    mk_dir "${CMAKE_DEVICE_PATH}"
-    cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
-    make ${VERBOSE} -j${THREAD_NUM}
+        logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+        mk_dir "${CMAKE_DEVICE_PATH}"
+        cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
+        make ${VERBOSE} -j${THREAD_NUM}
+      fi  
   fi
   logging "CANN build success!"
 }
@@ -623,7 +674,8 @@ main() {
     create_lib
     exit 0
   fi
-  if [[ "$CHANGED_FILES" != ""  &&  "$UT_TEST_ALL" == "TRUE" ]]; then
+  
+  if [[ "$CHANGED_FILES" != "" ]]; then
     UT_TEST_ALL=FALSE
     parse_changed_files $CHANGED_FILES
   fi
@@ -650,4 +702,5 @@ if [[ "$@" == "-h" ]];then
 else
   main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
 fi
+
 

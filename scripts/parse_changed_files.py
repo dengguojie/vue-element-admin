@@ -7,7 +7,7 @@ TILING_UT = "TILING_UT"
 PROTO_UT = "PROTO_UT"
 PLUGIN_UT = "PLUGIN_UT"
 ONNX_PLUGIN_UT = "ONNX_PLUGIN_UT"
-
+OTHER_FILE="OTHER_FILE"
 
 class FileChangeInfo:
     def __init__(self, proto_changed_files=[], tiling_changed_files=[], pass_changed_files=[], aicpu_changed_files=[],
@@ -107,6 +107,7 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
     def _get_relate_ut_list_by_file_change():
 
         relate_ut = set()
+        other_file = set()
         if len(file_change_info.aicpu_changed_files) > 0:
             relate_ut.add(CPU_UT)
         if len(file_change_info.pass_changed_files) > 0:
@@ -121,17 +122,20 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
             relate_ut.add(PLUGIN_UT)
         if len(file_change_info.onnx_plugin_changed_files) > 0:
             relate_ut.add(ONNX_PLUGIN_UT)
-
-        return relate_ut
+        
+        if len(file_change_info.other_changed_files) > 0:
+            other_file.add(OTHER_FILE)
+        return relate_ut,other_file
 
     try:
-        relate_uts = _get_relate_ut_list_by_file_change()
+        relate_uts,other_file = _get_relate_ut_list_by_file_change()
     except BaseException as e:
         print(e.args)
         return None
-    return str(relate_uts)
+    return str(relate_uts),str(other_file)
 
 
 if __name__ == '__main__':
   print(get_change_relate_ut_dir_list(sys.argv[1]))
+
 
