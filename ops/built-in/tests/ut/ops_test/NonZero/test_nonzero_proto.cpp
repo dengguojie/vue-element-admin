@@ -104,12 +104,13 @@ TEST_F(NonZeroProtoUT, nonzero_test_5) {
   op.UpdateInputDesc("x", tensor_desc);
 
   op.SetAttr("transpose", true);
-
+  ge::DataType dtype = ge::DT_INT32;
+  op.SetAttr("dtype", dtype);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {2, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

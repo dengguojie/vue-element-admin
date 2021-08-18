@@ -360,5 +360,6 @@ from .ascend_anti_quant import ascend_anti_quant
 from .avg_pool_v2 import avg_pool_v2
 from .global_lppool import global_lppool
 from .is_finite import is_finite
+from .non_zero import non_zero
 from .max_pool_v3 import max_pool_v3
 from .gen_adc import gen_adc

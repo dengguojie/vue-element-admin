@@ -426,6 +426,7 @@ set(_tf_plugins
   xdivy_plugin.cc
   xlogy_plugin.cc
   zeros_like_plugin.cc
+  nonzero_plugin.cc
 )
 
 set(_tf_scope_fusion_passes
