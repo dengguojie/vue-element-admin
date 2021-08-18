@@ -46,8 +46,11 @@ create_lib(){
     mkdir -p "${CMAKE_HOST_PATH}"
   fi
   echo ${CMAKE_ARGS}
-    cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
-    cmake --build . --target $lib -- -j $core_nums
+  cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
+  cmake --build . --target $lib -- -j $core_nums
+  if [[ "$cov" =~ "TRUE" ]];then
+    cmake --build . --target generate_ops_cpp_cov -- -j $core_nums
+  fi
   echo $dotted_line
   echo "TIPS"
   echo "If you compile a shared or static lib, you can copy your lib from the subfolder of./build/cann to the corresponding folder of/usr/local/ascend"
@@ -128,7 +131,7 @@ down_third_libs(){
   for mylib in ${libs[@]}
     do
       if [ ! -d "./build/cann/download/$mylib" ];then
-	    mkdir build/cann/download/$mylib
+        mkdir build/cann/download/$mylib
       fi
     done
   echo $dotted_line
@@ -388,6 +391,7 @@ checkopts() {
   UT_NO_EXEC=FALSE
   CHANGED_FILES=""
   build_mode=FALSE
+  cov=FALSE
   # Process the options
   while getopts 'xhj:usvg:a-:m-:f:' opt
   do
@@ -408,6 +412,7 @@ checkopts() {
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;
            noexec) UT_NO_EXEC=TRUE;;
+           cov)cov=TRUE;;
            down_and_check_third_libs) down_third_libs;check_third_libs
                                       exit ;;
            set_env_ascend) usr_local=TRUE
@@ -447,8 +452,31 @@ checkopts() {
                 lib=$OPTARG
                 create_lib_tag=TRUE
               elif [[ "$UT_VERSION" =~ "$OPTARG" ]];then
-                UT_TEST_ALL=TRUE
-                lib=$OPTARG
+                no_all_ut=FALSE
+                if [[ $OPTARG =~ "pass" ]];then
+                  PASS_UT=TRUE
+                  no_all_ut=TRUE
+                fi
+                if [[ $OPTARG =~ "tiling" ]];then
+                  TILING_UT=TRUE
+                  no_all_ut=TRUE
+                fi
+                if [[ $OPTARG =~ "proto" ]];then
+                  PROTO_UT=TRUE
+                  no_all_ut=TRUE
+                fi
+                if [[ $OPTARG =~ "plugin" ]];then
+                  PLUGIN_UT=TRUE
+                  no_all_ut=TRUE
+                fi
+                if [[ $OPTARG =~ "onnx" ]];then
+                  ONNX_PLUGIN_UT=TRUE
+                  no_all_ut=TRUE
+                fi
+                if [[ "$no_all_ut" =~ "FALSE" ]];then
+                   UT_TEST_ALL=TRUE
+                fi
+		lib=$OPTARG
                 create_lib_tag=TRUE
               else
                   if [[ "FALSE" =~ "$build_mode" ]];then

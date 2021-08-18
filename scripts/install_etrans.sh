@@ -80,9 +80,13 @@ bak_ori_Ascend(){
     echo $dotted_line
     echo "Delete the original Ascend" 
     if [ $UID -eq 0 ];then
-      mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
+      if [  -d "/usr/local/Ascend" ];then
+        mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
+      fi
     else
-      mv ~/Ascend  ~/Ascend_$bak_time
+      if [ -d "~/Ascend" ];then
+        mv ~/Ascend  ~/Ascend_$bak_time
+      fi
     fi
 }
 

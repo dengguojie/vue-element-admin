@@ -94,12 +94,12 @@ download_run(){
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/Ascend-cann-toolkit_5.0.2.alpha005_linux-x86_64.run
     res_net=`echo $?`
     test_net_addr=$net
-	
+
     network_test $res_net $test_net_addr
     file_index_content=`cat index.html`
     file_name_fragment=${file_index_content#*Ascend-cann-toolkit_5}
     file_name_fragment1=${file_name_fragment#*=\"}
-	
+
     if [[ "$arch" =~ "x86" ]];then
       file_name=${file_name_fragment1%%.deb*}
     elif [[ "$arch" =~ "aarch64" ]];then
@@ -125,9 +125,13 @@ bak_ori_Ascend(){
     echo $dotted_line
     echo "Delete the original Ascend" 
     if [ $UID -eq 0 ];then
-      mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
+      if [  -d "/usr/local/Ascend" ];then
+        mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
+      fi
     else
-      mv ~/Ascend  ~/Ascend_$bak_time
+      if [ -d "~/Ascend" ];then
+        mv ~/Ascend  ~/Ascend_$bak_time
+      fi
     fi
 }
 
