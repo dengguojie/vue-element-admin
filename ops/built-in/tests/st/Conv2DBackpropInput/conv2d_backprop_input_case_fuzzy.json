@@ -2,7 +2,7 @@
   {"compile_flag": 1},
   {
     "op": "Conv2DBackpropInput",
-    "case_name" : "test_conv2d_backprop_input_fuzzy_001",
+    "case_name" : "test_conv2d_backprop_input_fuzzy_same_fNCHW_groups",
     "calc_expect_func_file" : "test_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
@@ -80,7 +80,7 @@
   },
   {
     "op": "Conv2DBackpropInput",
-    "case_name" : "test_conv2d_backprop_input_fuzzy_002",
+    "case_name" : "test_conv2d_backprop_input_fuzzy_same_fNCHW_groups_hwsame",
     "calc_expect_func_file" : "test_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
@@ -158,7 +158,7 @@
   },
   {
     "op": "Conv2DBackpropInput",
-    "case_name" : "test_conv2d_backprop_input_fuzzy_003",
+    "case_name" : "test_conv2d_backprop_input_fuzzy_same_fNCHW_groups_wnew",
     "calc_expect_func_file" : "test_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {

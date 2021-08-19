@@ -202,6 +202,7 @@ cube:
     release:
       - ops/built-in/op_tiling/cube_tiling.h
       - ops/built-in/op_tiling/cube_tiling.cc
+      - ops/built-in/op_tiling/cube_tiling_new.cc
       - ops/built-in/op_tiling/conv2d_backprop_filter.cc
       - ops/built-in/op_tiling/conv2d_backprop_input.cc
       - ops/built-in/op_tiling/conv2d_transpose.cc
