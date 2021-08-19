@@ -142,6 +142,18 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      "dynamic_gather_v2_05", "success"))
 
+ut_case.add_case(["Ascend910A"],
+                 gen_dynamic_gather_v2_case(
+                     {"shape": (-1, -1), "dtype": "bool", "ori_shape": (-1, -1),
+                      "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (1, 1))},
+                     {"shape": (-1,), "dtype": "int64", "ori_shape": (-1,),
+                      "format": "ND", "ori_format": "ND", "range": ((22551, 22551),)},
+                     {"shape": (1,), "dtype": "int32", "ori_shape": (1,),
+                      "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
+                     {"shape": (-1, -1), "dtype": "bool", "ori_shape": (-1, -1),
+                      "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
+                     "dynamic_gather_v2_05", "success"))
+
 # invalid: y_dtype != params_dtype
 ut_case.add_case("all",
                  gen_dynamic_gather_v2_case(

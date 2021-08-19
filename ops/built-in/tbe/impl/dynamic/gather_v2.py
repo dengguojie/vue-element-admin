@@ -242,6 +242,13 @@ class GatherV2():
         self.indices_dtype = indices_dict.get("dtype").lower()
         self.axis_dtype = axis_dict.get("dtype").lower()
         self.y_dtype = y_dict.get("dtype").lower()
+
+        if self.params_dtype == "bool":
+            self.params_dtype = "int8"
+
+        if self.y_dtype == "bool":
+            self.y_dtype = "int8"
+
         self.tiling_dtype = INT64
         dtype_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                       "uint32", "uint64", "float16", "float32")
