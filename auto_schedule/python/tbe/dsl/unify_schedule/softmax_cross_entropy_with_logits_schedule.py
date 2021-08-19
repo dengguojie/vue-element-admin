@@ -41,6 +41,7 @@ from tbe.dsl.base import operation
 BLOCK_SIZE_BYTE = 32
 
 CONST = "const"
+ORIGINAL = "original"
 VECTOR = "vector"
 PHONY = "phony"
 
@@ -118,6 +119,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         self._mode = operation.get_context().get("mode")
 
         self._scope = "local.UB"
+        self._block_dim = util.get_core_num()
 
         self._input_tensors = set()
         self._middle_tensors = set()
@@ -383,7 +385,18 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
 
         cond1 = isinstance(tensor_tmp.shape[1], tvm.expr.IntImm) and (int(tensor_tmp.shape[1]) != 1)
         cond2 = isinstance(tensor_tmp.shape[1], tvm.expr.Max)
-        if (cond1 or cond2) and storage_align_flag:
+        cond3 = isinstance(tensor_tmp.shape[1], tvm.expr.Var)
+        if (cond1 or cond2 or cond3) and storage_align_flag and self._block_dim == 32:
+            for i, (tensor_i, param) in enumerate(self._mid_tensor_buffer_tensor_map.items()):
+                if param.op.name[0:6] != "reduce":
+                    self._schedule[param].storage_align(param.op.axis[0], block_size_align, 0)
+
+            for i, (tensor_i, param) in enumerate(self._cache_read_buffer_tensor_map.items()):
+                if tensor_i.op.name[0:6] != "reduce" and \
+                        not (tensor_i.op.name[0:4] == "data" and 1 in util.shape_to_list(tensor_i.shape)):
+                    self._schedule[tensor_i].storage_align(tensor_i.op.axis[0], block_size_align, 0)
+
+        if (cond1 or cond2 or cond3) and storage_align_flag and self._block_dim == 8:
             for i, (tensor_i, param) in enumerate(self._mid_tensor_buffer_tensor_map.items()):
                 if param.op.name[0:6] != "reduce" and param.op.name[0:9] != "broadcast":
                     self._schedule[param].storage_align(param.op.axis[0], block_size_align, 0)
@@ -496,8 +509,12 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                 tensor_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
-                sch[tensor_i].emit_insn(param[0], param[1],
-                                        attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
+                if self._mode == ORIGINAL:
+                    sch[tensor_i].emit_insn(param[0], param[1],
+                                            attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
+                else:
+                    sch[tensor_i].emit_insn(param[0], "vector_broadcast",
+                                            attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
             else:
                 if tensor_i.op.name in ["sub_7.local.UB", "reduce_2.local.UB"] and param[1][0:3] == 'dma':
                     sch[tensor_i].emit_insn(param[0], "phony_insn")

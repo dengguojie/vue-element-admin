@@ -119,112 +119,10 @@ bool WriteTilingData(const std::string& op_type,
   int32_t tiling_key = static_cast<int32_t>(tiling_info.key);
   run_info.tiling_key = tiling_key;
 
-  if (case_no_unknown_1) {
-    GELOGI("op [%s]: case_no_unknown_1 running", op_type.c_str());
-  } else if (case_one_unknown_1) {
-    GELOGI("op [%s]: case_one_unknown_1 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-  } else if (case_one_unknown_2) {
-    GELOGI("op [%s]: case_one_unknown_2 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-  } else if (case_one_unknown_3) {
-    GELOGI("op [%s]: case_one_unknown_3 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-  } else if (case_one_unknown_4) {
-    GELOGI("op [%s]: case_one_unknown_4 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-  } else if (case_two_unknown_1) {
-    GELOGI("op [%s]: case_two_unknown_1 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-    DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-  } else if (case_two_unknown_2) {
-    GELOGI("op [%s]: case_two_unknown_2 running", op_type.c_str());
-    if (range_0_0_l > 1 && range_1_0_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-    }
-  } else if (case_two_unknown_3) {
-    GELOGI("op [%s]: case_two_unknown_3 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-    DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-  } else if (case_two_unknown_4) {
-    GELOGI("op [%s]: case_two_unknown_4 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-    DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-  } else if (case_two_unknown_5) {
-    GELOGI("op [%s]: case_two_unknown_5 running", op_type.c_str());
-    if (range_0_1_l > 1 && range_1_1_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    }
-  } else if (case_two_unknown_6) {
-    GELOGI("op [%s]: case_two_unknown_6 running", op_type.c_str());
-    DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-    DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-  } else if (case_three_unknown_1) {
-    GELOGI("op [%s]: case_three_unknown_1 running", op_type.c_str());
-    if (range_0_0_l > 1 && range_1_0_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    }
-  } else if (case_three_unknown_2) {
-    GELOGI("op [%s]: case_three_unknown_2 running", op_type.c_str());
-    if (range_0_1_l > 1 && range_1_1_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    }
-  } else if (case_three_unknown_3) {
-    GELOGI("op [%s]: case_three_unknown_3 running", op_type.c_str());
-    if (range_0_0_l > 1 && range_1_0_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    }
-  } else if (case_three_unknown_4) {
-    GELOGI("op [%s]: case_three_unknown_4 running", op_type.c_str());
-    if (range_0_1_l > 1 && range_1_1_l > 1) {
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    }
-  } else if (case_four_unknown_1) {
-    GELOGI("op [%s]: case_four_unknown_1 running", op_type.c_str());
-    if (range_0_0_l > 1 && range_0_1_l > 1 && range_1_0_l > 1 && range_1_1_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    } else if (range_0_1_l > 1 && range_1_1_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-    } else if (range_0_0_l > 1 && range_1_0_l > 1) {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    } else {
-      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
-      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
-      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
-    }
-  }
+  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
+  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[0]));
+  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
+  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
 
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.block_nparts));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.ub_factor));
@@ -358,32 +256,25 @@ void GetUbTiling2D(int32_t shape_nhw, int32_t shape_c, int32_t& nparts_factor, i
 
 void CalNdKey(TilingInfo& tiling_info, bool is_special_pattern,
               std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shapes) {
-  int64_t key = tiling_info.key;
-  if (is_special_pattern) {
-      key += 2000000;
-      std::array<int64_t, MAX_DIM_LEN> feature_shape = input_shapes[0];
-      std::array<int64_t, MAX_DIM_LEN> lable_shape = input_shapes[1];
-      for (int i = 0; i < 2; i++) {
-           if (i == 0) {
-              if (feature_shape[i] == lable_shape[i]) {
-                  key += 100000;
-              } else if (feature_shape[i] != lable_shape[i] &&
-                         (feature_shape[i] == 1 || lable_shape[i] == 1)) {
-                  key += 200000;
-              }
-          } else if (i == 1) {
-              // for common_reduce
-              if (feature_shape[i] == lable_shape[i] && feature_shape[i] != 1) {
-                  key += 30000;
-              // for broadcast_reduce
-              } else if (feature_shape[i] != lable_shape[i] &&
-                         (feature_shape[i] == 1 || lable_shape[i] == 1)) {
-                  key += 40000;
-              }
-          }
-      }
-  } else {
-      key = 0;
+  int64_t key = 0;
+  std::array<int64_t, MAX_DIM_LEN> features_shape = input_shapes[0];
+  std::array<int64_t, MAX_DIM_LEN> labels_shape = input_shapes[1];
+  int64_t dim00 = features_shape[0];
+  int64_t dim01 = features_shape[1];
+  int64_t dim10 = labels_shape[0];
+  int64_t dim11 = labels_shape[1];
+  bool broadcast_dim00_to_dim10 = (dim00 == 1 && dim10 > 1);
+  bool broadcast_dim10_to_dim00 = (dim10 == 1 && dim00 > 1);
+  bool broadcast_dim01_to_dim11 = (dim01 == 1 && dim11 > 1);
+  bool broadcast_dim11_to_dim01 = (dim11 == 1 && dim01 > 1);
+  if (broadcast_dim01_to_dim11 && dim00 == dim10) {
+    key = 2;
+  } else if (broadcast_dim11_to_dim01 && dim00 == dim10) {
+    key = 8;
+  } else if (broadcast_dim00_to_dim10 && broadcast_dim11_to_dim01) {
+    key = 9;
+  } else if (broadcast_dim01_to_dim11 && broadcast_dim10_to_dim00) {
+    key = 6;
   }
   tiling_info.key = key;
 }
@@ -396,8 +287,8 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   GELOGI("op [%s]: DoTiling func running", op_type.c_str());
   const int64_t multi_core_threshold = 1024;
   bool need_multi_core = true;
-  int32_t n_h_w = input_shapes[0][0];
-  int32_t c_size = input_shapes[0][1];
+  int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
+  int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
   int32_t threshold_size = 512;
   int32_t block_split_inner_size = n_h_w;
   int32_t ub_axis = 0;
@@ -470,7 +361,7 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   } else {
       // for cannot open multi-core scene
       block_nparts = 1;
-      ub_factor = bound_size / c_size;
+      ub_factor = min(bound_size / c_size_align, n_h_w);
   }
 
   tiling_info.block_nparts = block_nparts;

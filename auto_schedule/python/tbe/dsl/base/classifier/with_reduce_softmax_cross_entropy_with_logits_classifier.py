@@ -31,7 +31,7 @@ BROADCAST_REDUCE = "broadcast_reduce"
 SPECIAL = "special"
 CONST = "const"
 ORIGINAL = "original"
-VAR_BOUND_LIMIT = 2147483647
+MAX_INT32_VALUE = 2147483647
 
 
 class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
@@ -72,7 +72,136 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         classify
         :return:
         """
-        return self._classify_const() if self._is_const() else self._classify_var()
+        [[(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)]] = self.f_ranges
+        tail_not_broadcast = (r01_l > 1 and r11_l > 1) or (r01_l == r01_r == 1 and r11_l == r11_r == 1)
+        tail_may_broadcast = not tail_not_broadcast
+        batch_not_broadcast = (r00_l > 1 and r10_l > 1) or (r00_l == r00_r == 1 and r10_l == r10_r == 1)
+        batch_may_broadcast = not batch_not_broadcast
+
+        def gen_template(shape, range, mode, key):
+            return {"shape": shape,
+                    "range": range,
+                    "mode": mode,
+                    "key": key
+                    }
+
+        def is_legal_range(dim_range):
+            dim_range_l, dim_range_r = dim_range
+            return dim_range_l <= dim_range_r
+
+        def _process_range_vs_2(dim_range):
+            if dim_range[1] >= 2:
+                return max(dim_range[0], 2), dim_range[1]
+            else:
+                return dim_range
+
+        def _range_to_int(range_val):
+            return MAX_INT32_VALUE if range_val is None else int(range_val)
+
+        def _process_range(range0, range1):
+            dim00_range = range0[0]
+            dim01_range = range0[1]
+            dim10_range = range1[0]
+            dim11_range = range1[1]
+            if _range_to_int(dim00_range[0]) > 1 and _range_to_int(dim10_range[0]) > 1:
+                intersection_dim00_dim10_range = (max(_range_to_int(dim00_range[0]), _range_to_int(dim10_range[0])),
+                                                  min(_range_to_int(dim00_range[1]), _range_to_int(dim10_range[1])))
+                dim00_range = intersection_dim00_dim10_range
+                dim10_range = intersection_dim00_dim10_range
+            else:
+                dim00_range = (_range_to_int(dim00_range[0]), _range_to_int(dim00_range[1]))
+                dim10_range = (_range_to_int(dim10_range[0]), _range_to_int(dim10_range[1]))
+
+            if _range_to_int(dim01_range[0]) > 1 and _range_to_int(dim11_range[0]) > 1:
+                intersection_dim01_dim11_range = (max(_range_to_int(dim01_range[0]), _range_to_int(dim11_range[0])),
+                                                  min(_range_to_int(dim01_range[1]), _range_to_int(dim11_range[1])))
+                dim01_range = intersection_dim01_dim11_range
+                dim11_range = intersection_dim01_dim11_range
+            else:
+                dim01_range = (_range_to_int(dim01_range[0]), _range_to_int(dim01_range[1]))
+                dim11_range = (_range_to_int(dim11_range[0]), _range_to_int(dim11_range[1]))
+
+            range0 = [dim00_range, dim01_range]
+            range1 = [dim10_range, dim11_range]
+            return range0, range1
+
+        if tail_not_broadcast:
+            res = []
+            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL, 0),
+                        gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL, 0)])
+            return res
+
+        if tail_may_broadcast and batch_not_broadcast:
+            res = []
+            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL, 0),
+                        gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL, 0)])
+
+            special_shape0 = [self.f_shapes[0][0], 1]
+            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+            special_shape1 = self.f_shapes[1]
+            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+            special_range0, special_range1 = _process_range(special_range0, special_range1)
+            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                res.append([gen_template(special_shape0, special_range0, "vec2", 2),
+                            gen_template(special_shape1, special_range1, "vec2", 2)])
+
+            special_shape0 = self.f_shapes[0]
+            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+            special_shape1 = [self.f_shapes[1][0], 1]
+            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+            special_range0, special_range1 = _process_range(special_range0, special_range1)
+            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                res.append([gen_template(special_shape0, special_range0, "vec8", 8),
+                            gen_template(special_shape1, special_range1, "vec8", 8)])
+            return res
+
+        if tail_may_broadcast and batch_may_broadcast:
+            res = []
+            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL, 0),
+                        gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL, 0)])
+
+            special_shape0 = [self.f_shapes[0][0], 1]
+            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+            special_shape1 = self.f_shapes[1]
+            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+            special_range0, special_range1 = _process_range(special_range0, special_range1)
+            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                res.append([gen_template(special_shape0, special_range0, "vec2", 2),
+                            gen_template(special_shape1, special_range1, "vec2", 2)])
+
+            special_shape0 = self.f_shapes[0]
+            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+            special_shape1 = [self.f_shapes[1][0], 1]
+            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+            special_range0, special_range1 = _process_range(special_range0, special_range1)
+            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                res.append([gen_template(special_shape0, special_range0, "vec8", 8),
+                            gen_template(special_shape1, special_range1, "vec8", 8)])
+
+            special_shape0 = [1, self.f_shapes[0][1]]
+            special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+            special_shape1 = [self.f_shapes[1][0], 1]
+            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+            special_range0, special_range1 = _process_range(special_range0, special_range1)
+            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                res.append([gen_template(special_shape0, special_range0, "vec9", 9),
+                            gen_template(special_shape1, special_range1, "vec9", 9)])
+
+            special_shape0 = [self.f_shapes[0][0], 1]
+            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+            special_shape1 = [1, self.f_shapes[1][1]]
+            special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+            special_range0, special_range1 = _process_range(special_range0, special_range1)
+            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                res.append([gen_template(special_shape0, special_range0, "vec6", 6),
+                            gen_template(special_shape1, special_range1, "vec6", 6)])
+            return res
 
     def _normalize(self):
         def clone_complete(_in):

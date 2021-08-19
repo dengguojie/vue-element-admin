@@ -103,9 +103,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_2)
@@ -175,9 +175,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_3)
@@ -247,7 +247,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
     EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
@@ -319,9 +319,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_5)
@@ -391,9 +391,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_6)
@@ -463,9 +463,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_7)
@@ -535,9 +535,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_8)
@@ -607,9 +607,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_9)
@@ -679,9 +679,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_10)
@@ -751,9 +751,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_11)
@@ -823,9 +823,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_12)
@@ -895,9 +895,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_13)
@@ -967,9 +967,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 1-1
@@ -1040,9 +1040,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 2-1
@@ -1113,9 +1113,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 2-2
@@ -1186,9 +1186,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 3-1
@@ -1259,9 +1259,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 4-1
@@ -1332,9 +1332,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 5-1
@@ -1405,9 +1405,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "8 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 5-2
@@ -1478,9 +1478,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // two known case 6-1
@@ -1551,9 +1551,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // one known case 1
@@ -1624,9 +1624,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // one known case 2
@@ -1697,9 +1697,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // one known case 3
@@ -1770,9 +1770,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "98 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // one known case 4
@@ -1843,9 +1843,9 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "8 12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }
 
 // no known case 1
@@ -1916,7 +1916,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
-    EXPECT_EQ(runInfo.tiling_key, 0);
+
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "12 8 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "98 98 8 8 12 8 ");
 }

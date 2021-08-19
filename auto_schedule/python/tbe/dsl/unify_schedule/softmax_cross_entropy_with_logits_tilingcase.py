@@ -69,22 +69,14 @@ def calc(outs, option=None):
     def calc_base_key():
         # first 1 is used to fill int32 length,
         # second 1 means the case is reduce mode.
-        _base_key = 110000000
-        if mode == SPECIAL:
-            pattern = operation.get_context().get_current_compute().get("_pattern")
-            # the num 2 means special pattern
-            _base_key += 2000000
-            base = 100000
-            for axis in pattern:
-                if axis == COMMON:
-                    _base_key += base
-                if axis == BROADCAST:
-                    _base_key += (base * 2)
-                if axis == REDUCE:
-                    _base_key += (base * 3)
-                if axis == BROADCAST_REDUCE:
-                    _base_key += (base * 4)
-                base //= 10
+        if mode == "vec2":
+            _base_key = 2
+        elif mode == "vec8":
+            _base_key = 8
+        elif mode == "vec9":
+            _base_key = 9
+        elif mode == "vec6":
+            _base_key = 6
         else:
             _base_key = 0
         return _base_key
@@ -179,9 +171,6 @@ def _pre_build(schedules_list):
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
     support_absorbable_broadcast = False
-    for compute in cpt_computes:
-        if compute.get("_mode") != ORIGINAL:
-            use_special_pattern = True
     if operation.get_context().get("_mode") == CONST:
         const_shapes, const_block_dims = [], []
         for compute in cpt_computes:

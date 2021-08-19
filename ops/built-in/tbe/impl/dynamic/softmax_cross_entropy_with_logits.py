@@ -154,23 +154,6 @@ def variable_shape(inputs: list, support_broadcast=False):
                 return True
         return False
 
-    def _mode_process():
-        if mode == para_check.CONST:
-            input1 = inputs[0]["shape"]
-            input2 = inputs[1]["shape"]
-            const_shape = [a & b for a, b in zip(input1, input2)]
-            operation.get_context().get_current_compute(). \
-                add("const_shape", const_shape)
-        elif mode == para_check.SPECIAL:
-            pattern = inputs[0].get("pattern")
-            operation.get_context().\
-                get_current_compute().add("_pattern", pattern)
-            for i, _pattern in enumerate(pattern):
-                if _pattern != para_check.COMMON:
-                    continue
-                for j in range(len(shapes)):
-                    shapes[j][i] = -77
-
     mode = inputs[0].get("mode")
     if mode is None:
         mode = para_check.ORIGINAL
@@ -187,7 +170,6 @@ def variable_shape(inputs: list, support_broadcast=False):
     operation.get_context().add("support_broadcast", support_broadcast)
 
     shapes, ranges = _fill(inputs)
-    _mode_process()
 
     d_shapes = [[] for _ in shapes]
     for i in range(len(shapes[0])):
@@ -196,18 +178,16 @@ def variable_shape(inputs: list, support_broadcast=False):
         _suffix = 0
         for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
             if shape[i] == -1 and _range[i][0] == _range[i][1]:
+                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, MAX_INT32_VALUE))
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i),
-                                         _range[i])
-                d_shape.append(_var)
-            elif shape[i] == -77:
-                if _var is None:
-                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i),
-                                         _range[i])
+                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
+                else:
+                    operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
                 d_shape.append(_var)
             else:
+                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, MAX_INT32_VALUE))
                 d_shape.append(shape[i])
             _suffix += 1
 
