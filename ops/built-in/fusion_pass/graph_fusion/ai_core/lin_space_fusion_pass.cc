@@ -100,7 +100,10 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::OutDataAnchorPtr constAnchorPtr2 = linspaceAnchorPtr2->GetPeerOutAnchor();
   ge::NodePtr constNode2 = constAnchorPtr2->GetOwnerNode();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Success to get the father node\n");
-
+  FUSION_PASS_CHECK(ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(constNode2) != "Const",
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
+                    "constTensor is not const, does not need fusion"),
+                    return NOT_CHANGED);
   // get the output desc of parent node of lin_space
   ge::GeTensorDesc linspaceInputTensor = constNode2->GetOpDesc()->GetOutputDesc(0);
 
