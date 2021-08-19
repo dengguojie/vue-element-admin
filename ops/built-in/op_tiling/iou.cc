@@ -170,10 +170,8 @@ int32_t GetElimentsPerBlock(string& dtype) {
   }
 }
 
-int32_t GetPointPerCoreMode2(
-  int32_t gtboxes_num, int32_t bboxes_num, int32_t full_core_num, 
-  int32_t eliments_per_block, int32_t min_point_per_core
-) {
+int32_t GetPointPerCoreMode2(int32_t gtboxes_num, int32_t bboxes_num, int32_t full_core_num,
+                             int32_t eliments_per_block, int32_t min_point_per_core) {
   int32_t core_num;
   if (bboxes_num < eliments_per_block) {
     core_num = 1;
@@ -232,10 +230,8 @@ int32_t GetMinPointPerCore(string& dtype) {
   }
 }
 
-void CalRunningInfo(
-  IouTilingParams& tiling_params, int32_t full_core_num, const vector<int64_t>& bboxes_shape, 
-  const vector<int64_t>& gtboxes_shape, string dtype, bool product
-) {
+void CalRunningInfo(IouTilingParams& tiling_params, int32_t full_core_num, const vector<int64_t>& bboxes_shape,
+                    const vector<int64_t>& gtboxes_shape, string dtype, bool product) {
   int32_t bboxes_num = bboxes_shape[0];
   int32_t gtboxes_num = gtboxes_shape[0];
   int32_t min_point_per_core = GetMinPointPerCore(dtype);
@@ -258,7 +254,7 @@ void CalRunningInfo(
   } else {
     int32_t eliments_per_block = GetElimentsPerBlock(dtype);
     point_per_core = GetPointPerCoreMode2(gtboxes_num, bboxes_num,
-      full_core_num, eliments_per_block, min_point_per_core);
+                                          full_core_num, eliments_per_block, min_point_per_core);
     core_tail_num = GetCoreTailNumMode2(gtboxes_num, point_per_core);
     core_num = GetCoreNumMode2(gtboxes_num, point_per_core);
     bb_ub_segment = GetBBoxUbSegment(dtype, product);
@@ -281,11 +277,8 @@ void CalRunningInfo(
   tiling_params.bb_tail_offset = bb_tail_offset;
 }
 
-bool CalCompileInfo(
-  const string& op_type, const nlohmann::json& op_info, 
-  int32_t& full_core_num, bool& product
-  )
-{
+bool CalCompileInfo(const string& op_type, const nlohmann::json& op_info,
+                    int32_t& full_core_num, bool& product) {
   using namespace nlohmann;
   auto all_vars = op_info["vars"];
   if (all_vars.count("full_core_num") == 0) {
@@ -320,9 +313,7 @@ bool IouTiling(const string& op_type, const TeOpParas& op_paras,
   const string dtype = op_paras.inputs[0].tensor[0].dtype;
   const vector<int64_t>& gtboxes_shape = op_paras.inputs[1].tensor[0].shape;
 
-  CalRunningInfo(
-    tiling_params, full_core_num, bboxes_shape, gtboxes_shape, dtype, product
-  );
+  CalRunningInfo(tiling_params, full_core_num, bboxes_shape, gtboxes_shape, dtype, product);
 
   SetRunningInfo(tiling_params, run_info);
   PrintTilingParams(tiling_params);

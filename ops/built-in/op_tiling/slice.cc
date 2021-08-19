@@ -97,9 +97,9 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
         slice_params_output.begin_list[i] + slice_params_output.end_list[i] < slice_params_output.begin_list[i] ||
         slice_params_output.begin_list[i] + slice_params_output.end_list[i] > slice_params_output.input[i]) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType,
-              "Requirements: 0<=offsets[i]<= offsets[i]+size[i]<=input_shape[i], offsets:%s, size:%s, input_shape:%s",
-              DebugString(slice_params_output.begin_list).c_str(), DebugString(slice_params_output.end_list).c_str(),
-              DebugString(slice_params_output.input).c_str());
+          "Requirements: 0<=offsets[i]<= offsets[i]+size[i]<=input_shape[i], offsets:%s, size:%s, input_shape:%s",
+          DebugString(slice_params_output.begin_list).c_str(), DebugString(slice_params_output.end_list).c_str(),
+          DebugString(slice_params_output.input).c_str());
       ge::OpsAttrValueErrReport(opType, "offsets", "[0<=offsets[i]<= offsets[i]+size[i]<=input_shape[i]]",
                                 ConcatString(DebugString(slice_params_output.begin_list).c_str(),
                                              DebugString(slice_params_output.end_list).c_str(),

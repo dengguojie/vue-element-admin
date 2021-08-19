@@ -79,7 +79,7 @@ void PrintROIAlignGradParams(const ROIAlignGradTilingParams& params) {
 }
 
 static bool CheckTensorShape(const std::string& opType, std::vector<int64_t> y_diff_shape,
-                      std::vector<int64_t> x_diff_shape, std::vector<int64_t> rois_shape) {
+                             std::vector<int64_t> x_diff_shape, std::vector<int64_t> rois_shape) {
   int64_t y_diff_shape_dims = y_diff_shape.size();
   int64_t x_diff_shape_dims = x_diff_shape.size();
   int64_t rois_shape_dims = rois_shape.size();
@@ -98,7 +98,7 @@ static bool CheckTensorShape(const std::string& opType, std::vector<int64_t> y_d
 }
 
 static bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson,
-                      int64_t& coreNum, int64_t& ubSize) {
+                             int64_t& coreNum, int64_t& ubSize) {
   using namespace nlohmann;
 
   const auto& allVars = opCompileInfoJson["vars"];
@@ -136,7 +136,7 @@ static void CalcBlockNum(const int64_t& core_num, const int64_t& rois_n,
  * @return bool: success or not
  */
 bool ROIAlignGradTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                    OpRunInfo& runInfo) {
+                        OpRunInfo& runInfo) {
   OP_LOGI("op[%s] ROIAlignGradTiling running.", opType.c_str());
   if (op_info == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op ROIAlignGradTiling: op_info json error.");

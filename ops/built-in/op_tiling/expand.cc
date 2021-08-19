@@ -30,7 +30,7 @@
 namespace optiling {
 
 bool ExpandTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-OpRunInfo& run_info) {
+                  OpRunInfo& run_info) {
 
   std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
   std::vector<int64_t> shape_value;

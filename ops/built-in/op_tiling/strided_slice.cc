@@ -329,7 +329,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   const std::vector<int64_t>& input_shape = opParas.inputs[0].tensor[0].shape;
   if (input_shape.size() > MAX_SUPPORTED_DIMS) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: input shape error, max supported dims is %zu, actual is %zu.",
-            MAX_SUPPORTED_DIMS, input_shape.size());
+                                    MAX_SUPPORTED_DIMS, input_shape.size());
     return false;
   }
 
@@ -357,7 +357,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
 
     if (slice_params.stride_list[i] != 1) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: stride[%zu] must be 1, but it is %ld", i,
-              slice_params.stride_list[i]);
+                                      slice_params.stride_list[i]);
       return false;
     }
   }

@@ -44,7 +44,7 @@ bool GetNMSWithMaskCompileParams(const std::string& op_type, const nlohmann::jso
 }
 
 bool NMSWithMaskTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
-                OpRunInfo& run_info) {
+                       OpRunInfo& run_info) {
   GELOGI("op [%s] NMSWithMaskTiling running.", op_type.c_str());
 
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;

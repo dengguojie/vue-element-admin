@@ -86,7 +86,7 @@ namespace optiling {
     }
 
     bool GetCompileInfo(const std::string& op_type, const nlohmann::json& op_compile_info,
-    CompileInfoParams& compile_params) {
+                        CompileInfoParams& compile_params) {
         using namespace nlohmann;
         auto all_vars = op_compile_info["vars"];
         if (all_vars.count("core_num") == 0) {
@@ -184,7 +184,7 @@ namespace optiling {
     }
 
     void CheckNeedCut(MaxPoolWithArgmaxV1TilingParams& tiling_params, int32_t& need_cut,
-    int32_t& need_cut_h, int32_t& need_cut_h_w, CompileInfoParams& compile_info) {
+                      int32_t& need_cut_h, int32_t& need_cut_h_w, CompileInfoParams& compile_info) {
         int32_t input_wh = tiling_params.input_wh;
         int32_t output_w = tiling_params.output_w;
         int32_t output_wh = tiling_params.output_wh;
@@ -211,7 +211,7 @@ namespace optiling {
     }
 
     void CalCutSize(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info, Pad& pads,
-    int32_t need_cut) {
+                    int32_t need_cut) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t stride_h = compile_info.stride_h;
@@ -367,7 +367,7 @@ namespace optiling {
     }
 
     void CalTilingMode(MaxPoolWithArgmaxV1TilingParams& tiling_params, int32_t need_cut, int32_t need_cut_h,
-    int32_t need_cut_h_w) {
+                       int32_t need_cut_h_w) {
         int32_t tiling_mode = 0;
         if ((need_cut_h == 1) || (need_cut == 1)) {
             if (need_cut_h_w == 1) {
@@ -383,7 +383,7 @@ namespace optiling {
     }
 
     void CalCoreInfo(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    int32_t nc1_cuth) {
+                     int32_t nc1_cuth) {
         int32_t need_core_num = 0;
         int32_t nc1_per_core = 0;
         int32_t nc1_last_core = 0;
@@ -420,7 +420,7 @@ namespace optiling {
     }
 
     void CalRunningInfo(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    std::vector<int64_t> input_shape)
+                        std::vector<int64_t> input_shape)
     {
         int32_t batch_size = input_shape[0];
         int32_t c1_size = input_shape[1];
@@ -517,7 +517,7 @@ namespace optiling {
     }
 
     bool MaxPoolWithArgmaxV1Tiling(const std::string& op_type, const TeOpParas& op_paras,
-    const nlohmann::json& op_compile_info, OpRunInfo& run_info)
+                                   const nlohmann::json& op_compile_info, OpRunInfo& run_info)
     {
         using namespace ge;
         CompileInfoParams compile_params;

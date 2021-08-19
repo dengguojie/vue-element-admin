@@ -147,7 +147,7 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
       v_min_size.push_back(param.min_size(i));
       if (param.min_size(i) <= 0) {
         ge::OpsAttrValueErrReport(op_dest.GetName(), "min_size", "positive",
-                                to_string(param.min_size(i)));
+                                  to_string(param.min_size(i)));
         OP_LOGE("PriorBox", "min_size must be positive.");
         return FAILED;
       }
@@ -168,7 +168,7 @@ Status ParseParamsPriorBox(const Message* op_origin, ge::Operator& op_dest) {
       v_max_size.push_back(param.max_size(i));
       if (param.max_size(i) <= param.min_size(i)) {
         ge::OpsAttrValueErrReport(op_dest.GetName(), "max_size", "greater than min_size",
-                                to_string(param.max_size(i)));
+                                  to_string(param.max_size(i)));
         OP_LOGE("PriorBox", "max_size must be greater than min_size.");
         return FAILED;
       }

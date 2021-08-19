@@ -90,7 +90,7 @@ namespace optiling
     }
 
     bool EmbeddingDenseGradTiling(const std::string &op_type, const TeOpParas &op_paras,
-                      const nlohmann::json &op_compile_info, OpRunInfo &run_info)
+                                  const nlohmann::json &op_compile_info, OpRunInfo &run_info)
     {
         using namespace ge;
         int32_t padding_idx;

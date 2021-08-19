@@ -406,8 +406,8 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
         }
         if (shapeInfo.inShape[3] % (info.blockSize * info.blockSize) != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                           "Depth size must be divisible by block size, but got depth[%ld], block[%ld].",
-                                           shapeInfo.inShape[3], info.blockSize);
+                "Depth size must be divisible by block size, but got depth[%ld], block[%ld].",
+                shapeInfo.inShape[3], info.blockSize);
             return false;
         }
         // calc input and output shape and perm
@@ -441,14 +441,14 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
         }
         if (shapeInfo.inShape[1] % info.blockSize != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                        "Height size must be divisible by block size, but got height[%ld], block[%ld].",
-                                        shapeInfo.inShape[1], info.blockSize);
+                "Height size must be divisible by block size, but got height[%ld], block[%ld].",
+                shapeInfo.inShape[1], info.blockSize);
             return false;
         }
         if (shapeInfo.inShape[2] % info.blockSize != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                       "Width size must be divisible by block size, but got width[%ld], block[%ld].",
-                                       shapeInfo.inShape[2], info.blockSize);
+                "Width size must be divisible by block size, but got width[%ld], block[%ld].",
+                shapeInfo.inShape[2], info.blockSize);
             return false;
         }
         // calc input and output shape and perm
@@ -1246,8 +1246,8 @@ static string PrintTilingInfoScenario6(const CompilerInfo & compilerInfo,
 }
 
 static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
-                            const ShapeInfo & shapeInfo,
-                            const RuntimeInfo & runtimeInfo) {
+                                       const ShapeInfo & shapeInfo,
+                                       const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -2310,9 +2310,9 @@ static void RepeatStride2310(const CompilerInfo& compilerInfo,
  * 210: 012 -> 102 ->  210
  */
 static void RepeatStride210(const CompilerInfo& compilerInfo,
-                             const ShapeInfo& shapeInfo,
-                             RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                            const ShapeInfo& shapeInfo,
+                            RuntimeInfo& runtimeInfo,
+                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2329,9 +2329,9 @@ static void RepeatStride210(const CompilerInfo& compilerInfo,
  * 201: 012 -> 201 
  */
 static void RepeatStride201(const CompilerInfo& compilerInfo,
-                             const ShapeInfo& shapeInfo,
-                             RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                            const ShapeInfo& shapeInfo,
+                            RuntimeInfo& runtimeInfo,
+                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2347,9 +2347,9 @@ static void RepeatStride201(const CompilerInfo& compilerInfo,
  * 120: 012 -> 120 
  */
 static void RepeatStride120(const CompilerInfo& compilerInfo,
-                             const ShapeInfo& shapeInfo,
-                             RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                            const ShapeInfo& shapeInfo,
+                            RuntimeInfo& runtimeInfo,
+                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2365,9 +2365,9 @@ static void RepeatStride120(const CompilerInfo& compilerInfo,
  * 01 -> 10
  */
 static void RepeatStride10(const CompilerInfo& compilerInfo,
-                             const ShapeInfo& shapeInfo,
-                             RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                           const ShapeInfo& shapeInfo,
+                           RuntimeInfo& runtimeInfo,
+                           int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -3482,8 +3482,8 @@ static bool IsScenario7Accept(const RuntimeInfo & runtimeInfo) {
 }
 
 static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
-                                         const ShapeInfo & shapeInfo,
-                                         RuntimeInfo & runtimeInfo) {
+                                const ShapeInfo & shapeInfo,
+                                RuntimeInfo & runtimeInfo) {
     bool res = false;
 
     DispatchNCR(shapeInfo, runtimeInfo);
@@ -3510,8 +3510,8 @@ static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
 }
 
 static bool TilingDataScenario8(const CompilerInfo & compilerInfo,
-                                         const ShapeInfo & shapeInfo,
-                                         RuntimeInfo & runtimeInfo) {
+                                const ShapeInfo & shapeInfo,
+                                RuntimeInfo & runtimeInfo) {
     return true;
 }
 
@@ -3616,7 +3616,7 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     }
 
     OP_LOGD(opType.c_str(), "GetCompileParams, coreNum[%d], ubSize[%d] blocks, dType[%s].",
-           info.coreNum, info.ubSize, info.dType.c_str());
+            info.coreNum, info.ubSize, info.dType.c_str());
 
     // for depthtospace and spacetodepth
     if ((opType == "DepthToSpace") || (opType == "SpaceToDepth")) {
@@ -3690,9 +3690,9 @@ static void SerializeScenario0(OpRunInfo &runInfo,
 }
 
 static void SerializeScenario1(OpRunInfo &runInfo,
-                                         const CompilerInfo & compilerInfo,
-                                         const ShapeInfo & shapeInfo,
-                                         const RuntimeInfo & runtimeInfo) {
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
     vector<int64_t> headVec;
     vector<int64_t> fixedVec;
     vector<int64_t> perCoreVec;
@@ -3756,9 +3756,9 @@ static void SerializeScenario1(OpRunInfo &runInfo,
 }
 
 static void SerializeScenario2(OpRunInfo &runInfo,
-                                        const CompilerInfo & compilerInfo,
-                                        const ShapeInfo & shapeInfo,
-                                        const RuntimeInfo & runtimeInfo) {
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
     vector<int64_t> headVec;
     vector<int64_t> fixedVec;
     vector<int64_t> perCoreVec;
@@ -3846,9 +3846,9 @@ static void SerializeScenario2(OpRunInfo &runInfo,
 }
 
 static void SerializeScenario3(OpRunInfo &runInfo,
-                                         const CompilerInfo & compilerInfo,
-                                         const ShapeInfo & shapeInfo,
-                                         const RuntimeInfo & runtimeInfo) {
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
     vector<int64_t> headVec;
     vector<int64_t> fixedVec;
     vector<int64_t> perCoreVec;
@@ -4068,16 +4068,16 @@ static void SerializeScenario4(OpRunInfo &runInfo,
 }
 
 static void SerializeScenario6(OpRunInfo &runInfo,
-                                         const CompilerInfo & compilerInfo,
-                                         const ShapeInfo & shapeInfo,
-                                         const RuntimeInfo & runtimeInfo) {
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
     SerializeScenario2(runInfo, compilerInfo, shapeInfo, runtimeInfo);
 }
 
 static void SerializeScenario7(OpRunInfo &runInfo,
-                                         const CompilerInfo &compilerInfo,
-                                         const ShapeInfo &shapeInfo,
-                                         const RuntimeInfo &runtimeInfo) {
+                               const CompilerInfo &compilerInfo,
+                               const ShapeInfo &shapeInfo,
+                               const RuntimeInfo &runtimeInfo) {
     priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
     shared_ptr<TilingModel> tm = pqtm.top();
 

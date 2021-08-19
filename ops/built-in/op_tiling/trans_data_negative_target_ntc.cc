@@ -145,8 +145,8 @@ bool GetMcInfoNegative200(int64_t& dstCrLpCnt, int64_t& dstCrLeft, int64_t& srcC
 }
 
 bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
-                            int64_t& ubSize, TransDataNtc200Param& params) {
+                          std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
+                          int64_t& ubSize, TransDataNtc200Param& params) {
   if (srcFormat.length() < 2 || dstFormat.length() < 1) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeNtc200 Failed.");
     return false;

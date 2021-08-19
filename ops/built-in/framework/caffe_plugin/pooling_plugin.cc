@@ -76,7 +76,7 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
                    (!pooling_param.has_pad_h() && !pooling_param.has_pad_w());
   if (!condition) {
     ge::OpsInputShapeErrReport(op_dest.GetName(), "set either pad or pad_h/pad_w should be specified",
-                                 "pad and pad_h/pad_w", "set both");
+                               "pad and pad_h/pad_w", "set both");
     OP_LOGE("Pooling", "pad is pad OR pad_h and pad_w are required.");
     return FAILED;
   }
@@ -86,7 +86,7 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
                (!pooling_param.has_stride_h() && !pooling_param.has_stride_w()));
   if (!condition) {
     ge::OpsInputShapeErrReport(op_dest.GetName(), "set either stride or stride_h/stride_w should be specified",
-                                 "stride and stride_h/stride_w", "set both");
+                               "stride and stride_h/stride_w", "set both");
     OP_LOGE("Pooling", "Stride is stride OR stride_h and stride_w are required.");
     return FAILED;
   }
@@ -123,14 +123,14 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
 
   if (kernel_h < 0) {
     ge::OpsAttrValueErrReport(op_dest.GetName(), "kernel_h", "not be zero",
-                                to_string(kernel_h));
+                              to_string(kernel_h));
     OP_LOGE("Pooling", "Filter H dimensions cannot be zero.");
     return FAILED;
   }
 
   if (kernel_w < 0) {
     ge::OpsAttrValueErrReport(op_dest.GetName(), "kernel_w", "not be zero",
-                                to_string(kernel_w));
+                              to_string(kernel_w));
     OP_LOGE("Pooling", "Filter W dimensions cannot be zero.");
     return FAILED;
   }

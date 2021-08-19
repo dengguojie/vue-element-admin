@@ -118,7 +118,7 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
 }
 
 static bool GetPadV3CompileParams(const nlohmann::json& compile_info,
-                                PadV3CompileParams& compile_params) {
+                                  PadV3CompileParams& compile_params) {
   using namespace nlohmann;
   OP_LOGD("begin to GetPadV3CompileParams.");
   auto allVars = compile_info["vars"];
@@ -189,8 +189,8 @@ static void PrintTilingParams(const PadV3TilingParams& params, const std::string
 }
 
 static void _printTensorValue(const PadV3CompileParams& compile_params,
-                       const std::vector<int64_t>& in,
-                       const std::string& name) {
+                              const std::vector<int64_t>& in,
+                              const std::string& name) {
   using namespace std;
   OP_LOGD("begin to _printTensorValue.");
   string vec_str;
@@ -292,7 +292,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 }
 
 bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
-               OpRunInfo& run_info) {
+                 OpRunInfo& run_info) {
   auto allVars = op_compile_info["vars"];
   auto mode = allVars["mode"];
   if (mode == "constant") {

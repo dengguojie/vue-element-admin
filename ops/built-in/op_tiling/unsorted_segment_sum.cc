@@ -512,7 +512,7 @@ void NumSegmentOne(int32_t& e_mov_times_gm2ub_input_scalar,int32_t& max_ele_num_
     repeat_times_last_part = UssCeilDiv(e_num_last_part_input_scalar, mask * 255);
     if(repeat_times_last_part > 1){
       repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar -
-      (repeat_times_last_part - 1) * mask * 255, mask);
+          (repeat_times_last_part - 1) * mask * 255, mask);
     }else{
       repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar, mask);
     }
@@ -524,7 +524,7 @@ void NumSegmentOne(int32_t& e_mov_times_gm2ub_input_scalar,int32_t& max_ele_num_
     if(repeat_times > 1){
 
       repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar -
-      (repeat_times - 1) * mask * 255, mask);
+          (repeat_times - 1) * mask * 255, mask);
     }else{
       repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar, mask);
     }
@@ -644,9 +644,9 @@ void ComputeIdsParamsMovGm2ub(const int32_t& ids_ele_num_one_core, const int32_t
   ids_last_burst_len = UssCeilDiv(ids_ele_num_ub_last_part * ids_ele_byte, BYTE_BLOCK);
 }
 void ComputeIdsParamsMovGm2ubNoAtomic(const int32_t& ids_ele_num_one_core, const int32_t& id_once_num,
-  const EleByte& ids_ele_byte, int32_t& ids_mov_times_gm2ub, int32_t& ids_front_burst_len,
-  int32_t& ids_last_burst_len, int32_t& ids_ele_num_ub_front_part,
-  int32_t& ids_ele_num_ub_last_part) {
+                                      const EleByte& ids_ele_byte, int32_t& ids_mov_times_gm2ub,
+                                      int32_t& ids_front_burst_len, int32_t& ids_last_burst_len,
+                                      int32_t& ids_ele_num_ub_front_part, int32_t& ids_ele_num_ub_last_part) {
     int32_t max_ids_ele_num_one_ub_tensor = id_once_num;
     if (ids_ele_num_one_core <= max_ids_ele_num_one_ub_tensor) {
       // mov_times = 1, ub tensor is enough for ele one core
@@ -885,7 +885,7 @@ void ComputeENumParams(const std::string& input_dytpe,const int32_t& e_num, cons
   }else if(num_segments == 1){
       e_mov_times_gm2ub_input_scalar = UssCeilDiv(num_segments_front_core_input_scalar, max_ele_num_one_ub_tensor);
       e_mov_times_gm2ub_input_scalar_lastcore = UssCeilDiv(num_segments_last_core_input_scalar,
-      max_ele_num_one_ub_tensor);
+                                                           max_ele_num_one_ub_tensor);
       //front core
       NumSegmentOne(e_mov_times_gm2ub_input_scalar, max_ele_num_one_ub_tensor, e_num_front_part_input_scalar,
                     e_ub2gm_front_burst_len_input_scalar, repeat_times,
@@ -1114,16 +1114,16 @@ void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.last_part_vadd_mask_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.e_gm2ub_last_burst_len_input_scalar);
   ByteBufferPut(run_info.tiling_data,
-  params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+                params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
   ByteBufferPut(run_info.tiling_data,
-  params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+                params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
   ByteBufferPut(run_info.tiling_data,
-  params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+                params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data,
-  params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+                params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
 
 }
@@ -1291,24 +1291,24 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& param
   GELOGD("op [%s] : params.last_part_vadd_mask_input_scalar=%d", op_type.c_str(),
          params.last_part_vadd_mask_input_scalar);
   GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
-  params.e_gm2ub_last_burst_len_input_scalar);
+         params.e_gm2ub_last_burst_len_input_scalar);
   
   GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
-  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
+         params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
-  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
+         params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
-  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
+         params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
-  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
+         params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& params) {
@@ -1344,37 +1344,37 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& para
 
   GELOGD("op [%s] : params.align_scalar=%d", op_type.c_str(),params.align_scalar);
   GELOGD("op [%s] : params.align_scalar_lastcore=%d", op_type.c_str(),
-  params.align_scalar_lastcore);
+         params.align_scalar_lastcore);
   GELOGD("op [%s] : params.e_gm2ub_front_burst_len_input_scalar=%d", op_type.c_str(),
-  params.e_gm2ub_front_burst_len_input_scalar);
+         params.e_gm2ub_front_burst_len_input_scalar);
   GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
-  params.e_gm2ub_last_burst_len_input_scalar);
+         params.e_gm2ub_last_burst_len_input_scalar);
   GELOGD("op [%s] : params.num_segment_max=%d", op_type.c_str(),
-  params.num_segment_max);
+         params.num_segment_max);
   GELOGD("op [%s] : params.num_segment_max_time=%d", op_type.c_str(),
-  params.num_segment_max_time);
+         params.num_segment_max_time);
   GELOGD("op [%s] : params.num_segment_max_time_lastcore=%d", op_type.c_str(),
-  params.num_segment_max_time_lastcore);
+         params.num_segment_max_time_lastcore);
   GELOGD("op [%s] : params.front_num_segment=%d", op_type.c_str(),
-  params.front_num_segment);
+         params.front_num_segment);
   GELOGD("op [%s] : params.front_num_segment_last=%d", op_type.c_str(),
-  params.front_num_segment_last);
+         params.front_num_segment_last);
   GELOGD("op [%s] : params.front_num_segment_lastcore=%d", op_type.c_str(),
-  params.front_num_segment_lastcore);
+         params.front_num_segment_lastcore);
   GELOGD("op [%s] : params.front_num_segment_last_lastcore=%d", op_type.c_str(),
-  params.front_num_segment_last_lastcore);
+         params.front_num_segment_last_lastcore);
   GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
-  params.e_ub2gm_front_burst_len_input_scalar_lastcore);
+         params.e_ub2gm_front_burst_len_input_scalar_lastcore);
   GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
-  params.e_ub2gm_last_burst_len_input_scalar_lastcore);
+         params.e_ub2gm_last_burst_len_input_scalar_lastcore);
   GELOGD("op [%s] : params.repeat_times=%d", op_type.c_str(), params.repeat_times);
   GELOGD("op [%s] : params.repeat_times_last_part=%d", op_type.c_str(), params.repeat_times_last_part);
   GELOGD("op [%s] : params.repeat_times_last_part_lastcore=%d", op_type.c_str(),
-  params.repeat_times_last_part_lastcore);
+         params.repeat_times_last_part_lastcore);
   GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar_lastcore=%d", op_type.c_str(),
-  params.e_mov_times_gm2ub_input_scalar_lastcore);
+         params.e_mov_times_gm2ub_input_scalar_lastcore);
   GELOGD("op [%s] : params.repeat_time_front_part_input_scalar_lastcore=%d", op_type.c_str(),
-  params.repeat_time_front_part_input_scalar_lastcore);
+         params.repeat_time_front_part_input_scalar_lastcore);
 
 }
 
@@ -1756,7 +1756,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
           ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar, params.e_mov_times_gm2ub_input_scalar - 1);
       params.e_ub2gm_last_burst_len_input_scalar = params.e_num_last_part_input_scalar * input_ele_byte / BYTE_BLOCK;
       params.e_gm2ub_last_burst_len_input_scalar = UssCeilDiv(params.e_num_last_part_input_scalar * input_ele_byte,
-      BYTE_BLOCK);
+                                                              BYTE_BLOCK);
 
       // input data params
       // front part front core
@@ -1946,7 +1946,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
                                 ub_tensor_size_output, output_ub_ele_num_one_row,
                                 params.need_core_num_input_scalar, mask, num_segments);
     GELOGD("op [%s] : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
-    op_type.c_str(), ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
+           op_type.c_str(), ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
 
     bool flag = GetTilingModeNoAtomic(input_shape, e_size, ids_size, input_dtype, ids_dtype, ub_tensor_size,
     ub_tensor_size_input, params.select_key_input_scalar, e_once_num, id_once_num, params.need_core_num_input_scalar,
@@ -1964,9 +1964,9 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     // ids params
     params.ids_size_input_scalar = ids_size;
     ComputeIdsParamsMovGm2ubNoAtomic(ids_size, id_once_num, ids_ele_byte, params.ids_mov_times_gm2ub_input_scalar,
-                             params.ids_front_burst_len_input_scalar, params.ids_last_burst_len_input_scalar,
-                             params.ids_ele_num_ub_front_part_input_scalar,
-                             params.ids_ele_num_ub_last_part_input_scalar);
+                                     params.ids_front_burst_len_input_scalar, params.ids_last_burst_len_input_scalar,
+                                     params.ids_ele_num_ub_front_part_input_scalar,
+                                     params.ids_ele_num_ub_last_part_input_scalar);
     // e num params
     params.e_num_input_scalar = e_size;
     ComputeENumParams(input_dtype,params.e_num_input_scalar, input_ele_byte, e_once_num,

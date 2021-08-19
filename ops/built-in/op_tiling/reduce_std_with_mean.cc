@@ -31,7 +31,7 @@ bool IsInAxisReduceStdWithMean(std::vector<int32_t>& input, int32_t value) {
 }
 
 bool ReduceStdWithMeanTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                      OpRunInfo& run_info) {
+                             OpRunInfo& run_info) {
   Reduce reduce(op_type, op_paras, op_info, run_info);
   bool ret = reduce.DoTiling();
   ret = ret && reduce.WriteTilingData();

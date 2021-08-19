@@ -147,7 +147,7 @@ namespace optiling{
   }
 
   bool RnnGenMaskV2Tiling(const std::string &op_type, const TeOpParas &op_paras,
-                      const nlohmann::json &op_compile_info, OpRunInfo &run_info)
+                          const nlohmann::json &op_compile_info, OpRunInfo &run_info)
   {
     OP_LOGD("RnnGenMaskV2Tiling is running");
     int32_t core_num;

@@ -28,7 +28,7 @@
 
 namespace optiling {
 bool BitwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-OpRunInfo& run_info) {
+                   OpRunInfo& run_info) {
     std::vector<int64_t> x1_runtime_shape = op_paras.inputs[0].tensor[0].shape;
     std::vector<int64_t> x2_runtime_shape = op_paras.inputs[1].tensor[0].shape;
 

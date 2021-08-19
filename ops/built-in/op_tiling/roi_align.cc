@@ -97,7 +97,7 @@ static bool CheckTensorShape(const std::string& opType, std::vector<int64_t> x_d
 }
 
 static bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson,
-                      int64_t& coreNum, int64_t& ubSize) {
+                             int64_t& coreNum, int64_t& ubSize) {
   using namespace nlohmann;
 
   const auto& allVars = opCompileInfoJson["vars"];

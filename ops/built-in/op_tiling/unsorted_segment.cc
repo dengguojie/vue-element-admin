@@ -292,14 +292,14 @@ public:
         }
 
         int32_t e_max_block_ub = min(
-                _floor_align_mask(scalar.output_once_num / num_segments), 255 * mask);
+            _floor_align_mask(scalar.output_once_num / num_segments), 255 * mask);
         scalar.e_out_param.div_by_part(e_num, e_max_block_ub, mask, core_num);
         scalar.e_out_loop_param.div_by_num(scalar.e_out_param.times, core_num);
         scalar.num_segments_core_num = max(min(core_num / scalar.e_out_loop_param.times,
-                                _ceil_div(num_segments*scalar.e_out_param.last, mask)), 1);
+                                               _ceil_div(num_segments*scalar.e_out_param.last, mask)), 1);
 
         scalar.ids_param.div_by_part(ids_num,
-                min(scalar.input_once_num / scalar.e_out_param.front, ids_once_num));
+                                     min(scalar.input_once_num / scalar.e_out_param.front, ids_once_num));
         scalar.e_num_part_ub_num = _ceil_div(scalar.e_out_param.front, mask) * mask;
         scalar.num_segments_param.div_by_part(num_segments,
             scalar.output_once_num / scalar.e_num_part_ub_num, 1, scalar.num_segments_core_num);
@@ -445,8 +445,8 @@ int32_t min(const int32_t a, const int32_t b)
 }
 
 bool unsorted_segment_get_compile_params(
-        const std::string &op_type, const nlohmann::json &op_compile_info_json,
-        int32_t &core_num, int32_t &ub_size, int32_t &ub_tensor_num)
+    const std::string &op_type, const nlohmann::json &op_compile_info_json,
+    int32_t &core_num, int32_t &ub_size, int32_t &ub_tensor_num)
 {
     using namespace nlohmann;
     if (op_compile_info_json == nullptr) {
@@ -473,7 +473,7 @@ bool unsorted_segment_get_compile_params(
     }
     ub_tensor_num = allVars["ub_tensor_num"].get<std::int32_t>();
     GELOGD("op [%s] : GetCompileParams, core_num[%d], ub_size[%d].",
-                 UNSORTED_SEGMENT_OP_TYPE.c_str(), core_num, ub_size);
+           UNSORTED_SEGMENT_OP_TYPE.c_str(), core_num, ub_size);
     return true;
 }
 
@@ -491,9 +491,9 @@ bool unsorted_segment_get_ele_dtype(const std::string &dtype, EleByte &elebyte)
 
 // tiling function
 bool UnsortedSegmentTiling(const std::string &op_type,
-                            const TeOpParas &op_paras,
-                            const nlohmann::json &op_compile_info_json,
-                            OpRunInfo &run_info)
+                           const TeOpParas &op_paras,
+                           const nlohmann::json &op_compile_info_json,
+                           OpRunInfo &run_info)
 {
     PROFILING_TILING_INIT(op_type.c_str());
     GELOGI("op[%s] op tiling begin.", op_type.c_str());
@@ -526,7 +526,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
         GELOGD("op[%s] ids_shape[i] is %d", op_type.c_str(), ids_shape[i]);
         if (input_shape[i] != ids_shape[i]) {
             ge::OpsTwoInputShapeErrReport(
-                    "UnsortedSegment", "input_data", "ids", "front shape of input must be equal with ids shape");
+                "UnsortedSegment", "input_data", "ids", "front shape of input must be equal with ids shape");
             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of input must be equal with ids shape");
             return false;
         }

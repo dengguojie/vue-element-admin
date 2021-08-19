@@ -432,8 +432,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   tiling_params.tiling_pading_50 = merge_paddings_values[10] * compile_params.dtype_rate;
   tiling_params.tiling_pading_51 = merge_paddings_values[11] * compile_params.dtype_rate;
 
-  auto last_dim_output = tiling_params.tiling_input_dim_5
-                         + tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
+  auto last_dim_output = tiling_params.tiling_input_dim_5 +
+                         tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
   if (last_dim_output < 960) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;

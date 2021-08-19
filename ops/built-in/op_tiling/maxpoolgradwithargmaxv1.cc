@@ -87,7 +87,7 @@ namespace optiling {
     }
 
     bool GetCompileInfos(const std::string& op_type, const nlohmann::json& op_compile_info,
-    CompileInfoParams& compile_params) {
+                         CompileInfoParams& compile_params) {
         using namespace nlohmann;
         auto all_vars = op_compile_info["vars"];
         if (all_vars.count("core_num") == 0) {
@@ -138,7 +138,7 @@ namespace optiling {
     }
 
     int32_t CalTilingMode(CompileInfoParams& compile_info, int32_t hoverlap, int32_t woverlap, int32_t ub_limit,
-    std::vector<int64_t> grad_shape) {
+                          std::vector<int64_t> grad_shape) {
         int32_t stride_h = compile_info.ori_stride_h;
         int32_t stride_w = compile_info.ori_stride_w;
         int32_t kernel_h = compile_info.kernel_h;
@@ -216,7 +216,7 @@ namespace optiling {
     }
 
     void CalCol2Img1(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    int32_t ub_limit) {
+                     int32_t ub_limit) {
 
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
@@ -256,7 +256,7 @@ namespace optiling {
     }
 
     void CalCol2Img2(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    int32_t ub_limit) {
+                     int32_t ub_limit) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t dtype_size = compile_info.dtype_size;
@@ -338,7 +338,7 @@ namespace optiling {
     }
 
     void CalCol2Img4(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    int32_t ub_limit) {
+                     int32_t ub_limit) {
 
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
@@ -382,7 +382,7 @@ namespace optiling {
     }
 
     void CalCol2Img5(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    int32_t ub_limit) {
+                     int32_t ub_limit) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t dtype_size = compile_info.dtype_size;
@@ -461,7 +461,7 @@ namespace optiling {
     }
 
     void CalCount(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    std::vector<int64_t> grad_shape, int32_t hoverlap) {
+                  std::vector<int64_t> grad_shape, int32_t hoverlap) {
         int32_t core_num = compile_info.core_num;
         int32_t batch = grad_shape[0];
         int32_t c1 = grad_shape[1];
@@ -490,7 +490,7 @@ namespace optiling {
     }
 
     void CalCoreInfo(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    int32_t block) {
+                     int32_t block) {
         int32_t core_num = compile_info.core_num;
         int32_t tiling_mode = tiling_params.tiling_mode;
         int32_t ho_count = tiling_params.ho_count;
@@ -524,7 +524,7 @@ namespace optiling {
     }
 
     void CalRunningInfo(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
-    std::vector<int64_t> grad_shape, std::vector<int64_t> input_shape)
+                        std::vector<int64_t> grad_shape, std::vector<int64_t> input_shape)
     {
         int32_t dxh = input_shape[2];
         int32_t dxw = input_shape[3];
@@ -673,7 +673,7 @@ namespace optiling {
     }
 
     bool MaxPoolGradWithArgmaxV1Tiling(const std::string& op_type, const TeOpParas& op_paras,
-    const nlohmann::json& op_compile_info, OpRunInfo& run_info)
+                                       const nlohmann::json& op_compile_info, OpRunInfo& run_info)
     {
         using namespace ge;
         CompileInfoParams compile_params;

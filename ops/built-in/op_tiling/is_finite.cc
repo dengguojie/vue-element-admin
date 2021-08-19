@@ -101,7 +101,7 @@ namespace optiling {
 
         OP_LOGD(op_type.c_str(),
                 "IsFiniteTiling: GetCompileParams, core_num[%lld], ub_size[%lld], input_data_byte[%lld].", core_num,
-                 ub_size, input_data_byte);
+                ub_size, input_data_byte);
         return true;
     }
 

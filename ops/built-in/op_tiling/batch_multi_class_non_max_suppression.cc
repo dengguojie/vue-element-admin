@@ -50,8 +50,8 @@ namespace optiling {
     params.topk_loop_tail = 0;
   }
 
-  static bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_compile_info, 
-                        int32_t &aicore_num, int32_t &proposal_topk_k) {
+  static bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_compile_info,
+                             int32_t &aicore_num, int32_t &proposal_topk_k) {
     OP_LOGD("GetCompileInfo is running");
     using namespace nlohmann;
     auto all_vars = op_compile_info["vars"];
@@ -78,8 +78,8 @@ namespace optiling {
     return tiling_mode;
   }
     
-  static void CalCoreInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params, 
-                            int32_t & core_num, std::vector<int64_t> & scores_shape) {
+  static void CalCoreInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params,
+                          int32_t & core_num, std::vector<int64_t> & scores_shape) {
     OP_LOGD("CalCoreInfo is running");
     int32_t batch = scores_shape[0];
     int32_t batch_per_core = 0;
@@ -94,8 +94,8 @@ namespace optiling {
     tiling_params.batch_last_core = batch_last_core;
   }
 
-  static void CalRunningInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params, 
-                                int32_t core_num, int32_t proposal_topk_k, std::vector<int64_t> & scores_shape) {
+  static void CalRunningInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params,
+                             int32_t core_num, int32_t proposal_topk_k, std::vector<int64_t> & scores_shape) {
     OP_LOGD("CalRunningInfo is running");
     int32_t batch = scores_shape[0];
     int32_t classes = scores_shape[1];
@@ -139,7 +139,7 @@ namespace optiling {
   }
 
   bool BatchMultiClassNonMaxSuppressionTiling(const std::string &op_type, const TeOpParas &op_paras,
-                      const nlohmann::json &op_compile_info, OpRunInfo &run_info) {
+                                              const nlohmann::json &op_compile_info, OpRunInfo &run_info) {
     OP_LOGD("BatchMultiClassNonMaxSuppressionTiling is running");
     using namespace ge;
     int32_t core_num;

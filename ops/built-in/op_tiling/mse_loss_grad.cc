@@ -16,7 +16,7 @@
 
 namespace optiling {
 bool MseLossGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                      OpRunInfo& run_info) {
+                       OpRunInfo& run_info) {
   bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   // reduce_mean_cof is not required when handling pure dma_copy case

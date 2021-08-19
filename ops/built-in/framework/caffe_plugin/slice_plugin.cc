@@ -37,7 +37,7 @@ Status ParseParamsSlice(const Message* op_src, ge::Operator& op) {
 
   if (slice_param.has_axis() && slice_param.has_slice_dim()) {
     ge::OpsInputShapeErrReport(op.GetName(), "set either axis or slice_dim should be specified",
-                           "axis and slice_dim", "set both");
+                               "axis and slice_dim", "set both");
     OP_LOGE(op.GetName().c_str(), "Either axis or slice_dim should be specified; not both.");
     return FAILED;
   }

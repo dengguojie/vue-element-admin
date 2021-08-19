@@ -126,7 +126,7 @@ int32_t GetLibItem(const std::string& opType, const nlohmann::json& opCompileInf
  * @return bool: success or not
  */
 bool DynamicRnnTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                    OpRunInfo& runInfo) {
+                      OpRunInfo& runInfo) {
   GELOGI("op[%s] tiling running.", opType.c_str());
   if (op_info == nullptr) {
     OP_LOGE(opType.c_str(), "op DynamicRnnTiling: op_info json error.");

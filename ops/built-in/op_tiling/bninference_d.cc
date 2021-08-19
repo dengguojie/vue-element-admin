@@ -21,7 +21,7 @@ using namespace std;
 namespace optiling {
 
 bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                   OpRunInfo& run_info) {
+                        OpRunInfo& run_info) {
     GELOGD("op [%s] Enter BNInferenceDTiling inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
     OP_TILING_CHECK((op_info.count("broadcast_mean_shape") < 0),

@@ -27,7 +27,7 @@
 
 namespace optiling {
 bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                 OpRunInfo& run_info) {
+                OpRunInfo& run_info) {
     OP_TILING_CHECK((op_info.count("compile_shape") <= 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [compile_shape]"), return false);
     OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),

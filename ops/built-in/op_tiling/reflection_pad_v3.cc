@@ -105,7 +105,7 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
 }
 
 static bool GetReflectionPadV3CompileParams(const nlohmann::json& compile_info,
-                                ReflectionPadV3CompileParams& compile_params) {
+                                            ReflectionPadV3CompileParams& compile_params) {
   using namespace nlohmann;
   OP_LOGD("begin to GetReflectionPadV3CompileParams.");
   auto allVars = compile_info["vars"];
@@ -158,8 +158,8 @@ static void PrintTilingParams(const ReflectionPadV3TilingParams& params, const s
 }
 
 static void _printTensorValue(const ReflectionPadV3CompileParams& compile_params,
-                       const std::vector<int64_t>& in,
-                       const std::string& name) {
+                              const std::vector<int64_t>& in,
+                              const std::string& name) {
   using namespace std;
   OP_LOGD("begin to _printTensorValue.");
   string vec_str;
@@ -234,7 +234,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   }
 
 bool ReflectionPadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
-               OpRunInfo& run_info) {
+                           OpRunInfo& run_info) {
   using namespace ge;
 
   OP_LOGD("begin to run tiling.");

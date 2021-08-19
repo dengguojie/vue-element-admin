@@ -44,7 +44,7 @@ bool BiasAddGradTiling(const std::string& op_type, const TeOpParas& op_paras, co
 
     GELOGI("BiasAddGrad input format [%s], ori_format [%s], shape: [%s], ori_shape: [%s], "
           "and ori_format lens not compare ori_shape lens.",
-          format.c_str(), ori_format.c_str(), GetShape(shape).c_str(), GetShape(ori_shape).c_str());
+           format.c_str(), ori_format.c_str(), GetShape(shape).c_str(), GetShape(ori_shape).c_str());
     if(format == "FRACTAL_Z" or format == "FRACTAL_Z_3D"){
         if(shape.size() == target_shape){
             if(ori_format.size() != ori_shape.size()){

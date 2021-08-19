@@ -275,7 +275,7 @@ bool Softmax::WriteTilingData() {
 }
 
 bool SoftmaxTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                  OpRunInfo& run_info) {
+                   OpRunInfo& run_info) {
   Softmax softmax(op_type, op_paras, op_info, run_info);
   bool ret = true;
   ret = softmax.DoTiling();

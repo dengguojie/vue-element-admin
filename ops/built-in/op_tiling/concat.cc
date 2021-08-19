@@ -93,7 +93,7 @@ static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_s
   int max_dim = static_cast<int32_t>(shape_length);
   if (dim >= max_dim or dim < -max_dim) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "the parameter[%s] should be [between %d and %d], but actually is [%d].",
-            "concat_dim", min(max_dim - 1, -max_dim), max(max_dim - 1, -max_dim), dim);
+                                    "concat_dim", min(max_dim - 1, -max_dim), max(max_dim - 1, -max_dim), dim);
     return false;
   }
 
@@ -103,7 +103,7 @@ static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_s
     for (size_t j = 0; j < shape_length; j++) {
       if (j != new_dims && input_shapes[i][j] != shape[j]) {
         VECTOR_INNER_ERR_REPORT_TILIING(op, "dims must equal except concat dim[%d], input_values[%s]", dim,
-                to_string(input_shapes).c_str());
+                                        to_string(input_shapes).c_str());
         return false;
       }
     }
@@ -258,9 +258,9 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
 
   if (input_size != static_cast<int32_t>(input_shapes.size())) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType,
-            "check input size failed. "
-            "Input_size in compile is %d, but in params is %zd",
-            input_size, input_shapes.size());
+                                    "check input size failed. "
+                                        "Input_size in compile is %d, but in params is %zd",
+                                    input_size, input_shapes.size());
     return false;
   }
 

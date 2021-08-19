@@ -32,8 +32,8 @@
 namespace optiling {
 
 bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json& op_info, OpRunInfo& run_info,
-                             const std::vector<int64_t>& var_shape, const std::vector<int64_t>& grad_shape,
-                             const std::vector<int64_t>& indices_shape)
+                                const std::vector<int64_t>& var_shape, const std::vector<int64_t>& grad_shape,
+                                const std::vector<int64_t>& indices_shape)
 {
     const auto& all_vars = op_info["vars"];
     if (all_vars.count("core_num") == 0) {
@@ -44,7 +44,7 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
 
     if (all_vars.count("cache_threshold_col") == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams, get %s error",
-                "cache_threshold_col");
+            "cache_threshold_col");
         return false;
     }
     int32_t cache_threshold_col = all_vars["cache_threshold_col"].get<std::int32_t>();
@@ -105,7 +105,7 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
 }
 
 bool SparseApplyAdadeltaDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                            OpRunInfo& run_info) {
+                                OpRunInfo& run_info) {
     GELOGI("op[%s] tiling running.", op_type.c_str());
     if (op_info == nullptr) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
@@ -124,13 +124,13 @@ bool SparseApplyAdadeltaDTiling(const std::string& op_type, const TeOpParas& op_
     std::vector<int64_t> indices_shape = op_paras.inputs[6].tensor[0].shape;
 
     return CalSparseApplyCommonTiling(op_type, op_info, run_info,
-                             var_shape, grad_shape, indices_shape);
+                                      var_shape, grad_shape, indices_shape);
 }
 // register tiling interface of the SparseApplyAdagradV2D op
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyAdadeltaD, SparseApplyAdadeltaDTiling);
 
 bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                            OpRunInfo& run_info) {
+                                 OpRunInfo& run_info) {
     GELOGI("op[%s] tiling running.", op_type.c_str());
     if (op_info == nullptr) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
@@ -148,14 +148,14 @@ bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op
     std::vector<int64_t> indices_shape = op_paras.inputs[3].tensor[0].shape;
 
     return CalSparseApplyCommonTiling(op_type, op_info, run_info,
-                             var_shape, grad_shape, indices_shape);
+                                      var_shape, grad_shape, indices_shape);
 }
 // register tiling interface of the SparseApplyAdagradV2D op
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyAdagradD, SparseApplyAdagradV2DTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyAdagradV2D, SparseApplyAdagradV2DTiling);
 
 bool SparseApplyRMSPropDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                            OpRunInfo& run_info) {
+                               OpRunInfo& run_info) {
     GELOGI("op[%s] tiling running.", op_type.c_str());
     if (op_info == nullptr) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
@@ -174,13 +174,13 @@ bool SparseApplyRMSPropDTiling(const std::string& op_type, const TeOpParas& op_p
     std::vector<int64_t> indices_shape = op_paras.inputs[5].tensor[0].shape;
 
     return CalSparseApplyCommonTiling(op_type, op_info, run_info,
-                             var_shape, grad_shape, indices_shape);
+                                      var_shape, grad_shape, indices_shape);
 }
 // register tiling interface of the SparseApplyAdagradV2D op
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyRMSPropD, SparseApplyRMSPropDTiling);
 
 bool SparseApplyFtrlV2DTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                            OpRunInfo& run_info) {
+                              OpRunInfo& run_info) {
     GELOGI("op[%s] tiling running.", op_type.c_str());
     if (op_info == nullptr) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
@@ -198,7 +198,7 @@ bool SparseApplyFtrlV2DTiling(const std::string& op_type, const TeOpParas& op_pa
     std::vector<int64_t> indices_shape = op_paras.inputs[4].tensor[0].shape;
 
     return CalSparseApplyCommonTiling(op_type, op_info, run_info,
-                             var_shape, grad_shape, indices_shape);
+                                      var_shape, grad_shape, indices_shape);
 }
 // register tiling interface of the SparseApplyAdagradV2D op
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyFtrlV2D, SparseApplyFtrlV2DTiling);

@@ -43,7 +43,7 @@ Status ParseParamAscendAntiQuant(const Message* op_src, ge::Operator& op_dest) {
 
   if (param.has_offset()) {
     op_dest.SetAttr("offset", 
-                     static_cast<float>(*((signed char*)(param.offset().c_str()))) *static_cast<float>(-1.0));
+                    static_cast<float>(*((signed char*)(param.offset().c_str()))) *static_cast<float>(-1.0));
   } else {
     op_dest.SetAttr("offset", static_cast<float>(0));
   }

@@ -226,7 +226,7 @@ bool BNReduce::FusedReduceAxis() {
 
     // fused serial axises
     value_input = std::accumulate(normalize_shape.begin() + first, normalize_shape.begin() + second, 1,
-                    std::multiplies<int64_t>());
+                                  std::multiplies<int64_t>());
     input_shape[capacity_shape] = value_input;
     capacity_shape++;
 
@@ -274,8 +274,9 @@ bool BNReduce::GetCompileInfo() {
   block_size = compileInfo.reduce_block_size;
 
   if (compileInfo.max_ub_count <= 0 || compileInfo.core_num <= 0 || compileInfo.reduce_block_size <= 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "invalid compile info: max_ub_count = %ld, core_num = %d, reduce_block_size = %d ",
-          compileInfo.max_ub_count, compileInfo.core_num, compileInfo.reduce_block_size);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                    "invalid compile info: max_ub_count = %ld, core_num = %d, reduce_block_size = %d ",
+                                    compileInfo.max_ub_count, compileInfo.core_num, compileInfo.reduce_block_size);
     return false;
   }
   
@@ -609,7 +610,7 @@ bool BNReduce::WriteTilingData() {
         uint32_t dim_index = std::atoi(var_str.substr(dim_index_pos, 1).c_str());
         if (dim_index >= input_shape_ori.size()) {
           VECTOR_INNER_ERR_REPORT_TILIING(op_type, " write tiling data dim index = %d, is out of input shape size[%lu]",
-                  dim_index, input_shape_ori.size());
+                                          dim_index, input_shape_ori.size());
           return false;
         }
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shape_ori[dim_index]));

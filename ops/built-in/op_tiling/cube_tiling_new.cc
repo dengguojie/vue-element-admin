@@ -34,12 +34,12 @@ namespace {
   const std::vector<std::string> kConv3DTransposeVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
   const std::vector<std::string> kAvgPool3DGradVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
   const std::map<std::string, std::vector<std::string>> kOpVarNamesMap = {
-    {"Conv3D", kConv3DVarNames},
-    {"Conv3DBackpropFilter", kConv3DVarNames},
-    {"Conv3DBackpropInput", kConv3DBpInputVarNames},
-    {"Conv3DTranspose", kConv3DTransposeVarNames},
-    {"AvgPool3D", kConv3DVarNames},
-    {"AvgPool3DGrad", kAvgPool3DGradVarNames}
+      {"Conv3D", kConv3DVarNames},
+      {"Conv3DBackpropFilter", kConv3DVarNames},
+      {"Conv3DBackpropInput", kConv3DBpInputVarNames},
+      {"Conv3DTranspose", kConv3DTransposeVarNames},
+      {"AvgPool3D", kConv3DVarNames},
+      {"AvgPool3DGrad", kAvgPool3DGradVarNames}
   };
 
   void get_var_names(const std::string &op_type, std::vector<std::string> &vars) {
@@ -109,7 +109,7 @@ namespace {
   }
 
   string cube_tiling_batch(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                         const nlohmann::json& compile_info, string tiling_id) {
+                           const nlohmann::json& compile_info, string tiling_id) {
     if (cur_shape.empty()) {
       return tiling_id;
     }
@@ -129,7 +129,7 @@ namespace {
   }
 
   string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                       const nlohmann::json& compile_info, string tiling_id) {
+                         const nlohmann::json& compile_info, string tiling_id) {
     if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
         return tiling_id;
@@ -185,10 +185,10 @@ namespace optiling {
   * @return bool: success or not
   */
   bool cube_tiling(const std::string& op_type,
-                  const std::vector<int64_t>& input_shape,
-                  const std::vector<int64_t>& var_value,
-                  const nlohmann::json& compile_info,
-                  utils::OpRunInfo& run_info) {
+                   const std::vector<int64_t>& input_shape,
+                   const std::vector<int64_t>& var_value,
+                   const nlohmann::json& compile_info,
+                   utils::OpRunInfo& run_info) {
     try {
       OP_LOGD(op_type.c_str(), "input compile info: %s", compile_info.dump().c_str());
       std::vector<std::string> vars = compile_info.at("_vars").begin().value().get<std::vector<std::string>>();

@@ -699,16 +699,16 @@ bool IsDoWithTransposeFormats(const std::string& srcFormat, const std::string& d
 
 bool IsDoWithPositiveSourceNtc100(const std::string& srcFormat, const std::string& dstFormat) {
   const std::vector<std::pair<std::string, std::string>> supportSrcDstFormats = {
-    {"NCDHW", "NDC1HWC0"},
-    {"NCHW", "NC1HWC0"},
-    {"HWCN", "FRACTAL_Z"},
-    {"HWCN", "FRACTAL_ZN"},
-    {"DHWCN", "FRACTAL_Z_3D"},
-    {"NCDHW", "FRACTAL_Z_3D"},
-    {"ND", "FRACTAL_Z"},
-    {"ND", "FRACTAL_ZN"},
-    {"NCHW", "FRACTAL_Z"},
-    {"NCHW", "FRACTAL_ZN"}};    
+      {"NCDHW", "NDC1HWC0"},
+      {"NCHW", "NC1HWC0"},
+      {"HWCN", "FRACTAL_Z"},
+      {"HWCN", "FRACTAL_ZN"},
+      {"DHWCN", "FRACTAL_Z_3D"},
+      {"NCDHW", "FRACTAL_Z_3D"},
+      {"ND", "FRACTAL_Z"},
+      {"ND", "FRACTAL_ZN"},
+      {"NCHW", "FRACTAL_Z"},
+      {"NCHW", "FRACTAL_ZN"}};
   return std::find(supportSrcDstFormats.begin(), supportSrcDstFormats.end(),
                    std::pair<std::string, std::string>(srcFormat, dstFormat)) != supportSrcDstFormats.end();
 }
@@ -780,7 +780,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   bool flag = GetCompileParams(op_info, srcFormat, dstFormat, dType, ubSize, blockDim, inputSize, hiddenSize, group,
-                                opType);
+                               opType);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetCompileParams error.");
     return false;
@@ -807,7 +807,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   if (IsDoWithPositiveSourceNtc100(srcFormat, dstFormat)) {
     TransDataNtc100Param runParams100;
     flag = TilingPositiveSourceNtc100(inShape, outShape, srcFormat, dstFormat, blockDim,
-                                            blockElemCnt, ubSize, c0Len, dType, runParams100);
+                                      blockElemCnt, ubSize, c0Len, dType, runParams100);
     if (!flag) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingPositiveSourceNtc100 tiling params error");
       return false;

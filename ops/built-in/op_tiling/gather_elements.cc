@@ -151,7 +151,7 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> indicesSha
 }
 
 bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson, int64_t& coreNum,
-                        int64_t& ubSize, int64_t& l1Size, int64_t& paramsDSize, int64_t& indicesDSize, int64_t& axis) {
+                      int64_t& ubSize, int64_t& l1Size, int64_t& paramsDSize, int64_t& indicesDSize, int64_t& axis) {
   using namespace nlohmann;
 
   const auto& allVars = opCompileInfoJson["vars"];
@@ -203,7 +203,7 @@ bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompile
  * @return bool: success or not
  */
 bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                    OpRunInfo& runInfo) {
+                          OpRunInfo& runInfo) {
   GELOGI("op[%s] GatherElementsTiling running.", opType.c_str());
   using namespace ge;
   if (op_info == nullptr) {

@@ -330,7 +330,7 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
     runParams.paramsRow *= paramsShape[i];
   }
   OP_LOGD("GatherNd", "op [GatherNdTiling] : paramsDims=%d, indicesDims=%d, indicesLastDim=%d, paramsRow=%d",
-         paramsDims, indicesDims, indicesLastDim, runParams.paramsRow);
+          paramsDims, indicesDims, indicesLastDim, runParams.paramsRow);
   int64_t indicesPrefix = std::accumulate(indicesShape.begin(), indicesShape.end() - 1, 1,
                                           std::multiplies<int64_t>());  // the number of indices
 

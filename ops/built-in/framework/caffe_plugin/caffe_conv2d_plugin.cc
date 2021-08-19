@@ -218,7 +218,7 @@ static Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
 
   if (layer->bottom_size() != 1) {
     ge::OpsConvShapeErrReport(op.GetName(),
-                            "Convolution layer bottom num(" + std::to_string(layer->bottom_size()) + ") must be 1.");
+                              "Convolution layer bottom num(" + std::to_string(layer->bottom_size()) + ") must be 1.");
     OP_LOGE(op.GetName().c_str(), "Convolution layer bottom num(%d) must be 1", layer->bottom_size());
     return FAILED;
   }
@@ -226,7 +226,7 @@ static Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   if (layer->top_size() != 1) {
     OP_LOGE(op.GetName().c_str(), "Convolution layer top num(%d) must be 1", layer->top_size());
     ge::OpsConvShapeErrReport(op.GetName(),
-                            "Convolution layer top num(" + std::to_string(layer->top_size()) + ") must be 1.");
+                              "Convolution layer top num(" + std::to_string(layer->top_size()) + ") must be 1.");
     return FAILED;
   }
 

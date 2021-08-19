@@ -16,7 +16,7 @@
 
 namespace optiling {
 bool BinaryCrossEntropyGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                      OpRunInfo& run_info) {
+                                  OpRunInfo& run_info) {
   TeOpParas op_paras_tmp = op_paras;
   op_paras_tmp.inputs.clear();
   op_paras_tmp.inputs.push_back(op_paras.inputs[0]);

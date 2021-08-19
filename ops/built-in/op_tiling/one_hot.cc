@@ -54,7 +54,7 @@ namespace optiling{
     }
 
     bool MergeAxis(int32_t axis, int32_t depth, std::vector<int64_t> x_shape, 
-                    std::vector<int64_t> &merged_x_shape)
+                   std::vector<int64_t> &merged_x_shape)
     {
         OP_LOGD("MergeAxis is running");
         int32_t x_shape_size = x_shape.size();

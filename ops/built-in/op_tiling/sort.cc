@@ -135,7 +135,7 @@ namespace optiling
     }
     ub_size = all_vars["ub_size"].get<std::int32_t>();
     OP_LOGD("op [%s] : GetTopkCompileParams, core_num[%d], ub_size[%d].",
-           SORT_OP_TYPE.c_str(), core_num, ub_size);
+            SORT_OP_TYPE.c_str(), core_num, ub_size);
     return true;
   }
 

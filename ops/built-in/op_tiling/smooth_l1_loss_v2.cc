@@ -18,7 +18,7 @@
 #include <iostream>
 namespace optiling {
 bool SmoothL1LossV2Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                      OpRunInfo& run_info) {
+                          OpRunInfo& run_info) {
   bool ret = false;
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   float reduce_mean_cof = 1.0;

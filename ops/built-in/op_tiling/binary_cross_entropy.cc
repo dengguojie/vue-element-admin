@@ -26,7 +26,7 @@ bool IsInAxis(std::vector<int32_t>& input, int32_t value) {
 }
 
 bool BinaryCrossEntropyTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                      OpRunInfo& run_info) {
+                              OpRunInfo& run_info) {
   if (op_info.count("reduction") > 0){
     const std::string reduction = op_info.at("reduction").get<std::string>();
     if (reduction == "none"){

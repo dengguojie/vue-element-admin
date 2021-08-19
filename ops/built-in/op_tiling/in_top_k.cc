@@ -26,7 +26,7 @@ void InTopKPrintTilingParams(const std::string& op_type, const InTopKTilingParam
   GELOGD("op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(), params.need_core_num_input_scalar);
 }
 
-bool InTopKDTiling (const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
+bool InTopKDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
                    OpRunInfo& run_info) {
   GELOGI("========================InTopKTiling running.====================");
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty()) {
