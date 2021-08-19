@@ -40,7 +40,7 @@ Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, v
     }
   }
   for (size_t i = 0; i < axis_info.size(); ++i) {
-    if (tensor_info[axis_info[i]] != 1) {
+    if ((tensor_info[axis_info[i]] == 1 && !keep_dims) || tensor_info[axis_info[i]] != 1) {
       return FAILED;
     }
   }
@@ -104,7 +104,7 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     if (const_data[i] < 0) {
       const_data[i] = tensor_size + const_data[i];
     }
-    if (const_data[i] > (static_cast<int64_t>(tensor_size)) && (!IsUnknownRankShape(tensor_info))) {
+    if (const_data[i] >= (static_cast<int64_t>(tensor_size)) && (!IsUnknownRankShape(tensor_info))) {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_data is not right");
         return FAILED;
     }
