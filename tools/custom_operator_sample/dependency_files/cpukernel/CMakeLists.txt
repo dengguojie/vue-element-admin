@@ -138,6 +138,12 @@ include_directories(${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/inc)
 SUBDIRLIST(${CMAKE_CURRENT_SOURCE_DIR}/impl/third_party)
 include_directories(./impl/third_party/${SUB_DIR_LIST})
 
+# delete build protobuf CMakeCache.txt
+set(cmake_cache_file ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/src/protobuf_static_build-build/CMakeCache.txt)
+if (EXISTS ${cmake_cache_file})
+    file(REMOVE ${cmake_cache_file})
+endif()
+
 set(LIBRARY_OUTPUT_PATH ${AICPU_OP_IMPL_OUT_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 add_library(${AICPU_KERNEL_TARGET} SHARED ${KERNELS_SRCS})
