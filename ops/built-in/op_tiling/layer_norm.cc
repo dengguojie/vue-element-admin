@@ -186,6 +186,7 @@ bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_info,
       fe::fp16_t reduce_mean_cof_fp16;
       reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
+      ByteBufferPut(run_info.tiling_data, (uint16_t)0);
       OP_LOGD(op_type.c_str(), "fp16 reduce mean cof:%f", reduce_mean_cof);
     }
   }
@@ -765,7 +766,13 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
     max_ub_size = op_info["max_ub_size_normal_fp16"].get<int32_t>();
     block = 16;
   }
-  int32_t workspace_sub1 = 4;
+
+  int32_t workspace_sub1 = 2;
+  bool is_support_vexp = op_info["is_support_vexp"].get<bool>();
+  if (is_support_vexp || (input_dtype == "float32")) {
+    workspace_sub1 = 4;
+  }
+
   for (uint32_t i = 0; i < input_x.size(); i++) {
     workspace_sub1 *= input_x[i];
     ByteBufferPut(run_info.tiling_data, (int32_t)input_x[i]);

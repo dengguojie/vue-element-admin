@@ -86,6 +86,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
                         "reduce_axis": [2],
                         "input_format": "NCHW",
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{11, 12, 512}, {512}, {512}};
@@ -195,6 +196,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
                         "reduce_axis": [1,2],
                         "input_format": "NCHW",
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{1024, 30, 512}, {512}, {512}};
@@ -305,6 +307,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
                         "reduce_axis": [1,2],
                         "input_format": "NCHW",
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{34, 309, 512}, {512}, {512}};
@@ -443,6 +446,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
                         "pattern_info": [63],
                         "reduce_axis": [0,1,2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -551,6 +555,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
                         "pattern_info": [39],
                         "reduce_axis": [1,2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -650,6 +655,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
                         "pattern_info": [27],
                         "reduce_axis": [2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -749,6 +755,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
                         "pattern_info": [27],
                         "reduce_axis": [2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -848,6 +855,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
                         "pattern_info": [27],
                         "reduce_axis": [2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -947,6 +955,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
                         "pattern_info": [27],
                         "reduce_axis": [2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -1046,6 +1055,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
                         "pattern_info": [27],
                         "reduce_axis": [2],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "NCHW",
                         "ub_info":[16384]})";
 
@@ -1116,6 +1126,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
                         "pattern_info": [27],
                         "reduce_axis": [2],
                         "input_format": "NCHW",
+                        "is_support_vexp":true,
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{20, 304, 512}, {512}, {512}};
@@ -1197,6 +1208,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_12) {
                         "pattern_info": [99],
                         "reduce_axis": [0, 3],
                         "reduce_mean_cof_dtype":"float32",
+                        "is_support_vexp":true,
                         "input_format": "FRACTAL_NZ",
                         "ub_info":[16384]})";
 

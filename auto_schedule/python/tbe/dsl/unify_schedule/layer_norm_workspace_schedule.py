@@ -46,6 +46,7 @@ from .util import get_dsl_insn
 MAX_NODE_COUNT = 12
 PHONY_INSN = "phony_insn"
 DMA_COPY = "dma_copy"
+MAX_BOUND = 10 * 1024
 
 
 class WorkspaceLayerNormSchedule:
@@ -231,6 +232,7 @@ class WorkspaceLayerNormSchedule:
 
     def _do_storage_bound(self):
         UB_SIZE = get_soc_spec("UB_SIZE")
+        soc_version = get_soc_spec("SOC_VERSION")
         # analysis coexit tensor node
         tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
             self.output_tensor_ub_list) | set(self.input_tensor_ub_list)
@@ -238,8 +240,8 @@ class WorkspaceLayerNormSchedule:
             # fp16 --> fp32
             self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
         else:
-            # fp32
-            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
+            # fp32 or fp16 in 310
+            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2) if soc_version not in ("Ascend310",) else MAX_BOUND
         for stage_tensor in tensor_storage_bound_set:
             if self.forward_compute_graph_map.get(stage_tensor) and stage_tensor in self.graph_info.input_tensor_set:
                 continue

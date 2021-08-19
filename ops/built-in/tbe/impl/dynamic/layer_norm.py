@@ -30,6 +30,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe_context
 from copy import deepcopy
 
 # General limitation of the size for input shape: 2**31
@@ -378,8 +379,9 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     cast_dtype = dtype
     cast_dtype_precision = dtype
     is_cast = False
-    if dtype == "float16" and \
-            ((tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and impl_mode == "high_performance") or impl_mode == "high_precision"):
+    is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
+    tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
+    if dtype == "float16" and ((is_support_vexp and impl_mode == "high_performance") or impl_mode == "high_precision"):
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
@@ -418,7 +420,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     normalize_sub = variance_sub
 
     # DSL description of the normalize calculation process
-    if impl_mode == "high_performance":
+    if impl_mode == "high_performance" and is_support_vexp:
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
         variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
         normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
@@ -503,8 +505,9 @@ def layer_norm_compute(input_x,
     cast_dtype = dtype
     cast_dtype_precision = dtype
     is_cast = False
-    if dtype == "float16" and ((tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
-                                and impl_mode == "high_performance") or impl_mode == "high_precision"):
+    is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
+    tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
+    if dtype == "float16" and ((is_support_vexp and impl_mode == "high_performance") or impl_mode == "high_precision"):
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
@@ -546,7 +549,7 @@ def layer_norm_compute(input_x,
     normalize_sub = variance_sub
 
     # DSL description of the normalize calculation process
-    if impl_mode == "high_performance":
+    if impl_mode == "high_performance" and is_support_vexp:
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
         variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
         normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)

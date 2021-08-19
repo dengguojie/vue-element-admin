@@ -48,6 +48,7 @@ MAX_NODE_COUNT = 12
 LAST_DIM_RANGE_NUM1 = 64
 PHONY_INSN = "phony_insn"
 DMA_COPY = "dma_copy"
+MAX_BOUND = 10 * 1024
 
 
 @register_schedule(pattern=Pattern.LayerNorm)
@@ -79,6 +80,7 @@ class NormalLayerNormSchedule:
         self.outs = outs
         self.input_tensor_stage_list = []
         self.is_cast = False
+        self.is_broadcast = True
         self.is_last_dim_one = False
         self.reduce0_tensor = None
         self.reduce1_tensor = None
@@ -97,6 +99,11 @@ class NormalLayerNormSchedule:
         for input_tensor in self.graph_info.input_tensor_set:
             if input_tensor.op.name == "x":
                 self.x_tensor = input_tensor
+                x_shape = shape_util.shape_to_list(input_tensor.shape)
+            else:
+                bg_shape = shape_util.shape_to_list(input_tensor.shape)
+        if x_shape == bg_shape:
+            self.is_broadcast = False
         for x_consumer_tensor in self.graph_info.tensor_consumers_map[self.x_tensor]:
             opname, num = x_consumer_tensor.op.name.split("_")
             if opname == "cast":
@@ -230,7 +237,7 @@ class NormalLayerNormSchedule:
 
     def _do_compute_inline(self):
         # self.shape_dim > 1 operate storage align
-        if self.shape_dim > 1:
+        if self.shape_dim > 1 and self.is_broadcast:
             for tensor in self.graph_info.input_tensor_set:
                 opname = tensor.op.name
                 if opname in ("gamma", "beta") and self.is_cast:
@@ -246,6 +253,7 @@ class NormalLayerNormSchedule:
 
     def _do_storage_bound(self):
         UB_SIZE = get_soc_spec("UB_SIZE")
+        soc_version = get_soc_spec("SOC_VERSION")
         # analysis coexit tensor node
         tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
             self.output_tensor_stage_list) | set(self.input_tensor_stage_list) | set(self.input_tensor_stage_list_1)
@@ -253,8 +261,8 @@ class NormalLayerNormSchedule:
             # fp16 --> fp32
             self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
         else:
-            # fp32
-            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
+            # fp32 or fp16 in 310
+            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2) if soc_version not in ("Ascend310",) else MAX_BOUND
         for stage_tensor in tensor_storage_bound_set:
             if self.forward_compute_graph_map.get(stage_tensor) and stage_tensor in self.graph_info.input_tensor_set:
                 continue
