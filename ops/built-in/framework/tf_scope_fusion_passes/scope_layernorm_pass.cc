@@ -68,6 +68,20 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
     if (scope->Name().find("sequence_encoder_loop/while") != std::string::npos) {
       return FAILED;
     }
+    const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map_mul = scope->AllNodesMap();
+    for (auto& it : nodes_map_mul) {
+        auto mode_def = it.second;
+        if(mode_def->GetName().find("discriminator_2/d_ln3/LayerNorm/batchnorm/mul") != std::string::npos) {
+            OP_LOGI(kOpType, "discriminator_2/d_ln3/LayerNorm/batchnorm/mul name is found");
+            std::vector<std::string> outputs;
+            mode_def->GetAttr("_origin_graph_node_outputs", outputs);
+            OP_LOGI(kOpType, "layernorm data_out_num is %zu", outputs.size());
+            if (outputs.size() >= 6) {
+                OP_LOGI(kOpType, "output size is 6, not scope");
+                return FAILED;
+            }
+        }
+    }
     // tf2.x can not do scope fusion
     if (scope->Name().find("batchnorm/mul") != std::string::npos) {
       const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();

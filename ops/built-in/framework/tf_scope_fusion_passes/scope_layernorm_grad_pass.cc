@@ -46,6 +46,7 @@ std::string ScopeLayerNormGradPass::PassName() {
 }
 
 void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
+  OP_LOGD(kOpType, "Enter ScopeLayerNormGradPass GenScopePatterns");
   // recognize moments
   std::vector<ScopePattern*> batch1;
   ScopePattern* moments_grad = new (std::nothrow) ScopePattern();
@@ -67,8 +68,10 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   }
   batchnorm_grad->SetSubType("batchnorm_grad");
   batchnorm_grad->AddScopeFeature(ScopeFeature("", -1, "batchnorm", "Rsqrt_grad"));  // batchnorm grad
+  batchnorm_grad->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 6, 0));
   batch1.push_back(batchnorm_grad);
   patterns.push_back(batch1);
+  OP_LOGI(kOpType, "Mul of LayerNormGrad scope is 6");
 
   // recognize LayerNorm grad
   std::vector<ScopePattern*> batch2;
@@ -139,8 +142,8 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
     // find the node whose all inputs are from this scope
     bool can_find = false;
     bool all_in = true;
-    bool all_ln_output = true;
-    OP_LOGD(kOpType, "Addn node name is %s", it.second->GetName().c_str());
+    bool has_ln_output = false;
+    OP_LOGI(kOpType, "Addn node name is %s", it.second->GetName().c_str());
     size_t input_nums = it.second->GetInputsSize();
     for (size_t i = 0; i < input_nums; i++) {
       // some input name contain "^", should be removed
@@ -149,17 +152,16 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
       if (nodes_map.count(input_name) != 0) {
         can_find = true;
       }
-      if (input_name.find("batchnorm/mul_grad/Sum_1") == std::string::npos &&
-          input_name.find("batchnorm/sub_grad/Sum") == std::string::npos) {
-        all_ln_output = false;
+      if (input_name.find("batchnorm/mul_grad/Sum_1") != std::string::npos ||
+          input_name.find("batchnorm/sub_grad/Sum") != std::string::npos) {
+        has_ln_output = true;
       }
       if (nodes_map.count(input_name) == 0) {
         all_in = false;
       }
     }
 
-    if ((all_in == true && input_nums == 2) || (input_nums > 2 && can_find == true &&
-         all_ln_output == false)) {
+    if ((all_in && input_nums == 2) || (input_nums > 2 && can_find && !has_ln_output)) {
       // if the node is not in result_nodes, it will be insert to result_nodes
       bool find1 = true;
       for (auto& it1 : result_nodes) {
@@ -169,7 +171,7 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
         }
       }
       if (find1) {
-        OP_LOGD(kOpType, " Push Back AddN noede %s into scope", it.second->GetName().c_str());
+        OP_LOGI(kOpType, " Push Back AddN noede %s into scope", it.second->GetName().c_str());
         result_nodes.push_back(it.second);
       }
     }
@@ -179,6 +181,7 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
 
 Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph,
                                                      std::vector<ScopesResult>& results) {
+  OP_LOGD(kOpType, "Enter ScopeLayerNormGradPass LastMatchScopesAndOPs");
   if (scope_graph == nullptr) {
     OP_LOGE(kOpType, "Input params is nullptr.");
     return domi::PARAM_INVALID;
@@ -191,6 +194,22 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
       OP_LOGE(kOpType, "Scope is nullptr.");
       return domi::PARAM_INVALID;
     }
+    const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map_mul = scope->AllNodesMap();
+    for (auto& it : nodes_map_mul) {
+        auto mode_def = it.second;
+        if(mode_def->GetName().find("gradients_2/discriminator_2/d_ln2/LayerNorm/"
+        "batchnorm/mul_grad/Reshape") != std::string::npos) {
+            OP_LOGI(kOpType, "ScopeLayerNormGradPass Reshape name is found");
+            std::vector<std::string>outputs;
+            mode_def->GetAttr("_origin_graph_node_outputs",outputs);
+            OP_LOGI(kOpType, "Reshape node data_out_num is %zu", outputs.size());
+            if (outputs.size() == 2) {
+                OP_LOGI(kOpType, "Reshape output size is 2, not fusion scope");
+                return FAILED;
+            }
+        }
+    }
+
     if (scope->SubType() == kScopeType) {
       ScopesResult result;
       std::vector<Scope*> result_scopes;
@@ -340,6 +359,7 @@ void ScopeLayerNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorPtr>
     if (node_def->GetName().find("AddN") != std::string::npos) {
       bool find_mul1 = false;
       bool find_mul = false;
+      bool find_mul2 = false;
       bool find_scope_external_input = false;
       size_t input_size = node_def->GetInputsSize();
       for (size_t i = 0; i < input_size; i++) {
@@ -354,11 +374,14 @@ void ScopeLayerNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorPtr>
         if (input_name.find("batchnorm/mul_1_grad/Mul_1") != std::string::npos) {
           find_mul1 = true;
         }
+        if (input_name.find("batchnorm/mul_2_grad/Mul_1") != std::string::npos) {
+          find_mul2 = true;
+        }
         if (input_name.find("batchnorm/mul_1_grad/Mul") != std::string::npos) {
           find_mul = true;
         }
       }
-      if ((!find_mul1 && find_mul && !find_scope_external_input) || (index != -1)) {
+      if ((!find_mul1 && !find_mul2 && find_mul && !find_scope_external_input) || (index != -1)) {
         node_def_name = node_def->GetName();
         return;
       }
@@ -413,6 +436,7 @@ void ScopeLayerNormGradPass::ProcessInputGamma(const std::vector<Scope*>& scopes
 }
 
 void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
+  OP_LOGI(kOpType, "Enter ScopeLayerNormGradPass GenerateFusionResult");
   if (fusion_rlt == nullptr) {
     OP_LOGE(kOpType, "Input fusion_rlt is nullptr.");
     return;
@@ -438,13 +462,13 @@ void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& sco
       // The upper call guarantees that the scope is not empty.
       if (scope->SubType() == kScopeType) {
         std::string scope_name = scope->Name();
-        OP_LOGD(kOpType, "LayerNormGrad scope name is %s", scope_name.substr(0, scope_name.length() - 1).c_str());
+        OP_LOGI(kOpType, "LayerNormGrad scope name is %s", scope_name.substr(0, scope_name.length() - 1).c_str());
         fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
         break;
       }
     }
     if (add_index != -1) {
-    OP_LOGD(kOpType, "multi-to-multi fusion case in");
+    OP_LOGI(kOpType, "multi-to-multi fusion case in");
     if (add_index == 0) {
       fusion_rlt->InsertInputs(output_dx.c_str(), {5, kFusionDisableIndex, kFusionDisableIndex});
     } else if (add_index == 1) {
@@ -478,7 +502,7 @@ void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& sco
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
     }
     if (add_index == -1) {
-    OP_LOGD(kOpType, "single-to-single fusion case in");
+    OP_LOGI(kOpType, "single-to-single fusion case in");
     fusion_rlt->InsertOutputs(output_dx.c_str(), {0});
     fusion_rlt->SetType(kScopeRltType);
     }
