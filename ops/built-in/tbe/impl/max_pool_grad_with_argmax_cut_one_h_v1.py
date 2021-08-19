@@ -166,7 +166,9 @@ class MaxpoolGradCustom(MaxpoolGardObject):
                 real_cycle.set_as(block_cycle)
                 block_base.set_as(block_index + block_id * block_cycle)
 
-            true_val = False if dyh * dyw * channel > (L1_SIZE // 2) else True
+            require_l1_menmory = dyh * dyw * channel * self.dtype_size\
+                                 + windowh * windoww * mask_one_window * 2
+            true_val = False if require_l1_menmory > (L1_SIZE // 2) else True
             if true_val is True:
                 data_input_l1 = self.tik_instance.Tensor(dtype, (dyh * dyw * channel,), name="data_input_l1",
                                                          scope=tik.scope_cbuf)
