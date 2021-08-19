@@ -318,6 +318,7 @@ usage() {
   echo "    --set_env_ascend set env for ascend,use /usr/local/Ascend python operato code"
   echo "    --install_python_libs install necessary python libs"
   echo "    --make_clean make clean"
+  echo "    --cov  When building uTest locally, adding --cov will count the coverage. For example ./build.sh --ops_cpp_op_tiling_utest --cov "
   echo "    --make_clean_all make clean and delete related file"
   echo "    --noexec Only compile ut, do not execute the compiled executable file"
   echo "    --build_mode_xxx,the xxx can be in [O0 O1 O2 O3 g], for example build_mode_O2"
