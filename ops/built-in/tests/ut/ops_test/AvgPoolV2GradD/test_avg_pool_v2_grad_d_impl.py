@@ -579,7 +579,7 @@ case12 = {
                 "shape": (1, 1, 4, 5, 16), "param_type": "output"},
                [1, 1, 4, 5], [1, 1, 3, 3], [1, 1, 1, 2], "CALCULATED", (0, 0, 0, 0),
                "NCHW", False, False, True],
-    "case_name": "test",
+    "case_name": "test12",
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -596,24 +596,40 @@ case13 = {
                 "shape": (1, 1, 4, 5, 16), "param_type": "output"},
                [1, 1, 4, 5], [1, 1, 3, 3], [1, 1, 1, 2], "VALID", (0, 0, 0, 0),
                "NCHW", False, False, True],
-    "case_name": "test_1",
+    "case_name": "test_13",
     "expect": "success",
     "format_expect": [],
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend910A"], case7)
-ut_case.add_case(["Ascend310", "Ascend910A"], case8)
-ut_case.add_case(["Ascend310", "Ascend910A"], case9)
-ut_case.add_case(["Ascend310", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend910A"], case12)
-ut_case.add_case(["Ascend310", "Ascend910A"], case13)
+case14 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 1, 1),
+                "shape": (1, 1, 1, 1, 16), "param_type": "input",},
+               None,
+               None,
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 1, 7, 7),
+                "shape": (1, 1, 7, 7, 16), "param_type": "output"},
+               [1, 1, 7, 7], [1, 1, 7, 7], [1, 1, 7, 7], "CALCULATED", (0, 0, 0, 0),
+               "NCHW", False, False, True],
+    "case_name": "test_14",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
+ut_case.add_case(["Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case8)
+ut_case.add_case(["Ascend910A"], case9)
+ut_case.add_case(["Ascend910A"], case10)
+ut_case.add_case(["Ascend910A"], case12)
+ut_case.add_case(["Ascend910A"], case13)
+ut_case.add_case(["Ascend910A"], case14)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

@@ -812,14 +812,8 @@ def avg_pool_v2_grad_d(input_grad,
         input_grad = tvm.placeholder(input_grad_shape,
                                      name="input_grad",
                                      dtype=data_dtype)
-                # input_grad is overlapped result
-        filter_num_h = (HH - kernel_h + pad_top + pad_bottom) // stride_h + 1
-        filter_num_w = (WW - kernel_w + pad_left + pad_right) // stride_w + 1
-
-        # global_avgpool, input FMAP size equals kernel size, kernel number=1
-        if not (filter_num_h == 1 and filter_num_w == 1):
-            error_manager_vector.raise_err_specific_reson(
-                "avg_pool_grad_d", "Global average pooling, input_grad_h and input_grad_w must equel 1!")
+        kernel_h = HH
+        kernel_w = WW
 
         kernel_size_reciprocal = 1.0 / (kernel_h * kernel_w)
 
@@ -831,12 +825,7 @@ def avg_pool_v2_grad_d(input_grad,
                 grad_tmp = te.lang.cce.cast_to(grad_tmp, "float16")
             res = te.lang.cce.broadcast(grad_tmp, orig_input_shape)
             sch = generic.auto_schedule(res)
-        # add two placeholder for mean_matrix and kernel_matrix
-        dummy_placeholder = tvm.placeholder((1, ), name="dumy", dtype=data_dtype)
-        config = {"name": kernel_name, 
-                  "tensor_list": [input_grad, dummy_placeholder, dummy_placeholder, res], 
-                  "dummy_placeholder": True
-                 }
+        config = {"name": kernel_name, "tensor_list": [input_grad, res]}
         te.lang.cce.cce_build_code(sch, config)
     else:
         shape_in = orig_input_shape
