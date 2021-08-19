@@ -14,14 +14,15 @@ class tensorArrayConcat : public testing::Test {
   }
 };
 
-TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_success){
-  ge::op::TensorArrayConcat op;
-  op.SetAttr("dtype", ge::DT_INT64);
-  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
-  op.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
-  
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+TEST_F(tensorArrayConcat, tensorArrayConcat_inference_context_null_failed){
+  ge::op::TensorArrayConcat op_tensor_array_concat;
+
+  op_tensor_array_concat.SetAttr("dtype", ge::DT_INT64);
+  op_tensor_array_concat.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_concat.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+
+  auto ret = op_tensor_array_concat.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_input0_rank_failed){

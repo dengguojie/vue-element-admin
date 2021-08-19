@@ -331,7 +331,7 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_rank_unknown_succ
   EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_failed){
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_success){
   std::vector<std::string> marks = {std::string("TensorArray005")};
   std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
 
@@ -364,10 +364,46 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_fa
   inferCtxPtr2->SetMarks(marks);
   op_tensor_array_write2.SetInferenceContext(inferCtxPtr2);
   auto ret2 = op_tensor_array_write2.InferShapeAndType();
+  EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_failed){
+  std::vector<std::string> marks = {std::string("TensorArray011")};
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
+
+  ge::op::TensorArrayWrite op_tensor_array_write;
+  op_tensor_array_write.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_write.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op_tensor_array_write.UpdateInputDesc("value", create_desc({2,-1,4}, ge::DT_FLOAT));
+  op_tensor_array_write.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  auto value_desc = op_tensor_array_write.GetInputDesc("value");
+  value_desc.SetShapeRange({{2, 2}, {2, 2}});
+  op_tensor_array_write.UpdateInputDesc("value", value_desc);
+  ge::ResourceContextMgr resource_mgr;
+  ge::InferenceContextPtr inferCtxPtr1 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr1->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr1->SetMarks(marks);
+  op_tensor_array_write.SetInferenceContext(inferCtxPtr1);
+  auto ret = op_tensor_array_write.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  ge::op::TensorArrayWrite op_tensor_array_write2;
+  op_tensor_array_write2.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_write2.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op_tensor_array_write2.UpdateInputDesc("value", create_desc({2,3,2}, ge::DT_FLOAT));
+  op_tensor_array_write2.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  auto value_desc2 = op_tensor_array_write2.GetInputDesc("value");
+  value_desc2.SetShapeRange({{2, 2}, {3, 3}, {2, 2}});
+  op_tensor_array_write2.UpdateInputDesc("value", value_desc2);
+  ge::InferenceContextPtr inferCtxPtr2 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr2->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr2->SetMarks(marks);
+  op_tensor_array_write2.SetInferenceContext(inferCtxPtr2);
+  auto ret2 = op_tensor_array_write2.InferShapeAndType();
   EXPECT_EQ(ret2, ge::GRAPH_FAILED);
 }
 
-TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_failed){
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_success){
   std::vector<std::string> marks = {std::string("TensorArray006")};
   std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
 
@@ -391,6 +427,42 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_fai
   op_tensor_array_write2.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
   op_tensor_array_write2.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
   op_tensor_array_write2.UpdateInputDesc("value", create_desc({2,3,2}, ge::DT_FLOAT));
+  op_tensor_array_write2.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  auto value_desc2 = op_tensor_array_write2.GetInputDesc("value");
+  value_desc2.SetShapeRange({{2, 2}, {3, 3}});
+  op_tensor_array_write2.UpdateInputDesc("value", value_desc2);
+  ge::InferenceContextPtr inferCtxPtr2 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr2->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr2->SetMarks(marks);
+  op_tensor_array_write2.SetInferenceContext(inferCtxPtr2);
+  auto ret2 = op_tensor_array_write2.InferShapeAndType();
+  EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_failed){
+  std::vector<std::string> marks = {std::string("TensorArray012")};
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
+
+  ge::op::TensorArrayWrite op_tensor_array_write;
+  op_tensor_array_write.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_write.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op_tensor_array_write.UpdateInputDesc("value", create_desc({2,2,4}, ge::DT_FLOAT));
+  op_tensor_array_write.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  auto value_desc = op_tensor_array_write.GetInputDesc("value");
+  value_desc.SetShapeRange({{2, 2}, {2, 2}, {4, 4}});
+  op_tensor_array_write.UpdateInputDesc("value", value_desc);
+  ge::ResourceContextMgr resource_mgr;
+  ge::InferenceContextPtr inferCtxPtr1 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr1->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr1->SetMarks(marks);
+  op_tensor_array_write.SetInferenceContext(inferCtxPtr1);
+  auto ret = op_tensor_array_write.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  ge::op::TensorArrayWrite op_tensor_array_write2;
+  op_tensor_array_write2.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_write2.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op_tensor_array_write2.UpdateInputDesc("value", create_desc({2,-1,2}, ge::DT_FLOAT));
   op_tensor_array_write2.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
   auto value_desc2 = op_tensor_array_write2.GetInputDesc("value");
   value_desc2.SetShapeRange({{2, 2}, {3, 3}});
@@ -459,6 +531,64 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_write_and_gather_success){
 
   ret = op_tensor_array_gather.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_write_and_concat_success){
+  std::vector<std::string> marks = {std::string("TensorArray009")};
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
+
+  ge::op::TensorArrayWrite op_tensor_array_write;
+  op_tensor_array_write.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_write.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op_tensor_array_write.UpdateInputDesc("value", create_desc({2,2}, ge::DT_FLOAT));
+  op_tensor_array_write.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  auto value_desc = op_tensor_array_write.GetInputDesc("value");
+  value_desc.SetShapeRange({{2, 2}, {2, 2}});
+  op_tensor_array_write.UpdateInputDesc("value", value_desc);
+  ge::ResourceContextMgr resource_mgr;
+  ge::InferenceContextPtr inferCtxPtr1 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr1->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr1->SetMarks(marks);
+  op_tensor_array_write.SetInferenceContext(inferCtxPtr1);
+  auto ret = op_tensor_array_write.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  ge::op::TensorArrayConcat op_tensor_array_concat;
+
+  op_tensor_array_concat.SetAttr("dtype", ge::DT_INT64);
+  op_tensor_array_concat.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_concat.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+
+  ge::InferenceContextPtr inferCtxPtr2 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr2->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr2->SetMarks(marks);
+  op_tensor_array_concat.SetInferenceContext(inferCtxPtr2);
+
+  ret = op_tensor_array_concat.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_concat_shape_empty_failed){
+  std::vector<std::string> marks = {std::string("TensorArray010")};
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
+
+  ge::op::TensorArrayConcat op_tensor_array_concat;
+
+  op_tensor_array_concat.SetAttr("dtype", ge::DT_INT64);
+  op_tensor_array_concat.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op_tensor_array_concat.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+
+  ge::ResourceContextMgr resource_mgr;
+  ge::InferenceContextPtr inferCtxPtr2 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr2->SetOutputHandleShapesAndTypes(shapes_and_types);
+  inferCtxPtr2->SetMarks(marks);
+  ge::AicpuResourceContext *aicpu_resource_context = new ge::AicpuResourceContext();
+  aicpu_resource_context->shape_and_range_.clear();
+  inferCtxPtr2->SetResourceContext(marks[0].c_str(), aicpu_resource_context);
+  op_tensor_array_concat.SetInferenceContext(inferCtxPtr2);
+
+  auto ret = op_tensor_array_concat.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 

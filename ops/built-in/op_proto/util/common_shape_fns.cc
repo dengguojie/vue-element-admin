@@ -438,26 +438,41 @@ graphStatus MergeShapeAndRange(const ShapeAndRange &shared_shape_and_range,
     shape_changed = true;
     return GRAPH_SUCCESS;
   }
+  auto actual_shared_range = shared_shape_and_range.shape_range_;
+  auto actual_value_range = value_shape_and_range.shape_range_;
   if (shared_shape_and_range.shape_.GetDimNum() != shared_shape_and_range.shape_range_.size()) {
-    std::string err_msg = ConcatString("the dim num[", shared_shape_and_range.shape_.GetDimNum(),
-      "] of shared shape is not same as that[", shared_shape_and_range.shape_range_.size(),
-      "] of shared shape range.");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
-    return GRAPH_FAILED;
+    if (!ShapeFullDefined(shared_shape_and_range.shape_)) {
+      std::string err_msg = ConcatString("the dim num[", shared_shape_and_range.shape_.GetDimNum(),
+        "] of shared shape is not same as that[", shared_shape_and_range.shape_range_.size(),
+        "] of shared shape range.");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
+      return GRAPH_FAILED;
+    } else {
+      actual_shared_range.clear();
+      for (auto dim : shared_shape_and_range.shape_.GetDims()) {
+        actual_shared_range.push_back({dim, dim});
+      }
+    }
   }
   if (value_shape_and_range.shape_.GetDimNum() != value_shape_and_range.shape_range_.size()) {
-    std::string err_msg = ConcatString("the dim num[", value_shape_and_range.shape_.GetDimNum(),
-      "] of value shape is not same as that[", value_shape_and_range.shape_range_.size(),
-      "] of value shape range.");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
-    return GRAPH_FAILED;
+    if (!ShapeFullDefined(value_shape_and_range.shape_)) {
+      std::string err_msg = ConcatString("the dim num[", value_shape_and_range.shape_.GetDimNum(),
+        "] of value shape is not same as that[", value_shape_and_range.shape_range_.size(),
+        "] of value shape range.");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
+      return GRAPH_FAILED;
+    } else {
+      actual_value_range.clear();
+      for (auto dim : value_shape_and_range.shape_.GetDims()) {
+        actual_value_range.push_back({dim, dim});
+      }
+    }
   }
   const size_t rank = value_shape_and_range.shape_.GetDimNum();
   std::vector<int64_t> dims(rank);
   std::vector<std::pair<int64_t, int64_t>> shape_range(rank);
   MergeShape(shared_shape_and_range.shape_, value_shape_and_range.shape_, dims, shape_changed);
-  MergeRange(shared_shape_and_range.shape_range_, value_shape_and_range.shape_range_, shape_range,
-    shape_changed);
+  MergeRange(actual_shared_range, actual_value_range, shape_range, shape_changed);
   out = {Shape(dims), shape_range};
   return GRAPH_SUCCESS;
 }
