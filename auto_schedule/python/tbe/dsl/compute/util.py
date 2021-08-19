@@ -49,6 +49,7 @@ DTYPE_MAP = {
     "uint8": "u8",
     "int32": "s32",
     "int64": "s64",
+    "bfloat16":"bf16"
 }
 
 DSL_SAME_API_MAP = {

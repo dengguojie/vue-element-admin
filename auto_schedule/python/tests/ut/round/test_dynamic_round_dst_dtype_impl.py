@@ -43,7 +43,7 @@ case1 = {
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),
-        "dtype": "custom[bfloat]16",
+        "dtype": "bfloat16",
         "range": [(1, None), (1, None)]
     }],
     "case_name":
@@ -93,7 +93,7 @@ case3 = {
 case4 = {
     "params": [{
         "shape": (-1, -1),
-        "dtype": "custom[bfloat]16",
+        "dtype": "bfloat16",
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),
@@ -111,7 +111,7 @@ case4 = {
 case4 = {
     "params": [{
         "shape": (-1, -1),
-        "dtype": "custom[bfloat]16",
+        "dtype": "bfloat16",
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),

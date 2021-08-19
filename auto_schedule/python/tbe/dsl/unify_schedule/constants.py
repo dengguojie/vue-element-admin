@@ -288,7 +288,7 @@ DTYPE_BYTE_MAPPING = {
     "uint32": 4,
     "int64": 8,
     "uint64": 8,
-    "custom[bfloat]16": 2,
+    "bfloat16": 2,
 }
 
 AtomicSupportMap910 = {"support_dtype": ["float32", ],

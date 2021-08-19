@@ -67,7 +67,7 @@ case2 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "int32", "format": "ND"
          "support_expect": True
          }
 
-case3 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "custom[bfloat]16", "format": "ND"},
+case3 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "bfloat16", "format": "ND"},
                     {"shape": (1, 227, 227, 3), "dtype": "float32", "format": "ND"},
                     "float32",
                     False

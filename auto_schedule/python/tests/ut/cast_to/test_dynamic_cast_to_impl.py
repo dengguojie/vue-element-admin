@@ -304,7 +304,7 @@ case14 = {
 case15 = {
     "params": [{
         "shape": (-1, -1),
-        "dtype": "custom[bfloat]16",
+        "dtype": "bfloat16",
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),

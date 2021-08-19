@@ -57,8 +57,8 @@ for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
 
 case1 = {"params": [{"shape": (2, 282, 282, 128), "dtype": "float32", "format": "ND"},
-                    {"shape": (2, 282, 282, 128), "dtype": "custom[bfloat]16", "format": "ND"},
-                    "custom[bfloat]16"
+                    {"shape": (2, 282, 282, 128), "dtype": "bfloat16", "format": "ND"},
+                    "bfloat16"
                     ],
          "case_name": "test_round_f32_bf16",
          "expect": "success",
@@ -83,7 +83,7 @@ case3 = {"params": [{"shape": (2, 282, 282, 128), "dtype": "float32", "format": 
          "support_expect": True
          }
 
-case4 = {"params": [{"shape": (17, 11, 19, 23, 7, 3), "dtype": "custom[bfloat]16", "format": "ND"},
+case4 = {"params": [{"shape": (17, 11, 19, 23, 7, 3), "dtype": "bfloat16", "format": "ND"},
                     {"shape": (17, 11, 19, 23, 7, 3), "dtype": "int32", "format": "ND"},
                     "int32"
                     ],
