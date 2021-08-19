@@ -151,6 +151,4 @@ Status BnupdateEltwiseEltwiseFusionPass::GetFusionNodes(const BufferFusionMappin
   OP_LOGD(kFusedOpType.c_str(), "End to do BNUpdateEltwiseEltwiseFusionPass!");
   return SUCCESS;
 }
-REGISTER_BUFFER_FUSION_PASS("BnupdateEltwiseEltwiseFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
-                            BnupdateEltwiseEltwiseFusionPass);
 }  // namespace fe
