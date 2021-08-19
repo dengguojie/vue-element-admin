@@ -87,7 +87,6 @@ graphStatus WhileInferImpl(Operator &op) {
 
     if (data_shape.GetDims() != out_shape.GetDims()) {
       GE_OP_LOGI(op.GetName().c_str(), "While %zu output shape is not match with input shape.Need infer again.", i);
-      need_infer_again = true;
       if (data_shape.GetDimNum() != out_shape.GetDimNum()) {
         in_desc.SetUnknownDimNumShape();
       } else {
@@ -95,6 +94,10 @@ graphStatus WhileInferImpl(Operator &op) {
         std::vector<std::pair<int64_t, int64_t>> data_shape_range = {data_dim_num, std::make_pair(1, UNKNOWN_DIM)};
         for (size_t j = 0; j < data_dim_num; ++j) {
           if (data_shape.GetDim(j) != out_shape.GetDim(j)) {
+            if (data_shape.GetDim(j) != UNKNOWN_DIM) {
+               // if input data is fix shape, output is different, need_infer_again
+               need_infer_again = true;
+            }
             data_shape.SetDim(j, UNKNOWN_DIM);
           }
           if (data_shape.GetDim(j) != UNKNOWN_DIM) {
