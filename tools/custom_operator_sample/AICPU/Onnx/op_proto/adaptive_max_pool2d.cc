@@ -19,7 +19,7 @@
  * \brief
  */
 /* reslove the complexity of pooling fuction. */
-#include "adaptive_max_pool_2d.h"
+#include "adaptive_max_pool2d.h"
 #include "op_log.h"
 
 namespace ge {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <cmath>
-#include "adaptive_max_pool_2d.h"
+#include "adaptive_max_pool2d.h"
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 #include "cpu_kernel_utils.h"

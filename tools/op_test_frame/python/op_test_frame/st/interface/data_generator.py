@@ -45,6 +45,7 @@ class DataGenerator:
         :param dtype: the data type
         :return: the numpy data
         """
+        dtype = utils.map_type_to_expect_type(dtype)
         if isinstance(value, str):
             data = np.fromfile(value, dtype)
             input_size = functools.reduce(lambda x, y: x * y, input_shape)

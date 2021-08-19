@@ -62,7 +62,6 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DS
 # copy cann/ops dependency
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/inc ${DST_DIR}/AICPU/Tensorflow/op_proto
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/AICPU/Tensorflow/op_proto
-cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/strided_slice_infer_shape.h ${DST_DIR}/AICPU/Tensorflow/op_proto
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/aicpu/context ${DST_DIR}/AICPU/Tensorflow/cpukernel
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/aicpu/impl/utils ${DST_DIR}/AICPU/Tensorflow/cpukernel/impl
 # copy op_log.h log.h
@@ -100,7 +99,6 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DS
 # copy cann/ops dependency
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/inc ${DST_DIR}/AICPU/Onnx/op_proto
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/AICPU/Onnx/op_proto
-cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/strided_slice_infer_shape.h ${DST_DIR}/AICPU/Onnx/op_proto
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/aicpu/context ${DST_DIR}/AICPU/Onnx/cpukernel
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/aicpu/impl/utils ${DST_DIR}/AICPU/Onnx/cpukernel/impl
 # copy op_log.h log.h
@@ -135,7 +133,6 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_D
 cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/DSL/Tensorflow/framework
 # copy cann/ops dependency
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/Tensorflow/op_proto
-cp -r ${CODE_ROOT_DIR}/cann/ops/built-in/op_proto/strided_slice_infer_shape.h ${DST_DIR}/DSL/Tensorflow/op_proto
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/util ${DST_DIR}/DSL/Tensorflow/tbe/impl/
 
 # copy op_log.h log.h
