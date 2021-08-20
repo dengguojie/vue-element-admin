@@ -15,7 +15,8 @@
 """BatchMatmul op"""
 
 from te import tik
-from topi.cce import util
+import te.platform.cce_conf as cce_conf
+import tbe.common.platform.platform_info_ as platform_info
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
@@ -28,6 +29,8 @@ batch_matmul_op_info = TBERegOp("BatchMatmul") \
     .compute_cost(10) \
     .kernel_name("batch_matmul") \
     .partial_flag(True) \
+    .attr("transpose_a", "optional", "bool", "all", "false") \
+    .attr("transpose_b", "optional", "bool", "all", "true") \
     .input(0, "x1", False, "required", "all") \
     .input(1, "x2", False, "required", "all") \
     .output(0, "y", False, "required", "all") \
@@ -171,7 +174,7 @@ def process_input_shape_1152(input_shape, tik_instance, dtype, input1, input2, r
 @op_info_register(batch_matmul_op_info)
 def batch_matmul(input_x1, input_x2, output, transpose_a=False, transpose_b=True, kernel_name="batch_matmul"):
     """Custom BatchMatmul"""
-    if util.get_product_version() == util.VERSION_MINI:
+    if cce_conf.get_product_version() == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))

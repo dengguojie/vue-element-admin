@@ -18,8 +18,8 @@ from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+from tbe.dsl import auto_schedule
+from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
@@ -52,14 +52,14 @@ add3_op_info = TBERegOp("Add3") \
 @op_info_register(add3_op_info)
 def add3_impl(input1, inptu2, sum1, const_bias, kernel_name="add3_impl"):
     shape = input1.get("shape")
-    shape = util.shape_refine(shape)
+    shape = shape_refine(shape)
     dtype = input1.get("dtype").lower()
     input1 = tvm.placeholder(shape, name="input1", dtype=dtype.lower())
     input2 = tvm.placeholder(shape, name="input2", dtype=dtype.lower())
 
     with tvm.target.cce():
         res = add3_compute(input1, input2, const_bias)
-        sch = generic.auto_schedule(res)
+        sch = auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,

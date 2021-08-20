@@ -21,7 +21,7 @@ sort
 # pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
 from te.platform.fusion_manager import fusion_manager
 from te import tik
-from topi.cce import util
+from tbe.common.utils import para_check
 from functools import reduce as functools_reduce
 import te.platform as tbe_platform
 
@@ -39,22 +39,22 @@ def check(x, y1, y2, axis, kernel_name):
     Function: Check parameters (eg: shape dtype etc).
     Modify : 2020-08-03
     """
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
     shape = y1.get("shape")
     dtype = y1.get("dtype").lower()
-    util.check_dtype_rule(dtype, ("float16"))
-    util.check_shape_rule(shape)
+    para_check.check_dtype_rule(dtype, ("float16"))
+    para_check.check_shape_rule(shape)
 
     shape = y2.get("shape")
     dtype = y2.get("dtype").lower()
-    util.check_dtype_rule(dtype, ("int32"))
-    util.check_shape_rule(shape)
+    para_check.check_dtype_rule(dtype, ("int32"))
+    para_check.check_shape_rule(shape)
 
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
-    util.check_dtype_rule(dtype, ("float16"))
-    util.check_shape_rule(shape)
+    para_check.check_dtype_rule(dtype, ("float16"))
+    para_check.check_shape_rule(shape)
 
     if axis == -1:
         axis = len(shape) - 1
@@ -560,7 +560,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
     return data_out, data_indices
 
 
-@util.check_input_type(dict, dict, dict, int, bool, str)
+@para_check.check_input_type(dict, dict, dict, int, bool, str)
 def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     """
     Function: Sorts the elements of the input tensor along a given dimension in ascending order by value.

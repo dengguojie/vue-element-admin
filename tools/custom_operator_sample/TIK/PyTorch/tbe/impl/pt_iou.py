@@ -19,7 +19,7 @@ import tbe.common.register as tbe_register
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from tbe.common.utils import shape_util
 from te.utils import op_utils
 
 
@@ -855,7 +855,7 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="pt_iou"):
     _box_shape_check("gtboxes", gtboxes_shape)
 
     bboxes_dtype = bboxes.get("dtype").lower()
-    util.compare_tensor_dict_key(bboxes, gtboxes, "dtype")
+    shape_util.compare_tensor_dict_key(bboxes, gtboxes, "dtype")
     check_list = ("float16", "float32")
     op_utils.check_dtype(bboxes_dtype, check_list, param_name="bboxes")
 

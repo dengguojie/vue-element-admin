@@ -18,8 +18,8 @@ from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
 from te import tik
-from topi.cce import util
-
+import te.platform.cce_conf as cce_conf
+import tbe.common.platform.platform_info_ as platform_info
 
 matrix_combine_op_info = TBERegOp("MatrixCombine") \
     .fusion_type("OPAQUE") \
@@ -41,7 +41,7 @@ def matrix_combine(input_x, output, kernel_name="matrix_combine"):
     output_shape = output.get("shape")
     split_dim = 128
 
-    if util.get_product_version() == util.VERSION_MINI:
+    if cce_conf.get_product_version() == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))

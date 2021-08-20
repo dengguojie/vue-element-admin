@@ -26,7 +26,7 @@ class BatchMatmul(PrimitiveWithInfer):
     """
 
     @prim_attr_register
-    def __init__(self):
+    def __init__(self, transpose_a=False, transpose_b=False):
         """Initialize BatchMatMul"""
         self.init_prim_io_names(inputs=['x1', 'x2'], outputs=['y'])
         from batch_matmul_impl import batch_matmul

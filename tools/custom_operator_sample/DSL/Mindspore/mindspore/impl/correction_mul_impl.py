@@ -18,8 +18,8 @@
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+from tbe.dsl import auto_schedule
+from tbe.common.utils import para_check
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
@@ -62,14 +62,14 @@ def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mu
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, int, str)
+@para_check.check_input_type(dict, dict, dict, dict, int, str)
 def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correction_mul"):
     """CorrectionMul op"""
     shape = x.get("shape")
     data_format = x.get("format")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape)
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape)
+    para_check.check_shape_size(shape, SHAPE_SIZE_LIMIT)
     check_list = ["float16", "float32"]
     inp_dtype = x.get("dtype").lower()
     if inp_dtype not in check_list:
@@ -85,7 +85,7 @@ def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correctio
     res = correction_mul_compute(x_t, batch_std_t, running_std_t, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,

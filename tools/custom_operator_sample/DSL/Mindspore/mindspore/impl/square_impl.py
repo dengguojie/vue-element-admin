@@ -18,8 +18,8 @@ from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+from tbe.dsl import auto_schedule
+from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
@@ -86,12 +86,12 @@ def square_impl(input_x, output_y, kernel_name="square_impl"):
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
 
-    shape = util.shape_refine(shape)
+    shape = shape_refine(shape)
     data = tvm.placeholder(shape, name="data", dtype=dtype.lower())
 
     with tvm.target.cce():
         res = square_compute(data, output_y)
-        sch = generic.auto_schedule(res)
+        sch = auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,

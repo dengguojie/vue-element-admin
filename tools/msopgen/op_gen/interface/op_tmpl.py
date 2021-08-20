@@ -341,9 +341,9 @@ PY_BUILD = """
 # ==================4.2 MindSpore python file================
 PY_MS_HEAD = """from __future__ import absolute_import
 from te import tvm
-from topi import generic
+from tbe.dsl import auto_schedule
 import te.lang.cce
-from topi.cce import util
+from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
 """
@@ -404,12 +404,12 @@ def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
     shape = {input_x}.get("shape")
     dtype = {input_x}.get("dtype").lower()
 
-    shape = util.shape_refine(shape)
+    shape = shape_refine(shape)
     {tvm_placeholder}
 
     with tvm.target.cce():
         res = {name}_compute({datas_join}, {output})
-        sch = generic.auto_schedule(res)
+        sch = auto_schedule(res)
 """
 PY_MS_OP_INFO_REGISTER_CONFIG = """
     config = {{"print_ir": False,

@@ -13,13 +13,20 @@
 # limitations under the License.
 # ============================================================================
 """Custom CholeskyTrsm"""
-from mindspore.ops.op_info_register import op_info_register, AiCPURegOp, DataType
+from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 from te import tik
-from topi.cce import util
+import te.platform.cce_conf as cce_conf
+import tbe.common.platform.platform_info_ as platform_info
 
-cholesky_trsm_op_info = AiCPURegOp("CholeskyTrsm") \
-    .input(0, "x1", "required") \
-    .output(0, "y", "required") \
+cholesky_trsm_op_info = TBERegOp("CholeskyTrsm") \
+    .fusion_type("OPAQUE") \
+    .async_flag(False) \
+    .binfile_name("choleskytrsm.so") \
+    .compute_cost(10) \
+    .kernel_name("cholesky_trsm") \
+    .partial_flag(True) \
+    .input(0, "x1", False, "required", "all") \
+    .output(0, "y", False, "required", "all") \
     .dtype_format(DataType.F32_Default, DataType.F32_Default) \
     .get_op_info()
 
@@ -36,7 +43,7 @@ def cholesky_trsm(input_x, output, kernel_name):
     blocks = int(matrix_dim // split_dim)
     if blocks == 0:
         blocks = 1
-    if util.get_product_version() == util.VERSION_MINI:
+    if cce_conf.get_product_version() == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
