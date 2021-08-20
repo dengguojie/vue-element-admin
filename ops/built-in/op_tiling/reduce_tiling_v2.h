@@ -54,14 +54,26 @@ struct CompileInfoReduce {
   bool is_const_post{false};
   bool atomic{false};
   bool is_keep_dims{false};
+  bool const_atomic_flag{false};
+  uint32_t idx_before_reduce{0};
+  int64_t zero_ub_factor{-1};
   int64_t max_ub_count{-1};
   int32_t core_num{-1};
   int32_t min_block_size{-1};
   int32_t coef{-1};
+  uint32_t const_block_dims{0};
   uint idx{0};
   std::vector<int32_t> pattern_info;
   std::vector<int32_t> ub_info_rf;
   std::vector<int32_t> ub_info;
+  std::pair<bool, std::vector<int32_t>> ori_axis;
+  std::pair<bool, uint32_t> axes_idx;
+  std::pair<bool, int32_t> compile_pattern;
+};
+
+struct GeInfoReduce {
+  ge::DataType axes_type;
+  ge::Tensor axis_tensor;
 };
 
 class Reduce {
@@ -72,16 +84,22 @@ class Reduce {
   }
   ~Reduce() {
   }
-  bool Init();
+
+  bool GetCompileInfoForProcessControl();
+  bool GetCompileInfoForCalculate();
+  bool GetGeInfo();
+  bool SetInit();
+  bool MatchPattern();
   bool IsZero();
+  bool DoZeroBranch();
+  bool DoConstRunTimeBranch();
   bool DoTiling();
   bool WriteTilingData();
-  bool ConstInputProcPost();
-  bool FusedReduceAxis();
-  bool GetCompileInfo();
-  bool ChooseAtomic();
-  bool ChooseUBInfo();
+  void FusedReduceAxis();
+  void ChooseAtomic();
+  void ChooseUBInfo();
 
+  bool TilingProcess();
   bool ProcessAtomicTiling();
   bool ProcessNormalTiling();
   bool FineTuning();
@@ -116,6 +134,7 @@ class Reduce {
   const nlohmann::json& op_info;
   utils::OpRunInfo& run_info;
   CompileInfoReduce compileInfo;
+  GeInfoReduce geInfo;
   TilingInfoReduce tilingInfo;
   ReorderInfoReduce reorderInfo;
 
