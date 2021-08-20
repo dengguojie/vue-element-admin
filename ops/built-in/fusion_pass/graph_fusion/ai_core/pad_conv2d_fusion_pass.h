@@ -32,7 +32,6 @@ class PadConv2dFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status AddPaddingsForPadNode(ge::ComputeGraph& graph, ge::NodePtr pad_node);
   const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe

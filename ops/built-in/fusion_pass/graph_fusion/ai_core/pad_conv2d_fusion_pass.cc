@@ -69,64 +69,12 @@ vector<FusionPattern*> PadConv2dFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status PadConv2dFusionPass::AddPaddingsForPadNode(ge::ComputeGraph& graph, ge::NodePtr pad_node) {
-  std::vector<int64_t> pad_value;
-  FUSION_PASS_CHECK(!GetIntConstValue(pad_node, "paddings", pad_value),
-                    OP_LOGW(pad_node->GetName().c_str(), "Get const value of paddings failed"),
-                    return FAILED);
-
-  vector<vector<int64_t>> paddings;
-  for (size_t i = 1; i < pad_value.size(); i += 2) {
-    vector<int64_t> one_value;
-    one_value.push_back(pad_value[i - 1]);
-    one_value.push_back(pad_value[i]);
-    paddings.push_back(one_value);
-  }
-
-  ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(pad_node->GetName().c_str(),
-                    "pad_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
-
-  ge::AttrUtils::SetListListInt(pad_desc, "paddings", paddings);
-  OP_LOGD("success set attr[paddings] for pad_node[%s]", pad_node->GetName().c_str());
-
-  // get pad const achor
-  ge::InDataAnchorPtr pad_anchor_ptr1 = pad_node->GetInDataAnchor(1);
-  FUSION_PASS_CHECK(pad_anchor_ptr1 == nullptr, ge::CommonRuntimeErrLog(pad_node->GetName().c_str(),
-                    "second input anchor is nullptr."), return FAILED);
-  ge::OutDataAnchorPtr const_anchor_ptr = pad_anchor_ptr1->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(const_anchor_ptr == nullptr, ge::CommonRuntimeErrLog(pad_node->GetName().c_str(),
-                    "pad peer anchor is nullptr."), return FAILED);
-  ge::NodePtr constNode1 = const_anchor_ptr->GetOwnerNode();
-  FUSION_PASS_CHECK(constNode1 == nullptr, ge::CommonRuntimeErrLog(pad_node->GetName().c_str(),
-                    "second input node of pad_node is nullptr."), return FAILED);
-
-  // delete const input node, edge
-  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(const_anchor_ptr, pad_anchor_ptr1) != SUCCESS,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove edge between pad and const error"),
-                    return FAILED);
-  (void)ge::NodeUtils::ClearInDataAnchor(pad_node, pad_anchor_ptr1);
-  (void)ge::OpDescUtils::ClearInputDesc(pad_desc, 1);
-  if (PatternFusionUtil::GetOutEdgeSize(constNode1) == 0) {
-    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode1),
-                      VECTOR_FUSION_INNER_ERR_REPORT(constNode1->GetName().c_str(),
-                      "Remove Node[%s] failed", constNode1->GetName().c_str()), return FAILED);
-  } else {
-    OP_LOGD(constNode1->GetName().c_str(), "Node:[%s] have output link to other node.", constNode1->GetName().c_str());
-  }
-  return SUCCESS;
-}
-
 Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadConv2dFusionPass fusion begin");
   ge::NodePtr padd_node = GetNodeFromMapping(PATTERN_PADD, mapping);
   FUSION_PASS_CHECK(padd_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
                     return PARAM_INVALID);
-
-  if (AddPaddingsForPadNode(graph, padd_node) != SUCCESS) { // set second input of pad as attr["paddings"]
-    OP_LOGE(padd_node->GetName().c_str(), "convert pad to padd failed.");
-    return FAILED;
-  }
+  NOT_CHANGED_WITH_DYNAMIC_NODE({padd_node});
 
   ge::NodePtr conv2d_node = GetNodeFromMapping(PATTERN_CONV2D, mapping);
   FUSION_PASS_CHECK(conv2d_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Conv2D Node is null, fusion failed."),
@@ -156,13 +104,19 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(dw_count > 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "Padnode have multiple dw outputs, can not fusion."),
                     return NOT_CHANGED);
+
+  std::vector<int64_t> pad_value;
+  FUSION_PASS_CHECK(!GetIntConstValue(padd_node, "paddings", pad_value),
+                    OP_LOGW(padd_node->GetName().c_str(), "Get const value of paddings failed"),
+                    return FAILED);
   vector<vector<int64_t>> paddings;
-  ge::OpDescPtr padNodeDescPtr = padd_node->GetOpDesc();
-  FUSION_PASS_CHECK(padNodeDescPtr == nullptr,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "padNodeDescPtr is null."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetListListInt(padd_node->GetOpDesc(), PADDINGS, paddings),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Get paddings attr failed."), return NOT_CHANGED);
+  for (size_t i = 1; i < pad_value.size(); i += 2) {
+    vector<int64_t> one_value;
+    one_value.push_back(pad_value[i - 1]);
+    one_value.push_back(pad_value[i]);
+    paddings.push_back(one_value);
+  }
+
   vector<int64_t> conv_pads;
   (void)ge::AttrUtils::GetListInt(conv2d_node->GetOpDesc(), PADS, conv_pads);
   FUSION_PASS_CHECK(conv_pads.size() != DIM_NUM4,
