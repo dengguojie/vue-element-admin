@@ -20,6 +20,8 @@
  */
 #include "lock.h"
 
+namespace optiling {
+
 void RWLock::rdlock()
 {
     std::unique_lock<std::mutex> lck(_mtx);
@@ -54,3 +56,5 @@ void RWLock::unlock()
         _read_cv.notify_all();
     }
 }
+
+} // namespace optiling

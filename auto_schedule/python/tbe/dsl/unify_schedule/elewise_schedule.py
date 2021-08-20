@@ -479,7 +479,7 @@ class ElewiseSchedule(Schedule):
 
             if tensor_i in self._out_tensors and self._is_one_dim:
                 sch[tensor_i].emit_insn(param[0], param[1],
-                                        attrs=dict(no_overlap=0))
+                                        attrs={"no_overlap": 0})
             else:
                 sch[tensor_i].emit_insn(param[0], param[1])
 
@@ -720,7 +720,7 @@ class ElewiseSchedule(Schedule):
 
 def _fake_node(tensors):
     dtype = tensors[0].dtype
-    dim_length = max([len(t.shape) for t in tensors])
+    dim_length = max(len(t.shape) for t in tensors)
     shape = [1] * dim_length
     for tensor_i in tensors:
         if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:

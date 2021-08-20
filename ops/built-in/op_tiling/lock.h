@@ -25,6 +25,7 @@
 #include <mutex>
 #include <condition_variable>
 
+namespace optiling {
 
 class RWLock {
 public:
@@ -51,4 +52,6 @@ private:
     std::condition_variable _read_cv;
     std::condition_variable _write_cv;
 };
+
+} // namespace optiling
 #endif // CANN_OPS_BUILT_IN_LOCK_H_
