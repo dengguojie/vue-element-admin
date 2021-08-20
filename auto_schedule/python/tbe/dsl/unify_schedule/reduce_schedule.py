@@ -55,6 +55,9 @@ BLOCK_SIZE_BYTE = 32
 
 
 class EntryReduceSchedule(Schedule):
+    """
+    Entry class for All Reduce Schedule
+    """
     def __init__(self, outs, tiling_case):
         self.outs = outs
         self.tiling_case: ReduceTilingCase = tiling_case
@@ -104,6 +107,9 @@ class EntryReduceSchedule(Schedule):
 
 
 class ReduceSchedule(VectorSchedule):
+    """
+    Schedule for normal reduce
+    """
     def __init__(self, graph_info: ComputeGraphInfo, single_reduce_info: SingleReduceInfo):
         VectorSchedule.__init__(self, graph_info)
         self.reduce_info = single_reduce_info
@@ -243,13 +249,13 @@ class ReduceSchedule(VectorSchedule):
                 self.ub_tiling_info.factor = self._tiling[-2].factor
                 self.ub_tiling_info.tiling_tensor = self.reduce_rf
             else:
-                self.reduce_rf = self.rfactor(reduce_ub_buffer, len(self.reduce_info.shape_before_reduce)-1,
+                self.reduce_rf = self.rfactor(reduce_ub_buffer, len(self.reduce_info.shape_before_reduce) - 1,
                                               -1, scope="local.UB")
                 # ub tiling
                 _rf_offset = self.reduce_info.reduce_axis_indexes.index(ub_split_axis_index)
                 rf_ub_split_idx = self.Placeholder(
                     self.Placeholder.PlaceholderType.ITER_VAR, (
-                        self.reduce_rf, len(self.reduce_info.reduce_tensor.shape)+1+_rf_offset)
+                        self.reduce_rf, len(self.reduce_info.reduce_tensor.shape) + 1 + _rf_offset)
                 )
                 self.ub_tiling_result_pair = list(self.split(self.reduce_rf, rf_ub_split_idx, ub_inner))
                 self.ub_tiling_info = self._tiling[-1]
@@ -281,6 +287,9 @@ class ReduceSchedule(VectorSchedule):
                 self.multi_core_bind_axis = fuse_axis_list[0]
 
     def _calc_reorder(self):
+        """
+        calc how to reorder
+        """
         # For zero compute mode, skip reorder stage
         compute = get_context().get_current_compute()
         if compute.get("_mode") == "zero":
@@ -313,10 +322,8 @@ class ReduceSchedule(VectorSchedule):
             reorder_target = [*non_reduce_axis_indexes[:-1], *reduce_axis_indexes, non_reduce_axis_indexes[-1]]
         else:
             if self._last_reduction_rf_optimization():
-                """
-                Only reduce_rf needs special reorder,
-                and reordering is no longer required for reduce.
-                """
+                # Only reduce_rf needs special reorder,
+                # and reordering is no longer required for reduce.
                 reduce_ub_stage_tensor = self.reduce_rf
                 # [Remove] last_dim for rfactor
                 if reduce_axis_indexes_original[-1] in reduce_axis_indexes:
@@ -473,7 +480,7 @@ class ReduceSchedule(VectorSchedule):
             tensors_after = self.get_all_consumer_stages(reduce_tensor)
             for tensor in tensors_before:
                 if tensor not in self.graph_info.input_tensor_set:
-                    align_num = int(BLOCK_SIZE_BYTE//DTYPE_BYTE_MAPPING[tensor.dtype])
+                    align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype])
                     storage_align_info = self.StorageAlignInfo(tensor,
                                                                align_axis_index,
                                                                align_num)
@@ -484,14 +491,14 @@ class ReduceSchedule(VectorSchedule):
             if reduce_tensor in self._data_flow_control:
                 # reduce tensor has performed cache_write()
                 reduce_tensor = self.get_buffers_of(reduce_tensor)[0]
-            align_num = int(BLOCK_SIZE_BYTE//DTYPE_BYTE_MAPPING[reduce_tensor.dtype])
+            align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[reduce_tensor.dtype])
             reduce_storage_align_info = self.StorageAlignInfo(reduce_tensor,
                                                               align_axis_index,
                                                               align_num)
             self.storage_align_list.append(reduce_storage_align_info)
             for tensor in tensors_after:
                 if tensor not in self.graph_info.output_tensor_set:
-                    align_num = int(BLOCK_SIZE_BYTE//DTYPE_BYTE_MAPPING[tensor.dtype])
+                    align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype])
                     storage_align_info = self.StorageAlignInfo(tensor,
                                                                align_axis_index,
                                                                align_num)
@@ -505,7 +512,7 @@ class ReduceSchedule(VectorSchedule):
             align_axis_index = a1_end_index
             for tensor in tensors_before:
                 if tensor not in self.graph_info.input_tensor_set:
-                    align_num = int(BLOCK_SIZE_BYTE//DTYPE_BYTE_MAPPING[tensor.dtype])
+                    align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype])
                     storage_align_info = self.StorageAlignInfo(tensor,
                                                                align_axis_index,
                                                                align_num)
@@ -709,7 +716,7 @@ class ReduceSchedule(VectorSchedule):
         else:
             Dim.split(_shape, ub_split_idx, model="UBSplit")
             blk_split_idx += 1
-            Dim.split(_shape, blk_split_idx,)
+            Dim.split(_shape, blk_split_idx, )
 
         # reorder
         _a_shape, _r_shape = [], []
@@ -725,10 +732,10 @@ class ReduceSchedule(VectorSchedule):
 
         # find serial axis
         idx_ub_outer = target_shape.index(_shape[ub_split_idx])
-        axis_in_ub = target_shape[idx_ub_outer+1:]
+        axis_in_ub = target_shape[idx_ub_outer + 1:]
         axis_in_ub.sort(key=lambda x: x.idx, reverse=True)
         self._serial_group = Dim.group([x.idx for x in axis_in_ub])
-        self._serial_group.sort(key=lambda x: x[1]-x[0], reverse=True)
+        self._serial_group.sort(key=lambda x: x[1] - x[0], reverse=True)
 
         # Initialization
         reduce_ub_tensor = self.get_buffers_of(self.reduce_info.reduce_tensor)[0]
@@ -752,7 +759,8 @@ class ReduceSchedule(VectorSchedule):
                 # For dma tensor
                 extend = self._serial_group[0][1] - self._serial_group[0][0] + 1
                 length = len(self.reduce_info.shape_before_reduce)
-                axis_range = range(length-1, length-1-extend, -1) if extend != 1 else range(length-1, length-3, -1)
+                axis_range = range(length - 1, length - 1 - extend, -1) if extend != 1 else range(length - 1,
+                                                                                                  length - 3, -1)
 
                 for axis_idx in range(self.ub_tiling_info.tiling_axis_index,
                                       len(self.reduce_info.shape_before_reduce)):

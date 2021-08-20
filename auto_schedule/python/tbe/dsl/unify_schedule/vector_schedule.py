@@ -57,8 +57,17 @@ CONST = "const"
 
 
 class VectorSchedule(VectorScheduleBase, ABC):
+    """
+    Schedule for vector
+    """
     class TilingInfo:
+        """
+        tiling info of tiling case
+        """
         class TilingMode(Enum):
+            """
+            tiling mode enum
+            """
             DEFAULT = "Default"
             FACTOR = "Factor"
             NPARTS = "Nparts"
@@ -82,6 +91,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.rfactor_scope: str = rfactor_scope
 
     class TilingResult:
+        """
+        result of tiling
+        """
         def __init__(self,
                      tiling_info: "VectorSchedule.TilingInfo",
                      result: Union[IterVar, Iterable[IterVar], Tensor]):
@@ -91,7 +103,13 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.result: Union[Tuple[IterVar], IterVar, Tensor] = result
 
     class Placeholder(Hashable):
+        """
+        placeholder data struct
+        """
         class PlaceholderType(Enum):
+            """
+            enum for PlaceholderType
+            """
             CACHE_READ_TENSOR = auto()
             CACHE_WRITE_TENSOR = auto()
             RFACTOR_TENSOR = auto()
@@ -118,15 +136,19 @@ class VectorSchedule(VectorScheduleBase, ABC):
             return hash((self.type, self.key))
 
         def __eq__(self, other):
-            return type(other) == type(self) and other.type == self.type and other.key == self.key
+            return isinstance(other, VectorSchedule.Placeholder) and other.type == self.type and other.key == self.key
 
         def __ne__(self, other):
-            return type(other) != type(self) or other.type != self.type or other.key != self.key
+            return not isinstance(other, VectorSchedule.Placeholder) or other.type != self.type or other.key != self.key
 
         def __repr__(self):
             return "Placeholder|||%s of %s|||" % (str(self.type.name), str(self.key))
 
     class StorageAlignInfo:
+        """
+        storage align info
+        """
+
         def __init__(self,
                      tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
                      axis_idx: Union[int, "VectorSchedule.Placeholder"] = None,
@@ -138,6 +160,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.offset = offset
 
     class ComputeAlignInfo:
+        """
+        compute align info
+        """
         def __init__(self,
                      tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
                      pad: int = None,
@@ -147,6 +172,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.factor = factor
 
     class EmitInsnInfo:
+        """
+        Emit insn info
+        """
         def __init__(self,
                      tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
                      axis_idx: Union[int, "VectorSchedule.Placeholder"] = None,
@@ -157,6 +185,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.attr = attr
 
     class PragmaInfo:
+        """
+        pragma info
+        """
         def __init__(self,
                      tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
                      axis_idx: Union[int, "VectorSchedule.Placeholder"] = None,
@@ -456,10 +487,14 @@ class VectorSchedule(VectorScheduleBase, ABC):
                 itervar = self.get_itervar_by_original_index(pragmainfo.tensor, itervar)
             stage.pragma(itervar, pragmainfo.pragma, pragmainfo.value)
 
+
     def _do_double_buffer(self):
         pass
 
     def solve_placeholder(self, placeholder: Any) -> Any:
+        """
+        make placeholder for tensor action
+        """
         if not isinstance(placeholder, VectorSchedule.Placeholder):
             return placeholder
 
@@ -497,6 +532,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
         return solution_registry[placeholder.type](placeholder.key)
 
     def do_auto_data_flow_control(self, ignore_tensors: Tuple[Tensor] = ()) -> NoReturn:
+        """
+        do auto data flow control
+        """
         self._data_flow_control.clear()
 
         compute = operation.get_context().get_current_compute()
@@ -546,6 +584,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
                    source_tensor: Tensor,
                    target_scope: str,
                    consumers: Iterable[Tensor]) -> Placeholder:
+        """
+         do  placeholder  for cache read
+         """
         consumers = tuple(consumers)
         my_data_flow_control = self._data_flow_control.setdefault(source_tensor, {target_scope: {consumers, }})
         my_data_flow_control[target_scope].add(tuple(consumers))
@@ -560,6 +601,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def cache_write(self,
                     source_tensor: Tensor,
                     source_scope: str) -> Placeholder:
+        """
+        do  placeholder  for cache write
+        """
         my_data_flow_control = self._data_flow_control.setdefault(source_tensor, {source_scope: {None, }})
         my_data_flow_control[source_scope].add(None)
         result_placeholder = VectorSchedule.Placeholder(VectorSchedule.Placeholder.PlaceholderType.CACHE_WRITE_TENSOR,
@@ -578,6 +622,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
 
     def get_buffers_of(self,
                        tensor: Tensor) -> List[Union[Placeholder, Tensor]]:
+        """
+        get buffers of tensor
+        """
         placeholders = []
         for placeholder_idx, placeholder in self._data_flow_control_placeholder_map.items():
             if tensor == placeholder_idx[0]:
@@ -589,6 +636,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
 
     def get_all_producer_stages(self,
                                 tensor: Union[Tensor, Placeholder]) -> Set[Union[Tensor, Placeholder]]:
+        """
+        get all produces stages for current tensor
+        """
         producers = set()
         for producer in self.backward_stage_graph_map[tensor]:
             producers.add(producer)
@@ -597,6 +647,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
 
     def get_all_consumer_stages(self,
                                 tensor: Union[Tensor, Placeholder]) -> Set[Union[Tensor, Placeholder]]:
+        """
+        get all consumer stages
+        """
         consumers = set()
         for consumer in self.forward_stage_graph_map[tensor]:
             consumers.add(consumer)
@@ -611,6 +664,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
                    use_inner_if_split: bool = True,
                    fuse_axis_list: List[Union[int, TilingInfo]] = None,
                    rfactor_scope: str = None) -> int:
+        """
+        do tiling for vector schedule
+        """
         tiling_info: VectorSchedule.TilingInfo = VectorSchedule.TilingInfo(tiling_tensor,
                                                                            tiling_mode,
                                                                            tiling_axis_index,
@@ -632,6 +688,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
                 factored_reduce_axis: Union[Placeholder, int],
                 axis_factor: int = 0,
                 scope: str = "special_rfactor") -> Placeholder:
+        """
+        do rfactor
+        """
         tiling_index = self.add_tiling(source_tensor,
                                        factored_reduce_axis,
                                        axis_factor,
@@ -649,6 +708,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
               split_axis_index: Union[Placeholder, int],
               factor: int = None,
               nparts: int = None) -> Tuple[Placeholder, Placeholder]:
+        """
+        do split action
+        """
         if factor is not None and nparts is not None:
             raise RuntimeError("Cannot use factor mode and nparts mode at the same time!")
         if factor is None and nparts is None:
@@ -668,6 +730,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
         tiling_index = self.add_tiling(source_tensor,
                                        tiling_mode=VectorSchedule.TilingInfo.TilingMode.FUSE,
                                        fuse_axis_list=fuse_axis_list)
+        """
+        fuse axis
+        """
         return VectorSchedule.Placeholder(VectorSchedule.Placeholder.PlaceholderType.FUSE_RESULT, tiling_index)
 
     def pragma(self,
@@ -675,11 +740,17 @@ class VectorSchedule(VectorScheduleBase, ABC):
                axis_index: Union[int, Placeholder],
                pragma: str,
                value: Any) -> NoReturn:
+        """
+        add pragma info
+        """
         self.pragma_list.append(VectorSchedule.PragmaInfo(tensor, axis_index, pragma, value))
 
     def is_tiling_axis_index(self,
                              tensor: Union[Placeholder, Tensor],
                              axis_index: int) -> bool:
+        """
+        check if is tiling axis index
+        """
         if tensor in self._tensor_to_tiling_map and axis_index in self._tensor_to_tiling_map[tensor]:
             return True
         return False
@@ -687,6 +758,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def get_itervar_by_original_index(self,
                                       tensor: Union[Placeholder, Tensor],
                                       axis_index: Union[Placeholder, int]) -> IterVar:
+        """
+        get itervar by original index
+        """
         if isinstance(axis_index, VectorSchedule.Placeholder):
             return self.solve_placeholder(axis_index)
         real_tensor: Tensor = self.solve_placeholder(tensor)

@@ -40,7 +40,6 @@ BLOCK_SIZE_BYTE = 32
 
 
 class _VectorSchedule(object):
-
     class ComputeAlignInfo:
         def __init__(self, tensor=None, pad=None, factor=None):
             self.tensor = tensor
@@ -138,7 +137,7 @@ class _VectorSchedule(object):
             extra_space = self.emit_insn_map[stage].get("extra_space")
             if extra_space:
                 self.schedule[stage].emit_insn(scope_iter_var, instruction,
-                                               attrs=dict(storage_bound=[extra_space]))
+                                               attrs={'storage_bound': [extra_space]})
             else:
                 self.schedule[stage].emit_insn(scope_iter_var, instruction)
 
@@ -148,6 +147,9 @@ class _VectorSchedule(object):
         operation.add_build_arg("double_buffer_non_reuse", True)
 
     def update_stage(self, source_tensor, dst_tensor, before):
+        """
+        update  graph stage map by new tensor
+        """
         if before:
             self.forward_stage_graph_map.setdefault(source_tensor, set())
             self.backward_stage_graph_map.setdefault(source_tensor, set())
@@ -170,6 +172,9 @@ class _VectorSchedule(object):
             self.backward_stage_graph_map[source_tensor].add(dst_tensor)
 
     def get_all_producers_stages(self, tensor):
+        """
+        get all produce stages for current tensor
+        """
         producers = set()
         for producer in self.backward_stage_graph_map[tensor]:
             producers.add(producer)
@@ -178,6 +183,9 @@ class _VectorSchedule(object):
 
 
 class ReduceAtomicSchedule(_VectorSchedule):
+    """
+    Schedule for Atomic Reduce
+    """
 
     def __init__(self, graph_info, reduce_info):
         _VectorSchedule.__init__(self, graph_info)
@@ -201,6 +209,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
         self._serial_group = None
 
     def do_schedule(self, outs, tiling_case):
+        """
+        do atomic schedule
+        """
         self.tiling_case = tiling_case
         self._create_schedule()
         self._do_cache_read()
@@ -270,13 +281,11 @@ class ReduceAtomicSchedule(_VectorSchedule):
         tiling_factor = self.block_tiling_result_pair[2]
 
         if tiling_axis not in self.reduce_info.reduce_axis_indexes:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Atomic schedule block tiling can " \
-                                          "only split reduce axis! " \
-                                          "block_split_axis is [%s], " \
-                                          "while reduce_axis is [%s]" \
-                                          % (tiling_axis, self.reduce_info.reduce_axis_indexes)
+            dict_args = {"errCode": "E90003", "detailed_cause": "Atomic schedule block tiling can " \
+                                                                "only split reduce axis! " \
+                                                                "block_split_axis is [%s], " \
+                                                                "while reduce_axis is [%s]" \
+                                                                % (tiling_axis, self.reduce_info.reduce_axis_indexes)}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         tiling_axis = self.reduce_info.reduce_axis_indexes.index(tiling_axis)
@@ -436,7 +445,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
         if not self._need_storage_align():
             return
         a1_start_index, a1_end_index = \
-            self._find_last_none_reduce_axis(shape_before_reduce,reduce_axis_index)
+            self._find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index)
         if a1_end_index is None:
             return
 
@@ -444,7 +453,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             tensors_before_reduce = self.get_all_producers_stages(self.reduce_rfs)
             for tensor in tensors_before_reduce:
                 if tensor not in self.graph_info.input_tensor_set:
-                    align_factor = int(BLOCK_SIZE_BYTE//DTYPE_BYTE_MAPPING[tensor.dtype])
+                    align_factor = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype])
                     para = {"align_axis_var": tensor.op.axis[_align_axis],
                             "align_factor": align_factor,
                             "offset": 0
@@ -557,9 +566,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 shape_before_reduce,
                 reduce_axis_index)
             if a1_end_index is None:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "a1_end_index can not be none!"
+                dict_args = {"errCode": "E90001", "detailed_cause": "a1_end_index can not be none!"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             if a1_start_index <= ub_split_axis <= a1_end_index:
                 if len(ub_tiling_tensor.op.reduce_axis) > 1:
@@ -615,9 +622,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 shape_before_reduce,
                 reduce_axis_index)
             if a1_end_index is None:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "a1_end_index can not be none!"
+                dict_args = {"errCode": "E90001", "detailed_cause": "a1_end_index can not be none!"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             if ub_split_axis < a1_start_index and \
                     ub_split_axis not in reduce_axis_index:
@@ -728,10 +733,10 @@ class ReduceAtomicSchedule(_VectorSchedule):
         else:
             Dim.split(_shape, ub_split_idx, model="UBSplit")
             blk_split_idx += 1
-            Dim.split(_shape, blk_split_idx,)
+            Dim.split(_shape, blk_split_idx, )
 
         # rfactor
-        axis = [item for item in _shape[: blk_split_idx+1] if item.axis_type == R]
+        axis = [item for item in _shape[: blk_split_idx + 1] if item.axis_type == R]
         _a_shape, _r_shape = Dim.rfactor(_shape, axis, factor_axis=0)
 
         # reorder
@@ -741,10 +746,10 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         # find serial axis
         idx_ub_outer = _rf_shape.index(_shape[ub_split_idx])
-        axis_in_ub = _rf_shape[idx_ub_outer+1:]
+        axis_in_ub = _rf_shape[idx_ub_outer + 1:]
         axis_in_ub.sort(key=lambda x: x.idx, reverse=True)
         self._serial_group = Dim.group([x.idx for x in axis_in_ub])
-        self._serial_group.sort(key=lambda x: x[1]-x[0], reverse=True)
+        self._serial_group.sort(key=lambda x: x[1] - x[0], reverse=True)
 
     def _do_pragma(self):
         # Initialization
@@ -770,7 +775,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 # For dma tensor
                 extend = self._serial_group[0][1] - self._serial_group[0][0] + 1
                 length = len(self.reduce_info.shape_before_reduce)
-                axis_range = range(length-1, length-1-extend, -1) if extend != 1 else range(length-1, length-3, -1)
+                axis_range = range(length - 1, length - 1 - extend, -1) if extend != 1 else range(length - 1,
+                                                                                                  length - 3, -1)
 
                 for axis_idx in range(self.ub_tiling_result_pair[1],
                                       len(self.reduce_info.shape_before_reduce)):

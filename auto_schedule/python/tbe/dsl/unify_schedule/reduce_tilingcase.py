@@ -70,6 +70,10 @@ R = "R"
 
 
 class CalcReduceTilingCase(Computation):
+    """
+    Calculate Reduce TilingCase
+    """
+
     def __init__(self, outs, option):
         self.outs = outs
         self.option = option
@@ -90,10 +94,16 @@ class CalcReduceTilingCase(Computation):
         return [DEFAULT]
 
     def do_tiling_case(self):
-        # return result
+        """
+        do tiling case
+        """
+        # get result of tiling case
         return self.calc_tiling_case()
 
     def calc_tiling_case(self):
+        """
+        get tiling case of different situation
+        """
         outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
         current_compute = get_context().get_current_compute()
 
@@ -151,6 +161,10 @@ class CalcReduceTilingCase(Computation):
 
 
 class SingleReduceInfo:
+    """
+    data struct for a single reduce info
+    """
+
     def __init__(self, compute_graph_info: ComputeGraphInfo):
         if len(compute_graph_info.reduce_tensor_set) != 1:
             raise RuntimeError("ComputeGraph is not in Single Reduce Pattern: %s" %
@@ -171,6 +185,9 @@ class SingleReduceInfo:
         self.graph_info: ComputeGraphInfo = compute_graph_info
 
     def is_reduce_not_last_axis(self) -> bool:
+        """
+        check if reduce not last axis
+        """
         compute = operation.get_context().get_current_compute()
         if compute.get("_mode") == "zero":
             return False
@@ -179,13 +196,22 @@ class SingleReduceInfo:
         return is_not_last_axis
 
     def is_reduce_last_axis(self) -> bool:
+        """
+        check if reduce last axis
+        """
         return self.all_axes[-1] in self.reduce_axes
 
     def is_reduce_all_axes(self) -> bool:
+        """
+        check if reduce all axis
+        """
         return set(self.all_axes) == set(self.reduce_axes)
 
     @staticmethod
     def find_last_reduce_axis(shape, reduce_axis_indexes: Iterable[int]):
+        """
+        find last reduce axis
+        """
         # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
         # find r1 position, r1 may contain continues axis
         r1_end_index = None
@@ -234,6 +260,9 @@ class SingleReduceInfo:
 
     @staticmethod
     def find_none_reduce_axis_map(shape_before_reduce: list, reduce_axis_index: List[int]) -> Dict[int, int]:
+        """
+        find none reduce axis map
+        """
         none_reduce_index_map = {}
         count = 0
         for i in range(0, len(shape_before_reduce)):
@@ -244,7 +273,14 @@ class SingleReduceInfo:
 
 
 class ReduceTilingCase(TilingCaseBase):
+    """
+    tiling case data struct for reduce
+    """
+
     class Type(Enum):
+        """
+        Reduce type Enum
+        """
         NORMAL_REDUCE = "NORMAL"
         ATOMIC_REDUCE = "ATOMIC"
         EMPTY = "EMPTY"
@@ -257,7 +293,7 @@ class ReduceTilingCase(TilingCaseBase):
         self.ub_factor = None
         self.multi_core: Optional[bool] = None
         self.db = False
-        self.tiling_key = 2**31 - 1
+        self.tiling_key = 2 ** 31 - 1
         self.tensor_ub_size_before_reduce: Optional[int] = None
         self.tensor_ub_size_after_reduce: Optional[int] = None
 
@@ -273,27 +309,31 @@ class ReduceTilingCase(TilingCaseBase):
                      self.ub_split_axis_index, self.ub_factor, self.multi_core))
 
     def __eq__(self, other) -> bool:
-        condition0 = other.self.type == self.type
-        condition1 = other.block_split_axis == self.block_split_axis_index
+        condition0 = other.type == self.type
+        condition1 = other.block_split_axis_index == self.block_split_axis_index
         condition2 = other.block_factor == self.block_factor
-        condition3 = other.ub_split_axis == self.ub_split_axis_index
+        condition3 = other.ub_split_axis_index == self.ub_split_axis_index
         condition4 = other.ub_factor == self.ub_factor
         condition5 = other.multi_core == self.multi_core
-        return (type(other) == type(self)
+        return (isinstance(other, ReduceTilingCase)
                 and condition0 and condition1 and condition2 and condition3 and condition4 and condition5)
 
     def __ne__(self, other) -> bool:
-        condition0 = other.self.type != self.type
-        condition1 = other.block_split_axis != self.block_split_axis_index
+        condition0 = other.type != self.type
+        condition1 = other.block_split_axis_index != self.block_split_axis_index
         condition2 = other.block_factor != self.block_factor
-        condition3 = other.ub_split_axis != self.ub_split_axis_index
+        condition3 = other.ub_split_axis_index != self.ub_split_axis_index
         condition4 = other.ub_factor != self.ub_factor
         condition5 = other.multi_core != self.multi_core
-        return (type(other) != type(self)
+        return (not isinstance(other, ReduceTilingCase)
                 or condition0 or condition1 or condition2 or condition3 or condition4 or condition5)
 
 
 class Dim:
+    """
+    do actions for dim
+    """
+
     def __init__(self, axis_type, idx, var_type=None):
         self.axis_type = axis_type
         self.var_type = var_type
@@ -301,6 +341,9 @@ class Dim:
 
     @staticmethod
     def split(in_shape, split_idx, model=None):
+        """
+        do dim split
+        """
         if model == "UBSplit":
             outer, inner = UbOuter, UbInner
         else:
@@ -316,6 +359,9 @@ class Dim:
 
     @staticmethod
     def rfactor(in_shape, axis, factor_axis=0):
+        """
+        get rfactor shape
+        """
         temp_shape, a_shape, r_shape = [], [], []
         for item in in_shape:
             if item not in axis:
@@ -335,6 +381,9 @@ class Dim:
 
     @staticmethod
     def group(nums):
+        """
+        group nums
+        """
         nums = sorted(set(nums))
         gaps = [[s, e] for s, e in zip(nums, nums[1:]) if s + 1 < e]
         edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
@@ -350,11 +399,10 @@ def build_pointcut(func, *args, **kwargs):
     :param kwargs:
     :return:
     """
+
     def _find_idx_in_tensor_list():
         if len(args) < 2:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Size of args should more than 2"
+            dict_args = {"errCode": "E90003", "detailed_cause": "Size of args should more than 2"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         tensor_list = args[1].get("tensor_list")
@@ -374,9 +422,7 @@ def build_pointcut(func, *args, **kwargs):
                     operation.add_compile_info_inner("_idx_before_reduce", _idx)
                     return
 
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "Can not find placeholder_op"
+        dict_args = {"errCode": "E90003", "detailed_cause": "Can not find placeholder_op"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     _find_idx_in_tensor_list()
@@ -384,6 +430,9 @@ def build_pointcut(func, *args, **kwargs):
 
 
 def apply_common_compile_info(graph_info, reduce_info):
+    """
+    apply common compile info
+    """
     # Common_Info: message from ori computation that only attach once
     pre_compile_info = get_compile_info()
     if pre_compile_info:
@@ -402,6 +451,10 @@ def apply_common_compile_info(graph_info, reduce_info):
 
 
 def apply_dyn_compile_info(reduce_info, tiling_case_list, model="dynamic"):
+    """
+    apply dynamic compile info
+    """
+
     # dynamic message from each case of tiling_case_list
     def _is_rfactor(_item):
         cond_0 = reduce_info.is_reduce_last_axis()
@@ -468,7 +521,6 @@ def _calc_tiling_key(reduce_info, tiling):
         ori_axis = get_context().get_current_compute().get("_ori_axis")
         tiling_key = _gen_const_tiling_key(ori_axis)
     elif get_context().get("_mode") == ZERO:
-        # TODO
         tiling_key = _gen_zero_tiling_key()
     else:
         tiling_key = _get_tiling_key(atomic, db, shape_type,
@@ -578,6 +630,9 @@ def _calculate_atomic_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingC
 
 
 def check_atomic_add_support(reduce_info: SingleReduceInfo):
+    """
+    check if current tiling case support atomic
+    """
     # Common Regulation
     version = get_soc_spec(SOC_VERSION)
     if version not in [ASCEND_920A, ASCEND_910]:
@@ -822,10 +877,8 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
         name = ["db", "shape_type", "block_split_axis", "ub_split_axis",
                 "pattern"]
         if _value not in rule[idx]:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "%s should in %s, but is %d" % (
-                name[idx], str(rule[idx]), _value)
+            dict_args = {"errCode": "E90003", "detailed_cause": "%s should in %s, but is %d" % (
+                name[idx], str(rule[idx]), _value)}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     pattern = _get_pattern_key(shape, reduce_idx_list)
@@ -882,9 +935,7 @@ def _gen_zero_tiling_key():
 
 
 def _raise_error(message):
-    dict_args = dict()
-    dict_args["errCode"] = "E90003"
-    dict_args["detailed_cause"] = message
+    dict_args = {"errCode": "E90003", "detailed_cause": message}
     raise RuntimeError(dict_args, get_error_message(dict_args))
 
 

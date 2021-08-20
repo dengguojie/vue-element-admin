@@ -35,7 +35,8 @@ from tbe.dsl.base import operation
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
 
-from .constants import *
+from .constants import DTYPE_BYTE_MAPPING
+from .constants import FAKE_NODE_TAG
 from .util import equals_one
 from .util import expr_equal
 from .util import get_reduce_all_axes
@@ -191,11 +192,17 @@ class ComputeGraphInfo:
                                    "not support outputs with different shapes")
 
     def gen_endpoint_output_tensor_set(self):
+        """
+        get pure endpoint output tensors without middle output tensors
+        """
         for output_tensor in self.output_tensor_set:
             if not self.tensor_consumers_map[output_tensor]:
                 self.endpoint_output_tensor_set.add(output_tensor)
 
     def gen_mid_tensor_sets(self):
+        """
+        get  middle tensors(with middle output tensors) and middle output tensors
+        """
         # mid_output_tensor_set
         # mid_tensor_set
         for tensor in self.tensor_list:
@@ -231,6 +238,9 @@ class ComputeGraphInfo:
                           hooks: Tuple[Tuple[Callable[[Tensor], bool],
                                              Callable[[Tensor], Any],
                                              Callable[[Tensor], Any]], ...]):
+        """
+        compute graph using dfs algorithm
+        """
         def recursive_func(_root_tensor: Tensor,
                            _visited_list: Set[Tensor],
                            _tensor_consumers_map: Dict[Tensor, Union[Set[Tensor]]],
@@ -470,6 +480,9 @@ class ComputeGraphInfo:
 
     @staticmethod
     def get_maximum_subgraph(graph_info, reduce_info, tiling_case):
+        """
+        get maximum subgraph
+        """
         reduce_tensors = list(graph_info.reduce_tensor_set)
         _node_list = graph_info.coexisting_quantities
         coefficients = graph_info.coef
@@ -527,4 +540,7 @@ class ComputeGraphInfo:
 
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:
+        """
+        deep copy tensor map
+        """
         return dict((key, _map[key].copy()) for key in _map)

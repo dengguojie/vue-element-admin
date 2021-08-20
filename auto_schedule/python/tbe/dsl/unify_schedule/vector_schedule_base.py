@@ -29,12 +29,18 @@ from .vector_tilingcase import TilingCaseBase
 
 
 class VectorScheduleBase(ABC):
+    """
+    base class for vector schedule
+    """
 
     def __init__(self):
         self.schedule: Optional[Schedule] = None
         self.tiling_case = None
 
     def do_schedule(self, tiling_case) -> Schedule:
+        """
+        entry of doing vector schedule
+        """
         self.tiling_case = tiling_case
         self._do_create_schedule()
         self._calc_schedule_generation_strategy()
@@ -42,6 +48,9 @@ class VectorScheduleBase(ABC):
         return self.schedule
 
     def _calc_schedule_generation_strategy(self):
+        """
+        calc schedule generation strategy
+        """
         self._calc_reduced_axis_indexes()
         self._calc_data_flow_control()
         self._calc_compute_inline()
@@ -58,6 +67,9 @@ class VectorScheduleBase(ABC):
         self._calc_double_buffer()
 
     def _do_schedule_generation(self):
+        """
+        do schedule generation
+        """
         self._do_data_flow_control()
         self._do_compute_inline()
         self._do_tiling()

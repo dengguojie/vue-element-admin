@@ -24,6 +24,9 @@ from abc import abstractmethod
 
 
 class TilingCaseBase(ABC):
+    """
+    base class of tiling case
+    """
     @abstractmethod
     def __hash__(self):
         """"""
