@@ -131,21 +131,20 @@ def _get_fusion_params(input_data, output_data, is_fused_compute=True):
         if "L1_fusion_type" in input_data.op.attrs else -1
     in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
         if "addr_type" in input_data.op.attrs else False
-    in_valid_shape = input_data.op.attrs["valid_shape"] \
-        if "valid_shape" in input_data.op.attrs else []
-    in_slice_offset = input_data.op.attrs["slice_offset"] \
-        if "slice_offset" in input_data.op.attrs else []
-    in_select_read_flag = bool(in_valid_shape)
-    in_split_index = input_data.op.attrs["split_index"].value \
-        if "split_index" in input_data.op.attrs else 0
+    l1_addr_flag = input_data.op.attrs["L1_addr_flag"].value \
+        if "L1_addr_flag" in input_data.op.attrs else -1
+    l1_addr_offset = input_data.op.attrs["L1_addr_offset"] \
+        if "L1_addr_offset" in input_data.op.attrs else -1
+    l1_valid_size = input_data.op.attrs["L1_valid_size"] \
+        if "L1_valid_size" in input_data.op.attrs else -1
     out_l1_flag = output_data.get("addr_type") == 1
     fusion_params = {"is_fused_compute": is_fused_compute,
                      "l1_fusion_type": l1_fusion_type,
                      "in_l1_flag": in_l1_flag,
                      "out_l1_flag": out_l1_flag,
-                     "in_select_read_flag": in_select_read_flag,
-                     "in_split_index": in_split_index,
-                     "in_slice_offset": in_slice_offset}
+                     "L1_addr_flag": l1_addr_flag,
+                     "L1_addr_offset": l1_addr_offset,
+                     "L1_valid_size": l1_valid_size}
 
     return fusion_params
 
@@ -355,22 +354,10 @@ def _avg_pool_global_compute(x, y, ksize, strides,
         stride = [strides[2], strides[3]]
 
     # l1 fusion and l2 fusion
-    l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
-        if "L1_fusion_type" in x.op.attrs else -1
     fusion_params = _get_fusion_params(x, y, is_fused_compute)
-    in_select_read_flag = fusion_params.get("in_select_read_flag")
-    in_valid_shape = fusion_params.get("in_valid_shape")
-    in_slice_offset = fusion_params.get("in_slice_offset")
+    l1_fusion_type = fusion_params.get("l1_fusion_type")
 
-    if in_select_read_flag:
-        select_tensor_in = tvm.compute(in_valid_shape,
-                                       lambda n, c1, h, w, c0:
-                                       x(n, c1, h + in_slice_offset[2], w, c0),
-                                       name="tensor_read_select",
-                                       attrs=x.op.attrs)
-        res = tbe.pooling2d(select_tensor_in, window, stride, "AVG",
-                            padding, fusion_params=fusion_params)
-    elif l1_fusion_type == 1:
+    if l1_fusion_type == 1:
         x.op.attrs["addr_type"].value = 1
         in_l1_flag = True
         fusion_params["in_l1_flag"] = in_l1_flag
@@ -520,15 +507,15 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     else:
         # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
         addr_type = x.get("addr_type", 0)
-        valid_shape = x.get("valid_shape", [])
-        slice_offset = x.get("slice_offset", [])
-        split_index = x.get("split_index", 0)
         l1_fusion_type = x.get("L1_fusion_type", -1)
+        l1_addr_flag = x.get("L1_addr_flag", -1)
+        l1_addr_offset = x.get("L1_addr_offset", -1)
+        l1_valid_size = x.get("L1_valid_size", -1)
         attr = {"addr_type": addr_type,
-                "valid_shape": valid_shape,
-                "slice_offset": slice_offset,
-                "split_index": split_index,
-                "L1_fusion_type": l1_fusion_type}
+                "L1_fusion_type": l1_fusion_type,
+                "L1_addr_flag": l1_addr_flag,
+                "L1_addr_offset": l1_addr_offset,
+                "L1_valid_size": l1_valid_size}
         is_l1fusion = l1_fusion_type in (0, 1)
         # create tensor_in
         tensor_in = tvm.placeholder(input_shape, name="tensor_in",
