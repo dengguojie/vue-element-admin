@@ -165,7 +165,7 @@ class MaxpoolGradV2Resnet50(object):
         output_size = output_h * output_w * output_c
 
         loop_c = self.input_gard_shape[1]
-        block_h = 4
+        block_h = 2
         loop_h = input_h // block_h
         windowh, windoww = self.ksize[1:3]
         filter_size = windowh * windoww

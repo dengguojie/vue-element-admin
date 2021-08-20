@@ -75,7 +75,6 @@ case7 = {"params": [{"shape": (1, 1, 1, 1, 16), "dtype": "float16", "format": "N
          "format_expect": [],
          "support_expect": True}
 
-
 ut_case.add_case(["Ascend310", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend910A"], case3)
@@ -85,5 +84,4 @@ ut_case.add_case(["Ascend310", "Ascend910A"], case6)
 ut_case.add_case(["Ascend310", "Ascend910A"], case7)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run(["Ascend910A"])

@@ -34,7 +34,6 @@ SRC1STRIDEM0 = 1
 DSTSTRIDEM1 = 8
 SRC0STRIDEM1 = 8
 SRC1STRIDEM1 = 8
-BLOCK_H = 4
 DT_INT32 = 3
 DT_INT64 = 9
 DIM_C0 = 16
@@ -44,8 +43,6 @@ UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
 
-# pylint: disable=missing-class-docstring,too-many-instance-attributes
-# pylint: disable=too-many-arguments,no-self-use,too-many-locals,too-few-public-methods,invalid-name,unused-argument
 def _ceil_div(value, factor):
     """
     caculate ceil value of div
@@ -64,7 +61,9 @@ def _ceil_div(value, factor):
     return math.ceil(value / factor)
 
 
-class MaxPoolWithArgmaxV1Resnet50:
+# pylint: disable=locally-disabled, too-many-instance-attributes
+# pylint: disable=too-few-public-methods
+class MaxPoolWithArgmaxV1Resnet50(object):
     def __init__(self, x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_name):
         """
         init MaxPoolWithargmax parameters
@@ -139,6 +138,8 @@ class MaxPoolWithArgmaxV1Resnet50:
             self.input_dtype, output_gm_shape, name="output_max_gm", scope=tik.scope_gm)
         self.output_mask_gm = self.tik_inst.Tensor(
             "uint16", output_mask_gm_shape, name="output_mask_gm", scope=tik.scope_gm)
+
+        self.check_load3d_supported = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
         self._tik_instance_function_init()
 
@@ -249,11 +250,151 @@ class MaxPoolWithArgmaxV1Resnet50:
                               self.window_w, self.window_h,
                               self.dilation_w, self.dilation_h, 1, 1, 4 * 56 // 16, 0, self.pad_value)
 
+    def _clear_ub_to_pad_value_fp16(self, ub_buff, length, pad_value):
+        max_repeat_time = 255
+        vec_fp16_mask = 128
+        single_vec_fp16_mask = 16
+        max_repeat_length = max_repeat_time * vec_fp16_mask
+        vec_repeat_time = length // vec_fp16_mask
+        res_vec_length = length - vec_repeat_time * vec_fp16_mask
+        max_vec_repeat_block = vec_repeat_time // max_repeat_time
+        res_max_vec_repeat_block = vec_repeat_time - max_vec_repeat_block * max_repeat_time
+
+        if max_vec_repeat_block > 0:
+            with self.tik_inst.for_range(0, max_vec_repeat_block) as loop:
+                self.tik_inst.vector_dup(vec_fp16_mask, ub_buff[loop * max_repeat_length], pad_value, max_repeat_time,
+                                         1, 8)
+
+        if res_max_vec_repeat_block > 0:
+            self.tik_inst.vector_dup(vec_fp16_mask, ub_buff[max_vec_repeat_block * max_repeat_length],
+                                     pad_value, res_max_vec_repeat_block, 1, 8)
+
+        if res_vec_length > 0:
+            self.tik_inst.vector_dup(single_vec_fp16_mask, ub_buff[vec_repeat_time * vec_fp16_mask],
+                                     pad_value, res_vec_length // single_vec_fp16_mask, 1, 1)
+
+    # pylint: disable=too-many-arguments
+    def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
+        """
+        load data from gm to ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_inst
+        gm_len = instance.Scalar("uint64", name="gm_len")
+        cur_h = instance.Scalar("int64", name="cur_h")
+        start_ub_pos = instance.Scalar("int64", name="start_ub_pos")
+        cur_w = instance.Scalar("int64", name="cur_w")
+        filter_size = self.window_h * self.window_w
+        c0_dim = 16
+        self._clear_ub_to_pad_value_fp16(ub_buff, output_block_h * self.out_size_w * c0_dim * filter_size,
+                                         self.pad_value)
+
+        with instance.for_range(0, filter_size) as filter_index:
+            w_index = filter_index % self.window_w
+            h_index = filter_index // self.window_w
+            with instance.if_scope(w_index == 0):
+                start_ub_pos.set_as(1)
+                cur_w.set_as(self.window_w // 2)
+                gm_len.set_as(self.out_size_w - 1)
+            with instance.else_scope():
+                start_ub_pos.set_as(0)
+                cur_w.set_as(w_index - self.window_w // 2)
+                gm_len.set_as(self.out_size_w)
+
+            with instance.for_range(0, output_block_h) as output_block_h_index:
+                cur_h.set_as(
+                    (looph * 2 * output_block_h + output_block_h_index) * self.stride_h - self.pad_t + h_index)
+                with self.tik_inst.if_scope(cur_h >= 0):
+                    instance.data_move(
+                        ub_buff[(filter_index * output_block_h + output_block_h_index) * 
+                                self.out_size_w * c0_dim + start_ub_pos * c0_dim], 
+                        input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim], 
+                        0, gm_len, 1, 1, 0)
+
+    def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
+        """
+        load data from gm to ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_inst
+        gm_len = instance.Scalar("uint64", name="gm_len")
+        cur_h = instance.Scalar("int64", name="cur_h")
+        start_ub_pos = instance.Scalar("int64", name="start_ub_pos")
+        cur_w = instance.Scalar("int64", name="cur_w")
+        filter_size = self.window_h * self.window_w
+        c0_dim = 16
+        self._clear_ub_to_pad_value_fp16(ub_buff, output_block_h * self.out_size_w * c0_dim * filter_size,
+                                         self.pad_value)
+        with instance.for_range(0, filter_size) as filter_index:
+            w_index = filter_index % self.window_w
+            h_index = filter_index // self.window_w
+            with instance.if_scope(w_index == 0):
+                start_ub_pos.set_as(1)
+                cur_w.set_as(self.window_w // 2)
+                gm_len.set_as(self.out_size_w - 1)
+            with instance.else_scope():
+                start_ub_pos.set_as(0)
+                cur_w.set_as(w_index - self.window_w // 2)
+                gm_len.set_as(self.out_size_w)
+
+            with instance.for_range(0, output_block_h) as output_block_h_index:
+                cur_h.set_as(
+                    ((looph * 2 + 1) * output_block_h + output_block_h_index) * self.stride_h - self.pad_t + h_index)
+                instance.data_move(
+                    ub_buff[(filter_index * output_block_h + output_block_h_index) * 
+                            self.out_size_w * c0_dim + start_ub_pos * c0_dim], 
+                    input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim], 
+                    0, gm_len, 1, 1, 0)
+
     def _tik_instance_function_init(self):
-        ub_mask_buff_size = 8 * 1024
         dtype = self.input_dtype
         filter_size = self.window_h * self.window_w
         input_h, input_w = self.input_shape[2:4]
+        self.input_idx = self.tik_inst.Scalar("uint64", name="input_idx")
+        self.output_idx = self.tik_inst.Scalar("uint64", name="output_idx")
+        self.l1_idx = self.tik_inst.Scalar("uint64", name="l1_idx")
+        self.mask_idx = self.tik_inst.Scalar("uint64", name="mask_idx")
+        self.fm_size = self.tik_inst.Scalar("uint64", init_value=0)
+
+        self.output_block_h = 2
+        if self.check_load3d_supported:
+            self.output_block_h = 4
+            l1_buff0_size = input_h * input_w * DIM_C0 + 32 * 1024
+            self.l1_buff0 = self.tik_inst.Tensor(dtype, (l1_buff0_size,), name="l1_buff0", scope=tik.scope_cbuf)
+        else:
+            ub_load_size = \
+                ((self.output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * DIM_C0 + DIM_C0
+            self.ub_load0 = self.tik_inst.Tensor(dtype, (ub_load_size,),
+                                                 name="ub_load0", scope=tik.scope_ubuf)
+            self.ub_load1 = self.tik_inst.Tensor(dtype, (ub_load_size,),
+                                                 name="ub_load1", scope=tik.scope_ubuf)
+
+        ub_max_buff_size = self.stride_h * self.output_block_h * self.out_size_w * DIM_C0
+        self.ub_max_buff = self.tik_inst.Tensor(dtype, (ub_max_buff_size,), name="ub_max_buff", scope=tik.scope_ubuf)
+
+        ub_mask_buff_size = 8 * 1024
         self.ub_mask_buff = self.tik_inst.Tensor(
             "uint16", (ub_mask_buff_size,), name="ub_mask_buff", scope=tik.scope_ubuf)
         self.ub_mask_temp = self.tik_inst.Tensor(
@@ -263,135 +404,135 @@ class MaxPoolWithArgmaxV1Resnet50:
         self.ub_mask_not_buff = self.tik_inst.Tensor(
             "uint16", (ub_mask_buff_size,), name="ub_mask_not_buff", scope=tik.scope_ubuf)
 
-        ub_buff_size = BLOCK_H * self.out_size_w * DIM_C0 * filter_size
+        ub_buff_size = self.output_block_h * self.out_size_w * DIM_C0 * filter_size
         self.buf_0 = self.tik_inst.Tensor(dtype, (ub_buff_size,), name="ub_buf_0", scope=tik.scope_ubuf)
         self.buf_1 = self.tik_inst.Tensor(dtype, (ub_buff_size,), name="ub_buf_1", scope=tik.scope_ubuf)
-
-        self.input_idx = self.tik_inst.Scalar("uint64", name="input_idx")
-        self.output_idx = self.tik_inst.Scalar("uint64", name="output_idx")
-        self.l1_idx = self.tik_inst.Scalar("uint64", name="l1_idx")
-        self.mask_idx = self.tik_inst.Scalar("uint64", name="mask_idx")
-        self.fm_size = self.tik_inst.Scalar("uint64", init_value=0)
-
-        l1_buff0_size = input_h * input_w * DIM_C0 + 32 * 1024
-        self.l1_buff0 = self.tik_inst.Tensor(dtype, (l1_buff0_size,), name="l1_buff0", scope=tik.scope_cbuf)
-        ub_max_buff_size = self.stride_h * BLOCK_H * self.out_size_w * DIM_C0
-        self.ub_max_buff = self.tik_inst.Tensor(dtype, (ub_max_buff_size,), name="ub_max_buff", scope=tik.scope_ubuf)
 
     def _calc_ping_fm_size(self, looph, input_w):
         self.fm_size.set_as(0)
         with self.tik_inst.if_scope(looph == 0):
-            self.fm_size.set_as((BLOCK_H * self.stride_h + 1) * input_w)
+            self.fm_size.set_as((self.output_block_h * self.stride_h + 1) * input_w)
         with self.tik_inst.else_scope():
-            self.fm_size.set_as(BLOCK_H * self.stride_h * input_w)
+            self.fm_size.set_as(self.output_block_h * self.stride_h * input_w)
 
     def _calc_pong_fm_size(self, looph, loop_h, input_w):
         self.fm_size.set_as(0)
         with self.tik_inst.if_scope(looph == loop_h // 2 - 1):
-            self.fm_size.set_as((BLOCK_H * self.stride_h - 1) * input_w)
+            self.fm_size.set_as((self.output_block_h * self.stride_h - 1) * input_w)
         with self.tik_inst.else_scope():
-            self.fm_size.set_as(BLOCK_H * self.stride_h * input_w)
+            self.fm_size.set_as(self.output_block_h * self.stride_h * input_w)
 
     def _calc_output_mask(self, filter_size, repeat_1, repeat_stride, output_w):
         with self.tik_inst.for_range(2, filter_size) as idx:
             self.tik_inst.vnot(constant.MASK128, self.ub_mask_not_buff, self.ub_mask_or_buff, repeat_1, 1,
                                1, repeat_stride, repeat_stride)
             self.tik_inst.vor(constant.MASK128, self.ub_mask_or_buff, self.ub_mask_or_buff,
-                              self.ub_mask_buff[idx * BLOCK_H * output_w], repeat_1, 1, 1, 1,
+                              self.ub_mask_buff[idx * self.output_block_h * output_w], repeat_1, 1, 1, 1,
                               repeat_stride, repeat_stride, repeat_stride)
-            self.tik_inst.vand(constant.MASK128, self.ub_mask_temp[(idx - 1) * BLOCK_H * output_w],
-                               self.ub_mask_not_buff, self.ub_mask_buff[idx * BLOCK_H * output_w],
+            self.tik_inst.vand(constant.MASK128, self.ub_mask_temp[(idx - 1) * self.output_block_h * output_w],
+                               self.ub_mask_not_buff, self.ub_mask_buff[idx * self.output_block_h * output_w],
                                repeat_1, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
 
     def _tik_instance_function_ping(self, looph, input_w, output_w, mask_gap,
                                     filter_size, repeat_0, repeat_1, repeat_stride, mask_one_window):
-        self._calc_ping_fm_size(looph, input_w)
-        self.tik_inst.data_move(self.l1_buff0[self.l1_idx], self.input_fmap_gm[self.input_idx], 0, 1,
-                                self.fm_size, 0, 0)
-        self._load3d_fm_to_ub(
-            self.buf_0, self.l1_buff0, 0 - self.pad_l, looph * 2 * BLOCK_H * self.stride_h - self.pad_t)
+        if self.check_load3d_supported:
+            self._calc_ping_fm_size(looph, input_w)
+            self.tik_inst.data_move(self.l1_buff0[self.l1_idx], self.input_fmap_gm[self.input_idx], 0, 1,
+                                    self.fm_size, 0, 0)
+            self._load3d_fm_to_ub(
+                self.buf_0, self.l1_buff0, 0 - self.pad_l, 
+                looph * 2 * self.output_block_h * self.stride_h - self.pad_t)
+        else:
+            self._load_gm_to_ub_ping(self.buf_0, self.output_block_h, self.input_fmap_gm, self.input_idx, looph)
+
         self.tik_inst.vmax(constant.MASK128, self.ub_max_buff, self.buf_0,
-                           self.buf_0[BLOCK_H * output_w * DIM_C0],
+                           self.buf_0[self.output_block_h * output_w * DIM_C0],
                            repeat_0, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
         with self.tik_inst.for_range(2, filter_size) as idx:
             self.tik_inst.vmax(constant.MASK128, self.ub_max_buff, self.ub_max_buff,
-                               self.buf_0[BLOCK_H * output_w * DIM_C0 * idx],
+                               self.buf_0[self.output_block_h * output_w * DIM_C0 * idx],
                                repeat_0, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
-        output_idx_tmp = (self.output_idx + looph * 2 * BLOCK_H * output_w * DIM_C0)
+        output_idx_tmp = (self.output_idx + looph * 2 * self.output_block_h * output_w * DIM_C0)
         self.tik_inst.data_move(self.output_max_gm[output_idx_tmp], self.ub_max_buff, 0, 1,
-                                BLOCK_H * output_w * DIM_C0 * 2 // 32, 0, 0)
+                                self.output_block_h * output_w * DIM_C0 * 2 // 32, 0, 0)
 
         with self.tik_inst.for_range(0, filter_size) as idx:
-            self.tik_inst.vcmpv_eq(self.ub_mask_buff[idx * BLOCK_H * output_w * DIM_C0 // 16],
-                                   self.buf_0[idx * BLOCK_H * output_w * DIM_C0],
+            self.tik_inst.vcmpv_eq(self.ub_mask_buff[idx * self.output_block_h * output_w * DIM_C0 // 16],
+                                   self.buf_0[idx * self.output_block_h * output_w * DIM_C0],
                                    self.ub_max_buff, repeat_0, 1, 1, repeat_stride, repeat_stride)
         self.tik_inst.vnot(
-            constant.MASK128, self.ub_mask_not_buff, self.ub_mask_buff, repeat_1, 1, 1, repeat_stride,
+            constant.MASK128, self.ub_mask_not_buff, self.ub_mask_buff, repeat_1, 1, 1, repeat_stride, 
             repeat_stride)
         self.tik_inst.vor(constant.MASK128, self.ub_mask_or_buff, self.ub_mask_buff,
-                          self.ub_mask_buff[BLOCK_H * output_w],
+                          self.ub_mask_buff[self.output_block_h * output_w],
                           repeat_1, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
         self.tik_inst.vand(constant.MASK128, self.ub_mask_temp, self.ub_mask_not_buff,
-                           self.ub_mask_buff[BLOCK_H * output_w],
+                           self.ub_mask_buff[self.output_block_h * output_w],
                            repeat_1, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
         self._calc_output_mask(filter_size, repeat_1, repeat_stride, output_w)
         self.tik_inst.data_move(
-            self.output_mask_gm[self.mask_idx], self.ub_mask_buff, 0, 1, BLOCK_H * output_w // DIM_C0, 0, 0)
+            self.output_mask_gm[self.mask_idx], self.ub_mask_buff, 0, 1, self.output_block_h * output_w // DIM_C0, 0,
+            0)
         self.tik_inst.data_move(
-            self.output_mask_gm[self.mask_idx + mask_one_window], self.ub_mask_temp, 0, filter_size - 1,
-            BLOCK_H * output_w // DIM_C0, 0, mask_gap
-        )
+            self.output_mask_gm[self.mask_idx + mask_one_window], self.ub_mask_temp, 0, filter_size - 1, 
+            self.output_block_h * output_w // DIM_C0, 0, mask_gap)
 
-        self.input_idx.set_as(self.input_idx + self.fm_size * DIM_C0)
-        self.mask_idx.set_as(self.mask_idx + BLOCK_H * output_w * DIM_C0 // 16)
-        self.l1_idx.set_as(self.l1_idx + self.fm_size * 16)
+        self.mask_idx.set_as(self.mask_idx + self.output_block_h * output_w * DIM_C0 // 16)
+        if self.check_load3d_supported:
+            self.input_idx.set_as(self.input_idx + self.fm_size * DIM_C0)
+            self.l1_idx.set_as(self.l1_idx + self.fm_size * 16)
 
     def _tik_instance_function_pong(self, looph, loop_h, input_w, output_w, mask_gap, filter_size,
                                     repeat_0, repeat_1, repeat_stride, mask_one_window):
-        self._calc_pong_fm_size(looph, loop_h, input_w)
-        self.tik_inst.data_move(
-            self.l1_buff0[self.l1_idx], self.input_fmap_gm[self.input_idx], 0, 1, self.fm_size, 0, 0)
+        if self.check_load3d_supported:
+            self._calc_pong_fm_size(looph, loop_h, input_w)
+            self.tik_inst.data_move(
+                self.l1_buff0[self.l1_idx], self.input_fmap_gm[self.input_idx], 0, 1, self.fm_size, 0, 0)
 
-        self._load3d_fm_to_ub(
-            self.buf_1, self.l1_buff0, -self.pad_l,
-            (looph * 2 + 1) * BLOCK_H * self.stride_h - self.pad_t)
+            self._load3d_fm_to_ub(
+                self.buf_1, self.l1_buff0, -self.pad_l,
+                (looph * 2 + 1) * self.output_block_h * self.stride_h - self.pad_t)
+        else:
+            self._load_gm_to_ub_pong(self.buf_1, self.output_block_h, self.input_fmap_gm,
+                                     self.input_idx, looph)
 
         self.tik_inst.vmax(constant.MASK128, self.ub_max_buff, self.buf_1,
-                           self.buf_1[BLOCK_H * output_w * DIM_C0],
+                           self.buf_1[self.output_block_h * output_w * DIM_C0],
                            repeat_0, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
 
         with self.tik_inst.for_range(2, filter_size) as idx:
             self.tik_inst.vmax(constant.MASK128, self.ub_max_buff, self.ub_max_buff,
-                               self.buf_1[BLOCK_H * output_w * DIM_C0 * idx],
+                               self.buf_1[self.output_block_h * output_w * DIM_C0 * idx],
                                repeat_0, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
 
-        output_idx_tmp = (self.output_idx + (looph * 2 + 1) * BLOCK_H * output_w * DIM_C0)
-        self.tik_inst.data_move(self.output_max_gm[output_idx_tmp], self.ub_max_buff, 0, 1, BLOCK_H *
+        output_idx_tmp = (self.output_idx + (looph * 2 + 1) * self.output_block_h * output_w * DIM_C0)
+        self.tik_inst.data_move(self.output_max_gm[output_idx_tmp], self.ub_max_buff, 0, 1, self.output_block_h *
                                 output_w * DIM_C0 * 2 // 32, 0, 0)
 
         with self.tik_inst.for_range(0, filter_size) as idx:
-            self.tik_inst.vcmpv_eq(self.ub_mask_buff[idx * BLOCK_H * output_w * DIM_C0 // 16],
-                                   self.buf_1[idx * BLOCK_H * output_w * DIM_C0],
+            self.tik_inst.vcmpv_eq(self.ub_mask_buff[idx * self.output_block_h * output_w * DIM_C0 // 16],
+                                   self.buf_1[idx * self.output_block_h * output_w * DIM_C0],
                                    self.ub_max_buff, repeat_0, 1, 1, repeat_stride, repeat_stride)
 
         self.tik_inst.vnot(constant.MASK128, self.ub_mask_not_buff, self.ub_mask_buff, repeat_1, 1, 1,
                            repeat_stride, repeat_stride)
         self.tik_inst.vor(constant.MASK128, self.ub_mask_or_buff, self.ub_mask_buff,
-                          self.ub_mask_buff[BLOCK_H * output_w],
+                          self.ub_mask_buff[self.output_block_h * output_w],
                           repeat_1, 1, 1, 1, repeat_stride, repeat_stride, repeat_stride)
         self.tik_inst.vand(constant.MASK128, self.ub_mask_temp, self.ub_mask_not_buff,
-                           self.ub_mask_buff[BLOCK_H * output_w], repeat_1, 1, 1, 1,
+                           self.ub_mask_buff[self.output_block_h * output_w], repeat_1, 1, 1, 1,
                            repeat_stride, repeat_stride, repeat_stride)
         self._calc_output_mask(filter_size, repeat_1, repeat_stride, output_w)
 
         self.tik_inst.data_move(
-            self.output_mask_gm[self.mask_idx], self.ub_mask_buff, 0, 1, BLOCK_H * output_w // DIM_C0, 0, 0)
+            self.output_mask_gm[self.mask_idx], self.ub_mask_buff, 0, 1, self.output_block_h * output_w // DIM_C0, 0,
+            0)
         self.tik_inst.data_move(self.output_mask_gm[self.mask_idx + mask_one_window], self.ub_mask_temp, 0,
-                                filter_size - 1, BLOCK_H * output_w // DIM_C0, 0, mask_gap)
-
-        self.input_idx.set_as(self.input_idx + self.fm_size * DIM_C0)
-        self.mask_idx.set_as(self.mask_idx + BLOCK_H * output_w * DIM_C0 // 16)
-        self.l1_idx.set_as(self.l1_idx + self.fm_size * 16)
+                                filter_size - 1, self.output_block_h * output_w // DIM_C0, 0, mask_gap)
+        self.mask_idx.set_as(self.mask_idx + self.output_block_h * output_w * DIM_C0 // 16)
+        if self.check_load3d_supported:
+            self.input_idx.set_as(self.input_idx + self.fm_size * DIM_C0)
+            self.l1_idx.set_as(self.l1_idx + self.fm_size * 16)
 
     def tik_instance_function(self, kernel_name):
         """
@@ -405,22 +546,25 @@ class MaxPoolWithArgmaxV1Resnet50:
         output_h = self.out_size_h
         output_w = self.out_size_w
         input_h, input_w = self.input_shape[2:4]
-        loop_h = output_h // BLOCK_H   # 2
+        loop_h = output_h // self.output_block_h  # 2
         mask_one_window = ((output_h * output_w + 15) // 16 + 1) * 16
-        mask_gap_element = (mask_one_window - BLOCK_H * output_w)
+        mask_gap_element = (mask_one_window - self.output_block_h * output_w)
         mask_gap = mask_gap_element * 2 // 32  # 3
         repeat_stride = constant.MASK128 * 2 // 32
-        repeat_0 = (BLOCK_H * output_w * DIM_C0 // constant.MASK128)
-        repeat_1 = math.ceil(BLOCK_H * output_w / constant.MASK128)
+        repeat_0 = (self.output_block_h * output_w * DIM_C0 // constant.MASK128)
+        repeat_1 = math.ceil(self.output_block_h * output_w / constant.MASK128)
 
         with self.tik_inst.for_range(0, batch_size * c1_dim, block_num=batch_size * c1_dim) as batch_idx:
             batch = batch_idx / c1_dim
-            loop = batch_idx % c1_dim
-            self.input_idx.set_as(batch * c1_dim * input_h * input_w * DIM_C0 + loop * input_h * input_w * DIM_C0)
-            self.output_idx.set_as(batch * c1_dim * output_h * output_w * DIM_C0 + loop * output_h * output_w * DIM_C0)
-            self.l1_idx.set_as(0)
+            loop_c = batch_idx % c1_dim
+            self.input_idx.set_as(batch * c1_dim * input_h * input_w * DIM_C0 + loop_c * input_h * input_w * DIM_C0)
+            self.output_idx.set_as(
+                batch * c1_dim * output_h * output_w * DIM_C0 + loop_c * output_h * output_w * DIM_C0)
+            if self.check_load3d_supported:
+                self.l1_idx.set_as(0)
+
             self.mask_idx.set_as(
-                batch * c1_dim * mask_one_window * filter_size + loop * mask_one_window * filter_size)
+                batch * c1_dim * mask_one_window * filter_size + loop_c * mask_one_window * filter_size)
 
             with self.tik_inst.for_range(0, loop_h // 2) as looph:
                 # ping
@@ -473,7 +617,7 @@ def is_max_pool_with_argmax_param(x, ksize, strides, padding):
 
     return False
 
-
+# pylint: disable=unused-argument
 def max_pool_with_argmax_v1_resnet50(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
                                      ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     max_pool_grad = MaxPoolWithArgmaxV1Resnet50(x, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name)
