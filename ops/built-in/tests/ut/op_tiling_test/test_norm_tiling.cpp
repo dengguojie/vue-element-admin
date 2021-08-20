@@ -246,7 +246,7 @@ TEST_F(NormTiling, NormTiling6) {
   std::string op_name = "AutoTiling";
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
-  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [3], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": true, "_const_tiling_key": 10000400, "_block_dims": 32, "_vars": {"10000400": []}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [3], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": true, "_const_workspace_size": [], "_const_tiling_key": 10000400, "_block_dims": 32, "_vars": {"10000400": []}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
 

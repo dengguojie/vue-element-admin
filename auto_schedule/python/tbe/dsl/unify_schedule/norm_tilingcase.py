@@ -229,7 +229,6 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
         workspace_num = len(workspace_info["_workspace_type"]) if const_tiling_case.is_partial_reorder_case else \
             len(workspace_info["_workspace_type"]) - workspace_info["_workspace_diff_count"]
         for i in range(workspace_num):
-            workspace_num += 1
             if workspace_info["_workspace_type"][i] == 1:
                 workspace_size.append(before_reduce_product * workspace_info["_workspace_bytes"][i])
             else:
@@ -243,6 +242,7 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
                 "type": workspace_type
             }
             get_op_context().add_build_json_result("workspace", workspace_dict_in_json)
+        return workspace_size
 
     add_compile_info_inner("_reduce_shape_known", True)
     const_tiling_case = NormTilingCase()
@@ -285,9 +285,11 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     add_compile_info_inner(CompileInfo.BLOCK_DIMS, run_info["block_dim"])
     add_compile_info_inner("_const_tiling_key", const_tiling_case.tiling_key)
 
+    workspace_size_list = []
     # add workspace info in json
     if tiling_data["ub_axis"] in reduce_axis_index and get_op_context():
-        __add_workspace_info_in_json()
+        workspace_size_list = __add_workspace_info_in_json()
+    add_compile_info_inner("_const_workspace_size", workspace_size_list)
 
     return [const_tiling_case]
 

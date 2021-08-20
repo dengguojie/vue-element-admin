@@ -68,6 +68,7 @@ class Norm {
     }
     ~Norm() {
     }
+    bool GetInput();
     bool Init();
     bool FusedReduceAxis();
     bool GetCompileInfo();
@@ -81,7 +82,7 @@ class Norm {
     bool DoTiling();
     bool ConstInputProcPost();
     int32_t CalcTilingKey();
-    std::vector<int64_t> CalcWorkspace();
+    bool CalcWorkspace();
     bool WriteTilingData();
 
   private:
@@ -111,6 +112,8 @@ class Norm {
     // assistant
     std::vector<int64_t> input_align_shape{std::vector<int64_t>(10, 0)};
     std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
+    std::vector<int64_t> workspace;
+    std::vector<int32_t> var_value;
 
     bool is_last_axis_reduce{false};
     bool is_need_workspace{false};
@@ -125,6 +128,7 @@ class Norm {
     int32_t sch_type{0};
     int32_t db{0};
     int32_t block_size{-1};
+    int32_t tiling_key{-1};
   };
 }  // namespace optiling
 

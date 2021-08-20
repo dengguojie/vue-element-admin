@@ -21,6 +21,7 @@
 #include <algorithm>
 #include "norm.h"
 #include "error_log.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 
@@ -53,19 +54,25 @@ int64_t Norm::CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<in
   return result;
 }
 
+bool Norm::GetInput() {
+  int64_t max_product = -1;
+  std::vector<int64_t> local_input_shape{std::vector<int64_t>(10, 0)};
+  // find before reduce shape
+  for (std::size_t i = 0; i < op_paras.GetInputsSize(); i++) {
+    local_input_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->GetShape().GetDims();
+    int64_t current_product = std::accumulate(local_input_shape.begin(), local_input_shape.end(), 1,
+                                              std::multiplies<int64_t>());
+    if (current_product > max_product) {
+      max_product = current_product;
+      input_shape_ori = local_input_shape;
+    }
+  }
+
+  return true;
+}
+
 bool Norm::Init() {
   try {
-    int64_t max_product = 1;
-    std::size_t max_product_index = 0;
-    // find before reduce shape
-    for (std::size_t i = 0; i < op_paras.GetInputsSize(); i++) {
-      int64_t current_product = op_paras.GetInputDesc((uint32_t)i).GetShape().GetShapeSize();
-      if (current_product > max_product) {
-        max_product = current_product;
-        max_product_index = i;
-      }
-    }
-    input_shape_ori = op_paras.GetInputDesc((uint32_t)max_product_index).GetShape().GetDims();
     reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
 
     // Convert reduce axis (-1 -> length+1)
@@ -759,13 +766,36 @@ bool Norm::DoTiling() {
   is_last_axis_reduce = last_r_axis_index == (int32_t)input_shape.size() - 1;
   is_split_block = !(reduce_axis.size() == input_shape.size());
   is_partial_reorder = reduce_axis.size() > 1 && input_shape.back() < block_size && is_split_block;
+
   pattern = CalcPattern(input_shape, reduce_axis);
   is_need_workspace = IsNeedWorkspace();
   // calculate tiling info
   ret = ret && ProcessTiling();
+  // calculate workspace size
+  ret = ret && CalcWorkspace();
+  // calculate tiling key
+  tiling_key = CalcTilingKey();
+  // obtain var value
+  if (!compileInfo.is_const) {
+    try {
+      compileInfo.var_list = op_info.at("_vars").at(std::to_string(tiling_key)).get<std::vector<std::string>>();
+      for (std::size_t i = 0; i < input_shape.size(); i++) {
+        std::string concat_var = "_dim_";
+        concat_var += std::to_string(i);
+        if (std::find(compileInfo.var_list.begin(),
+                      compileInfo.var_list.end(),
+                      concat_var) != compileInfo.var_list.end()) {
+          var_value.emplace_back((int32_t)input_shape[i]);
+          OP_LOGD(op_type.c_str(), "the %dth of input shape:%d", i, (int32_t)input_shape[i]);
+        }
+      }
+    } catch (const std::exception &e) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var value error. Error message: %s", e.what());
+      return false;
+    }
+  }
   return ret;
 }
-
 
 int32_t Norm::CalcTilingKey() {
   std::vector<int> pos;
@@ -784,38 +814,44 @@ int32_t Norm::CalcTilingKey() {
   return key;
 }
 
-std::vector<int64_t> Norm::CalcWorkspace() {
-  int64_t shape_after_reduce_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
-  int64_t shape_before_reduce_align_product = std::accumulate(input_align_shape.begin(),
-                                                              input_align_shape.end(),
-                                                              1,
-                                                              std::multiplies<int64_t>());
-  std::vector<int64_t> workspace;
-  for (std::size_t i = 0; i < compileInfo.workspace_type.size(); i++) {
-    // workspace sch may need fake workspace
-    if (!is_partial_reorder && i >= compileInfo.workspace_type.size() - (int32_t)compileInfo.workspace_diff_count) {
-      workspace.emplace_back(32);
-    } else {
-      if (compileInfo.workspace_type[i] == 1) {
-        workspace.emplace_back(shape_before_reduce_align_product * compileInfo.workspace_bytes[i]);
-      } else {
-        workspace.emplace_back(shape_after_reduce_align_product * compileInfo.workspace_bytes[i]);
+bool Norm::CalcWorkspace() {
+  if (compileInfo.workspace_type.size() != 0) {
+    if (is_need_workspace) {
+      int64_t shape_after_reduce_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
+      int64_t shape_before_reduce_align_product = std::accumulate(input_align_shape.begin(),
+                                                                  input_align_shape.end(),
+                                                                  1,
+                                                                  std::multiplies<int64_t>());
+      for (std::size_t i = 0; i < compileInfo.workspace_type.size(); i++) {
+        // workspace sch may need fake workspace
+        if (!is_partial_reorder && i >= compileInfo.workspace_type.size() -
+            (int32_t)compileInfo.workspace_diff_count) {
+          workspace.emplace_back(32);
+        } else {
+          if (compileInfo.workspace_type[i] == 1) {
+            workspace.emplace_back(shape_before_reduce_align_product * compileInfo.workspace_bytes[i]);
+          } else {
+            workspace.emplace_back(shape_after_reduce_align_product * compileInfo.workspace_bytes[i]);
+          }
+        }
       }
+    } else if (!compileInfo.is_const) {
+      std::vector<int64_t> local_workspace(compileInfo.workspace_type.size(), 32);
+      workspace = local_workspace;
     }
   }
-  return workspace;
+  return true;
 }
 
 bool Norm::ConstInputProcPost() {
   // runtime
   try {
     int32_t const_tiling_key = op_info.at("_const_tiling_key").get<std::int32_t>();
+    workspace = op_info.at("_const_workspace_size").get<std::vector<std::int64_t>>();
     run_info.SetBlockDim(op_info.at("_block_dims").get<std::int32_t>());
     run_info.SetTilingKey(const_tiling_key);
-    if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
-      for (auto item : CalcWorkspace()) {
-        run_info.AddWorkspace(item);
-      }
+    for (auto item : workspace) {
+      run_info.AddWorkspace(item);
     }
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s",
@@ -844,38 +880,15 @@ bool Norm::WriteTilingData() {
     return true;
   }
 
-  // tiling_key
-  int32_t tiling_key = CalcTilingKey();
   run_info.SetTilingKey(tiling_key);
-  try {
-    compileInfo.var_list = op_info.at("_vars").at(std::to_string(tiling_key)).get<std::vector<std::string>>();
-  } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: WriteTilingData error. Error message: %s", e.what());
-    return false;
-  }
-
-  for (std::size_t i = 0; i < input_shape.size(); i++) {
-    std::string concat_var = "_dim_" + std::to_string(i);
-    if (std::find(compileInfo.var_list.begin(),
-                  compileInfo.var_list.end(),
-                  concat_var) != compileInfo.var_list.end()) {
-      run_info.AddTilingData((int32_t)input_shape[i]);
-      OP_LOGD(op_type.c_str(), "the %dth of input shape:%d", i, (int32_t)input_shape[i]);
-    }
-  }
-
   run_info.SetBlockDim(tilingInfo.block_dim);
-  if (compileInfo.workspace_type.size() != 0) {
-    if (is_need_workspace) {
-      for (auto item : CalcWorkspace()) {
-        run_info.AddWorkspace(item);
-      }
-    } else {
-      // fake workspace
-      for (std::size_t i = 0; i < compileInfo.workspace_type.size(); i++) {
-        run_info.AddWorkspace((int64_t)32);
-      }
-    }
+
+  for (auto item : workspace) {
+    run_info.AddWorkspace(item);
+  }
+
+  for (auto item : var_value) {
+    run_info.AddTilingData(item);
   }
 
   if (is_split_block) {
@@ -894,7 +907,8 @@ bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const 
                 utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "norm tiling running");
   Norm norm(op_type, op_paras, op_info, run_info);
-  bool ret = norm.DoTiling();
+  bool ret = norm.GetInput();
+  ret = ret && norm.DoTiling();
   ret = ret && norm.WriteTilingData();
   return ret;
 }
