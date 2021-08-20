@@ -1,7 +1,6 @@
 import onnx
 from onnx import helper
 from onnx import TensorProto
-import onnxruntime as rt
 import numpy as np
 
 

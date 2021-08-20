@@ -127,7 +127,6 @@ set(_onnx_plugins
   random_normal_plugin.cc
   isinf_plugin.cc
   onnx_common.cc
-  hardswish_plugin.cc
   reduce_log_sum_plugin.cc
   lppool_plugin.cc
   compress_plugin.cc

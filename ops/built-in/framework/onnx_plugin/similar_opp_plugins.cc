@@ -240,6 +240,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::GlobalAveragePool, GlobalAveragePool, Globa
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Tan, Tan, TanV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::IsNaN, IsNan, IsNaNV10);
 
+
 //onnx::12
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acos, Acos, AcosV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acosh, Acosh, AcoshV12);
@@ -344,4 +345,5 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::GlobalAveragePool, GlobalAveragePool, Globa
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Tan, Tan, TanV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::ScatterND, TensorScatterUpdate, ScatterNDV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::IsNaN, IsNan, IsNaNV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::14::HardSwish, HardSwish, HardSwish14);
 }  // namespace domi
