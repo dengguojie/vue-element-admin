@@ -400,7 +400,7 @@ class NonZero():
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator("NonZero")
-def non_zero(x, y, kernel_name="non_zero"):
+def non_zero(x, y, transpose, kernel_name="non_zero"):
     """
     return a 2-D tensor where each row is the index for a nonzero value
 

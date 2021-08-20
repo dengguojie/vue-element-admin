@@ -14,6 +14,7 @@ def non_zero_test_001(test_arg):
                   "range": [(16, 16), (16, 16)]},
                  {"shape": (16, 16), "dtype": "int32", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND",
                   "range": [(16, 16), (16, 16)]},
+                  True,
                   "test_non_zero_001")
     set_current_compile_soc_info(test_arg)
 
