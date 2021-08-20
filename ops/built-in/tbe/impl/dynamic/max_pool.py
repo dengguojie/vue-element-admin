@@ -445,14 +445,14 @@ class MaxPool:
         self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
         self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
         # when pad and cut at same time
-        with self.tik_instance.if_scope((self.pad_t > 0)&((self.pad_h - self.pad_t) < self.input_h)):    
+        with self.tik_instance.if_scope((self.pad_t > 0) & ((self.pad_h - self.pad_t) < self.input_h)):
             self.nburst.set_as(self.pad_h - self.pad_t)
         with self.tik_instance.else_scope():
             with self.tik_instance.if_scope(self.pad_h <= self.input_h):
                 self.nburst.set_as(self.pad_h)
             with self.tik_instance.else_scope():
                 self.nburst.set_as(self.input_h)
-        with self.tik_instance.if_scope((self.pad_l > 0)&((self.pad_w - self.pad_l) < self.input_w)):
+        with self.tik_instance.if_scope((self.pad_l > 0) & ((self.pad_w - self.pad_l) < self.input_w)):
             self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_l - self.pad_r) * C_ZERO)
             self.src_stride.set_as(self.input_w - self.pad_w + self.pad_l)
             self.dst_stride.set_as(self.pad_l)
@@ -655,7 +655,7 @@ class MaxPool:
                 self.repeat_3.set_as(self.after_h - self.pad_t)
                 self.nburst.set_as(self.after_h - self.pad_t)
                 with self.tik_instance.if_scope(self.after_h > self.pad_t + self.input_h):
-                    self.offset_2.set_as((self.pad_t - self.before_h + self.input_h) * self.len_h * C_ZERO)
+                    self.offset_2.set_as((self.pad_t - self.before_h + self.input_h) * self.len_w * C_ZERO)
                     self.size_2.set_as((self.after_h - self.pad_t - self.input_h) * self.len_w * C_ZERO)
                     self.repeat_3.set_as(self.input_h)
                     self.nburst.set_as(self.input_h)
@@ -727,7 +727,8 @@ class MaxPool:
                 offset_out = (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * C_ZERO + \
                              h_idx * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO
                 # vector dup and move in
-                with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
+                with self.tik_instance.if_scope((self.before_h <= (self.pad_h - self.pad_b)) &
+                                                (self.before_w <= (self.pad_w - self.pad_r))):
                     with self.tik_instance.new_stmt_scope(disable_sync=True):
                         self.tik_instance.data_move(ub_x[self.offset_ub], self.input_gm[offset_in], 0, self.nburst,
                                                     self.burst_len, self.src_stride, self.dst_stride)
@@ -735,7 +736,7 @@ class MaxPool:
                         self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
                         self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.len_w)
                 with self.tik_instance.else_scope():
-                    self.vector_dup_continuous(ub_x, (self.before_h - self.after_h) * self.len_w * C_ZERO)
+                    self.vector_dup_continuous(ub_x, (self.after_h - self.before_h) * self.len_w * C_ZERO)
                 # reduce max width
                 if self.ksize_w == 1:
                     self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.ksize_h, ele * C_ZERO,
@@ -972,7 +973,7 @@ class MaxPool:
                         self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
                         self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.len_w)
                 with self.tik_instance.else_scope():
-                    self.vector_dup_continuous(ub_x, (self.before_h - self.after_h) * self.len_w * C_ZERO)
+                    self.vector_dup_continuous(ub_x, (self.after_h - self.before_h) * self.len_w * C_ZERO)
                 # reduce max width
                 if self.ksize_w == 1:
                     self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.ksize_h, ele * C_ZERO,
