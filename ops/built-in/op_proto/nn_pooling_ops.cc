@@ -5598,9 +5598,6 @@ static void reset_avg_pool_grad_out_shape(ge::Operator& op, const std::vector<in
   if (dy_sizes[n_dy_position] == -1) {
     input_sizes[n_input_position] = -1;
   }
-  if (dy_sizes[c_dy_position] == -1) {
-    input_sizes[c_input_position] = -1;
-  }
   if (dy_sizes[h_dy_position] == -1) {
     input_sizes[h_input_position] = -1;
   }

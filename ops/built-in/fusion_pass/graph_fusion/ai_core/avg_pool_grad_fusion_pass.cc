@@ -465,7 +465,14 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   int64_t kernel_table_size = orig_input_shape_v[3] * k_size[1] * k_size[2];
   int64_t inputC1 = 0;
   if (is_dynamic) {
+    GeTensorDesc tensor_output = avg_pool_grad_desc->GetOutputDesc(0);
+    vector<int64_t> tensor_output_shape = tensor_output.GetShape().GetDims();
+    if (tensor_output_shape.size() == avg_pool_dim_info.size()) {
+      size_t output_c_index = data_format.find("C");
+      avg_pool_dim_info[3] = avg_pool_dim_info[3] <= 0 ? tensor_output_shape[output_c_index] : avg_pool_dim_info[3];
+    }
     inputC1 = (avg_pool_dim_info[3] + COUT - 1) / COUT;
+
     kernel_table_size = COUT * inputC1 * CIN * k_size[1] * k_size[2];
     FUSION_PASS_CHECK((inputC1 != kernel_table_size / (COUT * CIN * k_size[1] * k_size[2])),
                   OP_LOGW(kFusedOpType.c_str(), "The kernel_table_size overlap , over int64"), return NOT_CHANGED);
