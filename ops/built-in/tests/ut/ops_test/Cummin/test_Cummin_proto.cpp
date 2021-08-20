@@ -25,34 +25,33 @@
 
 class CumminTest : public testing::Test {
 protected:
-    static void SetUpTestCase() {
-        std::cout << "cummin test SetUp" << std::endl;
-}
+  static void SetUpTestCase() {
+    std::cout << "cummin test SetUp" << std::endl;
+  }
 
-    static void TearDownTestCase() {
-        std::cout << "cummin test TearDown" << std::endl;
-    }
+  static void TearDownTestCase() {
+    std::cout << "cummin test TearDown" << std::endl;
+  }
 };
 
 TEST_F(CumminTest, cummin_test_case_1) {
-    ge::op::Cummin cummin_op;
+  ge::op::Cummin cummin_op;
 
-    ge::TensorDesc tensor_desc;
-    ge::Shape shape1({32});
-    tensor_desc.SetDataType(ge::DT_FLOAT16);
-    tensor_desc.SetShape(shape1);
-    cummin_op.UpdateInputDesc("x", tensor_desc);
+  ge::TensorDesc tensor_desc;
+  ge::Shape shape1({32});
+  tensor_desc.SetDataType(ge::DT_FLOAT16);
+  tensor_desc.SetShape(shape1);
+  cummin_op.UpdateInputDesc("x", tensor_desc);
 
-    auto ret = cummin_op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto ret = cummin_op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc1 = cummin_op.GetOutputDesc("y");
-    EXPECT_EQ(output_desc1.GetDataType(), ge::DT_FLOAT16);
-    std::vector<int64_t> expected_output_shape1 = {32};
-    EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape1);
+  auto output_desc1 = cummin_op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc1.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape1 = {32};
+  EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape1);
 
-    auto output_desc2 = cummin_op.GetOutputDesc("indices");
-    EXPECT_EQ(output_desc2.GetDataType(), ge::DT_INT32);
-    std::vector<int64_t> expected_output_shape2 = {32};
-    EXPECT_EQ(output_desc2.GetShape().GetDims(), expected_output_shape2);
+  auto output_desc2 = cummin_op.GetOutputDesc("indices");
+  std::vector<int64_t> expected_output_shape2 = {32};
+  EXPECT_EQ(output_desc2.GetShape().GetDims(), expected_output_shape2);
 }
