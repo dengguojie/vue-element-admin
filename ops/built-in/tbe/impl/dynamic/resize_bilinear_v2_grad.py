@@ -16,7 +16,6 @@
 resize_bilinear_v2_grad.py
 """
 
-import te
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -866,9 +865,13 @@ class ResizeBilinearV2Grad(object):
                 self.data_move(self.output_gm, grads_ub, [grads_offset, 0], num=self.grads_w * self.c0)
 
         with self.tik_instance.else_scope():
+            tail_w = self.tik_instance.Scalar("int32")
             loop = (self.grads_w + max_w - 1) // max_w
-            tail_w = self.grads_w % max_w
+            tail_w.set_as(self.grads_w % max_w)
             grad_move_num = max_w * self.c0
+
+            with self.tik_instance.if_scope(tail_w == 0):
+                tail_w.set_as(max_w)
 
             with self.tik_instance.if_scope(loop > 1):
                 self.n2n_loop(grads_ub, h_idx, loop, grad_move_num, tail_w)
