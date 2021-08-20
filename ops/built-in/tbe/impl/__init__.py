@@ -54,6 +54,8 @@ from .div import div
 from .cosh import cosh
 from .clip_by_value import clip_by_value
 from .div_no_nan import div_no_nan
+from .swish import swish
+from .hard_swish import hard_swish
 
 # tbe it2
 from .asinh_grad import asinh_grad

@@ -59,6 +59,28 @@ REG_OP(HardSwish)
     .OP_END_FACTORY_REG(HardSwish)
 
 /**
+*@brief Computes the for the Swish of "x" . \n
+
+*@par Inputs:
+*One input, including:
+*x: A Tensor. Must be one of the following types: float16, float32
+
+*@par Outputs:
+*y: A Tensor. Has the same type as "x".
+
+*@par Attributes:
+*scale: scalar parameter, default value = 1.0
+
+*@par Third-party framework compatibility
+*Compatible with the Torch operator Swish
+*/
+REG_OP(Swish)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(scale, Float, 1.0)
+    .OP_END_FACTORY_REG(Swish)
+
+/**
 *@brief Computes the gradient for the gelu of "x" . \n
 
 *@par Inputs:

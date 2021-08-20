@@ -363,3 +363,6 @@ from .is_finite import is_finite
 from .non_zero import non_zero
 from .max_pool_v3 import max_pool_v3
 from .gen_adc import gen_adc
+from .swish import swish
+from .hard_swish import hard_swish
+

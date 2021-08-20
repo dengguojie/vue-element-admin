@@ -91,6 +91,10 @@ COMMON_INFER_FUNC_REG(Gelu, GeluInferShape);
 COMMON_INFER_FUNC_REG(HardSwish, OneInOneOutCommonInferShape);
 // --------------HardSwish END-----------------
 
+// ----------------Swish-------------------
+COMMON_INFER_FUNC_REG(Swish, OneInOneOutCommonInferShape);
+// --------------Swish END-----------------
+
 // ----------------------FastGeluGrad----------------------
 IMPLEMT_VERIFIER(FastGeluGrad, FastGeluGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "x", "dy")) {
