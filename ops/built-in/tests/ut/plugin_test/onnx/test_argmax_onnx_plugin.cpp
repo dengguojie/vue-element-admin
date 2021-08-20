@@ -56,7 +56,7 @@ TEST_F(argmax_onnx_plugin_test, test_argmax_case_3) {
   std::map<ge::AscendString, ge::AscendString> parser_params;
 
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
-  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
 TEST_F(argmax_onnx_plugin_test, test_argmax_case_4) {
@@ -70,5 +70,5 @@ TEST_F(argmax_onnx_plugin_test, test_argmax_case_4) {
   std::map<ge::AscendString, ge::AscendString> parser_params;
 
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
-  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
