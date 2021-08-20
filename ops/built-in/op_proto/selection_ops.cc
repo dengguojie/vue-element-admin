@@ -607,7 +607,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     dimsIn.emplace_back(UNKNOWN_DIM);
     y_output->SetShape(GeShape(dimsIn));
     y_output->SetOriginShape(GeShape(dimsIn));
-    y_output->SetShapeRange({std::make_pair(1, -1)});
+    y_output->SetShapeRange({std::make_pair(0, -1)});
     DataType start_dtype = start_desc->GetDataType();
     DataType limit_dtype = limit_desc->GetDataType();
     DataType delta_dtype = delta_desc->GetDataType();
@@ -637,7 +637,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
 
       y_output->SetShape(GeShape({UNKNOWN_DIM}));
       y_output->SetOriginShape(GeShape({UNKNOWN_DIM}));
-      y_output->SetShapeRange({std::make_pair(1, -1)});
+      y_output->SetShapeRange({std::make_pair(0, -1)});
 
       return GRAPH_SUCCESS;
     }

@@ -21,6 +21,7 @@
 #include "images_ops_shape_fns.h"
 #include "op_log.h"
 #include "error_util.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace ge {
 graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
@@ -80,18 +81,41 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
     OP_LOGE(op_name.GetString(), "input size must be 1-D tensor of 2 elements.");
     return GRAPH_PARAM_INVALID;
   }
+
+  std::vector<std::string> input_infer_depends = {size_input_name};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
+
   Tensor size_tensor;
+  TensorDesc td = op.GetOutputDesc(output_name);
   status = op.GetInputConstData(size_input_name, size_tensor);
   if (status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get size tensor failed.");
-    return GRAPH_FAILED;
+    td.SetDataType(DT_FLOAT);
+    std::vector<int64_t> out_shape;
+    TensorDesc input_td = op.GetInputDesc(0);
+    if (input_td.GetFormat() == FORMAT_NCHW) {
+      out_shape.push_back(batch_dim);
+      out_shape.push_back(channel_dim);
+      out_shape.push_back(-1);
+      out_shape.push_back(-1);
+    } else if (input_td.GetFormat() == FORMAT_NHWC) {
+      out_shape.push_back(batch_dim);
+      out_shape.push_back(-1);
+      out_shape.push_back(-1);
+      out_shape.push_back(channel_dim);
+    } else {
+      std::string error_msg = "Not supported this format";
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
+    }
+    td.SetShape(Shape(out_shape));
+    op.UpdateOutputDesc(output_name, td);
+    return GRAPH_SUCCESS;
   }
 
   const int32_t* size_data = reinterpret_cast<const int32_t*>(size_tensor.GetData());
 
   int64_t size_width = static_cast<int64_t>(size_data[1]);
   int64_t size_height = static_cast<int64_t>(size_data[0]);
-  TensorDesc td = op.GetOutputDesc(output_name);
   std::vector<int64_t> output_shape;
 
   TensorDesc input_td = op.GetInputDesc(0);
