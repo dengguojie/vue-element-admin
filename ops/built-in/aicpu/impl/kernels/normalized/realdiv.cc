@@ -211,8 +211,8 @@ uint32_t RealDivKernel::DoCompute(T *x_addr, T *y_addr, T *z_addr,
   for (int j = 0; j < int(z_dim_size.size()); j++) {
     z_data_size *= z_dim_size[j];
   }
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> map_x(x_addr, x_data_size);
-  Eigen::TensorMap<Eigen::Tensor<T, 1>> map_y(y_addr, y_data_size);
+  Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>> map_x(x_addr, x_data_size);
+  Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>> map_y(y_addr, y_data_size);
   Eigen::TensorMap<Eigen::Tensor<T, 1>> map_z(z_addr, z_data_size);
   Eigen::DSizes<Eigen::DenseIndex, dim> x_pad;
   Eigen::DSizes<Eigen::DenseIndex, dim> y_pad;
@@ -224,8 +224,8 @@ uint32_t RealDivKernel::DoCompute(T *x_addr, T *y_addr, T *z_addr,
     x_bcast[j] = x_dim_size[j] == z_dim_size[j] ? 1 : z_dim_size[j];
     y_bcast[j] = y_dim_size[j] == z_dim_size[j] ? 1 : z_dim_size[j];
   }
-  Eigen::Tensor<T, dim> map_x_broad = map_x.reshape(x_pad).broadcast(x_bcast);
-  Eigen::Tensor<T, dim> map_y_broad = map_y.reshape(y_pad).broadcast(y_bcast);
+  Eigen::Tensor<T, dim, Eigen::RowMajor> map_x_broad = map_x.reshape(x_pad).broadcast(x_bcast);
+  Eigen::Tensor<T, dim, Eigen::RowMajor> map_y_broad = map_y.reshape(y_pad).broadcast(y_bcast);
   auto shard_realdiv = [&](size_t start, size_t end) {
     Eigen::TensorMap<Eigen::Tensor<T, 1>> map_x_shard(
         map_x_broad.data() + start, end - start);
