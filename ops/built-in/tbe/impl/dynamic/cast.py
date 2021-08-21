@@ -104,7 +104,7 @@ def _float32_process(data, dst_type):
     """
     deal with src dtype=float32 case
     """
-    check_list_value = ("int32", "float16", "int64")
+    check_list_value = ("int32", "float16", "int64", "bfloat16")
     para_check.check_dtype(dst_type, check_list_value, param_name="from_fp32_to_dsttype")
     if dst_type == "int32":
         return tbe.cast_to(data, "int32")
@@ -112,13 +112,15 @@ def _float32_process(data, dst_type):
         return tbe.cast_to(data, "float16")
     if dst_type == "int64":
         return tbe.trunc(data, "int64")
+    if dst_type == "bfloat16":
+        return tbe.round(data, "bfloat16")
 
 
 def _float16_process(data, dst_type):
     """
     deal with src dtype=float16 case
     """
-    check_list_value = ("uint8", "int32", "float32")
+    check_list_value = ("uint8", "int32", "float32", "bfloat16")
     para_check.check_dtype(dst_type, check_list_value, param_name="from_fp16_to_dsttype")
     if dst_type == "float32":
         return tbe.cast_to(data, "float32")
@@ -137,6 +139,27 @@ def _float16_process(data, dst_type):
         result = tbe.vmod(data_fp16, tensor_256)
         result = tbe.cast_to(result, "float16")
         return tbe.cast_to(result, "uint8", True)
+
+    if dst_type == "bfloat16":
+        data = tbe.cast_to(data, "float32")
+        return tbe.round(data, "bfloat16")
+
+
+def _bfloat16_process(data, dst_type):
+    """
+    deal with src dtype=bfloat16 case
+    """
+    check_list_value = ("int32", "float32", "float16")
+    para_check.check_dtype(dst_type, check_list_value, param_name="from_bf16_to_dsttype")
+    if dst_type == "float32":
+        return tbe.cast_to(data, "float32")
+
+    if dst_type == "int32":
+        return tbe.trunc(data, "int32")
+
+    if dst_type == "float16":
+        data = tbe.cast_to(data, "float32")
+        return tbe.cast_to(data, "float16")
 
 
 def _int64_process(data, dst_type):
@@ -169,6 +192,8 @@ def _cast_dsttype_conversion(dst_type):
         dst_type = "uint64"
     if dst_type == 12:
         dst_type = "bool"
+    if dst_type == 27:
+        dst_type = "bfloat16"
     return dst_type
 
 
@@ -185,9 +210,9 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
     check_list = []
     if src_type == "float16":
-        check_list = ["float32", "int32", "uint8"]
+        check_list = ["float32", "int32", "uint8", "bfloat16"]
     elif src_type == "float32":
-        check_list = ["float16", "int32", "int64"]
+        check_list = ["float16", "int32", "int64", "bfloat16"]
     elif src_type == "int8":
         check_list = ["float32", "float16", "int32", "uint8"]
     elif src_type == "uint8":
@@ -196,6 +221,8 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
         check_list = ["bool", "uint8", "int8", "float32", "float16", "int64"]
     elif src_type == "int64":
         check_list = ["float32", "int32"]
+    elif src_type == "bfloat16":
+        check_list = ["float32", "int32", "float16"]
 
     if dst_type in check_list:
         return True, ""
@@ -232,6 +259,11 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
         float32->int64
         int64->int32
         int32->int64
+        float32->bfloat16
+        bfloat16->float32
+        bfloat16->int32
+        bfloat16->float16
+        float16->bfloat16
     Parameters
     ----------
     placeholders: list.
@@ -247,7 +279,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """
     src_data_type = data.dtype
     para_check.check_dtype(src_data_type,
-                           ("float16", "float32", "int8", "uint8", "int32", "int64"),
+                           ("float16", "float32", "int8", "uint8", "int32", "int64", "bfloat16"),
                            param_name="input_x")
 
     if src_data_type in ("int8", "uint8"):
@@ -261,6 +293,9 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
 
     if src_data_type == "int32":
         return _int32_process(data, dst_type)
+
+    if src_data_type == "bfloat16":
+        return _bfloat16_process(data, dst_type)
 
     if src_data_type == "int64":
         return _int64_process(data, dst_type)
@@ -295,6 +330,11 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
         float32->int64
         int64->int32
         int32->int64
+        float32->bfloat16
+        bfloat16->float32
+        bfloat16->int32
+        bfloat16->float16
+        float16->bfloat16
     Parameters
     ----------
     input_x : dict
