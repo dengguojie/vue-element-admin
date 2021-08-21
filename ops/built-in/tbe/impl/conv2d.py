@@ -31,6 +31,7 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 
+DYNAMIC_VALUE = -1
 
 @para_check.check_input_type(dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
                              (tuple, list), (tuple, list), (tuple, list), int, str, int, str)
@@ -183,6 +184,9 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                 ["NCHW", "NHWC", "HWCN"], format_w)
         if shape_fm != (-2,) and shape_fm[1] <= 4:
             c0_optim_flg = True
+        # dynamic conv2d doesn't support C04
+        if DYNAMIC_VALUE in shape_fm:
+            c0_optim_flg = False
         if (shape_filter[2] == 1) and (shape_filter[3] == 1):
             c0_optim_flg = False
         # format NC1HWC0_C04 can only be used at first conv layer
@@ -220,8 +224,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                                                     format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
         else:
             # only dynamic_hw or dynamic_batch is supported by dynamic conv2d
-            if (shape_fm == (-2,)) or (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
-                (shape_fm[2] == -1 and shape_fm[3] == -1 and -1 not in shape_fm[:2]):
+            if (shape_fm == (-2,)) or (DYNAMIC_VALUE in shape_fm):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,int8",
                                                        format="NC1HWC0,NC1HWC0",

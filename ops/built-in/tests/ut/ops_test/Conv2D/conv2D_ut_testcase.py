@@ -65,6 +65,8 @@ conv2D_op_select_ut_testcase = [
 ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ weights_format not in ["NCHW", "NHWC", "HWCN"] ===============
 ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'WCNH', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+# ============ dynamic format ===============
+["all", {'ori_shape': (-1, 16, 64, 64), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'NCHW', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"]
 ]
 
 conv2D_dynamic_ut_testcase = [
