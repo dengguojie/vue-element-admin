@@ -464,95 +464,96 @@ class GatherV2():
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_13(half_ub_size, block_id)
 
-                # Tiling mode with batch_dims
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_20):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_CACHED_ALL)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_21):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_22):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_LARGE_ROW)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_23):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_24):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_25):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_26):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_27):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_28):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_29):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_CACHED_ALL)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_30):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_31):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_LARGE_ROW)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_32):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_33):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_34):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_35):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_36):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_37):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_38):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_SMALL_ROW)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_39):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_SMALL_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_40):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_SMALL_PARAMS_ROW, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_41):
-                    with tik_instance.new_stmt_scope():
-                        self._set_mode_paras(MODE_SMALL_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
-                        self.compute_with_batch_dims(half_ub_size, block_id)
+                if self.batch_dims != 0:
+                    # Tiling mode with batch_dims
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_20):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_CACHED_ALL)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_21):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_22):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_LARGE_ROW)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_23):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_24):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_25):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_26):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_27):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_28):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_29):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_CACHED_ALL)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_30):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_31):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_LARGE_ROW)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_32):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_33):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_34):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_35):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_36):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_37):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_38):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_SMALL_ROW)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_39):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_SMALL_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_40):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_SMALL_PARAMS_ROW, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(remain_half_ub_size, block_id)
+                    with tik_instance.if_scope(tiling_mode == TILING_MODE_41):
+                        with tik_instance.new_stmt_scope():
+                            self._set_mode_paras(MODE_SMALL_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self.compute_with_batch_dims(half_ub_size, block_id)
 
     def compute_mode_1(self, half_ub_size, quarter_ub_size, block_id):
         """
