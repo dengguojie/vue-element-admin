@@ -23,7 +23,7 @@ import functools
 from te import tvm
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
-from topi.generic import auto_schedule
+from tbe.dsl import auto_schedule
 
 from impl.batch_matmul import get_op_support_info
 from impl.batch_matmul import batch_matmul_compute

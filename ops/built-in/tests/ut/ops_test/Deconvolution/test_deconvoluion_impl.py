@@ -17,7 +17,7 @@ from op_test_frame.ut import OpUT
 from te import tvm
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
-from topi.generic import auto_schedule
+from tbe.dsl import auto_schedule
 
 ut_case = OpUT("Deconvolution", "impl.deconvolution", "deconvolution")
 

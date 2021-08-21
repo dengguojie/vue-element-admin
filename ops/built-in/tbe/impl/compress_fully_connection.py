@@ -20,7 +20,7 @@ import te.lang.cce
 from te import tvm
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
+from tbe.dsl import auto_schedule
 from impl.util import util_select_op_base
 from impl.util.util_common import cal_mini_l1_size_matmul
 from impl.util.util_select_op_base import gen_param
@@ -536,7 +536,7 @@ def compress_fully_connection(x, w, compress_index, b, offset_w, y,
 
     # Schedule
     with tvm.target.cce():
-        schedule = generic.auto_schedule(result)
+        schedule = auto_schedule(result)
 
     # CCE build
     if b is not None:

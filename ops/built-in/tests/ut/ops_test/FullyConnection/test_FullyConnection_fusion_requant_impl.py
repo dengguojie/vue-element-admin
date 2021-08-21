@@ -3,7 +3,7 @@
 
 import sys
 from te import tvm
-from topi import generic
+from tbe.dsl import auto_schedule
 from impl.fully_connection import fully_connection_compute
 from impl.ascend_requant import ascend_requant_compute
 from te import platform as cceconf
@@ -76,7 +76,7 @@ def test_fully_connection_requant_fusion(x, w, b, offset_w, y, num_output, trans
     res = ascend_requant_compute(res, tensor_deq, y, relu_flag=False)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = auto_schedule(res)
 
     if b is not None:
         tensor_list = [tensor_x, tensor_w, tensor_b, tensor_deq, res]

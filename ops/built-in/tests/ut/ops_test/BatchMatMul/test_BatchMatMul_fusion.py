@@ -4,7 +4,7 @@ import te.platform as tbe_platform
 from batchmatmul_fusion_case import batchmatmul_ut_fusion_case
 from tbe.dsl.static_schedule import cce_build_code
 from te.tvm.target import cce
-from topi.generic import auto_schedule
+from tbe.dsl import auto_schedule
 from te import tvm
 from te.utils import shape_util
 from impl.batch_matmul import batch_matmul_compute

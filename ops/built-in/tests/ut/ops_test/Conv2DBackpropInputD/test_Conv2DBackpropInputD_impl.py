@@ -12,7 +12,7 @@ from op_test_frame.ut import OpUT
 from te import tvm
 from te.platform import cce_conf
 from te.tvm.target import cce
-from topi.generic import auto_schedule
+from tbe.dsl import auto_schedule
 from te.lang.cce import cce_build_code
 from impl.trans_data import trans_data_compute
 from impl.conv2d_backprop_input_d import conv2d_backprop_input_d_compute
@@ -238,7 +238,7 @@ def _gen_conv2d_bp_input_920A_case():
 
 _gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
-_gen_conv2d_bp_input_920A_case()
+#_gen_conv2d_bp_input_920A_case()
 
 
 if __name__ == "__main__":

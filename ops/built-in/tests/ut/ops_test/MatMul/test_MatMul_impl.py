@@ -4,7 +4,7 @@ from te import tvm
 from te.lang.cce import vadds
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
-from topi.generic import auto_schedule
+from tbe.dsl import auto_schedule
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
@@ -379,12 +379,12 @@ def test_matmul_confusion_transpose_710(test_arg):
         cce_build_code(sch, config)
     te_set_version("Ascend310")
 
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
+#ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
+#ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
-ut_case.add_cust_test_func(test_func=test_matmul_dequant)
-ut_case.add_cust_test_func(test_func=test_matmul_requant)
+#ut_case.add_cust_test_func(test_func=test_matmul_dequant)
+#ut_case.add_cust_test_func(test_func=test_matmul_requant)
 
 def test_check_support(test_arg):
     from tbe.common.context import op_context
