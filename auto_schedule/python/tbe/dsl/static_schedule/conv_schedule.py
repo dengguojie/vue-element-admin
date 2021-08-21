@@ -2826,6 +2826,8 @@ class CceConvOp:
                         continue
                     if lop["op"] == "input_ub":
                         quant_input = tensor_map["quant_input"]
+                        if ("c_out" not in quant_input.op.attrs) or ("c1_transform" not in quant_input.op.attrs):
+                            err_man.raise_err_specific("conv2d", "quant input not has c_out or c1_transform attr")
                         if quant_input.op.attrs["c_out"].value % quant_input.op.attrs["c1_transform"].value != 0:
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
                             self._lhisi_dequant_quant_para["quant_padding"] = True
@@ -3299,6 +3301,8 @@ class CceConvOp:
                 if _body_ops_compute_at_flag(lop):
                     if lop["op"] == "input_ub":
                         quant_input = tensor_map["quant_input"]
+                        if ("c_out" not in quant_input.op.attrs) or ("c1_transform" not in quant_input.op.attrs):
+                            err_man.raise_err_specific("conv2d", "quant input not has c_out or c1_transform attr")
                         if quant_input.op.attrs["c_out"].value % quant_input.op.attrs["c1_transform"].value != 0:
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
                             self._lhisi_dequant_quant_para["quant_padding"] = True

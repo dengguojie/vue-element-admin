@@ -34,5 +34,9 @@ ut_case.add_case("Ascend910A",
                  gen_ascend_quant_case((-1,-1,-1,16,16),(-1,-1,-1,16,32),(-1,-1,-1),(-1,-1,-1),
                                       ((1, None),(1, None),(1, None),(16, 16),(16, 16)),((1, None),(1, None),(1, None),(16, 16),(32, 32)),
                                       "FRACTAL_NZ","ND","float16",5.5,-4.0,True,"Round","ascend_quant_case_5", "success"))
+ut_case.add_case("Ascend910A",
+                 gen_ascend_quant_case((-1,32,-1,16,16),(-1,32,-1,16,32),(-1,-1,-1),(-1,-1,-1),
+                                      ((1, None),(32, 32),(1, None),(16, 16),(16, 16)),((1, None),(32, 32),(1, None),(16, 16),(32, 32)),
+                                      "FRACTAL_NZ","ND","float16",5.5,-4.0,True,"Round","ascend_quant_case_6", "success"))
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
