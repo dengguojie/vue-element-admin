@@ -125,8 +125,8 @@ bool CompareResult(complex<double> output[], complex<double> expect_output[], ui
       relative_imag_error = absolute_imag_error / std::fabs(expect_output[i].imag());
     }
 
-    if ((absolute_real_error > 1e-12) && (relative_real_error > 1e-12) ||
-        (absolute_imag_error > 1e-12) && (relative_imag_error > 1e-12)) {
+    if ((absolute_real_error > 10e-8) && (relative_real_error > 10e-8) ||
+        (absolute_imag_error > 10e-8) && (relative_imag_error > 10e-8)) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
       std::cout << ", expect_output[" << i << "] = ";
