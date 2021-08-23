@@ -4,7 +4,7 @@ import sys
 from op_test_frame.ut import BroadcastOpUT
 import numpy as np
 
-ut_case = BroadcastOpUT("fill_v2_d")
+ut_case = BroadcastOpUT("fill_v2d", "impl.fill_v2d", "fill_v2_d")
 
 # [TODO] coding expect function here
 def calc_expect_func(output_z, value, shape):

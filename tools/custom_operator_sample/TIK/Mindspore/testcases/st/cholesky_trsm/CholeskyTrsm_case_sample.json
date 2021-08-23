@@ -6,6 +6,7 @@
         "calc_expect_func_file": "",
         "input_desc": [
             {
+                "name": "x1",
                 "format": "NCHW",
                 "type": [
                     "float32"
@@ -27,6 +28,7 @@
         ],
         "output_desc": [
             {
+                "name": "y",
                 "format": "NCHW",
                 "type": [
                     "float32"

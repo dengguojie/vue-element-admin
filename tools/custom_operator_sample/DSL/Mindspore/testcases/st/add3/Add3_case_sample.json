@@ -3,7 +3,9 @@
     "st_mode": "ms_python_train",
     "op": "Add3",
     "calc_expect_func_file": "",
-    "input_desc": [{
+    "input_desc": [
+        {
+            "name": "input1",
             "format": "NCHW",
             "type": [
                 "float16",
@@ -23,6 +25,7 @@
             ]
         },
         {
+            "name": "input2",
             "format": "NCHW",
             "type": [
                 "float16",
@@ -42,15 +45,17 @@
             ]
         }
     ],
-    "output_desc": [{
-        "format": "NCHW",
-        "type": [
-            "float16",
-            "float32"
-        ],
-        "shape": [
-            3
-        ]
+    "output_desc": [
+        {
+            "name": "sum",
+            "format": "NCHW",
+            "type": [
+                "float16",
+                "float32"
+            ],
+            "shape": [
+                3
+            ]
     }],
     "attr": [{
         "name": "const_bias",
