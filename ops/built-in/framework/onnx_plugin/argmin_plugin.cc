@@ -45,11 +45,13 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
       keep_dims = attr.i();
     }
     if (attr.name() == "select_last_index" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
-      OP_LOGW(op_dest.GetName().c_str(), "select_last_index should be 0, but now it's 1");
+      ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "select_last_index should be 0, but now it's 1");
+      return FAILED;
     }
   }
-
-  op_dest.SetAttr("dimension", axis);
+  std::vector<int64_t> value_dims = {};
+  ge::Tensor tensor = Scalar2Tensor(axis, value_dims, ge::DT_INT32);
+  op_dest.SetAttr("dimension", tensor);
   op_dest.SetAttr("keep_dims", keep_dims);
   return SUCCESS;
 }
@@ -60,7 +62,7 @@ static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
     return FAILED;
   }
-  int axis = 0;
+  ge::Tensor axis;
   if (op.GetAttr("dimension", axis) != SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get dimension from op failed");
     return FAILED;
@@ -69,20 +71,19 @@ static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
-
-  auto argMinD = op::ArgMinD().set_input_x(data0).set_attr_dimension(axis).set_attr_dtype(ge::DT_INT64);
+  
+  auto const_op = op::Const("const_data").set_attr_value(axis);
+  auto argMin = op::ArgMin().set_input_x(data0).set_input_dimension(const_op).set_attr_dtype(ge::DT_INT32);
 
   if (keep_dims == 1) {
     std::vector<int64_t> dims = {1};
-    ge::Shape shape(dims);
-    TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_INT32);
-    ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(&axis), sizeof(ge::DT_INT32));
-    auto data1 = op::Const("data1").set_attr_value(tensor);
+    ge::Tensor tensor1 = Scalar2Tensor(keep_dims, dims, ge::DT_INT32);
+    auto data1 = op::Const("data1").set_attr_value(tensor1);
 
-    auto expandDims = op::ExpandDims().set_input_x(argMinD).set_input_axis(data1);
+    auto expandDims = op::ExpandDims().set_input_x(argMin).set_input_axis(data1);
     outputs.emplace_back(expandDims, vector<std::size_t>{0});
   } else {
-    outputs.emplace_back(argMinD, vector<std::size_t>{0});
+    outputs.emplace_back(argMin, vector<std::size_t>{0});
   }
 
   graph.SetInputs(inputs).SetOutputs(outputs);

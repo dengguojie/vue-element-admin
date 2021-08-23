@@ -1,14 +1,13 @@
-tr:t
-4
-dataresult"ArgMin*
+wdq:m
+/
+dataY"ArgMin*
 axis *
-keepdims 
-test-modelZ
+keepdims test_argmin_1Z
 data
 
 
-b
-result
+b
+Y
 
 
 B
