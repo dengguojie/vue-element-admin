@@ -61,6 +61,7 @@ set(_common_srcs
   common/pattern_fusion_util.cc
   common/lx_fusion_func.cc
   common/quant_host_cpu_op_common.cc
+  common/conv2d_slice_info_cal_base.cc
 )
 
 set(_aicore_fusion_srcs

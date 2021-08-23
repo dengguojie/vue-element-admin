@@ -19,12 +19,15 @@
  * \brief  tbe conv2d + ascend_dequants16 ops fusion pattern
  */
 #include "tbe_conv_dequantS16_pass.h"
+#include <memory>
 #include <string>
 #include <vector>
+#include <memory>
 #include "graph/utils/tensor_utils.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "conv2d_slice_info_cal_base.h"
 
 namespace fe {
 
@@ -223,6 +226,18 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
     }
   }
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeConvDequantS16FusionPass!");
+  return SUCCESS;
+}
+
+Status ConvDequantS16FusionPass::CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info)
+{
+  OP_LOGD(fused_op_type_.c_str(), "start calc slice info.");
+  std::unique_ptr<ConvSliceInfoCalBase> pConvSliceInfoCal = nullptr;
+  pConvSliceInfoCal.reset(new (std::nothrow) ConvSliceInfoCalBase());
+  CONV_RET_IF_SMART_PTR_IS_NULL(pConvSliceInfoCal);
+  Status ret = pConvSliceInfoCal->ConvCalcFusionOpSliceInfo(fusion_nodes, op_slice_info, fused_op_type_);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(fused_op_type_.c_str(), "calc fusion op slice info failed."), return FAILED);
+  OP_LOGD(fused_op_type_.c_str(), "end calc slice info.");
   return SUCCESS;
 }
 

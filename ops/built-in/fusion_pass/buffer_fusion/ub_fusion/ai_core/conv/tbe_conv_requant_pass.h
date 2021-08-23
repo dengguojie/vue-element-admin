@@ -17,6 +17,7 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV_TBE_CONV_REQUANT_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV_TBE_CONV_REQUANT_PASS_H_
 
+#include "common/lxfusion_json_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 
 namespace fe {
@@ -25,6 +26,8 @@ public:
   ConvRequantFusionPass() {}
 
   ~ConvRequantFusionPass() {}
+
+  Status CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info) override;
 
 protected:
   /*

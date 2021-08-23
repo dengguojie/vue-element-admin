@@ -17,9 +17,11 @@
 #include "tbe_conv_bnreduce_fusion_pass.h"
 #include <string>
 #include <vector>
+#include <memory>
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "conv2d_slice_info_cal_base.h"
 
 namespace fe {
 using std::vector;
@@ -86,7 +88,7 @@ vector<BufferFusionPattern *> ConvBnreduceFusionPass::DefinePatterns() {
  * @return bool: fusion status ok or not.
  */
 Status ConvBnreduceFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                 vector<ge::NodePtr> &fusion_nodes) {
+                                              vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do ConvBNReduce!");
   fusion_nodes = GetMatchedNodes(mapping);
   // multi input node can not be fused except head node
@@ -102,6 +104,19 @@ Status ConvBnreduceFusionPass::GetFusionNodes(const BufferFusionMapping &mapping
   OP_LOGD(kFusedOpType.c_str(), "End to do ConvBNReduce!");
   return SUCCESS;
 }
+
+Status ConvBnreduceFusionPass::CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info)
+{
+  OP_LOGD(fused_op_type_.c_str(), "start calc slice info.");
+  std::unique_ptr<ConvSliceInfoCalBase> pConvSliceInfoCal = nullptr;
+  pConvSliceInfoCal.reset(new (std::nothrow) ConvSliceInfoCalBase());
+  CONV_RET_IF_SMART_PTR_IS_NULL(pConvSliceInfoCal);
+  Status ret = pConvSliceInfoCal->ConvCalcFusionOpSliceInfo(fusion_nodes, op_slice_info, fused_op_type_);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(fused_op_type_.c_str(), "calc fusion op slice info failed."), return FAILED);
+  OP_LOGD(fused_op_type_.c_str(), "end calc slice info.");
+  return SUCCESS;
+}
+
 REGISTER_BUFFER_FUSION_PASS("TbeConvBnreduceFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
                             ConvBnreduceFusionPass);
 }  // namespace fe

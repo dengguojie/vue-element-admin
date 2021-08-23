@@ -23,6 +23,7 @@ from te.utils.error_manager import error_manager_util
 from te.utils import cce
 from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
+from impl.util import util_conv2d
 
 
 def _depthwise_conv2d_fusion_para(inputs, outputs):
@@ -341,63 +342,8 @@ def get_op_support_info(x,
     -------
     None
     """
-    slice_info = {
-        "_op_slice_info": {
-            "splitMaps": [{
-                "inputList": [{
-                    "idx": 0,
-                    "axis": [0],
-                    "headOverLap": [-1],
-                    "tailOverLap": [-1]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [0]
-                }]
-            }, {
-                "inputList": [{
-                    "idx": 0,
-                    "axis": [2],
-                    "headOverLap": [0],
-                    "tailOverLap": [0]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [2]
-                }]
-            }, {
-                "inputList": [{
-                    "idx": 0,
-                    "axis": [3],
-                    "headOverLap": [0],
-                    "tailOverLap": [0]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [3]
-                }]
-            }, {
-                "inputList": [{
-                    "idx": 1,
-                    "axis": [1],
-                    "headOverLap": [-1],
-                    "tailOverLap": [-1]
-                }],
-                "outputList": [{
-                    "idx": 0,
-                    "axis": [1]
-                }]
-            }],
-            "reduceMaps": [],
-            "l1FusionEnable":
-            2,
-            "minTbeL1Space":
-            0
-        }
-    }
-    if bias:
-        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
-        slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+    bias_idx = 2
+    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx) 
 
     # >>> start: process for dynamic shape
     shape_x = x.get("ori_shape")

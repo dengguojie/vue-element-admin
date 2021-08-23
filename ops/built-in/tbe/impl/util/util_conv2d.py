@@ -8,6 +8,7 @@ provide common function used by conv2d
 """
 
 import math
+import json
 from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
@@ -698,3 +699,36 @@ def check_soc_and_dtype(op_params):
                                      f"input tensor dtype combination should be in {list(support_dtype)}",
                                      type_list)
         # <<< end: data type support check
+
+
+def get_op_support_info_static_common(bias, bias_idx):
+    """
+    algorithm: get_op_support_info_static_common
+    Notice
+    ------
+    get the conv2d common static split info
+    Parameters
+    ----------
+    bias: dict with keys(shape and dtype) or None
+    input bias tensor
+    Returns
+    -------
+    slice info
+    """
+    slice_info = {"_op_slice_info":
+                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],
+                                  "outputList": [{"idx": 0, "axis": [0]}]},
+                                 {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],
+                                  "outputList": [{"idx": 0, "axis": [2]}]},
+                                 {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],
+                                  "outputList": [{"idx": 0, "axis": [3]}]},
+                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],
+                                  "outputList": [{"idx": 0, "axis": [1]}]}],
+                   "reduceMaps": [],
+                   "l1FusionEnable": 2,
+                   "minTbeL1Space": 0}}
+    if bias:
+        bias_input = [{"idx": bias_idx, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
+        slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+
+    return slice_info

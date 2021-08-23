@@ -142,7 +142,13 @@ conv2D_ut_precision_testcase = [
         {'shape':(1, 1, 1, 1, 16), 'ori_shape':(1, 16, 1, 1), "format": "NC1HWC0",  'ori_format': 'NCHW', "param_type": "output", 'dtype': 'int32'},
         (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, "success"],
 ]
+
 op_support_info_testcase=[
     ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
     ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 1, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (16), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+]
+
+op_support_info_conv2d_compress_testcase=[
+    ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, {"dtype": "int32"}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+    ["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 1, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {"dtype": "int32"}, {'ori_shape': (16), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 ]

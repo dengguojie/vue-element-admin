@@ -22,6 +22,7 @@
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV_TBE_CONV_DEQUANT_VADD_RELU_PASS_H_
 
 #include <vector>
+#include "common/lxfusion_json_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 
 namespace fe {
@@ -30,6 +31,7 @@ class ConvDequantVaddReluFusionPass : public BufferFusionPassBase {
  public:
   ConvDequantVaddReluFusionPass() {}
   ~ConvDequantVaddReluFusionPass() {}
+  Status CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info) override;
 
  protected:
   /*
@@ -52,6 +54,8 @@ class ConvDequantVaddReluFusionPass : public BufferFusionPassBase {
    * @return bool: fusion status ok or not.
    */
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
+ private:
+  const string fused_op_type_ = "FusedConv2DDequantVaddReluOp";
 };
 }  // namespace fe
 

@@ -5097,6 +5097,147 @@ IMPLEMT_VERIFIER(Conv2DCompress, Conv2DCompressVerify) {
   return GRAPH_SUCCESS;
 }
 
+/*！
+ * @brief provide Conv2DCompress operator slice data
+ * @param Conv2DCompress Operator type
+ * @param Conv2DCompressInferDataSlice slice data function
+ * @return Status The processing flow result.
+ */
+IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DCompress InferDataSlice");
+  // get input h/w, filter h/w, pad_h, pad_w, stride_h, stride_w, dilation_h, dilation_w
+  auto x_tensor = op.GetInputDesc("x");
+  auto w_tensor = op.GetInputDesc("filter_compress");
+  auto x_shape = x_tensor.GetOriginShape().GetDims();
+  auto w_shape = w_tensor.GetOriginShape().GetDims();
+
+  static uint32_t TENSOR_SHAPE_SIZE = 4;
+  static uint32_t ATTR_SHAPE_SIZE = 4;
+  bool bRet = x_shape.size() < TENSOR_SHAPE_SIZE || w_shape.size() < TENSOR_SHAPE_SIZE;
+  CHECK(bRet, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "tensor size less then 4."), return GRAPH_FAILED);
+
+  auto x_format = x_tensor.GetOriginFormat();
+  auto w_format = w_tensor.GetOriginFormat();
+
+  std::vector<int32_t> stride_list;
+  std::vector<int32_t> dilation_list;
+  std::vector<int32_t> pad_list;
+  bRet = op.GetAttr("strides", stride_list) != GRAPH_SUCCESS || \
+         op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS || \
+         op.GetAttr("pads", pad_list) != GRAPH_SUCCESS;
+  CHECK(bRet, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attr failed."), return GRAPH_FAILED);
+  bRet = stride_list.size() < ATTR_SHAPE_SIZE || \
+         dilation_list.size() < ATTR_SHAPE_SIZE || \
+         pad_list.size() < ATTR_SHAPE_SIZE;
+  CHECK(bRet, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "attrs size less then 4."), return GRAPH_FAILED);
+
+  int32_t ih = 0;
+  int32_t iw = 0;
+  int32_t kh = 0;
+  int32_t kw = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+  int32_t dilh = 0;
+  int32_t dilw = 0;
+  int32_t padt = pad_list[0];
+  int32_t padl = pad_list[2];
+
+  if (x_format == FORMAT_NCHW) {
+    ih = x_shape[2];
+    iw = x_shape[3];
+    strh = stride_list[2];
+    strw = stride_list[3];
+    dilh = dilation_list[2];
+    dilw = dilation_list[3];
+  } else if (x_format == FORMAT_NHWC) {
+    ih = x_shape[1];
+    iw = x_shape[2];
+    strh = stride_list[1];
+    strw = stride_list[2];
+    dilh = dilation_list[1];
+    dilw = dilation_list[2];
+  } else {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "x format is valid, the error x format is: %d", x_format);
+    return GRAPH_FAILED;
+  }
+
+  if (w_format == FORMAT_NCHW) {
+    kh = w_shape[2];
+    kw = w_shape[3];
+  } else if (w_format == FORMAT_NHWC) {
+    kh = w_shape[1];
+    kw = w_shape[2];
+  } else if (w_format == FORMAT_HWCN) {
+    kh = w_shape[0];
+    kw = w_shape[1];
+  } else {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "weight format is valid, the error w format is: %d", w_format);
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+  bool have_slice = false;
+  vector<int> new_pad_lists = pad_list;
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      have_slice = true;
+      if (i == 2) {
+        vector<int64_t> ih_slice;
+        bool top_add_pad = false;
+        bool bom_add_pad = false;
+        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
+        OP_LOGD(op.GetName().c_str(), "conv2d h axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
+                ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        if (!top_add_pad) {
+          new_pad_lists[0] = 0;
+        }
+        if (!bom_add_pad) {
+          new_pad_lists[1] = 0;
+        }
+        x_data_slice[i] = ih_slice;
+      } else if (i == 3) {
+        vector<int64_t> iw_slice;
+        bool left_add_pad = false;
+        bool right_add_pad = false;
+        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
+        OP_LOGD(op.GetName().c_str(), "conv2d w axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
+                iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        if (!left_add_pad) {
+          new_pad_lists[2] = 0;
+        }
+        if (!right_add_pad) {
+          new_pad_lists[3] = 0;
+        }
+        x_data_slice[i] = iw_slice;
+      } else {
+        x_data_slice[i] = y_data_slice[i];
+      }
+    }
+  }
+
+  op.SetAttr("pads", new_pad_lists);
+  OP_LOGD(op.GetName().c_str(), "Conv2DCompress new pad lists is [%d, %d, %d, %d]", new_pad_lists[0],
+          new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
+
+  if (have_slice == false) {
+    return GRAPH_FAILED;
+  }
+  if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "Calc Conv2DCompress InferDataSlice end!");
+  return GRAPH_SUCCESS;
+}
+
+INFER_DATA_SLICE_FUNC_REG(Conv2DCompress, Conv2DCompressInferDataSlice);
 INFER_FUNC_REG(Conv2DCompress, Conv2DCompressInfer);
 VERIFY_FUNC_REG(Conv2DCompress, Conv2DCompressVerify);
 

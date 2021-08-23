@@ -21,9 +21,11 @@
 #include "tbe_conv_dequant_vadd_relu_pass.h"
 #include <string>
 #include <vector>
+#include <memory>
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "conv2d_slice_info_cal_base.h"
 
 namespace fe {
 
@@ -163,6 +165,18 @@ Status ConvDequantVaddReluFusionPass::GetFusionNodes(const BufferFusionMapping &
     fusion_nodes.clear();
   }
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeConvDequantVaddRelu!");
+  return SUCCESS;
+}
+
+Status ConvDequantVaddReluFusionPass::CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info)
+{
+  OP_LOGD(fused_op_type_.c_str(), "start calc slice info.");
+  std::unique_ptr<ConvSliceInfoCalBase> pConvSliceInfoCal = nullptr;
+  pConvSliceInfoCal.reset(new (std::nothrow) ConvSliceInfoCalBase());
+  CONV_RET_IF_SMART_PTR_IS_NULL(pConvSliceInfoCal);
+  Status ret = pConvSliceInfoCal->ConvCalcFusionOpSliceInfo(fusion_nodes, op_slice_info, fused_op_type_);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(fused_op_type_.c_str(), "calc fusion op slice info failed."), return FAILED);
+  OP_LOGD(fused_op_type_.c_str(), "end calc slice info.");
   return SUCCESS;
 }
 

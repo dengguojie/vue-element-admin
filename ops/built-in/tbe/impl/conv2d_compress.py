@@ -17,6 +17,7 @@ conv2d_compress
 """
 from __future__ import absolute_import
 import math
+import json
 from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -308,3 +309,49 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
     }
 
     tbe.cce_build_code(sch, config)
+
+def get_op_support_info(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations,
+                        groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
+    """
+    algorithm: get_op_support_info
+
+    Notice
+    ------
+    get the conv2d compress split info
+
+    Parameters
+    ----------
+    inputs: dict with keys(shape and dtype)
+        input 4d feature map tensor
+    weight_compress: dict with keys(shape and dtype)
+        input 4d weight tensor
+    compress_index: dict with keys(shape and dtype)
+        input ND compress index tensor
+    outputs: dict with keys(shape and dtype)
+        output tensor, dtype must be assigned
+    bias: dict with keys(shape and dtype) or None
+        input bias tensor
+    offset_w: keys(shape and dtype) or None
+        input offset_w tensor
+    strides: tuple/list of 4 integers
+        stride on H/W, format sensitive
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right]
+    dilations: tuple/list of 4 integers
+        dilation on H/W, format sensitive
+    groups: int
+        param for group covolution
+    data_format: string
+        input data format
+    offset_x: int
+        offset of fmap
+    kernel_name: str
+        kernel name, default value is "conv2dcompress"
+
+    Returns
+    -------
+    None
+    """
+    bias_idx = 3
+    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
+    return json.dumps(slice_info)

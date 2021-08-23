@@ -22,6 +22,7 @@
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV_CONV2D_RELUV2_PASS_H_
 
 #include <vector>
+#include "common/lxfusion_json_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 
 namespace fe {
@@ -34,6 +35,7 @@ class TbeConv2DReluv2Pass : public BufferFusionPassBase {
   ~TbeConv2DReluv2Pass() {
   }
 
+  Status CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info) override;
  protected:
   vector<BufferFusionPattern*> DefinePatterns() override;
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
