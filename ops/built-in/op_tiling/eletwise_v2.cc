@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include "graph/utils/op_desc_utils.h"
 #include "vector_tiling.h"
 #include "error_log.h"
 
@@ -59,22 +60,6 @@ const int64_t GetElementByType(const ge::DataType& dtype) {
 }
 
 bool Eletwise::Init() {
-  V_OP_TILING_CHECK((op_paras.GetInputsSize() != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
-                    return false);
-  in_type = op_paras.GetInputDesc(0).GetDataType();
-  V_OP_TILING_CHECK((op_paras.GetOutputsSize() != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
-                    return false);
-  out_type = op_paras.GetOutputDesc(0).GetDataType();
-  int64_t type_size = GetElementByType(out_type);
-  for (size_t i = 1; i < op_paras.GetOutputsSize(); i++) {
-    int64_t cur_type_size = GetElementByType(op_paras.GetOutputDesc(i).GetDataType());
-    if (cur_type_size > type_size) {
-      out_type = op_paras.GetOutputDesc(i).GetDataType();
-      type_size = cur_type_size;
-    }
-  }
   V_CHECK_GE(flag_info.size(), 1,
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info error"),
              return false);
@@ -90,7 +75,7 @@ bool Eletwise::Init() {
 }
 
 bool Eletwise::GenerateOutputShape() {
-  const std::vector<int64_t>& shapes = op_paras.GetOutputDesc(0).GetShape().GetDims();
+  const std::array<int64_t, B_MAX_DIM_LEN>& shapes = input_shapes[0];
   int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1LL, std::multiplies<int64_t>());
   V_CHECK_LE(fused_output, INT32_MAX,
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The output shape is too large"),
@@ -276,29 +261,62 @@ bool Eletwise::DoTiling() {
 }
 
 bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes,
-                     size_t& dim_len, bool& is_pure_elementwise,
-                     const std::string& op_type, const ge::Operator& op_paras) {
-  size_t input_num = op_paras.GetInputsSize();
-  V_CHECK_LE(input_num, B_MAX_INPUT_NUMS,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 70 input are not supported"),
-             return false);
-  for (size_t i = 0; i < input_num; i++) {
-    input_shapes[i].fill(1LL);
-    if (op_paras.GetInputDesc(i).GetShape().GetDimNum() > dim_len) {
-      dim_len = op_paras.GetInputDesc(i).GetShape().GetDimNum();
+                     size_t& dim_len, const size_t input_num, const std::string& op_type,
+                     const ge::Operator& op_paras) {
+    V_CHECK_LE(input_num, B_MAX_INPUT_NUMS,
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 70 input are not supported"),
+               return false);
+    for (size_t i = 0; i < input_num; i++) {
+        input_shapes[i].fill(1LL);
+        if (ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum() >
+            dim_len) {
+            dim_len = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum();
+        }
     }
-  }
-  V_CHECK_LE(dim_len, B_MAX_DIM_LEN,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 16 dims are not supported"),
-             return false);
-  for (size_t i = 0; i < input_num; i++) {
-    const ge::Shape& shape = op_paras.GetInputDesc(i).GetShape();
-    size_t cur_dim_len = shape.GetDimNum();
-    size_t start_index = dim_len - cur_dim_len;
-    for (size_t j = 0; j < cur_dim_len; j++) {
-      input_shapes[i][start_index++] = shape.GetDim(j);
+    V_CHECK_LE(dim_len, B_MAX_DIM_LEN,
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 16 dims are not supported"),
+               return false);
+    for (size_t i = 0; i < input_num; i++) {
+        const ge::GeShape& shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape();
+        size_t cur_dim_len = shape.GetDimNum();
+        size_t start_index = dim_len - cur_dim_len;
+        for (size_t j = 0; j < cur_dim_len; j++) {
+            input_shapes[i][start_index++] = shape.GetDim(j);
+        }
     }
-  }
+    return true;
+}
+
+bool GetType(const std::string& op_type, const ge::Operator& op_paras, ge::DataType& in_type, ge::DataType& out_type,
+             size_t& max_output_shape_size){
+    V_OP_TILING_CHECK((op_paras.GetInputsSize() != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
+                      return false);
+    in_type = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(0)->GetDataType();
+    V_OP_TILING_CHECK((op_paras.GetOutputsSize() != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
+                      return false);
+    out_type = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->GetDataType();
+    int64_t type_size = GetElementByType(out_type);
+    max_output_shape_size = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->MutableShape().GetDimNum();
+    for (size_t i = 1; i < op_paras.GetOutputsSize(); i++) {
+        int64_t cur_type_size = GetElementByType(ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType());
+        if (cur_type_size > type_size) {
+            out_type = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType();
+            type_size = cur_type_size;
+        }
+        if (ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->MutableShape().GetDimNum() > max_output_shape_size) {
+            max_output_shape_size = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->MutableShape().GetDimNum();
+        }
+    }
+    return true;
+}
+
+bool CheckInputs(const std::string& op_type,
+                 std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes,
+                 const size_t dim_len,
+                 const size_t input_num,
+                 bool& is_pure_elementwise){
   for (size_t i = 0; i < dim_len; i++) {
     int64_t max_output = input_shapes[0][i];
     for (size_t j = 1; j < input_num; j++) {
@@ -347,32 +365,23 @@ bool MatchConstShape(const std::string& op_type,
   return true;
 }
 
-bool CalcConstKey(const std::string& op_type, const ge::Operator& op_paras,
+bool CalcConstKey(const std::string& op_type, const int64_t input_num,
                   const nlohmann::json& op_info, const bool is_support_broadcast,
-                  int64_t& key, int64_t& block_dims) {
+                  int64_t& key, int64_t& block_dims,
+                  std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes,
+                  const size_t dim_len) {
   OP_LOGI(op_type.c_str(), "tiling running");
   size_t key_index = 0;
   bool ret = true;
   if (is_support_broadcast) {
-    bool verify_input = op_paras.GetInputsSize() == 2;
+    bool verify_input = input_num == 2;
     V_OP_TILING_CHECK(verify_input,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const unfold only support 2 dims"),
                       return false);
-    std::vector<int64_t> input_shape_x = op_paras.GetInputDesc(0).GetShape().GetDims();
-    std::vector<int64_t> input_shape_y = op_paras.GetInputDesc(1).GetShape().GetDims();
-    size_t shape_len_x = input_shape_x.size();
-    size_t shape_len_y = input_shape_y.size();
-    size_t max_len = shape_len_x > shape_len_y ? shape_len_x : shape_len_y;
-    if (shape_len_x < max_len) {
-      input_shape_x.insert(input_shape_x.begin(), max_len - shape_len_x, 1);
-    } else if (shape_len_y < max_len) {
-      input_shape_y.insert(input_shape_y.begin(), max_len - shape_len_y, 1);
-    }
-    V_CHECK_EQ(input_shape_x.size(), input_shape_y.size(),
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape must be same"),
-               return false);
-    std::vector<int64_t> const_shapes(input_shape_x.size(), 0);
-    for (size_t i = 0; i < input_shape_x.size(); i++) {
+    std::array<int64_t, B_MAX_DIM_LEN> input_shape_x = input_shapes[0];
+    std::array<int64_t, B_MAX_DIM_LEN> input_shape_y = input_shapes[1];
+    std::vector<int64_t> const_shapes(dim_len, 0);
+    for (size_t i = 0; i < dim_len; i++) {
       const_shapes[i] = static_cast<uint64_t>(input_shape_x[i]) & static_cast<uint64_t>(input_shape_y[i]);
     }
     ret = MatchConstShape(op_type, op_info, const_shapes, key_index);
@@ -396,7 +405,7 @@ bool CalcConstKey(const std::string& op_type, const ge::Operator& op_paras,
 bool IsEmptyTensor(const std::string& op_type, const ge::Operator& op_paras) {
   bool has_zero = false;
   for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
-    int64_t output_size = op_paras.GetOutputDesc(i).GetShape().GetShapeSize();
+    int64_t output_size = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->MutableShape().GetShapeSize();
     if (output_size == 0) {
       has_zero = true;
     } else {
@@ -408,7 +417,7 @@ bool IsEmptyTensor(const std::string& op_type, const ge::Operator& op_paras) {
   return has_zero;
 }
 
-bool WriteConstTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool WriteConstTiling(const std::string& op_type, const nlohmann::json& op_info,
                       utils::OpRunInfo& run_info, const int64_t& key, const int64_t& block_dims) {
   OP_LOGD(op_type.c_str(), "tiling key:%lld", key);
   OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
@@ -422,6 +431,20 @@ bool WriteConstTiling(const std::string& op_type, const ge::Operator& op_paras, 
 bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                     utils::OpRunInfo& run_info) {
   std::array<std::array<int64_t, utils::B_MAX_DIM_LEN>, utils::B_MAX_INPUT_NUMS> input_shapes{};
+  ge::DataType in_type;
+  ge::DataType out_type;
+  size_t max_output_shape_size{1};
+  bool ret = utils::GetType(op_type, op_paras, in_type, out_type, max_output_shape_size);
+  size_t dim_len = 0;
+  int64_t input_num = op_paras.GetInputsSize();
+  ret = ret&& utils::CompletedShapes(input_shapes, dim_len, input_num, op_type, op_paras);
+  bool is_empty_tensor = utils::IsEmptyTensor(op_type, op_paras);
+  bool is_multi_output = op_paras.GetOutputsSize() > 1;
+  bool is_pure_elementwise = true;
+  ret = ret&& utils::CheckInputs(op_type, input_shapes, dim_len, input_num, is_pure_elementwise);
+  if (!ret) {
+      return ret;
+  }
   std::vector<bool> flag_info;
   try {
     flag_info = op_info.at("_flag_info").get<std::vector<bool>>();
@@ -432,28 +455,28 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   bool is_const = false;
   bool is_support_broadcast = true;
   bool use_special_pattern = true;
-  if (flag_info.size() > 2) {
+  if (flag_info.size() > 3) {
     is_const = flag_info[1];
     is_support_broadcast = flag_info[2];
     use_special_pattern = flag_info[3];
   }
-  size_t dim_len = 0;
-  bool is_pure_elementwise = true;
-  bool ret = utils::CompletedShapes(input_shapes, dim_len, is_pure_elementwise, op_type, op_paras);
   if (is_const) {
     int64_t key{0};
     int64_t block_dims{1};
-    ret = ret && utils::CalcConstKey(op_type, op_paras, op_info, is_support_broadcast, key, block_dims);
-    ret = ret && utils::WriteConstTiling(op_type, op_paras, op_info, run_info, key, block_dims);
-  } else if (utils::IsEmptyTensor(op_type, op_paras)) {
-    ret = ret && utils::WriteConstTiling(op_type, op_paras, op_info, run_info, INT32_MIN, 1);
+    ret = utils::CalcConstKey(op_type, input_num, op_info, is_support_broadcast, key,
+                              block_dims, input_shapes, dim_len);
+    ret = ret && utils::WriteConstTiling(op_type, op_info, run_info, key, block_dims);
+  } else if (is_empty_tensor) {
+    ret = utils::WriteConstTiling(op_type, op_info, run_info, INT32_MIN, 1);
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
-    utils::Eletwise eletwise(op_type, op_paras, op_info, flag_info);
-    ret = ret && eletwise.DoTiling();
+    utils::Eletwise eletwise(op_type, input_shapes, op_info, in_type, out_type, flag_info);
+    ret = eletwise.DoTiling();
     ret = ret && eletwise.WriteTilingData(run_info);
   } else {
-    utils::Broadcast broadcast(op_type, op_paras, op_info, flag_info, dim_len, input_shapes);
-    ret = ret && broadcast.DoTiling();
+    utils::Broadcast broadcast(op_type, op_paras, op_info, flag_info,
+                               in_type, out_type, max_output_shape_size,
+                               input_num, dim_len, is_multi_output, input_shapes);
+    ret = broadcast.DoTiling();
     ret = ret && broadcast.WriteTilingData(run_info);
   }
   return ret;

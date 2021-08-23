@@ -27,6 +27,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "external/graph/operator.h"
+#include "broadcast_v2.h"
 
 namespace optiling {
 namespace utils {
@@ -39,9 +40,12 @@ class Eletwise {
   static const int64_t DOUBLE_BUFFER_SIZE = 2;
 
  public:
-  explicit Eletwise(const std::string& _op_type, const ge::Operator& _op_paras,
-                    const nlohmann::json& _op_info, const std::vector<bool>& _flag_info)
-      : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), flag_info(_flag_info) {
+  explicit Eletwise(const std::string& _op_type,
+                    std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& _input_shapes,
+                    const nlohmann::json& _op_info, const ge::DataType _in_type,
+                    const ge::DataType _out_type, const std::vector<bool>& _flag_info)
+      : op_type(_op_type), input_shapes(_input_shapes), op_info(_op_info),
+      in_type(_in_type), out_type(_out_type), flag_info(_flag_info) {
   }
   ~Eletwise() {
   }
@@ -58,8 +62,10 @@ class Eletwise {
 
  private:
   const std::string& op_type;
-  const ge::Operator& op_paras;
+  std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes;
   const nlohmann::json& op_info;
+  const ge::DataType in_type;
+  const ge::DataType out_type;
   const std::vector<bool>& flag_info;
   std::vector<int64_t> output_shape{};
   int64_t key{-1};
@@ -72,8 +78,6 @@ class Eletwise {
   int64_t block_factor{1};
   int64_t max_dtype{0};
   int64_t core_num{0};
-  ge::DataType in_type;
-  ge::DataType out_type;
   bool only_const_tiling{false};
   bool use_special_pattern{false};
   bool need_multi_core{true};

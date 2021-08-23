@@ -75,12 +75,22 @@ class Broadcast {
 
  public:
   explicit Broadcast(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _op_info,
-                     const std::vector<bool>& _flag_info, size_t _dim_len,
+                     const std::vector<bool>& _flag_info,
+                     const ge::DataType _in_type,
+                     const ge::DataType _out_type,
+                     size_t _max_output_shape_size,
+                     size_t _input_num,
+                     size_t _dim_len,
+                     bool is_multi_output,
                      std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& _input_shapes)
       : op_type(_op_type),
         op_paras(_op_paras),
         op_info(_op_info),
         flag_info(_flag_info),
+        in_type(_in_type),
+        out_type(_out_type),
+        max_output_shape_size(_max_output_shape_size),
+        input_num(_input_num),
         dim_len(_dim_len),
         input_shapes(_input_shapes) {
   }
@@ -123,14 +133,17 @@ class Broadcast {
   const ge::Operator& op_paras;
   const nlohmann::json& op_info;
   const std::vector<bool>& flag_info;
+  const ge::DataType in_type;
+  const ge::DataType out_type;
+  size_t max_output_shape_size{1};
+  size_t input_num{0};
   size_t dim_len{0};
+  bool is_multi_output{false};
   std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes;
   std::vector<std::vector<size_t>> fusion_index{};
   std::vector<std::vector<int64_t>> fusion_shapes{};
   std::vector<int64_t> output_shape{};
   std::array<bool, B_MAX_DIM_LEN> broadcast_axis{};
-  size_t input_num{0};
-  size_t max_output_shape_size{1};
   int64_t key{-1};
   int64_t output_size{1};
   int64_t multi_core_output{1};
@@ -143,14 +156,11 @@ class Broadcast {
   int64_t max_available_ub_db{0};
   size_t original_dim_len{0};
   Pattern s_pattern{Pattern::ORIGINAL};
-  ge::DataType in_type;
-  ge::DataType out_type;
   CompileInfo compileInfo;
   bool is_const{false};
   bool only_const_tiling{false};
   bool need_multi_core{true};
   bool need_double_buffer{false};
-  bool is_multi_output{false};
   bool need_block_align{false};
   bool is_milan_soc{false};
 };

@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <tuple>
 
+#include "graph/utils/op_desc_utils.h"
 #include "vector_tiling.h"
 #include "error_log.h"
 
@@ -67,28 +68,6 @@ const int64_t BGetElementByType(const ge::DataType& dtype) {
 }
 
 bool Broadcast::Init() {
-  V_OP_TILING_CHECK((op_paras.GetInputsSize() != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
-                    return false);
-  in_type = op_paras.GetInputDesc(0).GetDataType();
-  input_num = op_paras.GetInputsSize();
-  V_OP_TILING_CHECK((op_paras.GetOutputsSize() != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
-                    return false);
-  out_type = op_paras.GetOutputDesc(0).GetDataType();
-  int64_t type_size = BGetElementByType(out_type);
-  max_output_shape_size = op_paras.GetOutputDesc(0).GetShape().GetDimNum();
-  for (size_t i = 1; i < op_paras.GetOutputsSize(); i++) {
-    int64_t cur_type_size = BGetElementByType(op_paras.GetInputDesc(i).GetDataType());
-    if (cur_type_size > type_size) {
-      out_type = op_paras.GetInputDesc(i).GetDataType();
-      type_size = cur_type_size;
-    }
-    if (op_paras.GetOutputDesc(i).GetShape().GetDimNum()> max_output_shape_size) {
-      max_output_shape_size = op_paras.GetOutputDesc(i).GetShape().GetDimNum();
-    }
-  }
-  is_multi_output = op_paras.GetOutputsSize() > 1;
   // "_flag_info": ["_only_const_tiling", "_is_const_shapes", "_is_support_broadcast", "_use_special_pattern",
   // "_is_support_absorbable_broadcast", , "_unknown_rank"]
   V_CHECK_GE(flag_info.size(), 1,
@@ -347,7 +326,7 @@ bool Broadcast::GenerateOutputShape() {
   bool ret = true;
   broadcast_axis.fill(false);
   if (only_const_tiling) {
-    output_shape = op_paras.GetOutputDesc(0).GetShape().GetDims();
+    output_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->MutableShape().GetDims();
     try {
       const auto& b_axis = op_info.at("_broadcast_axis");
       for (size_t i = 0; i < b_axis.size(); i++) {
@@ -554,12 +533,11 @@ bool Broadcast::RefineShapesForBroadcast() {
   }
   if (compileInfo.is_unknown_rank) {
     for (size_t i = 0; i < input_num; i++) {
+      std::array<int64_t, B_MAX_DIM_LEN> ori_input_shape = input_shapes[i];
       input_shapes[i].fill(1LL);
-      ge::Shape shape = op_paras.GetInputDesc(i).GetShape();
-      size_t cur_dim_len = shape.GetDimNum();
-      size_t start_index = MAX_UNKNOWN_RANK - cur_dim_len;
-      for (size_t j = 0; j < cur_dim_len; j++) {
-        input_shapes[i][start_index++] = shape.GetDim(j);
+      size_t start_index = MAX_UNKNOWN_RANK - dim_len;
+      for (size_t j = 0; j < dim_len; j++) {
+        input_shapes[i][start_index++] = ori_input_shape[j];
       }
     }
   }
@@ -699,9 +677,9 @@ void Broadcast::CheckUpdateBlockTiling() {
   if (is_multi_output) {
     // multi output check
     for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
-      ge::TensorDesc output = op_paras.GetOutputDesc(i);
-      int64_t ele_in_block = BGetElementByType(output.GetDataType());
-      const auto& out_shape = output.GetShape().GetDims();
+      auto output = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i);
+      int64_t ele_in_block = BGetElementByType(output->GetDataType());
+      const auto& out_shape = output->MutableShape().GetDims();
       int64_t start = fusion_index[block_axis][0] - max_output_shape_size + out_shape.size();
       int64_t end = fusion_index[block_axis].back() - max_output_shape_size + out_shape.size();
       int64_t cut_output = 1;
@@ -943,9 +921,9 @@ void Broadcast::CheckUpdateUbTiling() {
   if (is_multi_output) {
     // multi output check
     for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
-      ge::TensorDesc output = op_paras.GetOutputDesc(i);
-      int64_t ele_in_block = BGetElementByType(output.GetDataType());
-      const auto& out_shape = output.GetShape().GetDims();
+      auto output = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i);
+      int64_t ele_in_block = BGetElementByType(output->GetDataType());
+      const auto& out_shape = output->MutableShape().GetDims();
       int64_t start = fusion_index[ub_axis][0] - max_output_shape_size + out_shape.size();
       int64_t end = fusion_index[ub_axis].back() - max_output_shape_size + out_shape.size();
       int64_t cut_output = 1;
