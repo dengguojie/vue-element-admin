@@ -40,7 +40,7 @@ def calc_expect_func(input_size, weight, out_backprop, input_grad, strides,
         w = filter_data.astype(filter_dtype)
         dy = dy_data.astype(dy_dtype)
     else:
-        w = filter_data.transpose(2, 3, 1, 0).astype(
+        w = filter_data.transpose(2, 3, 0, 1).astype(
             filter_dtype)  # NCHW->HWCN
         dy = dy_data.transpose(0, 2, 3, 1).astype(dy_dtype)
 

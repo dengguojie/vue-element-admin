@@ -1637,7 +1637,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     x_desc->GetShapeRange(dy_range);
     std::vector<std::pair<int64_t, int64_t>> dx_range;
     input_sizes_desc->GetValueRange(dx_range);
-    int64_t groups = 1;
+    if (filterFormatStr == "HWCN") {
+      groups = 1;
+    } else {
+      groups = tensorDescW.GetOriginShape().GetDim(fn_position);
+    }
     vector<int64_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
     if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
                                                    filter_format, input_format, dx_range, y_desc, x_desc,
@@ -1671,8 +1675,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   if (input_sizes.size() == 4) {
     y_desc->SetShape(GeShape(input_sizes));
   }
-  groups = tensorDescW.GetOriginShape().GetDim(fc_position);
+  if (filterFormatStr == "HWCN") {
+    groups = tensorDescW.GetOriginShape().GetDim(fc_position);
+  } else {
+    groups = tensorDescW.GetOriginShape().GetDim(fn_position);
+  }
   op.SetAttr("groups", groups);
+
   // fuzz_build switch
   bool fuzz_build = false;
   op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
@@ -1998,6 +2007,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   int64_t filter_h = 0;
   int64_t filter_w = 0;
   int64_t filter_c = 0;
+  int64_t filter_n = 0;
   int64_t dilation_h = 0;
   int64_t dilation_w = 0;
   int64_t stride_h = 0;
@@ -2022,8 +2032,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   filter_h = filter_size[fh_position];
   filter_w = filter_size[fw_position];
   filter_c = filter_size[fc_position];
+  filter_n = filter_size[fn_position];
   int64_t groups = 0;
-  groups = filter_c;
+  if (filter_format_str == "HWCN") {
+    groups = filter_c;
+  } else {
+    groups = filter_n;
+  }
   op.SetAttr("groups", groups);
 
   auto tensorDescIn = op.GetInputDesc(0);

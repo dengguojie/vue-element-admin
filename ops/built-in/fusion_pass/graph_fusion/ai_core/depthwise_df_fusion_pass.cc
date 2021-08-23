@@ -44,17 +44,18 @@ using namespace ge;
 namespace fe {
 static const string PATTERN_DEPTHWISE_DF = "DepthwiseConv2DBackpropInputD";
 static const char* DEPTHWISE = "DepthwiseConv2DBackpropInputD";
+static const char* DEPTHWISE_DYN = "DepthwiseConv2DBackpropInput";
 const int MAX_DIM_NUM = 4;
 
 vector<FusionPattern*> DepthwiseDfFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
-  // define AvgPoolFusion
+  // define DepthwiseDfFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DepthwiseDfFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
-  pattern->AddOpDesc(PATTERN_DEPTHWISE_DF, {DEPTHWISE}).SetOutput(PATTERN_DEPTHWISE_DF);
+  pattern->AddOpDesc(PATTERN_DEPTHWISE_DF, {DEPTHWISE, DEPTHWISE_DYN}).SetOutput(PATTERN_DEPTHWISE_DF);
   patterns.push_back(pattern);
 
   return patterns;
@@ -73,16 +74,7 @@ Status DepthwiseDfFusionPass::SwapNumChnImpl(GeTensorDesc& tensor_desc) {
   int64_t h = 0;
   int64_t w = 0;
   if (dim_info.size() == 4) {
-    if (origin_format == FORMAT_NHWC) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "in FORMAT_NHWC, before swap C, N, H, W: [%d, %d, %d, %d]", (int)dim_info[3],
-      (int)dim_info[0], (int)dim_info[1], (int)dim_info[2]);
-      n = dim_info[0];
-      h = dim_info[1];
-      w = dim_info[2];
-      c = dim_info[3];
-      tensor_desc.SetShape(ge::GeShape({h, w, 1, c*n}));
-      tensor_desc.SetOriginShape(ge::GeShape({h, w, 1, c*n}));
-    } else if (origin_format == FORMAT_HWCN) {
+    if (origin_format == FORMAT_HWCN) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "in FORMAT_HWCN, before swap C, N, H, W: [%d, %d, %d, %d]", (int)dim_info[2],
       (int)dim_info[3], (int)dim_info[0], (int)dim_info[1]);
       n = dim_info[3];
@@ -165,9 +157,13 @@ Status DepthwiseDfFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OpDescPtr depthwise_desc = depthwise_node->GetOpDesc();
   OP_LOGD(depthwise_desc->GetName().c_str(), "dealing with df fusion");
 
-  FUSION_PASS_CHECK(SwapNumChn(depthwise_desc, true, 0, false) != SUCCESS,
+  uint32_t index = 0;
+  if (depthwise_desc->GetType() == DEPTHWISE_DYN) {
+    index = 1;
+  }
+  FUSION_PASS_CHECK(SwapNumChn(depthwise_desc, true, index, false) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
-  ge::NodePtr filter_node = depthwise_node->GetInDataNodes().at(0);
+  ge::NodePtr filter_node = depthwise_node->GetInDataNodes().at(index);
   OpDescPtr filter_desc = filter_node->GetOpDesc();
 
   FUSION_PASS_CHECK(SwapNumChn(filter_desc, true, 0, true) != SUCCESS,

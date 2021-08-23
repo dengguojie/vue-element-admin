@@ -2,6 +2,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dyanmic_nchw",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -13,10 +14,10 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [25,1,16,16],
-        "ori_shape": [1,16,5,5],
+        "shape": [16,1,5,5],
+        "ori_shape": [16,1,5,5],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -78,6 +79,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dynamic_nw",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -89,9 +91,9 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "HWCN",
         "ori_format": "HWCN",
-        "shape": [50,1,16,16],
+        "shape": [5,5,17,1],
         "ori_shape": [5,5,17,1],
         "type": "float16",
         "value_range": [[0, 0.001]],
@@ -154,6 +156,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dynamic_n",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -165,10 +168,10 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [25,1,16,16],
-        "ori_shape": [1,7,5,5],
+        "shape": [7,1,5,5],
+        "ori_shape": [7,1,5,5],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -225,6 +228,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dynamic_hw",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -236,10 +240,10 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [25,1,16,16],
-        "ori_shape": [1,7,5,5],
+        "shape": [7,1,5,5],
+        "ori_shape": [7,1,5,5],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -301,6 +305,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_unknown_rank",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -312,10 +317,10 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [25,1,16,16],
-        "ori_shape": [1,7,5,5],
+        "shape": [7,1,5,5],
+        "ori_shape": [7,1,5,5],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -371,6 +376,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_unknown_rank_padding_same",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -378,14 +384,14 @@
         "shape": [4],
         "ori_shape": [4],
         "type": "int32",
-        "value": [4,1,1,7],
+        "value": [4,1,1,16],
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "HWCN",
         "ori_format": "HWCN",
-        "shape": [1,1,16,16],
-        "ori_shape": [1,1,7,1],
+        "shape": [1,1,16,1],
+        "ori_shape": [1,1,16,1],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -396,7 +402,7 @@
         "ori_format": "NHWC",
         "shape": [-2],
         "ori_shape": [-2],
-        "typical_shape": [4,1,1,7],
+        "typical_shape": [4,1,1,16],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -407,9 +413,9 @@
       {
         "format": "NHWC",
         "ori_format": "NHWC",
-        "shape": [-1,-1,-1,7],
-        "ori_shape": [-1,-1,-1,7],
-        "typical_shape": [4,1,1,7],
+        "shape": [-1,-1,-1,16],
+        "ori_shape": [-1,-1,-1,16],
+        "typical_shape": [4,1,1,16],
         "shape_range": [[1,-1], [1,-1], [1,-1]],
         "type": "float16",
         "name": "input_grad"
@@ -446,6 +452,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dynamic_nhw",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -457,10 +464,10 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [1,1,16,16],
-        "ori_shape": [1,7,1,1],
+        "shape": [7,1,1,1],
+        "ori_shape": [7,1,1,1],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -522,6 +529,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dynamic_n_padding_valid",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -529,14 +537,14 @@
         "shape": [4],
         "ori_shape": [4],
         "type": "int32",
-        "value": [4,4,2,7],
+        "value": [4,4,2,16],
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "HWCN",
         "ori_format": "HWCN",
-        "shape": [1,1,16,16],
-        "ori_shape": [1,1,7,1],
+        "shape": [1,1,16,1],
+        "ori_shape": [1,1,16,1],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -545,9 +553,9 @@
       {
         "format": "NHWC",
         "ori_format": "NHWC",
-        "shape": [-1,2,1,7],
-        "ori_shape": [-1,2,1,7],
-        "typical_shape": [4,2,1,7],
+        "shape": [-1,2,1,16],
+        "ori_shape": [-1,2,1,16],
+        "typical_shape": [4,2,1,16],
         "shape_range": [[1,224]],
         "type": "float16",
         "value_range": [[0, 0.001]],
@@ -559,9 +567,9 @@
       {
         "format": "NHWC",
         "ori_format": "NHWC",
-        "shape": [-1,4,2,7],
-        "ori_shape": [-1,4,2,7],
-        "typical_shape": [4,4,2,7],
+        "shape": [-1,4,2,16],
+        "ori_shape": [-1,4,2,16],
+        "typical_shape": [4,4,2,16],
         "shape_range": [[1,224]],
         "type": "float16",
         "name": "input_grad"
@@ -593,6 +601,7 @@
   {
     "op": "DepthwiseConv2DBackpropInput",
     "case_name" : "test_depthwise_conv2d_backprop_input_dynamic_nc",
+    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "ND",
@@ -604,9 +613,9 @@
         "name": "input_size"
       },
       {
-        "format": "FRACTAL_Z",
+        "format": "HWCN",
         "ori_format": "HWCN",
-        "shape": [1,1,16,16],
+        "shape": [1,1,16,1],
         "ori_shape": [1,1,16,1],
         "type": "float16",
         "value_range": [[0, 0.001]],

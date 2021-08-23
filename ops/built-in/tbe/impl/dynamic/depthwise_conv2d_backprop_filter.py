@@ -135,20 +135,20 @@ def _check_shape(shape_in, shape_dedy, shape_dedw):
     """Check input shape."""
     fmap_n, fmap_c, _, _ = shape_in
     dedy_n, dedy_c, _, _ = shape_dedy
-    filter_n, filter_c, _, _ = shape_dedw 
+    filter_n, filter_c, _, _ = shape_dedw
 
-    if filter_n != 1:
+    if filter_c != 1:
         error_manager_cube.raise_err_three_paras("E62304", "depthwise_conv2d_backprop_filter",
-                                       "filter_n", "1", str(filter_n))
-    if fmap_c * filter_n != dedy_c:
+                                       "filter_c", "1", str(filter_c))
+    if fmap_c * filter_c != dedy_c:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
-                                         "fmap_c*filter_n must be equal with dedy_c.")
+                                         "fmap_c*filter_c must be equal with dedy_c.")
     if fmap_n != dedy_n:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "fmap_n must be equal with dedy_n.")
-    if fmap_c != filter_c:
+    if fmap_c != filter_n:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
-                                         "fmap_c must be equal with filter_c.")
+                                         "fmap_c must be equal with filter_n.")
     if DYNAMIC_FLAG in shape_dedw:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "dynamic filter_shape is not supported yet.")
@@ -208,8 +208,8 @@ def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range, strides, pads, 
             dedy_w = calculated_dedy_w
 
     if fmap_c == DYNAMIC_FLAG:
-        fmap_c = dedw_c
-        dedy_c = fmap_c * dedw_n
+        fmap_c = dedw_n
+        dedy_c = fmap_c * dedw_c
     if fmap_n == DYNAMIC_FLAG:
         fmap_n = operation.var("batch", bound=fmap_range[0])
         dedy_n = fmap_n
@@ -266,7 +266,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     if not dedw_ori_format:
         dedw_ori_format = "HWCN"
     else:
-        _check_data_format(input_ori_format, ['HWCK', 'HWCN', 'NCHW', 'NHWC'])
+        _check_data_format(dedw_ori_format, ['HWCK', 'HWCN', 'NCHW', 'NHWC'])
     _check_data_format(data_format, ['NCHW', 'NHWC'])
     if input_ori_format != data_format or dedy_ori_format != data_format:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
@@ -283,8 +283,8 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     unknown_rank_flag = False
     if list(shape_in) == UNKNOWN_RANK_SHAPE or list(shape_dedy) == UNKNOWN_RANK_SHAPE:
         unknown_rank_flag = True
-        in_channel = shape_dedw[DIM_C_NCHW]
-        channel_mul = shape_dedw[DIM_N_NCHW]
+        in_channel = shape_dedw[DIM_N_NCHW]
+        channel_mul = shape_dedw[DIM_C_NCHW]
         out_channel = in_channel * channel_mul
         shape_in = (DYNAMIC_FLAG, in_channel, DYNAMIC_FLAG, DYNAMIC_FLAG)
         shape_dedy = (DYNAMIC_FLAG, out_channel, DYNAMIC_FLAG, DYNAMIC_FLAG)

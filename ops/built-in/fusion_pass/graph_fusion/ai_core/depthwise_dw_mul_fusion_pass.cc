@@ -122,9 +122,6 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
 
   ge::AttrUtils::GetInt(depthwise_dw_node->GetOpDesc(), "groups", groups);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "groups is %d", groups);
-  if (is_dynamic) {
-    groups = mul_c;
-  }
   multiplier = mul_c * mul_n / groups;
 
   mul_c1 = (groups + COUT - 1) / COUT;
@@ -240,8 +237,7 @@ Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& 
     OP_LOGI("in AddCoffe after fusion_pass_check");
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
   } else{
-    int64_t multiplier = output_n;
-    int64_t output_c1 = (output_c + COUT - 1) / COUT;
+    int64_t output_c1 = (output_n + COUT - 1) / COUT;
     mul_dim_info = {output_c1 * output_h * output_w, 1, COUT, COUT};
     Status ret = GenerateConstFP16Dynamic(mul_dim_info, FLOAT_NUM_ONE, *reinterpret_cast<float*>(inputAssit.get()));
     OP_LOGI("in AddCoffe after fusion_pass_check");
@@ -412,22 +408,17 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // when static op or dynamic op phase_running, is_dynamic = false
   OP_LOGD("After get output n, H, W, C");
   vector<int64_t> dim_info2;
-  if (!is_dynamic) {
-    graphStatus ret_res;
-    ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
-    depthwise_dw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
-    depthwise_dw_output_tensor.SetShape(ge::GeShape(filter_size_reset));
-    ret_res = depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
-    dim_info2 = depthwise_dw_output_tensor.GetOriginShape().GetDims();
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0],
-		    (int)dim_info2[1], (int)dim_info2[2], (int)dim_info2[3]);
-  }
+  graphStatus ret_res;
+  ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
+  depthwise_dw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
+  depthwise_dw_output_tensor.SetShape(ge::GeShape(filter_size_reset));
+  ret_res = depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
+  dim_info2 = depthwise_dw_output_tensor.GetOriginShape().GetDims();
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0],
+      (int)dim_info2[1], (int)dim_info2[2], (int)dim_info2[3]);
 
   OP_LOGD("After UpdateOutputDesc filter_grad, groups");
   ge::AttrUtils::GetInt(depthwise_dw_node->GetOpDesc(), "groups", groups);
-  if (is_dynamic) {
-    groups = output_c;
-  }
   if (groups == 0) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "groups should not be 0.");
     return NOT_CHANGED;

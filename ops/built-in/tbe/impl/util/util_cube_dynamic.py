@@ -1359,14 +1359,14 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
 
         filter_shape_kchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
         block_dim_k = tbe_platform.CUBE_MKN[self.dtype]['mac'][1]
-        groups = filter_shape_kchw[C_DIM]
+        groups = filter_shape_kchw[N_DIM]
 
-        if filter_shape_kchw[N_DIM] != 1:
+        if filter_shape_kchw[C_DIM] != 1:
             err_man.raise_err_specific_user(self.op_type, "not supported K != 1 in dynamic now!")
         filter_shape_nchw =  [filter_shape_kchw[N_DIM] * filter_shape_kchw[C_DIM], 1] + filter_shape_kchw[2:]
         dx_shape_nchw = self.get_input_nchw(dx_shape, self.data_format)
 
-        if self.check_unknown_scene(dy_shape, dx_shape_nchw, filter_shape_kchw[C_DIM]):
+        if self.check_unknown_scene(dy_shape, dx_shape_nchw, filter_shape_kchw[N_DIM]):
             dy_shape_nchw = [DYNAMIC_FLAG, filter_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
             dy_range_nchw = [(1, None), None, (1, None), (1, None)]
             dx_range_nchw = [(1, None), None, (1, None), (1, None)]

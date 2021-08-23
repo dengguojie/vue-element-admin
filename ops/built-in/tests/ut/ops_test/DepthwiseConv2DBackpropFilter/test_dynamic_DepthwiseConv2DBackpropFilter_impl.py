@@ -6,45 +6,45 @@ ut_case = OpUT("DepthwiseConv2DBackpropFilter", "impl.dynamic.depthwise_conv2d_b
                "depthwise_conv2d_backprop_filter")
 dynamic_conv2d_bp_filter_op_testcase = [
     # success
-    ((3, 40, 1, 2), (3, 40, 1, 2), (1, 40, 3, 3), [1,1,1,1], [1,1,1,1], (1, 1, 1, 1), "NCHW", [0], "success", "dynamic_conv2d_bp_filter_op_testcase_0"),
-    ((3, 200, 75, 7), (3, 198, 37, 7), (3, 3, 7, 1), [1,1,2,1], [1,1,1,1], (-1, -1, -1, -1), "NHWC", [2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_1"),
-    ((3, 200, 75, 40), (3, 198, 37, 40), (3, 3, 40, 1), [1,1,2,1], [1,1,1,1], (0, 0, 0, 0), "NHWC", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_2"),
+    ((3, 40, 1, 2), (3, 40, 1, 2), (40, 1, 3, 3), [1,1,1,1], [1,1,1,1], (1, 1, 1, 1), "NCHW", [0], "success", "dynamic_conv2d_bp_filter_op_testcase_0"),
+    ((3, 200, 75, 7), (3, 198, 37, 7), (3, 3, 1, 7), [1,1,2,1], [1,1,1,1], (-1, -1, -1, -1), "NHWC", [2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_1"),
+    ((3, 200, 75, 40), (3, 198, 37, 40), (3, 3, 1, 40), [1,1,2,1], [1,1,1,1], (0, 0, 0, 0), "NHWC", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_2"),
     # h -1
-    ((3, 4, 2, 40), (3, 1, 1, 40), (2, 2, 40, 1), [1,2,1,1], [1,1,1,1], (0, 0, 0, 0), "NHWC", [2], "success", "dynamic_conv2d_bp_filter_op_testcase_15"),
-    ((-1, 2, 2, -1), (-1, 2, 2, -1), (1, 2, 3, 3), [1,1,1,2], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0,1,3], "success", "dynamic_conv2d_bp_filter_op_testcase_19"),
+    ((3, 4, 2, 40), (3, 1, 1, 40), (2, 2, 1, 40), [1,2,1,1], [1,1,1,1], (0, 0, 0, 0), "NHWC", [2], "success", "dynamic_conv2d_bp_filter_op_testcase_15"),
+    ((-1, 2, 2, -1), (-1, 2, 2, -1), (2, 1, 3, 3), [1,1,1,2], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0,1,3], "success", "dynamic_conv2d_bp_filter_op_testcase_19"),
     # -2
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [-2], "success", "dynamic_conv2d_bp_filter_op_testcase_14"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [-2], "success", "dynamic_conv2d_bp_filter_op_testcase_14"),
     # dynamic_nh in input, dynamic_hw in dedy
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[0,2],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_16"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[0,2],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_16"),
     # dynamic_w in input, dynamic_hw in dedy
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[3],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_17"),
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[2,3],[3]], "success", "dynamic_conv2d_bp_filter_op_testcase_18"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[3],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_17"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[2,3],[3]], "success", "dynamic_conv2d_bp_filter_op_testcase_18"),
     # dedy_c != fmap_c * filter_n
-    ((3, 40, 200, 75), (3, 41, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_3"),
+    ((3, 40, 200, 75), (3, 41, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_3"),
     # filter_c != fmap_c
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 13, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_4"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (13, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_4"),
     # fmap_n != dedy_n
-    ((3, 40, 200, 75), (4, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_5"),
+    ((3, 40, 200, 75), (4, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_5"),
     # stride_n != 1
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [2,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_6"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [2,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_6"),
     # strides dim != 4
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_7"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_7"),
     # pads dim != 4
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_8"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_8"),
     # stride_h/w > 63
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,64,64,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_9"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,64,64,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_9"),
     # dilations != [1,1,1,1]
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,2,2,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_10"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,2,2,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_10"),
     # dilations dim != 4
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_11"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_11"),
     # dedy_h does not match fmap_h
-    ((3, 40, 200, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_12"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_12"),
     # dedy_h less than 2
-    ((3, 40, 9, 75), (3, 40, 200, 75), (1, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_13"),
+    ((3, 40, 9, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_13"),
     # filter_n not equal 2
     ((3, 40, 9, 75), (3, 40, 200, 75), (40, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_14"),
     # filter_h equal -1
-    ((3, 40, 9, 75), (3, 40, 200, 75), (1, 40, -1, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_15"),
+    ((3, 40, 9, 75), (3, 40, 200, 75), (40, 1, -1, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_15"),
 
 ]
 
@@ -203,7 +203,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general(test
             'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
             'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
@@ -211,7 +211,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general(test
         'depthwise_conv2d_backprop_filter_fuzz_build_generalization_general']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general)
 
 
 def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed(test_arg):
@@ -240,7 +240,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fi
             'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
             'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
         }, {
-            'ori_shape': (1, 2, 10, 10),
+            'ori_shape': (2, 1, 10, 10),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
@@ -248,7 +248,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fi
         'depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed)
 
 def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg):
     from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
@@ -284,7 +284,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg)
         'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed)
 
 def test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed(test_arg):
     from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
@@ -320,7 +320,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_ma
         'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed)
 
 if __name__ == '__main__':
     ut_case.run()

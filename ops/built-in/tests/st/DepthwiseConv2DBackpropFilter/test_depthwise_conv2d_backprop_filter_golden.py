@@ -43,9 +43,9 @@ def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides,
         x = fmap_data.astype(fmap_dtype)
         dy = dy_data.astype(dy_dtype)
     if y_format == 'NCHW':
-        k, Ci, kh, kw = filter_shape
+        Ci, k, kh, kw = filter_shape
     elif y_format == 'NHWC':
-        k, kh, kw, Ci = filter_shape
+        Ci, kh, kw, k = filter_shape
     else:
         kh, kw, Ci, k = filter_shape
 

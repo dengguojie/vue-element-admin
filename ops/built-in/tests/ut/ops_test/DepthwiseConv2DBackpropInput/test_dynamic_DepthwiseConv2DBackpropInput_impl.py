@@ -5,20 +5,20 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("DepthwiseConv2DBackpropInput", "impl.dynamic.depthwise_conv2d_backprop_input",
                "depthwise_conv2d_backprop_input")
 dynamic_depthwise_conv2d_bp_input_op_testcase = [
-    ((1, 192, 5, 5), (16, 192, -1, 28), (16, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", [0, 2], None, "success", "depthwise_conv2d_bp_input_w_dim_upper_boud_None"),
-    ((3, 3, 256, 1), (2, 334, 502, 256), (2, 336, 504, 256), (1, 1), (0, 0, 0, 0), "NHWC", [0, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nhw_pad_valid"),
-    ((5, 5, 240, 1), (2, 1, 1, 240), (2, 2, 2, 240), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nhw_pad_same"),
-    ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 1], None, "success", "depthwise_conv2d_bp_input_dynamic_nc"),
-    ((3, 3, 17, 1), (2, 5, 5, 17), (2, 5, 5, 17), (1, 1), (-1, -1, -1, -1), "NHWC", [1, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_cw"),
-    ((2, 2, 16, 1), (2, 2, 1, 16), (2, 4, 2, 16), (2, 1), (0, 0, 0, 0), "NHWC", [2], None, "success", "depthwise_conv2d_bp_input_dynamic_h"),
-    ((1, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", [0, 3], None, "success", "depthwise_conv2d_bp_input_nw_dim_upper_boud_None"),
-    ((3, 3, 16, 1), (2, 1, 2, 16), (2, 3, 5, 16), (1, 2), (0, 0, 0, 0), "NHWC", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nchw_pad_valid"),
-    ((1, 960, 3, 3), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], None, "success", "depthwise_conv2d_bp_input_dynamic_n"),
-    ((1, 1, 32, 1), (1, 1, 1, 32), (1, 2, 2, 32), (2, 2), (0, 0, 0, 0), "NHWC", [2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_hw"),
-    ((1, 16, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_unknown_rank"),
+    ((192, 1, 5, 5), (16, 192, -1, 28), (16, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", [0, 2], None, "success", "depthwise_conv2d_bp_input_w_dim_upper_boud_None"),
+    ((3, 3, 1, 256), (2, 334, 502, 256), (2, 336, 504, 256), (1, 1), (0, 0, 0, 0), "NHWC", [0, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nhw_pad_valid"),
+    ((5, 5, 1, 240), (2, 1, 1, 240), (2, 2, 2, 240), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nhw_pad_same"),
+    ((3, 3, 1, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 1], None, "success", "depthwise_conv2d_bp_input_dynamic_nc"),
+    ((3, 3, 1, 17), (2, 5, 5, 17), (2, 5, 5, 17), (1, 1), (-1, -1, -1, -1), "NHWC", [1, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_cw"),
+    ((2, 2, 1, 16), (2, 2, 1, 16), (2, 4, 2, 16), (2, 1), (0, 0, 0, 0), "NHWC", [2], None, "success", "depthwise_conv2d_bp_input_dynamic_h"),
+    ((96, 1, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", [0, 3], None, "success", "depthwise_conv2d_bp_input_nw_dim_upper_boud_None"),
+    ((3, 3, 1, 16), (2, 1, 2, 16), (2, 3, 5, 16), (1, 2), (0, 0, 0, 0), "NHWC", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_nchw_pad_valid"),
+    ((960, 1, 3, 3), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], None, "success", "depthwise_conv2d_bp_input_dynamic_n"),
+    ((1, 1, 1, 32), (1, 1, 1, 32), (1, 2, 2, 32), (2, 2), (0, 0, 0, 0), "NHWC", [2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_hw"),
+    ((16, 1, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_unknown_rank"),
     
-    ((3, 3, 16, 2), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, RuntimeError, "depthwise_conv2d_bp_input_dedx_c_not_equal_filer"),
-    ((3, 3, 16, 1), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], None, RuntimeError, "depthwise_conv2d_bp_input_dedy_nhw_large_than_1"),
+    ((3, 3, 2, 16), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, RuntimeError, "depthwise_conv2d_bp_input_dedx_c_not_equal_filer"),
+    ((3, 3, 1, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], None, RuntimeError, "depthwise_conv2d_bp_input_dedy_nhw_large_than_1"),
     ((1, 1, 14, 20), (1, 1, 28, 3507), (1, 1, 111, 3507), (4, 1), (-1, -1, -1, -1), "NCHW", [0, 2, 3], [[(1, 1),(1, 1), (27, 27), (2143, 2143)], [(1, 1),(1, 1), (120, 120), (2157, 2157)]], RuntimeError, "depthwise_conv2d_bp_input_dynamic_nhw_large_than_l1size"),
 ]
 
@@ -92,7 +92,7 @@ def _gen_trans_data_case(param):
         input_size_op = [-1, input_size[data_format.index("C")], -1, -1]
         x = {'shape': [4], 'format': 'NC1HWC0', 'ori_shape': [4], 'ori_format': 'NHWC', 'dtype': 'float16',
              'range': [(1, 4), (1, 2), (2, 10), (2, 10), (16, 16)]}
-        filter = {'shape': ((1, 3, 3, 1, 16, 16),), 'ori_shape': (3, 3, 16, 1), 'ori_format': 'HWCN',
+        filter = {'shape': ((1, 3, 3, 1, 16, 16),), 'ori_shape': (3, 3, 1, 16), 'ori_format': 'HWCN',
                   'format': 'C1HWNCoC0', 'dtype': 'float16', 'range': None}
         out_backprop = {'shape': out_backprop_ori_shape, 'format': 'NC1HWC0', 'ori_shape': out_backprop_ori_shape,
                         'ori_format': "NCHW", 'dtype': 'float16', 'range': None}
@@ -167,18 +167,18 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general(test_
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, {
             'shape': (16, 3, 14, 12, 16),
-            'ori_shape': (16, 33, 14, 12),
+            'ori_shape': (16, 3, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16',
             'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -190,7 +190,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general(test_
     depthwise_conv2d_backprop_input_generalization(*input_list)
 
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general)
 
 
 def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed(test_arg):
@@ -203,7 +203,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fix
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (1, 2, 10, 10),
+            'ori_shape': (2, 1, 10, 10),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
@@ -226,7 +226,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fix
     depthwise_conv2d_backprop_input_generalization(*input_list)
 
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed)
 
 
 def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed(test_arg):
@@ -262,7 +262,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_f
     depthwise_conv2d_backprop_input_generalization(*input_list)
 
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed)
 
 
 def test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error(test_arg):
@@ -275,13 +275,13 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error(test_arg)
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, {
             'shape': (16, 3, 14, 12, 16),
-            'ori_shape': (16, 33, 14, 12),
+            'ori_shape': (16, 3, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16',
@@ -311,7 +311,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two(test_arg)
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
@@ -347,18 +347,18 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error(test_arg):
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, {
             'shape': (16, 3, 14, 12, 16),
-            'ori_shape': (16, 33, 14, 12),
+            'ori_shape': (16, 3, 14, 12),
             'ori_format': 'ND',
             'format': 'NC1HWC0',
             'dtype': 'float16',
             'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -383,18 +383,18 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error(test_arg):
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, {
             'shape': (16, 3, 14, 12, 16),
-            'ori_shape': (16, 33, 14),
+            'ori_shape': (16, 3, 14),
             'ori_format': 'ND',
             'format': 'NC1HWC0',
             'dtype': 'float16',
             'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -419,18 +419,18 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_shape_error(test_arg):
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (11, 3, 3, 5),
+            'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, {
             'shape': (16, 3, 14, 12),
-            'ori_shape': (16, 33, 14, 12),
+            'ori_shape': (16, 3, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16',
             'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -489,8 +489,8 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_tilingcase(test_arg):
                 'dtype': 'int32',
                 'range': ()
             }, {
-                'shape': (1, 5, 6, 14),
-                'ori_shape': (1, 5, 6, 14),
+                'shape': (5, 1, 6, 14),
+                'ori_shape': (5, 1, 6, 14),
                 'ori_format': 'NCHW',
                 'format': 'NCHW',
                 'dtype': 'float16'
@@ -511,12 +511,12 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_tilingcase(test_arg):
             }, (1, 1, 4, 2), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW', 'test_conv2d_fuzz_build_tilingcase']
         depthwise_conv2d_backprop_input(*input_list)
 
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_tilingcase)
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error)
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two)
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error)
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error)
-ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_shape_error)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_tilingcase)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error)
+ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_shape_error)
 
 
 if __name__ == '__main__':
