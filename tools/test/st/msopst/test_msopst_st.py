@@ -21,6 +21,7 @@ from op_test_frame.st.interface.st_report import OpSTCaseReport
 from op_test_frame.st.interface.op_st_case_info import OpSTCase
 from op_test_frame.st.interface.op_st_case_info import OpSTCaseTrace
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
+from op_test_frame.st.interface import acl_op_runner
 from op_test_frame.st.interface import ms_op_generator
 from util import test_utils
 import test_pytorch_model_parser
@@ -539,16 +540,39 @@ class TestUtilsMethods(unittest.TestCase):
     # ---------------------profiling_analysis-----------------------
     def test_profiling_analysis_1(self):
         """
-        verify the normal scene of _prof_get_op_time_from_csv_file function
+        verify the normal scene of _get_op_case_result_and_show_data function
         in acl_op_runner.py
         """
-        csv_file = "./st/msopst/golden/base_case/input/task_time_0_1.csv"
-        op_name_list = ["Less", "Less"]
-        soc_version = "Ascend310"
+        csv_file = "./st/msopst/golden/base_case/input/op_summary_0_1.csv"
+        op_name_list = ["Cast", "Cast", "Cast", "Cast"]
         report = OpSTReport()
         runner = AclOpRunner('/home', 'ddd', report)
-        runner._prof_get_op_time_from_csv_file(
-            csv_file, op_name_list, soc_version)
+        runner._get_op_case_result_and_show_data(
+            csv_file, op_name_list)
+
+    def test_profiling_op_name_list_fail(self):
+        """
+        verify the normal scene of _get_op_case_result_and_show_data function
+        in acl_op_runner.py
+        """
+        csv_file = "./st/msopst/golden/base_case/input/op_summary_0_1.csv"
+        op_name_list = []
+        report = OpSTReport()
+        runner = AclOpRunner('/home', 'ddd', report)
+        runner._prof_get_op_case_info_from_csv_file(
+            csv_file, op_name_list)
+
+    def test_profiling_csv_file_fail(self):
+        """
+        verify the normal scene of _get_op_case_result_and_show_data function
+        in acl_op_runner.py
+        """
+        csv_file = "./st/msopst/golden/base_case/input/op_summary.csv"
+        op_name_list = ["Cast", "Cast", "Cast", "Cast"]
+        report = OpSTReport()
+        runner = AclOpRunner('/home', 'ddd', report)
+        runner._prof_get_op_case_info_from_csv_file(
+            csv_file, op_name_list)
 
     def test_profiling_analysis_2(self):
         """
@@ -565,6 +589,13 @@ class TestUtilsMethods(unittest.TestCase):
             runner = AclOpRunner('/home', 'ddd', report)
             run_result_list = ["1  Test_AddN_001_case_001  [pass]"]
             runner._prof_get_op_name_from_report(run_result_list)
+
+    def test_profiling_show_data(self):
+        each_case_info_list = ['Cast', 'AI_CPU', '1338.541672']
+        op_case_info_list = []
+        for i in range(30):
+            op_case_info_list.append(each_case_info_list)
+        acl_op_runner.display_op_case_info(op_case_info_list)
 
     # --------------ori_format/ori_shape/device_id--------------------
     def test_gen_ori_format_or_shape_src_code(self):

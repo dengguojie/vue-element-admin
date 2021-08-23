@@ -1,3 +1,0 @@
-Time(%),Time(us),Count,Avg(us),Min(us),Max(us),Waiting(us),Running(us),Pending(us),Type,API,Task ID,Op Name,Stream ID
-99.4617,101770.621,1,101770.621,101770.621,101770.621,45.519,101770.621,0.0,kernel AI cpu task,,2,Less,1
-0.44689999999999996,457.287,1,457.287,457.287,457.287,102.236,457.287,0.0,kernel AI cpu task,,7,Less,1

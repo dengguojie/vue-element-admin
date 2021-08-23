@@ -118,10 +118,9 @@ class TestUtilsMethods(unittest.TestCase):
     def test_msopst_prof_get_op_time_from_csv_file_1(self):
         report = OpSTReport()
         runner = AclOpRunner('/home', 'ddd', report)
-        runner._prof_get_op_time_from_csv_file(None, ["add"], "soc")
-        runner._prof_get_op_time_from_csv_file("file", None, "soc")
-        runner._prof_get_op_time_from_csv_file("file", ["add"], None)
-        runner._prof_get_op_time_from_csv_file("file", ["add"], "soc")
+        runner._prof_get_op_case_info_from_csv_file(None, ["add"])
+        runner._prof_get_op_case_info_from_csv_file("file", None)
+
 
 if __name__ == '__main__':
     unittest.main()

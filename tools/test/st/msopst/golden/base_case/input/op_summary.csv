@@ -1,0 +1,5 @@
+Model ID,Task ID,Stream ID,OP Name,OP Type,Task Type,Task Start Time,Task Duration(us),Task Wait Time(us),Block Dim,Input Shapes,Input Data Types,Input Formats,Output Shapes,Output Data Types,Output Formats
+4.29E+09,2,2,Cast,Cast,AI_CPU,542118179416190,338.93,0,1,"""2,5""",DT_INT16,ND,"""2,5""",DT_INT32,ND
+4.29E+09,2,2,Cast,Cast,AI_CPU,542118181073680,346.19,1318.56,1,"""2,3""",DT_INT32,ND,"""2,3""",DT_INT64,ND
+4.29E+09,2,2,Cast,Cast,AI_CPU,542118182624150,334.35,1204.28,1,"""5,3""",DT_FLOAT,ND,"""5,3""",DT_INT64,ND
+4.29E+09,2,2,Cast,Cast,AI_CPU,512118184260580,237.92,1302.08,1,"""4,3""",DT_INT16,ND,"""4,3""",DT_BOOL,ND
