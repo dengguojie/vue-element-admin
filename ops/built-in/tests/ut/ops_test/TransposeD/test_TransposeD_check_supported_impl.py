@@ -55,6 +55,20 @@ case5 = {"params": [{"shape": (-1, 2, 3, 16), "dtype": "float16", "format": "ND"
          "case_name": "TransposeD_5",
          "expect": "success",
          "support_expect": True}
+case6 = {"params": [{"shape": (-1, 2, 3, 16), "dtype": "float16", "format": "ND", "ori_shape": (-1, 2, 3, 16),"ori_format": "ND"}, #x
+                    {"shape": (1, 2, 3, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 2, 3, 16),"ori_format": "ND"},
+                    (1, 0, 5, 3),
+                    ],
+         "case_name": "TransposeD_6",
+         "expect": "success",
+         "support_expect": True}
+case7 = {"params": [{"shape": (-1, 2, 3, 16), "dtype": "float32", "format": "ND", "ori_shape": (-1, 2, 3, 16),"ori_format": "ND"}, #x
+                    {"shape": (1, 2, 3, 16), "dtype": "float32", "format": "ND", "ori_shape": (1, 2, 3, 16),"ori_format": "ND"},
+                    (1, 0, 5, 3),
+                    ],
+         "case_name": "TransposeD_7",
+         "expect": "success",
+         "support_expect": True}
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
@@ -62,6 +76,8 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

@@ -107,6 +107,6 @@ def max_pooling_forward(input_data, output_data, ksize, strides, padding_mode="C
 # })
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
     # ut_case.run()
     exit(0)

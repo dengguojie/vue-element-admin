@@ -86,8 +86,8 @@ def check_supported_2(test_arg):
         }, [1, 1], [0, 0, 0, 0])
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_cust_test_func(test_func=check_supported_1)
 ut_case.add_cust_test_func(test_func=check_supported_2)
 

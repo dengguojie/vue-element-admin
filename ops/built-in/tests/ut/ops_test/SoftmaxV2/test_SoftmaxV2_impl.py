@@ -87,15 +87,15 @@ case11 = {"params": [{"shape": (16, 16, 4, 4, 16, 16), "dtype": "float16", "form
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend910"], case7)
-ut_case.add_case(["Ascend310", "Ascend910"], case8)
-ut_case.add_case(["Ascend310", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend910A"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
 ut_case.add_case(["Ascend910A"], case11)
 

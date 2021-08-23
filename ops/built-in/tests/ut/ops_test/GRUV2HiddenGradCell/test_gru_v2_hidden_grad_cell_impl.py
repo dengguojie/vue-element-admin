@@ -85,10 +85,10 @@ def gen_gru_v2_hidden_grad_precision_case(shape_val, dtype, t_state=0):
 
 
 #ut_case.add_precision_case(['Ascend910'], gen_gru_v2_hidden_grad_precision_case((5, 32, 64, 128), "float32"))
-ut_case.add_precision_case(['Ascend910'], gen_gru_v2_hidden_grad_precision_case((1, 32, 64, 128), "float32"))
+ut_case.add_precision_case(['Ascend910A'], gen_gru_v2_hidden_grad_precision_case((1, 32, 64, 128), "float32"))
+ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 1, 4))
 
 '''
-ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 1, 4))
 ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 8, 8))
 ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(1, 8, 8))
 ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 32, 4))
@@ -97,5 +97,5 @@ ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 36, 10))
 
 
 if __name__ == '__main__':
-    ut_case.run('Ascend910')
+    ut_case.run('Ascend910A')
     exit(0)

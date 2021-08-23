@@ -58,13 +58,22 @@ err6 = {"params": [{"shape": (1, 20, 3, 4), "dtype": "float16", "format": "NCHW"
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case("Ascend910", case1)
-ut_case.add_case("Ascend910", err1)
-ut_case.add_case("Ascend910", err2)
-ut_case.add_case("Ascend910", err3)
+case7 = {"params": [{"shape": (1, 16, 3, 4), "dtype": "float16", "format": "NCHW", 'ori_shape':(1, 4, 3, 4), 'ori_format':"NCHW"},
+                    {"shape": (1, 4, 3, 4, 16), "dtype": "float16", "format": "NC1HWC0", 'ori_shape':(1, 4, 3, 4, 16), 'ori_format':"NC1HWC0"},
+                    4, 2],
+         "case_name": "SwapCi_1",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", err1)
+ut_case.add_case("Ascend910A", err2)
+ut_case.add_case("Ascend910A", err3)
 ut_case.add_case("Ascend710", err4)
-ut_case.add_case("Ascend910", err5)
-ut_case.add_case("Ascend910", err6)
+ut_case.add_case("Ascend910A", err5)
+ut_case.add_case("Ascend910A", err6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend910A","Ascend310","Ascend710"])

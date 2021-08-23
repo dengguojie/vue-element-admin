@@ -74,6 +74,14 @@ case12 = {"params": [{"shape": (1,32,2,2,1024,768), "dtype": "float16", "format"
          "expect": "success",
          "support_expect": True}
 
+case13 = {"params": [{"shape": (0,3,4,1,2), "dtype": "float16", "format": "ND", "ori_shape":(0,3,4,1,2),"ori_format": "ND"}, #x
+                    {"shape": (0,3,4,1,2), "dtype": "float16", "format": "ND", "ori_shape":(0,3,4,1,2),"ori_format": "ND"},
+                    (0,3,4,1,2),
+                    ],
+         "case_name": "TransposeD_13",
+         "expect": RuntimeError,
+         "support_expect": True}
+
 case4 = {"params": [{"shape": (1, 2, 3, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 2, 3, 16),"ori_format": "ND"}, #x
                     {"shape": (1, 2, 3, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 2, 3, 16),"ori_format": "ND"},
                     (1, 0, 2),
@@ -127,7 +135,7 @@ ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case9)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case10)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case11)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case12)
-
+ut_case.add_case(["Ascend910A","Ascend710"], case13)
 if __name__ == '__main__':
     ut_case.run(["Ascend910A","Ascend310","Ascend710"])
     exit(0)

@@ -53,7 +53,7 @@ ut_case.add_case(["Ascend710", "Ascend910"], case5)
 
 
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run(["Ascend710", "Ascend910A"])
     # ut_case.run("Ascend910")
     exit(0)
 

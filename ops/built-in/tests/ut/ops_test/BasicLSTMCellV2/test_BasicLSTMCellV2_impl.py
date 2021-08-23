@@ -143,14 +143,14 @@ case8 = {"params": [{"shape": (1, 1000, 1,16,16), "dtype": "float16", "format": 
                        impl_mode="high_performance"):
 '''
 
-ut_case.add_case("Ascend910", case1)
-ut_case.add_case("Ascend910", case2)
-ut_case.add_case("Ascend910", case3)
-ut_case.add_case("Ascend910", case4)
-ut_case.add_case("Ascend910", case5)
-ut_case.add_case("Ascend910", case6)
-ut_case.add_case("Ascend910", case7)
-ut_case.add_case("Ascend910", case8)
+ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
+ut_case.add_case("Ascend910A", case4)
+ut_case.add_case("Ascend910A", case5)
+ut_case.add_case("Ascend910A", case6)
+ut_case.add_case("Ascend910A", case7)
+ut_case.add_case("Ascend910A", case8)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
