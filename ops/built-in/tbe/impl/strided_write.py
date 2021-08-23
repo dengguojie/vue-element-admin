@@ -16,8 +16,8 @@
 strided write
 """
 from te import tvm
-from topi import generic
-from topi.cce import util
+import te.lang.cce as tbe
+from impl.util.platform_adapter import para_check
 from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import error_manager_vector
 
@@ -82,7 +82,7 @@ def strided_write_compute(x, y, axis, stride, kernel_name='strided_write'):
     return output_y
 
 
-@util.check_input_type(dict, dict, int, int, str)
+@para_check.check_input_type(dict, dict, int, int, str)
 def strided_write(x, y, axis, stride, kernel_name='strided_write'):
     """
     write data to tensor by stride.
@@ -112,4 +112,4 @@ def strided_write(x, y, axis, stride, kernel_name='strided_write'):
     res = strided_write_compute(input_x, y, axis, stride, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = tbe.auto_schedule(res)

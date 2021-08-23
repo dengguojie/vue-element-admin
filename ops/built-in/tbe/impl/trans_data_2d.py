@@ -16,7 +16,7 @@
 trans_data_2d
 """
 from te.platform.fusion_manager import fusion_manager
-from topi.cce import util
+
 import te.platform.cce_params as cce_params
 from te import tik
 from te import platform as cce
@@ -89,7 +89,7 @@ class TransData2D():
         if self.dst_dtype == "bool":
             self.dst_dtype = "int8"
         self.dst_format = dst_format
-        self.data_size = util.check_tensor_shape_size(list(self.dst_shape))
+        self.data_size = para_check.check_tensor_shape_size(list(self.dst_shape))
         # get dtype size, float16 size = 2 byte   / float32 size = 4 byte
         self.dtype_size = \
             cce.cce_intrin.get_bit_len(self.src_dtype) // 8

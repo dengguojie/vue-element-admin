@@ -27,7 +27,7 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_common import write_code
-from topi.cce.util import check_load3d_w_out_1_support
+from impl.util.util_common import check_load3d_w_out_1_support
 from impl.im2col_common_func import im2col_compute
 from impl.im2col_common_func import im2col_schedule
 

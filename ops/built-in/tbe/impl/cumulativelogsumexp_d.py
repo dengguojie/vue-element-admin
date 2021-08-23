@@ -15,7 +15,7 @@
 """
 cumulativelogsumexp_d
 """
-from topi.cce import util
+
 from impl.cum_computer import get_computer_by_ctype
 from impl.util import util_select_op_base
 from te.utils import para_check
@@ -103,9 +103,9 @@ def check_param(input_x, axis, kernel_name):
     input_shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(input_shape)
+    para_check.check_tensor_shape_size(input_shape)
     para_check.check_dtype(input_dtype, ("float16", "float32"))
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):

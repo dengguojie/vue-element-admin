@@ -19,7 +19,7 @@ drop_out_do_mask_v3_d
 """
 import operator
 import te.platform as tbe_platform
-from topi.cce import util
+
 from te import tik
 from te.utils import para_check
 
@@ -53,13 +53,13 @@ def softmax_v2_with_drop_out_do_mask_v3_d(input_tensor, input_mask, output_1, ou
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
-    util.check_dtype_rule(input_tensor.get('dtype').lower(), ("float16"))
-    util.check_dtype_rule(input_mask.get('dtype').lower(), ("uint8"))
-    util.check_shape_rule(input_tensor.get('shape'), max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(input_mask.get('shape'), max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_size(input_tensor.get('shape'), SHAPE_SIZE_LIMIT)
-    util.check_shape_size(input_mask.get('shape'), SHAPE_SIZE_LIMIT)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_dtype_rule(input_tensor.get('dtype').lower(), ("float16"))
+    para_check.check_dtype_rule(input_mask.get('dtype').lower(), ("uint8"))
+    para_check.check_shape_rule(input_tensor.get('shape'), max_shape_num=SHAPE_SIZE_LIMIT)
+    para_check.check_shape_rule(input_mask.get('shape'), max_shape_num=SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(input_tensor.get('shape'), SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(input_mask.get('shape'), SHAPE_SIZE_LIMIT)
 
     tensor_shape = input_tensor.get("shape")
     mask_shape = input_mask.get("shape")

@@ -18,7 +18,7 @@ decode_bbox
 from functools import reduce
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 from impl.util import util_select_op_base
 
@@ -952,7 +952,7 @@ def check_format_shape(format_box_predictions,
             "format of decoded_boxes must be type of NCHW or ND or NHWC")
 
 
-@util.check_input_type(dict, dict, dict, float, str)
+@para_check.check_input_type(dict, dict, dict, float, str)
 def decode_bbox(box_predictions,
                 anchors,
                 decoded_boxes,
@@ -978,25 +978,25 @@ def decode_bbox(box_predictions,
     shape_box_predictions = box_predictions.get("shape")
     shape_anchors = anchors.get("shape")
     shape_decoded_boxes = decoded_boxes.get("shape")
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     format_box_predictions = box_predictions.get("format")
     format_anchors = anchors.get("format")
     format_decoded_boxes = decoded_boxes.get("format")
     check_format_shape(format_box_predictions,
                        format_anchors,
                        format_decoded_boxes)
-    util.check_shape_rule(shape_box_predictions,
+    para_check.check_shape_rule(shape_box_predictions,
                           CONFIG_THREE, CONFIG_FOUR, None)
-    util.check_shape_rule(shape_anchors,
+    para_check.check_shape_rule(shape_anchors,
                           CONFIG_THREE, CONFIG_FOUR, None)
-    util.check_shape_rule(shape_decoded_boxes,
+    para_check.check_shape_rule(shape_decoded_boxes,
                           CONFIG_TWO, CONFIG_TWO, None)
-    util.check_shape_size(shape_box_predictions, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_anchors, SHAPE_SIZE_LIMIT)
-    util.check_shape_size(shape_decoded_boxes, SHAPE_SIZE_LIMIT)
-    util.check_dtype_rule(box_predictions.get("dtype").lower(), ("float16",))
-    util.check_dtype_rule(anchors.get("dtype").lower(), ("float16",))
-    util.check_dtype_rule(decoded_boxes.get("dtype").lower(), ("float16",))
+    para_check.check_shape_size(shape_box_predictions, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_anchors, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_decoded_boxes, SHAPE_SIZE_LIMIT)
+    para_check.check_dtype_rule(box_predictions.get("dtype").lower(), ("float16",))
+    para_check.check_dtype_rule(anchors.get("dtype").lower(), ("float16",))
+    para_check.check_dtype_rule(decoded_boxes.get("dtype").lower(), ("float16",))
     if shape_box_predictions != shape_anchors:
         raise RuntimeError("the input shape_box_predictions and anchors)"
                            "must be same")

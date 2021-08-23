@@ -21,8 +21,7 @@ from te import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import shape_util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_select_op_base import SplitInput
@@ -60,7 +59,7 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
     ori_shape = input_x.get("ori_shape")
 
     if ori_shape is not None:
-        axis = util.axis_check(len(ori_shape), axis)
+        axis = shape_util.axis_check(len(ori_shape), axis)
 
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
 
@@ -190,7 +189,7 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
         res = te.lang.cce.vadds(input_data, zero_data)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
@@ -270,8 +269,8 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
         if length_x_ori != 4:
             error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's ori_shape \
                                                           is invalid for 5D Tensor")
-        axis = util.axis_check(length_x_ori, axis)
-        axis = util.axis_transfrom_5d(axis, ori_format)
+        axis = shape_util.axis_check(length_x_ori, axis)
+        axis = shape_util.axis_transfrom_5d(axis, ori_format)
         if axis in (1, 4):
             error_manager_vector.raise_err_specific_reson("tile_with_axis", "axis is invalid for 5D Tensor")
     else:

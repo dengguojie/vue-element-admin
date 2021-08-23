@@ -18,7 +18,7 @@ ascend_dequant_s16
 from functools import reduce as function_reduce
 
 from impl import ascend_quant_util as util
-from topi import generic
+import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
@@ -287,4 +287,4 @@ def ascend_dequant_s16(x0, deq_scale, x1, y, relu_flag=False, kernel_name="ascen
 
     with tvm.target.cce():
         res = ascend_dequant_s16_compute(input_x0, input_deq, input_x1, relu_flag, kernel_name)
-        generic.auto_schedule(res)
+        tbe.auto_schedule(res)

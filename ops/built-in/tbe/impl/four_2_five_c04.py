@@ -21,7 +21,7 @@ four_2_five_c04
 import math
 from te import platform as tbe_platform
 from te import tik
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 # available ub size: split double ub
 TOTAL_UB_MEMORY = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - 1024) // 2
@@ -2250,7 +2250,7 @@ def check_c_axis_rule(format, shape):
             raise RuntimeError("value of C axis is illeagl")
 
 # pylint: disable=invalid-name,unused-argument
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def four_2_five_c04(src, dst, src_format, dst_format, kernel_name="four_2_five_c04"):
     """
     algorithm: four_2_five_c04
@@ -2287,11 +2287,11 @@ def four_2_five_c04(src, dst, src_format, dst_format, kernel_name="four_2_five_c
         c0 = 4
     output_shape = [n, c1, h, w, c0]
     dtype = src.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(input_shape)
-    util.check_tensor_shape_size(input_shape)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(input_shape)
+    para_check.check_tensor_shape_size(input_shape)
     check_list_dtype = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list_dtype)
+    para_check.check_dtype_rule(dtype, check_list_dtype)
     src_format = src_format.upper()
     check_list_format = ("NCHW", "NHWC", "HWCN")
     check_format_rule(src_format, check_list_format)

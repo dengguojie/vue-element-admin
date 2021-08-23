@@ -19,7 +19,6 @@ arg_max_grad
 import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
@@ -124,7 +123,7 @@ def arg_max_grad_d(var, indices, updates, assist, y, dimension=0, kernel_name="a
 
     # auto schedule
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
     # operator build
     config = {"name": kernel_name,

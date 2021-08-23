@@ -20,8 +20,7 @@ Activation Universal Linear Quant Clamp Max Grad
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 
 SHAPE_SIZE_LIMIT = 2147483648
@@ -62,7 +61,7 @@ def act_ulq_clamp_max_grad_compute(
     return clamp_max_grad
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, dict, str)
 def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_ulq_clamp_max_grad'):
     """
     ----------
@@ -82,7 +81,7 @@ def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_u
     shape = input_x.get('shape')
     dtype = input_x.get('dtype')
 
-    util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape, SHAPE_SIZE_LIMIT)
     if shape != input_y.get('shape') or shape != input_z.get('shape'):
         raise ValueError('All input must have the same shape!')
     if input_y.get('dtype') != 'bool' and input_y.get('dtype') != 'int8':
@@ -95,7 +94,7 @@ def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_u
     res = act_ulq_clamp_max_grad_compute(y_grad, clamp_max_mask, x_clamped_loss, output, kernel_name)
 
     with tvm.target.cce():
-        auto_sch = generic.auto_schedule(res)
+        auto_sch = te.lang.cce.auto_schedule(res)
 
     config = {'name': kernel_name,
               'print_ir': False,

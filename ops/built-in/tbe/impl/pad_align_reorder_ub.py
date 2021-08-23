@@ -20,7 +20,7 @@ pad_align_reorder_ub
 import math
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 # available number of cores
 MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -621,7 +621,7 @@ class PadCompute:
         return tik_instance
 
 # pylint: disable=invalid-name,unused-argument
-@util.check_input_type((list, tuple), (list, tuple), str, str)
+@para_check.check_input_type((list, tuple), (list, tuple), str, str)
 def pad_align(shape, paddings, dtype, kernel_name):
     """
     condition:

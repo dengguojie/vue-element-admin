@@ -17,7 +17,7 @@ tensor_move
 """
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -93,14 +93,14 @@ class TensorMove():
         self.dst_dtype = dst.get("dtype").lower()
         if self.dst_dtype == "bool":
             self.dst_dtype = "int8"
-        self.data_size = util.check_tensor_shape_size(list(self.src_shape))
+        self.data_size = para_check.check_tensor_shape_size(list(self.src_shape))
 
         if len(self.dst_shape) == 0:
             self.data_dst_size = 1
             self.dst_shape = [1]
         else:
             self.data_dst_size = \
-                util.check_tensor_shape_size(list(self.dst_shape))
+                para_check.check_tensor_shape_size(list(self.dst_shape))
 
         if self.data_size != self.data_dst_size:
             error_manager_vector.raise_err_specific_reson("TensorMove", "The size of src and des\
@@ -223,7 +223,7 @@ class TensorMove():
         return self.tik_instance
 
 
-@util.check_input_type(dict, dict, str)
+@para_check.check_input_type(dict, dict, str)
 def tensor_move(src, dst, kernel_name="tensor_move"):
     """
     algorithm: tensor_move

@@ -19,7 +19,6 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
@@ -153,7 +152,7 @@ def gn_training_reduce(x, sum, square_sum, num_groups=2, kernel_name="gn_trainin
     res = gn_training_reduce_compute(x_input, data_format, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
 
     tensor_list = [x_input] + list(res)
 

@@ -19,8 +19,7 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
+
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import gen_param
@@ -643,7 +642,7 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
                         axis, num_axes, scale_from_blob, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     tensor_list = (x_input, scale_input, res)
     if len(shape_bias) > 0:

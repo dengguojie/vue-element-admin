@@ -26,7 +26,7 @@ from te import platform as cce
 from te import tvm
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from impl import slice_d
 from impl.five_2_four_v200_fp32fp16 import five_2_four_v200_fp32fp16
 from impl.c1hwc0_2_chw import c1hwc0_2_chw
@@ -9330,16 +9330,16 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     if dst_format.lower() != "nchw" and dst_format.lower() != "nhwc":
         raise RuntimeError("dst_format must be NCHW or NHWC!")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 5, 5)
-    util.check_shape_rule(dst_shape, 4, 4)
-    util.check_tensor_shape_size(src_shape)
-    util.check_tensor_shape_size(dst_shape)
+    para_check.check_shape_rule(src_shape, 5, 5)
+    para_check.check_shape_rule(dst_shape, 4, 4)
+    para_check.check_tensor_shape_size(src_shape)
+    para_check.check_tensor_shape_size(dst_shape)
 
     if src_shape[4] != 16:
         raise RuntimeError(
@@ -9885,7 +9885,7 @@ def _check_n_16_7_7_nchw_fp16(dst_shape, dst_format, dtype):
 
 
 # pylint: disable=too-many-boolean-expressions
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
     """
     algorithm: five_2_four

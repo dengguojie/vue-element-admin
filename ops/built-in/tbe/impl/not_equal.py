@@ -24,8 +24,7 @@ import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
-from topi import generic
-from topi.cce import util
+
 
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
@@ -145,7 +144,7 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     dtype_y = dtype_y.lower()
     para_check.check_dtype(dtype_y, check_list, param_name="input_y")
-    util.compare_tensor_dict_key(input_x, input_y, "dtype")
+    shape_util.compare_tensor_dict_key(input_x, input_y, "dtype")
 
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     if dtype_x == "bool":
@@ -156,7 +155,7 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
 
     res = not_equal_compute(data_input_x, data_input_y, output_z, kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input_x, data_input_y, res]}

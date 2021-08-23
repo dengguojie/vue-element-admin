@@ -32,8 +32,7 @@ from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import shape_util
 from impl.util import util_frac_z as fz
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
@@ -214,7 +213,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
         return param_dynamic_in_json
 
-    shape_x_ori = util.scalar2tensor_one(input_x.get("ori_shape"))
+    shape_x_ori = shape_util.scalar2tensor_one(input_x.get("ori_shape"))
     length_x_ori = len(shape_x_ori)
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     dtype = input_x.get("dtype").lower()
@@ -2716,16 +2715,16 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
 
         if fz.is_frac_z(input_x):
             axis = fz.to_frac_z_axis(input_x.get("ori_shape"), axis)
-        axis = util.axis_check(len(shape), axis)
+        axis = shape_util.axis_check(len(shape), axis)
 
-        shape, axis = util.shape_refine(list(shape), axis)
-        shape, axis = util.simplify_axis_shape(shape, axis)
+        shape, axis = shape_util.shape_refine(list(shape), axis)
+        shape, axis = shape_util.simplify_axis_shape(shape, axis)
 
         attr = {"ori_shape": input_x.get("ori_shape")}
         data_input = tvm.placeholder(shape, dtype=dtype, name="data", attrs=attr)
         output = softmax_v2_compute(data_input, output_y, axis, kernel_name)
         with tvm.target.cce():
-            result = generic.auto_schedule(output)
+            result = te.lang.cce.auto_schedule(output)
 
         tensor_list = [data_input, output]
 

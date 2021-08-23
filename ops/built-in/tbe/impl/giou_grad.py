@@ -17,7 +17,7 @@ giou_grad
 """
 
 from impl.util.platform_adapter import tik
-from topi.cce import util
+
 from impl.util.platform_adapter import para_check
 from te.platform.fusion_manager import fusion_manager
 
@@ -163,20 +163,20 @@ class GIoUGrad(object):
         """paras_check"""
         shape_dy = dy.get("shape")
         dtype_dy = dy.get("dtype").lower()
-        util.check_shape_rule(shape_dy)
-        util.check_dtype_rule(dtype_dy, ("float32"))
+        para_check.check_shape_rule(shape_dy)
+        para_check.check_dtype_rule(dtype_dy, ("float32"))
 
         shape_bboxes = bboxes.get("shape")
         dtype_bboxes = bboxes.get("dtype").lower()
-        util.check_shape_rule(shape_bboxes)
-        util.check_dtype_rule(dtype_bboxes, ("float32"))
+        para_check.check_shape_rule(shape_bboxes)
+        para_check.check_dtype_rule(dtype_bboxes, ("float32"))
 
         shape_gtboxes = gtboxes.get("shape")
 
         if shape_bboxes != shape_gtboxes:
             raise RuntimeError("shape_bboxes should equal to shape_gtboxes.")
 
-        util.check_kernel_name(self.kernel_name)
+        para_check.check_kernel_name(self.kernel_name)
 
         if not trans:
             raise RuntimeError("The attr_trans should be true.")

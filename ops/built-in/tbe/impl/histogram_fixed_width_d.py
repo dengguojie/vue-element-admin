@@ -24,7 +24,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
-from topi.cce import util
+from impl.util.platform_adapter import shape_util
 from impl.util.util_select_op_base import ReduceInput
 from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -985,9 +985,9 @@ def histogram_fixed_width_d(x,
 
     para_check.check_shape(input_shape_list[0], param_name="x")
     para_check.check_shape(input_shape_list[1], param_name="range")
-    util.compare_tensor_dict_key(x, range, "dtype")
-    data_shape_size = util.check_tensor_shape_size(list(input_shape_list[0]))
-    data_range_shape_size = util.check_tensor_shape_size(
+    shape_util.compare_tensor_dict_key(x, range, "dtype")
+    data_shape_size = para_check.check_tensor_shape_size(list(input_shape_list[0]))
+    data_range_shape_size = para_check.check_tensor_shape_size(
         list(input_shape_list[1]))
 
     para_check.check_dtype(dtype_input, ("float16", "float32", "int32"), param_name="x")

@@ -25,7 +25,6 @@ from te.lang.cce.te_compute import common
 from te.platform import insn_cmd
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
-from topi import generic
 import collections
 import math
 from te.utils import error_manager
@@ -824,7 +823,7 @@ def avg_pool_v2_grad_d(input_grad,
             if data_dtype == "float16":
                 grad_tmp = te.lang.cce.cast_to(grad_tmp, "float16")
             res = te.lang.cce.broadcast(grad_tmp, orig_input_shape)
-            sch = generic.auto_schedule(res)
+            sch = te.lang.cce.auto_schedule(res)
         config = {"name": kernel_name, "tensor_list": [input_grad, res]}
         te.lang.cce.cce_build_code(sch, config)
     else:

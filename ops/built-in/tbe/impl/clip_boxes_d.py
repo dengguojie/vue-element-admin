@@ -19,7 +19,7 @@ from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from te import platform as tbe_platform
-from topi.cce import util
+
 from impl.util import util_select_op_base
 
 SHAPE_SIZE_LIMIT = 65500
@@ -645,7 +645,7 @@ def clip_boxes_d(boxes_input, boxes_output, img_size, kernel_name="clip_boxes"):
     img_h, img_w = img_size
     check_clip_boxes_input_dict(boxes_input, boxes_output)
     check_clip_boxes_input_attr(img_w, img_h)
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
     tik_instance = clip_boxes_d_compute(boxes_input, img_w, img_h, kernel_name=kernel_name)
     return tik_instance

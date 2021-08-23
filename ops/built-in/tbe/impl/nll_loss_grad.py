@@ -18,7 +18,7 @@ nll_loss_grad
 # pylint: disable=ungrouped-imports,import-error
 import math
 from te import tik
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from te import platform as tbe_platform
 from impl.constant_util import MASK64
 from impl.util.platform_adapter import error_manager_vector
@@ -46,21 +46,21 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,
     total_weight_dtype = total_weight.get("dtype").lower()
     weight_shape = weight.get("shape")
     weight_dtype = weight.get("dtype").lower()
-    util.check_tensor_shape_size(weight_shape)
-    util.check_shape_rule(weight_shape)
+    para_check.check_tensor_shape_size(weight_shape)
+    para_check.check_shape_rule(weight_shape)
 
-    util.check_shape_rule(x_shape)
-    util.check_shape_rule(y_grad_shape)
-    util.check_shape_rule(target_shape)
-    util.check_tensor_shape_size(y_grad_shape)
-    util.check_tensor_shape_size(target_shape)
+    para_check.check_shape_rule(x_shape)
+    para_check.check_shape_rule(y_grad_shape)
+    para_check.check_shape_rule(target_shape)
+    para_check.check_tensor_shape_size(y_grad_shape)
+    para_check.check_tensor_shape_size(target_shape)
 
-    util.check_kernel_name(kernel_name)
-    util.check_dtype_rule(x_dtype, "float32")
-    util.check_dtype_rule(y_grad_dtype, "float32")
-    util.check_dtype_rule(target_dtype, "int32")
-    util.check_dtype_rule(weight_dtype, "float32")
-    util.check_dtype_rule(total_weight_dtype, "float32")
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_dtype_rule(x_dtype, "float32")
+    para_check.check_dtype_rule(y_grad_dtype, "float32")
+    para_check.check_dtype_rule(target_dtype, "int32")
+    para_check.check_dtype_rule(weight_dtype, "float32")
+    para_check.check_dtype_rule(total_weight_dtype, "float32")
 
     if reduction in ("mean", "sum") and y_grad_shape[0] != 1:
         error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The shape of y_grad  \
@@ -952,7 +952,7 @@ class NllLossGradCompute:
         return self.tik_instance
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, str, int, str)
+@para_check.check_input_type(dict, dict, dict, dict, dict, dict, str, int, str)
 def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
                   reduction="mean", ignore_index=-100, kernel_name="nll_loss_grad"):
     """

@@ -23,7 +23,7 @@ rpn_proposal_post_processing
 # pylint: disable=R0912
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 
 SHAPE_SIZE_LIMIT = 709920
@@ -1772,7 +1772,7 @@ def check_input_param(input_para, kernel_name):
     if min_size > min(img_height, img_width):
         raise RuntimeError("min_size should be less than min(img_height, img_width)!")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
 
 def check_input_dict(dict_list, param_list):
@@ -1836,9 +1836,9 @@ def check_input_dict(dict_list, param_list):
     _check_input_type_dict(dict_list[CONFIG_TWO], input_key, "sorted_box")
 
     # check the dtype
-    util.check_dtype_rule(dict_list[0].get("dtype"), ("float16", ))
-    util.check_dtype_rule(dict_list[CONFIG_ONE].get("dtype"), ("uint32", ))
-    util.check_dtype_rule(dict_list[CONFIG_TWO].get("dtype"), ("float16", ))
+    para_check.check_dtype_rule(dict_list[0].get("dtype"), ("float16", ))
+    para_check.check_dtype_rule(dict_list[CONFIG_ONE].get("dtype"), ("uint32", ))
+    para_check.check_dtype_rule(dict_list[CONFIG_TWO].get("dtype"), ("float16", ))
 
     # get the parameters from dicts
     input_proposal_shape = dict_list[0].get("shape")
@@ -1846,13 +1846,13 @@ def check_input_dict(dict_list, param_list):
     output_box_shape = dict_list[CONFIG_TWO].get("shape")
 
     # check the shape
-    util.check_shape_rule(input_proposal_shape,
+    para_check.check_shape_rule(input_proposal_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO)
-    util.check_shape_rule(input_proposal_num_shape,
+    para_check.check_shape_rule(input_proposal_num_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO)
-    util.check_shape_rule(output_box_shape,
+    para_check.check_shape_rule(output_box_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO)
 
@@ -1886,7 +1886,7 @@ def check_input_dict(dict_list, param_list):
                            " n dimension of inputs sorted_box")
 
 
-@util.check_input_type(dict, dict, dict,
+@para_check.check_input_type(dict, dict, dict,
                        (tuple, list), (float, int), int,
                        (float, int), (float, int), int,
                        bool, int, str)

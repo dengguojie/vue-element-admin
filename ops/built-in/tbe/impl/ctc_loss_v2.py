@@ -17,7 +17,7 @@ ctc_loss_v2
 """
 
 from impl.util.platform_adapter import tik
-from topi.cce import util
+
 from impl.util.platform_adapter import para_check
 from te.platform.fusion_manager import fusion_manager
 
@@ -87,15 +87,15 @@ class CTCLossV2(object):
         """paras_check"""
         shape_log_probs = log_probs.get("shape")
         dtype_float = log_probs.get("dtype").lower()
-        util.check_shape_rule(shape_log_probs)
-        util.check_dtype_rule(dtype_float, ("float32"))
+        para_check.check_shape_rule(shape_log_probs)
+        para_check.check_dtype_rule(dtype_float, ("float32"))
 
         shape_targets = targets.get("shape")
         dtype_int = targets.get("dtype").lower()
-        util.check_shape_rule(shape_targets)
-        util.check_dtype_rule(dtype_int, ("int32"))
+        para_check.check_shape_rule(shape_targets)
+        para_check.check_dtype_rule(dtype_int, ("int32"))
 
-        util.check_kernel_name(kernel_name)
+        para_check.check_kernel_name(kernel_name)
 
         return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[1]]
 

@@ -23,8 +23,7 @@ from te.platform.cce_conf import api_check_support
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-from topi import generic
-from topi.cce import util
+
 
 # value of default num_bits
 NUM_BITS_MIN = 2
@@ -255,8 +254,8 @@ def _check_parameters(gradients, x, input_min, input_max, kernel_name):
     dtype_max = input_max.get("dtype").lower()
     shape_max = input_max.get("shape")
 
-    shape_min = util.scalar2tensor_one(shape_min)
-    shape_max = util.scalar2tensor_one(shape_max)
+    shape_min = shape_util.scalar2tensor_one(shape_min)
+    shape_max = shape_util.scalar2tensor_one(shape_max)
 
     # check kernel name and shape
     para_check.check_shape(shape_gradient, param_name="gradients")
@@ -461,12 +460,12 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
     shape_backprops_wrt_x = backprops_wrt_x.get("shape")
     shape_backprops_wrt_min = backprops_wrt_min.get("shape")
     shape_backprops_wrt_max = backprops_wrt_max.get("shape")
-    shape_backprops_wrt_min = util.scalar2tensor_one(shape_backprops_wrt_min)
-    shape_backprops_wrt_max = util.scalar2tensor_one(shape_backprops_wrt_max)
+    shape_backprops_wrt_min = shape_util.scalar2tensor_one(shape_backprops_wrt_min)
+    shape_backprops_wrt_max = shape_util.scalar2tensor_one(shape_backprops_wrt_max)
     para_check.check_shape(shape_backprops_wrt_x, param_name="backprops_wrt_x")
     para_check.check_shape(shape_backprops_wrt_min, param_name="backprops_wrt_min")
     para_check.check_shape(shape_backprops_wrt_max, param_name="backprops_wrt_max")
-    shape_min = util.scalar2tensor_one(shape_min)
+    shape_min = shape_util.scalar2tensor_one(shape_min)
     shape_gradient = (functools_reduce(lambda x, y: x * y, shape_gradient[:]),)
     _, min_new_shape, _ = shape_util.broadcast_shapes(shape_gradient, shape_min,
                                               param_name_input1="gradients",
@@ -489,7 +488,7 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
 
     input_placeholders = (gradient_data, x, min_data, max_data)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res_list)
+        sch = te.lang.cce.auto_schedule(res_list)
 
     config = {"name": kernel_name,
               "tensor_list": list(input_placeholders) + list(res_list)}

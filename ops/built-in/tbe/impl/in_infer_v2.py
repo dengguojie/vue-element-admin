@@ -21,7 +21,6 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from topi import generic
 from impl.util.platform_adapter import error_manager_vector
 
 
@@ -282,7 +281,7 @@ def in_infer_v2(x, gamma, beta, mean, variance,
                            kernel_name=kernel_name, impl_mode=impl_mode)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     if has_gamma:
         tensor_list = [x_input, gamma_input, beta_input, mean_input,

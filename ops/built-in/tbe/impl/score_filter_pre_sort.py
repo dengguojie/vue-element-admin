@@ -23,7 +23,7 @@ score_filter_pre_sort
 # pylint: disable=R0912
 from te import tik
 
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 
 SHAPE_SIZE_LIMIT = 709920
@@ -1584,7 +1584,7 @@ def check_input_param(input_para, kernel_name):
     if k % CONFIG_SIXTEEN:
         raise RuntimeError("K should be times of 16!")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
 
 def check_input_dict(dict_list, param_list):
@@ -1649,10 +1649,10 @@ def check_input_dict(dict_list, param_list):
     _check_input_type_dict(dict_list[CONFIG_THREE], input_key, "proposal_num")
 
     # check the dtype
-    util.check_dtype_rule(dict_list[0].get("dtype"), ("float16", ))
-    util.check_dtype_rule(dict_list[CONFIG_ONE].get("dtype"), ("float16", ))
-    util.check_dtype_rule(dict_list[CONFIG_TWO].get("dtype"), ("float16", ))
-    util.check_dtype_rule(dict_list[CONFIG_THREE].get("dtype"), ("uint32", ))
+    para_check.check_dtype_rule(dict_list[0].get("dtype"), ("float16", ))
+    para_check.check_dtype_rule(dict_list[CONFIG_ONE].get("dtype"), ("float16", ))
+    para_check.check_dtype_rule(dict_list[CONFIG_TWO].get("dtype"), ("float16", ))
+    para_check.check_dtype_rule(dict_list[CONFIG_THREE].get("dtype"), ("uint32", ))
 
     # get the parameters from dicts
     input_rois_shape = dict_list[0].get("shape")
@@ -1660,18 +1660,18 @@ def check_input_dict(dict_list, param_list):
     output_proposal_shape = dict_list[CONFIG_TWO].get("shape")
     output_proposal_num_shape = dict_list[CONFIG_THREE].get("shape")
     # check the shape
-    util.check_shape_rule(input_rois_shape,
+    para_check.check_shape_rule(input_rois_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO,
                           max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(input_prob_shape,
+    para_check.check_shape_rule(input_prob_shape,
                           min_dim=CONFIG_ONE,
                           max_dim=CONFIG_TWO,
                           max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(output_proposal_shape,
+    para_check.check_shape_rule(output_proposal_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO)
-    util.check_shape_rule(output_proposal_num_shape,
+    para_check.check_shape_rule(output_proposal_num_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO)
 
@@ -2004,7 +2004,7 @@ def score_filter_pre_sort_compute(dict_list, param_list, kernel_name):
     return tik_instance
 
 
-@util.check_input_type(dict, dict, dict, dict,
+@para_check.check_input_type(dict, dict, dict, dict,
                        (float, int), int,
                        bool, int, str)
 def score_filter_pre_sort(rois, cls_bg_prob, sorted_proposal, proposal_num,

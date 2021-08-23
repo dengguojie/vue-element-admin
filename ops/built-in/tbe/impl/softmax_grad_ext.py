@@ -21,8 +21,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+
 from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
@@ -53,9 +52,9 @@ def op_select_format(grad, x1, x2, y, axis, keepdims,
     """
     select format dynamically
     """
-    origin_shape0 = util.scalar2tensor_one(grad.get("ori_shape"))
-    origin_shape1 = util.scalar2tensor_one(x1.get("ori_shape"))
-    origin_shape2 = util.scalar2tensor_one(x2.get("ori_shape"))
+    origin_shape0 = shape_util.scalar2tensor_one(grad.get("ori_shape"))
+    origin_shape1 = shape_util.scalar2tensor_one(x1.get("ori_shape"))
+    origin_shape2 = shape_util.scalar2tensor_one(x2.get("ori_shape"))
 
     condition_0 = len(origin_shape2) == 1 and origin_shape2[0] == 1
     condition_1 = _division_sixteen(origin_shape0)
@@ -98,11 +97,11 @@ def op_select_format(grad, x1, x2, y, axis, keepdims,
 
 def _check_nz_rule(grad, x1, x2, axis):
 
-    shape_grad = util.scalar2tensor_one(grad.get("shape"))
-    shape_x1 = util.scalar2tensor_one(x1.get("shape"))
-    shape_x2 = util.scalar2tensor_one(x2.get("shape"))
+    shape_grad = shape_util.scalar2tensor_one(grad.get("shape"))
+    shape_x1 = shape_util.scalar2tensor_one(x1.get("shape"))
+    shape_x2 = shape_util.scalar2tensor_one(x2.get("shape"))
 
-    ori_shape = util.scalar2tensor_one(grad.get("ori_shape"))
+    ori_shape = shape_util.scalar2tensor_one(grad.get("ori_shape"))
 
     format_grad = grad.get("format")
     format_x1 = x1.get("format")
@@ -291,9 +290,9 @@ def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
     -------
     None
     """
-    shape_grad = util.scalar2tensor_one(grad.get("shape"))
-    shape_x1 = util.scalar2tensor_one(x1.get("shape"))
-    shape_x2 = util.scalar2tensor_one(x2.get("shape"))
+    shape_grad = shape_util.scalar2tensor_one(grad.get("shape"))
+    shape_x1 = shape_util.scalar2tensor_one(x1.get("shape"))
+    shape_x2 = shape_util.scalar2tensor_one(x2.get("shape"))
 
     dtype_grad = grad.get("dtype").lower()
     dtype_x1 = x1.get("dtype").lower()
@@ -325,7 +324,7 @@ def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
     inputlist = [data_grad, data_x1, data_x2]
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": list(inputlist) + list(res)}

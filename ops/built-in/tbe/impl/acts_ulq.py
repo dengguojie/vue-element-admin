@@ -19,8 +19,8 @@ from __future__ import absolute_import
 
 import te.lang.cce
 from te import tvm
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -101,7 +101,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     return [output, clamp_min_mask, clamp_max_mask, clamped_loss]
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, dict, bool, int, str)
+@para_check.check_input_type(dict, dict, dict, dict, dict, dict, dict, bool, int, str)
 def acts_ulq(
         data,
         clamp_min,
@@ -141,17 +141,17 @@ def acts_ulq(
     """
     if num_bits != 8:
         raise ValueError("num bits only supports 8")
-    shape_x = util.scalar2tensor_one(data.get("shape"))
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(shape_x)
-    util.check_shape_size(shape_x, SHAPE_SIZE_LIMIT)
+    shape_x = shape_util.scalar2tensor_one(data.get("shape"))
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape_x)
+    para_check.check_shape_size(shape_x, SHAPE_SIZE_LIMIT)
 
     check_tuple = ("float16", "float32")
     input_data_type = data.get("dtype").lower()
-    util.check_dtype_rule(input_data_type, check_tuple)
+    para_check.check_dtype_rule(input_data_type, check_tuple)
 
-    shape_clamp_min = util.scalar2tensor_one(clamp_min.get("shape"))
-    shape_clamp_max = util.scalar2tensor_one(clamp_max.get("shape"))
+    shape_clamp_min = shape_util.scalar2tensor_one(clamp_min.get("shape"))
+    shape_clamp_max = shape_util.scalar2tensor_one(clamp_max.get("shape"))
 
     if len(shape_clamp_min) != len(shape_clamp_max):
         raise ValueError("clamp min shape must be the same as clamp max")
@@ -179,7 +179,7 @@ def acts_ulq(
     res = acts_ulq_compute(data_x, data_clamp_min, data_clamp_max, fixed_min, n, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
     tensor_list = [data_x, data_clamp_min, data_clamp_max] + list(res)
     config = {"print_ir": False,
               "bool_storage_as_1bit": False,

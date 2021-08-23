@@ -25,7 +25,7 @@ from te.platform import cce_params as param
 from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 from te.platform.cce_build import build_config
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 import te.lang.cce
 from impl.util.util_common import write_code
 
@@ -2820,7 +2820,7 @@ def four_2_five_compute(src, dst, src_format, dst_format,
     return res, param_ir
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
     """
     algorithm: four_2_five
@@ -2848,11 +2848,11 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
     shape_output = dst.get("shape")
     dtype_output = dst.get("dtype").lower()
 
-    util.check_shape_rule(shape_input)
-    util.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape_input)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32", "int8")
-    util.check_dtype_rule(dtype_input, check_list)
-    util.check_tensor_shape_size(shape_input)
+    para_check.check_dtype_rule(dtype_input, check_list)
+    para_check.check_tensor_shape_size(shape_input)
 
     if dtype_input == "bool":
         dtype_input = "int8"

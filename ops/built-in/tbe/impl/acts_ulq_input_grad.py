@@ -19,8 +19,8 @@ from __future__ import absolute_import
 
 import te.lang.cce
 from te import tvm
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -56,7 +56,7 @@ def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max
     return [x_grad]
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, dict, str)
 def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_name="acts_ulq_input_grad"):
     """
     calculating grad of acts_ulq
@@ -76,17 +76,17 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
     -------
     None
     """
-    y_grad_shape = util.scalar2tensor_one(y_grad.get("shape"))
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(y_grad_shape)
-    util.check_shape_size(y_grad_shape, SHAPE_SIZE_LIMIT)
+    y_grad_shape = shape_util.scalar2tensor_one(y_grad.get("shape"))
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(y_grad_shape)
+    para_check.check_shape_size(y_grad_shape, SHAPE_SIZE_LIMIT)
 
     check_tuple = ("float16", "float32")
     y_grad_type = y_grad.get("dtype").lower()
-    util.check_dtype_rule(y_grad_type, check_tuple)
+    para_check.check_dtype_rule(y_grad_type, check_tuple)
 
-    shape_clamp_min_mask = util.scalar2tensor_one(clamp_min_mask.get("shape"))
-    shape_clamp_max_mask = util.scalar2tensor_one(clamp_max_mask.get("shape"))
+    shape_clamp_min_mask = shape_util.scalar2tensor_one(clamp_min_mask.get("shape"))
+    shape_clamp_max_mask = shape_util.scalar2tensor_one(clamp_max_mask.get("shape"))
 
     if y_grad_shape != shape_clamp_min_mask or y_grad_shape != shape_clamp_max_mask:
         raise ValueError("clamp max/min mask shape should be same as y_grad")
@@ -103,7 +103,7 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
     if clamp_min_mask_type != "bool" or clamp_max_mask_type != "bool":
         raise ValueError("clamp min/max should be type bool")
 
-    util.check_shape_size(y_grad_shape, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(y_grad_shape, SHAPE_SIZE_LIMIT)
     data_y_grad = tvm.placeholder(y_grad_shape, y_grad_type, 'data_y_grad')
     data_clamp_min_mask = tvm.placeholder(shape_clamp_max_mask, clamp_min_mask_type, 'data_clamp_min_mask')
     data_clamp_max_mask = tvm.placeholder(shape_clamp_max_mask, clamp_min_mask_type, 'data_clamp_max_mask')
@@ -111,7 +111,7 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
     res = acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max_mask, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
     tensor_list = [data_y_grad, data_clamp_min_mask, data_clamp_max_mask] + list(res)
     config = {
         "bool_storage_as_1bit": False,

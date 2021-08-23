@@ -19,8 +19,7 @@ from __future__ import absolute_import
 
 import te.lang.cce
 from te import tvm
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -116,7 +115,7 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
 
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments
-@util.check_input_type(dict, dict, dict, dict, int, bool, str)
+@para_check.check_input_type(dict, dict, dict, dict, int, bool, str)
 def wts_arq(w,
             w_min,
             w_max,
@@ -150,12 +149,12 @@ def wts_arq(w,
     None
     """
     shape_w = w.get("shape")
-    util.check_shape_rule(shape_w)
-    util.check_shape_size(shape_w, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_rule(shape_w)
+    para_check.check_shape_size(shape_w, SHAPE_SIZE_LIMIT)
 
     check_tuple = ("float16", "float32")
     w_type = w.get("dtype").lower()
-    util.check_dtype_rule(w_type, check_tuple)
+    para_check.check_dtype_rule(w_type, check_tuple)
 
     w_min_type = w_min.get("dtype").lower()
     w_max_type = w_max.get("dtype").lower()
@@ -192,7 +191,7 @@ def wts_arq(w,
             "num_bits can only be 8 in current implementation, but is {}".
             format(num_bits))
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
     weights = tvm.placeholder(shape_w, name="w", dtype=w_type)
     weights_min = tvm.placeholder(w_min.get("shape"),
@@ -205,7 +204,7 @@ def wts_arq(w,
                         offset_flag)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(y)
+        schedule = te.lang.cce.auto_schedule(y)
 
     config = {
         "print_ir": False,

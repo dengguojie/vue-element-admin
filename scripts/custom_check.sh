@@ -40,7 +40,7 @@ show_content() {
 
 check_file() {
     file_name=$1
-    if [[ $file_name =~ "impl/dynamic" ]] && [ "${file_name##*.}"x = "py"x ]; then
+    if [[ $file_name =~ "impl/dynamic/" ]] && [ "${file_name##*.}"x = "py"x ]; then
         # check import te
         if [ `grep -c "import te" $file_name` -ne '0' ]; then
             echo "[ERROR]\"import te\" has been abandoned, please use a new interface \"import tbe\""

@@ -16,7 +16,7 @@
 decode_wheels_target
 """
 from te import tik
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 # the max num of single copy
 SINGLE_N_MAX = 640
 
@@ -434,7 +434,7 @@ def calculate_process(tik_instance, gm_tensor, shape, current_data_x, current_da
                            0, 0)
 
 
-@util.check_input_type(dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, str)
 def decode_wheels_target(
         boundary_predictions,
         anchors,
@@ -460,7 +460,7 @@ def decode_wheels_target(
     """
 
     check_decode_wheels_target_params(boundary_predictions, anchors, boundary_encoded)
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     shape_x = boundary_predictions.get("shape")
 
     tik_instance = tik.Tik(tik.Dprofile(), True)

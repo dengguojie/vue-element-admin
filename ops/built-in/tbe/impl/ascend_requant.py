@@ -20,7 +20,6 @@ from tbe.common.platform.platform_info import get_soc_spec
 from te import tvm
 import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
@@ -385,4 +384,4 @@ def ascend_requant(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant
     with tvm.target.cce():
         res = ascend_requant_compute(input_x, input_req, relu_flag,
                                      kernel_name)
-        generic.auto_schedule(res)
+        te.lang.cce.auto_schedule(res)

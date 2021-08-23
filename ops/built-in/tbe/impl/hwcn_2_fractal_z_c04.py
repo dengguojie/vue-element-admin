@@ -18,7 +18,7 @@ hwcn_2_fractal_z_c04
 from functools import reduce as functools_reduce
 from te import platform as tbe_platform
 from te import tik
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 
 # available ub size
@@ -174,8 +174,8 @@ class HWCN2FRACTALZC04Compute:
         self.mask = MAX_MASK
         # the number of data that can be moved in each data_move
         self.num_data = DATA_MOVE_MIN_UNIT // self.num_byte
-        util.check_shape_rule(self.dst_shape)
-        util.check_tensor_shape_size(self.dst_shape)
+        para_check.check_shape_rule(self.dst_shape)
+        para_check.check_tensor_shape_size(self.dst_shape)
         # the number of data that UB can put in
         self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // self.num_byte // 2
         self.src_gm = None
@@ -868,7 +868,7 @@ class HWCN2FRACTALZC04Compute:
         return tik_instance
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def hwcn_2_fractal_z_c04(src, dst, src_format, dst_format,
                          kernel_name="hwcn_2_fractal_z_c04"):
     """
@@ -893,11 +893,11 @@ def hwcn_2_fractal_z_c04(src, dst, src_format, dst_format,
     """
     src_shape = src.get("shape")
     src_dtype = src.get("dtype").lower()
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(src_shape)
-    util.check_tensor_shape_size(src_shape)
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(src_shape)
+    para_check.check_tensor_shape_size(src_shape)
     check_list = ("float16")
-    util.check_dtype_rule(src_dtype, check_list)
+    para_check.check_dtype_rule(src_dtype, check_list)
     if len(src_shape) != 4:
         raise RuntimeError("hwcn_2_fractal_z_c04 only support 4D "
                            "while src shape is %s" %

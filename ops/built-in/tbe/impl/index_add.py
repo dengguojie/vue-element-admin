@@ -18,7 +18,7 @@ import math
 from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from te.utils import op_utils
 from te.platform.fusion_manager import fusion_manager
 
@@ -335,22 +335,22 @@ class ScatterAxis():
         var_out_dtype = var_out.get("dtype").lower()
         if var_out_dtype == "bool":
             var_out_dtype = "int8"
-        util.check_kernel_name(self.kernel_name)
-        util.check_shape_rule(self.var_shape)
-        util.check_shape_rule(self.indices_shape)
-        util.check_shape_rule(self.updates_shape)
+        para_check.check_kernel_name(self.kernel_name)
+        para_check.check_shape_rule(self.var_shape)
+        para_check.check_shape_rule(self.indices_shape)
+        para_check.check_shape_rule(self.updates_shape)
 
-        util.check_tensor_shape_size(self.var_shape)
-        util.check_tensor_shape_size(self.indices_shape)
-        util.check_tensor_shape_size(self.updates_shape)
-        util.check_tensor_shape_size(var_out_shape)
+        para_check.check_tensor_shape_size(self.var_shape)
+        para_check.check_tensor_shape_size(self.indices_shape)
+        para_check.check_tensor_shape_size(self.updates_shape)
+        para_check.check_tensor_shape_size(var_out_shape)
 
         check_list_indices = ("int32")
-        util.check_dtype_rule(self.indices_dtype, check_list_indices)
+        para_check.check_dtype_rule(self.indices_dtype, check_list_indices)
         check_list_var = ("float16", "float32", "int32", "int8", "uint8")
-        util.check_dtype_rule(self.var_dtype, check_list_var)
-        util.check_dtype_rule(self.updates_dtype, check_list_var)
-        util.check_dtype_rule(var_out_dtype, check_list_var)
+        para_check.check_dtype_rule(self.var_dtype, check_list_var)
+        para_check.check_dtype_rule(self.updates_dtype, check_list_var)
+        para_check.check_dtype_rule(var_out_dtype, check_list_var)
 
         if (self.updates_dtype != self.var_dtype or var_out_dtype != self.var_dtype):
             raise RuntimeError(
@@ -490,7 +490,6 @@ class ScatterAxis():
             self.elem_burstpart_start.set_as(self.burst_align_offset)
             self.elem_burstpart_len.set_as(self.elem_total_len - self.elem_tailpart_len)
         with self.tik_instance.else_scope():
-            self.tik_instance.tikdb.debug_print('"error info please check"+str(self.burst_align_offset)')
             self.elem_burstpart_len.set_as(0)  # elem burst no need
 
         # get taillen align

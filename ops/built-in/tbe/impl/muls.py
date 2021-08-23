@@ -19,7 +19,6 @@ import te.lang.cce
 from te import tvm
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -78,7 +77,7 @@ def muls(x, y, value, kernel_name="muls"):
     res = muls_compute(data_input, scalar)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
 
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 

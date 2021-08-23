@@ -651,3 +651,20 @@ def is_same_group(_inputs):
         if groups_first != groups:
             return False
     return True
+
+def check_load3d_w_out_1_support():
+    """
+    check if current soc version load3d instruction support w_out==1 or not
+    only Ascend310 and Hi3796CS support w_out==1
+    when fmap_w(with padding) == filters_w(after dilation)
+    -------
+
+    Returns
+    -------
+    True: support
+    False: not support
+    """
+    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if soc_version in ["Ascend310", "Hi3796CV300CS"]:
+        return True
+    return False

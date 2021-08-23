@@ -27,8 +27,7 @@ from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 import te.lang.cce
 from te import tvm
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from impl.four_2_five_computer import compute_four_2_five
 from impl import trans_data_positive_source_tc
 from impl import trans_data_positive_source_ntc
@@ -1079,12 +1078,12 @@ def _check_parameters(src, dst, src_format, dst_format):
         raise RuntimeError("dst_format must be NC1HWC0 !")
 
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 4, 4)
-    util.check_tensor_shape_size(src_shape)
+    para_check.check_shape_rule(src_shape, 4, 4)
+    para_check.check_tensor_shape_size(src_shape)
 
 
 def _check_move_full(shape_nhwc, src_format, dtype):
@@ -1177,7 +1176,7 @@ def _check_vconv_one(shape_nhwc, src_format, dtype):
     return True
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
     """
     algorithm: four_2_five
@@ -1205,11 +1204,11 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
     shape_output = list(dst.get("shape"))
     dtype_output = dst.get("dtype").lower()
 
-    util.check_shape_rule(shape_input)
-    util.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(shape_input)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32")
-    util.check_dtype_rule(dtype_input, check_list)
-    util.check_tensor_shape_size(shape_input)
+    para_check.check_dtype_rule(dtype_input, check_list)
+    para_check.check_tensor_shape_size(shape_input)
 
     _check_parameters(src, dst, src_format, dst_format)
     dtype = src.get("dtype")
@@ -1310,7 +1309,7 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
                                   kernel_name)
 
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = te.lang.cce.auto_schedule(res)
 
         config = {"name": kernel_name,
                   "tensor_list": [data_input, res]}

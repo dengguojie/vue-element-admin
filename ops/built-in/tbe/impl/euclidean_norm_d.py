@@ -20,7 +20,6 @@ import te.lang.cce
 from te import tvm
 from te.utils.op_utils import *
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.platform import get_soc_spec
 
 
@@ -152,7 +151,7 @@ def euclidean_norm_d(input_data,
                                    refined_axes, keepdims, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
 
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 

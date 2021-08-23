@@ -23,7 +23,6 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from impl.util.platform_adapter import error_manager_vector
 
 NONETYPE = type(None)
@@ -299,7 +298,7 @@ def in_infer_v2d(x, gamma, beta, mean, variance, variance_sqrt,
                                         variance_sqrt_input, kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     if affine:
         if use_exist_mean:

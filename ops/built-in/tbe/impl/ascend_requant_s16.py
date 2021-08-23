@@ -19,7 +19,6 @@ from functools import reduce as function_reduce
 from te import tvm
 import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
@@ -245,4 +244,4 @@ def ascend_requant_s16(x0, req_scale, x1, y0, y1, dual_output=False, relu_flag=F
 
     with tvm.target.cce():
         res = ascend_requant_s16_compute(input_x, input_req, input_x1, y0, y1, dual_output, relu_flag, kernel_name)
-        generic.auto_schedule(res)
+        te.lang.cce.auto_schedule(res)

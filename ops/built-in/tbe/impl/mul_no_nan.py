@@ -20,8 +20,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
-from topi import generic
-from topi.cce import util
+
 
 
 # pylint: disable=pointless-string-statement,unused-argument,invalid-name,too-many-locals
@@ -52,8 +51,8 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     shape_x1 = te.lang.cce.util.shape_to_list(input_x1.shape)
     shape_x2 = te.lang.cce.util.shape_to_list(input_x2.shape)
 
-    shape_x1, shape_x2, shape_max = util.produce_shapes(shape_x1, shape_x2)
-    util.check_shape_size(shape_max, para_check.SHAPE_SIZE_LIMIT)
+    shape_x1, shape_x2, shape_max = shape_util.produce_shapes(shape_x1, shape_x2)
+    para_check.check_shape_size(shape_max, para_check.SHAPE_SIZE_LIMIT)
     input_x1 = te.lang.cce.broadcast(input_x1, shape_max)
     input_x2 = te.lang.cce.broadcast(input_x2, shape_max)
 
@@ -112,7 +111,7 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     res = mul_no_nan_compute(data_x, data_y, output_z, kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
     config = {
         "print_ir": False,
         "name": kernel_name,

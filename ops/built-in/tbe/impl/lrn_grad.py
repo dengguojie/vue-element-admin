@@ -17,7 +17,7 @@ lrn_grad
 """
 import math
 from te import tik
-from topi.cce import util
+
 from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util as constant

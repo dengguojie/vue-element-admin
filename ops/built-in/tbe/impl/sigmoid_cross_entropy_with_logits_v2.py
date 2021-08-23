@@ -22,8 +22,7 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from te.utils import shape_util
 from te.utils import para_check
-from topi import generic
-from topi.cce.util import compare_tensor_dict_key
+from te.utils.shape_util import compare_tensor_dict_key
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
@@ -296,7 +295,7 @@ def sigmoid_cross_entropy_with_logits_v2(
     tensor_list.append(loss)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(loss)
+        sch = te.lang.cce.auto_schedule(loss)
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}

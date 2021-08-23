@@ -21,7 +21,6 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
@@ -327,7 +326,7 @@ def gn_training_update(x, sum, square_sum,
                                      kernel_name=kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     if affine:
         tensor_list = [x_input, sum_input, square_sum_input,

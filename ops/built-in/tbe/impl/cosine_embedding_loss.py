@@ -20,15 +20,15 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as cceconf
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def _shape_check(shape_x1, shape_x2, shape_tgt):
     # check whether the shape meets the broadcast requirements, and output broadcast shape
     try:
-        _, _, x_shape = util.produce_shapes(shape_x1, shape_x2)
+        _, _, x_shape = shape_util.produce_shapes(shape_x1, shape_x2)
     except RuntimeError:
         error_detail = "x1 and x2 can't be broadcast"
         error_manager_vector.raise_err_specific_reson("cosine_embedding_loss", error_detail)
@@ -36,7 +36,7 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
     x_shape_reduce = x_shape[:]
     x_shape_reduce.pop(1)
     try:
-        _, _, tgt_shape = util.produce_shapes(x_shape_reduce, shape_tgt)
+        _, _, tgt_shape = shape_util.produce_shapes(x_shape_reduce, shape_tgt)
     except RuntimeError:
         error_detail = "x and target can't be broadcast"
         error_manager_vector.raise_err_specific_reson("cosine_embedding_loss", error_detail)
@@ -60,12 +60,12 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
                 reduce(lambda x, y:x*y, x_shape[reduce_dim:])]
             tgt_shape = list(tgt_shape[:reduce_dim]) + [
                 reduce(lambda x, y:x*y, tgt_shape[reduce_dim:])]
-    util.check_shape_rule(shape_x1)
-    util.check_shape_rule(shape_x2)
-    util.check_shape_rule(shape_tgt)
-    util.check_tensor_shape_size(shape_x1)
-    util.check_tensor_shape_size(shape_x2)
-    util.check_tensor_shape_size(shape_tgt)
+    para_check.check_shape_rule(shape_x1)
+    para_check.check_shape_rule(shape_x2)
+    para_check.check_shape_rule(shape_tgt)
+    para_check.check_tensor_shape_size(shape_x1)
+    para_check.check_tensor_shape_size(shape_x2)
+    para_check.check_tensor_shape_size(shape_tgt)
 
     return x_shape, tgt_shape, shape_x1, shape_x2, shape_tgt
 
@@ -192,7 +192,7 @@ def cosine_embedding_loss_compute(x1, x2, target, output_y, x_shape_broadcat,
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@util.check_input_type(dict, dict, dict, dict, float, str, str)
+@para_check.check_input_type(dict, dict, dict, dict, float, str, str)
 def cosine_embedding_loss(input_x1, input_x2, target, y,
                           margin=0, reduction='mean',
                           kernel_name="cosine_embedding_loss"):
@@ -234,7 +234,7 @@ def cosine_embedding_loss(input_x1, input_x2, target, y,
     dtype_tgt = target.get("dtype")
     target_dtype = dtype_tgt.lower()
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     x_shape_broadcat, tgt_shape_broadcast, shape_x1, shape_x2, shape_tgt = \
         _shape_check(shape_x1, shape_x2, shape_tgt)
     _dtype_check(input_dtype_x1, input_dtype_x2, target_dtype, reduction)
@@ -252,7 +252,7 @@ def cosine_embedding_loss(input_x1, input_x2, target, y,
                                         kernel_name)
 
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = te.lang.cce.auto_schedule(res)
 
     config = {
         "name": kernel_name,

@@ -26,8 +26,7 @@ from te.utils.error_manager import error_manager_vector
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
-from topi.cce import util
-from topi import generic
+
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_select_op_base import SplitInput
@@ -287,7 +286,7 @@ def max_pool3d_schedule(res, sch):
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@util.check_input_type(dict, dict, (list, tuple), (list, tuple), str,
+@para_check.check_input_type(dict, dict, (list, tuple), (list, tuple), str,
                        (list, tuple), (list, tuple),
                        int, str, str)
 def max_pool3d(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
@@ -404,7 +403,7 @@ def max_pool3d_generic(tensor_in, ksize, strides,
                                 pads, "MAX", dilation, ceil_mode)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {
         "name": kernel_name,

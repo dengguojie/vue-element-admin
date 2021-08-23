@@ -22,7 +22,7 @@ import math
 from te import tik
 from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 # available number of cores
 MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -4085,10 +4085,10 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
     ori_input_dtype = ori_input.get("dtype").lower()
     ori_output_shape = ori_output.get("shape")
     grad_shape = grad.get("shape")
-    util.check_kernel_name(kernel_name)
-    util.check_shape_rule(ori_input_shape)
-    util.check_tensor_shape_size(ori_input_shape)
-    util.check_dtype_rule(ori_input_dtype, ("float16",))
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_shape_rule(ori_input_shape)
+    para_check.check_tensor_shape_size(ori_input_shape)
+    para_check.check_dtype_rule(ori_input_dtype, ("float16",))
     # the format of input_x must be NDC1HWC0
     if len(ori_input_shape) != 6:
         error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
@@ -4142,7 +4142,7 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
 
 
 # pylint: disable=invalid-name,unused-argument
-@util.check_input_type(dict, dict, dict, dict,
+@para_check.check_input_type(dict, dict, dict, dict,
                        (tuple, list), (tuple, list), str, (tuple, list), str, str)
 def max_pool3d_grad(orig_x, orig_y, grads, y,
                     ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),

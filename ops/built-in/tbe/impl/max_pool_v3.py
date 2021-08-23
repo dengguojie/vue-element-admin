@@ -24,7 +24,6 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from topi import generic
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -332,7 +331,7 @@ def max_pool_v3(input_data, output_data, ksize, strides, padding_mode="CALCULATE
                            data_format=data_format, global_pooling=global_pooling,
                            ceil_mode=ceil_mode, kernel_name=kernel_name)
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {
         "name": kernel_name,

@@ -22,7 +22,7 @@ from functools import reduce as functools_reduce
 import re
 
 import te.lang.cce
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from te import tvm
 from te import platform as cce
 from te.platform.cce_build import build_config
@@ -193,7 +193,7 @@ def check(shape_x_input, shape_w_input, shape_b_input, shape_output):
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
-@util.check_input_type(dict, dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, dict, str)
 def dynamic_lstm(input_x, weight, bias,
                  output_h, kernel_name="dynamic_lstm"):
     """

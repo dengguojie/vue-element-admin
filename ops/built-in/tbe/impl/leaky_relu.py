@@ -22,7 +22,6 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from topi import generic
 
 
 # pylint: disable=invalid-name,too-many-locals
@@ -128,7 +127,7 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     with tvm.target.cce():
 
         res = leaky_relu_compute(input_data_x, y, negative_slope, kernel_name)
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [input_data_x, res],

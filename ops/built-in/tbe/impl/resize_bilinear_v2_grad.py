@@ -20,7 +20,7 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from topi.cce import util
+
 
 # parameters for vector instruct
 MASK = 64

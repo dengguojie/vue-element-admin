@@ -30,7 +30,7 @@ from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-from topi.cce.util import check_load3d_w_out_1_support
+from impl.util.util_common import check_load3d_w_out_1_support
 from impl.im2col_common_func import im2col_compute
 from impl.im2col_common_func import im2col_schedule
 

@@ -17,8 +17,7 @@ import functools
 import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 from te import platform as tbe_platform
@@ -92,7 +91,7 @@ def celu(x, y, alpha1=1.0, alpha2=1.0, alpha3=1.0, kernel_name="celu"):
     a3: scalar, alpha3
 
     """
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
     input_dtype = dtype_input.lower()
@@ -110,7 +109,7 @@ def celu(x, y, alpha1=1.0, alpha2=1.0, alpha3=1.0, kernel_name="celu"):
     res = celu_compute(data_input, y, alpha1, alpha2, alpha3, kernel_name)
 
     with tvm.target.cce():
-        auto_sch = generic.auto_schedule(res)
+        auto_sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}

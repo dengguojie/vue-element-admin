@@ -15,7 +15,6 @@
 """
 adds
 """
-from topi import generic
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
@@ -76,7 +75,7 @@ def adds(x, y, value, kernel_name="adds"):
     res = adds_compute(data_input, scalar)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
     config = {
         "print_ir": False,
         "name": kernel_name,

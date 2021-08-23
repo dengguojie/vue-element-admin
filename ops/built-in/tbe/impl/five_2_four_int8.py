@@ -27,7 +27,7 @@ from te import tvm
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 import te.lang.cce
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 from impl.util.util_common import write_code
 
 
@@ -3997,16 +3997,16 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     if dst_format.lower() != "nchw" and dst_format.lower() != "nhwc":
         raise RuntimeError("dst_format must be NCHW or NHWC!")
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     check_list = ("float16", "float32", "int8")
-    util.check_dtype_rule(dtype, check_list)
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    util.check_shape_rule(src_shape, 5, 5)
-    util.check_shape_rule(dst_shape, 4, 4)
-    util.check_tensor_shape_size(src_shape)
-    util.check_tensor_shape_size(dst_shape)
+    para_check.check_shape_rule(src_shape, 5, 5)
+    para_check.check_shape_rule(dst_shape, 4, 4)
+    para_check.check_tensor_shape_size(src_shape)
+    para_check.check_tensor_shape_size(dst_shape)
 
     if src_shape[4] != 16:
         raise RuntimeError(
@@ -4296,7 +4296,7 @@ def _tilling_axis_int8(shape, dtype):
     return split_axis, split_factor
 
 
-@util.check_input_type(dict, dict, str, str, str)
+@para_check.check_input_type(dict, dict, str, str, str)
 def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
     """
     algorithm: five_2_four

@@ -16,7 +16,7 @@ import operator
 import math
 from te import tik
 from te import platform as cce
-from topi.cce import util
+
 from te.utils import para_check
 
 

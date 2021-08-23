@@ -25,7 +25,6 @@ from te.platform import cce_params as param
 from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 from te.utils.op_utils import *
-from topi import generic
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-statements
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
@@ -1983,7 +1982,7 @@ def nchw_hwcn_zn(src, dst, src_format, dst_format, kernel_name="nchw_hwcn_zn"):
                                kernel_name)
 
     with tvm.target.cce():
-        sch = generic.auto_schedule(res)
+        sch = te.lang.cce.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_input, res]}

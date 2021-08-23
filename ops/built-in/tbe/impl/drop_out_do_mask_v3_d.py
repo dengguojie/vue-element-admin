@@ -25,7 +25,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 MATMUL_BATCH_SIZE = 0
 BATCH_MATMUL_BATCH_SIZE1 = 1
@@ -133,7 +133,7 @@ def _get_placeholder(dict_list, name_list):
     list_placeholder = []
     for var, name in zip(dict_list, name_list):
         shape = var.get("shape")
-        shape = util.scalar2tensor_one(shape)
+        shape = shape_util.scalar2tensor_one(shape)
         shape_refine = (functools_reduce(operator.mul, shape),)
         dtype = var.get("dtype").lower()
         if name == "input_tensor":
@@ -146,7 +146,7 @@ def _get_placeholder(dict_list, name_list):
     return list_placeholder
 
 
-@util.check_input_type(dict, dict, dict, float, str)
+@para_check.check_input_type(dict, dict, dict, float, str)
 def drop_out_do_mask_v3_d(input_tensor, input_mask, output, input_keep_prob,
                           kernel_name="drop_out_do_mask_v3_d"):
     """
@@ -174,17 +174,17 @@ def drop_out_do_mask_v3_d(input_tensor, input_mask, output, input_keep_prob,
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
-    util.check_dtype_rule(
+    para_check.check_kernel_name(kernel_name)
+    para_check.check_dtype_rule(
         input_tensor.get('dtype').lower(), ("float16", "float32"))
-    util.check_dtype_rule(
+    para_check.check_dtype_rule(
         input_mask.get('dtype').lower(), ("uint8"))
-    util.check_shape_rule(input_tensor.get('shape'),
+    para_check.check_shape_rule(input_tensor.get('shape'),
                           max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(input_mask.get('shape'),
+    para_check.check_shape_rule(input_mask.get('shape'),
                           max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_size(input_tensor.get('shape'), SHAPE_SIZE_LIMIT)
-    util.check_shape_size(input_mask.get('shape'), SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(input_tensor.get('shape'), SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(input_mask.get('shape'), SHAPE_SIZE_LIMIT)
     input_name_list = ['input_tensor', 'input_mask']
     input_tensor, input_mask = _get_placeholder([input_tensor, input_mask],
                                                 input_name_list)

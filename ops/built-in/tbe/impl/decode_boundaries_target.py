@@ -16,7 +16,7 @@
 decode_boundaries_target
 """
 from te import tik
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 
 NMAX = 128
@@ -460,7 +460,7 @@ def process_end(tik_instance, input_info, output_info,
     cal()
 
 
-@util.check_input_type(dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, str)
 def decode_boundaries_target(boundary_predictions, anchors, boundary_encoded,
                              kernel_name="cce_decode_boundaries_target_fpLINE"):
     """
@@ -481,7 +481,7 @@ def decode_boundaries_target(boundary_predictions, anchors, boundary_encoded,
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     input_info = InputInfo(
         shape_boundary_predictions=boundary_predictions.get("shape"),
         shape_anchors=anchors.get("shape"),

@@ -20,7 +20,7 @@ rpn_proposals_d
 # pylint: disable=R0914
 from te import tik
 
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 from impl import topk
 from impl import nms
@@ -1564,7 +1564,7 @@ def check_input_param(input_para, kernel_name):
                                                                  "less than min(img_height, img_width)",
                                                                  str(min_size))
 
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
 
 
 def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
@@ -1648,15 +1648,15 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
     _check_dtype_rule_local(output_box_dtype, "float16")
 
     # check the shape
-    util.check_shape_rule(input_rois_shape,
+    para_check.check_shape_rule(input_rois_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO,
                           max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(input_prob_shape,
+    para_check.check_shape_rule(input_prob_shape,
                           min_dim=CONFIG_ONE,
                           max_dim=CONFIG_TWO,
                           max_shape_num=SHAPE_SIZE_LIMIT)
-    util.check_shape_rule(output_box_shape,
+    para_check.check_shape_rule(output_box_shape,
                           min_dim=CONFIG_TWO,
                           max_dim=CONFIG_TWO)
 
@@ -1684,7 +1684,7 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
                                                       consistent with n dimension of inputs sorted_box")
 
 
-@util.check_input_type(dict, dict, dict,
+@para_check.check_input_type(dict, dict, dict,
                        (tuple, list), (float, int), int,
                        (float, int), (float, int), int,
                        bool, bool, bool, str)
