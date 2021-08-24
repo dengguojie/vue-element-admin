@@ -202,12 +202,13 @@ TEST_F(strided_slice_fusion_test, strided_slice_fusion_test_2) {
   fe::FusionPassTestUtils::RunGraphFusionPass("ConstToAttrStridedSliceFusion", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
+  vector<int64_t> expectShape{3,2};
   for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "StridedSliceD") {
             findOp = true;
         }
     }
-  EXPECT_EQ(findOp, true);
+  EXPECT_EQ(findOp, false);
 }
 
 
