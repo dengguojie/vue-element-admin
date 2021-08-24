@@ -32,9 +32,25 @@ from impl.dynamic.reduce_sum_d import reduce_sum_d_compute
 
 @register_operator_compute("GlobalLpPool", op_mode="dynamic", support_fusion=True)
 def global_lppool_compute(x, y, p, axis):
+    """
+    :param x: input_data ,tvm.tensor
+    :param y: output_data
+    :param p: power
+    :param axis: reduce axis
+    :return: result tvm.tensor
+    """
+    input_dtype = x.dtype
+    if input_dtype == "float16" and \
+            tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
+            tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+        x = tbe.cast_to(x, "float32")
+
     p_x = power_compute(x, y, power=p)
     sum_x = reduce_sum_d_compute(p_x, y, axis, keepdims=True)
     p_y = power_compute(sum_x, y, 1 / p)
+
+    if p_y.dtype != input_dtype:
+        p_y = tbe.cast_to(p_y, input_dtype)
     return p_y
 
 
@@ -42,6 +58,13 @@ def global_lppool_compute(x, y, p, axis):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def global_lppool(input_x, output_y, p=2.0, kernel_name="global_lppool"):
+    """
+    :param input_x: dict, include shape and dtype, dtype must be one of [float16, float32]
+    :param output_y: dict, include shape and dtype, dtype must be one of [float16, float32]
+    :param p: power, float, default to 2.0
+    :param kernel_name: str, default to global_lppool
+    :return: 
+    """
     shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
 
