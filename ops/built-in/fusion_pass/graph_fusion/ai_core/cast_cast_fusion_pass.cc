@@ -71,17 +71,17 @@ Status CastCastFusionPass::IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2)
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 output type is bool, can not do fusion.");
         return FAILED;
     }
-    if ((cast1InputDataType != ge::DT_FLOAT16 && cast2OutputDataType != ge::DT_INT32)
-        && (cast1InputDataType != ge::DT_INT32 && cast2OutputDataType != ge::DT_FLOAT16)) {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 input type is u% Cast2 output data type is u%",
-                cast1InputDataType, cast2OutputDataType);
-        return FAILED;
-    }
     if (castNode1->GetOutDataNodes().size() > 1) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 out data node size is more than 1");
         return FAILED;
     }
-    return SUCCESS;
+    if ((cast1InputDataType == ge::DT_FLOAT16 && cast2OutputDataType == ge::DT_INT32)
+        || (cast1InputDataType == ge::DT_INT32 && cast2OutputDataType == ge::DT_FLOAT16)) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 input type is u% Cast2 output data type is u%",
+                cast1InputDataType, cast2OutputDataType);
+        return SUCCESS;
+    }
+    return FAILED;
 }
 
 Status CastCastFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusionNodes) {
