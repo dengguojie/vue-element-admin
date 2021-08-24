@@ -2511,4 +2511,15 @@ IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
 
 COMMON_INFER_FUNC_REG(ExpandD, ExpandDInferShape);
 // ----------------ExpandD END---------------------
+
+// ----------------CalcBucketsLimitAndOffset Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(CalcBucketsLimitAndOffsetInferShape) {
+  TensorDesc td = op.GetInputDesc("bucket_list");
+  (void)op.UpdateOutputDesc("buckets_limit", td);
+  (void)op.UpdateOutputDesc("buckets_offset", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(CalcBucketsLimitAndOffset, CalcBucketsLimitAndOffsetInferShape);
+// ----------------CalcBucketsLimitAndOffset END---------------------
 }  // namespace ge
