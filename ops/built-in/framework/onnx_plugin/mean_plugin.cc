@@ -59,11 +59,8 @@ Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
       inputs.push_back(data_op);
     }
 
-    vector<int64_t> dims2 = {1};
-    float num = n_num;
-    ge::Tensor num_tensor = Scalar2Tensor(num, dims2, ge::DT_FLOAT);
-    auto data2 = op::Const("data2").set_attr_value(num_tensor);
-    auto div_op = op::Div().set_input_x1(acc).set_input_x2(data2);
+    float num = 1.0 / n_num;
+    auto div_op = op::Muls().set_input_x(acc).set_attr_value(num);
     output_indexs.emplace_back(div_op, std::vector<size_t>{0});
   }
   graph.SetInputs(inputs).SetOutputs(output_indexs);

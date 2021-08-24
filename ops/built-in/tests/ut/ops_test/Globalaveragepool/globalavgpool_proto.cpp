@@ -16,7 +16,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include "op_proto_test_util.h"
-#include "globalavgpool.h"
+#include "nn_pooling_ops.h"
 
 class GlobalAveragePooltest : public testing::Test {
   protected:

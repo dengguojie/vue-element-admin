@@ -5,7 +5,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "elewise_calculation_ops.h"
-#include "globalavgpool.h"
+#include "nn_pooling_ops.h"
 #include "array_ops.h"
 #include "fusion_pass_test_utils.h"
 #include "register/graph_optimizer/fusion_common/fusion_statistic_recorder.h"

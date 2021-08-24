@@ -8030,4 +8030,54 @@ IMPLEMT_COMMON_INFERFUNC(GlobalLpPoolInfer) {
 }
 COMMON_INFER_FUNC_REG(GlobalLpPool, GlobalLpPoolInfer);
 // ----------------GlobalLpPool end------------------
+
+//-----------------GlobalAveragePool start----------------
+IMPLEMT_INFERFUNC(GlobalAveragePool, GlobalAveragePoolInferShape) {
+  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc output_desc = op.GetOutputDesc("y");
+
+  int64_t num_shape = 1;
+  vector<int64_t> output_shape;
+  DataType input_dtype = input_desc.GetDataType();
+  Format input_format = input_desc.GetFormat();
+  vector<int64_t> input_shape = input_desc.GetShape().GetDims();
+  int64_t x_shape = input_desc.GetShape().GetDims().size();
+  output_shape.push_back(input_shape[0]);
+  output_shape.push_back(input_shape[1]);
+
+  if (x_shape == 5 && (input_format == FORMAT_NCDHW || input_format == FORMAT_ND)) {
+    output_shape.push_back(num_shape);
+    output_shape.push_back(num_shape);
+    output_shape.push_back(num_shape);
+    if (input_format == FORMAT_ND) {
+      OP_LOGW(op.GetName().c_str(), "input format is ND, but use format is NCDHW");
+    }
+  } else if (x_shape == 4 && (input_format == FORMAT_NCHW || input_format == FORMAT_ND)) {
+    output_shape.push_back(num_shape);
+    output_shape.push_back(num_shape);
+    if (input_format == FORMAT_ND) {
+      OP_LOGW(op.GetName().c_str(), "input format is ND, but use format is NCHW");
+    }
+  } else if (x_shape == 3 && input_format == FORMAT_ND) {
+    output_shape.push_back(num_shape);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "x_shape or format is error");
+    return GRAPH_FAILED;
+  }
+
+  output_desc.SetShape(ge::Shape(output_shape));
+  output_desc.SetDataType(input_dtype);
+  output_desc.SetFormat(input_format);
+
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(GlobalAveragePool, GlobalAveragePoolVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(GlobalAveragePool, GlobalAveragePoolInferShape);
+VERIFY_FUNC_REG(GlobalAveragePool, GlobalAveragePoolVerify);
+//-----------------GlobalAveragePool end----------------
 }  // namespace ge

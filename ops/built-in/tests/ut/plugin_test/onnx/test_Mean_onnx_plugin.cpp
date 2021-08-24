@@ -33,7 +33,7 @@ TEST_F(test_Mean_onnx_plugin_test, test_Mean_onnx_plugin_test_case_1) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 6);
+  EXPECT_EQ(nodes.size(), 5);
 }
 
 TEST_F(test_Mean_onnx_plugin_test, test_Mean_onnx_plugin_test_case_2) {
@@ -51,5 +51,5 @@ TEST_F(test_Mean_onnx_plugin_test, test_Mean_onnx_plugin_test_case_2) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 4);
+  EXPECT_EQ(nodes.size(), 3);
 }
