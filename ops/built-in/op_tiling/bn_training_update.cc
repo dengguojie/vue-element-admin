@@ -27,7 +27,6 @@ namespace optiling{
                         return false);
         std::vector<int64_t> shape_x = op_paras.inputs[0].tensor[0].shape;
         int32_t N = shape_x[0];
-        int32_t C1 = shape_x[1];
         int32_t H = shape_x[2];
         int32_t W = shape_x[3];
 
@@ -41,7 +40,7 @@ namespace optiling{
             batch_var_scalar = (float)(num) / (float)((num) - 1);
         }
 
-        bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
+        EletwiseTiling(op_type, op_paras, op_info, run_info);
         ByteBufferPut(run_info.tiling_data, (float)num_rec);
         ByteBufferPut(run_info.tiling_data, (float)batch_var_scalar);
         return true;

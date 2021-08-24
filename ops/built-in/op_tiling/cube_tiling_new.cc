@@ -42,28 +42,6 @@ namespace {
       {"AvgPool3DGrad", kAvgPool3DGradVarNames}
   };
 
-  void get_var_names(const std::string &op_type, std::vector<std::string> &vars) {
-    if (kOpVarNamesMap.count(op_type) > 0){
-      vars = kOpVarNamesMap.at(op_type);
-    }
-  }
-
-  static bool is_shape_in_range(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
-    // shape: NDHWC, range: NDHW
-    if (shape.size() < kConv3dDimSizeLimit || range.size() < (kConv3dVarDimSizeLimit * 2)) {
-      return false;
-    }
-
-    for (int32_t i = 0; i < kConv3dVarDimSizeLimit; ++i) {
-      int32_t shape_index = kConv3DDynamicShapeDims[i];
-      int32_t range_index = kConv3DDynamicRangeDims[i];
-      if (shape[shape_index] < range[range_index * 2] || shape[shape_index] > range[(range_index * 2) + 1]) {
-        return false;
-      }
-    }
-
-    return true;
-  }
 
   static bool is_shape_in_range_cube(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
     const std::vector<int32_t> shape_dim = {0, 2, 3};
@@ -85,22 +63,6 @@ namespace {
     return true;
   }
 
-  static int64_t calc_dist(const std::vector<int64_t> &shape, const std::vector<int64_t> &seeds) {
-    // shape: NDHWC, range: NDHW
-    if (shape.size() < kConv3dDimSizeLimit || seeds.size() < kConv3dVarDimSizeLimit) {
-      return std::numeric_limits<int64_t>::max();
-    }
-
-    int64_t dist = 0;
-    // skip batch
-    for (int32_t i = 1; i < kConv3dVarDimSizeLimit; ++i) {
-      int32_t shape_index = kConv3DDynamicShapeDims[i];
-      int32_t seeds_index = kConv3DDynamicRangeDims[i];
-      dist += abs(shape[shape_index] - seeds[seeds_index]);
-    }
-
-    return dist;
-  }
 
   void update_run_info_cube(const std::vector<int64_t>& var_value, optiling::utils::OpRunInfo& run_info) {
     for (int64_t i = 0; i < var_value.size(); ++i) {

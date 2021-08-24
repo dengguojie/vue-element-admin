@@ -49,8 +49,6 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
     }
     int32_t cache_threshold_col = all_vars["cache_threshold_col"].get<std::int32_t>();
 
-    int32_t var_row_elem = 1;
-
     int32_t var_rows = var_shape[0];
     int32_t num_indices = indices_shape[0];
     int32_t each_row_data_num = 1;

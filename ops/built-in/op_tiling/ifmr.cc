@@ -42,7 +42,6 @@ bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     data_size = std::accumulate(src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
     OP_LOGI("data num is %d", data_size);
 
-    int32_t data_num = data_size;
     ByteBufferPut(run_info.tiling_data, data_size);
 
     run_info.block_dim = 30;

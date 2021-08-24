@@ -86,36 +86,6 @@ bool WriteTilingData(const std::string& op_type,
   const int32_t& dim_var_1_0 = op_info["ori_shape"]["labels_shape0"];
   const int32_t& dim_var_1_1 = op_info["ori_shape"]["labels_shape1"];
 
-  const int32_t& range_0_0_l = op_info["range"]["features_range0_l"];
-  const int32_t& range_0_0_r = op_info["range"]["features_range0_r"];
-  const int32_t& range_0_1_l = op_info["range"]["features_range1_l"];
-  const int32_t& range_0_1_r = op_info["range"]["features_range1_r"];
-  const int32_t& range_1_0_l = op_info["range"]["labels_range0_l"];
-  const int32_t& range_1_0_r = op_info["range"]["labels_range0_r"];
-  const int32_t& range_1_1_l = op_info["range"]["labels_range1_l"];
-  const int32_t& range_1_1_r = op_info["range"]["labels_range1_r"];
-
-  bool case_no_unknown_1 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
-
-  bool case_one_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
-  bool case_one_unknown_2 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
-  bool case_one_unknown_3 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
-  bool case_one_unknown_4 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
-
-  bool case_two_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
-  bool case_two_unknown_2 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
-  bool case_two_unknown_3 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
-  bool case_two_unknown_4 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
-  bool case_two_unknown_5 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
-  bool case_two_unknown_6 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
-
-  bool case_three_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
-  bool case_three_unknown_2 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
-  bool case_three_unknown_3 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
-  bool case_three_unknown_4 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
-
-  bool case_four_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
-
   int32_t tiling_key = static_cast<int32_t>(tiling_info.key);
   run_info.tiling_key = tiling_key;
 

@@ -197,7 +197,6 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
 
   int32_t updatesSizeBytes = varSize * runParams.updateDataNum;
   int32_t indicesSizeBytes = indicesSize * runParams.indicesNum;
-  int32_t vconvSizeBtytes = vconvSize * runParams.updateDataNum;
 
   if (inputDtype == "int8" || inputDtype == "uint8") {
     if (indicesSizeBytes < ubSize / 9) {

@@ -372,7 +372,6 @@ bool CheckTensorShape(const std::string &op_type, const GatherShapeInfo &shape_i
   int64_t paramsDims = shape_info.params_shape.size();
   int64_t indices_dims = shape_info.indices_shape.size();
   int64_t indicesOriDims = shape_info.indices_ori_shape.size();
-  int64_t yDims = shape_info.y_shape.size();
 
   std::vector <int64_t> outputShape;
 
@@ -1022,7 +1021,6 @@ bool TilingWithBatchDims(GatherV2TilingParams &run_params, const GatherCompilePa
   int64_t block_num = BLOCK_SIZE / compile_params.params_d_size;
   ParasPreProcess(run_params, compile_params, shape_info, axis);
 
-  int64_t half_ub_indices_elem = run_params.half_ub_size / compile_params.indices_d_size;
   run_params.half_remain_ub_size = (available_ub_size - PARAMS_CACHED_UB) / 2;
   int64_t half_remain_params_elem = run_params.half_remain_ub_size / compile_params.params_d_size;
   int64_t half_ub_params_elem = run_params.half_ub_size / compile_params.params_d_size;

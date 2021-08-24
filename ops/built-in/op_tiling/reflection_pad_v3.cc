@@ -201,7 +201,6 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   auto diff = 1;
   auto block = 16;
   auto nc_total = input_shape[0] * input_shape[1];
-  auto hc_total = input_shape[2] * input_shape[3];
   core_used = get_core_num(input_shape, compile_params.core_num);
   not_last_core_numel = (nc_total - diff) / core_used + diff;
   last_core_numel = nc_total - (core_used - diff) * not_last_core_numel;
