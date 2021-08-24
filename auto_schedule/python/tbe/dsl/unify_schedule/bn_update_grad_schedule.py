@@ -345,19 +345,6 @@ class BNUpdateGradSchedule():
         """
         sch = self.sch_list[0]
         for tensor in self.mid_tensor_dst_tensor_map:
-            buffer_tensor = sch.cache_write(tensor, cce.scope_ubuf)
-            self.mid_tensor_buffer_map[tensor] = buffer_tensor
-
-            if tensor in self.input_broadcast_tensors:
-                self.broadcast_tensor_buffers.append(buffer_tensor)
-        self.sch_list[0] = sch
-    
-    def _do_const_cache_write(self):
-        """
-        cache write
-        """
-        sch = self.sch_list[0]
-        for tensor in self.mid_tensor_dst_tensor_map:
             if tensor not in self.cache_write_exclude_tensor:
                 buffer_tensor = sch.cache_write(tensor, cce.scope_ubuf)
                 self.mid_tensor_buffer_map[tensor] = buffer_tensor
@@ -405,13 +392,11 @@ class BNUpdateGradSchedule():
         if self.mode == CONST:
             self.block_inner = self.tiling_case.block_factor
             self.ub_inner = self.tiling_case.ub_factor
-
-            self._do_const_cache_write()
         else:
             self.block_inner = var("block_factor", (1, None))
             self.ub_inner = var("ub_factor", (1, None))
 
-            self._do_cache_write()
+        self._do_cache_write()
 
         self._do_compute_inline()
 
@@ -548,11 +533,11 @@ class BNUpdateGradSchedule():
         if self.mode == CONST:
             self.block_inner = self.tiling_case.block_factor
             self.ub_inner = self.tiling_case.ub_factor
-            self._do_const_cache_write()
         else:
             self.block_inner = var("block_factor", (1, None))
             self.ub_inner = var("ub_factor", (1, None))
-            self._do_cache_write()
+        
+        self._do_cache_write()
         
         self._do_compute_inline()
 
@@ -703,11 +688,11 @@ class BNUpdateGradSchedule():
         if self.mode == CONST:
             self.block_inner = self.tiling_case.block_factor
             self.ub_inner = self.tiling_case.ub_factor
-            self._do_const_cache_write()
         else:
             self.block_inner = var("block_factor", (1, None))
             self.ub_inner = var("ub_factor", (1, None))
-            self._do_cache_write()
+
+        self._do_cache_write()
         
         self._do_compute_inline()
 
@@ -819,11 +804,11 @@ class BNUpdateGradSchedule():
         if self.mode == CONST:
             self.block_inner = self.tiling_case.block_factor
             self.ub_inner = self.tiling_case.ub_factor
-            self._do_const_cache_write()
         else:
             self.block_inner = var("block_factor", (1, None))
             self.ub_inner = var("ub_factor", (1, None))
-            self._do_cache_write()
+        
+        self._do_cache_write()
         
         self._do_compute_inline()
 
@@ -932,12 +917,11 @@ class BNUpdateGradSchedule():
         if self.mode == CONST:
             self.block_inner = self.tiling_case.block_factor
             self.ub_inner = self.tiling_case.ub_factor
-            self._do_const_cache_write()
         else:
             self.block_inner = var("block_factor", (1, None))
             self.ub_inner = var("ub_factor", (1, None))
 
-            self._do_cache_write()
+        self._do_cache_write()
 
         self._do_compute_inline()
 
