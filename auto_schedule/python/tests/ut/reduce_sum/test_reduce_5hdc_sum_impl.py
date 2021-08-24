@@ -66,8 +66,19 @@ case3 = {
     "support_expect": True
 }
 
+case4 = {
+    "params": [{"shape": (32, 20, 80, 80, 16), "dtype": "float16", "format": "ND", "ori_shape": (32, 20, 80, 80, 16), "ori_format": "ND"},
+               {"shape": (1, 1, 1, 1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1, 1, 1, 1), "ori_format": "ND"},
+               [0, 1, 2, 3, 4],
+               True
+               ],
+    "case_name": "test_reduce_5hdc_sum_4",
+    "expect": "success",
+    "support_expect": True
+}
+
 compile_case_list = [
-    case1,case2,case3
+    case1, case2, case3, case4
 ]
 
 for item in compile_case_list:

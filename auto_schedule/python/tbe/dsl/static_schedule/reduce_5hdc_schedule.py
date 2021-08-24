@@ -109,11 +109,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         # Tiling calculation
         tiling_result = self.calculate_tiling()
         if not tiling_result:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args[
-                "detailed_cause"] = "5HDC Schedule tiling failure"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+            return False
         self.calculate_block_tiling()
         # Information report for debug mode
         self.print_debug("Calculation unit axis", self.tiling_calculation_unit_axis)
