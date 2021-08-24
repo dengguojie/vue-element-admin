@@ -34,7 +34,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, fuse_n_c_dim_test) {
   ge::OpDescPtr x1 = std::make_shared<ge::OpDesc>("x1", "Data");
   ge::OpDescPtr filter = std::make_shared<ge::OpDesc>("filter", "Data");
   ge::OpDescPtr d_conv = std::make_shared<ge::OpDesc>("depthwise_conv2d", "DepthwiseConv2D");
-  ge::OpDescPtr transdata = std::make_shared<ge::OpDesc>("transdata", "Relu");
+  ge::OpDescPtr relu = std::make_shared<ge::OpDesc>("relu", "Relu");
   ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("netoutput", "NetOutput");
 
   ge::GeShape input_shape({1, 16, 256, 256});
@@ -62,8 +62,8 @@ TEST_F(depthwise_conv2d_fusion_pass_test, fuse_n_c_dim_test) {
   d_conv->AddInputDesc("filter", filter_desc);
   d_conv->AddOutputDesc(y_desc);
   x1->AddOutputDesc(filter_desc);
-  transdata->AddOutputDesc(filter_desc);
-  transdata->AddInputDesc(filter_desc);
+  relu->AddOutputDesc(filter_desc);
+  relu->AddInputDesc(filter_desc);
   netoutput->AddInputDesc(filter_desc);
 
   ge::AttrUtils::SetListInt(d_conv, "dilations", {1, 1, 1, 1});
@@ -75,7 +75,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, fuse_n_c_dim_test) {
   ge::NodePtr filter_node = compute_graph_ptr->AddNode(filter);
   ge::NodePtr d_conv_node = compute_graph_ptr->AddNode(d_conv);
   ge::NodePtr x1_node = compute_graph_ptr->AddNode(x1);
-  ge::NodePtr relu_node = compute_graph_ptr->AddNode(transdata);
+  ge::NodePtr relu_node = compute_graph_ptr->AddNode(relu);
   ge::NodePtr netoutput_node = compute_graph_ptr->AddNode(netoutput);
 
 
@@ -105,7 +105,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, fuse_n_c_dim_test) {
 /************************************
  *                  x1
  *                   |
- *                  transdata
+ *                  relu
  *                 /   \
  *       x    filter  netoutput
  *          \  /         |
@@ -119,7 +119,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, format_nhwc_test) {
   ge::OpDescPtr x1 = std::make_shared<ge::OpDesc>("x1", "Data");
   ge::OpDescPtr filter = std::make_shared<ge::OpDesc>("filter", "Data");
   ge::OpDescPtr d_conv = std::make_shared<ge::OpDesc>("depthwise_conv2d", "DepthwiseConv2D");
-  ge::OpDescPtr transdata = std::make_shared<ge::OpDesc>("transdata", "Relu");
+  ge::OpDescPtr relu = std::make_shared<ge::OpDesc>("relu", "Relu");
   ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("netoutput", "NetOutput");
 
   ge::GeShape input_shape({1, 16, 256, 256});
@@ -147,8 +147,8 @@ TEST_F(depthwise_conv2d_fusion_pass_test, format_nhwc_test) {
   d_conv->AddInputDesc("filter", filter_desc);
   d_conv->AddOutputDesc(y_desc);
   x1->AddOutputDesc(filter_desc);
-  transdata->AddOutputDesc(filter_desc);
-  transdata->AddInputDesc(filter_desc);
+  relu->AddOutputDesc(filter_desc);
+  relu->AddInputDesc(filter_desc);
   netoutput->AddInputDesc(filter_desc);
 
   ge::AttrUtils::SetListInt(d_conv, "dilations", {1, 1, 1, 1});
@@ -160,7 +160,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, format_nhwc_test) {
   ge::NodePtr filter_node = compute_graph_ptr->AddNode(filter);
   ge::NodePtr d_conv_node = compute_graph_ptr->AddNode(d_conv);
   ge::NodePtr x1_node = compute_graph_ptr->AddNode(x1);
-  ge::NodePtr relu_node = compute_graph_ptr->AddNode(transdata);
+  ge::NodePtr relu_node = compute_graph_ptr->AddNode(relu);
   ge::NodePtr netoutput_node = compute_graph_ptr->AddNode(netoutput);
 
 
@@ -176,7 +176,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, format_nhwc_test) {
 /************************************
  *                  x1
  *                   |
- *                  transdata
+ *                  relu
  *                 /   \
  *       x    filter  netoutput
  *          \  /         |
@@ -190,7 +190,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, has_been_set_test) {
   ge::OpDescPtr x1 = std::make_shared<ge::OpDesc>("x1", "Data");
   ge::OpDescPtr filter = std::make_shared<ge::OpDesc>("filter", "Data");
   ge::OpDescPtr d_conv = std::make_shared<ge::OpDesc>("depthwise_conv2d", "DepthwiseConv2D");
-  ge::OpDescPtr transdata = std::make_shared<ge::OpDesc>("transdata", "Relu");
+  ge::OpDescPtr relu = std::make_shared<ge::OpDesc>("relu", "Relu");
   ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("netoutput", "NetOutput");
 
   ge::GeShape input_shape({1, 16, 256, 256});
@@ -218,8 +218,8 @@ TEST_F(depthwise_conv2d_fusion_pass_test, has_been_set_test) {
   d_conv->AddInputDesc("filter", filter_desc);
   d_conv->AddOutputDesc(y_desc);
   x1->AddOutputDesc(filter_desc);
-  transdata->AddOutputDesc(filter_desc);
-  transdata->AddInputDesc(filter_desc);
+  relu->AddOutputDesc(filter_desc);
+  relu->AddInputDesc(filter_desc);
   netoutput->AddInputDesc(filter_desc);
 
   ge::AttrUtils::SetBool(filter, "_has_been_changed", true);
@@ -232,7 +232,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, has_been_set_test) {
   ge::NodePtr filter_node = compute_graph_ptr->AddNode(filter);
   ge::NodePtr d_conv_node = compute_graph_ptr->AddNode(d_conv);
   ge::NodePtr x1_node = compute_graph_ptr->AddNode(x1);
-  ge::NodePtr relu_node = compute_graph_ptr->AddNode(transdata);
+  ge::NodePtr relu_node = compute_graph_ptr->AddNode(relu);
   ge::NodePtr netoutput_node = compute_graph_ptr->AddNode(netoutput);
 
 
@@ -311,15 +311,15 @@ TEST_F(depthwise_conv2d_fusion_pass_test, filter_upper_layer_input_not_4d_test) 
   ge::NodePtr filter_node = compute_graph_ptr->AddNode(filter);
   ge::NodePtr d_conv_node = compute_graph_ptr->AddNode(d_conv);
   ge::NodePtr x1_node = compute_graph_ptr->AddNode(x1);
-  ge::NodePtr relu_node = compute_graph_ptr->AddNode(transdata);
+  ge::NodePtr transdata_node = compute_graph_ptr->AddNode(transdata);
   ge::NodePtr netoutput_node = compute_graph_ptr->AddNode(netoutput);
 
 
   ge::GraphUtils::AddEdge(x_node->GetOutDataAnchor(0), d_conv_node->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(filter_node->GetOutDataAnchor(0), d_conv_node->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(x1_node->GetOutDataAnchor(0), relu_node->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(relu_node->GetOutDataAnchor(0), filter_node->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(relu_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(x1_node->GetOutDataAnchor(0), transdata_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(transdata_node->GetOutDataAnchor(0), filter_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(transdata_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
 
   fe::FusionPassTestUtils::RunGraphFusionPass("ADepthwiseFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 }
@@ -337,8 +337,6 @@ TEST_F(depthwise_conv2d_fusion_pass_test, all_filter_input_empty_test) {
   ge::OpDescPtr x1 = std::make_shared<ge::OpDesc>("x1", "Data");
   ge::OpDescPtr filter = std::make_shared<ge::OpDesc>("filter", "Data");
   ge::OpDescPtr d_conv = std::make_shared<ge::OpDesc>("depthwise_conv2d", "DepthwiseConv2D");
-  ge::OpDescPtr transdata = std::make_shared<ge::OpDesc>("transdata", "TransData");
-  ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("netoutput", "NetOutput");
 
   ge::GeShape input_shape({1, 16, 256, 256});
   ge::GeTensorDesc x_desc(input_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);

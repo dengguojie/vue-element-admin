@@ -160,6 +160,12 @@ Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
   ge::GeTensorDesc xInputDesc = convNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc filterInputDesc = convNode->GetOpDesc()->GetInputDesc(1);
 
+  auto shape_x = xInputDesc.GetShape().GetDims();
+  bool is_dynamic = std::find(shape_x.begin(), shape_x.end(), -1) != shape_x.end() ||
+                    std::find(shape_x.begin(), shape_x.end(), -2) != shape_x.end();
+  FUSION_PASS_CHECK(is_dynamic,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "FC do not support dynamic shape."), return FAILED);
+
   FUSION_PASS_CHECK(convNode->GetOutAllNodes().size() != 1,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv out node num should be one."), return FAILED);
 
@@ -195,6 +201,63 @@ Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
   return SUCCESS;
 }
 
+void ConvToFullyConnectionFusionPass::RefreshBiasNodeFromSubgraphToMajorgraph(ge::NodePtr convNode) {
+  int bias_index = convNode->GetOpDesc()->GetInputIndexByName("bias");
+  bool invalid = !convNode->GetInDataAnchor(bias_index) ||
+                 !convNode->GetInDataAnchor(bias_index)->GetPeerOutAnchor() ||
+                 !convNode->GetInDataAnchor(bias_index)->GetPeerOutAnchor()->GetOwnerNode();
+  if (invalid) {
+    return;
+  }
+  ge::NodePtr bias_node = convNode->GetInDataAnchor(bias_index)->GetPeerOutAnchor()->GetOwnerNode();
+  ge::OpDescPtr bias_desc = bias_node->GetOpDesc();
+  invalid = !bias_desc || bias_desc->GetInputsSize() == 0 || bias_desc->GetOutputsSize() == 0;
+  if (invalid) {
+    return;
+  }
+  bias_desc->MutableInputDesc(0)->SetFormat(ge::FORMAT_NCHW);
+  bias_desc->MutableInputDesc(0)->SetOriginFormat(ge::FORMAT_NCHW);
+  bias_desc->MutableOutputDesc(0)->SetFormat(ge::FORMAT_NCHW);
+  bias_desc->MutableOutputDesc(0)->SetOriginFormat(ge::FORMAT_NCHW);
+  OP_LOGD(bias_node->GetName().c_str(), "set bias desc format nchw!");
+  if (bias_desc->GetType() != "Data") {
+    OP_LOGD(bias_node->GetName().c_str(), "get bias node type is not data!");
+    return;
+  }
+  uint32_t parent_node_index = 0;
+  if (!ge::AttrUtils::GetInt(bias_desc, ge::ATTR_NAME_PARENT_NODE_INDEX, parent_node_index)) {
+    return;
+  }
+  OP_LOGD(bias_node->GetName().c_str(), "parent_node_index value is %d", parent_node_index);
+  invalid = !bias_node->GetOwnerComputeGraph() || !bias_node->GetOwnerComputeGraph()->GetParentNode();
+  if (invalid) {
+    return;
+  }
+  ge::NodePtr parent_node_ptr = bias_node->GetOwnerComputeGraph()->GetParentNode();
+  invalid = !parent_node_ptr->GetOpDesc() ||
+            parent_node_ptr->GetOpDesc()->GetInputsSize() < parent_node_index + 1;
+  if (invalid) {
+    return;
+  }
+  parent_node_ptr->GetOpDesc()->MutableInputDesc(parent_node_index)->SetFormat(ge::FORMAT_NCHW);
+  parent_node_ptr->GetOpDesc()->MutableInputDesc(parent_node_index)->SetOriginFormat(ge::FORMAT_NCHW);
+  OP_LOGD(parent_node_ptr->GetName().c_str(), "set parent_node desc format nchw!");
+  invalid = !parent_node_ptr->GetInDataAnchor(parent_node_index) ||
+            !parent_node_ptr->GetInDataAnchor(parent_node_index)->GetPeerOutAnchor() ||
+            !parent_node_ptr->GetInDataAnchor(parent_node_index)->GetPeerOutAnchor()->GetOwnerNode();
+  if (invalid) {
+    return;
+  }
+  ge::NodePtr const_node = parent_node_ptr->GetInDataAnchor(parent_node_index)->GetPeerOutAnchor()->GetOwnerNode();
+  invalid = !const_node->GetOpDesc() || const_node->GetOpDesc()->GetOutputsSize() == 0;
+  if (invalid) {
+    return;
+  }
+  const_node->GetOpDesc()->MutableOutputDesc(0)->SetFormat(ge::FORMAT_NCHW);
+  const_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginFormat(ge::FORMAT_NCHW);
+  OP_LOGD(const_node->GetName().c_str(), "set const_node desc format nchw!");
+}
+
 Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                                vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr convNode = GetNodeFromMapping(PATTERN_CONV, mapping);
@@ -222,16 +285,20 @@ Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   // <<< end: conv to fc attr axis should be 1
 
   // >>> start: change bias output format when shape is 1
-  auto bias_tensor = convNode->GetOpDesc()->MutableInputDesc("bias");
-  if (bias_tensor != nullptr) {
+  bool valid = convNode->GetOpDesc()->GetInputsSize() > 2;
+  if (valid) {
+    auto bias_tensor = convNode->GetOpDesc()->MutableInputDesc(2);
     auto bias_shape = bias_tensor->MutableShape().GetDims();
     auto format = bias_tensor->GetFormat();
-    bool valid = format == ge::FORMAT_ND && bias_shape.size() > 0 && bias_shape[0] == 1;
-    if (valid) {
+    if (format == ge::FORMAT_ND) {
+      // normal infer net change conv bias input desc format works
       bias_tensor->SetFormat(ge::FORMAT_NCHW);
       bias_tensor->SetOriginFormat(ge::FORMAT_NCHW);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "change bias format from ND to NCHW.");
     }
+    // net has parent graph need to change upper node and parent node format
+    // upper node and parent node is sure to be single-refered and single-layer
+    RefreshBiasNodeFromSubgraphToMajorgraph(convNode);
   }
   // <<< end: change bias output format when shape is 1
 

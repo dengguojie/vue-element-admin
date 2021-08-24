@@ -33,6 +33,7 @@ class ConvToFullyConnectionFusionPass : public PatternFusionBasePass {
 
  private:
   Status CheckFusionParm(ge::NodePtr convNode);
+  void RefreshBiasNodeFromSubgraphToMajorgraph(ge::NodePtr convNode);
   Status CheckHWCEqual(const ge::GeTensorDesc& xTensor, const ge::GeTensorDesc& filterTensor);
   int64_t GetDimByAxisName(const ge::GeTensorDesc& tensor, const string& axis);
   int32_t GetIndexByAxisName(const ge::GeTensorDesc& tensor, const string& axis);
