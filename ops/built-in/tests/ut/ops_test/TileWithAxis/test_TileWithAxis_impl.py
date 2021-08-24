@@ -56,12 +56,22 @@ case5 = {"params": [{"shape": (459999,), "dtype": "float32", "format": "NCHW", "
          "expect": "success",
          "support_expect": True}
 
-# TODO fix me, this comment, run failed
+case6 = {"params": [{"shape": (1, 1, 13, 4, 16), "dtype": "float16",
+                     "format": "NC1HWC0", "ori_shape": (1, 16, 13, 4),"ori_format": "NCHW"}, #x
+                    {"shape": (2, 1, 13, 4, 16), "dtype": "float16", 
+                     "format": "NC1HWC0", "ori_shape": (2, 16, 13, 4),"ori_format": "NCHW"},
+                    2, 0
+                    ],
+         "case_name": "TileWithAxis_6",
+         "expect": "success",
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
