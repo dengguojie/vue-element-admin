@@ -202,10 +202,14 @@ def _is_broadcast(compute_type_size_map: dict):
 
 
 def _is_reduce(compute_type_size_map):
+    reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
+    if 1 != reduce_size:
+        return
+
     placeholder_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
     cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
-    reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
+
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return placeholder_size + elewise_size + reduce_size + cast_size == total
 
