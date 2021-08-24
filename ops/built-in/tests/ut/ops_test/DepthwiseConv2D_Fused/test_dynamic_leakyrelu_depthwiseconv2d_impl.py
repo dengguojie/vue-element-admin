@@ -164,6 +164,7 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
             "dtype": dtype,
             "range": weight_range
         }
+
         bias = {
             "shape": _shape_to_NC1HWC0(bias_shape, data_format, bias_dtype),
             "format": "NC1HWC0",

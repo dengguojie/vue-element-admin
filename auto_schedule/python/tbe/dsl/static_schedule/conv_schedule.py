@@ -4148,6 +4148,16 @@ class CceConvOp:
                         ConvParam.dilate_h + 1
                     fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
                     fmap_width = (w_out - 1) * ConvParam.stride_w + (shape_w_nc1hwc0[3] - 1) * ConvParam.dilate_w + 1
+                    # cal the min in_row_num between in_row_num and real h_in
+                    if "fmap_h" in self._dyn_var_map:
+                        max_fmap_input = self._var_range['fmap_h'][1] if self._var_range['fmap_h'][1] \
+                            else DYNAMIC_FMAP_MAX_HEIGHT
+                    else:
+                        if 'value' in dir(fmap_shape_nc1hwc0[2]):
+                            max_fmap_input = fmap_shape_nc1hwc0[2].value
+                        else:
+                            max_fmap_input = fmap_shape_nc1hwc0[2]
+                    in_row_num = min(in_row_num, max_fmap_input)
                     # 16 is c0
                     need_buffer_size = int(int_ceil_div(in_row_num, aub_factor[1]) *
                                            int_ceil_div(fmap_shape_nc1hwc0[1], aub_factor[0]) * fmap_width * 16)
