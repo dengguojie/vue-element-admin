@@ -814,12 +814,14 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     tensor_a = tvm.placeholder(shape_a_dup, name='tensor_a',
                                attrs={'format': format_a,
-                                      'ori_batch_shape': ori_batch_shape_a},
+                                      'ori_batch_shape': ori_batch_shape_a,
+                                      "ori_shape": input_x.get("ori_shape")},
                                dtype=inp_src_dtype)
 
     tensor_b = tvm.placeholder(shape_b_dup, name='tensor_b',
                                attrs={'format': format_b,
-                                      'ori_batch_shape': ori_batch_shape_b},
+                                      'ori_batch_shape': ori_batch_shape_b,
+                                      "ori_shape": input_y.get("ori_shape")},
                                dtype=inp_src_dtype)
 
     if shape_bias_length > 0:
