@@ -1,0 +1,29 @@
+[
+    {
+        "case_name":"Test_Op_001",
+        "op":"TestScalar",
+        "st_mode":"",
+        "input_desc":[
+            {
+                "format":[
+                    "NHWC"
+                ],
+                "type":[
+                    "int32"
+                ],
+                "shape":[],
+                "is_const":true,
+                "value":[5],
+                "name":"x"
+            }
+        ],
+        "output_desc":[
+            {
+                "format":"NHWC",
+                "name":"y",
+                "shape":[1],
+                "type":"float"
+            }
+        ]
+    }
+]

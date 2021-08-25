@@ -57,7 +57,7 @@ class DataGenerator:
             data.shape = input_shape
             return data
         data = np.array(value, dtype=dtype)
-        if list(data.shape) == input_shape:
+        if list(data.shape) == input_shape or len(input_shape) == 0:
             return data
         utils.print_error_log("The value shape is not equal to the input shape.")
         raise utils.OpTestGenException(

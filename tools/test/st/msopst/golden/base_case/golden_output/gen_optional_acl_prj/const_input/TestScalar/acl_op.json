@@ -1,0 +1,27 @@
+[
+  {
+    "input_desc": [
+      {
+        "const_value": [
+          5
+        ],
+        "format": "NHWC",
+        "is_const": true,
+        "name": "x",
+        "shape": [],
+        "type": "int32"
+      }
+    ],
+    "op": "TestScalar",
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "name": "y",
+        "shape": [
+          1
+        ],
+        "type": "float"
+      }
+    ]
+  }
+]

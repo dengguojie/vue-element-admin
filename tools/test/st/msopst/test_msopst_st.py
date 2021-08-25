@@ -108,13 +108,19 @@ ST_GOLDEN_CONST_INPUT_DATA_DISTRIBUTE_JSON = './st/msopst/golden/base_case/input
                                     '/const_input_with_data_distribute.json'
 ST_GOLDEN_CONST_INPUT_NO_VALUE_JSON = './st/msopst/golden/base_case/input' \
                                     '/const_input_with_no_value.json'
+ST_GOLDEN_SCALAR_INPUT_WITH_VALUE_JSON = './st/msopst/golden/base_case/input' \
+                                    '/scalar_input_with_value.json'
+# const input golden files.
 ST_GOLDEN_CONST_INPUT_SRC_TESTCASE = './st/msopst/golden/base_case/golden_output' \
                                         '/gen_optional_acl_prj/ResizeBilinearV2/src/testcase.cpp'
 ST_GOLDEN_CONST_INPUT_SRC_OP_EXECUTE = './st/msopst/golden/base_case/golden_output' \
                                        '/gen_optional_acl_prj/ResizeBilinearV2/src/op_execute.cpp'
 ST_GOLDEN_CONST_INPUT_CONFIG_ACL_OP = './st/msopst/golden/base_case/golden_output' \
                                         '/gen_optional_acl_prj/ResizeBilinearV2/config/acl_op.json'
-
+ST_GOLDEN_SCALAR_INPUT_SRC_TESTCASE = './st/msopst/golden/base_case/golden_output' \
+                                        '/gen_optional_acl_prj/const_input/TestScalar/testcase.cpp'
+ST_GOLDEN_SCALAR_INPUT_CONFIG_ACL_OP = './st/msopst/golden/base_case/golden_output' \
+                                        '/gen_optional_acl_prj/const_input/TestScalar/acl_op.json'
 
 class NumpyArrar:
     def tofile(self, file_path):
@@ -940,6 +946,24 @@ class TestUtilsMethods(unittest.TestCase):
             const_op_execute_cpp, ST_GOLDEN_CONST_INPUT_SRC_OP_EXECUTE))
         self.assertTrue(compare_context(
             const_acl_op_json, ST_GOLDEN_CONST_INPUT_CONFIG_ACL_OP))
+
+    def test_scalar_input_with_value(self):
+        """
+        run st: scalar input with value
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_GOLDEN_SCALAR_INPUT_WITH_VALUE_JSON, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                msopst.main()
+        const_testcase_cpp = os.path.join(ST_OUTPUT, 'TestScalar/src/testcase.cpp')
+        const_acl_op_json = os.path.join(ST_OUTPUT, 'TestScalar/run/out/test_data'
+                                                    '/config/acl_op.json')
+        self.assertTrue(compare_context(
+            const_testcase_cpp, ST_GOLDEN_SCALAR_INPUT_SRC_TESTCASE))
+        self.assertTrue(compare_context(
+            const_acl_op_json, ST_GOLDEN_SCALAR_INPUT_CONFIG_ACL_OP))
 
 
 if __name__ == '__main__':
