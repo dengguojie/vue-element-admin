@@ -34,7 +34,10 @@ Status ParseParamsReduceProd(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   int num = axes.size();
-  std::vector<int64_t> dims = {num};
+  std::vector<int64_t> dims = {};
+  if (num != 0) {
+    dims.push_back(num);
+  }
   ge::Tensor tensor = Vec2Tensor(axes, dims, ge::DT_INT32, ge::FORMAT_NCHW);
 
   op_dest.SetAttr("axes", tensor);

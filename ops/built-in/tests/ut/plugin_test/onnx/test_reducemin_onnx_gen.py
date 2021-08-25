@@ -74,8 +74,7 @@ def default_axes_keepdims(version_t):
         'ReduceMin',
         inputs=['data'],
         outputs=['reduced'],
-        keepdims=1,
-        axes=[0, 1, 2])
+        keepdims=1,)
 
     graph_def = helper.make_graph(
         [node],
