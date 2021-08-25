@@ -30,6 +30,13 @@ MAX_SIZE = 2 ** 31 - 1
 MAX_NBURST = 4095
 
 
+def check_supported(input_x, begin, end, strides=None,
+                    output_x=None, begin_mask=0, end_mask=0,
+                    ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+                    kernel_name="strided_slice"):
+    return "Unknown"
+
+
 def ceil_32bytes_align_count(count, dtype):
     """
     ceil_32bytes_align_count
