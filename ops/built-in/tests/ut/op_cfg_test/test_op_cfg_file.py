@@ -70,7 +70,7 @@ class Test_OpConfig(unittest.TestCase):
                             "binfile.name", "kernel.name",
                             "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
                             "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value", "dynamicCompileStatic.flag",
-                            "dynamicRankSupport.flag"])
+                            "dynamicRankSupport.flag", "sgatKeyAttr.list"])
         allow_attr_info_key = set(["type", "value", "paramType", "defaultValue"])
         allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM',
                              'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',
