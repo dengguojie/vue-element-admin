@@ -929,6 +929,8 @@ class GEMMCompute:
         offset_b: the offset for tensor b
 
         compress_index: index for compressed wights, None means not compress wights, now only for matmul
+        
+        impl_mode: calculate mode
 
     Returns None
     """
@@ -949,6 +951,7 @@ class GEMMCompute:
         self.compress_index = para_dict.get("compress_index")
         self.attrs = self._get_matmul_attrs(para_dict)
         self.kernel_name = para_dict.get("kernel_name", "gemm")
+        self.impl_mode = para_dict.get("impl_mode", "")
         self._get_matmul_flag()
 
     def _get_matmul_attrs(self, para_dict):
@@ -2464,7 +2467,8 @@ class GEMMCompute:
                               format_out=self.format_out,
                               compress_index=self.compress_index,
                               attrs=self.attrs,
-                              kernel_name=self.kernel_name)
+                              kernel_name=self.kernel_name,
+                              impl_mode=self.impl_mode)
         else:
             self._get_tensor_alpha_beta()
             tensor_y = self._gemm_compute()

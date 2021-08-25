@@ -60,10 +60,12 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     shape_len = len(shape_a)
     src_dtype = src_dtype.lower()
-    k_block_size = tbe_platform.BLOCK_REDUCE
+    k_block_size = tbe_platform.CUBE_MKN[src_dtype]["mac"][1]
 
-    check_list = ("float16")
-
+    check_list = ["float16"]
+    cube_vector_split_flag = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
+    if cube_vector_split_flag:
+        check_list += ["float32", "bfloat16"]
     if src_dtype not in check_list:
         error_manager_vector.raise_err_input_dtype_not_supported(
             "mat_mul", "x1", "float16", src_dtype)
@@ -425,7 +427,8 @@ def mat_mul_compute(input_x1,
                     trans_a=False,
                     trans_b=False,
                     offset_x=0,
-                    kernel_name="matmul"):
+                    kernel_name="matmul",
+                    impl_mode=""):
     """
     calculating  matrix multiplication with bias, C = A*B + bias, support input
     data with fractal format.
@@ -489,7 +492,8 @@ def mat_mul_compute(input_x1,
         "dst_dtype": dst_dtype,
         "offset_a": offset_x,
         "offset_b": offset_w,
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "impl_mode": impl_mode
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
@@ -504,7 +508,8 @@ def mat_mul_compute_self(input_x1,
                          trans_a=False,
                          trans_b=False,
                          offset_x=0,
-                         kernel_name="matmul"):
+                         kernel_name="matmul",
+                         impl_mode=""):
     """
     calculating  matrix multiplication with bias, C = A*B + bias, support input
     data with fractal format.
@@ -567,7 +572,8 @@ def mat_mul_compute_self(input_x1,
         "dst_dtype": dst_dtype,
         "offset_a": offset_x,
         "offset_b": offset_w,
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "impl_mode": impl_mode
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
@@ -694,7 +700,8 @@ def mat_mul(input_x1,
             trans_a=False,
             trans_b=False,
             offset_x=0,
-            kernel_name="matmul"):
+            kernel_name="matmul",
+            impl_mode=""):
     """
     calculating  matrix multiplication with bias, C = A*B + bias, support input
     data with fractal format.
@@ -762,8 +769,9 @@ def mat_mul(input_x1,
 
     src_dtype = input_x1.get("dtype").lower()
     dst_dtype = output_y.get("dtype").lower()
+    
     target_type = ["float32", "int32"]
-    if src_dtype in target_type:
+    if src_dtype in target_type and not cube_vector_split:
         if (trans_b and shape_b[0] == 1) or (not trans_b and shape_b[1] == 1):
             _matmul_vector_one(shape_a, shape_b, src_dtype, trans_a, trans_b,
                                bias, kernel_name)
@@ -789,10 +797,12 @@ def mat_mul(input_x1,
         format_a = "FRACTAL_NZ"
         format_b = "FRACTAL_NZ"
     tensor_a = tvm.placeholder(shape_a_temp, name='tensor_a',
-                               attrs={'format': format_a},
+                               attrs={'format': format_a,
+                                      'ori_shape': input_x1.get("ori_shape")},
                                dtype=src_dtype)
     tensor_b = tvm.placeholder(shape_b_temp, name='tensor_b',
-                               attrs={'format': format_b},
+                               attrs={'format': format_b,
+                                      'ori_shape': input_x2.get("ori_shape")},
                                dtype=src_dtype)
     shape_bias_length = len(shape_bias)
     if shape_bias_length > 0:
@@ -808,7 +818,7 @@ def mat_mul(input_x1,
 
     result = mat_mul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w,
                                   output_y,
-                                  trans_a, trans_b, offset_x, kernel_name)
+                                  trans_a, trans_b, offset_x, kernel_name, impl_mode)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(result)

@@ -56,6 +56,8 @@ from impl import trans_data_positive_source_tc
 from impl import trans_data_negative_target_tc
 from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
@@ -86,6 +88,16 @@ def check_whether_2d(format, input_dict):
         is_2d = True
 
     return is_2d
+
+
+def _ceil_and_divide(dividend, factor, divisor=16):
+    """
+    do division and round up to an integer
+    """
+    if factor == 0 or divisor == 0:
+        error_manager_vector.raise_err_specific_reason("trans_data", "Division by zero")
+    return (dividend + factor - 1) // factor if factor == divisor else \
+        ((dividend + factor - 1) // factor * factor) // divisor
 
 
 # pylint: disable=locally-disabled,too-many-branches
@@ -304,6 +316,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         raise RuntimeError("not support this kind of format transfer !")
 
 
+@tbe_platform.fusion_manager.register("trans_data")
 def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='transdata'):
     """
     algorithm: format_transfer
@@ -374,28 +387,44 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             tag = "NHWC_trans_FZ"
         )
     elif src_format == "ND" and dst_format == "FRACTAL_NZ":
-        n_axis_length = src.shape[-2]
-        d_axis_length = src.shape[-1]
-        if src.dtype == "int8" or src.dtype == "float16":
-            fractal_d0 = c0_dict.get(src.dtype)
-            kn_shape = _ceil_div(n_axis_length, fractal_n0)
-            n_shape = _ceil_div(d_axis_length, fractal_d0)
-            dst_shape = (n_shape, kn_shape, fractal_n0, fractal_d0)
-            dst_tensor = tvm.compute(
-                dst_shape,
-                lambda *indices: tvm.select(tvm.any(
-                (indices[-4] * fractal_d0 + indices[-1]) < d_axis_length),
+        # transform fotmat ND to Nz, the dst_format is Zz actually when input dtype is fp32
+        # for the requirement of load2d_transpose
+        src_shape = tuple(i.value for i in src.shape)
+        block_reduce = c0_dict.get(src.dtype, 16)
+        align_factor = block_reduce
+        block_size = 16
+        if src.dtype == "float32":
+            align_factor = block_size
+        dst_shape = (
+            _ceil_and_divide(src_shape[-1], align_factor, block_reduce),
+            _ceil_and_divide(src_shape[-2], align_factor, block_size),
+            block_size,
+            block_reduce
+        )
+        d_axis_origin_length = src_shape[-1]
+        row_index = -4
+        col_index = -3
+        if src.dtype == "float32":
+            # change Nz shape to Zz shape
+            row_index = -3
+            col_index = -4
+            dst_shape = (dst_shape[-3], dst_shape[-4], dst_shape[-2], dst_shape[-1])
+        dst_tensor = tvm.compute(
+            dst_shape,
+            lambda *indices: tvm.select(
+                tvm.all((indices[row_index] * block_reduce + indices[-1]) < d_axis_origin_length),
                 src(*indices[:-4],
-                indices[-3] * fractal_n0 + indices[-2],
-                indices[-4] * fractal_d0 + indices[-1]),
-                tvm.const(0).astype(src.dtype)),
-                name=src.name + "_fractal",
-                attrs={"ori_format": "ND", "ori_shape": src.shape,
-                    "format": dst_format, "ND_trans_Nz": 1}, tag="gemm")
-
+                    indices[col_index] * block_size + indices[-2],
+                    indices[row_index] * block_reduce + indices[-1])
+            ),
+            name=src.name + "_fractal",
+            attrs={"ori_format": "ND", "ori_shape": src.shape, "format": dst_format, "ND_trans_Nz": 1},
+            tag="gemm"
+        )
+        
     elif src_format == "FRACTAL_NZ" and dst_format == "ND":
         src_shape = tuple(i.value for i in src.shape)
-        dst_shape = src.op.attrs["ori_nd_shape"]
+        dst_shape = src.op.attrs["ori_shape"]
         dst_tensor = tvm.compute(
                 dst_shape,
                 lambda *indices: src(indices[-1] // src_shape[-2],

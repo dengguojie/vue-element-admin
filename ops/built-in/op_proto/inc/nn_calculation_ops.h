@@ -495,9 +495,9 @@ REG_OP(Conv2DBackpropInput)
  * Warning: THIS FUNCTION IS DEPRECATED. Please use Conv2DBackpropInput instead.
 */
 REG_OP(Conv2DBackpropInputD)
-    .INPUT(filter, TensorType({DT_FLOAT16, DT_INT8}))
-    .INPUT(out_backprop, TensorType({DT_FLOAT16, DT_INT8}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT32, DT_FLOAT32}))
+    .INPUT(filter, TensorType({DT_FLOAT16, DT_INT8, DT_BF16}))
+    .INPUT(out_backprop, TensorType({DT_FLOAT16, DT_INT8, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT32, DT_FLOAT32, DT_BF16}))
     .REQUIRED_ATTR(input_size, ListInt)
     .REQUIRED_ATTR(strides, ListInt)
     .REQUIRED_ATTR(pads, ListInt)

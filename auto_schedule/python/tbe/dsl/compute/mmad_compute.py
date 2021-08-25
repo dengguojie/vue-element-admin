@@ -30,6 +30,7 @@ from tbe.common.utils import broadcast_shapes
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute import util as compute_util
 import topi
@@ -904,7 +905,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
            alpha_num=1.0, beta_num=1.0, dst_dtype="float16", tensor_bias=None,
            quantize_params=None, format_out=None, compress_index=None,
-           attrs={}, kernel_name="MatMul"):
+           attrs={}, kernel_name="MatMul", impl_mode=""):
     """
     algorithm: mmad
     calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
@@ -981,7 +982,8 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                   dst_dtype=dst_dtype,
                                   tensor_bias=tensor_bias,
                                   format_out=format_out,
-                                  kernel_name=kernel_name)
+                                  kernel_name=kernel_name,
+                                  impl_mode=impl_mode)
     else:
         result = _matmul_compute(tensor_a=tensor_a,
                                 tensor_b=tensor_b,
@@ -3898,7 +3900,7 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
 
 def _matmul_cv_split(tensor_a,
     tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
-    dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul"):
+    dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul", impl_mode=""):
     """
     algorithm: mmad
     calculating matrix multiplication, C=A*B+bias
@@ -3945,7 +3947,8 @@ def _matmul_cv_split(tensor_a,
         dst_dtype,
         tensor_bias,
         format_out,
-        kernel_name
+        kernel_name,
+        impl_mode
     )
 
     matmul_object._compute_matmul()
@@ -3990,11 +3993,13 @@ class MatMulCompute:
 
     kernel_name: kernel name, default is "MatMul"
 
+    impl_mode: calculate mode
+
     Returns None
     """
     def __init__(self, tensor_a,
         tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
-        dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul"):
+        dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul", impl_mode=""):
         self.tensor_a = tensor_a
         self.tensor_b = tensor_b
         self.trans_a = trans_a
@@ -4014,6 +4019,12 @@ class MatMulCompute:
         self.format_out = format_out
         self.origin_m_shape = 0
         self.origin_n_shape = 0
+        if self.cube_vector_split and self.src_dtype == "float32":
+            self.block_reduce = tbe_platform.CUBE_MKN.get(self.src_dtype).get("mac")[1]
+        self.impl_mode = impl_mode
+        self.m_shape = 0
+        self.km_shape = 0
+        self.n_shape = 0
 
     @staticmethod
     def _ceil_div(dividend, divisor):
@@ -4043,6 +4054,49 @@ class MatMulCompute:
         b_matrix = self._get_b_matrix()
         self.c_matrix = self._compute_c_matrix(a_matrix, b_matrix)
 
+    def _get_a_matrix_fp32(self, temp_tensor_a):
+        """get a_matrix for float32 input
+
+        Parameters
+        ----------
+        temp_tensor_a : tensor
+
+        Returns
+        -------
+        tensor
+        """
+        if self.trans_a:
+            a_matrix_shape = [
+                self._ceil_div(self.m_shape, 2),
+                self.km_shape * 2,
+                self.block_in,
+                self.block_reduce]
+        else:
+            a_matrix_shape = [
+                self.m_shape,
+                self.km_shape,
+                self.block_in,
+                self.block_reduce]
+        if self.trans_a:
+            a_matrix = tvm.compute(
+                a_matrix_shape,
+                lambda *indices:
+                    temp_tensor_a(indices[-3] // 2,
+                                  indices[-4] * 2 + indices[-2] // 8,
+                                  (indices[-3] % 2) * 8 + indices[-1],
+                                  indices[-2] % 8),
+                name="tensor_a_matrix",
+                attrs={"transpose_a": "true"}
+                )
+        else:
+            a_matrix = tvm.compute(
+                a_matrix_shape,
+                lambda *indices: temp_tensor_a(*indices),
+                name="tensor_a_matrix",
+                attrs={"transpose_a": "false"}
+                )
+        return a_matrix
+
     def _get_a_matrix(self):
         """ compute matrix for mad
         Input : None
@@ -4059,7 +4113,7 @@ class MatMulCompute:
         block_in = self.block_in
         temp_tensor_a = self.tensor_a
 
-        if self.src_dtype == "float16" or (self.src_dtype == "int8" and not self.trans_a):
+        if self.src_dtype in ["float16", "bfloat16"] or (self.src_dtype == "int8" and not self.trans_a):
             a_matrix_shape = [m_shape, km_shape, block_in, block_reduce]
             if self.batch_shape_a:
                 a_matrix_shape.insert(0, self.batch_shape_a)
@@ -4075,6 +4129,8 @@ class MatMulCompute:
                     lambda *indices: temp_tensor_a(*indices[:-4], indices[-3], indices[-4], *indices[-2:]),
                     name="tensor_a_matrix",
                     attrs={"transpose_a": "false"})
+        elif self.src_dtype == "float32":
+            a_matrix = self._get_a_matrix_fp32(temp_tensor_a)
         else:
             a_matrix_shape = [m_shape*2, self._ceil_div(km_shape, 2), block_in, block_reduce]
             if self.batch_shape_a:
@@ -4090,6 +4146,53 @@ class MatMulCompute:
                 attrs={"transpose_a": "true"})
 
         return a_matrix
+
+    def _get_b_matrix_fp32(self, temp_tensor_b):
+        """get b_matrix for float32 input
+
+        Parameters
+        ----------
+        temp_tensor_b : tensor
+
+        Returns
+        -------
+        tensor
+        """
+        if self.trans_b:
+            b_matrix_shape = [
+                self.kn_shape,
+                self.n_shape,
+                self.block_out,
+                self.block_reduce]
+        else:
+            b_matrix_shape = [
+                self.kn_shape * 2,
+                self._ceil_div(self.n_shape, 2),
+                self.block_out,
+                self.block_reduce]
+        if self.trans_b:
+            b_matrix = tvm.compute(
+                b_matrix_shape,
+                lambda *indices: temp_tensor_b(indices[-3],
+                                               indices[-4],
+                                               indices[-2],
+                                               indices[-1]
+                                               ),
+                name="tensor_b_matrix",
+                attrs={"transpose_b": "true"}
+            )
+        else:
+            b_matrix = tvm.compute(
+                b_matrix_shape,
+                lambda *indices:
+                    temp_tensor_b(indices[-4] // 2,
+                                  indices[-3] * 2 + indices[-2] // 8,
+                                  (indices[-4] % 2) * 8 + indices[-1],
+                                  indices[-2] % 8),
+                name="tensor_b_matrix",
+                attrs={"transpose_b": "false"}
+            )
+        return b_matrix
 
     def _get_b_matrix(self):
         """ compute matrix for mad
@@ -4115,7 +4218,7 @@ class MatMulCompute:
                 name="tensor_b_matrix",
                 attrs={"transpose_b": "false"}
             )
-        elif self.src_dtype == "float16" or (self.src_dtype == "int8" and self.trans_b):
+        elif self.src_dtype in ["float16", "bfloat16"] or (self.src_dtype == "int8" and self.trans_b):
             b_matrix_shape = [kn_shape, n_shape, block_out, block_reduce]
             if self.batch_shape_b:
                 b_matrix_shape.insert(0, self.batch_shape_b)
@@ -4131,6 +4234,8 @@ class MatMulCompute:
                     lambda *indices: temp_tensor_b(*indices[:-4], indices[-3], indices[-4], indices[-1], indices[-2]),
                     name="tensor_b_matrix",
                     attrs={"transpose_b": "false"})
+        elif self.src_dtype == "float32":
+            b_matrix = self._get_b_matrix_fp32(temp_tensor_b)
         else:
             b_matrix_shape = [self._ceil_div(kn_shape, 2), n_shape * 2, block_out, block_reduce]
             if self.batch_shape_b:
@@ -4162,11 +4267,9 @@ class MatMulCompute:
         m_shape_l0 = a_matrix_in.shape[-4]
         k_shape_l0 = a_matrix_in.shape[-3]
         n_shape_l0 = b_matrix_in.shape[-3]
-
         nz2nd_flag = True if self.format_out == "ND" else False
         reduce_kb = tvm.reduce_axis((0, k_shape_l0), name="kb")
         reduce_kp = tvm.reduce_axis((0, self.block_reduce), name="kp")
-
         l0c_shape = [n_shape_l0, m_shape_l0, self.block_in, self.block_out]
         if self.batch_shape_a:
             l0c_shape.insert(0, self.batch_shape_a)
@@ -4181,7 +4284,8 @@ class MatMulCompute:
                                  ).astype(
                         self.matrix_type)),
                     axis=[reduce_kb, reduce_kp]),
-                name="tensor_c_matrix")
+                name="tensor_c_matrix",
+                attrs={"impl_mode": self.impl_mode})
         else:
             tensor_c_matrix = tvm.compute(
                 l0c_shape,
@@ -4199,7 +4303,8 @@ class MatMulCompute:
                      if self.batch_shape_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
                      ).astype(self.matrix_type))),
                     axis=[reduce_kb, reduce_kp]),
-                name='tensor_c_matrix')
+                name='tensor_c_matrix',
+                attrs={"impl_mode": self.impl_mode})
 
         nz_out_shape = [n_shape_l0, m_shape_l0, self.block_in, self.block_out]
         nd_ori_out_shape = [self.origin_m_shape, self.origin_n_shape]
@@ -4211,7 +4316,7 @@ class MatMulCompute:
                                   tag="gemm",
                                   name="tensor_c_gm",
                                   attrs={"kernel_name": self.kernel_name,
-                                         "ori_nd_shape": nd_ori_out_shape,
+                                         "ori_shape": nd_ori_out_shape,
                                          "shape": nz_out_shape})
 
         return tensor_c_gm
@@ -4226,7 +4331,6 @@ class MatMulCompute:
 
         if self.src_dtype == "int8":
             self.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
-
         if self.format_out is None:
             if format_a == "ND":
                 self.format_out = "ND"
@@ -4235,6 +4339,12 @@ class MatMulCompute:
 
         if self.src_dtype == "int8" and self.dst_dtype == "int32":
             self.matrix_type = "int32"
+
+    def _check_attrs(self):
+        if "ori_shape" not in self.tensor_a.op.attrs:
+            error_manager_cube.raise_err_specific("MatMul", "tensor_a must have attr ori_shape")
+        if "ori_shape" not in self.tensor_b.op.attrs:
+            error_manager_cube.raise_err_specific("MatMul", "tensor_b must have attr ori_shape")
 
     def _get_l1_shape(self):
         """ get shape about m,k,n
@@ -4249,32 +4359,30 @@ class MatMulCompute:
         self.batch_shape_b = None
         if len(self.tensor_b.shape) in (3, 5):
             self.batch_shape_b = self.tensor_b.shape[0].value
-
-        if "ND_trans_Nz" in self.tensor_a.op.attrs:
-            origin_shape = self.tensor_a.op.attrs["ori_shape"]
-            self.origin_m_shape = origin_shape[-1] if self.trans_a else origin_shape[-2]
-
+        self._check_attrs()
         if self.format_a == "FRACTAL_NZ":
             # [(batch), K, M, 16, 16/32] or [(batch), M, K, 16, 16/32]
             self.m_shape = self.tensor_a.shape[-4].value if self.trans_a else self.tensor_a.shape[-3].value
             self.km_shape = self.tensor_a.shape[-3].value if self.trans_a else self.tensor_a.shape[-4].value
-            self.origin_reduce_axis = self.tensor_a.shape[-3] * self.block_in if\
-                self.trans_a else self.tensor_a.shape[-4].value * self.block_reduce
+            origin_shape = self.tensor_a.op.attrs["ori_shape"]
+            self.origin_m_shape = origin_shape[-1] if self.trans_a else origin_shape[-2]
+            self.origin_reduce_axis = origin_shape[-2] if self.trans_a else origin_shape[-1]
         else:
             # [batch, M, K] or [batch, K, M]
             self.m_shape = self.tensor_a.shape[-1].value if self.trans_a else self.tensor_a.shape[-2].value
             self.km_shape = self.tensor_a.shape[-2].value if self.trans_a else self.tensor_a.shape[-1].value
             self.origin_reduce_axis = self.tensor_a.shape[-2].value if\
                 self.trans_a else self.tensor_a.shape[-1].value
+            self.origin_m_shape = self.m_shape
 
-        if "ND_trans_Nz" in self.tensor_b.op.attrs:
-            origin_shape = self.tensor_b.op.attrs["ori_shape"]
-            self.origin_n_shape = origin_shape[-2] if self.trans_b else origin_shape[-1]
         # matrix B
+
         if self.format_b == "FRACTAL_NZ":
             # [(batch), N, K, 16, 16/32] or [(batch), K, N, 16, 16/32]
             self.kn_shape = self.tensor_b.shape[-4].value if self.trans_b else self.tensor_b.shape[-3].value
             self.n_shape = self.tensor_b.shape[-3].value if self.trans_b else self.tensor_b.shape[-4].value
+            origin_shape = self.tensor_b.op.attrs["ori_shape"]
+            self.origin_n_shape = origin_shape[-2] if self.trans_b else origin_shape[-1]
         elif self.format_b == "FRACTAL_Z":
             # [(batch), N, K, 16, 16/32] or [(batch), K, N, 16, 16/32]
             self.kn_shape = self.tensor_b.shape[-3].value if self.trans_b else self.tensor_b.shape[-4].value
@@ -4283,4 +4391,8 @@ class MatMulCompute:
             # [(batch), K, N] or [(batch), N, K]
             self.kn_shape = self.tensor_b.shape[-1].value if self.trans_b else self.tensor_b.shape[-2].value
             self.n_shape = self.tensor_b.shape[-2].value if self.trans_b else self.tensor_b.shape[-1].value
-
+        if self.tensor_a.dtype == "float32":
+            # format on L1 is Zz when dtype is fp32, but km_shape and m_shape are obtained from
+            # index of Nz, we need to exchange the value of them
+            self.km_shape, self.m_shape = self.m_shape, self.km_shape
+            self.n_shape, self.kn_shape = self.kn_shape, self.n_shape

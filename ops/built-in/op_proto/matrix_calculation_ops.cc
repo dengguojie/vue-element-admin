@@ -1509,6 +1509,7 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   support_list.push_back(DT_FLOAT16);
   support_list.push_back(DT_FLOAT);
   support_list.push_back(DT_INT32);
+  support_list.push_back(DT_BF16);
   if (CheckInputDataType(op, "x1", support_list) == false) {
     return GRAPH_FAILED;
   }
@@ -1581,6 +1582,7 @@ IMPLEMT_VERIFIER(MatMulV2, MatMulV2Verify) {
   support_list.push_back(DT_INT32);
   support_list.push_back(DT_INT8);
   support_list.push_back(DT_INT4);
+  support_list.push_back(DT_BF16);
   if (CheckInputDataType(op, "x1", support_list) == false) {
     return GRAPH_FAILED;
   }
