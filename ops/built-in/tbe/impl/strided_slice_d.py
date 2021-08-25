@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-strided_slice_d
+strided_slice_d 
 """
 # pylint: disable=too-many-lines
 import copy

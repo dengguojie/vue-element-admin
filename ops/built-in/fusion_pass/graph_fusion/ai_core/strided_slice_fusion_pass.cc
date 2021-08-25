@@ -127,24 +127,7 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
             "if the strdied_slice's mask of the operator is not zero except begin_mask, then follow aicpu.");
     return NOT_CHANGED;
   }
-
-  for (size_t i = 0; i < dim_num; i++) {
-    if ((static_cast<uint64_t>(newmask) & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      new_axis_flag += 1;
-    }
-    if ((static_cast<uint64_t>(shrinkmask) & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
-      delete_flag += 1;
-      if (i == dim_num - 1) {
-        shrink_last_dim_flag = true;
-      }
-    }
-  }
-
-  if ((shrink_last_dim_flag) && (dim_num != 1)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Shrink the last dim, need go to aicpu");
-    return NOT_CHANGED;
-  }
-
+  
   std::vector<int64_t> begins;
   TbeFusionPassUtil::GetConstIntData(op, "begin", begins);
 
