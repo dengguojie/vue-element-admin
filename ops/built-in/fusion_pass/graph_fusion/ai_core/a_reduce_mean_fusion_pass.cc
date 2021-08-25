@@ -33,6 +33,10 @@ Status AReduceMeanFusionPass::CheckMeanFussionOrNot(vector<int64_t> tensor_info,
     OP_LOGI(FUSED_OP_TYPE.c_str(), "can't get keep_dims attr.");
   }
 
+  if (tensor_info.empty()) {
+    return SUCCESS;
+  }
+
   for (auto& input_shape_value : tensor_info) {
     if (input_shape_value < 0 && !keep_dims) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Dynamic shape process and not keep dim, shouldn't delete.");
@@ -74,7 +78,6 @@ Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   vector<int64_t> tensor_info = tensor_input.GetShape().GetDims();
   size_t tensor_size = tensor_input.GetShape().GetDimNum();
-
   vector<int64_t> axis_info = axis_input.GetShape().GetDims();
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(meanNode);
