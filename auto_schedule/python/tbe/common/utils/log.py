@@ -45,7 +45,8 @@ except BaseException:
 
 
 def info(log_msg, *log_paras):
-    """ info log
+    """
+    info log
     :param log_msg:
     :param log_paras:
     """
@@ -63,7 +64,8 @@ def info(log_msg, *log_paras):
 
 
 def debug(log_msg, *log_paras):
-    """ debug log
+    """
+    debug log
     :param log_msg:
     :param log_paras:
     """
@@ -81,7 +83,8 @@ def debug(log_msg, *log_paras):
 
 
 def warn(log_msg, *log_paras):
-    """ warning log
+    """
+    warning log
     :param log_msg:
     :param log_paras:
     """
@@ -99,7 +102,8 @@ def warn(log_msg, *log_paras):
 
 
 def error(log_msg, *log_paras):
-    """ error log
+    """
+    error log
     :param log_msg:
     :param log_paras:
     """

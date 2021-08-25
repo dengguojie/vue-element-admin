@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+from tbe.common.utils import shape_util
 from . import reduce_helper as helper
 from . import util
-from tbe.common.utils import shape_util
 
 BEFORE = "before"
 AFTER = "after"
@@ -48,7 +48,7 @@ class MixedReduceClassifier:
     def collect_info(self):
         """
         Func: The whole graph only has three different var, include shape_before_reduce,
-              shape_after_reduce, reduce_axes
+        shape_after_reduce, reduce_axes
         """
         # collect ori info
         for _item in self.ins:

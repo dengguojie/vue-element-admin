@@ -136,7 +136,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
     """
     # refresh value of OP_NAME after the assignment
     if not op_name:
-      op_name = para_check.OP_NAME
+        op_name = para_check.OP_NAME
 
     def _greater_one(_value):
         if isinstance(_value, (_expr.IntImm, _expr.UIntImm)):
@@ -190,7 +190,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
     """
     # refresh value of OP_NAME after the assignment
     if not op_name:
-      op_name = para_check.OP_NAME
+        op_name = para_check.OP_NAME
 
     if operation.in_dynamic():
         return unify_broadcast_shapes([shape1, shape2], op_name)
@@ -634,7 +634,7 @@ def simplify_axis_shape(shape, axis):
             shape_final += shape_noreduce
 
         if len(shape_noreduce) > 0:
-           axis_fuse_sum += len(shape_noreduce) - 1
+            axis_fuse_sum += len(shape_noreduce) - 1
         axis_final.append(axes - axis_fuse_sum)
         shape_final.append(shape1[axes])
         pre_axis = axes

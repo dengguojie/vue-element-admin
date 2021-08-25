@@ -174,7 +174,7 @@ def reduce_sum(raw_tensor, axis, keepdims=False):
 
 @source_info_decorator()
 @_para_check_of_reduce
-def reduce_min(raw_tensor, axis, keepdims=False,impl_mode="high_performance"):
+def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
     """
     calculate reduce_min of raw_tensor, only support float16
     Parameters

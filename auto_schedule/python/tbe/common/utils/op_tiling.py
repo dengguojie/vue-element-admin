@@ -44,6 +44,7 @@ _TILING_DATA = threading.local()
 _TILING_DATA.buf = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
 _TILING_DATA.buf_size = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
 
+
 def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, timer=None):
     """
     do op tilinng

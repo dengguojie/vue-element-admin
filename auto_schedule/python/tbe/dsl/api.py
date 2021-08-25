@@ -23,6 +23,7 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+import traceback
 from .compute import cast
 from .compute import conv2d_backprop_filter_compute as conv2d_dw_compute
 from .compute import conv2d_backprop_input_compute as conv2d_dx_compute
@@ -45,7 +46,6 @@ from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
 from .base import shape_classifier
 from .base import operation
-import traceback
 
 
 def ceil(raw_tensor, dtype="int32"):
@@ -56,7 +56,7 @@ def ceil(raw_tensor, dtype="int32"):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     dtype : string
-        dst dtype need to cast to
+    dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
@@ -72,7 +72,7 @@ def floor(raw_tensor, dtype="int32"):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     dtype : string
-        dst dtype need to cast to
+    dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
@@ -88,7 +88,7 @@ def round(raw_tensor, dtype="int32"):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     dtype : string
-        dst dtype need to cast to
+    dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
@@ -105,7 +105,7 @@ def trunc(raw_tensor, dtype="int32"):
     raw_tensor : wrapped_tensor or tvm.tensor
 
     dtype : string
-        dst dtype need to cast to
+    dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
@@ -121,7 +121,7 @@ def round_half_up(raw_tensor, dtype="int32"):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     dtype : string
-        dst dtype need to cast to
+    dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
@@ -136,14 +136,14 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     Parameters
     ----------
     data : tvm.tensor
-        tensors need to change dtype
+    tensors need to change dtype
 
     dtype : string
-        dst dtype need to cast to
+    dst dtype need to cast to
 
     f1628IntegerFlag : bool
-        before fp16->int8/uint8, the data is all interger or not. default value
-        is False.
+    before fp16->int8/uint8, the data is all interger or not. default value
+    is False.
 
     Returns
     -------
@@ -159,10 +159,10 @@ def vadd(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -178,10 +178,10 @@ def vsub(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -197,10 +197,10 @@ def vmul(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        right hand tensor
+    right hand tensor
 
     Returns
     -------
@@ -216,9 +216,9 @@ def vdiv(lhs, rhs):
     Parameters
     -----
     lhs: wrapped_tensor or tvm.tensor
-         divisor tensor
+    divisor tensor
     rhs: wrapped_tensor or tvm.tensor
-         divided tensor
+    divided tensor
 
     returns
     -----
@@ -250,10 +250,10 @@ def vmod(lhs, rhs):
     Parameters
     -----
     lhs : wrapped_tensor or tvm.tensor
-          left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-          right hand tensor
+    right hand tensor
 
     Returns
     -----
@@ -268,9 +268,9 @@ def vmax(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     Returns
     -------
     wrapped_tensor : max(lhs , rhs)
@@ -284,9 +284,9 @@ def vmin(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     Returns
     -------
     wrapped_tensor : min(lhs , rhs)
@@ -393,9 +393,9 @@ def vor(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     Returns
     -------
     wrapped_tensor : or(lhs , rhs)
@@ -409,9 +409,9 @@ def vand(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     Returns
     -------
     wrapped_tensor : max(lhs , rhs)
@@ -426,10 +426,10 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        right hand tensor
+    right hand tensor
 
     operation : operator type, logic_and, logic_or, logic_not
 
@@ -496,7 +496,7 @@ def vmaxs(raw_tensor, scalar):
 def vmins(raw_tensor, scalar):
     """
     Calculate elewise compare, return the min one of scalar or tensor's element,
-     dtype of raw_tensor and scalar must be the same
+    dtype of raw_tensor and scalar must be the same
 
     Parameters
     ----------
@@ -517,9 +517,9 @@ def vaxpy(lhs, rhs, scalar):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
     Returns
     -------
     wrapped_tensor : max(lhs , rhs)
@@ -564,15 +564,15 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        right hand tensor
+    right hand tensor
 
     operation : operator type, eq, ne, lt, gt, ge, le
 
     mode : bool, the dtype of return value is bool
-           bit, the dtype of return value is uint8
+    bit, the dtype of return value is uint8
 
     Returns
     -------
@@ -584,7 +584,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
 def vsel(condition, lhs, rhs):
     """
     if condition = ture, the result is lhs,
-        select
+    select
 
     Parameters
     ----------
@@ -608,14 +608,14 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        compare left hand tensor
+    compare left hand tensor
     rhs : wrapped_tensor or tvm.tensor or scalar
-        compare right hand tensor or scalar
+    compare right hand tensor or scalar
     operation : operator type, eq, ne, lt, gt, ge, le
     slhs : wrapped_tensor or tvm.tensor or scalar
-        select left hand tensor or scalar
+    select left hand tensor or scalar
     srhs : wrapped_tensor or tvm.tensor or scalar
-        select right hand tensor or scalar
+    select right hand tensor or scalar
 
     Returns
     -------
@@ -646,10 +646,10 @@ def vaddrelu(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -665,10 +665,10 @@ def vsubrelu(lhs, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -714,10 +714,10 @@ def clip(data, max_value, min_value):
     Parameters
     ----------
     data : tvm.tensor
-        tensors need to change dtype
+    tensors need to change dtype
 
     max_value/min_value : float
-        the range of res
+    the range of res
 
     Returns
     -------
@@ -752,7 +752,7 @@ def reduce_sum(raw_tensor, axis, keepdims=False):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     axis : int or list
-        reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
+    reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     Returns
     -------
@@ -768,7 +768,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     axis : int or list
-        reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
+    reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     Returns
     -------
@@ -785,7 +785,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
     raw_tensor : wrapped_tensor or tvm.tensor
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     axis : int or list
-        reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
+    reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
     priority_flag : supported 1(precision) and 0(performance)
     Returns
     -------
@@ -801,7 +801,7 @@ def reduce_prod(raw_tensor, axis, keepdims=False):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
     axis : int
-        reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
+    reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
     Returns
     -------
     res : wrapped_tensor
@@ -810,23 +810,24 @@ def reduce_prod(raw_tensor, axis, keepdims=False):
 
 
 def split(data, split_dim, size_splits):
-    """Split a tensor into len(size_splits) tensors along one dimension.
+    """
+    Split a tensor into len(size_splits) tensors along one dimension.
 
     Parameters
     ----------
     data: TVM tensor
-        input tensor.
+    input tensor.
     split_dim: int
-        the dimension along which to split.
+    the dimension along which to split.
     size_splits: list or tuple
-        a Python list containing the sizes of each output tensor along `split_dim`.
+    a Python list containing the sizes of each output tensor along `split_dim`.
 
     Returns
     -------
     output_shape_list: list
-        the list of output shapes.
+    the list of output shapes.
     output_tensor_list: list
-        the list of output tensors, output tensor type is TVM tensor.
+    the list of output tensors, output tensor type is TVM tensor.
     """
     return array.split(data, split_dim, size_splits)
 
@@ -852,12 +853,12 @@ def inplace_add(lhs, inplace_ids, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     inplace_ids : a vector. Indices into the left-most dimension of lhs.
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -873,12 +874,12 @@ def inplace_sub(lhs, inplace_ids, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     inplace_ids : a vector. Indices into the left-most dimension of lhs.
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -894,12 +895,12 @@ def inplace_update(lhs, inplace_ids, rhs):
     Parameters
     ----------
     lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     inplace_ids : a vector. Indices into the left-most dimension of lhs.
 
     rhs : wrapped_tensor or tvm.tensor
-        left hand tensor
+    left hand tensor
 
     Returns
     -------
@@ -954,15 +955,15 @@ def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                             padding="SAME"):
     """
     orig_input : dict, shape and dtype of input_data,
-                 shape is 6 dims, format is NDC1HWC0
+    shape is 6 dims, format is NDC1HWC0
     orig_output : dict, result of max_pool3d(orig_input, ksize, ...)
     grad_grad: dict, input grad of grad
     assist_tensor: dict, helper matrix, it's content is 8,7,6,5,4,3,2,1
-                if kernel is 2 x 2 x 2
+    if kernel is 2 x 2 x 2
     ksize : list or tuple, the window of max_pool3d,
-            only support max_pool3d in D or H or W
+    only support max_pool3d in D or H or W
     strides : list or tuple, the stride of max_pool3d window,
-              only support max_pool3d in D or H or W
+    only support max_pool3d in D or H or W
     pads : reserved.
     padding : str, the mode of padding, support SAME or VALID
     ceil_mode: reserved
@@ -979,18 +980,19 @@ def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
 
 
 def auto_schedule(outs, option=None):
-    """Entry of auto-Schedule.
+    """
+    Entry of auto-Schedule.
 
     Parameters
     ----------
     outs: Array of Tensor
-          The computation graph description of reduce in the format
-          of an array of tensors.
+    The computation graph description of reduce in the format
+    of an array of tensors.
     option:
     Returns
     -------
     sch: Schedule
-        The computation schedule for the op.
+    The computation schedule for the op.
     """
     return tbe_auto_schedule.auto_schedule(outs, option)
 
@@ -1090,15 +1092,15 @@ def conv2d_backprop_filter(input_x, out_backprop, filter_sizes, para_dict):
 
     para_dict:
 
-        strides : 2-D shape, specifies in height and width dimension
+    strides : 2-D shape, specifies in height and width dimension
 
-        padding : 4-D shape, specifies in up/down/left/right dimension
+    padding : 4-D shape, specifies in up/down/left/right dimension
 
-        dilations : 4-D shape, specifies in batch/channel/height/width dimension
+    dilations : 4-D shape, specifies in batch/channel/height/width dimension
 
-        groups : The number of filter's group. Default value is 1.
+    groups : The number of filter's group. Default value is 1.
 
-        res_dtype : the output data type
+    res_dtype : the output data type
 
     Returns
     -------
@@ -1123,23 +1125,23 @@ def conv2d_backprop_input(filters, out_backprop, filter_sizes, input_sizes, para
 
     para_dict:
 
-        strides : list of strides, [strideh, stridew]
+    strides : list of strides, [strideh, stridew]
 
-        padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
+    padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
 
-        dilations : list of dilations, [dilation_n, dilation_c, dilation_h, dilation_w]
+    dilations : list of dilations, [dilation_n, dilation_c, dilation_h, dilation_w]
 
-        res_dtype : dE/dX data type, "float16" by default
+    res_dtype : dE/dX data type, "float16" by default
 
-        offset_x : offset of x
+    offset_x : offset of x
 
-        offset_w : offset of w
+    offset_w : offset of w
 
-        fusion_para: the l1 fuison para
+    fusion_para: the l1 fuison para
 
-        kernel_name : cce kernel name
+    kernel_name : cce kernel name
 
-        group_dict : The params of group convolution.
+    group_dict : The params of group convolution.
 
     Returns
     ----------
@@ -1162,12 +1164,12 @@ def conv3d_backprop_filter(x, out_backprop, filter_size, para_dict):
     filter_size : 5-D shape, specifies the filter sizes
 
     para_dict : dict of parameters
-        strides : 3-D shape, specifies in depth, height and width dimension
-        pads : 6-D shape, specifies in up/down/left/right dimension
-        dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
-        res_dtype : the output data type
-        kernel_name : conv3d_backprop_filter_cce by default
-        group_dict : group of parameters
+    strides : 3-D shape, specifies in depth, height and width dimension
+    pads : 6-D shape, specifies in up/down/left/right dimension
+    dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
+    res_dtype : the output data type
+    kernel_name : conv3d_backprop_filter_cce by default
+    group_dict : group of parameters
 
     Returns
     -------
@@ -1191,12 +1193,12 @@ def conv3d_backprop_input(filter, out_backprop, filter_size, input_size, para_di
     input_size : shape of dE/dX, [N, D, H, W, C]
 
     para_dict : dict of parameters
-        strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
-        pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
-        dilations : [1, 1, 1, 1, 1] by default
-        res_dtype : dE/dX data type, "float16" by default
-        kernel_name : conv3d_backprop_input_cce by default
-        group_dict : group of parameters
+    strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
+    pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
+    dilations : [1, 1, 1, 1, 1] by default
+    res_dtype : dE/dX data type, "float16" by default
+    kernel_name : conv3d_backprop_input_cce by default
+    group_dict : group of parameters
 
     Returns
     ----------
@@ -1237,36 +1239,35 @@ def depthwise_conv2d_backprop_filter(fmap,
                                      kernel_name="depthwise_conv2d_compute"):
     """
     compute of depthwise conv2d backprop filter
-    
     the interface will be eliminated soon!
 
     Parameters
     ----------
     fmap : tvm tensor
-        feature map tensor in tvm.
+    feature map tensor in tvm.
 
     dout : tvm tensor
-        dout tensor in tvm.
+    dout tensor in tvm.
 
     kernel_h: int
-        height of filter.
+    height of filter.
 
     kernel_w: int
-        width of filter.
+    width of filter.
 
     stride: tuple or list or int
-        stride of convolution.
+    stride of convolution.
 
     pad: list
-        padding added to each dimension of the input.
+    padding added to each dimension of the input.
 
     w_dtype: str
-        the dtype of dfilter.
+    the dtype of dfilter.
 
     Returns
     -------
     depthwise_dfilter_res: tvm tensor
-        the tensor of output.
+    the tensor of output.
     """
     return depthwise_conv2d_compute.depthwise_conv2d_backprop_filter_d_compute(
         fmap, dout, kernel_h, kernel_w, stride, pad, dilations, w_dtype, kernel_name)
@@ -1287,24 +1288,24 @@ def depthwise_conv2d_backprop_input(input_shape,
     Parameters
     ----------
     input_shape: a list or tuple representing the shape of input,
-                6D format [N, C1, 1, H, W, C0]
+    6D format [N, C1, 1, H, W, C0]
 
     weight: a tensor, 5D with shape [C1, Hf*Wf, 1, C0, C0]
 
     dout: a tensor, 6D format [N, Co1, 1, Ho, Wo, C0]
 
     weight_sizes: a list or tuple of two ints,
-                  the height and width of the weight of the convolution
+    the height and width of the weight of the convolution
 
     strides: a list or tuple of two ints, the stride of the sliding window for
-             height and width of the input of the convolution
+    height and width of the input of the convolution
 
     pads: padding added to each dimension of the input
 
     Returns
     -------
     dx_res: compute of the gradients of depthwise convolution
-            with respect to the input
+    with respect to the input
     """
     return depthwise_conv2d_compute.depthwise_conv2d_backprop_input_d_compute(
         input_shape, weight, dout, weight_sizes, strides, pads, kernel_name)
@@ -1329,15 +1330,15 @@ def depthwise_conv2d(fmap,
     Parameters
     ----------
     fmap : feature map placehold
-        5-D shape of input tensor [N, C1, H, W, C0]
+    5-D shape of input tensor [N, C1, H, W, C0]
 
     weight : filter placehold
-        5-D shape of filter tensor [C1, H, W, Co, C0]
+    5-D shape of filter tensor [C1, H, W, Co, C0]
 
     depthwise_res_dtype : dtype of depthwise UB result
 
     stride : int or a list/tuple of two ints
-        stride size, or [stride_height, stride_width]
+    stride size, or [stride_height, stride_width]
 
     pad : padding added to each dimension of the input
 
@@ -1348,7 +1349,7 @@ def depthwise_conv2d(fmap,
     Returns
     -------
     depthwise_res : result tensor
-       forward depthwise result of out
+    forward depthwise result of out
     """
     return depthwise_conv2d_compute.depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride, pad,
                                                              dilation, para_dict, l1_fusion_para,
@@ -1370,21 +1371,21 @@ def gemm(tensor_a, tensor_b, para_dict):
     """
     algorithm: gemm and matmul
     for gemm:
-        calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
+    calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
     for matmul:
-        caculating matrix multiplication with bias, C = A*B + bias
+    caculating matrix multiplication with bias, C = A*B + bias
 
     Parameters:
     tensor_a: the first tensor a
 
     tensor_b: second tensor b with the same type and shape with a
 
-              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
-              must be 32*16.
-              If A is transpose , then AShape classification matrix must be
-              32*16 in gm/L1,then it is 16*32 in L0A.
-              If B is transpose , then BShape classification matrix must be
-              16*32 in gm/L1,then it is 32*16 in L0B.
+    If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+    must be 32*16.
+    If A is transpose , then AShape classification matrix must be
+    32*16 in gm/L1,then it is 16*32 in L0A.
+    If B is transpose , then BShape classification matrix must be
+    16*32 in gm/L1,then it is 32*16 in L0B.
 
     para_dict:
 

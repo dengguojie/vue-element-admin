@@ -28,18 +28,19 @@ from topi import generic
 
 @tvm.target.generic_func
 def auto_schedule(outs, option=None):
-    """Entry of auto-Schedule.
+    """
+    Entry of auto-Schedule.
 
     Parameters
     ----------
     outs: Array of Tensor
-          The computation graph description of reduce in the format
-          of an array of tensors.
+    The computation graph description of reduce in the format
+    of an array of tensors.
     option:
     Returns
     -------
     sch: Schedule
-        The computation schedule for the op.
+    The computation schedule for the op.
     """
     pass
 

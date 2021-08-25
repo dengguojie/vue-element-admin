@@ -359,7 +359,9 @@ def get_sch_additional_entry(sch, k):
 
 
 def is_reduce_tensor(tensor: Tensor) -> bool:
-    """Check if tensor contains reduce body"""
+    """
+    Check if tensor contains reduce body
+    """
     if isinstance(tensor.op, PlaceholderOp):
         return False
     if isinstance(tensor.op.body[0], Reduce):
@@ -368,7 +370,9 @@ def is_reduce_tensor(tensor: Tensor) -> bool:
 
 
 def get_reduce_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntImm]]:
-    """Get reduce axes var of reduce tensor"""
+    """
+    Get reduce axes var of reduce tensor
+    """
     compute = operation.get_context().get_current_compute()
     if compute.get("_mode") == "zero":
         shape = compute.get("_shape")
@@ -385,7 +389,9 @@ def get_reduce_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntImm]]:
 
 
 def get_reduce_all_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntImm]]:
-    """Get all axes var for reduce tensor"""
+    """
+    Get all axes var for reduce tensor
+    """
     compute = operation.get_context().get_current_compute()
     if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
         return list(reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
@@ -395,7 +401,9 @@ def get_reduce_all_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntIm
 
 
 def get_reduce_axis_indexes(reduce_tensor: Tensor) -> List[int]:
-    """Get all reduce axis index"""
+    """
+    Get all reduce axis index
+    """
     compute = operation.get_context().get_current_compute()
     if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
         return [2]
@@ -404,5 +412,7 @@ def get_reduce_axis_indexes(reduce_tensor: Tensor) -> List[int]:
 
 
 def is_keepdims(reduce_tensor: Tensor) -> bool:
-    """Check if reduce tensor is keepdims"""
+    """
+    Check if reduce tensor is keepdims
+    """
     return len(reduce_tensor.shape) == len(get_reduce_all_axes(reduce_tensor))

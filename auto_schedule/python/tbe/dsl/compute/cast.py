@@ -39,6 +39,7 @@ from .util import shape_to_list
 
 NAME_INDEX = [0]
 
+
 @decorator
 def _para_check_of_cast(func, *args, **kwargs):
     '''
