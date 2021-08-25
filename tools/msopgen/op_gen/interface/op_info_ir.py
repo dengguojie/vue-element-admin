@@ -10,7 +10,6 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 import os
 import sys
-import xlrd
 
 from . import utils
 from .op_info import OpInfo
@@ -181,8 +180,11 @@ class IROpInfo(OpInfo):
     @staticmethod
     def _get_sheets(ir_file):
         try:
+            import xlrd
             ir_template = xlrd.open_workbook(ir_file)
             sheet_names = ir_template.sheet_names()
+        except ImportError as import_error:
+            sys.exit("[ERROR][op_info_ir] Unable to import module: %s." % str(import_error))
         except OSError as err:
             utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
             raise utils.MsOpGenException(utils.MS_OP_GEN_READ_FILE_ERROR)

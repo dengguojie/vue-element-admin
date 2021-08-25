@@ -195,6 +195,7 @@ class CheckFromConfig:
         self.io_dtype_map = self.get_trans_value("INPUT_OUTPUT_DTYPE_MAP")
         self.ir_attr_type_map = self.get_trans_value("IR_ATTR_TYPE_MAP")
         self.ini_attr_type_map = self.get_trans_value("INI_ATTR_TYPE_MAP")
+        self.check_attr_type_map = self.get_trans_value("CHECK_PARAM_ATTR_TYPE_MAP")
         self.tf_attr_type_map = self.get_trans_value("TF_ATTR_TYPE_MAP")
         self.ms_tf_io_dtype_map = \
             self.get_trans_value("MS_TF_INPUT_OUTPUT_DTYPE_MAP")
@@ -324,6 +325,19 @@ class CheckFromConfig:
         print_warn_log("The '%s' type '%s' in the .txt file is not supported. "
                        "Please check. If you do not have this problems, just "
                        "ignore the warning." % (name, tf_type))
+        return ""
+
+    def trans_check_attr_type(self, attr_type):
+        """
+        transform attr type for check_op_params
+        @param attr_type: attr type from template file
+        @return: attr type for .ini
+        """
+        if attr_type in self.check_attr_type_map:
+            return self.check_attr_type_map.get(attr_type)
+        print_warn_log("The attr type '%s' is not supported in check_op_params. "
+                       "Please check the attr type. If you do not have this "
+                       "problem, ignore the warning." % attr_type)
         return ""
 
 

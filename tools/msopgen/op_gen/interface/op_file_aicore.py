@@ -50,6 +50,25 @@ class OpFileAiCore(OPFile):
             utils.OP_TEMPLATE_TBE_PATH)
         utils.copy_template(template_path, tbe_dir, True)
 
+    def _generate_op_params_for_check(self):
+        op_params_for_check = ""
+        for op_input in self.op_info.parsed_input_info.values():
+            input_type = op_input.get("param_type").upper()
+            op_params_for_check += "para_check.%s_INPUT, " % input_type
+        for op_output in self.op_info.parsed_output_info.values():
+            output_type = op_output.get("param_type").upper()
+            op_params_for_check += "para_check.%s_OUTPUT, " % output_type
+        for op_attr in self.op_info.parsed_attr_info:
+            attr_type = op_attr[1].strip()
+            check_from_config = utils.CheckFromConfig()
+            attr_type = check_from_config.trans_check_attr_type(attr_type)
+            if utils.PARAM_TYPE_OPTIONAL in op_attr:
+                op_params_for_check += "para_check.OPTION_ATTR_%s, " % attr_type
+            else:
+                op_params_for_check += "para_check.REQUIRED_ATTR_%s, " % attr_type
+        op_params_for_check += "para_check.KERNEL_NAME"
+        return op_params_for_check
+
     def generate_impl(self):
         """
         Function Description:
@@ -58,6 +77,7 @@ class OpFileAiCore(OPFile):
         Return Value:
         """
         self._generate_cmake_lists()
+        op_params_for_check = self._generate_op_params_for_check()
         if not self.op_info.fix_op_type:
             utils.print_warn_log("The op type is empty. Failed to generate "
                                  "impl files. Please check.")
@@ -83,12 +103,14 @@ class OpFileAiCore(OPFile):
         # 3.make [op_type]()
         if len(self.op_info.parsed_attr_info) == 0:
             head_str += op_tmpl.PY_DEF_WITHOUT_ATTR.format(
+                op_params=op_params_for_check,
                 name=self.op_info.fix_op_type,
                 input_name=op_input,
                 output=op_output)
         else:
             attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
             head_str += op_tmpl.PY_DEF_WITH_ATTR.format(
+                op_params=op_params_for_check,
                 name=self.op_info.fix_op_type,
                 input_name=op_input,
                 output=op_output,

@@ -281,6 +281,7 @@ message CustomTestParameter {
 PY_HEAD = """import tbe.dsl as tbe
 from tbe import tvm
 from tbe.common.register import register_op_compute
+from tbe.common.utils import para_check
 
 """
 PY_COMPUTE_WITHOUT_ATTR = """
@@ -304,6 +305,7 @@ PY_COMPUTE_END = """
     return res
 """
 PY_DEF_WITHOUT_ATTR = """
+@para_check.check_op_params({op_params})
 def {name}({input_name}, {output}, kernel_name="{name}"):
     \"""
     To do: Implement the operator by referring to the
@@ -311,6 +313,7 @@ def {name}({input_name}, {output}, kernel_name="{name}"):
     \"""
 """
 PY_DEF_WITH_ATTR = """
+@para_check.check_op_params({op_params})
 def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
     \"""
     To do: Implement the operator by referring to the

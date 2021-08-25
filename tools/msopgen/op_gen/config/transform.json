@@ -158,6 +158,21 @@
     "ListType": "listType",
     "ListListInt": "listListInt"
   },
+  "CHECK_PARAM_ATTR_TYPE_MAP": {
+    "Int": "INT",
+    "Float": "FLOAT",
+    "String": "STR",
+    "Bool": "BOOL",
+    "Tensor": "TENSOR",
+    "Type": "TYPE",
+    "ListInt": "LIST_INT",
+    "ListFloat": "LIST_FLOAT",
+    "ListString": "LIST_STR",
+    "ListBool": "LIST_BOOL",
+    "ListTensor": "LIST_TENSOR",
+    "ListType": "LIST_TYPE",
+    "ListListInt": "LIST_LIST_INT"
+  },
   "TF_ATTR_TYPE_MAP": {
     "int": "Int",
     "float": "Float",

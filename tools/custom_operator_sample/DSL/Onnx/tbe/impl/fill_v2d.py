@@ -152,8 +152,8 @@ def elewise_binary_phony_ex(stmt_op):
     return ir_builder.get()
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("fill_v2_d")
-def fill_v2_compute(data_x, x1, x2, y, kernel_name="fill_v2_d"):
+@tbe_platform.fusion_manager.fusion_manager.register("fill_v2d")
+def fill_v2_compute(data_x, x1, x2, y, kernel_name="fill_v2d"):
     """
     fill_v2_compute
     """
@@ -170,13 +170,13 @@ def fill_v2_compute(data_x, x1, x2, y, kernel_name="fill_v2_d"):
 
 @para_check.check_op_params(para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
-def fill_v2_d(y, value, shape, kernel_name="fill_v2_d"):
+def fill_v2d(y, value, shape, kernel_name="fill_v2d"):
     """
-    interface of fill_v2_d
+    interface of fill_v2d
     :param y: output
     :param value: value to fill the shape, float32
     :param shape: list int, output shape
-    :param kernel_name: fill_v2_d
+    :param kernel_name: fill_v2d
     :return:
     """
     # check kernel name
