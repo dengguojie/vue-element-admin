@@ -812,6 +812,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingPositiveSourceNtc100 tiling params error");
       return false;
     }
+    PROFILING_TILING_AFTER_CALCU_TILING_REG();
     SetRunningNtc100Params(runParams100, runInfo);
     OP_LOGD(opType.c_str(), "start print tiling parameters in ntc 100: %s", runParams100.to_string().c_str());
   } else if (realSrcFormat[realSrcFormat.length() - 1] == 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
@@ -823,6 +824,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
         VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TransDataMode101Param tiling params error");
         return false;
       }
+      PROFILING_TILING_AFTER_CALCU_TILING_REG();
       SetRunningMode1010Params(runParamsPart1, runInfo);
       OP_LOGD(opType.c_str(), "start print runParams");
       PrintTilingMode1010Params(opType, runParamsPart1);
@@ -834,6 +836,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
         VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TransDataMode101Param tiling params error");
         return false;
       }
+      PROFILING_TILING_AFTER_CALCU_TILING_REG();
       SetRunningMode1011Params(runParamsPart1, runInfo);
       OP_LOGD(opType.c_str(), "start print runParams");
       PrintTilingMode1011Params(opType, runParamsPart1);
@@ -851,6 +854,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
       return false;
     }
     OP_LOGD(opType.c_str(), "***start to put mode 201 tiling parameters");
+    PROFILING_TILING_AFTER_CALCU_TILING_REG();
     SetRunningTc201Params(runParams201, runInfo);
     PrintTilingModeTc201Params(opType, runParams201);
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NCHW") ||
@@ -867,12 +871,11 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingNegativeNtc200 tiling params error");
       return false;
     }
+    PROFILING_TILING_AFTER_CALCU_TILING_REG();
     SetRunningNtc200Params(runParams200, runInfo);
     OP_LOGD(opType.c_str(), "start print tiling parameters in mode 200");
     PrintTilingModeNtc200Params(opType, runParams200);
   }
-
-  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   // block_dim, core num used in tik op
   runInfo.block_dim = blockDim;
@@ -883,7 +886,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   OP_LOGI(opType.c_str(), "tiling run success.");
 
   // get the point ts and calcu the all time cost
-  PROFILING_TILING_END()
+  PROFILING_TILING_END();
   return true;
 }
 

@@ -18,10 +18,10 @@
  * @version 1.0
  *
  */
-
 #include <iostream>
 #include <gtest/gtest.h>
 #include "op_proto_test_util.h"
+#include "common/utils/ut_profiling_reg.h"
 #include "transformation_ops.h"
 
 class trans_data : public testing::Test {
@@ -45,6 +45,11 @@ TEST_F(trans_data, trans_data_infer_shape_fp16) {
   op.UpdateOutputDesc("dst", tensor_desc_out);
 
   auto ret = op.InferShapeAndType();
+
+  // test performance start
+  PROFILING_TEST(op.InferShapeAndType, (), 1000, 10);
+  // test performance end
+
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDescByName("dst");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);

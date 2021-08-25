@@ -88,5 +88,5 @@ TEST_F(stried_slice_grad_tiling, stried_slice_grad_tiling_no_mask) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 2 2 2 4 0 0 0 0 1 0 1 0 1 0 2 0 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 1 1 2 2 2 4 0 0 0 0 0 0 0 0 1 0 1 0 1 0 2 0 2 ");
 }

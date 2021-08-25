@@ -36,6 +36,7 @@ const static bool vector_prof_switch = std::getenv("VECTOR_PROF") != nullptr;
   auto profiling_op_name = op_type;                                                                                \
   const vector<string> profiline_cost_name_list = {"GET_SHAPE", "GET_COMPILE_INFO", "CALCU_TILING", "SET_TILING"}; \
   std::vector<std::chrono::time_point<std::chrono::steady_clock>> time_vector;                                     \
+  time_vector.reserve(profiline_cost_name_list.size() + 1);                                                        \
   if (vector_prof_switch) {                                                                                        \
     time_vector.push_back(std::chrono::steady_clock::now());                                                       \
   }
@@ -55,15 +56,17 @@ const static bool vector_prof_switch = std::getenv("VECTOR_PROF") != nullptr;
     time_vector.push_back(std::chrono::steady_clock::now()); \
   }
 
-#define PROFILING_TILING_END()                                                                                \
-  if (vector_prof_switch) {                                                                                   \
-    time_vector.push_back(std::chrono::steady_clock::now());                                                  \
-    for (size_t i = 1; i < time_vector.size(); i++) {                                                         \
-      auto profiling_cast =                                                                                   \
-          std::chrono::duration_cast<std::chrono::microseconds>(time_vector[i] - time_vector[i - 1]).count(); \
-      OP_EVENT(profiling_op_name, "[TILING_PROF][%s]: %d(us)", profiline_cost_name_list[i - 1].c_str(),       \
-               static_cast<int>(profiling_cast));                                                             \
-    }                                                                                                         \
+#define PROFILING_TILING_END()                                                                                  \
+  if (vector_prof_switch) {                                                                                     \
+    time_vector.push_back(std::chrono::steady_clock::now());                                                    \
+    if (time_vector.size() == profiline_cost_name_list.size() + 1) {                                            \
+      for (size_t i = 1; i < time_vector.size(); i++) {                                                         \
+        auto profiling_cast =                                                                                   \
+            std::chrono::duration_cast<std::chrono::microseconds>(time_vector[i] - time_vector[i - 1]).count(); \
+        OP_EVENT(profiling_op_name, "[TILING_PROF][%s]: %d(us)", profiline_cost_name_list[i - 1].c_str(),       \
+                 static_cast<int>(profiling_cast));                                                             \
+      }                                                                                                         \
+    }                                                                                                           \
   }
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_PROFILING_H_

@@ -26,6 +26,7 @@
 #include "../op_proto/strided_slice_infer_shape.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 
@@ -38,6 +39,10 @@ const int64_t TILING_MODE_2 = 2;
 const int64_t TILING_MODE_3 = 3;
 
 const std::string OP_STRIDED_SLICE_GRAD = "StridedSliceGrad";
+
+const int64_t SHAPE_C0 = 16;
+
+const int64_t MAX_SHAPE_LEN = 8;
 
 struct SliceParameters {
   std::vector<int64_t> input;
@@ -75,6 +80,8 @@ struct PadTilingParams {
   int64_t tiling_input_dim_3;
   int64_t tiling_input_dim_4;
   int64_t tiling_input_dim_5;
+  int64_t tiling_input_dim_6;
+  int64_t tiling_input_dim_7;
   int64_t tiling_pading_00;
   int64_t tiling_pading_01;
   int64_t tiling_pading_10;
@@ -87,6 +94,10 @@ struct PadTilingParams {
   int64_t tiling_pading_41;
   int64_t tiling_pading_50;
   int64_t tiling_pading_51;
+  int64_t tiling_pading_60;
+  int64_t tiling_pading_61;
+  int64_t tiling_pading_70;
+  int64_t tiling_pading_71;
   int64_t tiling_input_dim_cut_axis;
 };
 
@@ -98,6 +109,8 @@ void InitRunningParams(PadTilingParams& params) {
   params.tiling_input_dim_3 = 1;
   params.tiling_input_dim_4 = 1;
   params.tiling_input_dim_5 = 1;
+  params.tiling_input_dim_6 = 1;
+  params.tiling_input_dim_7 = 1;
   params.tiling_pading_00 = 0;
   params.tiling_pading_01 = 0;
   params.tiling_pading_10 = 0;
@@ -110,11 +123,15 @@ void InitRunningParams(PadTilingParams& params) {
   params.tiling_pading_41 = 0;
   params.tiling_pading_50 = 0;
   params.tiling_pading_51 = 0;
+  params.tiling_pading_60 = 0;
+  params.tiling_pading_61 = 0;
+  params.tiling_pading_70 = 0;
+  params.tiling_pading_71 = 0;
   params.tiling_input_dim_cut_axis = 1;
 }
 
-static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
-                                  const string& dtype, vector<int64_t>& values) {
+static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name, const string& dtype,
+                                  vector<int64_t>& values) {
   values.clear();
   if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
     return false;
@@ -123,15 +140,15 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
   auto size = std::get<1>(paras.const_inputs.at(name));
   if (dtype == "int64") {
     int count = size / sizeof(int64_t);
-    const int64_t *data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i=0; i < count; i++) {
+    const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
+    for (int i = 0; i < count; i++) {
       values.push_back(*data_addr);
       data_addr++;
     }
   } else if (dtype == "int32") {
     int count = size / sizeof(int32_t);
-    const int32_t *data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i=0; i < count; i++) {
+    const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
+    for (int i = 0; i < count; i++) {
       values.push_back(*data_addr);
       data_addr++;
     }
@@ -140,8 +157,7 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
   return true;
 }
 
-static bool GetPadCompileParams(const nlohmann::json& compile_info,
-                                PadCompileParams& compile_params) {
+static bool GetPadCompileParams(const nlohmann::json& compile_info, PadCompileParams& compile_params) {
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
@@ -203,6 +219,8 @@ void SetRuningParams(const PadTilingParams& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_3);
   ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_4);
   ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_5);
+  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_6);
+  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_7);
   ByteBufferPut(run_info.tiling_data, params.tiling_pading_00);
   ByteBufferPut(run_info.tiling_data, params.tiling_pading_01);
   ByteBufferPut(run_info.tiling_data, params.tiling_pading_10);
@@ -215,6 +233,10 @@ void SetRuningParams(const PadTilingParams& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.tiling_pading_41);
   ByteBufferPut(run_info.tiling_data, params.tiling_pading_50);
   ByteBufferPut(run_info.tiling_data, params.tiling_pading_51);
+  ByteBufferPut(run_info.tiling_data, params.tiling_pading_60);
+  ByteBufferPut(run_info.tiling_data, params.tiling_pading_61);
+  ByteBufferPut(run_info.tiling_data, params.tiling_pading_70);
+  ByteBufferPut(run_info.tiling_data, params.tiling_pading_71);
   ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_cut_axis);
 }
 
@@ -226,6 +248,8 @@ void PrintTilingParams(const PadTilingParams& params, const std::string& op_type
   OP_LOGD(op_type, "tiling_input_dim_3=%ld.", params.tiling_input_dim_3);
   OP_LOGD(op_type, "tiling_input_dim_4=%ld.", params.tiling_input_dim_4);
   OP_LOGD(op_type, "tiling_input_dim_5=%ld.", params.tiling_input_dim_5);
+  OP_LOGD(op_type, "tiling_input_dim_6=%ld.", params.tiling_input_dim_6);
+  OP_LOGD(op_type, "tiling_input_dim_7=%ld.", params.tiling_input_dim_7);
   OP_LOGD(op_type, "tiling_pading_00=%ld.", params.tiling_pading_00);
   OP_LOGD(op_type, "tiling_pading_01=%ld.", params.tiling_pading_01);
   OP_LOGD(op_type, "tiling_pading_10=%ld.", params.tiling_pading_10);
@@ -238,23 +262,24 @@ void PrintTilingParams(const PadTilingParams& params, const std::string& op_type
   OP_LOGD(op_type, "tiling_pading_41=%ld.", params.tiling_pading_41);
   OP_LOGD(op_type, "tiling_pading_50=%ld.", params.tiling_pading_50);
   OP_LOGD(op_type, "tiling_pading_51=%ld.", params.tiling_pading_51);
+  OP_LOGD(op_type, "tiling_pading_60=%ld.", params.tiling_pading_60);
+  OP_LOGD(op_type, "tiling_pading_61=%ld.", params.tiling_pading_61);
+  OP_LOGD(op_type, "tiling_pading_70=%ld.", params.tiling_pading_70);
+  OP_LOGD(op_type, "tiling_pading_71=%ld.", params.tiling_pading_71);
   OP_LOGD(op_type, "tiling_input_dim_cut_axis=%ld.", params.tiling_input_dim_cut_axis);
 }
 
-void _printTensorValue(const PadCompileParams& compile_params,
-                       const std::vector<int64_t>& in,
-                       const std::string& name) {
+void PrintTensorValue(const PadCompileParams& compile_params, const std::vector<int64_t>& in, const std::string& name) {
   using namespace std;
   string vec_str;
   for (auto item : in) {
     vec_str += to_string(item);
     vec_str += ",";
   }
-  OP_LOGD(compile_params.op_type, "Func[_printTensorValue] [%s]: [%s].", name.c_str(), vec_str.c_str());
+  OP_LOGD(compile_params.op_type, "Func[PrintTensorValue] [%s]: [%s].", name.c_str(), vec_str.c_str());
 }
 
-static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
-                                            const PadCompileParams& compile_params,
+static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras, const PadCompileParams& compile_params,
                                             std::vector<int64_t>& paddings_const_values,
                                             std::vector<int64_t>& paddings_input_shape) {
   struct SliceParameters slice_params_output = {};
@@ -284,10 +309,10 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
   }
 
   // Print Org_Tensor'values
-  _printTensorValue(compile_params, slice_params_output.input, "shape");
-  _printTensorValue(compile_params, slice_params_output.begin_list, "begin");
-  _printTensorValue(compile_params, slice_params_output.end_list, "end");
-  _printTensorValue(compile_params, slice_params_output.stride_list, "strides");
+  PrintTensorValue(compile_params, slice_params_output.input, "shape");
+  PrintTensorValue(compile_params, slice_params_output.begin_list, "begin");
+  PrintTensorValue(compile_params, slice_params_output.end_list, "end");
+  PrintTensorValue(compile_params, slice_params_output.stride_list, "strides");
 
   // Calc Paddings
   bool cond0 = slice_params_output.input.size() > slice_params_output.begin_list.size();
@@ -315,8 +340,7 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
       true,
   };
   OP_LOGI(compile_params.op_type, "original begin end and stride is %s, %s, and %s.",
-          ops::to_string(input_params.begin).c_str(),
-          ops::to_string(input_params.end).c_str(),
+          ops::to_string(input_params.begin).c_str(), ops::to_string(input_params.end).c_str(),
           ops::to_string(input_params.strides).c_str());
 
   vector<int64_t> output_shape;
@@ -328,18 +352,17 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
   }
 
   OP_LOGI(compile_params.op_type, "after infershape, begin end and stride is %s, %s, and %s.",
-          ops::to_string(input_params.begin).c_str(),
-          ops::to_string(input_params.end).c_str(),
+          ops::to_string(input_params.begin).c_str(), ops::to_string(input_params.end).c_str(),
           ops::to_string(input_params.strides).c_str());
 
   slice_params_output.begin_list = input_params.begin;
   slice_params_output.end_list = input_params.end;
   slice_params_output.stride_list = input_params.strides;
 
-  _printTensorValue(compile_params, slice_params_output.input, "shape");
-  _printTensorValue(compile_params, slice_params_output.begin_list, "begin");
-  _printTensorValue(compile_params, slice_params_output.end_list, "end");
-  _printTensorValue(compile_params, slice_params_output.stride_list, "strides");
+  PrintTensorValue(compile_params, slice_params_output.input, "shape");
+  PrintTensorValue(compile_params, slice_params_output.begin_list, "begin");
+  PrintTensorValue(compile_params, slice_params_output.end_list, "end");
+  PrintTensorValue(compile_params, slice_params_output.stride_list, "strides");
 
   vector<int64_t> grad_input_dy_shape;
   if (cond0 && cond1 && cond2 && cond3) {
@@ -369,13 +392,13 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
   return true;
 }
 
-static bool GetTilingParam(const std::vector<int64_t>& input_shape,
-                           const std::vector<int64_t>& paddings_const_values,
-                           const PadCompileParams& compile_params,
-                           PadTilingParams& tiling_params) {
+static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::vector<int64_t>& paddings_const_values,
+                           const PadCompileParams& compile_params, PadTilingParams& tiling_params) {
   auto shape_len = input_shape.size();
   std::vector<int64_t> merge_input_shape_dims;
   std::vector<int64_t> merge_paddings_values;
+  merge_input_shape_dims.reserve(MAX_SHAPE_LEN);
+  merge_paddings_values.reserve(MAX_SHAPE_LEN * 2);
   int64_t merge_input_shape_dim = 1;
   bool pre_dim_pidding_flag = true;
   for (size_t i = 0; i < shape_len; i++) {
@@ -407,7 +430,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   }
 
   shape_len = merge_input_shape_dims.size();
-  for (size_t i = 0; i < 6 - shape_len; i++) {
+  for (size_t i = 0; i < MAX_SHAPE_LEN - shape_len; i++) {
     merge_input_shape_dims.insert(merge_input_shape_dims.begin(), 1);
     merge_paddings_values.insert(merge_paddings_values.begin(), 0);
     merge_paddings_values.insert(merge_paddings_values.begin(), 0);
@@ -418,7 +441,9 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   tiling_params.tiling_input_dim_2 = merge_input_shape_dims[2];
   tiling_params.tiling_input_dim_3 = merge_input_shape_dims[3];
   tiling_params.tiling_input_dim_4 = merge_input_shape_dims[4];
-  tiling_params.tiling_input_dim_5 = merge_input_shape_dims[5] * compile_params.dtype_rate;
+  tiling_params.tiling_input_dim_5 = merge_input_shape_dims[5];
+  tiling_params.tiling_input_dim_6 = merge_input_shape_dims[6];
+  tiling_params.tiling_input_dim_7 = merge_input_shape_dims[7] * compile_params.dtype_rate;
   tiling_params.tiling_pading_00 = merge_paddings_values[0];
   tiling_params.tiling_pading_01 = merge_paddings_values[1];
   tiling_params.tiling_pading_10 = merge_paddings_values[2];
@@ -429,26 +454,30 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   tiling_params.tiling_pading_31 = merge_paddings_values[7];
   tiling_params.tiling_pading_40 = merge_paddings_values[8];
   tiling_params.tiling_pading_41 = merge_paddings_values[9];
-  tiling_params.tiling_pading_50 = merge_paddings_values[10] * compile_params.dtype_rate;
-  tiling_params.tiling_pading_51 = merge_paddings_values[11] * compile_params.dtype_rate;
+  tiling_params.tiling_pading_50 = merge_paddings_values[10];
+  tiling_params.tiling_pading_51 = merge_paddings_values[11];
+  tiling_params.tiling_pading_60 = merge_paddings_values[12];
+  tiling_params.tiling_pading_61 = merge_paddings_values[13];
+  tiling_params.tiling_pading_70 = merge_paddings_values[14] * compile_params.dtype_rate;
+  tiling_params.tiling_pading_71 = merge_paddings_values[15] * compile_params.dtype_rate;
 
-  auto last_dim_output = tiling_params.tiling_input_dim_5 +
-                         tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
+  auto last_dim_output =
+      tiling_params.tiling_input_dim_7 + tiling_params.tiling_pading_70 + tiling_params.tiling_pading_71;
   if (last_dim_output < 960) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;
-    if (shape_len == 2 && (tiling_params.tiling_pading_41 + tiling_params.tiling_pading_40 == 0)) {
+    if (shape_len == 2 && (tiling_params.tiling_pading_60 + tiling_params.tiling_pading_61 == 0)) {
       // when origin shape len is 2, will split the core_dim to dim 3, base the core_num
       int64_t split_dim = 1;
       for (int64_t i = 0; i < compile_params.core_num; i++) {
         int64_t cu_split_dim = compile_params.core_num - i;
-        if (tiling_params.tiling_input_dim_4 % cu_split_dim == 0) {
+        if (tiling_params.tiling_input_dim_6 % cu_split_dim == 0) {
           split_dim = cu_split_dim;
           break;
         }
       }
-      tiling_params.tiling_input_dim_4 = tiling_params.tiling_input_dim_4 / split_dim;
-      tiling_params.tiling_input_dim_3 = split_dim;
+      tiling_params.tiling_input_dim_6 = tiling_params.tiling_input_dim_6 / split_dim;
+      tiling_params.tiling_input_dim_5 = split_dim;
     }
   }
   if ((shape_len == 2 && last_dim_output > 128 * compile_params.core_num) || shape_len == 1) {
@@ -460,6 +489,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 
 bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
                OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
   using namespace ge;
 
   OP_LOGI(op_type, "begin to run tiling.");
@@ -468,12 +498,12 @@ bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
     return false;
   }
 
-  if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() ||
-      op_paras.inputs[1].tensor.empty()) {
-
+  if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadTiling] : input shape error");
     return false;
   }
+
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   // begin to get compile data
   PadCompileParams compile_params;
   compile_params.op_type = op_type;
@@ -481,8 +511,10 @@ bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
+
   int64_t pad_input_idx = op_type == OP_STRIDED_SLICE_GRAD ? 4 : 0;
   const std::vector<int64_t>& input_shape_const = op_paras.inputs[pad_input_idx].tensor[0].shape;
+  auto pad_format = op_paras.inputs[pad_input_idx].tensor[0].format;
   std::vector<int64_t> input_shape = input_shape_const;
   std::vector<int64_t> paddings_const_values;
   if (op_type == OP_STRIDED_SLICE_GRAD) {
@@ -490,13 +522,46 @@ bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
   } else {
     GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values);
   }
-  _printTensorValue(compile_params, input_shape, "input_shape");
-  _printTensorValue(compile_params, paddings_const_values, "paddings");
+  PrintTensorValue(compile_params, input_shape, "input_shape");
+  PrintTensorValue(compile_params, paddings_const_values, "paddings");
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   // end to get compile data
   PadTilingParams run_params;
   InitRunningParams(run_params);
-  GetTilingParam(input_shape, paddings_const_values, compile_params, run_params);
+  const map<string, vector<char>>& format_char = {{"NC1HWC0", {'N', 'C', 'H', 'W'}},
+                                                  {"NDC1HWC0", {'N', 'D', 'C', 'H', 'W'}}};
+  auto find_foramt_it = format_char.find(pad_format);
+  if (find_foramt_it != format_char.end()) {
+    std::vector<int64_t> paddings_new_values(input_shape.size() * 2, 0);
+    auto pad_ori_format = op_paras.inputs[pad_input_idx].tensor[0].ori_format;
+    vector<char> format_char_vec = find_foramt_it->second;
+
+    for (size_t i = 0; i < format_char_vec.size(); i++) {
+      char char_dim = format_char_vec[i];
+      auto char_dim_idx = pad_ori_format.find(char_dim);
+      if (char_dim_idx != string::npos) {
+        paddings_new_values[i * 2] = paddings_const_values[char_dim_idx * 2];
+        paddings_new_values[i * 2 + 1] = paddings_const_values[char_dim_idx * 2 + 1];
+      } else {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "can not get[%c] from ori_foramt[%s] when format is [%s]", char_dim,
+                                        pad_ori_format.c_str(), pad_format.c_str());
+        return false;
+      }
+    }
+
+    // modify C1 padding = C padding / SHAPE_C0
+    size_t padding_c1_idx = (format_char_vec.size() - 3) * 2;
+    paddings_new_values[padding_c1_idx] = paddings_new_values[padding_c1_idx] / SHAPE_C0;
+    paddings_new_values[padding_c1_idx + 1] = paddings_new_values[padding_c1_idx + 1] / SHAPE_C0;
+
+    PrintTensorValue(compile_params, paddings_new_values, "hd_paddings");
+    GetTilingParam(input_shape, paddings_new_values, compile_params, run_params);
+  } else {
+    GetTilingParam(input_shape, paddings_const_values, compile_params, run_params);
+  }
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  // get tiling end
   SetRuningParams(run_params, run_info);
 
   PrintTilingParams(run_params, op_type);
@@ -506,7 +571,7 @@ bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
   run_info.workspaces = workspace;
 
   OP_LOGI(op_type, "end to run tiling, succ!");
-
+  PROFILING_TILING_END();
   return true;
 }
 
@@ -514,4 +579,3 @@ REGISTER_OP_TILING_FUNC_BUFFERED(Pad, PadTiling);
 // register tiling interface of the StridedSliceGrad op.
 REGISTER_OP_TILING_FUNC_BUFFERED(StridedSliceGrad, PadTiling);
 }  // namespace optiling
-

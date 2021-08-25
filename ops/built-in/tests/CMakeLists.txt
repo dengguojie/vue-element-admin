@@ -19,6 +19,7 @@ set(OP_TEST_PLUFIN_AND_PROTO_SOURCE
         )
 set(OP_TEST_PLUFIN_AND_PROTO_INCLUDE
         ${OPS_BUILTIN_TEST_DIR}/common/utils_plugin_and_op_proto
+        ${OPS_BUILTIN_TEST_DIR}
         )
 set(OP_TEST_FUSION_PASS_SOURCE
         ${OPS_BUILTIN_TEST_DIR}/common/src/fusion_pass_utils/fusion_pass_test_utils.cpp

@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "common/utils/ut_profiling_reg.h"
 
 using namespace std;
 
@@ -67,6 +68,9 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_0) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "100110 4096 1 7 7 33 33 4 7 1 ");
+  // test performance start
+  PROFILING_TEST(iter->second, (opParas, op_compile_info, runInfo), 1000, 10);
+  // test performance end
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_2) {

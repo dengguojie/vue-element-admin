@@ -51,6 +51,16 @@ vector<FusionPattern*> ConcatDFusionPass::DefinePatterns() {
   return patterns;
 }
 
+void ConcatDFusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) {
+  auto input_count = input_desc_ptr->GetAllInputsSize();
+  map<string, uint32_t> name_index_map;
+  string name = "x";
+  for (size_t i = 0; i < input_count; ++i) {
+    name_index_map.insert({name + std::to_string(i), i});
+  }
+  input_desc_ptr->UpdateInputName(name_index_map);
+}
+
 // vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
 // including newly added nodes and fused but not deleted nodes
 Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
@@ -72,13 +82,7 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                     return NOT_CHANGED);
 
   if (inputs_num > max_inputs) {
-    int64_t nodes_num, nodes_num1;
-    nodes_num1 = inputs_num % max_inputs;
-    if (nodes_num1 == 0) {
-      nodes_num = inputs_num / max_inputs;
-    } else {
-      nodes_num = inputs_num / max_inputs + 1;
-    }
+    int64_t nodes_num = (inputs_num + max_inputs - 1) / max_inputs;
     int64_t last_node_inputs_num = inputs_num - (max_inputs * (nodes_num - 1));
     ge::OpDescPtr ConcatdDesc_orig = AttrUtils::CopyOpDesc(fusedDesc);
     ge::OpDescPtr ConcatdBaseDesc = AttrUtils::CopyOpDesc(fusedDesc);
@@ -138,50 +142,11 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         fusionNodes.push_back(concatd_node);
         ge::AttrUtils::SetInt(concatd_node->GetOpDesc(), "N", max_inputs);
         // infershape begin
-        int64_t size = 0;
-        const int64_t num_concat = max_inputs;
-        int64_t concat_dim = 0;
-        ge::AttrUtils::GetInt(concatd_node->GetOpDesc(), "concat_dim", concat_dim);
-        ge::GeTensorDesc ConcatDInputTensor_0 = ConcatdDesc->GetInputDesc(0);
-        ge::GeShape ConcatDInputShape_0 = ConcatDInputTensor_0.GetShape();
-        int64_t dimnum = ConcatDInputShape_0.GetDimNum();
-        auto axis = concat_dim;
-        Format input_format = ConcatDInputTensor_0.GetFormat();
-        if (input_format == ge::FORMAT_FRACTAL_NZ) {
-          int64_t length_shape = ConcatDInputShape_0.GetDims().size();
-          if (length_shape == 4) {
-            axis = 1 - axis;
-          } else if (axis == length_shape - 2) {
-            axis = length_shape - 1;
-          } else if (axis == length_shape - 1) {
-            axis = length_shape - 2;
-          }
-        }
-        if (axis < 0) {
-          axis += (dimnum);
-        }
-        int64_t ori_size = 0;
-        for (int64_t n = 0; n < num_concat; n++) {
-          ge::GeTensorDesc ConcatDInputTensor_1 = ConcatdDesc_orig->GetInputDesc(num_concat * i + n);
-          ge::GeShape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
-          int64_t dim_axis_value = ConcatDInputShape_1.GetDim(axis);
-          int64_t dim_axis_value_ori = ConcatDInputTensor_1.GetOriginShape().GetDim(concat_dim);
-          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ZConcatDFusionPass cannot be applied for unknown shape.");
-            return NOT_CHANGED;
-          }
-          size += dim_axis_value;
-          ori_size += dim_axis_value_ori;
-        }
-        ge::GeTensorDesc ConcatDOutputTensor_1 = ConcatdDesc->GetOutputDesc(0);
-        ge::GeShape ConcatDOutputShape_1 = ConcatDOutputTensor_1.GetShape();
-        ConcatDOutputShape_1.SetDim(axis, size);
-        ConcatDOutputTensor_1.SetShape(ConcatDOutputShape_1);
-        ge::GeShape ConcatDOriginOutputShape_1 = ConcatDOutputTensor_1.GetOriginShape();
-        ConcatDOriginOutputShape_1.SetDim(concat_dim, ori_size);
-        ConcatDOutputTensor_1.SetOriginShape(ConcatDOriginOutputShape_1);
-        ConcatdDesc->UpdateOutputDesc(0, ConcatDOutputTensor_1);
-        ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_1);
+	UpdateInputName(ConcatdDesc);
+	Operator op = ge::OpDescUtils::CreateOperatorFromNode(concatd_node);
+	auto infer_shape_ret = op.InferShapeAndType();
+	OP_LOGE_IF(infer_shape_ret != GRAPH_SUCCESS, NOT_CHANGED, FUSED_OP_TYPE, "InferShapeAndType failed.");
+        ConcatdBaseDesc->UpdateInputDesc(i, ConcatdDesc->GetOutputDesc(0));
         // infershape end
         FUSION_PASS_CHECK(
             concatd_node == nullptr,
@@ -220,50 +185,11 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         fusionNodes.push_back(last_concatd_node);
         ge::AttrUtils::SetInt(last_concatd_node->GetOpDesc(), "N", last_node_inputs_num);
         // the last_node infershape begin
-        int32_t size = 0;
-        int64_t num_concat = last_node_inputs_num;
-        int64_t concat_dim;
-        ge::AttrUtils::GetInt(last_concatd_node->GetOpDesc(), "concat_dim", concat_dim);
-        ge::GeTensorDesc ConcatDInputTensor_3 = LastConcatDDesc->GetInputDesc(0);
-        ge::GeShape ConcatDInputShape_3 = ConcatDInputTensor_3.GetShape();
-        int64_t dimnum = ConcatDInputShape_3.GetDimNum();
-        auto axis = concat_dim;
-        Format input_format = ConcatDInputTensor_3.GetFormat();
-        if (input_format == ge::FORMAT_FRACTAL_NZ) {
-          int64_t length_shape = ConcatDInputShape_3.GetDims().size();
-          if (length_shape == 4) {
-            axis = 1 - axis;
-          } else if (axis == length_shape - 2) {
-            axis = length_shape - 1;
-          } else if (axis == length_shape - 1) {
-            axis = length_shape - 2;
-          }
-        }
-        if (axis < 0) {
-          axis += (dimnum);
-        }
-        int64_t ori_size = 0;
-        for (int32_t n = 0; n < num_concat; n++) {
-          ge::GeTensorDesc ConcatDInputTensor_2 = ConcatdDesc_orig->GetInputDesc(n + max_inputs * i);
-          ge::GeShape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
-          int64_t dim_axis_value = ConcatDInputShape_2.GetDim(axis);
-          int64_t dim_axis_value_ori = ConcatDInputTensor_2.GetOriginShape().GetDim(concat_dim);
-          if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ZConcatDFusionPass cannot be applied for unknown shape.");
-            return NOT_CHANGED;
-          }
-          size += dim_axis_value;
-          ori_size += dim_axis_value_ori;
-        }
-        ge::GeTensorDesc ConcatDOutputTensor_2 = LastConcatDDesc->GetOutputDesc(0);
-        ge::GeShape ConcatDOutputShape_2 = ConcatDOutputTensor_2.GetShape();
-        ConcatDOutputShape_2.SetDim(axis, size);
-        ConcatDOutputTensor_2.SetShape(ConcatDOutputShape_2);
-        ge::GeShape ConcatDOriginOutputShape_2 = ConcatDOutputTensor_2.GetOriginShape();
-        ConcatDOriginOutputShape_2.SetDim(concat_dim, ori_size);
-        ConcatDOutputTensor_2.SetOriginShape(ConcatDOriginOutputShape_2);
-        LastConcatDDesc->UpdateOutputDesc(0, ConcatDOutputTensor_2);
-        ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_2);
+        UpdateInputName(LastConcatDDesc);
+	Operator op = ge::OpDescUtils::CreateOperatorFromNode(last_concatd_node);
+	auto infer_shape_ret = op.InferShapeAndType();
+	OP_LOGE_IF(infer_shape_ret != GRAPH_SUCCESS, NOT_CHANGED, FUSED_OP_TYPE, "InferShapeAndType failed.");
+        ConcatdBaseDesc->UpdateInputDesc(i, LastConcatDDesc->GetOutputDesc(0));
         // the last_node infershape end
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_concatd_node->GetOutDataAnchor(0),
                                                              concatd_base_node->GetInDataAnchor(i)),

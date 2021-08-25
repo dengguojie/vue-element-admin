@@ -76,9 +76,9 @@ Status ConstToAttrTilePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion op desc is nullptr."),
                     return NOT_CHANGED);
   if (HasUnKnowDimShape(fusedNode)) {
-    FUSION_PASS_CHECK(CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_NODE, "tile dynamic shape supported"),
+    FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_NODE, "TileD dynamic shape do not support"),
                       return NOT_CHANGED);
-    OP_LOGI(FUSED_NODE, "CheckOpSupported fail, tile dynamic");
+    OP_LOGI(FUSED_NODE, "CheckOpSupported fail, do tile dynamic");
   }
 
   // get const_data

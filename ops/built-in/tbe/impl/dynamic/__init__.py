@@ -181,7 +181,7 @@ from .batch_matmul_v2 import batch_matmul_v2
 from .sub import sub
 from .transpose_d import transpose_d
 from .transpose import transpose
-from .as_strided import as_strided 
+from .as_strided import as_strided
 from .trans_data import trans_data
 from .trans_data_rnn import trans_data_rnn
 from .unpack import unpack
@@ -326,6 +326,7 @@ from .bn_training_update import bn_training_update
 from .softmax_cross_entropy_with_logits import softmax_cross_entropy_with_logits
 from .resize_nearest_neighbor_v2_grad import resize_nearest_neighbor_v2_grad
 from .layer_norm import layer_norm
+from .layer_norm_grad import layer_norm_grad
 from .l1_loss_grad import l1_loss_grad
 from .bn_training_update_grad import bn_training_update_grad
 from .lp_loss import lp_loss
@@ -365,4 +366,3 @@ from .max_pool_v3 import max_pool_v3
 from .gen_adc import gen_adc
 from .swish import swish
 from .hard_swish import hard_swish
-
