@@ -343,7 +343,7 @@ def get_op_support_info(x,
     None
     """
     bias_idx = 2
-    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx) 
+    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
 
     # >>> start: process for dynamic shape
     shape_x = x.get("ori_shape")

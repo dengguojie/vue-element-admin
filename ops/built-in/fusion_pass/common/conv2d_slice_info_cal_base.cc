@@ -111,6 +111,7 @@ void ConvSliceInfoCalBase::ConvUpdateSplitInfoByOpType(vector<ge::NodePtr> &fusi
                 auto deq_scale_dim = deq_scale_tensor->GetOriginShape().GetDims();
                 if (deq_scale_dim.size() < 0 || deq_scale_dim[0] <= 1) {
                     OP_LOGD("Deq scale is a scalar, do not need to set op slice info");
+                    (*inputBaseIdx) += 1;
                     run_input_update_flag = false;
                 }
             } else if (!strcmp(tmpOpType.c_str(), "Elemwise")) {
@@ -125,7 +126,7 @@ void ConvSliceInfoCalBase::ConvUpdateSplitInfoByOpType(vector<ge::NodePtr> &fusi
                 (this->*opInputUpdateFunMap[tmpOpType])(split_maps, inputBaseIdx);
             }
         } else {
-            OP_LOGD("op type del fun not support by now");
+            OP_LOGD("op type input update fun not support by now");
         }
 
         // op output slice info update by op type
@@ -139,7 +140,7 @@ void ConvSliceInfoCalBase::ConvUpdateSplitInfoByOpType(vector<ge::NodePtr> &fusi
         if (iterOutputUpdateFun != opOutputUpdateFunMap.end()) {
             (this->*opOutputUpdateFunMap[tmpOpType])(split_maps, outputBaseIdx);
         } else {
-            OP_LOGD("op type del fun not support by now");
+            OP_LOGD("op type output update fun not support by now");
         }
     }
     OP_LOGD("end update Conv2d fusion node slice info");
@@ -391,7 +392,7 @@ void ConvSliceInfoCalBase::ElemwiseInputUpdate(vector<AxisSplitMap> &split_maps,
 }
 
 // util functions
-void ConvSliceInfoCalBase::ConvDelSplitInfoByInputIdxAndAxis(vector<AxisSplitMap>& split_maps, uint idx, int axis) 
+void ConvSliceInfoCalBase::ConvDelSplitInfoByInputIdxAndAxis(vector<AxisSplitMap>& split_maps, uint idx, int axis)
 {
     OP_LOGD(slice_info_cal_type_.c_str(), "begin del slice info by inputIdx:%u and axis:%d", idx, axis);
     vector<AxisSplitMap> temp_maps;
