@@ -220,6 +220,7 @@ void Conv3DBpFilterGroupFusionPass::SetMultiplierValue(float* data, const std::v
 bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
                                                   const std::vector<int64_t>& dims,
                                                   const std::map<std::string, int64_t>& group_map,
+                                                  const ge::OpDescPtr& conv_desc,
                                                   ge::NodePtr& const_node) {
   int64_t kernel_depth = dims[0];
   int64_t kernel_height = dims[1];
@@ -249,9 +250,11 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
   GeShape const_shape(const_dims);
   GeTensorDesc const_tensor_desc(const_shape, FORMAT_FRACTAL_Z_3D, DT_FLOAT);
 
+  GeTensorDescPtr dw_out_desc = conv_desc->MutableOutputDesc(0);
+  auto dw_out_format = dw_out_desc->GetOriginFormat();
   GeShape ori_shape(dims);
   const_tensor_desc.SetOriginShape(ori_shape);
-  const_tensor_desc.SetOriginFormat(FORMAT_DHWCN);
+  const_tensor_desc.SetOriginFormat(dw_out_format);
   const_tensor_desc.SetOriginDataType(DT_FLOAT);
 
   FUSION_PASS_MAKE_SHARED(
@@ -411,7 +414,7 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   ge::NodePtr const_node;
   FUSION_PASS_CHECK(
-    !GenMultiplier(graph, out_dims, group_map, const_node),
+    !GenMultiplier(graph, out_dims, group_map, dw_desc, const_node),
     OP_LOGW(FUSED_OP_TYPE.c_str(),
       "Conv3DBpFilterGroupFusionPass generate const node failed."),
     return NOT_CHANGED);

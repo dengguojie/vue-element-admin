@@ -38,6 +38,7 @@ class Conv3DBpFilterGroupFusionPass : public PatternFusionBasePass {
                        ge::NodePtr& mul_node);
   bool GenMultiplier(ge::ComputeGraph& graph, const std::vector<int64_t>& dims,
                      const std::map<std::string, int64_t>& group_map,
+                     const ge::OpDescPtr& conv_desc,
                      ge::NodePtr& const_node);
   void SetMultiplierValue(float* data, const std::vector<int64_t>& dims,
                           const std::map<std::string, int64_t>& group_map);
