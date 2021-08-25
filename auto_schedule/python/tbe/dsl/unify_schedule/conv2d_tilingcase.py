@@ -636,7 +636,7 @@ class Conv2dTiling(CubeTilingOp):
         # load2d instructions refer to data_mov with raw lens
         if (self.pad_mode == "VAR" or sum(self.cur_pads) == 0) \
             and (self.stride_h * self.stride_w == 1) \
-                and (self.k_h * self.k_w == 1):
+                and (self.k_h * self.k_w == 1) and self.w_type == "float16":
             return al1_m_data
 
         # load3d instructions refer to load extra lines with pad/stride/filter
