@@ -67,6 +67,7 @@ set(local_kernels_src_files
     utils/range_sampler.cc
     utils/sparse_group.cc
     utils/sparse_tensor.cc
+    kernels/normalized/top_k_pq_distance.cc
 )
 
 set(local_host_kernels_src_files

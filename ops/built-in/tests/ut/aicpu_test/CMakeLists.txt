@@ -141,6 +141,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/range_sampler.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
 )
 
 set(cpu_kernels_llt_src
@@ -273,6 +274,7 @@ set(_cpu_kernels_ut_files
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
   testcase/where/src/where_utest.cpp
+  testcase/top_k_pq_distance/src/top_k_pq_distance_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

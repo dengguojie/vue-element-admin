@@ -43,6 +43,39 @@ REG_OP(GenADC)
     .INPUT(bucket_list, TensorType({DT_INT32, DT_INT64}))
     .OUTPUT(adc_tables, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(GenADC)
+    
+/**
+* @brief Finds values and indices of the "k" largest or least elements for the last dimension. \n
+*
+* @par Inputs:
+* Dynamin inputs, including:
+* @li actual_count: A Tensor of type int32, the actual number of pq_distance.
+* @li pq_distance: A Tensor, Will be updated after calculation. Must be one of the following types: float32, float16. 
+* @li grouped_extreme_distance: A Tensor, the extremum in each group. Must be one of the following types: float32, float16.
+* @li pq_index: A Tensor of type int32, index corresponding to pq_distance.
+* @li pq_ivf: A Tensor of type int32 , the bucket number corresponding to pq_distance.
+*
+* @par Attributes:
+* @li order: A string, indicates the sorting method of topk_pq_distance. \n
+* @li k: Int, k maximum or minimum values. \n
+* @li group_size: Int, the group size of the extremum. \n
+*
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+REG_OP(TopKPQDistance)
+    .DYNAMIC_INPUT(actual_count, TensorType({DT_INT32}))
+    .DYNAMIC_INPUT(pq_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .DYNAMIC_INPUT(grouped_extreme_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .DYNAMIC_INPUT(pq_ivf, TensorType({DT_INT32}))
+    .DYNAMIC_INPUT(pq_index, TensorType({DT_INT32}))
+    .OUTPUT(topk_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(topk_ivf, TensorType({DT_INT32}))
+    .OUTPUT(topk_index, TensorType({DT_INT32}))
+    .ATTR(order, String, "ASC")
+    .ATTR(k, Int, 0)
+    .ATTR(group_size,Int,0)
+    .OP_END_FACTORY_REG(TopKPQDistance)     
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_VECTOR_SEARCH_H_
