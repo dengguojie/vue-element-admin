@@ -121,6 +121,7 @@ class NormNormalSchedule:
         self._cache_write_tensor_and_buffer_map = {}
 
         self._compute_inline_tensors = set()
+        self._compute_inlined_tensors = set()
 
         self._block_split_result = {}
         self._ub_split_result = {}
@@ -185,6 +186,8 @@ class NormNormalSchedule:
         self._calc_emit_insn()
         self._do_emit_insn()
 
+        self._do_pragma()
+
         return self._sch
 
     def _calc_cache_read(self):
@@ -215,6 +218,13 @@ class NormNormalSchedule:
         if not self._norm_info.is_reduce_last_axis:
             for broadcast_tensor in self._graph_info.broadcast_tensor_set:
                 self._compute_inline_tensors.add(broadcast_tensor)
+                # compute_inlined_tensor may has been cache_write
+                for compute_inlined_tensor in self._forward_compute_graph_map[broadcast_tensor]:
+                    if compute_inlined_tensor in self._cache_write_tensor_and_buffer_map:
+                        self._compute_inlined_tensors.add(self._cache_write_tensor_and_buffer_map
+                                                          [compute_inlined_tensor])
+                    else:
+                        self._compute_inlined_tensors.add(compute_inlined_tensor)
 
     def _do_compute_inline(self):
         for compute_inline_tensor in self._compute_inline_tensors:
@@ -446,6 +456,51 @@ class NormNormalSchedule:
             else:
                 self._sch[single_tensor].emit_insn(param[0], param[1])
 
+    def _do_pragma(self):
+        def __mark_group_axis_on_split_tensor(_single_tensor):
+            # axis_group = 1 means fuse branch will be appended after original no_fuse branch
+            append_id = tvm.make.Call("int32", "axis_group", [1, "append"], tvm.expr.Call.Extern, None, 0)
+            reorder_axis = self._reorder_map.get(_single_tensor)
+            for index in range(reorder_axis.index(self._ub_split_result.get("inner_itervar")), len(reorder_axis)):
+                pragma_axis = reorder_axis[index]
+                # after ub_split_index may has been reorder, cannot overwrite no_fuse branch
+                group_id = append_id
+                self._sch[_single_tensor].pragma(pragma_axis, "axis_group", group_id)
+
+        def __mark_group_axis_on_common_tensor(_single_tensor, _tensor_type="common"):
+            # axis_group = 0 means original no_fuse branch will be overwrited by fuse branch
+            # axis_group = 1 means fuse branch will be appended after original no_fuse branch
+            overwrite_and_append_id = tvm.make.Call("int32", "axis_group", [0, "overwrite", 1, "append"],
+                                                    tvm.expr.Call.Extern, None, 0)
+            append_id = tvm.make.Call("int32", "axis_group", [1, "append"], tvm.expr.Call.Extern, None, 0)
+            # If the compute at tensor has been reordered, common tensor should be based on the reorder shape
+            # marking group axis. Otherwise, mark group axis on outer ub axis will invalidate it.
+            reorder_axis, _, ori_to_reorder_axis_map = \
+                reorder_reduce_shape(_single_tensor.op.axis, self._norm_info.reduce_axis_indices,
+                                     self._norm_info.is_reduce_last_axis)
+            reorder_ub_axis_index = ori_to_reorder_axis_map[self._tiling_case.ub_split_axis_index]
+            for index in range(reorder_ub_axis_index, len(reorder_axis)):
+                pragma_axis = reorder_axis[index]
+                # after ub_split_index may has been reorder, cannot overwrite no_fuse branch
+                if _tensor_type == "cache_read_tensor":
+                    group_id = append_id
+                else:
+                    group_id = append_id if index == len(_single_tensor.shape) - 1 else overwrite_and_append_id
+                self._sch[_single_tensor].pragma(pragma_axis, "axis_group", group_id)
+
+        for single_tensor in (self._graph_info.mid_tensor_set - self._compute_inline_tensors) \
+                .union(self._cache_write_buffer_and_tensor_map.keys()):
+            # elewise tensor
+            # compute_inlined_tensors can not fuse axis due to broadcast logic
+            if single_tensor not in (self._graph_info.reduce_tensor_set | self._graph_info.broadcast_tensor_set |
+                                     self._compute_inlined_tensors):
+                __mark_group_axis_on_common_tensor(single_tensor)
+
+        for single_tensor in self._cache_read_buffer_and_tensor_map:
+            __mark_group_axis_on_common_tensor(single_tensor, "cache_read_tensor")
+
+        __mark_group_axis_on_split_tensor(self._res_tensor)
+
 
 class NormWorkspaceSchedule:
     """
@@ -485,6 +540,7 @@ class NormWorkspaceSchedule:
         self._cache_clone_tensor_and_buffer_map = {}
 
         self._compute_inline_tensors = set()
+        self._compute_inlined_tensors = set()
 
         self._block_split_result = {}
         self._ub_split_result = {}
@@ -564,6 +620,8 @@ class NormWorkspaceSchedule:
 
         self._calc_emit_insn()
         self._do_emit_insn()
+
+        self._do_pragma()
 
         return self._sch
 
@@ -662,8 +720,15 @@ class NormWorkspaceSchedule:
         if not self._norm_info.is_reduce_last_axis:
             for broadcast_tensor in self._graph_info.broadcast_tensor_set:
                 # broadcast do not compute_inline to workspace
-                if tuple(self._backward_compute_graph_map[broadcast_tensor])[0] not in self._workspace_tensor_set:
+                if not self._forward_compute_graph_map[broadcast_tensor] & self._workspace_tensor_set:
                     self._compute_inline_tensors.add(broadcast_tensor)
+                    # compute_inlined_tensor may has been cache_write
+                    for compute_inlined_tensor in self._forward_compute_graph_map[broadcast_tensor]:
+                        if compute_inlined_tensor in self._cache_write_tensor_and_buffer_map:
+                            self._compute_inlined_tensors.add(list(self._cache_write_tensor_and_buffer_map
+                                                                   [compute_inlined_tensor].keys())[0])
+                        else:
+                            self._compute_inlined_tensors.add(compute_inlined_tensor)
 
     def _do_compute_inline(self):
         for compute_inline_tensor in self._compute_inline_tensors:
@@ -1167,3 +1232,92 @@ class NormWorkspaceSchedule:
                 self._sch[single_tensor].emit_insn(param[0], param[1], attrs=param[2])
             else:
                 self._sch[single_tensor].emit_insn(param[0], param[1])
+
+    def _do_pragma(self):
+        def __mark_group_axis_on_split_tensor(_single_tensor):
+            # axis_group = 0 means original no_fuse branch will be overwrited by fuse branch
+            # axis_group = 1 means fuse branch will be appended after original no_fuse branch
+            overwrite_and_append_id = tvm.make.Call("int32", "axis_group", [0, "overwrite", 1, "append"],
+                                                    tvm.expr.Call.Extern, None, 0)
+            append_id = tvm.make.Call("int32", "axis_group", [1, "append"], tvm.expr.Call.Extern, None, 0)
+            if self._tiling_case.is_partial_reorder_case:
+                for index in range(self._tiling_case.ub_split_axis_index, len(_single_tensor.shape)):
+                    pragma_axis = self._ub_split_result.get(_single_tensor).get("inner_itervar") \
+                        if index == self._tiling_case.ub_split_axis_index and \
+                           _single_tensor in self._ub_split_result else _single_tensor.op.axis[index]
+                    group_id = append_id if index == len(_single_tensor.shape) - 1 else overwrite_and_append_id
+                    # in partial reorder sch, block split first common axis probably after ub split axis
+                    if index == self._tiling_case.block_split_axis_index:
+                        self._sch[_single_tensor].pragma(
+                            self._block_split_result.get(_single_tensor).get("outer_itervar"),
+                            "axis_group", group_id)
+                        self._sch[_single_tensor].pragma(
+                            self._block_split_result.get(_single_tensor).get("inner_itervar"),
+                            "axis_group", group_id)
+                    else:
+                        self._sch[_single_tensor].pragma(pragma_axis, "axis_group", group_id)
+                return
+
+            reorder_axis = self._reorder_map.get(_single_tensor)
+            for index in range(reorder_axis.index(self._ub_split_result.get(_single_tensor).get("inner_itervar")),
+                               len(reorder_axis)):
+                pragma_axis = reorder_axis[index]
+                # after ub_split_index may has been reorder, cannot overwrite no_fuse branch
+                group_id = append_id
+                self._sch[_single_tensor].pragma(pragma_axis, "axis_group", group_id)
+
+        def __mark_group_axis_on_common_tensor(_single_tensor, _tensor_type="common"):
+            # axis_group = 0 means original no_fuse branch will be overwrited by fuse branch
+            # axis_group = 1 means fuse branch will be appended after original no_fuse branch
+            overwrite_and_append_id = tvm.make.Call("int32", "axis_group", [0, "overwrite", 1, "append"],
+                                                    tvm.expr.Call.Extern, None, 0)
+            append_id = tvm.make.Call("int32", "axis_group", [1, "append"], tvm.expr.Call.Extern, None, 0)
+            # in partial reorder sch, common tensors only reorder when compute at reduce tensor
+            if self._tiling_case.is_partial_reorder_case:
+                if self._compute_at_map.get(_single_tensor)[0] not in self._graph_info.reduce_tensor_set:
+                    for index in range(self._tiling_case.ub_split_axis_index, len(_single_tensor.shape)):
+                        group_id = append_id if index == len(_single_tensor.shape) - 1 else overwrite_and_append_id
+                        self._sch[_single_tensor].pragma(_single_tensor.op.axis[index], "axis_group", group_id)
+                        return
+            # If the compute at tensor has been reordered, common tensor should be based on the reorder shape
+            # marking group axis. Otherwise, mark group axis on outer ub axis will invalidate it.
+            reorder_axis, _, ori_to_reorder_axis_map = \
+                reorder_reduce_shape(_single_tensor.op.axis, self._norm_info.reduce_axis_indices,
+                                     self._norm_info.is_reduce_last_axis)
+            reorder_ub_axis_index = ori_to_reorder_axis_map[self._tiling_case.ub_split_axis_index]
+            for index in range(reorder_ub_axis_index, len(reorder_axis)):
+                pragma_axis = reorder_axis[index]
+                # after ub_split_index may has been reorder, cannot overwrite no_fuse branch
+                if _tensor_type == "cache_read_tensor":
+                    group_id = append_id
+                else:
+                    group_id = append_id if index == len(_single_tensor.shape) - 1 else overwrite_and_append_id
+                self._sch[_single_tensor].pragma(pragma_axis, "axis_group", group_id)
+
+        for single_tensor in (self._graph_info.mid_tensor_set - self._compute_inline_tensors -
+                              self._workspace_tensor_set) \
+                .union(self._cache_write_buffer_and_tensor_map.keys()) \
+                .union(self._cache_clone_buffer_and_tensor_map.keys()):
+            # elewise tensor
+            # compute_inlined_tensors can not fuse axis due to broadcast logic
+            if single_tensor not in (self._graph_info.reduce_tensor_set | self._graph_info.broadcast_tensor_set |
+                                     self._compute_inlined_tensors):
+                __mark_group_axis_on_common_tensor(single_tensor)
+
+        for single_tensor in self._cache_read_buffer_and_tensor_map:
+            __mark_group_axis_on_common_tensor(single_tensor, "cache_read_tensor")
+
+        for workspace_tensor in self._workspace_tensor_set:
+            __mark_group_axis_on_split_tensor(workspace_tensor)
+
+            workspace_ub_tensor = self._workspace_map[workspace_tensor]["ub_tensor"]
+            reread_workspace_ub_tensor_map = self._workspace_map[workspace_tensor]["reread_ub_tensor"]
+            # elewise tensor
+            # compute_inlined_tensors can not fuse axis due to broadcast logic
+            if workspace_tensor not in (self._graph_info.reduce_tensor_set | self._graph_info.broadcast_tensor_set |
+                                        self._compute_inlined_tensors):
+                __mark_group_axis_on_common_tensor(workspace_ub_tensor)
+            for reread_workspace_ub_tensor in reread_workspace_ub_tensor_map:
+                __mark_group_axis_on_common_tensor(reread_workspace_ub_tensor, "cache_read_tensor")
+
+        __mark_group_axis_on_split_tensor(self._res_tensor)
