@@ -86,20 +86,20 @@ class GenADC(object):
 
         self.tiling_dtype = "int64"
         self.tiling_para_num = 16
-        self.tiling_gm = self.tik_inst.Tensor(self.tiling_dtype, (self.tiling_para_num, ),
+        self.tiling_gm = self.tik_inst.Tensor(self.tiling_dtype, (self.tiling_para_num,),
                                               name="tiling_gm", scope=tik.scope_gm)
 
         self.max_int32 = 2 ** 31 - 1
-        self.centroids_gm = self.tik_inst.Tensor(self.op_data_type, (self.max_int32, ),
+        self.centroids_gm = self.tik_inst.Tensor(self.op_data_type, (self.max_int32,),
                                                  name="centroids_gm", scope=tik.scope_gm)
-        self.bucket_list_gm = self.tik_inst.Tensor(self.bucket_list_dtype, (self.max_int32, ),
-                                                     name="bucket_list_gm", scope=tik.scope_gm)
-        self.query_gm = self.tik_inst.Tensor(self.op_query_data_type, (self.max_int32, ),
+        self.bucket_list_gm = self.tik_inst.Tensor(self.bucket_list_dtype, (self.max_int32,),
+                                                   name="bucket_list_gm", scope=tik.scope_gm)
+        self.query_gm = self.tik_inst.Tensor(self.op_query_data_type, (self.max_int32,),
                                              name="query_gm", scope=tik.scope_gm)
-        self.code_book_gm = self.tik_inst.Tensor(self.op_data_type, (self.max_int32, ),
+        self.code_book_gm = self.tik_inst.Tensor(self.op_data_type, (self.max_int32,),
                                                  name="code_book_gm", scope=tik.scope_gm)
 
-        self.adc_tables_gm = self.tik_inst.Tensor(self.op_data_type, (self.max_int32, ),
+        self.adc_tables_gm = self.tik_inst.Tensor(self.op_data_type, (self.max_int32,),
                                                   name="adc_tables_gm", scope=tik.scope_gm)
 
         self.row_num_each_core = self.tik_inst.Scalar("int64", name="row_num_each_core")
@@ -203,15 +203,15 @@ class GenADC(object):
             bucket_list_ub_len = (self.dim_ns + bucket_list_num_each_block - 1) // \
                                    bucket_list_num_each_block * bucket_list_num_each_block
 
-        self.bucket_list_ub = self.tik_inst.Tensor(self.bucket_list_dtype, (bucket_list_ub_len, ),
-                                                     name="bucket_list_ub", scope=tik.scope_ubuf)
+        self.bucket_list_ub = self.tik_inst.Tensor(self.bucket_list_dtype, (bucket_list_ub_len,),
+                                                   name="bucket_list_ub", scope=tik.scope_ubuf)
 
         self.centroids_ub = self.tik_inst.Tensor(self.op_data_type, (self.dim_ns, self.dim_d),
                                                  name="centroids_ub", scope=tik.scope_ubuf)
 
-        self.zero_ub = self.tik_inst.Tensor("uint16", (128, ), name="zero_ub", scope=tik.scope_ubuf)
+        self.zero_ub = self.tik_inst.Tensor("uint16", (128,), name="zero_ub", scope=tik.scope_ubuf)
 
-        self.tmp_buf = self.tik_inst.Tensor(self.op_data_type, (128, ), name="tmp_buf", scope=tik.scope_ubuf)
+        self.tmp_buf = self.tik_inst.Tensor(self.op_data_type, (128,), name="tmp_buf", scope=tik.scope_ubuf)
         self.code_book_local_ub = self.tik_inst.Tensor(self.op_data_type,
                                                        (self.dim_m_stride, self.dim_ksub_stride, self.dim_dsub),
                                                        name="code_book_local_ub", scope=tik.scope_ubuf)
@@ -222,21 +222,7 @@ class GenADC(object):
 
     def gen_adc_compute(self):
         """
-        Generate adc tables. Algorithm:
-
-            query = Tensor(size=(d,))
-            code_book = Tensor(size=(M, ksub, dsub))
-            centroids = Tensor(size=(nc, d))
-            bucket_list = Tensor(size=(ns,))
-
-            bucket_centroids = gather(centroids, bucket_list)
-            residual_vect = query - bucket_centroids
-            residual_vect_list = residual_vect.reshape(size=(ns, M, 1, dsub))
-
-            distance = code_book - residual_vect_list
-            square_distance = square(distance)
-            adc_tables = sum(square_distance, axis=-1)
-
+        Generate adc tables.
         """
         factor_m, factor_k = self._get_m_ksub_factors()
         self.dim_m_stride = self.dim_m // factor_m
@@ -272,18 +258,18 @@ class GenADC(object):
         self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
                                inputs=[self.query_gm, self.code_book_gm, self.centroids_gm, self.bucket_list_gm],
                                outputs=[self.adc_tables_gm],
-                               flowtable=(self.tiling_gm, ),
+                               flowtable=(self.tiling_gm,),
                                config=opt_config)
 
     def _adc_compute(self, block_i, process_row, bucket_list_burst_len, core_row_offset):
         """
-        Compute adc distance.
+        Compute adc table.
         """
         self.tik_inst.data_move(self.bucket_list_ub, self.bucket_list_gm[block_i * core_row_offset],
                                 0, 1, bucket_list_burst_len, 0, 0)
         with self.tik_inst.for_range(0, process_row, name="row") as i:
             tmp_data = self.tik_inst.Scalar(dtype=self.bucket_list_dtype, init_value=self.bucket_list_ub[i])
-            gather_len = self._compute_burst_len(self.op_data_type, (self.dim_d, ))
+            gather_len = self._compute_burst_len(self.op_data_type, (self.dim_d,))
             self.tik_inst.data_move(self.centroids_ub[i * self.dim_d], self.centroids_gm[tmp_data * self.dim_d],
                                     0, 1, gather_len, 0, 0)
 
@@ -305,6 +291,9 @@ class GenADC(object):
         self._compute_distance(block_i, core_row_offset, process_row)
 
     def _compute_distance(self, block_i, core_row_offset, process_row):
+        """
+        Compute adc distance.
+        """
         self.tik_inst.vector_dup(128, self.zero_ub, 0, 1, 1, 8)
 
         residual_vect_ub_int32 = self.centroids_ub.reinterpret_cast_to("int32")
@@ -359,7 +348,8 @@ class GenADC(object):
                             sub_mask = self.dim_m_stride * 16
                             bro_repeat_times = self.dim_ksub_stride
                             for insn_nums in range(0, vector_nums):
-                                self.tik_inst.vsub(sub_mask, self.code_book_local_ub[insn_nums * 16], self.code_book_local_ub[insn_nums * 16],
+                                self.tik_inst.vsub(sub_mask, self.code_book_local_ub[insn_nums * 16],
+                                                   self.code_book_local_ub[insn_nums * 16],
                                                    self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride + insn_nums * 16],
                                                    bro_repeat_times,
                                                    vector_nums * self.dim_ksub_stride,
@@ -431,7 +421,7 @@ class GenADC(object):
                     else:
                         _compute_reduce_for_multiple_eles()
 
-# pylint: disable=redefined-builtin
+
 @register_operator("GenADC")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
@@ -439,7 +429,7 @@ def gen_adc(query, code_book, centroids, bucket_list, adc_tables, kernel_name="g
     """
     Compute ADC tables for query vector.
 
-    Parameters:
+    Parameters
     ----------
     query : dict
         shape and dtype of input data_query
@@ -465,6 +455,19 @@ def gen_adc(query, code_book, centroids, bucket_list, adc_tables, kernel_name="g
         The shape is like (ns, ksub, dsub). Values of dimensions are the same as input tensors' dictionary.
     kernel_name : str
         cce kernel name, default value is "gen_adc"
+
+    Algorithm
+    -------
+    query = Tensor(size=(d,))
+    code_book = Tensor(size=(M, ksub, dsub))
+    centroids = Tensor(size=(nc, d))
+    bucket_list = Tensor(size=(ns,))
+    bucket_centroids = gather(centroids, bucket_list)
+    residual_vect = query - bucket_centroids
+    residual_vect_list = residual_vect.reshape(size=(ns, M, 1, dsub))
+    distance = code_book - residual_vect_list
+    square_distance = square(distance)
+    adc_tables = sum(square_distance, axis=-1)
 
     Returns
     -------
