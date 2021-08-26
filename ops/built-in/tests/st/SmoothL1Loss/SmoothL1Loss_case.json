@@ -394,5 +394,104 @@
       }
     ],
     "case_name": "test_SmoothL1Loss_010"
+  },
+  {
+    "op": "SmoothL1Loss",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "loss",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "sigma",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_dynamic_SmoothL1Loss_000"
   }
 ]

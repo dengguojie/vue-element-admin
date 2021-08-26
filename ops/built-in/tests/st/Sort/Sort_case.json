@@ -1,0 +1,141 @@
+[
+  
+  {
+    "op": "Sort",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "ori_shape": [
+          10,
+          10,
+          10,
+          32
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            32
+          ]
+        ],
+        "typical_shape": [
+          10,
+          10,
+          10,
+          32
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          10,
+          10,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10,
+          10,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "y1",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            32
+          ]
+        ],
+        "typical_shape": [
+          10,
+          10,
+          10,
+          32
+        ]
+      },
+      {
+        "shape": [
+          10,
+          10,
+          10,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          10,
+          10,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "y2",
+        "type": "int32",
+        "shape_range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            32
+          ]
+        ],
+        "typical_shape": [
+          10,
+          10,
+          10,
+          32
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 3
+      },
+      {
+        "name": "descending",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_dynamic_Sort_000"
+  }
+]

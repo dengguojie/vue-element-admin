@@ -1,0 +1,67 @@
+[
+  {
+    "op": "Shrink",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Shrink_000"
+  }
+]

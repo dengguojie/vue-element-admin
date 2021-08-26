@@ -487,5 +487,118 @@
       }
     ],
     "case_name": "test_Dequantize_006"
+  },
+  {
+    "op": "Dequantize",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          11,
+          33
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "min_range",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "max_range",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          11,
+          33
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          11,
+          33
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "mode",
+        "type": "string",
+        "value": "MIN_COMBINED"
+      }
+    ],
+    "case_name": "test_dynamic_Dequantize_000"
   }
 ]

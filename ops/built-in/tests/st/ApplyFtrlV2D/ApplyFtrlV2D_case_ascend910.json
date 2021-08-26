@@ -316,5 +316,262 @@
       }
     ],
     "case_name": "test_ApplyFtrlV2D_001"
+  },
+  {
+    "op": "ApplyFtrlV2D",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "accum",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "linear",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "grad",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "lr",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "l1",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "l2",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "l2_shrinkage",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "lr_power",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "accum_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "linear_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ApplyFtrlV2D_000"
   }
 ]

@@ -256,5 +256,76 @@
     ],
     "attr": [],
     "case_name": "test_Round_005"
+  },
+  {
+    "op": "Round",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16,
+          32
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16,
+          32
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Round_000"
   }
 ]

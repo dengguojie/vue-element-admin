@@ -682,5 +682,98 @@
     ],
     "attr": [],
     "case_name": "test_FastGeluGrad_009"
+  },
+  {
+    "op": "FastGeluGrad",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_FastGeluGrad_000"
   }
 ]

@@ -1,45 +1,19 @@
 [
   {
-    "op": "Sub",
-    "case_name" : "test_sub_001",
-    "input_desc": [
-      {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"],
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform"
-      },
-      {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"],
-        "value_range": [[0, 1]]
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"]
-      }
-    ]
-  },
-  {
-    "op": "Sub",
+    "op": "MaskedScale",
     "input_desc": [
       {
         "shape": [
           -1,
           10
         ],
+        "format": "NHWC",
         "ori_shape": [
           2,
           10
         ],
-        "format": "NHWC",
         "ori_format": "NHWC",
-        "name": "input_x",
+        "name": "x",
         "type": "float",
         "shape_range": [
           [
@@ -54,34 +28,16 @@
       },
       {
         "shape": [
-          1
-        ],
-        "ori_shape": [
-          1
-        ],
-        "format": "NHWC",
-        "ori_format": "NHWC",
-        "name": "input_y",
-        "type": "float",
-        "shape_range": [],
-        "typical_shape": [
-          1
-        ]
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
           -1,
           10
         ],
+        "format": "NHWC",
         "ori_shape": [
           2,
           10
         ],
-        "format": "NHWC",
         "ori_format": "NHWC",
-        "name": "output_z",
+        "name": "mask",
         "type": "float",
         "shape_range": [
           [
@@ -95,7 +51,39 @@
         ]
       }
     ],
-    "attr": [],
-    "case_name": "test_dynamic_Sub_000"
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          10
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          2,
+          10
+        ],
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          2,
+          10
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_dynamic_MaskedScale_001"
   }
 ]

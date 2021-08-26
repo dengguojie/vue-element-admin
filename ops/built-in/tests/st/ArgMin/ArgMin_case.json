@@ -1,0 +1,125 @@
+[
+  {
+    "op": "ArgMin",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "dimension",
+        "type": "int32",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ArgMin_000"
+  }
+]

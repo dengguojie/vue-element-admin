@@ -146,5 +146,70 @@
     ],
     "attr": [],
     "case_name": "test_Gelu_003"
+  },
+  {
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "args",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          2
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          2
+        ],
+        "ori_format": "ND",
+        "name": "kwargs",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          2
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Gelu_000"
   }
 ]

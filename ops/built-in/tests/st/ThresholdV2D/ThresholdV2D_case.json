@@ -446,5 +446,95 @@
       }
     ],
     "case_name": "test_ThresholdV2D_007"
+  },
+  {
+    "op": "ThresholdV2D",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          13,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          5,
+          13,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+          13,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          5,
+          13,
+          4
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 4.5
+      },
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.2
+      }
+    ],
+    "case_name": "test_dynamic_ThresholdV2D_000"
   }
 ]

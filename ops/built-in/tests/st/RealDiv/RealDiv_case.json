@@ -1,32 +1,55 @@
 [
   {
-    "op": "Sub",
-    "case_name" : "test_sub_001",
+    "op": "RealDiv",
     "input_desc": [
       {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"],
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform"
+        "shape": [
+          2,
+          10
+        ],
+        "ori_shape": [
+          2,
+          10
+        ],
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "name": "x1",
+        "type": "float"
       },
       {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"],
-        "value_range": [[0, 1]]
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "name": "x2",
+        "type": "float"
       }
     ],
     "output_desc": [
       {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"]
+        "ori_shape": [
+          2,
+          10
+        ],
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float",
+        "shape": [
+          2,
+          10
+        ]
       }
-    ]
+    ],
+    "attr": [],
+    "case_name": "test_RealDiv_000"
   },
   {
-    "op": "Sub",
+    "op": "RealDiv",
     "input_desc": [
       {
         "shape": [
@@ -39,7 +62,7 @@
         ],
         "format": "NHWC",
         "ori_format": "NHWC",
-        "name": "input_x",
+        "name": "x1",
         "type": "float",
         "shape_range": [
           [
@@ -61,7 +84,7 @@
         ],
         "format": "NHWC",
         "ori_format": "NHWC",
-        "name": "input_y",
+        "name": "x2",
         "type": "float",
         "shape_range": [],
         "typical_shape": [
@@ -81,7 +104,7 @@
         ],
         "format": "NHWC",
         "ori_format": "NHWC",
-        "name": "output_z",
+        "name": "y",
         "type": "float",
         "shape_range": [
           [
@@ -96,6 +119,6 @@
       }
     ],
     "attr": [],
-    "case_name": "test_dynamic_Sub_000"
+    "case_name": "test_dynamic_RealDiv_000"
   }
 ]

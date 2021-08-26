@@ -266,5 +266,127 @@
       }
     ],
     "case_name": "test_TopKD_004"
+  },
+  {
+    "op": "TopKD",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "ori_shape": [
+          880,
+          48
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "input_tensor",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            880
+          ],
+          [
+            1,
+            48
+          ]
+        ],
+        "typical_shape": [
+          880,
+          48
+        ]
+      },
+      {
+        "shape": [
+          8192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8192
+        ],
+        "ori_format": "ND",
+        "name": "indices_tensor",
+        "type": "float16",
+        "shape_range": [],
+        "typical_shape": [
+          8192
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          880,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          880,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "out_tensor",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            16
+          ]
+        ],
+        "typical_shape": [
+          880,
+          16
+        ]
+      },
+      {
+        "shape": [
+          880,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          880,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "out_indices_tensor",
+        "type": "int32",
+        "shape_range": [
+          [
+            1,
+            16
+          ]
+        ],
+        "typical_shape": [
+          880,
+          16
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "k",
+        "type": "int",
+        "value": 16
+      },
+      {
+        "name": "sorted",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "dim",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "largest",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_dynamic_TopKD_000"
   }
 ]

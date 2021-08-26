@@ -328,5 +328,294 @@
     ],
     "attr": [],
     "case_name": "test_ApplyCenteredRMSPropD_001"
+  },
+  {
+    "op": "ApplyCenteredRMSPropD",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "mg",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "ms",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "mom",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "lr",
+        "type": "float16",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "rho",
+        "type": "float16",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "momentum",
+        "type": "float16",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "epsilon",
+        "type": "float16",
+        "shape_range": [],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "grad",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "mg_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "ms_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "mom_out",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ApplyCenteredRMSPropD_000"
   }
 ]

@@ -1,0 +1,91 @@
+[
+  {
+    "op": "LpNorm",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "p",
+        "type": "int",
+        "value": 2147483647
+      },
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "keepdim",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_dynamic_LpNorm_000"
+  }
+]

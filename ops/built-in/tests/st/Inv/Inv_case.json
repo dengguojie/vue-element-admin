@@ -1332,51 +1332,6 @@
         ],
         "ori_format": "ND",
         "name": "output_y",
-        "type": "float"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          1,
-          16,
-          512,
-          512
-        ],
-        "format": "ND",
-        "ori_shape": [
-          1,
-          16,
-          512,
-          512
-        ],
-        "ori_format": "ND",
-        "name": "output_y",
-        "type": "float"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_Inv_034"
-  },
-  {
-    "op": "Inv",
-    "input_desc": [
-      {
-        "shape": [
-          1,
-          16,
-          512,
-          512
-        ],
-        "format": "ND",
-        "ori_shape": [
-          1,
-          16,
-          512,
-          512
-        ],
-        "ori_format": "ND",
-        "name": "output_y",
         "type": "int32"
       }
     ],
@@ -1439,43 +1394,6 @@
     ],
     "attr": [],
     "case_name": "test_Inv_036"
-  },
-  {
-    "op": "Inv",
-    "input_desc": [
-      {
-        "shape": [
-          9973,
-          1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          9973,
-          1
-        ],
-        "ori_format": "ND",
-        "name": "output_y",
-        "type": "float"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          9973,
-          1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          9973,
-          1
-        ],
-        "ori_format": "ND",
-        "name": "output_y",
-        "type": "float"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_Inv_037"
   },
   {
     "op": "Inv",
@@ -1969,5 +1887,70 @@
     ],
     "attr": [],
     "case_name": "test_Inv_050"
+  },
+  {
+    "op": "Inv",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "args",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          3
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "kwargs",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          3
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Inv_000"
   }
 ]

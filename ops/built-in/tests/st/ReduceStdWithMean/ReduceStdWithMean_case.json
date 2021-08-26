@@ -222,5 +222,116 @@
       }
     ],
     "case_name": "test_ReduceStdWithMean_002"
+  },
+  {
+    "op": "ReduceStdWithMean",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            4
+          ]
+        ],
+        "typical_shape": [
+          3,
+          4
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "mean",
+        "type": "float16",
+        "shape_range": [
+          [
+            3,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          3,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            3,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          3,
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      },
+      {
+        "name": "unbiased",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "keepdim",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_dynamic_ReduceStdWithMean_000"
   }
 ]

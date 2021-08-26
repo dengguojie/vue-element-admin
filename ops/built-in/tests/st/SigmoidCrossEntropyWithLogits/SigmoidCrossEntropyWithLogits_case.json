@@ -283,5 +283,98 @@
     ],
     "attr": [],
     "case_name": "test_SigmoidCrossEntropyWithLogits_004"
+  },
+  {
+    "op": "SigmoidCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "ori_shape": [
+          1,
+          1
+        ],
+        "shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "predict",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      },
+      {
+        "ori_shape": [
+          1,
+          1
+        ],
+        "shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "target",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "ori_shape": [
+          1,
+          1
+        ],
+        "shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "loss",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_SigmoidCrossEntropyWithLogits_000"
   }
 ]

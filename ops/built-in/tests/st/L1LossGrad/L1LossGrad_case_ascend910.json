@@ -1174,5 +1174,144 @@
 				"type":"string"
 			}
 		]
-	}
+	},
+  {
+    "op": "L1LossGrad",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "grads",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          4
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "predict",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          4
+        ]
+      },
+      {
+        "shape": [
+          -1,
+          -1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "label",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          1,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          4
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_dynamic_L1LossGrad_000"
+  }
 ]

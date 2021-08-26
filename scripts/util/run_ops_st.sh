@@ -160,6 +160,12 @@ get_results() {
     xargs grep -v "Test Result" |
     awk '{print $2" : "$3}' > "${RESULT}" 2>/dev/null
   echo "[INFO] get results for all:" && cat "${RESULT}"
+
+  if [[ `grep "\[fail\]" "${RESULT}"|wc -l` -gt 0 ]]; then
+    echo "[ERROR]Some TestCase failed! Please check log with keyword \"[fail]\""
+    st_failed="true"
+  fi
+  
   if [[ `ls cov_result/.coverage*|wc -l` -gt 0 ]]; then
     echo "[INFO] find coverage files,tar them."
     cd cov_result && coverage combine && cd -
@@ -189,7 +195,7 @@ main() {
   clear_tmp
 
   if [[ "$st_failed" = "true" ]];then
-    echo "Some TestCase failed! Please check log with keyword \"[fail]\""
+    echo "[ERROR]Some TestCase failed! Please check log with keyword \"[fail]\" or \"[ERROR]\""
     exit $STATUS_FAILED
   fi
 }

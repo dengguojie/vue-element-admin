@@ -368,5 +368,112 @@
     ],
     "attr": [],
     "case_name": "test_ClipByValue_005"
+  },
+  {
+    "op": "ClipByValue",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          5,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "input_t",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            50
+          ]
+        ],
+        "typical_shape": [
+          5,
+          1
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "clip_value_min",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            5
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "clip_value_max",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            5
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "NHWC",
+        "ori_shape": [
+          5,
+          1
+        ],
+        "ori_format": "NHWC",
+        "name": "output_t",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            50
+          ]
+        ],
+        "typical_shape": [
+          5,
+          1
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ClipByValue_000"
   }
 ]

@@ -1312,5 +1312,70 @@
     ],
     "attr": [],
     "case_name": "test_Invert_033"
+  },
+  {
+    "op": "Invert",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "args",
+        "type": "uint16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          3
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          3
+        ],
+        "ori_format": "ND",
+        "name": "kwargs",
+        "type": "uint16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          3
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Invert_000"
   }
 ]

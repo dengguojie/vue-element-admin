@@ -1,32 +1,6 @@
 [
   {
-    "op": "Sub",
-    "case_name" : "test_sub_001",
-    "input_desc": [
-      {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"],
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform"
-      },
-      {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"],
-        "value_range": [[0, 1]]
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "ND",
-        "shape": [[4, 3, 4]],
-        "type": ["float16"]
-      }
-    ]
-  },
-  {
-    "op": "Sub",
+    "op": "DivNoNan",
     "input_desc": [
       {
         "shape": [
@@ -96,6 +70,6 @@
       }
     ],
     "attr": [],
-    "case_name": "test_dynamic_Sub_000"
+    "case_name": "test_DivNoNan_000"
   }
 ]

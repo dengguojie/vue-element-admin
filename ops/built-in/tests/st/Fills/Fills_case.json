@@ -634,5 +634,76 @@
       }
     ],
     "case_name": "test_Fills_011"
+  },
+  {
+    "op": "Fills",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          4
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_dynamic_Fills_000"
   }
 ]
