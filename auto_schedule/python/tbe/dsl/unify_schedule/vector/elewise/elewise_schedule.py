@@ -27,18 +27,18 @@ from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
 
-from . import util
-from .constants import CompileInfo
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import ElewisePattern
-from .constants import FAKE_NODE_TAG
-from .constants import INSN_MAPPING
-from .constants import Pattern
-from .constants import SUPPORT_SCALAR_INSNS
-from .constants import DST_SRC_NO_REUSE_SET
-from .constants import TERNARY_INSNS
+from ... import util
+from ...constants import CompileInfo
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import ElewisePattern
+from ...constants import FAKE_NODE_TAG
+from ...constants import INSN_MAPPING
+from ...constants import Pattern
+from ...constants import SUPPORT_SCALAR_INSNS
+from ...constants import DST_SRC_NO_REUSE_SET
+from ...constants import TERNARY_INSNS
+from ...schedule import Schedule
 from .elewise_tilingcase import TilingStrategy
-from .schedule import Schedule
 
 DEFAULT = "default"
 

@@ -41,15 +41,15 @@ from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
 
-from . import util
-from .computation import Computation
-from .constants import CompileInfo
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import FAKE_NODE_TAG
-from .constants import NormPattern
-from .constants import Pattern
-from .constants import SUPPORT_SCALAR_INSNS
-from .constants import TERNARY_INSNS
+from ... import util
+from ...computation import Computation
+from ...constants import CompileInfo
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import FAKE_NODE_TAG
+from ...constants import NormPattern
+from ...constants import Pattern
+from ...constants import SUPPORT_SCALAR_INSNS
+from ...constants import TERNARY_INSNS
 
 BLOCK_SIZE_BYTE = 32
 

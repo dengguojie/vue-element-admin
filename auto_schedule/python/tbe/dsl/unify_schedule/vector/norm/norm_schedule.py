@@ -21,12 +21,13 @@ from tbe import tvm
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
 
-from .constants import INSN_MAPPING
-from .constants import NormPattern
-from .constants import Pattern
+from ...constants import INSN_MAPPING
+from ...constants import NormPattern
+from ...constants import Pattern
+from ...schedule import Schedule
+
 from .norm_tilingcase import get_block_size as get_align_factor
 from .norm_tilingcase import reorder_reduce_shape
-from .schedule import Schedule
 
 BLOCK_IDX = "blockIdx.x"
 LOCAL_UB = "local.UB"

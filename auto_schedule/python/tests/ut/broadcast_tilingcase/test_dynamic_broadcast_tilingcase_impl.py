@@ -3,8 +3,8 @@ from sch_test_frame.ut import OpUT
 import warnings
 from tbe import tvm
 import tbe
-from tbe.dsl.unify_schedule.unify_broadcast.broadcast_tilingcase import BroadcastComputation
-from tbe.dsl.unify_schedule.unify_broadcast.broadcast_tilingcase import TilingStrategy
+from tbe.dsl.unify_schedule.vector.broadcast.broadcast_tilingcase import BroadcastComputation
+from tbe.dsl.unify_schedule.vector.broadcast.broadcast_tilingcase import TilingStrategy
 from tbe.common.context import op_context
 from tbe.dsl.base import operation
 

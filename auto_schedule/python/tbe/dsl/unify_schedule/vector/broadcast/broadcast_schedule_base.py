@@ -27,12 +27,12 @@ from tbe.dsl.base.operation import get_compile_info
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 
-from .. import util
-from ..constants import CompileInfo
-from ..constants import DTYPE_BYTE_MAPPING
-from ..constants import FAKE_NODE_TAG
-from ..constants import INSN_MAPPING
-from ..constants import TERNARY_INSNS
+from ... import util
+from ...constants import CompileInfo
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import FAKE_NODE_TAG
+from ...constants import INSN_MAPPING
+from ...constants import TERNARY_INSNS
 from .broadcast_tilingcase import TilingStrategy
 from .broadcast_tilingcase import BroadcastTilingCase
 

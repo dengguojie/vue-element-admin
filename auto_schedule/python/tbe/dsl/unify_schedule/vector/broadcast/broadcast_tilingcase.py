@@ -24,12 +24,12 @@ from tbe.dsl.base.operation import register_build_pointcut
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 
-from .. import util
-from ..computation import Computation
-from ..constants import BroadcastPattern
-from ..constants import CompileInfo
-from ..constants import DTYPE_BYTE_MAPPING
-from ..constants import Pattern
+from ... import util
+from ...computation import Computation
+from ...constants import BroadcastPattern
+from ...constants import CompileInfo
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import Pattern
 
 DEFAULT = "default"
 COMMON = "common"

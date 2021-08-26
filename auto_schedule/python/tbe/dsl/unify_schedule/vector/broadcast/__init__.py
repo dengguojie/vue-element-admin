@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-unify broadcast
+broadcast
 """
 from . import broadcast_schedule
 from . import broadcast_tilingcase

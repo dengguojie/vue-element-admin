@@ -24,12 +24,12 @@ from typing import Any
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
 
-from . import util
-from .computation import Computation
-from .constants import CompileInfo
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import ElewisePattern
-from .constants import Pattern
+from ... import util
+from ...computation import Computation
+from ...constants import CompileInfo
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import ElewisePattern
+from ...constants import Pattern
 
 DEFAULT = "default"
 SPECIAL = "special"

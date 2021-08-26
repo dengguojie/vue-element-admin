@@ -17,12 +17,9 @@
 """
 unify schedule
 """
-from . import elewise_schedule, elewise_tilingcase
-from . import unify_broadcast
+from . import vector
 from . import reduce_schedule
 from . import reduce_tilingcase
-from . import norm_schedule
-from . import norm_tilingcase
 from . import softmax_schedule, softmax_tilingcase
 from . import softmax_cross_entropy_with_logits_schedule, softmax_cross_entropy_with_logits_tilingcase
 from . import layer_norm_x_backprop_tilingcase, layer_norm_x_backprop_schedule
