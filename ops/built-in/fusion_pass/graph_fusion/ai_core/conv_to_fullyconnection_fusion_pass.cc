@@ -211,6 +211,12 @@ void ConvToFullyConnectionFusionPass::RefreshBiasNodeFromSubgraphToMajorgraph(ge
   }
   ge::NodePtr bias_node = convNode->GetInDataAnchor(bias_index)->GetPeerOutAnchor()->GetOwnerNode();
   ge::OpDescPtr bias_desc = bias_node->GetOpDesc();
+  // for scenes like QuantBiasOptimization host cpu bias input format is nhwc, not nchw
+  // so do not change node tensor format if type is not data
+  if (bias_desc->GetType() != "Data") {
+    OP_LOGD(bias_node->GetName().c_str(), "get bias node type is not data!");
+    return;
+  }
   invalid = !bias_desc || bias_desc->GetInputsSize() == 0 || bias_desc->GetOutputsSize() == 0;
   if (invalid) {
     return;
@@ -220,10 +226,6 @@ void ConvToFullyConnectionFusionPass::RefreshBiasNodeFromSubgraphToMajorgraph(ge
   bias_desc->MutableOutputDesc(0)->SetFormat(ge::FORMAT_NCHW);
   bias_desc->MutableOutputDesc(0)->SetOriginFormat(ge::FORMAT_NCHW);
   OP_LOGD(bias_node->GetName().c_str(), "set bias desc format nchw!");
-  if (bias_desc->GetType() != "Data") {
-    OP_LOGD(bias_node->GetName().c_str(), "get bias node type is not data!");
-    return;
-  }
   uint32_t parent_node_index = 0;
   if (!ge::AttrUtils::GetInt(bias_desc, ge::ATTR_NAME_PARENT_NODE_INDEX, parent_node_index)) {
     return;
