@@ -29,14 +29,11 @@ Status ParseParamsMod(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
-  int fmod = 0;
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "fmod") {
-      fmod = attr.i();
       OP_LOGW(op_dest.GetName().c_str(), "Current optype not surpport fmod, please ignore");
     }
   }
-  op_dest.SetAttr("fmod", fmod);
   return SUCCESS;
 }
 
