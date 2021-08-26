@@ -35,6 +35,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 using namespace std;
 using namespace ge;
 namespace fe {
@@ -71,9 +72,8 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   vector<int64_t> dimInfo = sparseSoftmaxInputShape.GetDims();
   int32_t depth_size = dimInfo[1];
   int32_t labels_size = dimInfo[0];
-
-  FUSION_PASS_CHECK(depth_size < 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "cannot support dynamic input."),
-                    return NOT_CHANGED);
+  
+  NOT_CHANGED_WITH_DYNAMIC_NODE({fusedNode});
 
   // Add the description (input, output, name, attribute) of the Onehot node
   ge::OpDescPtr OneHot;
