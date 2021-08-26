@@ -81,6 +81,7 @@ def softplus_v2_compute(input_features, beta, threshold, kernel_name="softplus_v
     method_two_get_res = tbe.vmul(input_features, is_method_two)
 
     res_tmp = tbe.vadd(method_one_get_res, method_two_get_res)
+    res_tmp = tbe.vmaxs(res_tmp, tvm.const(0.0, dtype="float32"))
     if input_dtype == "float16":
         res = tbe.cast_to(res_tmp, "float16")
     else:
