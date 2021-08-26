@@ -44,7 +44,7 @@ int64_t GetFloorDiv(const int64_t uValue, const int64_t dValue) {
   int64_t resValue = 0;
 
   if (dValue == 0) {
-      return uValue;
+    return uValue;
   }
   resValue = uValue / dValue;
 
@@ -55,7 +55,7 @@ int64_t GetCeilDiv(const int64_t uValue, const int64_t dValue) {
   int64_t resValue = 0;
 
   if (dValue == 0) {
-      return uValue;
+    return uValue;
   }
   resValue = (uValue + dValue - 1) / dValue;
 
@@ -74,7 +74,7 @@ int64_t GetMod(const int64_t lValue, const int64_t rValue) {
   int64_t resValue = 0;
 
   if (rValue == 0) {
-      return lValue;
+    return lValue;
   }
   resValue = lValue % rValue;
 
@@ -445,9 +445,9 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     bAxis = inShape[0];
     cAxis = inShape[1];
     bool ret =
-        Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
-                                perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
-                                lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
+      Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
+                              perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
+                              lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
@@ -462,9 +462,9 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     bAxis = inShape[0];
     cAxis = GetMul(inShape[1], inShape[2]);
     bool ret =
-        Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
-                                perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
-                                lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
+      Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
+                              perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
+                              lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
@@ -479,9 +479,9 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     bAxis = GetMul(inShape[0], inShape[1]);
     cAxis = inShape[2];
     bool ret =
-        Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
-                                perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
-                                lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
+      Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
+                              perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
+                              lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
@@ -497,9 +497,9 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     bAxis = inShape[1];
     cAxis = inShape[2];
     bool ret =
-        Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
-                                perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
-                                lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
+      Float32Axis1Axis0Tiling(dBytes, coreNum, ubSize, bAxis, cAxis, needCoreNum, ubOffset, cAxisMaxLen,
+                              perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
+                              lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;

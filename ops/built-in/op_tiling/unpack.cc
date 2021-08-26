@@ -41,8 +41,8 @@ struct CompileInfo {
 };
 
 const std::unordered_map<std::string, int32_t> kDtypeSizeMap{
-    {"int8", 1},  {"uint8", 1},  {"bool", 1},    {"int64", 8}, {"uint64", 8}, {"float16", 2},
-    {"int16", 2}, {"uint16", 2}, {"float32", 4}, {"int32", 4}, {"uint32", 4}};
+  {"int8", 1},  {"uint8", 1},  {"bool", 1},    {"int64", 8}, {"uint64", 8}, {"float16", 2},
+  {"int16", 2}, {"uint16", 2}, {"float32", 4}, {"int32", 4}, {"uint32", 4}};
 
 void SetActualDimsInVars(const std::vector<int64_t>& input_shape, int32_t axis,
                          std::unordered_map<std::string, int32_t>& var_names) {
@@ -167,13 +167,13 @@ void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, c
       split_axis = i;
       if (0 < ori_last_ele % ub_limit < ele_per_block) {
         for (int j = ub_limit; j > 0; j--) {
-          if (ori_last_ele % j >= ele_per_block || ori_last_ele % j == 0){
+          if (ori_last_ele % j >= ele_per_block || ori_last_ele % j == 0) {
             split_factor = j;
             break;
           }
         }
       } else {
-          split_factor = ub_limit;
+        split_factor = ub_limit;
       }
       break;
     }

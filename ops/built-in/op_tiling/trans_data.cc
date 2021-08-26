@@ -687,7 +687,7 @@ int32_t GetMultiCoreAxis(std::vector<int64_t> inShape, int32_t axisPosC, int64_t
   return max_element(coreLpCnt.begin(), coreLpCnt.end()) - coreLpCnt.begin();
 }
 
-bool IsDoWithTransposeFormats(const std::string& srcFormat, const std::string& dstFormat){
+bool IsDoWithTransposeFormats(const std::string& srcFormat, const std::string& dstFormat) {
   const std::vector<std::string> FormatList = {"NCHW", "NHWC", "HWCN", "CHWN"};
   if (std::find(FormatList.begin(), FormatList.end(), srcFormat) != FormatList.end() &&
       std::find(FormatList.begin(), FormatList.end(), dstFormat) != FormatList.end() && dstFormat != srcFormat) {
@@ -699,16 +699,17 @@ bool IsDoWithTransposeFormats(const std::string& srcFormat, const std::string& d
 
 bool IsDoWithPositiveSourceNtc100(const std::string& srcFormat, const std::string& dstFormat) {
   const std::vector<std::pair<std::string, std::string>> supportSrcDstFormats = {
-      {"NCDHW", "NDC1HWC0"},
-      {"NCHW", "NC1HWC0"},
-      {"HWCN", "FRACTAL_Z"},
-      {"HWCN", "FRACTAL_ZN"},
-      {"DHWCN", "FRACTAL_Z_3D"},
-      {"NCDHW", "FRACTAL_Z_3D"},
-      {"ND", "FRACTAL_Z"},
-      {"ND", "FRACTAL_ZN"},
-      {"NCHW", "FRACTAL_Z"},
-      {"NCHW", "FRACTAL_ZN"}};
+    {"NCDHW", "NDC1HWC0"},
+    {"NCHW", "NC1HWC0"},
+    {"HWCN", "FRACTAL_Z"},
+    {"HWCN", "FRACTAL_ZN"},
+    {"DHWCN", "FRACTAL_Z_3D"},
+    {"NCDHW", "FRACTAL_Z_3D"},
+    {"ND", "FRACTAL_Z"},
+    {"ND", "FRACTAL_ZN"},
+    {"NCHW", "FRACTAL_Z"},
+    {"NCHW", "FRACTAL_ZN"}
+  };
   return std::find(supportSrcDstFormats.begin(), supportSrcDstFormats.end(),
                    std::pair<std::string, std::string>(srcFormat, dstFormat)) != supportSrcDstFormats.end();
 }
@@ -798,7 +799,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   int64_t blockElemCnt = BLOCK_BYTE_SIZE / GetDTypeLen(dType);
 
   flag = GetRenew2Shape(inShape, outShape, srcFormat, dstFormat, combAxis, c0Len, group, inShapeNew,
-                          outShapeNew, realSrcFormat, realDstFormat);
+                        outShapeNew, realSrcFormat, realDstFormat);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetRenew2Shape tiling params error");
     return false;
@@ -843,9 +844,9 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     }
 
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NHWC") || (srcFormat == "FRACTAL_NZ" && dstFormat == "ND") ||
-              (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") ||
-              (srcFormat == "FRACTAL_NZ" && (dstFormat == "NCHW" || dstFormat == "NHWC" || dstFormat == "NC1HWC0")) ||
-              (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC")) {
+             (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") ||
+             (srcFormat == "FRACTAL_NZ" && (dstFormat == "NCHW" || dstFormat == "NHWC" || dstFormat == "NC1HWC0")) ||
+             (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC")) {
     TransDataTc201Param runParams201;
     flag = TilingNegativeTc201(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
                                ubSize, runParams201);
