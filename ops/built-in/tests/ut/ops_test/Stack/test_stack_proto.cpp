@@ -22,6 +22,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "data_flow_ops.h"
+#include "op_proto_test_common.h"
 
 class STACK_UT : public testing::Test {
  protected:
@@ -33,6 +34,52 @@ class STACK_UT : public testing::Test {
     std::cout << "STACK_UT TearDown" << std::endl;
   }
 };
+
+
+class Stack : public testing::Test {
+ protected:
+  static void SetUpTestCase() {
+    std::cout << "STACK_UT SetUp" << std::endl;
+  }
+
+  static void TearDownTestCase() {
+    std::cout << "STACK_UT TearDown" << std::endl;
+  }
+};
+
+class StackPush : public testing::Test {
+ protected:
+  static void SetUpTestCase() {
+    std::cout << "STACK_UT SetUp" << std::endl;
+  }
+
+  static void TearDownTestCase() {
+    std::cout << "STACK_UT TearDown" << std::endl;
+  }
+};
+
+
+TEST_F(STACK_UT, stack_infer_shape) {
+  ge::op::StackPop op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+
+  std::vector<ge::DataType> component_types{ ge::DT_INT32, ge::DT_INT32 };
+  op.SetAttr("elem_type", ge::DT_INT32);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+
+TEST_F(Stack, stack_infer_shape) {
+  ge::op::Stack op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
 
 TEST_F(STACK_UT, stack_pop_infer_shape) {
   ge::op::StackPop op;
@@ -91,6 +138,23 @@ TEST_F(STACK_UT, stack_push_infer_shape) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(STACK_UT, stack_push_infer_shape_marks) {
+  ge::op::StackPush op;
+  std::vector<std::string> marks = {std::string("stack_push_infer_shape_marks")};
+  ge::ResourceContextMgr resource_mgr;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create(&resource_mgr));
+  //ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  inferCtxPtr->SetMarks(marks);
+  op.SetInferenceContext(inferCtxPtr);
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+
+  std::vector<ge::DataType> component_types{ ge::DT_INT32, ge::DT_INT32 };
+  op.SetAttr("elem_type", ge::DT_INT32);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 
 TEST_F(STACK_UT, stack_close_infer_shape) {
   ge::op::StackClose op;
