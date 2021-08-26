@@ -80,6 +80,8 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       ${CPU_CONTEXT_DIR}/common/device.cc
       ${CPU_CONTEXT_DIR}/common/context.cc
       ${CPU_CONTEXT_DIR}/common/device_cpu_kernel.cc
+      ${CPU_CONTEXT_DIR}/common/async_cpu_kernel.cc
+      ${CPU_CONTEXT_DIR}/common/async_event_util.cc
       ${CPU_CONTEXT_DIR}/common/cpu_kernel_register.cc
       ${CPU_CONTEXT_DIR}/common/cpu_kernel_utils.cc
       ${CPU_CONTEXT_DIR}/common/host_sharder.cc
