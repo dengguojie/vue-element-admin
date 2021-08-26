@@ -196,7 +196,7 @@ target_link_libraries(cpu_kernels_context_static PRIVATE
     $<BUILD_INTERFACE:intf_pub>
     $<BUILD_INTERFACE:slog_headers>
     $<BUILD_INTERFACE:cce_headers>
-    ascend_protobuf_inc
+    ascend_protobuf_static
     -Wl,-z,relro,-z,now
     -s
     -ldl
