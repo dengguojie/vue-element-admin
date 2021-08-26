@@ -18,3 +18,5 @@ add_subdirectory(op_test_frame)
 add_subdirectory(msopgen)
 
 add_subdirectory(custom_operator_sample)
+
+add_subdirectory(operator_demo_projects)
