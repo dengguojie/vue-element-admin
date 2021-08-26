@@ -266,7 +266,7 @@ def test_pooling2d_cpu_api_gmp_windows_lt_nine(_):
 
 
 test_func_list = [
-    test_pooling2d_cpu_api_avg,
+    # test_pooling2d_cpu_api_avg,
     test_pooling2d_cpu_api_gap,
     test_pooling2d_cpu_api_gmp,
     test_pooling2d_cpu_api_max,

@@ -577,22 +577,6 @@ def _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
         pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode,
                                                            in_size_h, in_size_w,
                                                            window_h, window_w, stride)
-    # global
-    if pooling_mode not in ["GAP", "GMP", "AVG"]:
-        if stride[0] > 63 or stride[0] < 1:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "invalid stride params, stride_h " \
-                                          "size must be [1,63]. while stride_h is [%s]" % stride[0]
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        if stride[1] > 63 or stride[1] < 1:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "invalid stride params, stride_w " \
-                                          "size must be [1,63]. while stride_w is [%s]" % \
-                                          stride[1]
-            raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
