@@ -215,7 +215,9 @@ uint32_t TopKPQDistanceCpuKernel::GetGroupedMaxDistanceTopKHeap(
   KERNEL_LOG_INFO("GetGroupedMaxDistanceTopKHeap begin");
 
   T **ptr = input_data.grouped_extreme_distances.getPtr();
-  uint32_t grp = 0, grpi = 0, n = 0;
+  int32_t grp = 0;
+  int32_t grpi = 0;
+  int32_t n = 0;
   for (; grp < input_data.grouped_extreme_distances.data_count.size();
        grpi = 0, grp++) {
     for (; grpi < input_data.grouped_extreme_distances.data_count[grp];
