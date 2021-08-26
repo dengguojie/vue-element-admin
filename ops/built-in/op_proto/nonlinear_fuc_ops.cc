@@ -95,6 +95,16 @@ COMMON_INFER_FUNC_REG(HardSwish, OneInOneOutCommonInferShape);
 COMMON_INFER_FUNC_REG(Swish, OneInOneOutCommonInferShape);
 // --------------Swish END-----------------
 
+// ----------------HardSwishGrad------------------
+IMPLEMT_COMMON_INFERFUNC(HardSwishGradInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(HardSwishGrad, HardSwishGradInferShape);
+// -------------HardSwishGrad END-------------------
+
 // ----------------------FastGeluGrad----------------------
 IMPLEMT_VERIFIER(FastGeluGrad, FastGeluGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "x", "dy")) {
