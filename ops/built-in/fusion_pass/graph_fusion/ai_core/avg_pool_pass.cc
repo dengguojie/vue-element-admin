@@ -659,7 +659,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
 
-  if(stridesH > 63 || stridesW > 63){
+  if(stridesH > 63 || stridesW > 63) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "strided_h or strided_w >63, not support");
     return NOT_CHANGED;
   }

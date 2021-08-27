@@ -132,12 +132,19 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     return res
 
 
+def get_shape_len(shape):
+    len_count = 1
+    for i in range(0, len(shape)):
+        len_count = len_count * shape[i]
+    return len_count
+
+
 def _eltwise_check_para(x, y, mode=1, coeff=[],
                         kernel_name="eltwise"):
-
     shape = x[0].get("shape")
     dtype = x[0].get("dtype").lower()
     para_check.check_shape(shape, param_name="x")
+    shape_len = get_shape_len(shape)
 
     dtype_check_list = ["float16", "float32"]
     para_check.check_dtype(dtype, dtype_check_list, param_name="x")
@@ -149,10 +156,10 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
     # all input data should be same shape and dtype
     if tensor_num > 1:
         for i in range(1, tensor_num):
-
             shape_tmp = x[i].get("shape")
             dtype_tmp = x[i].get("dtype").lower()
-            if shape_tmp != shape:
+            shape_tmp_len = get_shape_len(shape_tmp)
+            if shape_tmp != shape and shape_tmp_len != shape_len:
                 error_manager_vector.raise_err_input_shape_invalid("eltwise", "x", "input shape are not equal")
             if dtype_tmp != dtype:
                 error_manager_vector.raise_err_inputs_dtype_not_equal("eltwise", "dtype_tmp", "dtype",
@@ -189,17 +196,11 @@ def eltwise(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     -------
     None
     """
-    tensor_num = len(x)
-    shapes = [item.get("shape") for item in x]
-    shape0 = shapes[0]
-    for i in range(1, tensor_num):
-        if shapes[i] != shape0:
-            error_manager_vector.raise_err_input_shape_invalid("eltwise", "x", "input shape are not equal")
     _eltwise_check_para(x, y, mode=mode,
                         coeff=coeff, kernel_name=kernel_name)
     shape = x[0].get("shape")
     dtype = x[0].get("dtype").lower()
-
+    tensor_num = len(x)
     shape = shape_util.shape_refine(shape)
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
