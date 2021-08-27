@@ -16,11 +16,22 @@
 
 set -e
 dotted_line="----------------------------------------------------------------"
+input_parameter=`echo $0 $*`
+install_local=FALSE
+if [[ "$input_parameter" =~ "install_local" ]];then
+  install_local=TRUE
+fi
 username=$1
 pwsswd=$2
+if [[ "`echo $#`" -eq 3 ]];then
+  appoint_day=$3
+fi
 net_addr=http://121.36.71.102/package/daily/
 rm -rf index.html*
-rm -rf ascend_download
+if [[ "$install_local" =~ "FALSE" ]];then
+  rm -rf ascend_download
+fi
+
 
 get_arch(){
     echo $dotted_line
@@ -73,8 +84,10 @@ download_run(){
     network_test $res_net $test_net_addr
     #</tbody></table></body></html><tr><td class="link"><a href="20210729/" title="20210729">20210729/</a></td><td class="size">-</td><td class="date">2021-Jul-29 00:35</td></tr>
     day=`cat index.html | grep title |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}'`
+    if [[ "$appoint_day" =~ "20" ]];then
+      day=$appoint_day
+    fi
     rm -rf index.html
-    
     eval net=$(echo ${net}${day}/${arch}/)
     wget -q --http-user=$username --http-passwd=$pwsswd $net
     #http://121.36.71.102/package/daily/202107/20210727/x86/
@@ -96,19 +109,11 @@ download_run(){
     test_net_addr=$net
 
     network_test $res_net $test_net_addr
-    file_index_content=`cat index.html`
-    file_name_fragment=${file_index_content#*Ascend-cann-toolkit_5}
-    file_name_fragment1=${file_name_fragment#*=\"}
+    file_index_content=`cat index.html | grep Ascend-cann-toolkit | grep run`
+    file_name_fragment=${file_index_content%%.run*}
+    file_name=${file_name_fragment#*href='"'}
 
-    if [[ "$arch" =~ "x86" ]];then
-      file_name=${file_name_fragment1%%.deb*}
-    elif [[ "$arch" =~ "aarch64" ]];then
-      file_name_fragment2=${file_name_fragment1%%.deb*}
-      echo $file_name_fragment2
-      file_name=${file_name_fragment2%%.run*}
-      echo %file_name
-    fi
-
+    echo $file_name
     rm -rf index.html
     eval net=$(echo ${net}${file_name}.run)
     echo $dotted_line
@@ -123,7 +128,7 @@ download_run(){
 bak_ori_Ascend(){
     bak_time=$(date "+%Y%m%d%H%M%S")
     echo $dotted_line
-    echo "Delete the original Ascend" 
+    echo "Backup the original Ascend" 
     if [ $UID -eq 0 ];then
       if [  -d "/usr/local/Ascend" ];then
         mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
@@ -140,9 +145,9 @@ extract_pack(){
     echo "start installation Ascend." 
     cd ascend_download
     dir=`pwd`
-    chmod 744 $dir/${file_name}.run
+    chmod 744 $dir/Ascend-*.run
     pwd
-    $dir/${file_name}.run --noexec --extract=./out
+    $dir/Ascend-*.run --noexec --extract=./out
     cd out/run_package
 }
 
@@ -167,10 +172,11 @@ install_Ascend(){
         fi
       done
 }
-
-network_test
-get_arch
-download_run
+if [[ "$install_local" =~ "FALSE" ]];then
+  network_test
+  get_arch
+  download_run
+fi
 bak_ori_Ascend
 extract_pack
 install_Ascend
@@ -178,9 +184,15 @@ install_Ascend
 
 echo $dotted_line
 echo "Successfully installed Ascend."
-echo "Using ${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run" 
+if [[ "$install_local" =~ "FALSE" ]];then
+  echo "Using ${net_addr}${month}/${day}/${arch}/${folder_name}/${file_name}.run" 
+else
+  echo "Using local run package" 
+fi
+
 if [ $UID -eq 0 ];then
   echo "The Ascend install path is /usr/local/Ascend, the ori is /usr/local/Ascend_$bak_time"
 else
   echo "The Ascend install path is ~/Ascend, the ori is ~/Ascend_$bak_time"
 fi
+

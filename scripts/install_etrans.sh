@@ -16,11 +16,18 @@
 
 set -e
 dotted_line="----------------------------------------------------------------"
+input_parameter=`echo $0 $*`
+install_local=FALSE
+if [[ "$input_parameter" =~ "install_local" ]];then
+  install_local=TRUE
+fi
 username=$1
 pwsswd=$2
 net_addr=http://121.36.71.102/package/etrans/
 rm -rf index.html*
-rm -rf ascend_download
+if [[ "$install_local" =~ "FALSE" ]];then
+  rm -rf ascend_download
+fi
 
 network_test(){
   if [[ $res_net -ne 0 ]];then
@@ -56,6 +63,14 @@ download_run(){
     set -e
     if [ ! -f "./index.html" ];then 
       echo "Your account name or password is incorrect"
+      echo "The network doesn't work. please check..."
+      echo "If you are in Huawei yellow area"
+      echo "EXAMPLE"
+      echo "export http_proxy=http//\$username:\$escape_pass@\${proxy:-proxy}.huawei.com:8080/"
+      echo "NOTICE:password needs to be escaped"
+      echo "export https_proxy=\$http_proxy"
+      echo "If you are not in Huawei yellow area"
+      echo "You need to configure a network proxy"
       exit -1
     fi	
     res_net=`echo $?`
@@ -78,7 +93,7 @@ download_run(){
 bak_ori_Ascend(){
     bak_time=$(date "+%Y%m%d%H%M%S")
     echo $dotted_line
-    echo "Delete the original Ascend" 
+    echo "Backup the original Ascend" 
     if [ $UID -eq 0 ];then
       if [  -d "/usr/local/Ascend" ];then
         mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
@@ -124,17 +139,30 @@ install_Ascend(){
       done
 }
 
-network_test
-get_arch_and_filename
-download_run
-bak_ori_Ascend
-extract_pack
-install_Ascend
+if [[ "$install_local" =~ "FALSE" ]];then
+  network_test
+  get_arch_and_filename
+  download_run
+  bak_ori_Ascend
+  extract_pack
+  install_Ascend
+else
+  get_arch_and_filename
+  bak_ori_Ascend
+  extract_pack
+  install_Ascend
+fi
+
+
 
 
 echo $dotted_line
 echo "Successfully installed Ascend."
-echo "Using $net" 
+if [[ "$install_local" =~ "FALSE" ]];then
+  echo "Using $net" 
+else
+  echo "Using local run package" 
+fi
 if [ $UID -eq 0 ];then
   echo "The Ascend install path is /usr/local/Ascend, the ori is /usr/local/Ascend_$bak_time"
 else

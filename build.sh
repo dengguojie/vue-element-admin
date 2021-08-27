@@ -455,14 +455,28 @@ checkopts() {
                        exit 0;;
            install_daily) username="$2"
                           pwsswd="$3"
+                          echo $dotted_line
+                          if [[ "`echo $#`" -eq 4 ]];then
+                              day=$4
+                          fi
+                          echo $day
                           chmod 744 ./scripts/install_daily.sh 
-                          ./scripts/install_daily.sh $username $pwsswd
+                          ./scripts/install_daily.sh $username $pwsswd $day
                           exit 0;;
            install_etrans) username="$2"
                             pwsswd="$3"
+                            if [[ "`echo $#`" -eq 4 ]];then
+                              day=$4
+                            fi
                             chmod 744 ./scripts/install_etrans.sh 
-                            ./scripts/install_etrans.sh $username $pwsswd
+                            ./scripts/install_etrans.sh $username $pwsswd $day
                             exit 0;;
+           install_daily_local) chmod 744 ./scripts/install_daily.sh
+                               ./scripts/install_daily.sh  "install_local"
+                                exit 0;;
+           install_daily_local) chmod 744 ./scripts/install_etrans.sh
+                               ./scripts/install_etrans.sh "install_local"
+                                exit 0;;
            *) for m in [ O0 O1 O2 O3 g ]
                 do
                   if [[ "build_mode_$m" =~ "$OPTARG" ]];then
