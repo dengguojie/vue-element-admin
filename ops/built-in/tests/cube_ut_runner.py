@@ -268,7 +268,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
         for one_soc in soc_version_list:
             total_run_arg_list[one_soc] = []
         for case_file_info in case_file_info_list:
-            case_file_tmp = os.path.basename(case_file_info.case_file)[:-3]
+            case_file_tmp = '%s_%s' % (os.path.basename(case_file_info.case_file)[:-3], time.time())
             for one_soc_version in soc_version_list:
                 single_cov_data_path = os.path.join(cov_combine_dir, ".coverage_" + str(ps_count) + "_" + case_file_tmp)
                 single_rpt_data_path = os.path.join(rpt_combine_dir,
