@@ -366,3 +366,4 @@ from .max_pool_v3 import max_pool_v3
 from .gen_adc import gen_adc
 from .swish import swish
 from .hard_swish import hard_swish
+from .strided_slice_v3 import strided_slice_v3

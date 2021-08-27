@@ -4829,5 +4829,221 @@ INFER_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeInferShape);
 VERIFY_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeVerify);
 //-----------------TopKPQDistanceMerge END----------------------
 
+// ----------------StridedSlicev3 Op Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
+  const vector<string> depend_names = {"begin", "end", "strides","axes"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
+  // Get input shape
+  auto input_desc = op.GetInputDesc("x");
+  const ge::Shape shape = input_desc.GetShape();
+  DataType input_dtype = input_desc.GetDataType();
+  int64_t begin_len = -1;
+  for (const auto& param : depend_names) {
+    begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
+  }
+
+  //check the ranks and get the len of final end list len start 
+  /*shape must be same with input ranks*/
+  size_t rank_num = shape.GetDims().size();
+  //begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
+  /*read the axes values from const tensor*/
+  bool has_axes = true;
+  Tensor input_axes_tensor;
+  std::vector<int64_t> input_axes_values;
+
+  if (op.GetInputConstData("axes", input_axes_tensor) != GRAPH_SUCCESS) {
+    OP_LOGD(op.GetName().c_str(), "Get axes tensor failed.");
+    has_axes = false;
+  } else {
+    DataType input_axes_dtype = op.GetInputDesc("axes").GetDataType();
+    GetSliceConstValue(input_axes_tensor, input_axes_dtype, input_axes_values);
+    OP_LOGD(op.GetName().c_str(), "Get Axes value:%s", to_string(input_axes_values).c_str());
+  }
+  //check the ranks and get the len of final end list len end
+
+  // Get 'begin_list','end_list','stride_list' from const node
+  struct SliceParameters slice_params = {};
+  bool begin_valid = true;
+  bool end_valid = true;
+  bool stride_valid = true;
+  if (GRAPH_FAILED == GetStridedSliceListConstValues(op, slice_params)) {
+    OP_LOGI(op.GetName().c_str(),
+            "[begin,end,stride] are not all constant, set to tmp values for inference dynamic shape");
+    begin_valid = !slice_params.begin_list.empty();
+    end_valid = !slice_params.end_list.empty();
+    stride_valid = !slice_params.stride_list.empty();
+  }
+
+  OP_LOGD(op.GetName().c_str(), "begin_len:%lld", begin_len);
+  if (shape.GetDims() == UNKNOWN_RANK  || !stride_valid) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetDataType(input_dtype);
+    ge::Shape outputShape = ge::Shape(UNKNOWN_RANK);
+    output_desc.SetShape(outputShape);
+    OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(output_desc.GetShape()).c_str());
+    (void) op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+  }else if(begin_len == -1){
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetDataType(input_dtype);
+    ge::Shape outputShape = ge::Shape(std::vector<int64_t>(rank_num,-1));
+    output_desc.SetShape(outputShape);
+    OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(output_desc.GetShape()).c_str());
+    (void) op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+  }
+
+  // If  begin is invalid, set begin with begin_len count of 0, for inference output ranges.
+  // For example, begin_len is 2 set begin's value to [0, 0]
+  if (!begin_valid) {
+    slice_params.begin_list.assign(begin_len, 0);
+  }
+
+  // If end is invalid, set end with begin_len count with same index of the input shape dims, for inference output
+  // ranges. If begin_len greater than the length of input shape, set the end[i] to input_shape.back()
+  // which i >= input_shape.size().
+  // For example, begin_len is 2 and input shape is (5, 6, 7, 8), set end's value to [5, 6].
+  //              begin_len is 5 and input shape is (5, 6, 7, 8), set end's value to [5, 6, 7, 8, 8].
+  if (!end_valid) {
+    auto shape_dims = shape.GetDims();
+    if (begin_len < static_cast<int64_t>(shape_dims.size())) {
+      slice_params.end_list.assign(shape_dims.begin(), shape_dims.begin()+begin_len);
+    } else {
+      slice_params.end_list = shape_dims;
+      for (size_t i = shape_dims.size(); i < static_cast<size_t>(begin_len); i++) {
+        slice_params.end_list.push_back(shape_dims.back());
+      }
+    }
+  }
+
+  // If stride is invalid, set stride with begin_len count of 1, for inference output ranges.
+  // For example, begin_len is 2 set stride's value to [1, 1]
+  if (!stride_valid) {
+    slice_params.stride_list.assign(begin_len, 1);
+  }
+
+  //process end list and begin list accoring to the axes values start
+  if(has_axes){
+    //pre fill the values to the vector
+    std::vector<int64_t> processed_begin(rank_num, 0);
+    std::vector<int64_t> processed_end = shape.GetDims();
+    std::vector<int64_t> processed_stride(rank_num, 1);
+    //fill the begin end accoring to the axes values 
+    for (size_t i = 0; i < input_axes_values.size(); ++i){
+      int64_t axes_index = input_axes_values[i];
+      //negative axes index
+      if(axes_index < 0){
+        input_axes_values[i] = axes_index + rank_num;
+      }
+      //axes out of boundary
+      if(axes_index >= rank_num){
+        axes_index = rank_num - 1;
+        OP_LOGD(op.GetName().c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
+      }
+      //axes INT_MIN??? need to process
+      if(axes_index < 0){
+        axes_index = 0;
+        OP_LOGD(op.GetName().c_str(), "Neg Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
+      }
+      processed_end[axes_index] = slice_params.end_list[i];
+      processed_begin[axes_index] = slice_params.begin_list[i];
+      processed_stride[axes_index] = slice_params.stride_list[i];
+    }
+    //assign the proceseed value back to slice params
+    slice_params.begin_list.assign(processed_begin.begin(),processed_begin.end());
+    slice_params.end_list.assign(processed_end.begin(),processed_end.end());
+    slice_params.stride_list.assign(processed_stride.begin(),processed_stride.end());
+  }
+  //process end list and begin list accoring to the axes values end
+
+  vector<pair<int64_t,int64_t>> input_ranges;
+  input_desc.GetShapeRange(input_ranges);
+  if (input_ranges.empty()) {
+    MakeUpShapeRange(shape.GetDims(), input_ranges);
+  }
+
+  size_t dim_num = shape.GetDimNum();
+
+  if (dim_num == 0) {
+    std::string err_msg = GetParamOutRangeErrMsg("input x's dimnum", ConcatString("[", DIM_SIZE1, ", ", DIM_SIZE8, "]"),  ConcatString(dim_num));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  OP_LOGD(op.GetName().c_str(), "begin_list:%s", to_string(slice_params.begin_list).c_str());
+  OP_LOGD(op.GetName().c_str(), "end_list:%s", to_string(slice_params.end_list).c_str());
+  OP_LOGD(op.GetName().c_str(), "stride_list:%s", to_string(slice_params.stride_list).c_str());
+  if (slice_params.end_list.size() != slice_params.begin_list.size()) {
+    std::string err_msg = OtherErrMsg("end shape, begin shape length mismatch!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  // Get relevant masks from const node,  setting all mask to 0 
+  struct SliceMasks slice_masks;
+
+  StridedSliceParams input_params = {
+      shape.GetDims(),
+      slice_params.begin_list,
+      slice_params.end_list,
+      slice_params.stride_list,
+      input_ranges,
+      slice_masks.begin_mask,
+      slice_masks.end_mask,
+      slice_masks.ellipsis_mask,
+      slice_masks.new_axis_mask,
+      slice_masks.shrink_axis_mask,
+      begin_valid,
+      end_valid,
+      stride_valid,
+  };
+
+  std::vector<int64_t> output_real_dims;
+  std::vector<int64_t> output_shape;
+  vector<pair<int64_t, int64_t>> output_ranges;
+  if (!StridedSliceCommonInferShape(op.GetName(), input_params, output_shape, output_ranges)) {
+    return GRAPH_FAILED;
+  }
+
+  for (auto dim : output_shape) {
+    if (dim != 1) {
+      output_real_dims.push_back(dim);
+    }
+  }
+
+  if (output_real_dims.size() == 0) {
+    output_real_dims.push_back(1);
+  }
+
+  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  tensor_desc_output.SetDataType(input_dtype);
+  tensor_desc_output.SetRealDimCnt(output_real_dims.size());
+
+  if (IsUnKnownShape(output_shape) && !output_ranges.empty()) {
+    tensor_desc_output.SetShapeRange(output_ranges);
+  }
+
+  ge::Shape outputShape = ge::Shape(output_shape);
+  tensor_desc_output.SetShape(outputShape);
+  OP_LOGD(op.GetName().c_str(), "output_ranges:%s", to_string(output_ranges).c_str());
+  OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(tensor_desc_output.GetShape()).c_str());
+  (void) op.UpdateOutputDesc("y", tensor_desc_output);
+
+  auto p_context = op.GetInferenceContext();
+  if (p_context != nullptr) {
+    const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
+    if (!shapes_and_types.empty()) {
+      p_context->SetOutputHandleShapesAndTypes(shapes_and_types);
+    }
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(StridedSliceV3, StridedSliceV3InferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceV3);
+// ----------------StridedSlicev3 Op End-------------------
+
 }  // namespace ge
 
