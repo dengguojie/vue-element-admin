@@ -1813,7 +1813,12 @@ bool BroadCastTwoinOneout(const Operator& op, std::vector<int64_t>& shape_x, std
     }
 
     int64_t dim = std::max(dim_x[i], dim_y[i]);
-    std::pair<int64_t, int64_t> range = {0, 0};
+    std::pair<int64_t, int64_t> range;
+    if (dim != -1) {
+      range = {dim, dim};
+    } else {
+      range = {0, -1};
+    }
     if (range_x_new.size() > i && range_y_new.size() > i) {
       range.first = std::min(range_x_new[i].first, range_y_new[i].first);
       if (range_x_new[i].second == -1 || range_y_new[i].second == -1) {
