@@ -1103,6 +1103,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/trans_data_negative_target_tc_new.py
       - ops/built-in/tbe/impl/dynamic/trans_data_positive_source_ntc.py
       - ops/built-in/tbe/impl/dynamic/trans_data_positive_source_tc.py
+      - ops/built-in/tbe/impl/dynamic/transpose_d.py
+      - ops/built-in/tbe/impl/dynamic/transpose.py
       - ops/built-in/tbe/impl/dynamic/truncate_div.py
       - ops/built-in/tbe/impl/dynamic/truncate_mod.py
       - ops/built-in/tbe/impl/dynamic/unpack.py
@@ -1243,6 +1245,13 @@ vector_B:
       - ops/built-in/tbe/impl_mode/high_precision_for_all.ini
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
       - ops/CMakeLists.txt
+    unrelease:
+      - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/layer_norm_grad_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py
+      - auto_schedule/python/utils/scatter/scatter.py
       - tools/custom_operator_sample/dependency_files/protobuf_static.cmake
       - tools/op_test_frame/python/op_test_frame/common/ascend_tbe_op.py
       - tools/op_test_frame/python/op_test_frame/common/data_generator.py
@@ -1256,13 +1265,6 @@ vector_B:
       - tools/op_test_frame/python/op_test_frame/ut/ut_report.py
       - tools/op_test_frame/python/op_test_frame/utils/file_util.py
       - tools/op_test_frame/python/op_test_frame/utils/precision_compare_util.py
-    unrelease:
-      - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
-      - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
-      - auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py
-      - auto_schedule/python/tbe/dsl/static_schedule/layer_norm_grad_schedule.py
-      - auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py
-      - auto_schedule/python/utils/scatter/scatter.py
       - classify_rule.txt
       - scripts/check_clang_format.sh
       - scripts/custom_check.sh
