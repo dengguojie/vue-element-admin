@@ -118,6 +118,7 @@ set(_op_proto_srcs
   avg_pool_1d_ops.cc
   correlation.cc
   vector_search.cc
+  cluster.cc
 )
 
 set(_op_proto_include

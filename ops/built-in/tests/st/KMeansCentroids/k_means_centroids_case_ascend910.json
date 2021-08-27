@@ -1,0 +1,284 @@
+[
+    {
+        "case_name": "Test_KMeansCentroids_001",
+        "calc_expect_func_file": "test_k_means_centroids_golden.py:calc_expect_func",
+        "op": "KMeansCentroids",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "y"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "sum_square_y"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "sum_square_x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    128
+                ],
+                "name": "segment_sum"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256
+                ],
+                "name": "segment_count"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1
+                ],
+                "name": "kmean_total_distance"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_actual_distance",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_KMeansCentroids_002",
+        "calc_expect_func_file": "test_k_means_centroids_golden.py:calc_expect_func",
+        "op": "KMeansCentroids",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1024,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "y"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1,
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "sum_square_y"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "sum_square_x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1024,
+                    128
+                ],
+                "name": "segment_sum"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1024
+                ],
+                "name": "segment_count"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1
+                ],
+                "name": "kmean_total_distance"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_actual_distance",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    }
+]

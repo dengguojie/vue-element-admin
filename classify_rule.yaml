@@ -221,6 +221,8 @@ cube:
       - ops/built-in/op_proto/inc/nn_pooling_ops.h
       - ops/built-in/op_proto/matrix_calculation_ops.cc
       - ops/built-in/op_proto/inc/matrix_calculation_ops.h
+      - ops/built-in/op_proto/inc/cluster.h
+      - ops/built-in/op_proto/cluster.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2dbackprop_filter_mul_fusion_pass.cc
@@ -267,6 +269,8 @@ cube:
       - ops/built-in/framework/tf_plugin/depthwise_conv2d_backprop_filter_plugin.cc
       - ops/built-in/framework/tf_plugin/depthwise_conv2d_backprop_input_plugin.cc
       - ops/built-in/framework/tf_plugin/avg_pool3d_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/k_means_centroids_plugin.cc
+      - ops/built-in/framework/tf_plugin/k_means_centroids_v2_plugin.cc
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_filter_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_general_compute.py
@@ -338,6 +342,7 @@ cube:
       - ops/built-in/tbe/impl/compress_fully_connection.py
       - ops/built-in/tbe/impl/fully_connection.py
       - ops/built-in/tbe/impl/util/util_deconv_comm.py
+      - ops/built-in/tbe/impl/k_means_centroids.py
     unrelease:
   llt:
     ut_check: true
