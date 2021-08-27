@@ -44,7 +44,6 @@ from te.utils.error_manager import error_manager_vector
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("abs_grad")
 def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     """
@@ -76,7 +75,6 @@ def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     return data1_res
 
 
-# pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def abs_grad(y, dy, z, kernel_name="abs_grad"):

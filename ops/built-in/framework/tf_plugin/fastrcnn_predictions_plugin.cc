@@ -85,7 +85,6 @@ Status FastrcnnPredictionsParams(const std::vector<const google::protobuf::Messa
       OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
       return FAILED;
     }
-    // OP_LOGI(op.GetName().c_str(), "node name %s .", node_def->op().c_str());
     v_input_const.push_back(node_def);
     if (node_def->op() == nms) {
       input_attr_name = node_def->input(3);

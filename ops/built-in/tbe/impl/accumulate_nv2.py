@@ -28,7 +28,6 @@ MIN_TENSOR_NUM = 1
 MAX_TENSOR_NUM = 40
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @fusion_manager.register("accumulate_nv2")
 def _accumulate_nv2_compute(tensor_list, y, num, kernel_name='accumulate_nv2'):
     """

@@ -26,7 +26,6 @@ from te.utils import shape_util
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
-# pylint: disable=invalid-name,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("abs")
 def abs_compute(x, y, kernel_name="abs"):
     """
@@ -54,7 +53,6 @@ def abs_compute(x, y, kernel_name="abs"):
     return res
 
 
-# pylint: disable=redefined-builtin
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def abs(x, y, kernel_name="abs"):
     """

@@ -46,7 +46,6 @@ NUM_MINUS_ONE = -1
 NUM_ONE = 1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("acos_grad")
 def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """

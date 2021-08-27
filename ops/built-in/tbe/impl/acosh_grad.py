@@ -32,7 +32,6 @@ acosh_grad
     [1] All : 'y' and 'dy' must have the same type and shape.
     [2] All : shape size limit is 2147483648.
 """
-# pylint: disable=invalid-name,too-many-locals
 import operator
 
 import te.lang.cce as tbe
@@ -113,7 +112,6 @@ def _sinh_repeat_with_sqrt(data):
     return data_square
 
 
-# pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("acosh_grad")
 def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """

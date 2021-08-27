@@ -15,7 +15,6 @@
 """
 cce specific declaration and schedules.
 """
-# pylint: disable=redefined-builtin, wildcard-import
 from __future__ import absolute_import as _abs
 
 import warnings

@@ -39,7 +39,6 @@ from te.utils import shape_util
 CONST_NEG_ONE = -1.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("acosh")
 def acosh_compute(input_data, output_res, kernel_name="acosh"):
     """
