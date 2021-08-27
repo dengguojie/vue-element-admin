@@ -106,8 +106,8 @@ def gen_random_data_int64():
                 "less/data/less_data_input2_2.txt",
                 "less/data/less_data_output1_2.txt"]
     np.random.seed(23457)
-    shape_x1 = [13, 10, 4]
-    shape_x2 = [13, 10, 4]
+    shape_x1 = [1024, 8]
+    shape_x2 = [1024, 8]
     a = gen_data_file(data_files[0], shape_x1, np.int32, "randint", -10000, 10000)
     b = gen_data_file(data_files[1], shape_x2, np.int32, "randint", -10000, 10000)
 
@@ -124,8 +124,8 @@ def gen_random_data_float():
                 "less/data/less_data_input2_3.txt",
                 "less/data/less_data_output1_3.txt"]
     np.random.seed(23457)
-    shape_x1 = [15, 12, 30]
-    shape_x2 = [15, 12, 30]
+    shape_x1 = [1024]
+    shape_x2 = [4, 1024]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
 

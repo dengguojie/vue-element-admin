@@ -111,7 +111,7 @@ Bcast::Bcast(std::vector<int64_t> &x_shape, std::vector<int64_t> &y_shape)
     } else {
       x.resize(y.size(), kNoBroadcastValue);
     }
-    
+
     auto ret = Init(x, y);
     if (ret != KERNEL_STATUS_OK) {
       return;
@@ -130,7 +130,72 @@ Bcast::Bcast(std::vector<int64_t> &x_shape, std::vector<int64_t> &y_shape)
     std::reverse(x_bcast_.begin(), x_bcast_.end());
     std::reverse(y_reshape_.begin(), y_reshape_.end());
     std::reverse(y_bcast_.begin(), y_bcast_.end());
+
+    // generate strides, just for row major
+    int32_t size = static_cast<int32_t>(result_shape_.size());
+    x_input_strides_.resize(size, 0);
+    y_input_strides_.resize(size, 0);
+    x_output_strides_.resize(size, 0);
+    y_output_strides_.resize(size, 0);
+    x_input_strides_[size - 1] = 1;
+    y_input_strides_[size - 1] = 1;
+    x_output_strides_[size - 1] = 1;
+    y_output_strides_[size - 1] = 1;
+    for (int32_t i = size - 2; i >= 0; --i) {
+      x_input_strides_[i] = x_input_strides_[i + 1] * x_reshape_[i + 1];
+      y_input_strides_[i] = y_input_strides_[i + 1] * y_reshape_[i + 1];
+      x_output_strides_[i] = x_output_strides_[i + 1] * result_shape_[i + 1];
+      y_output_strides_[i] = y_output_strides_[i + 1] * result_shape_[i + 1];
+    }
   }
+}
+
+int64_t Bcast::GetBroadcastXIndex(int64_t index) {
+  int64_t input_index = 0;
+  const size_t num_dims = result_shape_.size();
+  for (size_t i = 0; i < num_dims - 1; ++i) {
+    const int64_t idx = index / x_output_strides_[i];
+    if (x_bcast_[i] == kNoBroadcastValue) {
+      input_index += idx * x_input_strides_[i];
+    } else {
+      if (x_reshape_[i] != kNoBroadcastValue) {
+        input_index += (idx % x_reshape_[i]) * x_input_strides_[i];
+      }
+    }
+    index -= idx * x_output_strides_[i];
+  }
+  if (x_bcast_[num_dims - 1] == kNoBroadcastValue) {
+    input_index += index;
+  } else {
+    if (x_reshape_[num_dims - 1] != kNoBroadcastValue) {
+      input_index += (index % x_reshape_[num_dims - 1]);
+    }
+  }
+  return input_index;
+}
+
+int64_t Bcast::GetBroadcastYIndex(int64_t index) {
+  int64_t input_index = 0;
+  const size_t num_dims = result_shape_.size();
+  for (size_t i = 0; i < num_dims - 1; ++i) {
+    const int64_t idx = index / y_output_strides_[i];
+    if (y_bcast_[i] == kNoBroadcastValue) {
+      input_index += idx * y_input_strides_[i];
+    } else {
+      if (y_reshape_[i] != kNoBroadcastValue) {
+        input_index += (idx % y_reshape_[i]) * y_input_strides_[i];
+      }
+    }
+    index -= idx * y_output_strides_[i];
+  }
+  if (y_bcast_[num_dims - 1] == kNoBroadcastValue) {
+    input_index += index;
+  } else {
+    if (y_reshape_[num_dims - 1] != kNoBroadcastValue) {
+      input_index += (index % y_reshape_[num_dims - 1]);
+    }
+  }
+  return input_index;
 }
 
 uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {

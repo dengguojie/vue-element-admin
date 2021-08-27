@@ -20,6 +20,17 @@
 #include "cpu_context.h"
 
 namespace aicpu {
+// broadcast shape type
+// 1. SAME_SHAPE : x and y have the same shape
+// 2. X_ONE : x has only one element
+// 3. Y_ONE : y has only one element
+enum BcastShapeType {
+  SAME_SHAPE = 0,
+  X_ONE_ELEMENT = 1,
+  Y_ONE_ELEMENT = 2,
+  DIFF_SHAPE = 3,
+};
+
 struct BCalcInfo {
   BCalcInfo() : input_0(nullptr), input_1(nullptr), output(nullptr) {}
   Tensor *input_0;
@@ -44,12 +55,14 @@ class Bcast {
   void GetBcastVec(BCalcInfo &calc_info);
   void BCastIndexes(std::vector<int64_t> &x_indexes,
                     std::vector<int64_t> &y_indexes);
+  int64_t GetBroadcastXIndex(int64_t index);
+  int64_t GetBroadcastYIndex(int64_t index);
   bool IsValid() const { return valid_; }
-  std::vector<int64_t> &x_reshape() { return x_reshape_; }
-  std::vector<int64_t> &y_reshape() { return y_reshape_; }
-  std::vector<int64_t> &result_shape() { return result_shape_; }
-  std::vector<int64_t> &x_bcast() { return x_bcast_; }
-  std::vector<int64_t> &y_bcast() { return y_bcast_; }
+  const std::vector<int64_t> &x_reshape() const { return x_reshape_; }
+  const std::vector<int64_t> &y_reshape() const { return y_reshape_; }
+  const std::vector<int64_t> &result_shape() const { return result_shape_; }
+  const std::vector<int64_t> &x_bcast() const { return x_bcast_; }
+  const std::vector<int64_t> &y_bcast() const { return y_bcast_; }
 
  private:
   uint32_t Init(const std::vector<int64_t> &x, const std::vector<int64_t> &y);
@@ -61,6 +74,10 @@ class Bcast {
   std::vector<int64_t> x_bcast_;
   std::vector<int64_t> y_bcast_;
   std::vector<int64_t> result_shape_;
+  std::vector<int64_t> x_input_strides_;
+  std::vector<int64_t> y_input_strides_;
+  std::vector<int64_t> x_output_strides_;
+  std::vector<int64_t> y_output_strides_;
 };
 }  // namespace aicpu
 #endif  // _AICPU_AICPU_DEVICE_CPU_KERNELS_UTILS_BCAST_H_

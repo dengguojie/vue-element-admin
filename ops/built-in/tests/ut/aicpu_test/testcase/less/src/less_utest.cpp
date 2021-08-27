@@ -44,6 +44,11 @@ void CalcExpectWithDiffShape(const NodeDef &node_def, bool expect_out[]) {
       int64_t i = j % input1_num;
       expect_out[j] = input0_data[j] < input1_data[i] ? true : false;
     }
+  } else {
+    for (int64_t j = 0; j < input1_num; ++j) {
+      int64_t i = j % input0_num;
+      expect_out[j] = input0_data[i] < input1_data[j] ? true : false;
+    }
   }
 }
 
@@ -147,7 +152,7 @@ TEST_F(TEST_LESS_UT, DATA_TYPE_INT32_SUCC) {
 
 TEST_F(TEST_LESS_UT, DATA_TYPE_INT64_SUCC) {
   vector<DataType> data_types = {DT_INT64, DT_INT64, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{13, 10, 4}, {13, 10, 4}, {13, 10, 4}};
+  vector<vector<int64_t>> shapes = {{1024, 8}, {1024, 8}, {1024, 8}};
   vector<string> files{"less/data/less_data_input1_2.txt",
                        "less/data/less_data_input2_2.txt",
                        "less/data/less_data_output1_2.txt"};
@@ -156,7 +161,7 @@ TEST_F(TEST_LESS_UT, DATA_TYPE_INT64_SUCC) {
 
 TEST_F(TEST_LESS_UT, DATA_TYPE_FLOAT_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{15, 12, 30}, {15, 12, 30}, {15, 12, 30}};
+  vector<vector<int64_t>> shapes = {{1024}, {4, 1024}, {4, 1024}};
   vector<string> files{"less/data/less_data_input1_3.txt",
                        "less/data/less_data_input2_3.txt",
                        "less/data/less_data_output1_3.txt"};
@@ -208,9 +213,15 @@ TEST_F(TEST_LESS_UT, DATA_TYPE_FLOAT16_SUCC) {
   RunLessKernel<Eigen::half, Eigen::half, bool>(files, data_types, shapes);
 }
 
+TEST_F(TEST_LESS_UT, DATA_TYPE_UINT16_DIFF_SUCC) {
+  vector<DataType> data_types = {DT_UINT16, DT_UINT16, DT_BOOL};
+  vector<vector<int64_t>> shapes = {{1}, {3}, {3}};
+  RunLessKernel2<uint16_t, uint16_t, bool>(data_types, shapes);
+}
+
 TEST_F(TEST_LESS_UT, DATA_TYPE_UINT16_SUCC) {
   vector<DataType> data_types = {DT_UINT16, DT_UINT16, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{2, 3}, {3}, {2, 3}};
+  vector<vector<int64_t>> shapes = {{3}, {1}, {3}};
   RunLessKernel2<uint16_t, uint16_t, bool>(data_types, shapes);
 }
 
