@@ -132,9 +132,7 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
 
 Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
   bool fail_status = false;
-  bool is_fuzz_build = false;
   bool is_unknown_shape = false;
-  bool is_dynamic_shape = false;
   string reduction = "";
   string reduction_attr = "reduction";
 
@@ -143,17 +141,13 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   FUSION_PASS_CHECK(nll_loss_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "nll_loss_node is null, fusion failed."),
                     return PARAM_INVALID);
   
-  // get fuzz build attr
-  ge::AttrUtils::GetBool(nll_loss_node->GetOpDesc(), ge::ATTR_NAME_FUZZ_BUILD, is_fuzz_build);
-
   // check nllloss support dynamic
   if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
     return FAILED;
   }
-  
-  is_dynamic_shape = is_fuzz_build || is_unknown_shape; 
-  if (!is_dynamic_shape) {
+
+  if (!is_unknown_shape) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape.");
     return NOT_CHANGED;
   }
