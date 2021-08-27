@@ -168,3 +168,30 @@ TEST_F(depth_to_space_infer_test, depth_to_space_infer_test_3) {
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
 }
+TEST_F(depth_to_space_infer_test, depth_to_space_infer_test_6) {
+
+  // set input info
+  auto input_shape = vector<int64_t>({12, 11, 20, 16});
+  std::vector<std::pair<int64_t,int64_t>> input_range = {{12, 12}, {11, 11}, {20, 20}, {16, 16}};
+  auto block_size = 2;
+  auto test_format = ge::FORMAT_NHWC;
+
+  // expect result
+  std::vector<int64_t> expected_shape = {12, 22, 40, 4};
+
+  // create desc
+  auto input_desc = create_desc_shape_range(input_shape, ge::DT_FLOAT16, test_format,
+  input_shape, test_format, input_range);
+
+  // new op and do infershape
+  ge::op::DepthToSpace op;
+  op.UpdateInputDesc("x", input_desc);
+  op.set_attr_mode("ABC");
+  op.set_attr_block_size(block_size);
+
+  auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
+
+  // check result
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

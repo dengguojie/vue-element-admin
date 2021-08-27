@@ -21,6 +21,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -53,8 +54,8 @@ def get_op_support_info(x, y, block_size, data_format='NHWC', kernel_name="depth
 # pylint: disable=invalid-name,unused-argument,too-many-locals,protected-access
 @register_operator("DepthToSpace")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
-                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_space"):
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name="depth_to_space"):
     """
     the main function of depth_to_space
 
@@ -66,6 +67,8 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
         dict with keys(shape, dtype) of output
     block_size: int
         the size of the spatial block
+    mode: str
+        mode default value is DCR, for onnx
     data_format: str
         data format, default value is "NHWC"
     kernel_name: str
@@ -80,6 +83,9 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
     para_check.check_shape(input_shape, param_name="x")
     check_list = ("int8", "int16", "int32", "uint8", "uint16", "uint32", "uint64", "int64", "float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
+    # check mode
+    if mode not in ('DCR', 'CRD'):
+        error_manager_vector.raise_err_input_value_invaliad(kernel_name, "mode", "DCR, CRD", mode)
 
     # run tick
     tik_inst = tik.Tik()
@@ -96,6 +102,7 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
         "core_num": CORE_NUM,
         "dtype": input_dtype,
         "block_size": block_size,
+        "mode": mode,
     })
     # this "global_variable_link" flag suggest ccec.py do link without "-r" option
     # which will result in global variable in cce file with wrong address

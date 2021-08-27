@@ -1370,6 +1370,19 @@ IMPLEMT_VERIFIER(DepthToSpace, DepthToSpaceVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
+  // verify mode
+  std::string mode;
+  if (op.GetAttr("mode", mode) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (mode != "DCR" && mode != "CRD") {
+    string expected_format_list = ConcatString("DCR, CRD");
+    std::string err_msg = GetAttrValueErrMsg("mode", mode, expected_format_list);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
   // verify data_format
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {

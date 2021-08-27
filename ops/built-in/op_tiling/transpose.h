@@ -204,6 +204,7 @@ struct CompilerInfo {
     int64_t ubSizeCouldUse;//unit: block
     int64_t fp16Times;
     int64_t blockSize;
+    std::string mode;
     std::string dType;
     std::string opType;
     CompilerInfo() {

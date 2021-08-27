@@ -57,7 +57,7 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_0) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2}}";
+      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2, \"mode\": \"DCR\"}}";
 
   std::vector<int64_t> input{16, 2, 2, 16};
   std::vector<int64_t> output{16, 4, 4, 4};
@@ -98,7 +98,7 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2}}";
+      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2, \"mode\": \"DCR\"}}";
 
   std::vector<int64_t> input{16, 4, 4, 4};
   std::vector<int64_t> output{16, 2, 2, 16};
@@ -128,6 +128,129 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_1) {
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DepthAndSpaceTiling, depthandspace_tiling_2) {
+  using namespace optiling;
+  std::string op_name = "DepthToSpace";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2, \"mode\": \"CRD\"}}";
+
+  std::vector<int64_t> input{1, 8, 2, 3};
+  std::vector<int64_t> output{1, 2, 4, 6};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float16";
+  tensor_input.format = "NCHW";
+  tensor_input.ori_format = "NCHW";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float16";
+  tensor_output.format = "NCHW";
+  tensor_output.ori_format = "NCHW";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "depthandspace_tiling_2";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DepthAndSpaceTiling, depthandspace_tiling_3) {
+  using namespace optiling;
+  std::string op_name = "DepthToSpace";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2, \"mode\": \"DCR\"}}";
+
+  std::vector<int64_t> input{1, 8, 2, 3};
+  std::vector<int64_t> output{1, 2, 4, 6};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float16";
+  tensor_input.format = "NCHW";
+  tensor_input.ori_format = "NCHW";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float16";
+  tensor_output.format = "NCHW";
+  tensor_output.ori_format = "NCHW";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "depthandspace_tiling_3";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DepthAndSpaceTiling, depthandspace_tiling_4) {
+  using namespace optiling;
+  std::string op_name = "DepthToSpace";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 8192, \"core_num\": 32, \"dtype\": \"float16\", \"block_size\": 2, \"mode\": \"CRD\"}}";
+
+  std::vector<int64_t> input{1, 2, 3, 8};
+  std::vector<int64_t> output{1, 4, 6, 2};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float16";
+  tensor_input.format = "NHWC";
+  tensor_input.ori_format = "NHWC";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float16";
+  tensor_output.format = "NHWC";
+  tensor_output.ori_format = "NHWC";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "depthandspace_tiling_4";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }

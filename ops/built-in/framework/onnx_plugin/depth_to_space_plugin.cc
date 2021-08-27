@@ -35,11 +35,8 @@ Status ParseParamsDepthToSpace(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
-  if (mode != "DCR") {
-    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "The corresponding TBE Operator only support mode == DCR");
-    return FAILED;
-  }
   op_dest.SetAttr("block_size", block_size);
+  op_dest.SetAttr("mode", mode);
   // set attr data format to NCHW.
   std::string output_format = "NCHW";
   op_dest.SetAttr("data_format", output_format);

@@ -394,6 +394,8 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     }
     shapeInfo.inShape = paras.inputs[0].tensor[0].shape;
     shapeInfo.outShape = paras.outputs[0].tensor[0].shape;
+    std::string mode = info.mode;
+    std::string data_format = paras.inputs[0].tensor[0].format;
 
     // for depthtospace
     if (opType == "DepthToSpace") {
@@ -404,30 +406,54 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
                                             shapeInfo.inShape.size());
             return false;
         }
-        if (shapeInfo.inShape[3] % (info.blockSize * info.blockSize) != 0) {
+        int32_t c_dim = 3;
+        c_dim = data_format == "NHWC" ? 3 : 1;
+        if (shapeInfo.inShape[c_dim] % (info.blockSize * info.blockSize) != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
                 "Depth size must be divisible by block size, but got depth[%ld], block[%ld].",
                 shapeInfo.inShape[3], info.blockSize);
             return false;
         }
+
         // calc input and output shape and perm
-        std::vector<int64_t> tmpVector;
-        tmpVector.push_back(shapeInfo.inShape[0] * shapeInfo.inShape[1]);
-        tmpVector.push_back(shapeInfo.inShape[2]);
-        tmpVector.push_back(info.blockSize);
-        tmpVector.push_back(shapeInfo.inShape[3] / info.blockSize);
-        shapeInfo.inShape.clear();
-        shapeInfo.inShape = tmpVector;
-        shapeInfo.outShape.clear();
-        shapeInfo.outShape.push_back(tmpVector[0]);
-        shapeInfo.outShape.push_back(tmpVector[2]);
-        shapeInfo.outShape.push_back(tmpVector[1]);
-        shapeInfo.outShape.push_back(tmpVector[3]);
-        shapeInfo.perm.clear();
-        shapeInfo.perm.push_back(0);
-        shapeInfo.perm.push_back(2);
-        shapeInfo.perm.push_back(1);
-        shapeInfo.perm.push_back(3);
+        if (mode == "DCR" && data_format == "NHWC") {
+            std::vector<int64_t> tmpVector = {shapeInfo.inShape[0] * shapeInfo.inShape[1], shapeInfo.inShape[2],
+                                              info.blockSize, shapeInfo.inShape[3] / info.blockSize};
+            shapeInfo.inShape = tmpVector;
+            shapeInfo.outShape = {tmpVector[0], tmpVector[2], tmpVector[1], tmpVector[3]};
+            shapeInfo.perm = {0, 2, 1, 3};
+            return true;
+        }
+        if (mode == "CRD" && data_format == "NHWC") {
+            std::vector<int64_t> tmpVector = {
+                shapeInfo.inShape[0], shapeInfo.inShape[1],
+                shapeInfo.inShape[2], shapeInfo.inShape[3] / info.blockSize / info.blockSize,
+                info.blockSize,       info.blockSize};
+            shapeInfo.inShape = tmpVector;
+            shapeInfo.outShape = {tmpVector[0], tmpVector[1], tmpVector[4], tmpVector[2], tmpVector[5], tmpVector[3]};
+            shapeInfo.perm = {0, 1, 4, 2, 5, 3};
+            return true;
+        }
+        if (mode == "DCR" && data_format == "NCHW") {
+            std::vector<int64_t> tmpVector = {
+                shapeInfo.inShape[0], info.blockSize,
+                info.blockSize,       shapeInfo.inShape[1] / info.blockSize / info.blockSize,
+                shapeInfo.inShape[2], shapeInfo.inShape[3]};
+            shapeInfo.inShape = tmpVector;
+            shapeInfo.outShape = {tmpVector[0], tmpVector[3], tmpVector[4], tmpVector[1], tmpVector[5], tmpVector[2]};
+            shapeInfo.perm = {0, 3, 4, 1, 5, 2};
+            return true;
+        }
+        if (mode == "CRD" && data_format == "NCHW") {
+            std::vector<int64_t> tmpVector = {
+                shapeInfo.inShape[0], shapeInfo.inShape[1] / info.blockSize / info.blockSize,
+                info.blockSize,       info.blockSize,
+                shapeInfo.inShape[2], shapeInfo.inShape[3]};
+            shapeInfo.inShape = tmpVector;
+            shapeInfo.outShape = {tmpVector[0], tmpVector[1], tmpVector[4], tmpVector[2], tmpVector[5], tmpVector[3]};
+            shapeInfo.perm = {0, 1, 4, 2, 5, 3};
+            return true;
+        }
     }
 
     // for spacetodepth
@@ -3627,7 +3653,16 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
         info.blockSize = allVars["block_size"].get<std::int64_t>();
         OP_LOGD(opType.c_str(), "GetCompileParams, blockSize[%d].", info.blockSize);
     }
-
+    // for depthtospace
+    if (opType == "DepthToSpace") {
+      if (allVars.count("mode") == 0) {
+        info.mode = "DCR";
+        OP_LOGW(opType, "GetCompileParams mode failed, set as default value DCR.");
+      } else {
+        info.mode = allVars["mode"].get<std::string>();
+      }
+      OP_LOGD(opType, "GetCompileParams, mode [%s].", info.mode.c_str());
+    }
     return true;
 }
 
