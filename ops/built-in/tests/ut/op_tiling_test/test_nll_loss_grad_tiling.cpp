@@ -59,10 +59,10 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling1) {
   TeOpTensorArg tensorInputArgTotalWeight, tensorOutputsArg;
   TeOpParas opParas;
   std::vector<int64_t> input_x_shape = {16, 32};
-  std::vector<int64_t> input_y_grad_shape = {16,};
-  std::vector<int64_t> input_target_shape = {16,};
-  std::vector<int64_t> input_weight_shape = {32,};
-  std::vector<int64_t> input_total_weight_shape = {1,};
+  std::vector<int64_t> input_y_grad_shape = {16};
+  std::vector<int64_t> input_target_shape = {16};
+  std::vector<int64_t> input_weight_shape = {32};
+  std::vector<int64_t> input_total_weight_shape = {1};
   std::vector<int64_t> output_shape = {16, 32};
   std::string dtype = "float32";
   std::string dtype_target = "int32";
@@ -130,10 +130,10 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling2) {
   TeOpTensorArg tensorInputArgTotalWeight, tensorOutputsArg;
   TeOpParas opParas;
   std::vector<int64_t> input_x_shape = {40, 255658};
-  std::vector<int64_t> input_y_grad_shape = {40,};
-  std::vector<int64_t> input_target_shape = {40,};
-  std::vector<int64_t> input_weight_shape = {255658,};
-  std::vector<int64_t> input_total_weight_shape = {1,};
+  std::vector<int64_t> input_y_grad_shape = {40};
+  std::vector<int64_t> input_target_shape = {40};
+  std::vector<int64_t> input_weight_shape = {255658};
+  std::vector<int64_t> input_total_weight_shape = {1};
   std::vector<int64_t> output_shape = {40, 255658};
   std::string dtype = "float32";
   std::string dtype_target = "int32";
@@ -188,8 +188,8 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling2) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   std::cout << "NLLLossGradTilingData: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "255658 40 0 215907 10226320 10226320 40 40 1 255658 1 32 0 0 2 0 0 1 0 65024 64 64 64 8 0 0 0 0 0 0 0 0 0 "
-            "8128 7574 64 2001 65024 4 1016 947 65024 ");
+            "255658 40 0 215907 10226320 10226320 40 40 1 255658 1 32 0 0 2 0 0 1 0 64960 64 64 64 8 0 0 0 0 0 0 0 0 0 "
+            "8120 7598 64 2001 64960 4 1015 950 64960 ");
 }
 
 TEST_F(NLLLossGradTiling, NLLLossGrad_tiling3) {
@@ -202,10 +202,10 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling3) {
   TeOpTensorArg tensorInputArgTotalWeight, tensorOutputsArg;
   TeOpParas opParas;
   std::vector<int64_t> input_x_shape = {1020, 15003};
-  std::vector<int64_t> input_y_grad_shape = {1,};
-  std::vector<int64_t> input_target_shape = {1020,};
-  std::vector<int64_t> input_weight_shape = {15003,};
-  std::vector<int64_t> input_total_weight_shape = {1,};
+  std::vector<int64_t> input_y_grad_shape = {1};
+  std::vector<int64_t> input_target_shape = {1020};
+  std::vector<int64_t> input_weight_shape = {15003};
+  std::vector<int64_t> input_total_weight_shape = {1};
   std::vector<int64_t> output_shape = {1020, 15003};
   std::string dtype = "float32";
   std::string dtype_target = "int32";
@@ -275,10 +275,10 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
   TeOpTensorArg tensorInputArgTotalWeight, tensorOutputsArg;
   TeOpParas opParas;
   std::vector<int64_t> input_x_shape = {7, 7243};
-  std::vector<int64_t> input_y_grad_shape = {1,};
-  std::vector<int64_t> input_target_shape = {7,};
-  std::vector<int64_t> input_weight_shape = {7243,};
-  std::vector<int64_t> input_total_weight_shape = {1,};
+  std::vector<int64_t> input_y_grad_shape = {1};
+  std::vector<int64_t> input_target_shape = {7};
+  std::vector<int64_t> input_weight_shape = {7243};
+  std::vector<int64_t> input_total_weight_shape = {1};
   std::vector<int64_t> output_shape = {7, 7243};
   std::string dtype = "float32";
   std::string dtype_target = "int32";

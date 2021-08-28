@@ -279,6 +279,7 @@ static bool GetTilingParam(const vector<int64_t>& x_shape, const vector<int64_t>
   tiling_param.weight_gm_size = weight_shape[0];
   tiling_param.weight_ub_size = GetCeilDiv(weight_shape[0], NUM_64) * NUM_64;
   tiling_param.total_weight_ub_size = NUM_64;
+  ub_size_float = ub_size_float - NUM_64;
   int64_t last_ub_size = ub_size_float - tiling_param.weight_ub_size;
   int64_t one_line_size = c_dim + 3;
   int64_t max_move_line = GetFloorDiv(last_ub_size, one_line_size);

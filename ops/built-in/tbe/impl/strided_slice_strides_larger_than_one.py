@@ -30,6 +30,8 @@ from impl.util.platform_adapter import tik
 VNCHW_REPEAT_TIMES = 255
 # max value of nburst in data_move
 N_BURST = 4095
+# max value of src_stride/dst_stride in data_move
+MAX_STRIDE = 65535
 
 
 class StridedSliceStridesLargerThanOne:
@@ -558,7 +560,8 @@ class StridedSliceStridesLargerThanOne:
                            self.multi_times, (self.strides[-1] - 1) * self.multi_times, 0)
             vnchw_conv_repeat_times = ceil_div(loop_num, self.vnchwconv_column)
             self._do_with_vnchwconv2output(vnchw_conv_ub, input_ub, vnchw_conv_repeat_times)
-            if self.roll_back_num == 0:
+            dst_stride = (self.inner_loops - 1) * self.inner_loop_num // self.element_each_block
+            if self.roll_back_num == 0 and dst_stride <= MAX_STRIDE:
                 dst_addr_out = output_addr + inner_loops_idx * self.inner_loop_num
                 if self.inner_loops == 1:
                     dst_stride = 0
