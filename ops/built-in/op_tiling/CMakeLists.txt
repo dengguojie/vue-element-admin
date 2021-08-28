@@ -170,6 +170,7 @@ set(_optiling_files
   mirror_pad.cc
   gen_adc.cc
   non_zero.cc
+  scan_pq_codes.cc
   strided_slice_v3.cc
 )
 

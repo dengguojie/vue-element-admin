@@ -76,6 +76,54 @@ REG_OP(TopKPQDistance)
     .ATTR(k, Int, 0)
     .ATTR(group_size, Int, 0)
     .OP_END_FACTORY_REG(TopKPQDistance)
-}  // namespace ge
+
+/**
+* @brief Calculate PQ distance. \n
+*
+* @par Inputs:
+* Six inputs, including:
+* @li ivf: A Tensor, dtype is uint8.
+* @li bucket_list: A Tensor, dtype is int32.
+* @li bucket_base_distance: A Tensor, dtype is float16.
+* @li bucket_limits: A Tensor, dtype is int32.
+* @li bucket_offsets: A Tensor, dtype is int32.
+* @li adc_tables: A Tensor. dtype is float16. \n
+*
+* @par Outputs:
+* Five outputs, including:
+* @li actual_count: A Tensor, dtype is int32, the first element means the length of processed ivf.
+* @li pq_distance: A Tensor, dtype is float16.
+* @li grouped_extreme_distance: A Tensor, dtype is float16.
+* @li pq_ivf: A Tensor, dtype is int32.
+* @li pq_index: A Tensor, dtype is int32. \n
+*
+* @par Attributes:
+* Five attributes, including:
+* @li group_size: A Scalar, indicates the group size when compute grouped_extreme_distance.
+* @li total_limit: A Scalar, indicates the total length of the outputs.
+* @li extreme_mode: A Scalar, indicates the type of extremum, 0 means minimum, and 1 means maximum.
+* @li split_count: A Scalar.
+* @li split_index: A Scalar. \n
+*
+*/
+REG_OP(ScanPQCodes)
+    .INPUT(ivf, TensorType({DT_UINT8}))
+    .INPUT(bucket_list, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(bucket_base_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(bucket_limits, TensorType({DT_INT32}))
+    .INPUT(bucket_offsets, TensorType({DT_INT32}))
+    .INPUT(adc_tables, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(actual_count, TensorType({DT_INT32}))
+    .OUTPUT(pq_distance, TensorType({DT_FLOAT16}))
+    .OUTPUT(grouped_extreme_distance, TensorType({DT_FLOAT16}))
+    .OUTPUT(pq_ivf, TensorType({DT_INT32}))
+    .OUTPUT(pq_index, TensorType({DT_INT32}))
+    .ATTR(group_size, Int, 64)
+    .ATTR(total_limit, Int, 512000)
+    .ATTR(extreme_mode, Int, 0)
+    .ATTR(split_count, Int, 1)
+    .ATTR(split_index, Int, 0)
+    .OP_END_FACTORY_REG(ScanPQCodes)
+} // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_VECTOR_SEARCH_H_
