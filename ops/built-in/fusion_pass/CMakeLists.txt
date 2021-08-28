@@ -247,6 +247,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/resize_nearest_neighbor_grad_d_fusion_pass.cc
   graph_fusion/ai_core/rnn_fusion_pass.cc
   graph_fusion/ai_core/rpn_proposals_fusion_pass.cc
+  graph_fusion/ai_core/scanpqcodes_fusion_pass.cc
   graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
   graph_fusion/ai_core/softmax_cross_entropy_with_logits.cc
   graph_fusion/ai_core/softmax_cross_entropy_with_logits_grad.cc
