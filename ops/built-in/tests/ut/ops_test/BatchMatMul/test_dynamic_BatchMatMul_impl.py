@@ -120,9 +120,9 @@ def test_op_check_supported(test_arg):
 
 def test_batch_matmul_generalization(test_arg):
     from impl.dynamic.batch_matmul import batch_matmul_generalization
-    input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND"}
-    input_x2_dynamic = {"ori_shape": (5, 3, 5), "shape": (5, 1, 1, 16, 16), "range": ((1,3), (1,3), (1,3)), "dtype": 'float16', "format": "ND"}
-    output_dynamic = {"ori_shape": (5, 2, 5), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND"}
+    input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    input_x2_dynamic = {"ori_shape": (5, 3, 5), "shape": (5, 1, 1, 16, 16), "range": ((1,3), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    output_dynamic = {"ori_shape": (5, 2, 5), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
     bias_dynamic = {"ori_shape": (5, ), "dtype": 'float16', "shape": (5,), "format": "ND", "ori_format": "ND", "range": (1, 48)}
     batch_matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, output_z=output_dynamic,
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",

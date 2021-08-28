@@ -57,7 +57,7 @@ def gen_matmul_fuzzy_case(shape_a, shape_b, m_range, k_range, n_range, src_dtype
     return {
         "params": [x1, x2, bias, None, y, trans_a, trans_b],
         "case_name": case_name,
-        "expect": "success" 
+        "expect": "success"
     }
 
 
@@ -66,7 +66,7 @@ def _generate_missing_support_info(range_m, range_k, range_n):
         {
             "inputs": [
                 {
-                    "index": 0, 
+                    "index": 0,
                     "tensor": [
                         {
                             "shape": [-1, -1],
@@ -75,7 +75,7 @@ def _generate_missing_support_info(range_m, range_k, range_n):
                     ]
                 },
                 {
-                    "index": 0, 
+                    "index": 0,
                     "tensor": [
                         {
                             "shape": [-1, -1],
@@ -86,7 +86,7 @@ def _generate_missing_support_info(range_m, range_k, range_n):
             ],
             "outputs": [
                 {
-                    "index": 0, 
+                    "index": 0,
                     "tensor": [
                         {
                             "shape": [-1, -1],
@@ -115,6 +115,22 @@ for case in matmul_case_succ:
 
 ut_case.add_cust_test_func(test_func=test_matmul_generalization)
 
+def test_matmul_generalization_nz(test_arg):
+    from impl.dynamic.mat_mul import matmul_generalization
+    input_x1_dynamic = {"ori_shape": (1, 1, 16, 16), "shape": (1, 1, 16, 16),
+                        "range": ((1, 3), (1, 3), (16, 16), (16, 16)),
+                        "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "FRACTAL_NZ"}
+    input_x2_dynamic = {"ori_shape": (1, 1, 16, 16), "shape": (1, 1, 16, 16),
+                        "range": ((1, 3), (1, 3), (16, 16), (16, 16)),
+                        "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "FRACTAL_NZ"}
+    output_dynamic = {"ori_shape": (1, 1, 16, 16), "shape": (1, 1, 16, 16),
+                      "range": ((1, 3), (1, 3), (16, 16), (16, 16)),
+                      "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "FRACTAL_NZ"}
+    matmul_generalization(input_x1_dynamic, input_x2_dynamic, None, {}, output_dynamic,
+                          trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul_generalization_nz",
+                          generalize_config={"mode": "keep_rank"})
+
+ut_case.add_cust_test_func(test_func=test_matmul_generalization_nz)
 
 if __name__ == "__main__":
     with op_context.OpContext("dynamic"):

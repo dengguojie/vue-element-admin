@@ -18,6 +18,8 @@ dynamic batch_matmul
 import math
 
 from impl.util import fusion_util
+from impl.util import util_common
+from impl.util import util_gemm
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import error_manager_cube
@@ -29,7 +31,6 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
-from impl.util.util_common import cal_mini_l1_size_matmul
 
 
 # General limitation of the size for input shape: 2**31 - 1
@@ -109,7 +110,7 @@ def get_op_support_info(input_x1, input_x2, bias=None, output_z=None,
     ]
 
     axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b + axis_split_matrix_batch
-    min_l1space = cal_mini_l1_size_matmul(dtype_b)
+    min_l1space = util_common.cal_mini_l1_size_matmul(dtype_b)
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(
         axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
 
@@ -451,34 +452,23 @@ def batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z,
     return {"op_placeholder": tensor_list, "op_res": [op_res]}
 
 
-def _generate_unknown_shape(shape):
-    return [DYNAMIC_FLAG for i in shape]
-
-
-def _generalize_input_keep_rank(input_dict) :
-    if input_dict["format"] in ("NHWC", "ND"):
-        input_dict["shape"] = _generate_unknown_shape(input_dict["shape"])
-        input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
-    else:
-        x_old_1 = input_dict["shape"][-1]
-        x_old_2 = input_dict["shape"][-2]
-        input_dict["shape"] = _generate_unknown_shape(input_dict["shape"])
-        input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
-        input_dict["shape"][-1] = x_old_1
-        input_dict["shape"][-2] = x_old_2
-
-
 @tbe_register.register_param_generalization("BatchMatMul")
-def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
+def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z=None,
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul",
                                 generalize_config={"mode": "keep_rank"}):
     result = []
     if generalize_config["mode"] == "keep_rank": # fuzzy compile
-        _generalize_input_keep_rank(input_x1)
-        _generalize_input_keep_rank(input_x2)
+        # get range generalization
+        ori_range_x1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"], input_x1["ori_format"])
+        ori_range_x2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"], input_x2["ori_format"])
+        util_gemm.generalize_input_keep_rank_gemm(input_x1)
+        util_gemm.generalize_input_keep_rank_gemm(input_x2)
+        input_x1["ori_range"], input_x2["ori_range"] = ori_range_x1, ori_range_x2
         if bias:
-            _generalize_input_keep_rank(bias)
-        _generalize_input_keep_rank(output_z)
+            ori_range_bias = util_gemm.cal_gemm_shape_range(bias["ori_shape"], bias["ori_format"])
+            util_gemm.generalize_input_keep_rank_gemm(bias)
+            bias["ori_range"] = ori_range_bias
+        util_gemm.generalize_input_keep_rank_gemm(output_z)
         result.append([input_x1, input_x2, bias, output_z, {"trans_a": trans_a}, {"trans_b": trans_b}])
     else:
         error_manager_cube.raise_err_one_para(

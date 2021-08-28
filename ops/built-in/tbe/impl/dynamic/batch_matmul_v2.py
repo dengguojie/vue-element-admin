@@ -15,12 +15,15 @@
 """
 dynamic batch_matmul_v2
 """
+from impl.util import util_gemm
 from impl.dynamic.batch_matmul import batch_matmul
 from impl.dynamic.batch_matmul import batch_matmul_fuse_compute
 from impl.dynamic.batch_matmul import get_op_support_info as get_op_support_info_batchmatmul
+from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_register
 
 
 def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
@@ -65,6 +68,35 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=None, offset_w=None, o
         A dict object, dict with input tensor and output tensor
     """
     return batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z, trans_a, trans_b, kernel_name)
+
+
+@tbe_register.register_param_generalization("BatchMatMulV2")
+def batch_matmul_v2_generalization(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
+                                   trans_a=False, trans_b=False, offset_x=0, kernel_name="batch_matmul",
+                                   generalize_config={"mode": "keep_rank"}):
+    result = []
+    if generalize_config["mode"] == "keep_rank": # fuzzy compile
+        # get range generalization
+        ori_range_x1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"], input_x1["ori_format"])
+        ori_range_x2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"], input_x2["ori_format"])
+        util_gemm.generalize_input_keep_rank_gemm(input_x1)
+        util_gemm.generalize_input_keep_rank_gemm(input_x2)
+        input_x1["ori_range"], input_x2["ori_range"] = ori_range_x1, ori_range_x2
+        if bias:
+            ori_range_bias = util_gemm.cal_gemm_shape_range(bias["ori_shape"], bias["ori_format"])
+            util_gemm.generalize_input_keep_rank_gemm(bias)
+            bias["ori_range"] = ori_range_bias
+        util_gemm.generalize_input_keep_rank_gemm(output_z)
+        result.append([input_x1, input_x2, bias, offset_w, output_z, {"trans_a": trans_a}, {"trans_b": trans_b},
+                       {"offset_x": offset_x}])
+    else:
+        error_manager_cube.raise_err_one_para(
+            "E62306",
+            "BatchMatMulV2",
+            "Invalid generalize mode, currently only support keep_rank"
+        )
+
+    return result
 
 
 @register_operator("BatchMatMulV2")

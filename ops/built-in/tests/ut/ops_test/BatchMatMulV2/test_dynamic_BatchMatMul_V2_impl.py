@@ -195,5 +195,17 @@ def test_get_op_support_info_dynamic_batchmatmul_v2(test_arg):
     get_op_support_info(x1, x2, trans_b=True)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul_v2)
 
+
+def test_batch_matmul_v2_fuzzy_generalization(test_arg):
+    from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
+    input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    input_x2_dynamic = {"ori_shape": (5, 3, 5), "shape": (5, 1, 1, 16, 16), "range": ((1,3), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    output_dynamic = {"ori_shape": (5, 2, 5), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    bias_dynamic = {"ori_shape": (5, ), "dtype": 'float16', "shape": (5,), "format": "ND", "ori_format": "ND", "range": (1, 48)}
+    batch_matmul_v2_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, offset_w={}, output_z=output_dynamic,
+                                   trans_a=False, trans_b=False, offset_x=0, kernel_name="batchmatmul_generalization",
+                                   generalize_config={"mode": "keep_rank"})
+ut_case.add_cust_test_func(test_func=test_batch_matmul_v2_fuzzy_generalization)
+
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend910"])
