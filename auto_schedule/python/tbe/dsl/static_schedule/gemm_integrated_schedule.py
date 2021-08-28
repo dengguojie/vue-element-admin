@@ -18,6 +18,8 @@
 gemm schedule
 """
 from enum import Enum
+from queue import Queue
+import functools
 from collections.abc import Iterable
 
 from tbe import tvm
@@ -59,6 +61,9 @@ class GemmSchedule(object):
     DTYPE_WIDTH_MAP = {"uint64": 4, "float16": 1, "float32": 2, "int32": 2,
                        "int16": 1, "uint16": 1, "int8": 0.5, "uint8": 0.5,
                        "int4": 0.25, "bool": 0.5}
+    BYTES_DTYPE = {"uint64": 8, "float16": 2, "float32": 4, "int32": 4,
+                    "int16": 2, "uint16": 2, "int8": 1, "uint8": 1,
+                    "int4": 0.5, "bool": 1}
     INPUT_SIZE = {"fp162fp16": 2, "fp162fp32": 2, "int82int32": 1, "int82fp32": 1, "int42int32": 0.5}
     L1_L0_SIZE = {"fp162fp16": 2, "fp162fp32": 2, "int82int32": 1, "int82fp32": 2, "int42int32": 0.5}
     OUTPUT_SIZE = {"fp162fp16": 2, "fp162fp32": 4, "int82int32": 4, "int82fp32": 4, "int42int32": 4}
@@ -175,6 +180,7 @@ class GemmSchedule(object):
         self.fusion_ele = list()
         self.tensor_fusion_list = list()
         self.compute_inline_list = list()
+        self.elewise_compute_inline_list = list()
         self.fusion_tensor_cub = list()
         self.fuse_num_group = list()
         self.gm_ub = None
@@ -834,7 +840,7 @@ class GemmSchedule(object):
                     if ten_i == parent:
                         axpy_and_parent[index][1] = ele_ub
                 tensor_ele_ub.append(ele_ub)
-                self._add_tensor_to_list(ten_i, [self.compute_inline_list])
+                self._add_tensor_to_list(ten_i, [self.elewise_compute_inline_list])
         if axpy_and_parent:
             return dict(axpy_and_parent)
         return dict()
@@ -1579,7 +1585,19 @@ class GemmSchedule(object):
 
         c_type = self.res.dtype
         a_shape, b_shape = self._get_tiling_param()
-        a_ub_fuse_num, b_ub_fuse_num, fused_num = self._compute_buffer_used_multi()
+        a_ub_fuse_num, b_ub_fuse_num = self._compute_ab_buffer()
+
+        not_count_list = []
+        for tensor_in in self.compute_inline_list:
+            if tensor_in not in self.placeholder_tensors:
+                not_count_list.append(tensor_in)
+        calculate_multi_ub = CalculateMultiUB(self.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
+        ub_res = calculate_multi_ub.calculate_multi_ub_enter()
+        fused_num = ub_res / self.BYTES_DTYPE[c_type] - 1
+        # Distinguish between fused add non fused scenes with same input parameter
+        if "te_fused_op_mat_mul_mul" in self.kernel_name:
+            fused_num += 1
+
         self.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, fused_num]
         mad_type = self.MAD_TYPE.get(str(self.ops_data_flow_mode))
         bias_flag = self.TENSOR_MAP.get("c_add_bias") is not None
@@ -3579,7 +3597,8 @@ class GemmSchedule(object):
             self.tiling["block_dim"] = [1, 1, 1, 1]
 
     def _do_compute_inline(self):
-        for tensor in self.compute_inline_list:
+        self.elewise_compute_inline_list += self.compute_inline_list
+        for tensor in self.elewise_compute_inline_list:
             self.sch[tensor].compute_inline()
 
     def _set_requant_transfer_buffer_align(self):
@@ -3819,13 +3838,7 @@ class GemmSchedule(object):
             else:
                 current_op.pragma(pragma_axis, "json_info_cache_read_mode", 1)
 
-    def _set_buffer_used_multi_custom(self, fused_num):
-        all_tags = self._get_all_tags(self.res)
-        if "dropout_broadcast" in all_tags:
-            fused_num = 2.5
-        return fused_num
-
-    def _compute_buffer_used_multi(self):
+    def _compute_ab_buffer(self):
         """
         Calculates the number of times the space used. The value is based on fp16.
         """
@@ -3838,7 +3851,7 @@ class GemmSchedule(object):
             not_need_conuted_tensor_list = list()
             fused_num = 0
             for tensor in tensor_list:
-                if tensor in self.compute_inline_list:
+                if tensor in self.elewise_compute_inline_list + self.compute_inline_list:
                     continue
                 if tensor in buffer_reuse_dict:
                     anthor_tensor = buffer_reuse_dict.get(tensor)
@@ -3871,137 +3884,7 @@ class GemmSchedule(object):
         else:
             b_fused_num = 0
 
-        # if not fusion
-        if self.TENSOR_MAP.get("c_gm") == self.res:
-            c_fused_num = int(enter(self.tensors_in_cub, self.res.dtype))
-        else:
-            # elewise fusion not support alpha and beta and C now
-            c_ub_fract = self.TENSOR_MAP.get("c_ub_fract")
-            c_ub_cast_to_fp16 = self.TENSOR_MAP.get("cast_to_fp16")
-            c_ub = c_ub_cast_to_fp16 if c_ub_cast_to_fp16 is not None else c_ub_fract
-            nz_to_nd = self.TENSOR_MAP.get("nz_to_nd")
-            ub_res_byte = self._get_scope_byte_size(c_ub, nz_to_nd)
-            ub_res_byte = self._get_ub_res_byte(self._get_out_tensors_width,
-                                                self.dequant_activation_tensor, self.fusion_ele, self.res,
-                                                ub_res_byte)
-            c_fused_num = ub_res_byte // self.DTYPE_WIDTH_MAP[self.res.dtype] - 1
-            c_fused_num = self._set_buffer_used_multi_custom(c_fused_num)
-        return a_fused_num, b_fused_num, c_fused_num
-
-    def _get_scope_byte_size(self, tensor_ub, tensor_ub_fract):
-        """
-        get unit byte size for buffer scope
-        """
-        # Calculating tiling para need a_ub info
-        ub_byte = 0
-        if tensor_ub is not None:
-            ub_byte = int(self.DTYPE_WIDTH_MAP[tensor_ub.dtype] * 2)
-            if tensor_ub_fract is not None:
-                ub_byte = ub_byte * 2
-        return ub_byte
-
-    def _get_ub_res_byte(self, _get_out_tensors_width, dequant_activation_tensor,
-                         fusion_ele, res, ub_res_byte):
-        """
-        calculate res ub byte by width
-        """
-        if fusion_ele or dequant_activation_tensor:
-            width = _get_out_tensors_width(res)
-            res_byte = self.DTYPE_WIDTH_MAP[res.dtype]
-            if ub_res_byte < width * res_byte:
-                ub_res_byte = width * res_byte
-        return ub_res_byte
-
-    def _get_out_tensors_width(self, out_tensor):
-        """
-        get max width for tensors
-
-        Parameters
-        ----------
-        out_tensor : tensor
-            need to count all its input tensorss
-
-        Return
-        ------
-            max width for tensors
-        """
-        # pylint: cell-var-from-loop
-        in_out_tensor_map = {}
-        self._gen_in_out_tensor_map(out_tensor, in_out_tensor_map)
-        stack = [out_tensor]
-        width = len(stack)
-        visited_list = []
-        tmp_stack = stack
-        tensor_c_gm = self.TENSOR_MAP.get("c_gm")
-        matmul_end_tensor = tensor_c_gm.op.input_tensors[0]
-        while tmp_stack:
-            for tens in tmp_stack:
-                if "broadcast" in tens.op.tag:
-                    stack.remove(tens)
-                    continue
-                if tens in in_out_tensor_map:
-                    def calc_width_mid(width):
-                        """
-                        get mid tesnor width
-                        """
-                        all_out = True
-                        for out_ten in in_out_tensor_map[tens]:  # pylint: disable=W0640
-                            if out_ten not in visited_list:
-                                all_out = False
-                        if all_out and (tens not in visited_list):  # pylint: disable=W0640
-                            visited_list.append(tens)  # pylint: disable=W0640
-                            stack.remove(tens)  # pylint: disable=W0640
-                            # the shape of deq_scale is very small
-                            if tens.op.tag not in self.DEQ_SCALE_CHILD_LIST:
-                                for in_ten in tens.op.input_tensors:  # pylint: disable=W0640
-                                    if in_ten not in stack and \
-                                            in_ten != matmul_end_tensor:
-                                        stack.append(in_ten)
-                            else:
-                                stack.append(tens.op.input_tensors[0])
-                            width_local = 0
-                            cast_flag = False
-                            for ele in stack:
-                                width_local = width_local + self.DTYPE_WIDTH_MAP[ele.dtype]
-                                if self.DTYPE_WIDTH_MAP[ele.dtype] == 2:
-                                    cast_flag = True
-                            if width_local == 2 and cast_flag:
-                                width_local = 3
-                            if width_local > width:
-                                width = width_local
-                        return width
-
-                    width = calc_width_mid(width)
-
-                else:
-                    def calc_width_tail(width):
-                        """
-                        get tail tesnor width
-                        """
-                        # pylint: cell-var-from-loop
-                        visited_list.append(tens)  # pylint: disable=W0640
-                        stack.remove(tens)  # pylint: disable=W0640
-                        for in_ten in tens.op.input_tensors:  # pylint: disable=W0640
-                            if in_ten not in stack and in_ten != matmul_end_tensor:
-                                stack.append(in_ten)
-                        width_local = 0
-                        cast_flag = False
-                        for ele in stack:
-                            width_local = width_local + self.DTYPE_WIDTH_MAP[ele.dtype]
-                            if self.DTYPE_WIDTH_MAP[ele.dtype] == 2:
-                                cast_flag = True
-                        if width_local == 2 and cast_flag:
-                            width_local = 3
-                        if width_local > width:
-                            width = width_local
-                        return width
-
-                    width = calc_width_tail(width)
-
-            tmp_stack = []
-            for ele in stack:
-                tmp_stack.append(ele)
-        return width
+        return a_fused_num, b_fused_num
 
     def _mem_process(self):
         sch = self.sch
@@ -4093,3 +3976,99 @@ class GemmSchedule(object):
         if self.have_batch and (batch_range is not None):
             batch_shape = self.TENSOR_MAP.get("c_l0c").shape[0]
             self.sch.set_var_range(batch_shape, *batch_range)
+
+
+class FormatType(Enum):
+    """
+    format type
+    """
+    FRACTAL_NZ = 0
+    ND = 1
+
+
+class CalculateMultiUB(object):
+
+    BYTES_DTYPE = {"uint64": 8, "float16": 2, "float32": 4, "int32": 4,
+                    "int16": 2, "uint16": 2, "int8": 1, "uint8": 1,
+                    "int4": 0.5, "bool": 1}
+
+    def __init__(self, start_tensor, end_tensor, not_count_list):
+        self.start_tensor = start_tensor
+        self.end_tensor = end_tensor
+        self.not_count_list = not_count_list
+        self.tensor_occur_times = dict()
+        self.ub_res = 0
+        self.end_tensor_shape = 0
+
+    def calculate_multi_ub_enter(self):
+        self.end_tensor_shape = functools.reduce(lambda x, y: x*y, self.end_tensor.shape)
+        self.end_tensor_shape = self.end_tensor_shape.value if hasattr(self.end_tensor_shape, "value") else self.end_tensor_shape
+        self._calculate_multi_ub_auto()
+        return self.ub_res
+
+    def _calculate_multi_ub_auto(self):
+        tensor_q = Queue()
+        tensor_q.put(self.end_tensor)
+        while not tensor_q.empty():
+            tensor_out = tensor_q.get()
+            if tensor_out == self.start_tensor:
+                self._compute_result(tensor_out)
+                continue
+            merge_flag = False
+            input_tensors = list(tensor_out.op.input_tensors)
+            for tensor_in in input_tensors:
+                if tensor_in in self.tensor_occur_times.keys():
+                    continue
+                else:
+                    if tensor_in in self.not_count_list:
+                        if tensor_in != self.start_tensor:
+                            self._merge_compute_inline(tensor_in, input_tensors)
+                        continue
+                    tensor_q.put(tensor_in)
+                    self.tensor_occur_times[tensor_in] = 1
+                    if merge_flag:
+                        continue
+                    if self._can_merge(tensor_out, tensor_in):
+                        merge_flag = True
+            if not merge_flag:
+                self._compute_result(tensor_out)
+        return
+
+    def _merge_compute_inline(self, tensor, input_tensors):
+        tensor_not_count_q = Queue()
+        tensor_not_count_q.put(tensor)
+        while not tensor_not_count_q.empty():
+            cur_tensor = tensor_not_count_q.get()
+            for next_tensor in list(cur_tensor.op.input_tensors):
+                if next_tensor in self.not_count_list:
+                    if next_tensor != self.start_tensor:
+                        tensor_not_count_q.put(next_tensor)
+                else:
+                    input_tensors.append(next_tensor)
+        return
+
+    def _can_merge(self, tensor_out, tensor_in):
+        tensor_out_dtype = tensor_out.dtype
+        tensor_out_format = FormatType.FRACTAL_NZ if len(tensor_out.shape) in (4, 5) else FormatType.ND
+        tensor_in_dtype = tensor_in.dtype
+        tensor_in_format = FormatType.FRACTAL_NZ if len(tensor_in.shape) in (4, 5) else FormatType.ND
+
+        if self._not_count(tensor_in):
+            return False
+        can_merge = (tensor_out_dtype == tensor_in_dtype) and (tensor_out_format == tensor_in_format)
+        return can_merge
+
+    def _compute_result(self, tensor):
+        if self._not_count(tensor):
+            return
+        self.ub_res += self.BYTES_DTYPE[tensor.dtype]
+        return
+
+    def _not_count(self, tensor):
+        if tensor in self.not_count_list:
+            return True
+        shape_size = functools.reduce(lambda x, y: x*y, tensor.shape)
+        shape_size = shape_size.value if hasattr(shape_size, "value") else shape_size
+        if shape_size == 1 or shape_size * 4 <= self.end_tensor_shape:
+            return True
+        return False

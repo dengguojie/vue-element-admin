@@ -602,9 +602,6 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
         use_old_code = True
     if info_str in black_list_1980:
         use_old_code = True
-    # ACL_BERTBASE excute fail
-    if kernel_name.find("gelu") != -1 and kernel_name.find("batch_matmul") == -1:
-        use_old_code = True
 
     return use_old_code
 
