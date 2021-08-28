@@ -31,6 +31,7 @@
 #include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace std;
 using namespace ge;
@@ -106,6 +107,7 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul node is null, fusion failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(reduceSumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reduce sum node is null, fusion failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(subNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sub node is null, fusion failed."), return PARAM_INVALID);
+  NOT_CHANGED_WITH_DYNAMIC_NODE({mulNode}); // dynamic not changed
 
   // check all nodes input size
   int inputSize = 0;

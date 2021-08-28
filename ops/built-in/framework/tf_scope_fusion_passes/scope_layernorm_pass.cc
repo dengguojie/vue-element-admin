@@ -81,6 +81,16 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
                 return FAILED;
             }
         }
+        if (mode_def->GetName().find("moments/variance") != std::string::npos){
+          if (mode_def->GetName().find("generator/ResBlock") != std::string::npos) {
+            OP_LOGI(kOpType, "generator/ResBlock is found, %s", mode_def->GetName().c_str());
+            return FAILED;
+          }
+          if (mode_def->GetName().find("generator/BN/moments/variance") != std::string::npos) {
+            OP_LOGI(kOpType, "generator/BN/moments/variance is found %s", mode_def->GetName().c_str());
+            return FAILED;
+          }
+        }
     }
     // tf2.x can not do scope fusion
     if (scope->Name().find("batchnorm/mul") != std::string::npos) {
@@ -226,6 +236,7 @@ void ScopeLayerNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& patterns) 
   moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mean", 2));               // Mean num is 2
   moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("SquaredDifference", 1));  // SquaredDifference num is 1
   moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1));           // Squeeze num is 0
+  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("StopGradient", -1));
   moments_cell->AddScopeFeature(ScopeFeature("", -1, "moments"));
 
   batch.push_back(moments_cell);
