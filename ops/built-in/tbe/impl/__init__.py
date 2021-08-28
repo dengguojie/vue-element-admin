@@ -55,7 +55,8 @@ from .clip_by_value import clip_by_value
 from .div_no_nan import div_no_nan
 from .swish import swish
 from .hard_swish import hard_swish
-
+from .swish_grad import swish_grad
+from .hard_swish_grad import hard_swish_grad
 # tbe it2
 from .asinh_grad import asinh_grad
 from .acosh_grad import acosh_grad

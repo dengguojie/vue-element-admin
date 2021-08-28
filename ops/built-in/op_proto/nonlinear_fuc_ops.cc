@@ -95,6 +95,16 @@ COMMON_INFER_FUNC_REG(HardSwish, OneInOneOutCommonInferShape);
 COMMON_INFER_FUNC_REG(Swish, OneInOneOutCommonInferShape);
 // --------------Swish END-----------------
 
+// ----------------------SwishGrad----------------------
+IMPLEMT_COMMON_INFERFUNC(SwishGradInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"grad_x"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(SwishGrad, SwishGradInferShape);
+// ----------------------SwishGrad END----------------------
+
 // ----------------HardSwishGrad------------------
 IMPLEMT_COMMON_INFERFUNC(HardSwishGradInferShape) {
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
