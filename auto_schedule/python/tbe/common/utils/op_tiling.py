@@ -102,7 +102,9 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
 
 
 def decode(tiling_data, fmt):
-    """decode tiling data"""
+    """
+    decode tiling data
+    """
     offset = 0
 
     def _get_value(tiling_data, fmt, offset=0):

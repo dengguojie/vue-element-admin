@@ -25,7 +25,8 @@
 
 namespace optiling {
 
-bool Norm::IsInVector(std::vector<int32_t>& shape, int32_t value) {
+bool Norm::IsInVector(std::vector<int32_t>& shape, int32_t value)
+{
   for (uint32_t i = 0; i < shape.size(); i++) {
     if (shape[i] == value) {
       return true;
@@ -34,7 +35,8 @@ bool Norm::IsInVector(std::vector<int32_t>& shape, int32_t value) {
   return false;
 }
 
-int64_t Norm::CalcAfterReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis) {
+int64_t Norm::CalcAfterReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis)
+{
   int64_t result = 1;
   for (std::size_t i = 0; i < shape.size(); i++) {
     if (!IsInVector(axis, i)) {
@@ -44,7 +46,8 @@ int64_t Norm::CalcAfterReduceShapeProduct(std::vector<int64_t>& shape, std::vect
   return result;
 }
 
-int64_t Norm::CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis) {
+int64_t Norm::CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis)
+{
   int64_t result = 1;
   for (std::size_t i = 0; i < shape.size(); i++) {
     if (IsInVector(axis, i)) {
@@ -54,7 +57,8 @@ int64_t Norm::CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<in
   return result;
 }
 
-bool Norm::GetInput() {
+bool Norm::GetInput()
+{
   int64_t max_product = -1;
   std::vector<int64_t> local_input_shape{std::vector<int64_t>(10, 0)};
   // find before reduce shape
@@ -71,7 +75,8 @@ bool Norm::GetInput() {
   return true;
 }
 
-bool Norm::Init() {
+bool Norm::Init()
+{
   try {
     reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
 
@@ -101,7 +106,8 @@ bool Norm::Init() {
   return true;
 }
 
-bool Norm::FusedReduceAxis() {
+bool Norm::FusedReduceAxis()
+{
   /* fuse axes of the same type
    * if after fused, pattern is R, pattern will be AR by padding "1".
    * */
@@ -160,7 +166,8 @@ bool Norm::FusedReduceAxis() {
   return true;
 }
 
-bool Norm::GetCompileInfo() {
+bool Norm::GetCompileInfo()
+{
   std::vector<int32_t> common_info;
   try {
     common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
@@ -204,7 +211,6 @@ bool Norm::GetCompileInfo() {
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %ld that is illegal",
                                                       compileInfo.workspace_max_ub_count),
                       return false);
-
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: GetCompileInfo error. Error message: %s", e.what());
     return false;
@@ -213,7 +219,8 @@ bool Norm::GetCompileInfo() {
   return true;
 }
 
-int32_t Norm::CalcPattern(std::vector<int64_t>& shape, std::vector<int32_t>& axis) {
+int32_t Norm::CalcPattern(std::vector<int64_t>& shape, std::vector<int32_t>& axis)
+{
   int32_t pattern = 0;
   for (std::size_t i = 0; i < shape.size(); i++) {
     if (IsInVector(axis, i)) {
@@ -225,7 +232,8 @@ int32_t Norm::CalcPattern(std::vector<int64_t>& shape, std::vector<int32_t>& axi
   return pattern;
 }
 
-bool Norm::IsNeedWorkspace() {
+bool Norm::IsNeedWorkspace()
+{
   if (!is_split_block) {
     return true;
   }
@@ -251,7 +259,8 @@ bool Norm::IsNeedWorkspace() {
   return shape_product > compileInfo.max_ub_count ? true : false;
 }
 
-bool Norm::GetWorkspaceBlockTilingInfo() {
+bool Norm::GetWorkspaceBlockTilingInfo()
+{
   // reduce is workspace tensor and need after_reduce_size > ub_size
   int64_t left_product = 1;
   int64_t right_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
@@ -341,7 +350,8 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
   return false;
 }
 
-bool Norm::GetBlockTilingInfo() {
+bool Norm::GetBlockTilingInfo()
+{
   if (is_partial_reorder) {
     // don't split block
     tilingInfo.block_tiling_axis = first_a_axis_index;
@@ -432,7 +442,8 @@ bool Norm::GetBlockTilingInfo() {
   return false;
 }
 
-int32_t Norm::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) {
+int32_t Norm::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor)
+{
   int32_t block_dim = 1;
   for (int32_t i = 0; i <= tiling_axis; i++) {
     if (IsInVector(reduce_axis, i)) {
@@ -449,7 +460,8 @@ int32_t Norm::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) {
   return block_dim;
 }
 
-bool Norm::ProcessReorderAxis() {
+bool Norm::ProcessReorderAxis()
+{
   /* InputShape: a0,r0,a1,r1,a2,r2,r3,a3
    *                    |---> block_tiling_axis
    *                    |---> core = a0*a1
@@ -499,7 +511,8 @@ bool Norm::ProcessReorderAxis() {
   return true;
 }
 
-int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_axis_in_reorder) {
+int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_axis_in_reorder)
+{
   int64_t result = 1;
 
   for (uint32_t i = axis_index + 1; i < reorderInfo.reorder_input_shape.size(); i++) {
@@ -515,7 +528,8 @@ int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_a
   return result;
 }
 
-int64_t Norm::CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_tiling_axis_in_reorder) {
+int64_t Norm::CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_tiling_axis_in_reorder)
+{
   int64_t result = 1;
 
   for (uint32_t i = axis_index + 1; i < reorderInfo.reorder_input_shape.size(); i++) {
@@ -544,7 +558,8 @@ int64_t Norm::CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_til
   return result;
 }
 
-bool Norm::PartialReorderUbTiling() {
+bool Norm::PartialReorderUbTiling()
+{
   if (!is_partial_reorder) {
     return false;
   }
@@ -567,7 +582,8 @@ bool Norm::PartialReorderUbTiling() {
   return false;
 }
 
-bool Norm::GetUbTilingInfo() {
+bool Norm::GetUbTilingInfo()
+{
   if (PartialReorderUbTiling()) {
     return true;
   }
@@ -628,7 +644,6 @@ bool Norm::GetUbTilingInfo() {
     tilingInfo.ub_tiling_axis = first_a_axis_index;
     tilingInfo.ub_tiling_factor = input_shape[first_a_axis_index];
     return true;
-
   } else {
     // workspace, ub split R
     for (int32_t i = 0; i < (int32_t)reorderInfo.reorder_input_shape.size(); i++) {
@@ -669,7 +684,8 @@ bool Norm::GetUbTilingInfo() {
 }
 
 // block split last common axis, block factor can refine to align
-bool Norm::NeedRefineBlockTiling() {
+bool Norm::NeedRefineBlockTiling()
+{
   if (is_last_axis_reduce || tilingInfo.block_tiling_axis != (int32_t)input_shape.size() - 1) {
     return false;
   }
@@ -689,7 +705,8 @@ bool Norm::NeedRefineBlockTiling() {
   return true;
 }
 
-bool Norm::ProcessTiling() {
+bool Norm::ProcessTiling()
+{
   bool ret = true;
   if (is_split_block) {
     ret = ret && GetBlockTilingInfo();
@@ -713,7 +730,8 @@ bool Norm::ProcessTiling() {
   return ret;
 }
 
-bool Norm::DoTiling() {
+bool Norm::DoTiling()
+{
   /* Situations of DoTiling include:
      1. input(known):
         status of compile: do others except FusedReduceAxis
@@ -797,7 +815,8 @@ bool Norm::DoTiling() {
   return ret;
 }
 
-int32_t Norm::CalcTilingKey() {
+int32_t Norm::CalcTilingKey()
+{
   std::vector<int> pos;
   std::vector<int> coefficient;
   if (is_split_block) {
@@ -814,7 +833,8 @@ int32_t Norm::CalcTilingKey() {
   return key;
 }
 
-bool Norm::CalcWorkspace() {
+bool Norm::CalcWorkspace()
+{
   if (compileInfo.workspace_type.size() != 0) {
     if (is_need_workspace) {
       int64_t shape_after_reduce_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
@@ -843,7 +863,8 @@ bool Norm::CalcWorkspace() {
   return true;
 }
 
-bool Norm::ConstInputProcPost() {
+bool Norm::ConstInputProcPost()
+{
   // runtime
   try {
     int32_t const_tiling_key = op_info.at("_const_tiling_key").get<std::int32_t>();
@@ -862,7 +883,8 @@ bool Norm::ConstInputProcPost() {
   return true;
 }
 
-bool Norm::WriteTilingData() {
+bool Norm::WriteTilingData()
+{
   if (compileInfo.is_const_post) {
     // runtime
     return ConstInputProcPost();
@@ -904,7 +926,8 @@ bool Norm::WriteTilingData() {
 }
 
 bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                utils::OpRunInfo& run_info) {
+                utils::OpRunInfo& run_info)
+{
   OP_LOGD(op_type.c_str(), "norm tiling running");
   Norm norm(op_type, op_paras, op_info, run_info);
   bool ret = norm.GetInput();

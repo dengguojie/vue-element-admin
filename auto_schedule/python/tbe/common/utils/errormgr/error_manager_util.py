@@ -24,9 +24,9 @@ import os
 def get_error_message(args):
     """
     :param args: dict
-        keys in dict must be in accordance with xlsx
+    keys in dict must be in accordance with xlsx
     :return: string
-            formatted message
+    formatted message
     """
     error_code = args.get("errCode")
     file_name = os.path.dirname(os.path.abspath(__file__))
