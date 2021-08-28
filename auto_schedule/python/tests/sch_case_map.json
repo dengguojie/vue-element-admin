@@ -237,6 +237,10 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/reduce_tilingcase.py":[
         "reduce_sum"
     ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector_info.py":[
+        "reduce_sum",
+        "reduce_max"
+    ],
     "auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"

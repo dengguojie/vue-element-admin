@@ -143,7 +143,7 @@ class ComputeGraphInfo:
         def _fake_node_compute(tensors):
             # fake_node must be the biggest node (type and shape)
             dtype = tensors[0].dtype
-            dim_length = max([len(t.shape) for t in tensors])
+            dim_length = max(len(t.shape) for t in tensors)
             shape = [1] * dim_length
 
             # update fake_node's shape and dtype
@@ -353,9 +353,9 @@ class ComputeGraphInfo:
                         _dict["_bNodeNum"].append(dtype)
                         self.soc_ub_size -= 2048
 
-            def getDtypesSupportVcrossFunc():
+            def get_dtypes_support_vcross_func():
                 """
-                getDtypesSupportVcrossFunc
+                get_dtypes_support_vcross_func
 
                 the func get all dtypes that reduce_max and reduce_min supports vcross func (vcmax or vcmin)
                 by soc type
@@ -371,19 +371,19 @@ class ComputeGraphInfo:
 
                 return list(soc_support_dtype)
 
-            def lastReduce():
+            def _last_reduce():
                 """
                 get last reduce axis
                 """
                 return all_axes[-1] in reduce_axes
 
             def _reduce_max_min_space():
-                if not lastReduce():
+                if not _last_reduce():
                     _dict["_sNodeNum"].append(dtype)
                     self.soc_ub_size -= 64
                 else:
-                    dtypesSupportVcrossFunc = getDtypesSupportVcrossFunc()
-                    if dtype in dtypesSupportVcrossFunc:
+                    dtypes_support_vcross_func = get_dtypes_support_vcross_func()
+                    if dtype in dtypes_support_vcross_func:
                         _dict["_sNodeNum"].append(dtype)
                         _dict["_bNodeNum"].append(dtype)
                         self.soc_ub_size -= 4096
@@ -543,4 +543,4 @@ class ComputeGraphInfo:
         """
         deep copy tensor map
         """
-        return dict((key, _map[key].copy()) for key in _map)
+        return {key: _map[key].copy() for key in _map}
