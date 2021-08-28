@@ -492,7 +492,6 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     ret = CreateCastNode("_pre_cast1_node", pre_cast1_node, fused_node, graph, newNodes, img_input_desc);
     FUSION_PASS_CHECK(pre_cast1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pre_cast1_node is null."),
                       return PARAM_INVALID);
-    pre_cast1_node->GetOpDesc()->GetOutputDesc(0).SetDataType(DT_FLOAT16);
     AttrUtils::SetInt(pre_cast1_node->GetOpDesc(), "dst_type", DT_FLOAT16);
 
     // create pre_cast2_node
@@ -500,8 +499,6 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     ret = CreateCastNode("_pre_cast2_node", pre_cast2_node, fused_node, graph, newNodes, output_desc);
     FUSION_PASS_CHECK(pre_cast2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pre_cast2_node is null."),
                       return PARAM_INVALID);
-    pre_cast2_node->GetOpDesc()->GetOutputDesc(0).SetDataType(DT_UINT8);
-    pre_cast2_node->GetOpDesc()->GetInputDesc(0).SetDataType(DT_FLOAT16);
     AttrUtils::SetInt(pre_cast2_node->GetOpDesc(), "dst_type", DT_UINT8);
     // img->pre_cast1_node
     auto tmpPreDataAnchor = fused_node->GetInDataAnchor(0)->GetPeerOutAnchor();
