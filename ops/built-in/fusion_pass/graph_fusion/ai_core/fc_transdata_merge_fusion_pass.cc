@@ -115,7 +115,7 @@ Status FCTransdataMergePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   auto xShape = reshapeInputShape.GetDims();
   ge::GeShape reshapeOutputShape = reshapeOutputTensor.GetShape();
   auto yShape = reshapeOutputShape.GetDims();
-  if ((xShape.size() != NUM_2) && (yShape.size() != NUM_4)) {
+  if ((xShape.size() != NUM_2) || (yShape.size() != NUM_4)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "reshape input and output dims is not match, FCTransdataMergePass fusion end");
     return SUCCESS;
   }
