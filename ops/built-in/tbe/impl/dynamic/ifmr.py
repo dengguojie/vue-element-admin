@@ -13,28 +13,20 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-dynamic IFMR
+IFMR
 """
-
 
 # pylint: disable=import-error
 from math import ceil
-from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import tbe_platform
-# from impl.util.platform_adapter import tvm
-# from tvm import make as _make
-# from tvm import expr as _expr
-# from tvm import stmt as _stmt
-# from cce import cce_params
-# from cce.cce_runtime import PIPELINES
+from tbe import tik
 from impl.util.platform_adapter import para_check
+from tbe.common.platform.platform_info import get_bit_len
 from impl.util.platform_adapter import register_operator
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
 # pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
 # pylint: disable=too-few-public-methods
-
 
 SCALAR_MAX_FP16 = (2 ** 16 - 1)
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
@@ -44,82 +36,6 @@ ESP = 1.192092896e-07
 
 
 # pylint: disable=unused-argument
-# class Barrier:
-#     """this class should be part of tik."""
-#     def emit(self, tik_inst, stmt):
-#         """Emit a statement to the end of current scope.
-
-#         Parameters
-#         ----------
-#         stmt : Stmt or callable.
-#         The statement to be emitted or callable that build stmt given
-#         body.
-#         """
-#         if isinstance(stmt, _expr.Call):
-#             stmt = _make.Evaluate(stmt)
-#         assert isinstance(stmt, _stmt.Stmt) or callable(stmt)
-#         tik_inst._seq_stack[-1].append(stmt)
-
-#     def __init__(self, tik_instance, workspace, block_num, block_id):
-#         """soft synchronization initialize"""
-#         self.block_id = block_id
-#         self.block_num = block_num
-#         self.int32_byte_size = 4
-#         self.tik_instance = tik_instance
-#         self.gm_workspace = workspace
-#         self.seq = self.tik_instance.Scalar('int64', init_value=1)
-#         self.sync_ub = tik_instance.Tensor(
-#             'int64', (self.int32_byte_size * self.block_num,), tik.scope_ubuf, 'barrier_ub')
-#         zero = self.tik_instance.Scalar('int64')
-#         zero.set_as(0)
-#         self.sync_ub[self.block_id * self.int32_byte_size].set_as(zero)
-#         self.sync_ub[self.block_id * self.int32_byte_size + 1].set_as(zero)
-#         self.int64_max = 0x7FFFFFFFFFFFFFFF
-#         self.loop_bound = self.tik_instance.Scalar('int64')
-#         self.sync_ub[self.block_id * self.int32_byte_size].set_as(zero)
-#         self.sync_ub[self.block_id * self.int32_byte_size + 1].set_as(zero)
-#         self.tik_instance.tensor_mov(
-#             self.gm_workspace[self.block_id * self.int32_byte_size],
-#             self.sync_ub[self.block_id * self.int32_byte_size], '', 1, 1, 0, 0)
-#         self.emit(
-#             self.tik_instance, tvm.call_extern(
-#                 'int32', 'pipe_barrier', tvm.call_pure_intrin('int32', 'tvm_cce_string_print', 'PIPE_MTE3')))
-
-#     def sync(self):
-#         """ barrier sync func"""
-#         # add pipe_barrier MTE3 here manually
-#         self.emit(
-#             self.tik_instance, tvm.call_extern(
-#                 'int32', 'pipe_barrier', tvm.call_pure_intrin('int32', 'tvm_cce_string_print', 'PIPE_MTE3')))
-#         self.sync_ub[self.block_id * self.int32_byte_size + self.seq % 2].set_as(self.seq)
-#         self.tik_instance.tensor_mov(
-#             self.gm_workspace[self.block_id * self.int32_byte_size],
-#             self.sync_ub[self.block_id * self.int32_byte_size], '', 1, 1, 0, 0)
-#         self.loop_bound.set_as(self.int64_max)
-#         pipe_line_dict = dict(zip(PIPELINES.values(), PIPELINES.keys()))
-#         with self.tik_instance.new_scope():
-#             self.tik_instance.scope_attr(cce_params.CCE_AXIS, 'group_coproc_scope', pipe_line_dict['PIPE_ALL'])
-#             with self.tik_instance.for_range(0, self.loop_bound, dtype='int64'):
-#                 self.tik_instance.tensor_mov(self.sync_ub, self.gm_workspace, '', 1, self.block_num, 0, 0)
-#                 # insert set_flag wait by manual
-#                 self.emit(self.tik_instance, tvm.call_intrin(
-#                     'int32', 'tvm_cce_string_print', 'set_flag(PIPE_MTE2, PIPE_S, EVENT_ID0)'))
-#                 synced = self.tik_instance.Scalar('int64', init_value=1)
-#                 # insert wait_flag by manual. IR above all is four.
-#                 self.emit(self.tik_instance, tvm.call_intrin(
-#                     'int32', 'tvm_cce_string_print', 'wait_flag(PIPE_MTE2, PIPE_S, EVENT_ID0)'))
-
-#                 with self.tik_instance.for_range(0, self.block_num, dtype='int64') as core_id:
-#                     with self.tik_instance.if_scope(
-#                             self.sync_ub[core_id * self.int32_byte_size + self.seq % 2] != self.seq):
-#                         synced.set_as(0)
-
-#                 with self.tik_instance.if_scope(synced == 1):
-#                     self.loop_bound.set_as(0)
-
-#         self.seq.set_as(self.seq + 1)
-
-
 class Reconstruction():
     """IFMR: input feature map reconstruction"""
     def __init__(
@@ -196,11 +112,11 @@ class Reconstruction():
             self.steps_size = self.steps_size + self.vector_mask_max
         self.step_repeat = self.steps_size // self.vector_mask_max
 
-        # self.barrier_workspace = self.tik_instance.Tensor(
-        #     'int64', (self.data_byte_size * self.aicore_num,), tik.scope_gm, 'barrier_workspace', is_workspace=True,
-        #     is_atomic_add=True)
+        self.barrier_workspace = self.tik_instance.Tensor(
+            'int64', (self.data_byte_size * self.aicore_num,), tik.scope_gm, 'barrier_workspace', is_workspace=True,
+            is_atomic_add=True)
 
-        self.input_data_bytes_size = tbe_platform.get_bit_len(self.data_dtype) // 8
+        self.input_data_bytes_size = get_bit_len(self.data_dtype) // 8
         self.input_data_each_block = self.block_byte_size // self.input_data_bytes_size
 
         # dynamic shape
@@ -265,15 +181,11 @@ class Reconstruction():
             self.tik_instance.vec_dup(self.vector_mask_max, max_tensor, self.max_percentile, 1, 8)
             self.tik_instance.vec_dup(self.vector_mask_max, min_tensor, self.min_percentile, 1, 8)
 
-            # 0&1 vector for comparing, just need length of "vector_mask_max"
             zeros = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'zeros')
             ones = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'ones')
             self.tik_instance.vec_dup(self.vector_mask_max, zeros, 0, 1, 8)
             self.tik_instance.vec_dup(self.vector_mask_max, ones, 1, 1, 8)
 
-            # For convenience,  the length of the comparison results is
-            # selected from only four values, respectively 2048, 4096,
-            # 6144 and 8192
             compare_repeat = (
                 self.cumsum_num + self.vector_mask_max * self.data_byte_size * 8 - 1) // (
                     self.vector_mask_max * self.data_byte_size * 8)
@@ -491,6 +403,7 @@ class Reconstruction():
 
         repeat_time = self.tik_instance.Scalar(
             'int32', 'repeat_time', move_num % (self.vector_mask_max * 255) // self.vector_mask_max)
+
         with self.tik_instance.if_scope(repeat_time > 0):
             mse_offset.set_as(mse_loop * self.vector_mask_max * 255)
             repeat_times.set_as(repeat_time)
@@ -533,6 +446,7 @@ class Reconstruction():
 
         repeat_time = self.tik_instance.Scalar(
             'int32', 'repeat_time', move_num % (self.vector_mask_max * 255) // self.vector_mask_max)
+
         with self.tik_instance.if_scope(repeat_time > 0):
             convert_offset.set_as(convert_loop * self.vector_mask_max * 255)
             repeat_times.set_as(repeat_time)
@@ -738,7 +652,6 @@ class Reconstruction():
         IFMR compute function
         """
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
-            # self.barrier = Barrier(self.tik_instance, self.barrier_workspace, self.aicore_num, index)
 
             self.scale = self.tik_instance.Tensor('float32', (self.steps_size,), tik.scope_ubuf, 'scale')
             if self.with_offset:
@@ -748,7 +661,7 @@ class Reconstruction():
             self._compute_mse_loss(index)
 
             # define loss ub tensor here
-            # self.barrier.sync()
+            self.tik_instance.block_barrier(self.barrier_workspace)
             # core 0 do reduce
             with self.tik_instance.if_scope(index == 0):
                 self._reduce_and_output()
@@ -759,7 +672,7 @@ class Reconstruction():
         return self.tik_instance
 
 
-@register_operator('IFMR')
+@register_operator("IFMR")
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,
