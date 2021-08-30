@@ -15,11 +15,11 @@ class OpInfo:
     OpInfo store the op informat for generate the op files,
     parsed_input_info and parsed_output_info is dicts,eg:
     {name:
-        {
-        ir_type_list:[],
-        param_type:""required,
-        format_list:[]
-        }
+    {
+    ir_type_list:[],
+    param_type:""required,
+    format_list:[]
+    }
     }
     """
 

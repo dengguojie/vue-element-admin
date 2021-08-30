@@ -6,16 +6,11 @@ This file mainly involves class for generating operator files.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import sys
-    from .arg_parser import ArgParser
-    from .op_file_aicore import OpFileAiCore
-    from .op_file_aicpu import OpFileAiCpu
-    from .op_file_mindspore import OpFileMindSpore
-    from . import utils
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][op_file_generator]Unable to import module: %s." % str(
-        import_error))
+from .arg_parser import ArgParser
+from .op_file_aicore import OpFileAiCore
+from .op_file_aicpu import OpFileAiCpu
+from .op_file_mindspore import OpFileMindSpore
+from . import utils
 
 
 class OpFileGenerator:
@@ -35,7 +30,7 @@ class OpFileGenerator:
                 return OpFileMindSpore(argument)
 
             if argument.core_type == utils.AICPU:
-                return None
+                return ""
 
         if argument.core_type == utils.AICORE:
             utils.print_info_log(

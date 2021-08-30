@@ -6,39 +6,34 @@ This file mainly involves class for generating aicore operator files.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import sys
-    from .op_file import OPFile
-    from . import op_tmpl
-    from . import utils
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][op_file_aicore] Unable to import module: %s." % str(
-        import_error))
-
-CFG_INFO_TYPE_MAP = {
-    'DT_FLOAT': 'float',
-    'DT_FLOAT16': 'float16',
-    'DT_FLOAT32': 'float32',
-    'DT_INT8': 'int8',
-    'DT_INT16': 'int16',
-    'DT_INT32': 'int32',
-    'DT_INT64': 'int64',
-    'DT_UINT8': 'uint8',
-    'DT_UINT16': 'uint16',
-    'DT_UINT32': 'uint32',
-    'DT_UINT64': 'uint64',
-    'DT_BOOL': 'bool',
-    "DT_COMPLEX64": "complex64",
-    "DT_COMPLEX128": "complex128",
-    "DT_DOUBLE": "double"
-}
+import os
+from .op_file import OPFile
+from .op_tmpl import OPTmpl
+from . import utils
 
 
 class OpFileAiCore(OPFile):
     """
     CLass for generate aicore op files
     """
+
+    CFG_INFO_TYPE_MAP = {
+        'DT_FLOAT': 'float',
+        'DT_FLOAT16': 'float16',
+        'DT_FLOAT32': 'float32',
+        'DT_INT8': 'int8',
+        'DT_INT16': 'int16',
+        'DT_INT32': 'int32',
+        'DT_INT64': 'int64',
+        'DT_UINT8': 'uint8',
+        'DT_UINT16': 'uint16',
+        'DT_UINT32': 'uint32',
+        'DT_UINT64': 'uint64',
+        'DT_BOOL': 'bool',
+        "DT_COMPLEX64": "complex64",
+        "DT_COMPLEX128": "complex128",
+        "DT_DOUBLE": "double"
+    }
 
     def _generate_cmake_lists(self):
         tbe_dir = os.path.join(self.output_path, 'tbe')
@@ -54,25 +49,29 @@ class OpFileAiCore(OPFile):
         op_params_for_check = ""
         for op_input in self.op_info.parsed_input_info.values():
             input_type = op_input.get("param_type").upper()
-            op_params_for_check += "para_check.%s_INPUT, " % input_type
+            input_for_check = "para_check.%s_INPUT, " % input_type
+            op_params_for_check = "{}{}".format(op_params_for_check, input_for_check)
         for op_output in self.op_info.parsed_output_info.values():
             output_type = op_output.get("param_type").upper()
-            op_params_for_check += "para_check.%s_OUTPUT, " % output_type
+            output_for_check = "para_check.%s_OUTPUT, " % output_type
+            op_params_for_check = "{}{}".format(op_params_for_check, output_for_check)
         for op_attr in self.op_info.parsed_attr_info:
             attr_type = op_attr[1].strip()
             check_from_config = utils.CheckFromConfig()
             attr_type = check_from_config.trans_check_attr_type(attr_type)
             if utils.PARAM_TYPE_OPTIONAL in op_attr:
-                op_params_for_check += "para_check.OPTION_ATTR_%s, " % attr_type
+                opt_attr_for_check = "para_check.OPTION_ATTR_%s, " % attr_type
+                op_params_for_check = "{}{}".format(op_params_for_check, opt_attr_for_check)
             else:
-                op_params_for_check += "para_check.REQUIRED_ATTR_%s, " % attr_type
+                required_attr_for_check = "para_check.REQUIRED_ATTR_%s, " % attr_type
+                op_params_for_check = "{}{}".format(op_params_for_check, required_attr_for_check)
         op_params_for_check += "para_check.KERNEL_NAME"
         return op_params_for_check
 
     def generate_impl(self):
         """
         Function Description:
-            generate operator implementation.
+        generate operator implementation.
         Parameter:
         Return Value:
         """
@@ -83,58 +82,58 @@ class OpFileAiCore(OPFile):
                                  "impl files. Please check.")
             return
         # 1.make head string
-        head_str = op_tmpl.PY_HEAD
+        head_str = OPTmpl.PY_HEAD
         # 2.make [op_type]_compute()
         op_input = ", ".join(list(self.op_info.parsed_input_info))
         op_output = ", ".join(list(self.op_info.parsed_output_info))
         if len(self.op_info.parsed_attr_info) == 0:
-            head_str += op_tmpl.PY_COMPUTE_WITHOUT_ATTR.format(
+            head_str += OPTmpl.PY_COMPUTE_WITHOUT_ATTR.format(
                 name=self.op_info.fix_op_type,
                 input_name=op_input,
                 output=op_output)
         else:
             attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
-            head_str += op_tmpl.PY_COMPUTE_WITH_ATTR.format(
+            head_str += OPTmpl.PY_COMPUTE_WITH_ATTR.format(
                 name=self.op_info.fix_op_type,
                 input_name=op_input,
                 output=op_output,
                 attr=attr)
-        head_str += op_tmpl.PY_COMPUTE_END.format(input_name=op_input)
+        head_str += OPTmpl.PY_COMPUTE_END.format(input_name=op_input)
         # 3.make [op_type]()
         if len(self.op_info.parsed_attr_info) == 0:
-            head_str += op_tmpl.PY_DEF_WITHOUT_ATTR.format(
+            head_str += OPTmpl.PY_DEF_WITHOUT_ATTR.format(
                 op_params=op_params_for_check,
                 name=self.op_info.fix_op_type,
                 input_name=op_input,
                 output=op_output)
         else:
             attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
-            head_str += op_tmpl.PY_DEF_WITH_ATTR.format(
+            head_str += OPTmpl.PY_DEF_WITH_ATTR.format(
                 op_params=op_params_for_check,
                 name=self.op_info.fix_op_type,
                 input_name=op_input,
                 output=op_output,
                 attr=attr)
         for name in self.op_info.parsed_input_info:
-            head_str += op_tmpl.PY_PLACEHOLDER.format(name=name)
+            head_str += OPTmpl.PY_PLACEHOLDER.format(name=name)
         input_data = ", ".join("data_" + x
                                for x in self.op_info.parsed_input_info)
         output_data = ", ".join(y for y in self.op_info.parsed_output_info)
         if len(self.op_info.parsed_attr_info) == 0:
-            head_str += op_tmpl.PY_RES_WITHOUT_ATTR.format(
+            head_str += OPTmpl.PY_RES_WITHOUT_ATTR.format(
                 name=self.op_info.fix_op_type,
                 input_data=input_data,
                 output_data=output_data)
         else:
             attr = ", ".join(a[0] for a in
                              self.op_info.parsed_attr_info)
-            head_str += op_tmpl.PY_RES_WIT_ATTR.format(
+            head_str += OPTmpl.PY_RES_WIT_ATTR.format(
                 name=self.op_info.fix_op_type,
                 input_data=input_data,
                 output_data=output_data,
                 attr=attr)
-        head_str += op_tmpl.PY_TARGET_CCE
-        head_str += op_tmpl.PY_BUILD.format(input_data=input_data,
+        head_str += OPTmpl.PY_TARGET_CCE
+        head_str += OPTmpl.PY_BUILD.format(input_data=input_data,
                                             left_braces=utils.LEFT_BRACES,
                                             right_braces=utils.RIGHT_BRACES)
         # create py_dir
@@ -147,7 +146,7 @@ class OpFileAiCore(OPFile):
     def generate_info_cfg(self):
         """
         Function Description:
-            generate operator info config file
+        generate operator info config file
         Parameter:
         Return Value:
         """
@@ -156,49 +155,49 @@ class OpFileAiCore(OPFile):
                                  "the info config file. Please check.")
             return
         # 1.make [OpType], eg:[Add]
-        new_str = op_tmpl.INI_OP.format(op_type=self.op_info.op_type)
+        new_str = OPTmpl.INI_OP.format(op_type=self.op_info.op_type)
         # 2.make input string
         new_str += self._generate_input_output_info_cfg(
-            self.op_info.parsed_input_info, op_tmpl.INI_INPUT)
+            self.op_info.parsed_input_info, OPTmpl.INI_INPUT)
         # 3.make output string
         new_str += self._generate_input_output_info_cfg(
-            self.op_info.parsed_output_info, op_tmpl.INI_OUTPUT)
+            self.op_info.parsed_output_info, OPTmpl.INI_OUTPUT)
         # 4.make attr string
         if len(self.op_info.parsed_attr_info) > 0:
             attr_info = ", ".join(x[0] for x in self.op_info.parsed_attr_info)
-            new_str += op_tmpl.INI_ATTR_LIST.format(attr_info=attr_info)
+            new_str += OPTmpl.INI_ATTR_LIST.format(attr_info=attr_info)
             for attr in self.op_info.parsed_attr_info:
                 new_str = self._generate_attr_aicore(attr, new_str)
 
         # 5.make bin file string
-        new_str += op_tmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
+        new_str += OPTmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
         self._make_info_cfg_file(new_str)
 
     def _generate_attr_aicore(self, attr, new_str):
         attr_type = self._mapping_attr_type_for_ini(attr[1])
-        new_str += op_tmpl.INI_ATTR_TYPE_VALUE.format(name=attr[0],
+        new_str += OPTmpl.INI_ATTR_TYPE_VALUE.format(name=attr[0],
                                                       type=attr_type)
         if len(attr) == 4:
-            new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
+            new_str += OPTmpl.INI_ATTR_PARAM_TYPE.format(
                 name=attr[0],
                 paramType=attr[3]
             )
             if attr[2]:
-                new_str += op_tmpl.INI_ATTR_DEFAULT_VALUE.format(
+                new_str += OPTmpl.INI_ATTR_DEFAULT_VALUE.format(
                     name=attr[0],
                     defaultValue=attr[2]
                 )
         elif len(attr) == 3 and attr[2] != "":
-            new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
+            new_str += OPTmpl.INI_ATTR_PARAM_TYPE.format(
                 name=attr[0],
                 paramType=utils.PARAM_TYPE_OPTIONAL
             )
-            new_str += op_tmpl.INI_ATTR_DEFAULT_VALUE.format(
+            new_str += OPTmpl.INI_ATTR_DEFAULT_VALUE.format(
                 name=attr[0],
                 defaultValue=attr[2]
             )
         else:
-            new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
+            new_str += OPTmpl.INI_ATTR_PARAM_TYPE.format(
                 name=attr[0],
                 paramType=utils.PARAM_TYPE_REQUIRED
             )
@@ -207,12 +206,11 @@ class OpFileAiCore(OPFile):
     def _generate_input_output_info_cfg(self, parsed_info, template_string):
         new_str = ""
         for (index, name) in enumerate(parsed_info):
-            ir_types = [x for x in
-                        parsed_info[name][utils.INFO_IR_TYPES_KEY] if
-                        x != ""]
-            ini_types = [self._mapping_info_cfg_type(x) for x in
-                         ir_types]
-            ini_types = [x for x in ini_types if x != ""]
+            ir_types = list(x for x in
+                            parsed_info[name][utils.INFO_IR_TYPES_KEY] if
+                            x != "")
+            ini_types = list(self._mapping_info_cfg_type(x) for x in ir_types)
+            ini_types = list(x for x in ini_types if x != "")
             ini_types = ",".join(ini_types)
 
             # pram_type, when generator from tf ir, default param is 'required'
@@ -252,8 +250,8 @@ class OpFileAiCore(OPFile):
     @staticmethod
     def _mapping_info_cfg_type(op_type):
         op_type = op_type.strip()
-        if op_type in CFG_INFO_TYPE_MAP:
-            return CFG_INFO_TYPE_MAP[op_type]
+        if op_type in OpFileAiCore.CFG_INFO_TYPE_MAP:
+            return OpFileAiCore.CFG_INFO_TYPE_MAP[op_type]
         utils.print_warn_log("The input/output type '%s' "
                              "is not supported by the .ini file. "
                              "Please check. If "

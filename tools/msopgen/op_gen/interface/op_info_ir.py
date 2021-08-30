@@ -15,41 +15,41 @@ from . import utils
 from .op_info import OpInfo
 from .arg_parser import ArgParser
 
-IR_DEFAULT_SHEET_NAME = 'Op'
-IR_TEMPLATE_HEADER = ['Op', 'Classify', 'Name', 'Type', 'TypeRange',
-                      'Required', 'Doc', 'Attr_Default_value', 'Format']
-IR_TEMPLATE_FIRST_ROW = 3
-IR_TEMPLATE_VALID_NCLOS = 9
-IR_TEMPLATE_OP_CLO = 0
-IR_TEMPLATE_CLASSIFY_CLO = 1
-IR_TEMPLATE_NAME_CLO = 2
-IR_TEMPLATE_TYPE_CLO = 3
-IR_TEMPLATE_TYPE_RANGE_CLO = 4
-IR_TEMPLATE_REQUIRED_CLO = 5
-IR_TEMPLATE_ATTR_DEFAULT_CLO = 7
-IR_TEMPLATE_FORMAT_CLO = 8
-INPUT_NAME = 'INPUT'
-DYNAMIC_INPUT_NAME = 'DYNAMIC_INPUT'
-OUTPUT_NAME = 'OUTPUT'
-DYNAMIC_OUTPUT_NAME = 'DYNAMIC_OUTPUT'
-ATTR_NAME = 'ATTR'
-REQUIRED_ATTR_NAME = 'REQUIRED_ATTR'
-
 
 class IrRow:
     """
     CLass for IR row.
     """
 
+    IR_DEFAULT_SHEET_NAME = 'Op'
+    IR_TEMPLATE_HEADER = ['Op', 'Classify', 'Name', 'Type', 'TypeRange',
+                          'Required', 'Doc', 'Attr_Default_value', 'Format']
+    IR_TEMPLATE_FIRST_ROW = 3
+    IR_TEMPLATE_VALID_NCLOS = 9
+    IR_TEMPLATE_OP_CLO = 0
+    IR_TEMPLATE_CLASSIFY_CLO = 1
+    IR_TEMPLATE_NAME_CLO = 2
+    IR_TEMPLATE_TYPE_CLO = 3
+    IR_TEMPLATE_TYPE_RANGE_CLO = 4
+    IR_TEMPLATE_REQUIRED_CLO = 5
+    IR_TEMPLATE_ATTR_DEFAULT_CLO = 7
+    IR_TEMPLATE_FORMAT_CLO = 8
+    INPUT_NAME = 'INPUT'
+    DYNAMIC_INPUT_NAME = 'DYNAMIC_INPUT'
+    OUTPUT_NAME = 'OUTPUT'
+    DYNAMIC_OUTPUT_NAME = 'DYNAMIC_OUTPUT'
+    ATTR_NAME = 'ATTR'
+    REQUIRED_ATTR_NAME = 'REQUIRED_ATTR'
+    
     def __init__(self, row):
-        if len(row) >= IR_TEMPLATE_VALID_NCLOS:
-            self.classify = row[IR_TEMPLATE_CLASSIFY_CLO]
-            self.name = row[IR_TEMPLATE_NAME_CLO]
-            self.op_type = row[IR_TEMPLATE_TYPE_CLO]
-            self.type_range = row[IR_TEMPLATE_TYPE_RANGE_CLO]
-            self.required = row[IR_TEMPLATE_REQUIRED_CLO]
-            self.attr_default = row[IR_TEMPLATE_ATTR_DEFAULT_CLO]
-            self.op_format = row[IR_TEMPLATE_FORMAT_CLO]
+        if len(row) >= IrRow.IR_TEMPLATE_VALID_NCLOS:
+            self.classify = row[IrRow.IR_TEMPLATE_CLASSIFY_CLO]
+            self.name = row[IrRow.IR_TEMPLATE_NAME_CLO]
+            self.op_type = row[IrRow.IR_TEMPLATE_TYPE_CLO]
+            self.type_range = row[IrRow.IR_TEMPLATE_TYPE_RANGE_CLO]
+            self.required = row[IrRow.IR_TEMPLATE_REQUIRED_CLO]
+            self.attr_default = row[IrRow.IR_TEMPLATE_ATTR_DEFAULT_CLO]
+            self.op_format = row[IrRow.IR_TEMPLATE_FORMAT_CLO]
         else:
             utils.print_error_log("The row information is insufficient.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
@@ -112,7 +112,7 @@ class IROpInfo(OpInfo):
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         for ir_row in ir_info:
             classify = ir_row.classify.upper()
-            if classify == INPUT_NAME:
+            if classify == IrRow.INPUT_NAME:
                 param_type = self._mapping_ini_param_type(ir_row.required)
                 input_map = self._add_input_output('input', ir_row, param_type)
                 if input_map is None:
@@ -122,24 +122,24 @@ class IROpInfo(OpInfo):
                     raise utils.MsOpGenException(
                         utils.MS_OP_GEN_INVALID_PARAM_ERROR)
                 self.parsed_input_info.update(input_map)
-            elif classify == DYNAMIC_INPUT_NAME:
+            elif classify == IrRow.DYNAMIC_INPUT_NAME:
                 param_type = utils.PARAM_TYPE_DYNAMIC
                 input_map = self._add_input_output('input', ir_row, param_type)
                 self.parsed_input_info.update(input_map)
-            elif classify == OUTPUT_NAME:
+            elif classify == IrRow.OUTPUT_NAME:
                 param_type = self._mapping_ini_param_type(ir_row.required)
                 output_map = self._add_input_output('output', ir_row,
                                                     param_type)
                 self.parsed_output_info.update(output_map)
-            elif classify == DYNAMIC_OUTPUT_NAME:
+            elif classify == IrRow.DYNAMIC_OUTPUT_NAME:
                 param_type = utils.PARAM_TYPE_DYNAMIC
                 output_map = self._add_input_output('output', ir_row,
                                                     param_type)
                 self.parsed_output_info.update(output_map)
-            elif classify == ATTR_NAME:
+            elif classify == IrRow.ATTR_NAME:
                 self._add_attr(ir_row.name, ir_row.op_type,
                                ir_row.attr_default)
-            elif classify == REQUIRED_ATTR_NAME:
+            elif classify == IrRow.REQUIRED_ATTR_NAME:
                 self._add_attr(ir_row.name, ir_row.op_type,
                                ir_row.attr_default)
             else:
@@ -150,9 +150,9 @@ class IROpInfo(OpInfo):
         ir_map = self._get_ir_map(sheet_data)
         op_names = list(ir_map.keys())
         json_data = {}
-        json_data.setdefault(IR_DEFAULT_SHEET_NAME, [])
+        json_data.setdefault(IrRow.IR_DEFAULT_SHEET_NAME, [])
         for op_name in op_names:
-            json_data[IR_DEFAULT_SHEET_NAME].append({"OP": op_name})
+            json_data[IrRow.IR_DEFAULT_SHEET_NAME].append({"OP": op_name})
         _, ir_file_name = os.path.split(self.op_path)
         json_path = os.path.join(self.output_path, ir_file_name + ".json")
         utils.write_json_file(json_path, json_data)
@@ -169,12 +169,12 @@ class IROpInfo(OpInfo):
 
     def _get_sheet_data(self, ir_file):
         ir_template, sheet_names = self._get_sheets(ir_file)
-        if IR_DEFAULT_SHEET_NAME not in sheet_names:
+        if IrRow.IR_DEFAULT_SHEET_NAME not in sheet_names:
             utils.print_error_log("No sheet named \"Op\" exists in the IR "
                                   "Excel. Please check!")
             raise utils.MsOpGenException(
                 utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
-        sheet_data = ir_template.sheet_by_name(IR_DEFAULT_SHEET_NAME)
+        sheet_data = ir_template.sheet_by_name(IrRow.IR_DEFAULT_SHEET_NAME)
         return sheet_data
 
     @staticmethod
@@ -193,27 +193,27 @@ class IROpInfo(OpInfo):
     @staticmethod
     def _check_sheet_data(sheet_data):
         # The second row is header, a valid sheet has at least 2 rows
-        if sheet_data.nrows < IR_TEMPLATE_FIRST_ROW:
+        if sheet_data.nrows < IrRow.IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
                 "Data in the sheet '%s' is invalid. At least %s rows are "
-                "required." % (sheet_data.name, IR_TEMPLATE_FIRST_ROW))
+                "required." % (sheet_data.name, IrRow.IR_TEMPLATE_FIRST_ROW))
             return False
-        if sheet_data.nrows == IR_TEMPLATE_FIRST_ROW:
+        if sheet_data.nrows == IrRow.IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
                 "There is no content in the sheet '%s'." % sheet_data.name)
             return False
         headers = sheet_data.row_values(1)
-        if len(headers) < IR_TEMPLATE_VALID_NCLOS:
+        if len(headers) < IrRow.IR_TEMPLATE_VALID_NCLOS:
             utils.print_warn_log("The '%s' number of headers is invalid: '%s'."
                                  % (sheet_data.name, str(len(headers))))
             return False
-        for i in range(0, IR_TEMPLATE_VALID_NCLOS):
+        for i in range(0, IrRow.IR_TEMPLATE_VALID_NCLOS):
             header = str(headers[i]).strip()
-            if header != IR_TEMPLATE_HEADER[i]:
+            if header != IrRow.IR_TEMPLATE_HEADER[i]:
                 utils.print_warn_log(
                     "The header of the sheet '%s' is invalid: %s."
                     "It should be like %s." % (
-                        sheet_data.name, header, IR_TEMPLATE_HEADER))
+                        sheet_data.name, header, IrRow.IR_TEMPLATE_HEADER))
                 return False
         return True
 
@@ -235,9 +235,9 @@ class IROpInfo(OpInfo):
         col_span = {}
         self._del_with_merged_cell(sheet_data, col_span)
         ir_map = {}
-        for i in range(IR_TEMPLATE_FIRST_ROW, rows):
+        for i in range(IrRow.IR_TEMPLATE_FIRST_ROW, rows):
             row = []
-            for j in range(IR_TEMPLATE_VALID_NCLOS):
+            for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
                 # if the block is merged block, fetch value from col span
                 if col_span.get((i, j)):
                     op_value = str(
@@ -295,7 +295,7 @@ class IROpInfo(OpInfo):
                         "The input is not a number. Please retype!")
         elif len(op_names) == 0:
             utils.print_error_log("There is no op info to read.")
-            return None
+            return ""
         else:
             utils.print_info_log("Start to parse the op: " + op_names[0])
             return op_names[0]
@@ -313,7 +313,7 @@ class IROpInfo(OpInfo):
         if not ir_type_list:
             utils.print_warn_log("The %s ir type is invalid: %s" % (
                 prefix, types))
-            return None
+            return []
         # init  format from Format of IR excel
         op_format = []
         if ir_row.op_format:
@@ -343,7 +343,8 @@ class IROpInfo(OpInfo):
         # check input ir type and format
         first_count = 0
         first_name = ""
-        io_map = self.parsed_input_info.copy()
+        io_map = {}
+        io_map.update(self.parsed_input_info)
         io_map.update(self.parsed_output_info)
         for (name, value) in io_map.items():
             ir_type_count = len(value[utils.INFO_IR_TYPES_KEY])

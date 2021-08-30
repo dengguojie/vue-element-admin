@@ -6,15 +6,10 @@ This file mainly involves class for generating aicpu operator files.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import sys
-    from .op_file import OPFile
-    from . import op_tmpl
-    from . import utils
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][op_file_aicpu]Unable to import module: %s." % str(
-        import_error))
+import os
+from .op_file import OPFile
+from .op_tmpl import OPTmpl
+from . import utils
 
 
 class OpFileAiCpu(OPFile):
@@ -25,7 +20,7 @@ class OpFileAiCpu(OPFile):
     def generate_impl(self):
         """
         Function Description:
-            generate operator implementation.
+        generate operator implementation.
         Parameter:
         Return Value:
         """
@@ -45,7 +40,7 @@ class OpFileAiCpu(OPFile):
         utils.copy_template(template_path, impl_dir, True)
 
     def _generate_impl_cc(self, op_info):
-        cc_str = op_tmpl.AICPU_IMPL_CPP_STRING.format(
+        cc_str = OPTmpl.AICPU_IMPL_CPP_STRING.format(
             fix_op_type=op_info.fix_op_type,
             op_type=op_info.op_type,
             op_type_upper=op_info.fix_op_type.upper(),
@@ -58,7 +53,7 @@ class OpFileAiCpu(OPFile):
         utils.write_files(cc_path, cc_str)
 
     def _generate_impl_h(self, op_info):
-        h_str = op_tmpl.AICPU_IMPL_H_STRING.format(
+        h_str = OPTmpl.AICPU_IMPL_H_STRING.format(
             op_type=op_info.op_type,
             op_type_upper=op_info.fix_op_type.upper(),
             left_braces=utils.LEFT_BRACES,
@@ -72,12 +67,12 @@ class OpFileAiCpu(OPFile):
     def generate_info_cfg(self):
         """
         Function Description:
-            generate operator info config file
+        generate operator info config file
         Parameter:
         Return Value:
         """
         op_info = self.op_info
-        new_str = op_tmpl.AICPU_INI_STRING.format(op_type=op_info.op_type)
+        new_str = OPTmpl.AICPU_INI_STRING.format(op_type=op_info.op_type)
         # create dir and write ini file
         info_dir = os.path.join(self.output_path, 'cpukernel',
                                 'op_info_cfg', 'aicpu_kernel')

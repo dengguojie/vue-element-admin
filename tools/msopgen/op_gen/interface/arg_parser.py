@@ -235,4 +235,4 @@ class ArgParser:  # pylint: disable=too-many-instance-attributes
         """
         get gen result
         """
-        return None
+        return ""

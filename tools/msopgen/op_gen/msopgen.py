@@ -7,27 +7,25 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-try:
-    import sys
-    from op_gen.interface.arg_parser import ArgParser
-    from op_gen.interface.op_file_generator import OpFileGenerator
-    from op_gen.interface.op_info_parser import OpInfoParser
-    from op_gen.interface import utils
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][msopgen] Unable to import module: %s." % str(
-        import_error))
+import sys
+from op_gen.interface.arg_parser import ArgParser
+from op_gen.interface.op_file_generator import OpFileGenerator
+from op_gen.interface.op_info_parser import OpInfoParser
+from op_gen.interface import utils
 
 
 def _do_gen_cmd(argument):
     try:
         op_file_generator = OpFileGenerator(argument)
-        if op_file_generator.op_file is None:
+        if not op_file_generator.op_file:
             utils.print_error_log(
                 "AICPU is not supported by MindSpore operators.")
             raise utils.MsOpGenException(utils.MS_OP_GEN_NONE_ERROR)
         op_file_generator.generate()
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
+    finally:
+        pass
 
 
 def _do_mi_cmd(argument):
@@ -36,6 +34,8 @@ def _do_mi_cmd(argument):
             OpInfoParser(argument)
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
+    finally:
+        pass
 
 
 def main():
@@ -45,6 +45,8 @@ def main():
         argument = ArgParser()
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
+    finally:
+        pass
     # 2.generate file, according to gen and mi
     if argument.gen_flag:
         _do_gen_cmd(argument)

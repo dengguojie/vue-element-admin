@@ -7,34 +7,39 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020-2021
 """
 
-# ==================1.ini file==================
-INI_OP = """[{op_type}]
+
+class OPTmpl:
+    """
+    The class for OP template
+    """
+    # ==================1.ini file==================
+    INI_OP = """[{op_type}]
 """
-INI_INPUT = """input{index}.name={name}
+    INI_INPUT = """input{index}.name={name}
 input{index}.dtype={dtype}
 input{index}.paramType={paramType}
 input{index}.format={format}
 """
-INI_OUTPUT = """output{index}.name={name}
+    INI_OUTPUT = """output{index}.name={name}
 output{index}.dtype={dtype}
 output{index}.paramType={paramType}
 output{index}.format={format}
 """
-INI_ATTR_LIST = """attr.list={attr_info}
+    INI_ATTR_LIST = """attr.list={attr_info}
 """
-INI_ATTR_TYPE_VALUE = """attr_{name}.type={type}
+    INI_ATTR_TYPE_VALUE = """attr_{name}.type={type}
 attr_{name}.value=all
 """
-INI_ATTR_PARAM_TYPE = """attr_{name}.paramType={paramType}
+    INI_ATTR_PARAM_TYPE = """attr_{name}.paramType={paramType}
 """
-INI_ATTR_DEFAULT_VALUE = """attr_{name}.defaultValue={defaultValue}
+    INI_ATTR_DEFAULT_VALUE = """attr_{name}.defaultValue={defaultValue}
 """
-INI_BIN_FILE = """opFile.value={name}
+    INI_BIN_FILE = """opFile.value={name}
 opInterface.value={name}
 """
-# =============================================
-# ==================2.IR file==================
-IR_H_HEAD = """/**
+    # =============================================
+    # ==================2.IR file==================
+    IR_H_HEAD = """/**
  * Copyright (C)  2020-2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
@@ -59,23 +64,23 @@ namespace ge {left_braces}
 
 REG_OP({op_type})
 """
-IR_H_INPUT = """    .INPUT({name}, TensorType({{{type}}}))
+    IR_H_INPUT = """    .INPUT({name}, TensorType({{{type}}}))
 """
-IR_H_DYNAMIC_INPUT = """    .DYNAMIC_INPUT({name}, TensorType({{{type}}}))
+    IR_H_DYNAMIC_INPUT = """    .DYNAMIC_INPUT({name}, TensorType({{{type}}}))
 """
-IR_H_OUTPUT = """    .OUTPUT({name}, TensorType({{{type}}}))
+    IR_H_OUTPUT = """    .OUTPUT({name}, TensorType({{{type}}}))
 """
-IR_H_DYNAMIC_OUTPUT = """    .DYNAMIC_OUTPUT({name}, TensorType({{{type}}}))
+    IR_H_DYNAMIC_OUTPUT = """    .DYNAMIC_OUTPUT({name}, TensorType({{{type}}}))
 """
-IR_H_ATTR_WITHOUT_VALUE = """    .REQUIRED_ATTR({name}, {type})
+    IR_H_ATTR_WITHOUT_VALUE = """    .REQUIRED_ATTR({name}, {type})
 """
-IR_H_ATTR_WITH_VALUE = """    .ATTR({name}, {type}, {value})
+    IR_H_ATTR_WITH_VALUE = """    .ATTR({name}, {type}, {value})
 """
-IR_H_END = """    .OP_END_FACTORY_REG({op_type})
+    IR_H_END = """    .OP_END_FACTORY_REG({op_type})
 {right_braces}
 #endif //GE_OP_{op_type_upper}_H
 """
-IR_CPP_HEAD = """#include "{fix_op_type}.h"
+    IR_CPP_HEAD = """#include "{fix_op_type}.h"
 namespace ge {left_braces}
 
 IMPLEMT_COMMON_INFERFUNC({op_type}InferShape)
@@ -93,9 +98,9 @@ VERIFY_FUNC_REG({op_type}, {op_type}Verify);
 
 {right_braces}  // namespace ge
 """
-# =================================================
-# ==================3.plugin file==================
-TF_PLUGIN_CPP = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
+    # =================================================
+    # ==================3.plugin file==================
+    PLUGIN_COPYRIGHT = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
 rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -109,7 +114,8 @@ rights reserved.
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include "register/register.h"
+"""
+    TF_PLUGIN_CPP = PLUGIN_COPYRIGHT + """#include "register/register.h"
 
 namespace domi {left_braces}
 // register op info to GE
@@ -120,21 +126,7 @@ REGISTER_CUSTOM_OP("{name}")
 {right_braces}  // namespace domi
 """
 
-ONNX_PLUGIN_CPP = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
-rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
- * http://www.apache.org/licenses/LICENSE-2.0
- */
-
-#include "register/register.h"
+    ONNX_PLUGIN_CPP = PLUGIN_COPYRIGHT + """#include "register/register.h"
 
 namespace domi {left_braces}
 // Onnx ParseParams
@@ -151,21 +143,7 @@ REGISTER_CUSTOM_OP("{name}")     // Set the registration name of operator
 {right_braces}  // namespace domi
 """
 
-CAFFE_PLUGIN_CPP = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
-rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.
- * You may not use this file except in compliance with the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
- * http://www.apache.org/licenses/LICENSE-2.0
- */
-
-#include "register/register.h"
+    CAFFE_PLUGIN_CPP = PLUGIN_COPYRIGHT + """#include "register/register.h"
 #include "graph/operator.h"
 
 using namespace ge;
@@ -187,7 +165,7 @@ REGISTER_CUSTOM_OP("{name}")
 {right_braces} // namespace domi
 """
 
-PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+    PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 aux_source_directory(. SRCS)
 message(STATUS "SRCS = ${SRCS}")
 
@@ -209,7 +187,7 @@ target_compile_definitions(${TF_PLUGIN_TARGET} PRIVATE
 target_link_libraries(${TF_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)
 """
 
-ONNX_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+    ONNX_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 aux_source_directory(. SRCS)
 message(STATUS "SRCS = ${SRCS}")
 
@@ -231,8 +209,8 @@ target_compile_definitions(${ONNX_PLUGIN_TARGET} PRIVATE
 target_link_libraries(${ONNX_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)
 """
 
-CAFFE_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
-
+    CAFFE_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+    
 aux_source_directory(. SRCS)
 aux_source_directory(./proto/caffe PROTO_SRCS)
 list(APPEND SRCS ${PROTO_SRCS})
@@ -252,7 +230,7 @@ include_directories(./proto/caffe)
 add_library(${CAFFE_PLUGIN_TARGET} SHARED ${SRCS})
 """
 
-CAFFE_CUSTOM_PROTO = """
+    CAFFE_CUSTOM_PROTO = """
 syntax = "proto2";
 package domi.caffe;
 message NetParameter {
@@ -276,15 +254,15 @@ message CustomTestParameter {
     optional bool adj_x2 = 2 [default = false];
 }
 """
-# =================================================
-# ==================4.impl file==================
-PY_HEAD = """import tbe.dsl as tbe
+    # =================================================
+    # ==================4.impl file==================
+    PY_HEAD = """import tbe.dsl as tbe
 from tbe import tvm
 from tbe.common.register import register_op_compute
 from tbe.common.utils import para_check
 
 """
-PY_COMPUTE_WITHOUT_ATTR = """
+    PY_COMPUTE_WITHOUT_ATTR = """
 @register_op_compute("{name}")
 def {name}_compute({input_name}, {output}, kernel_name="{name}"):
     \"""
@@ -292,7 +270,7 @@ def {name}_compute({input_name}, {output}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_COMPUTE_WITH_ATTR = """
+    PY_COMPUTE_WITH_ATTR = """
 @register_op_compute("{name}")
 def {name}_compute({input_name}, {output}, {attr}, kernel_name="{name}"):
     \"""
@@ -300,11 +278,11 @@ def {name}_compute({input_name}, {output}, {attr}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_COMPUTE_END = """
+    PY_COMPUTE_END = """
     res = tbe.XXX({input_name})
     return res
 """
-PY_DEF_WITHOUT_ATTR = """
+    PY_DEF_WITHOUT_ATTR = """
 @para_check.check_op_params({op_params})
 def {name}({input_name}, {output}, kernel_name="{name}"):
     \"""
@@ -312,7 +290,7 @@ def {name}({input_name}, {output}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_DEF_WITH_ATTR = """
+    PY_DEF_WITH_ATTR = """
 @para_check.check_op_params({op_params})
 def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
     \"""
@@ -320,29 +298,29 @@ def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_PLACEHOLDER = \
-    """    data_{name} = tvm.placeholder({name}.get(\"shape\"), dtype={name}.get(\"dtype\"), name=\"data_{name}\")
+    PY_PLACEHOLDER = \
+        """    data_{name} = tvm.placeholder({name}.get(\"shape\"), dtype={name}.get(\"dtype\"), name=\"data_{name}\")
 """
 
-PY_RES_WITHOUT_ATTR = """
+    PY_RES_WITHOUT_ATTR = """
     res = {name}_compute({input_data}, {output_data}, kernel_name)
 """
-PY_RES_WIT_ATTR = """
+    PY_RES_WIT_ATTR = """
     res = {name}_compute({input_data}, {output_data}, {attr}, kernel_name)
 """
-PY_TARGET_CCE = """
+    PY_TARGET_CCE = """
     # auto schedule
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
 """
-PY_BUILD = """
+    PY_BUILD = """
     # operator build
     config = {left_braces}"name": kernel_name,
               "tensor_list": [{input_data}, res]{right_braces}
     tbe.build(schedule, config)
     """
-# ==================4.2 MindSpore python file================
-PY_MS_HEAD = """from __future__ import absolute_import
+    # ==================4.2 MindSpore python file================
+    PY_MS_HEAD = """from __future__ import absolute_import
 from te import tvm
 from tbe.dsl import auto_schedule
 import te.lang.cce
@@ -350,7 +328,7 @@ from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
 """
-PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
+    PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
     \"""
     The compute function of the {up_name} implementation.
     \"""
@@ -358,13 +336,13 @@ PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
     return res
 
 """
-PY_MS_ATTR_WITHOUT_VALUE_INFO = \
-    """.attr("{attr_name}", "{param_type}", "{attr_type}", "all")\\"""
-PY_MS_INPUT_INFO = """.input(0, "{input_name}", False, "required", "all")\\"""
-PY_MS_OUTPUT_INFO = """.output(0, "{output_name}", False, "required", "all")\\"""
-PY_MS_DATA_TYPE = """DataType.{data_type}"""
-PY_MS_DTYPE_FORMAT = """.dtype_format({data_types_join})\\"""
-PY_MS_OP_WITHOUT_ATTR_INFO = """
+    PY_MS_ATTR_WITHOUT_VALUE_INFO = \
+        """.attr("{attr_name}", "{param_type}", "{attr_type}", "all")\\"""
+    PY_MS_INPUT_INFO = """.input(0, "{input_name}", False, "required", "all")\\"""
+    PY_MS_OUTPUT_INFO = """.output(0, "{output_name}", False, "required", "all")\\"""
+    PY_MS_DATA_TYPE = """DataType.{data_type}"""
+    PY_MS_DTYPE_FORMAT = """.dtype_format({data_types_join})\\"""
+    PY_MS_OP_WITHOUT_ATTR_INFO = """
 # Define the kernel info of {up_name}.
 {name}_op_info = TBERegOp("{up_name}") \\
     .fusion_type("OPAQUE") \\
@@ -379,7 +357,7 @@ PY_MS_OP_WITHOUT_ATTR_INFO = """
     .get_op_info()
 
 """
-PY_MS_OP_WITH_ATTR_INFO = """
+    PY_MS_OP_WITH_ATTR_INFO = """
 # Define the kernel info of {up_name}.
 {name}_op_info = TBERegOp("{up_name}") \\
     .fusion_type("OPAQUE") \\
@@ -395,9 +373,9 @@ PY_MS_OP_WITH_ATTR_INFO = """
     .get_op_info()
 
 """
-PY_MS_OP_INFO_REGISTER_TVM = \
-    """data{data_count} = tvm.placeholder(shape, name="data{data_count}", dtype=dtype.lower())"""
-PY_MS_OP_INFO_REGISTER = """
+    PY_MS_OP_INFO_REGISTER_TVM = \
+        """data{data_count} = tvm.placeholder(shape, name="data{data_count}", dtype=dtype.lower())"""
+    PY_MS_OP_INFO_REGISTER = """
 # Binding kernel info with the kernel implementation.
 @op_info_register({name}_op_info)
 def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
@@ -414,14 +392,14 @@ def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
         res = {name}_compute({datas_join}, {output})
         sch = auto_schedule(res)
 """
-PY_MS_OP_INFO_REGISTER_CONFIG = """
+    PY_MS_OP_INFO_REGISTER_CONFIG = """
     config = {{"print_ir": False,
               "name": kernel_name,
               "tensor_list": [{datas_join}, res]}}
 
     te.lang.cce.cce_build_code(sch, config)
 """
-PY_MS_PROTO_HEAD = """from mindspore.ops import prim_attr_register, \
+    PY_MS_PROTO_HEAD = """from mindspore.ops import prim_attr_register, \
 PrimitiveWithInfer
 import mindspore.ops as ops
 # description
@@ -441,8 +419,8 @@ class {up_name}(PrimitiveWithInfer):
 
     def infer_dtype(self, {data_dtypes}):
         return data1_dtype"""
-# ==================5.AICPU ini file==================
-AICPU_INI_STRING = """[{op_type}]
+    # ==================5.AICPU ini file==================
+    AICPU_INI_STRING = """[{op_type}]
 opInfo.engine=DNN_VM_AICPU
 opInfo.flagPartial=False
 opInfo.computeCost=100
@@ -452,9 +430,9 @@ opInfo.kernelSo=libcust_aicpu_kernels.so
 opInfo.functionName=RunCpuKernel
 opInfo.workspaceSize=1024
 """
-# =============================================
-# ==================6.AICPU impl cc file==================
-AICPU_IMPL_CPP_STRING = """
+    # =============================================
+    # ==================6.AICPU impl cc file==================
+    AICPU_IMPL_CPP_STRING = """
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  * Description: implement of {op_type}
@@ -474,9 +452,9 @@ uint32_t {op_type}CpuKernel::Compute(CpuKernelContext &ctx)
 REGISTER_CPU_KERNEL({op_type_upper}, {op_type}CpuKernel);
 {right_braces} // namespace aicpu
 """
-# =============================================
-# ==================7.AICPU impl h file==================
-AICPU_IMPL_H_STRING = """
+    # =============================================
+    # ==================7.AICPU impl h file==================
+    AICPU_IMPL_H_STRING = """
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  * Description: api of {op_type}
@@ -496,4 +474,4 @@ public:
 {right_braces} // namespace aicpu
 #endif
 """
-# =======================================================
+    # =======================================================

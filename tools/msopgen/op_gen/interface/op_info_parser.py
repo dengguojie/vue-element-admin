@@ -55,4 +55,4 @@ class OpInfoParser:
         """
         get gen flag
         """
-        return None
+        return ""

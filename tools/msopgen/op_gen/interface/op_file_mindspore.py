@@ -6,15 +6,10 @@ This file mainly involves class for generating mindspore operator files.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import sys
-    from .op_file import OPFile
-    from . import op_tmpl
-    from . import utils
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][op_file_mindspore] Unable to import module: %s." % str(
-        import_error))
+import os
+from .op_file import OPFile
+from .op_tmpl import OPTmpl
+from . import utils
 
 
 class OpFileMindSpore(OPFile):
@@ -25,8 +20,8 @@ class OpFileMindSpore(OPFile):
     def generate(self):
         """
         Function Description:
-            generate MindSpore project or only generator an MindSpore operator
-            according to mode
+        generate MindSpore project or only generator an MindSpore operator
+        according to mode
         """
         if self.mode == utils.GEN_OPERATOR:
             if self.fmk_type in utils.FMK_MS:
@@ -67,7 +62,7 @@ class OpFileMindSpore(OPFile):
                 param_type = "required"
                 if len(attr_info) == utils.OP_INFO_WITH_FORMAT_LEN:
                     param_type = attr_info[3]
-                attr_str = op_tmpl.PY_MS_ATTR_WITHOUT_VALUE_INFO.format(
+                attr_str = OPTmpl.PY_MS_ATTR_WITHOUT_VALUE_INFO.format(
                     attr_name=attr_name,
                     param_type=param_type,
                     attr_type=attr_type_format)
@@ -85,13 +80,13 @@ class OpFileMindSpore(OPFile):
         input_list = []
         for input_name in self.op_info.parsed_input_info:
             var_list.append(input_name)
-            str_name = op_tmpl.PY_MS_INPUT_INFO.format(input_name=input_name)
+            str_name = OPTmpl.PY_MS_INPUT_INFO.format(input_name=input_name)
             input_list.append(str_name)
         # parse outputs
         output_list = []
         for output_name in self.op_info.parsed_output_info:
             var_list.append(output_name)
-            str_output_name = op_tmpl.PY_MS_OUTPUT_INFO.format(
+            str_output_name = OPTmpl.PY_MS_OUTPUT_INFO.format(
                 output_name=output_name)
             output_list.append(str_output_name)
         return input_list, output_list
@@ -116,13 +111,13 @@ class OpFileMindSpore(OPFile):
                 if dtype_format == '':
                     type_list.append("")
                     break
-                type_list.append(op_tmpl.PY_MS_DATA_TYPE.format(
+                type_list.append(OPTmpl.PY_MS_DATA_TYPE.format(
                     data_type=dtype_format))
             data_type_join = ', '.join(type_list)
-            data_types_list.append(op_tmpl.PY_MS_DTYPE_FORMAT.format(
+            data_types_list.append(OPTmpl.PY_MS_DTYPE_FORMAT.format(
                 data_types_join=data_type_join))
         if attr_valid_list:
-            head_str += op_tmpl.PY_MS_OP_WITH_ATTR_INFO.format(
+            head_str += OPTmpl.PY_MS_OP_WITH_ATTR_INFO.format(
                 name=self.op_info.fix_op_type,
                 up_name=self.op_info.op_type,
                 attrs='\n    '.join(attr_list),
@@ -130,7 +125,7 @@ class OpFileMindSpore(OPFile):
                 outputs='\n    '.join(output_list),
                 data_types='\n    '.join(data_types_list))
         else:
-            head_str += op_tmpl.PY_MS_OP_WITHOUT_ATTR_INFO.format(
+            head_str += OPTmpl.PY_MS_OP_WITHOUT_ATTR_INFO.format(
                 name=self.op_info.fix_op_type,
                 up_name=self.op_info.op_type,
                 inputs='\n    '.join(input_list),
@@ -141,7 +136,7 @@ class OpFileMindSpore(OPFile):
     def generate_impl(self):
         """
         Function Description:
-            generate mindspore operator implementation.
+        generate mindspore operator implementation.
         Parameter:
         Return Value:
         """
@@ -151,12 +146,12 @@ class OpFileMindSpore(OPFile):
                                  "impl files. Please check.")
             return
         # 1.make head string
-        head_str = op_tmpl.PY_MS_HEAD
+        head_str = OPTmpl.PY_MS_HEAD
         # 2.make [op_type]_compute()
         op_input = ", ".join(list(self.op_info.parsed_input_info))
         op_input_x = list(self.op_info.parsed_input_info)[0]
         op_output = ", ".join(list(self.op_info.parsed_output_info))
-        head_str += op_tmpl.PY_MS_COMPUTE.format(
+        head_str += OPTmpl.PY_MS_COMPUTE.format(
             name=self.op_info.fix_op_type,
             up_name=self.op_info.op_type,
             input_name=op_input,
@@ -168,12 +163,12 @@ class OpFileMindSpore(OPFile):
         tvm_placeholder_list = []
         datas_list = []
         for data_count in range(len(list(self.op_info.parsed_input_info))):
-            tvm_placeholder_list.append(op_tmpl.PY_MS_OP_INFO_REGISTER_TVM.format(
+            tvm_placeholder_list.append(OPTmpl.PY_MS_OP_INFO_REGISTER_TVM.format(
                 data_count=data_count+1))
             datas_list.append("data{num}".format(num=data_count+1))
         tvm_placeholder_join = '\n    '.join(tvm_placeholder_list)
         datas_join = ', '.join(datas_list)
-        head_str += op_tmpl.PY_MS_OP_INFO_REGISTER.format(
+        head_str += OPTmpl.PY_MS_OP_INFO_REGISTER.format(
             name=self.op_info.fix_op_type,
             up_name=self.op_info.op_type,
             input_name=op_input,
@@ -181,7 +176,7 @@ class OpFileMindSpore(OPFile):
             output=op_output,
             tvm_placeholder=tvm_placeholder_join,
             datas_join=datas_join)
-        head_str += op_tmpl.PY_MS_OP_INFO_REGISTER_CONFIG.format(datas_join=datas_join)
+        head_str += OPTmpl.PY_MS_OP_INFO_REGISTER_CONFIG.format(datas_join=datas_join)
 
         # create mindspore directory
         py_dir = os.path.join(self.output_path, utils.MS_IMPL_DIR)
@@ -212,7 +207,7 @@ class OpFileMindSpore(OPFile):
         data_shapes = ", ".join(data_shape_list)
         data_dtypes = ", ".join(data_dtype_list)
         # 1.make mindspore proto string
-        ms_proto_str = op_tmpl.PY_MS_PROTO_HEAD.format(
+        ms_proto_str = OPTmpl.PY_MS_PROTO_HEAD.format(
             name=self.op_info.fix_op_type,
             up_name=self.op_info.op_type,
             input_name=op_input,
@@ -232,6 +227,6 @@ class OpFileMindSpore(OPFile):
         Function Description:
             generate operator info config file
         Parameter:
-        Return Value:None
+        Return Value:""
         """
-        return None
+        return ""

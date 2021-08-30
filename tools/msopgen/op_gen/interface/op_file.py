@@ -6,18 +6,13 @@ This file mainly involves base class for operator files.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import sys
-    from abc import ABCMeta
-    from abc import abstractmethod
-    from . import utils
-    from . import op_tmpl
-    from .arg_parser import ArgParser
-    from .op_info_parser import OpInfoParser
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][op_file] Unable to import module: %s." % str(
-        import_error))
+import os
+from abc import ABCMeta
+from abc import abstractmethod
+from . import utils
+from .op_tmpl import OPTmpl
+from .arg_parser import ArgParser
+from .op_info_parser import OpInfoParser
 
 
 class OPFile(metaclass=ABCMeta):
@@ -35,7 +30,7 @@ class OPFile(metaclass=ABCMeta):
     def generate(self):
         """
         Function Description:
-            generate project or only generator an operator according to mode
+        generate project or only generator an operator according to mode
         """
         if self.mode == utils.GEN_OPERATOR:
             if os.path.isdir(os.path.join(
@@ -74,7 +69,7 @@ class OPFile(metaclass=ABCMeta):
             self._generate_caffe_plugin_cpp(plugin_dir, "caffe")
             self._generate_caffe_plugin_cmake_list(plugin_dir)
             custom_proto_path = os.path.join(self.output_path, 'custom.proto')
-            utils.write_files(custom_proto_path, op_tmpl.CAFFE_CUSTOM_PROTO)
+            utils.write_files(custom_proto_path, OPTmpl.CAFFE_CUSTOM_PROTO)
         elif self.fmk_type == "tensorflow" or self.fmk_type == "tf":
             plugin_dir = os.path.join(self.output_path, 'framework',
                                       'tf_plugin')
@@ -95,7 +90,7 @@ class OPFile(metaclass=ABCMeta):
         if os.path.exists(cmake_list_path):
             return
         utils.make_dirs(plugin_dir)
-        utils.write_files(cmake_list_path, op_tmpl.CAFFE_PLUGIN_CMAKLIST)
+        utils.write_files(cmake_list_path, OPTmpl.CAFFE_PLUGIN_CMAKLIST)
 
     @staticmethod
     def _generate_tf_plugin_cmake_list(plugin_dir):
@@ -104,17 +99,17 @@ class OPFile(metaclass=ABCMeta):
         if os.path.exists(cmake_list_path):
             return
         utils.make_dirs(plugin_dir)
-        utils.write_files(cmake_list_path, op_tmpl.PLUGIN_CMAKLIST)
+        utils.write_files(cmake_list_path, OPTmpl.PLUGIN_CMAKLIST)
 
     def _generate_onnx_plugin_cmake_list(self, plugin_dir):
         # create and write
         if self.mode == utils.GEN_PROJECT:
             cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
             utils.make_dirs(plugin_dir)
-            utils.write_files(cmake_list_path, op_tmpl.ONNX_PLUGIN_CMAKLIST)
+            utils.write_files(cmake_list_path, OPTmpl.ONNX_PLUGIN_CMAKLIST)
 
     def _generate_caffe_plugin_cpp(self, plugin_dir, prefix):
-        p_str = op_tmpl.CAFFE_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
+        p_str = OPTmpl.CAFFE_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
                                                 name=self.op_info.op_type,
                                                 fmk_type=prefix.upper(),
                                                 right_braces=utils.RIGHT_BRACES)
@@ -125,7 +120,7 @@ class OPFile(metaclass=ABCMeta):
         utils.write_files(plugin_path, p_str)
 
     def _generate_tf_plugin_cpp(self, plugin_dir, prefix):
-        p_str = op_tmpl.TF_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
+        p_str = OPTmpl.TF_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
                                              name=self.op_info.op_type,
                                              fmk_type=prefix.upper(),
                                              right_braces=utils.RIGHT_BRACES)
@@ -136,7 +131,7 @@ class OPFile(metaclass=ABCMeta):
         utils.write_files(plugin_path, p_str)
 
     def _generate_onnx_plugin_cpp(self, plugin_dir, prefix):
-        p_str = op_tmpl.ONNX_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
+        p_str = OPTmpl.ONNX_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
                                                name=self.op_info.op_type,
                                                fmk_type=prefix.upper(),
                                                right_braces=utils.RIGHT_BRACES)
@@ -155,30 +150,30 @@ class OPFile(metaclass=ABCMeta):
         self._generate_ir_cpp()
 
     def _generate_ir_h(self):
-        head_str = op_tmpl.IR_H_HEAD.format(
+        head_str = OPTmpl.IR_H_HEAD.format(
             left_braces=utils.LEFT_BRACES,
             op_type_upper=self.op_info.fix_op_type.upper(),
             op_type=self.op_info.op_type)
         # generate input
         for (name, value) in self.op_info.parsed_input_info.items():
             if value[utils.INFO_PARAM_TYPE_KEY] == utils.PARAM_TYPE_DYNAMIC:
-                template_str = op_tmpl.IR_H_DYNAMIC_INPUT
+                template_str = OPTmpl.IR_H_DYNAMIC_INPUT
             else:
-                template_str = op_tmpl.IR_H_INPUT
+                template_str = OPTmpl.IR_H_INPUT
             input_type = ",".join(value[utils.INFO_IR_TYPES_KEY])
             head_str += template_str.format(name=name, type=input_type)
         # generate output
         for (name, value) in self.op_info.parsed_output_info.items():
             if value[utils.INFO_PARAM_TYPE_KEY] == utils.PARAM_TYPE_DYNAMIC:
-                template_str = op_tmpl.IR_H_DYNAMIC_OUTPUT
+                template_str = OPTmpl.IR_H_DYNAMIC_OUTPUT
             else:
-                template_str = op_tmpl.IR_H_OUTPUT
+                template_str = OPTmpl.IR_H_OUTPUT
             output_type = ",".join(value[utils.INFO_IR_TYPES_KEY])
             head_str += template_str.format(name=name, type=output_type)
         # generate attr
         for attr in self.op_info.parsed_attr_info:
             head_str = self._generate_attr(attr, head_str)
-        head_str += op_tmpl.IR_H_END.format(
+        head_str += OPTmpl.IR_H_END.format(
             op_type=self.op_info.op_type,
             right_braces=utils.RIGHT_BRACES,
             op_type_upper=self.op_info.fix_op_type.upper())
@@ -191,27 +186,15 @@ class OPFile(metaclass=ABCMeta):
     def _generate_attr(self, attr, head_str):
         attr_name = utils.fix_name_lower_with_under(attr[0])
         attr_type = attr[1]
-        if len(attr) == 4:
-            if attr[3] == "optional":
-                default_value = self._deal_with_default_value(attr_type,
-                                                              attr[2])
-                head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(
-                    name=attr_name,
-                    type=attr_type,
-                    value=default_value)
-            else:
-                head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
-                    name=attr_name,
-                    type=attr_type)
-        elif len(attr) == 3 and attr[2] != "":
+        if (len(attr) == 4 and attr[3] == "optional") or (len(attr) == 3 and attr[2] != ""):
             default_value = self._deal_with_default_value(attr_type,
                                                           attr[2])
-            head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(name=attr_name,
-                                                            type=attr_type,
-                                                            value=default_value
-                                                            )
+            head_str += OPTmpl.IR_H_ATTR_WITH_VALUE.format(
+                name=attr_name,
+                type=attr_type,
+                value=default_value)
         else:
-            head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
+            head_str += OPTmpl.IR_H_ATTR_WITHOUT_VALUE.format(
                 name=attr_name,
                 type=attr_type)
         return head_str
@@ -225,7 +208,7 @@ class OPFile(metaclass=ABCMeta):
         return default_value
 
     def _generate_ir_cpp(self):
-        cpp_str = op_tmpl.IR_CPP_HEAD.format(
+        cpp_str = OPTmpl.IR_CPP_HEAD.format(
             fix_op_type=self.op_info.fix_op_type,
             op_type=self.op_info.op_type,
             left_braces=utils.LEFT_BRACES,
@@ -240,7 +223,7 @@ class OPFile(metaclass=ABCMeta):
     def generate_impl(self):
         """
         Function Description:
-            generate operator implementation.
+        generate operator implementation.
         Parameter:
         Return Value:
         """
@@ -249,7 +232,7 @@ class OPFile(metaclass=ABCMeta):
     def generate_info_cfg(self):
         """
         Function Description:
-            generate operator info config file
+        generate operator info config file
         Parameter:
         Return Value:
         """

@@ -40,9 +40,9 @@ class TFOpInfo(OpInfo):
     def parse(self):
         """
         Function Description:
-            parse tensorflow operator
+        parse tensorflow operator
         Parameter:
-            tf_file: tensorflow operator file
+        tf_file: tensorflow operator file
         Return Value:
         """
         utils.print_info_log("Start to parse the tensorflow ir: %s" %
@@ -158,13 +158,13 @@ class TFOpInfo(OpInfo):
                 return ""
             type_info = types[1:types.index("}")]
             types = type_info.split(",")
-            attr_info["types"] = [
+            attr_info["types"] = list(
                 self._mapping_input_output_type(t.strip(), name)
-                for t in types]
+                for t in types)
             if "=" in types:
                 default_type = types[types.index("="):]
                 attr_info["default_type"] = default_type
-            attr_info["types"] = [x for x in attr_info.get("types") if x != ""]
+            attr_info["types"] = list(x for x in attr_info.get("types") if x != "")
             return ",".join(attr_info.get("types"))
         return self._mapping_input_output_type(types.strip(), name)
 
@@ -174,23 +174,27 @@ class TFOpInfo(OpInfo):
             return value.replace("N*", "")
         return ""
 
+    def _get_ir_type_and_param_type(self, name, value):
+        # parse dynamic input/output
+        dynamic_type = self._get_dynamic_input_output_type(value)
+        if dynamic_type:
+            param_type = utils.PARAM_TYPE_DYNAMIC
+            ir_type = dynamic_type
+        else:
+            param_type = utils.PARAM_TYPE_REQUIRED
+            ir_type = value
+        # mapping ir type list
+        if self.type_attr.get(ir_type) != 0:
+            ir_types = self._generate_type_info(
+                self.type_attr.get(ir_type), name)
+        else:
+            ir_types = self._mapping_input_output_type(ir_type, name)
+        ir_type_list = ir_types.split(',')
+        return ir_type_list, param_type
+
     def _generate_input_info(self):
         for name, value in self.input_info:
-            # parse dynamic input/output
-            dynamic_type = self._get_dynamic_input_output_type(value)
-            if dynamic_type:
-                param_type = utils.PARAM_TYPE_DYNAMIC
-                ir_type = dynamic_type
-            else:
-                param_type = utils.PARAM_TYPE_REQUIRED
-                ir_type = value
-            # mapping ir type list
-            if self.type_attr.get(ir_type) != 0:
-                ir_types = self._generate_type_info(
-                    self.type_attr.get(ir_type), name)
-            else:
-                ir_types = self._mapping_input_output_type(ir_type, name)
-            ir_type_list = ir_types.split(',')
+            ir_type_list, param_type = self._get_ir_type_and_param_type(name, value)
             # update op_info.parsed_input_info
             self.parsed_input_info.update({name: {
                 utils.INFO_IR_TYPES_KEY: ir_type_list,
@@ -198,21 +202,7 @@ class TFOpInfo(OpInfo):
 
     def _generate_output_info(self):
         for name, value in self.output_info:
-            # parse dynamic input/output
-            dynamic_type = self._get_dynamic_input_output_type(value)
-            if dynamic_type:
-                param_type = utils.PARAM_TYPE_DYNAMIC
-                ir_type = dynamic_type
-            else:
-                param_type = utils.PARAM_TYPE_REQUIRED
-                ir_type = value
-            # mapping ir type list
-            if self.type_attr.get(ir_type) != 0:
-                ir_types = self._generate_type_info(
-                    self.type_attr.get(ir_type), name)
-            else:
-                ir_types = self._mapping_input_output_type(ir_type, name)
-            ir_type_list = ir_types.split(',')
+            ir_type_list, param_type = self._get_ir_type_and_param_type(name, value)
             # update op_info.parsed_input_info
             self.parsed_output_info.update({name: {
                 utils.INFO_IR_TYPES_KEY: ir_type_list,
