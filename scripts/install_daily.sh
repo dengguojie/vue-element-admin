@@ -134,9 +134,12 @@ bak_ori_Ascend(){
         mv /usr/local/Ascend  /usr/local/Ascend_$bak_time
       fi
     else
-      if [ -d "~/Ascend" ];then
-        mv ~/Ascend  ~/Ascend_$bak_time
+      code_pwd=`pwd`
+      cd ~
+      if [ -d "Ascend" ];then
+        mv Ascend  Ascend_$bak_time
       fi
+      cd $code_pwd
     fi
 }
 

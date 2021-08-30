@@ -471,12 +471,18 @@ checkopts() {
                             chmod 744 ./scripts/install_etrans.sh 
                             ./scripts/install_etrans.sh $username $pwsswd $day
                             exit 0;;
-           install_daily_local) chmod 744 ./scripts/install_daily.sh
-                               ./scripts/install_daily.sh  "install_local"
-                                exit 0;;
-           install_daily_local) chmod 744 ./scripts/install_etrans.sh
-                               ./scripts/install_etrans.sh "install_local"
-                                exit 0;;
+           install_local) rm -rf ./ascend_download/out
+                          if [[ -f "./ascend_download/x86_ubuntu_os_devtoolset_package.zip" ]];then
+                            chmod 744 ./scripts/install_etrans.sh
+                            ./scripts/install_etrans.sh "install_local"
+                          elif [[ -f "./ascend_download/arm_erler29_os_devtoolset_package.zip" ]];then
+                            chmod 744 ./scripts/install_etrans.sh
+                            ./scripts/install_etrans.sh "install_local"
+                          else
+                            chmod 744 ./scripts/install_daily.sh
+                            ./scripts/install_daily.sh  "install_local"
+                          fi 
+                          exit 0;;
            *) for m in [ O0 O1 O2 O3 g ]
                 do
                   if [[ "build_mode_$m" =~ "$OPTARG" ]];then
