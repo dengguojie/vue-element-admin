@@ -122,6 +122,110 @@ case8 = {"params": [{"shape": (1, 256, 108, 108), "dtype": "float32", "format": 
          "expect": RuntimeError,
          "support_expect": True}
 
+#TODO  customize test function 
+def test_op_get_op_support_info(test_arg): 
+    from impl.transpose_d import get_op_support_info
+    get_op_support_info({"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 3, 4, 1, 2],
+                        "get_op_support_info_case1")     
+    
+    get_op_support_info({"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 2, 3, 1],
+                        "get_op_support_info_case2")   
+    
+    get_op_support_info({"shape": (16, 16, 16, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [3, 2, 0, 1],
+                        "get_op_support_info_case3")
+    
+    get_op_support_info({"shape": (1, 16, 1, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (1, 16, 1, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [3, 2, 0, 1],
+                        "get_op_support_info_case4")   
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [3, 2, 0, 1],
+                        "get_op_support_info_case5")   
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 3, 1, 2, 4],
+                        "get_op_support_info_case6")    
+
+    get_op_support_info({"shape": (16, 1, 16, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 1, 16, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [1, 2, 3, 0],
+                        "get_op_support_info_case7") 
+
+    get_op_support_info({"shape": (16, 1, 16, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 1, 16, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [3, 2, 1, 0],
+                        "get_op_support_info_case8") 
+
+    get_op_support_info({"shape": (1, 16, 1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (1, 16, 1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [3, 0, 2, 1],
+                        "get_op_support_info_case9") 
+
+    get_op_support_info({"shape": (1, 1, 1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (1, 1, 1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 2, 1],
+                        "get_op_support_info_case10") 
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 2, 1],
+                        "get_op_support_info_case11")   
+    
+    get_op_support_info({"shape": (1, 1, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (1, 1, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [1, 0, 2],
+                        "get_op_support_info_case12")     
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [1, 0, 2],
+                        "get_op_support_info_case13")     
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 1, 3, 2],
+                        "get_op_support_info_case14")    
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 1, 2, 4, 3],
+                        "get_op_support_info_case15")      
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [2, 0, 1],
+                        "get_op_support_info_case16")  
+
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 2, 3, 4, 1],
+                        "get_op_support_info_case17")    
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [0, 4, 1, 2, 3],
+                        "get_op_support_info_case18")      
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [8, 8, 8],
+                        "get_op_support_info_case19")    
+    
+    get_op_support_info({"shape": (16, 16, 16, 2), "dtype": "float16", "format": "NCDHW", "ori_shape": (1, 1), "ori_format": "ND"},
+                        {"shape": (16, 16, 16, 2), "dtype": "float16", "format": "NCDHW", "ori_shape": (1, 1), "ori_format": "ND"},
+                        [8, 8, 8],
+                        "get_op_support_info_case20")  
+
+ut_case.add_cust_test_func(test_func=test_op_get_op_support_info)
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
@@ -136,6 +240,9 @@ ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case10)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case11)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case12)
 ut_case.add_case(["Ascend910A","Ascend710"], case13)
+
+
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A","Ascend310","Ascend710"])
     exit(0)

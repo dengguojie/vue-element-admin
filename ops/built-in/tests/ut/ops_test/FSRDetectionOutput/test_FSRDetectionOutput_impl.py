@@ -88,8 +88,8 @@ def test_get_op_support_info(test_arg):
                         5, 0.1, 0.2)
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])

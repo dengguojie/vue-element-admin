@@ -51,7 +51,7 @@ def gen_dynamic_rnn_v3_case(shape_x, shape_w, shape_b, shape_output, dtype, init
 case1 = gen_dynamic_rnn_v3_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
                                 "success", "dynamic_rnn_v3")
 
-ut_case.add_case(["Ascend310"], case1)
+ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case1)
 
 
 if __name__ == '__main__':

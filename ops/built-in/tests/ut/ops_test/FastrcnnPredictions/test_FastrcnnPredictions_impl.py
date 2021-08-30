@@ -48,12 +48,12 @@ case8 = gen_fastrcnn_predictions_case_err((96, 4), (96, 64), "float16", "float16
 
 ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case1)
 ut_case.add_case(["Ascend610", "Ascend710", "Ascend615"], case2)
-ut_case.add_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910"], case4)
-ut_case.add_case(["Ascend910"], case5)
-ut_case.add_case(["Ascend910"], case6)
-ut_case.add_case(["Ascend910"], case7)
-ut_case.add_case(["Ascend910"], case8)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case7)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case8)
 
 
 ### precision cases
