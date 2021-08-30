@@ -316,9 +316,9 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
     max_tile_input_h = l1_size // (input_w * BLOCK_SIZE * 2)
-    max_tile_dh = l1_size // (dila_w * BLOCK_SIZE * data_size) + 1 - k_height
+    max_tile_dh = l1_size // (dila_w * BLOCK_SIZE * data_size) - k_height
     dout_l1_size = input_w * (k_height + stride[0]) * BLOCK_SIZE * 2
-    tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
+    tile_k_o = dout_l1_size // l1_size + 2 if dout_l1_size > l1_size else 0
 
     max_h_in_ub = ((ub_size // data_size - (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
                    (stride[0] - 1) * dila_w) // (3 * out_w + stride[0] * dila_w)
@@ -368,7 +368,8 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
         res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
 
     dila_h = tile_input_h + k_height - 1
-    if (k_height * w_height * BLOCK_SIZE * BLOCK_SIZE * data_size + dila_h * dila_w * BLOCK_SIZE * data_size) > l1_size:
+    if (k_height * w_height * BLOCK_SIZE * BLOCK_SIZE * data_size + (
+            dila_h + 1) * dila_w * BLOCK_SIZE * data_size) > l1_size:
         l1_load_kernel = False
     tile_dile_h_ub = min(tile_dile_h_ub, ub_size // (dila_w * BLOCK_SIZE * data_size) + dilated_pad_top -1)
 
