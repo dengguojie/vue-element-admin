@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-strided_slice_d 
+strided_slice_d
 """
 # pylint: disable=too-many-lines
 import copy
@@ -28,8 +28,6 @@ from te.domain.rl_bank import rl_bank
 from te.utils.error_manager import error_manager_vector
 from impl import strided_slice_for_last_dim
 from impl import copy_only
-from impl import common_util
-from impl import strided_slice_two_turn_one
 from impl import strided_slice_fast_last_dim
 from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
@@ -1285,11 +1283,6 @@ def strided_slice_d(input_x,
         head_size = 1
         for i in range(0, (len(input_shape) - 1)):
             head_size = head_size * input_shape[i]
-        if input_dtype == "float32" and input_shape[-1] == 2 and \
-                begin_shape[len(begin_shape) - 1] == 0 and end_shape[len(begin_shape) - 1] == 1 \
-                and head_size > 128:
-            strided_slice_two_turn_one.strided_slice_two_turn_one(input_x, output_x, kernel_name)
-            return
         if input_list[-1] > 80 and output_shape[-1] == 80:
             res1 = strided_slice_fast_last_dim.strided_slice_last_dim_only(input_shape, input_dtype,
                                                                            output_shape, begin_shape,
