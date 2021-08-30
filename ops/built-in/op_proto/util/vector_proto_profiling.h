@@ -21,7 +21,7 @@
 #ifndef OPS_BUILT_IN_OP_PROTO_UTIL_VECTOR_PROTO_PROFILING_H__H_
 #define OPS_BUILT_IN_OP_PROTO_UTIL_VECTOR_PROTO_PROFILING_H__H_
 
-#include <memory.h>
+#include <memory>
 #include <string>
 #include <vector>
 #include <map>
@@ -32,32 +32,38 @@
 
 const static bool vector_prof_switch = std::getenv("VECTOR_PROF") != nullptr;
 
-#define PROFILING_PROTO_INIT(op_type)                                                        \
-  auto profiling_op_name = op_type;                                                          \
-  const vector<string> profiline_cost_name_list = {"GET_SHAPE", "INFER_SHAPE", "SET_SHAPE"}; \
-  std::vector<std::chrono::time_point<std::chrono::steady_clock>> time_vector;               \
-  if (vector_prof_switch) {                                                                  \
-    time_vector.push_back(std::chrono::steady_clock::now());                                 \
-  }
-
-#define PROFILING_PROTO_AFTER_GET_SHAPE_REG()                \
-  if (vector_prof_switch) {                                  \
-    time_vector.push_back(std::chrono::steady_clock::now()); \
-  }
-
-#define PROFILING_PROTO_AFTER_INFER_SHAPE_REG()              \
-  if (vector_prof_switch) {                                  \
-    time_vector.push_back(std::chrono::steady_clock::now()); \
-  }
-
-#define PROFILING_PROTO_END()                                                                                 \
+#define PROFILING_PROTO_INIT(op_type)                                                                         \
+  auto profiling_op_name = op_type;                                                                           \
+  std::unique_ptr<std::vector<std::chrono::time_point<std::chrono::steady_clock>>> time_vector_ptr = nullptr; \
   if (vector_prof_switch) {                                                                                   \
-    time_vector.push_back(std::chrono::steady_clock::now());                                                  \
-    for (size_t i = 1; i < time_vector.size(); i++) {                                                         \
-      auto profiling_cast =                                                                                   \
-          std::chrono::duration_cast<std::chrono::microseconds>(time_vector[i] - time_vector[i - 1]).count(); \
-      OP_EVENT(profiling_op_name, "[INFER_PROF][%s]: %d(us)", profiline_cost_name_list[i - 1].c_str(),        \
-               static_cast<int>(profiling_cast));                                                             \
-    }                                                                                                         \
+    time_vector_ptr = std::unique_ptr<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>(       \
+        new std::vector<std::chrono::time_point<std::chrono::steady_clock>>);                                 \
+    time_vector_ptr->reserve(5);                                                                              \
+    time_vector_ptr->push_back(std::chrono::steady_clock::now());                                             \
+  }
+
+#define PROFILING_PROTO_AFTER_GET_SHAPE_REG()                     \
+  if (time_vector_ptr != nullptr) {                               \
+    time_vector_ptr->push_back(std::chrono::steady_clock::now()); \
+  }
+
+#define PROFILING_PROTO_AFTER_INFER_SHAPE_REG()                   \
+  if (time_vector_ptr != nullptr) {                               \
+    time_vector_ptr->push_back(std::chrono::steady_clock::now()); \
+  }
+
+#define PROFILING_PROTO_END()                                                                                        \
+  if (time_vector_ptr != nullptr) {                                                                                  \
+    time_vector_ptr->push_back(std::chrono::steady_clock::now());                                                    \
+    const vector<string> profiline_cost_name_list = {"GET_SHAPE", "INFER_SHAPE", "SET_SHAPE"};                       \
+    if (time_vector_ptr->size() == profiline_cost_name_list.size() + 1) {                                            \
+      for (size_t i = 1; i < time_vector_ptr->size(); i++) {                                                         \
+        auto profiling_cast =                                                                                        \
+            std::chrono::duration_cast<std::chrono::microseconds>((*time_vector_ptr)[i] - (*time_vector_ptr)[i - 1]) \
+                .count();                                                                                            \
+        OP_EVENT(profiling_op_name, "[INFER_PROF][%s]: %d(us)", profiline_cost_name_list[i - 1].c_str(),             \
+                 static_cast<int>(profiling_cast));                                                                  \
+      }                                                                                                              \
+    }                                                                                                                \
   }
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_VECTOR_PROTO_PROFILING_H__H_

@@ -1299,11 +1299,11 @@ IMPLEMT_COMMON_INFERFUNC(TransDataInferShape) {
   CHECK(op_info == nullptr,
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
         return false);
-  auto input_desc = op_info->MutableInputDesc("src");
+  auto input_desc = op_info->MutableInputDesc(0);
   CHECK(input_desc == nullptr,
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid input_desc")),
         return false);
-  auto output_desc = op_info->MutableOutputDesc("dst");
+  auto output_desc = op_info->MutableOutputDesc(0);
   CHECK(output_desc == nullptr,
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")),
         return false);
@@ -1313,7 +1313,7 @@ IMPLEMT_COMMON_INFERFUNC(TransDataInferShape) {
 
   PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
   if (input_foramt == output_foramt) {
-    output_desc->SetShape(GeShape(input_desc->MutableShape().GetDims()));
+    output_desc->SetShape(input_desc->MutableShape());
     output_desc->SetDataType(input_desc->GetDataType());
   }
   PROFILING_PROTO_END();
