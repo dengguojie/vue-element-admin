@@ -178,40 +178,27 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
     return work_ret;
   }
   // update data according to indices
-  auto shard_update = [&](size_t start, size_t end) {
-    for(int64_t i = start; i < end; ++i) {
-      int64_t remain_index = i;
-      int64_t index_value = 0;
-      int64_t counter = 0;
-      int64_t input_x2_value = input_x2[i] < 0 ?
-                               input_x2[i] + axis_dim_value : input_x2[i];
-      // check update indices are in bounds
-      if (input_x2_value >= axis_dim_value || input_x2_value < 0) {
-        work_ret = KERNEL_STATUS_PARAM_INVALID;
-        KERNEL_LOG_ERROR("Indices value %lld is out of bounds %lld",
-                        input_x2[i], axis_dim_value);
-        return;
-      }
-      for (int64_t j = index_dim_vec.size() - 1; j >= 0; --j) {
-        index_value += ((counter == axis_value ? input_x2_value:
-                        remain_index / index_dim_vec[j]) * data_dim_vec[j]);
-        remain_index %= index_dim_vec[j];
-        ++counter;
-      }
-      index_value += (counter == axis_value ? input_x2_value : remain_index);
-      if (index_value>=total_value_num) {
-        work_ret = KERNEL_STATUS_PARAM_INVALID;
-        KERNEL_LOG_ERROR("Update index %lld more than %lld which is overflow",
-                         index_value, total_value_num);
-        return;
-      }
-      output_y[index_value] = input_x3[i];
+  for (int64_t i = 0; i < update_value_num; ++i) {
+    int64_t remain_index = i;
+    int64_t index_value = 0;
+    int64_t counter = 0;
+    KERNEL_CHECK_FALSE(
+        (input_x2[i] >= axis_dim_value * -1 && input_x2[i] < axis_dim_value),
+        KERNEL_STATUS_PARAM_INVALID, "Indices value %lld is out of bound %lld",
+        input_x2[i], axis_dim_value);
+    int64_t input_x2_value = input_x2[i] < 0 ?
+                             input_x2[i] + axis_dim_value : input_x2[i];
+    for (int64_t j = static_cast<int64_t>(index_dim_vec.size()) - 1; j >= 0; --j) {
+      index_value += ((counter == axis_value ? input_x2_value:
+                      remain_index / index_dim_vec[j]) * data_dim_vec[j]);
+      remain_index %= index_dim_vec[j];
+      ++counter;
     }
-  };
-  KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, update_value_num, 1, shard_update),
-                      "Update process error!")
-  if(work_ret != KERNEL_STATUS_OK) {
-    return work_ret;
+    index_value += (counter == axis_value ? input_x2_value : remain_index);
+    KERNEL_CHECK_FALSE(index_value < total_value_num,
+                       KERNEL_STATUS_PARAM_INVALID, "Update index %lld greater than %lld which is overflow",
+                       index_value, total_value_num);
+    output_y[index_value] = input_x3[i];
   }
   return KERNEL_STATUS_OK;
 }
