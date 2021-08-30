@@ -34,8 +34,8 @@ from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
 from tbe.dsl.static_schedule.conv_schedule import check_dyn_quantfuse_doubleout
 from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
-from tbe.tvm.build_module import BuildConfigs
 from tbe.tvm.build_module import build_config
+from tbe.tvm.cce_build_module import build_fatbin
 
 from . import CompileInfo
 from . import Pattern
@@ -309,35 +309,32 @@ class Builder:
         dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
         with buildcfg.build_config(**dynamic_config):
             upper_config = buildcfg.get_current_build_config("all")
-        current_build_config = copy.deepcopy(upper_config)
-        current_build_config.update(m_config_items)
-        build_configs = [build_config(**current_build_config)]
+        build_configs = []
 
         for sch in self.valid_schs:
             dynamic_single_sch_build_config = copy.deepcopy(upper_config)
-            sch_context = util.get_sch_additional_entry(sch, "context")
+            dynamic_single_sch_build_config.update(m_config_items)
 
+            sch_context = util.get_sch_additional_entry(sch, "context")
             n_config_items = sch_context.get("_build_config")
             if n_config_items is not None:
-                m_config_items.update(n_config_items)
+                dynamic_single_sch_build_config.update(n_config_items)
 
-            dynamic_single_sch_build_config.update(m_config_items)
             build_configs.append(build_config(**dynamic_single_sch_build_config))
 
         if operation.in_dynamic():
-            with BuildConfigs(build_configs):
-                tvm.build(self.valid_schs,
-                          self.args_list,
-                          rules=self.tiling_keys,
-                          target="cce",
-                          name=self.config_map["name"],
-                          )
+            build_fatbin(build_config_list=build_configs,
+                         schedule_list=self.valid_schs,
+                         args_list=self.args_list,
+                         rules=self.tiling_keys,
+                         name=self.config_map["name"],
+                         target_list="cce")
         else:
-            with build_configs[1]:
+            with build_configs[0]:
                 tvm.build(self.valid_schs[0],
                           self.args_list[0],
                           target="cce",
-                          name=self.config_map["name"],
+                          name=self.config_map["name"]
                           )
 
     def _handle_compile_info(self):
