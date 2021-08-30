@@ -118,9 +118,11 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
 
   int pre = 0;
   vector<AxisSplitMap> split_maps;
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
   if (!fcNodes.empty()) {
     pre += fcNodes[0]->GetInDataNodes().size() - 1;
-    if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE)) {
+    if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
       return;
     }
   }
@@ -143,7 +145,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (!elemWiseNodes.empty()){
     AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   }
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 /*

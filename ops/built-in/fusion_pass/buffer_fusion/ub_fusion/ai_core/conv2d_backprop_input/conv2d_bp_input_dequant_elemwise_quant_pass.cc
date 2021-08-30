@@ -174,8 +174,10 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
 
   int inpre = deconv_nodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, deconv_nodes[0], FUSED_OP_TYPE)) {
-    return;
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
+  if (!GetSplitMap(split_maps, deconv_nodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
+     return;
   }
 
   // the dequant is scala mode or with quant, can not split c_dim
@@ -225,7 +227,7 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
     }
   }
 
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 /*

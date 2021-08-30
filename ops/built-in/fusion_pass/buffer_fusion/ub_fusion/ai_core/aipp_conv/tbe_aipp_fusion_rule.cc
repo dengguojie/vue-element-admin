@@ -282,7 +282,9 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
     return;
   }
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type)) {
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1Space = 0;
+  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type, L1_fusion_type, min_tbe_L1Space)) {
     return;
   }
 
@@ -299,6 +301,7 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
   }
   op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
   op_calc_info.SetAxisSplitMaps(split_maps);
+  op_calc_info.SetMinTbeL1Space(min_tbe_L1Space);
   std::string op_slice_info_str = "";
   SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusion_nodes) {

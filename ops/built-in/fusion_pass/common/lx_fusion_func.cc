@@ -59,7 +59,8 @@ void DelSplitInfoByInputAxis(std::vector<AxisSplitMap>& split_maps, int axis) {
   split_maps = temp_maps;
 }
 
-bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, const string& fused_op_type) {
+bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node,
+                 const string& fused_op_type, OpL1FusionType& L1_fusion_type, int64_t& min_tbe_L1space) {
   string op_slice_info_str = "";
   if (cube_node->GetOpDesc() == nullptr) {
     OP_LOGD(fused_op_type.c_str(), "get desc failed");
@@ -79,15 +80,20 @@ bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, 
     OP_LOGD(fused_op_type.c_str(), "axis split map vector is empty");
     return false;
   }
+  L1_fusion_type = op_calc_info.GetL1FusionEnable();
+  min_tbe_L1space = op_calc_info.GetMinTbeL1Space();
   return true;
 }
 
-void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>& fusionNodes, const string& fused_op_type) {
+void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>& fusionNodes,
+                 const string& fused_op_type, const OpL1FusionType& L1_fusion_type, const int64_t& min_tbe_L1space) {
   OpCalcInfo op_calc_info;
   op_calc_info.Initialize();
   string op_slice_info_str = "";
   op_calc_info.SetAxisSplitMaps(split_maps);
   SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  op_calc_info.SetL1FusionEnable(L1_fusion_type);
+  op_calc_info.SetMinTbeL1Space(min_tbe_L1space);
   for (auto fusion_node : fusionNodes) {
     if (fusion_node == nullptr) {
       continue;

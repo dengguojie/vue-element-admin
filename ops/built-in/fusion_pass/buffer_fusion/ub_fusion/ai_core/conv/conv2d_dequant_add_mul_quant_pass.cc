@@ -86,7 +86,9 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
     return;
   }
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type_)) {
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1Space = 0;
+  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type_, L1_fusion_type, min_tbe_L1Space)) {
     return;
   }
 
@@ -130,7 +132,7 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
       }
     }
   }
-  SetSplitMap(split_maps, fusion_nodes, fused_op_type_);
+  SetSplitMap(split_maps, fusion_nodes, fused_op_type_, L1_fusion_type, min_tbe_L1Space);
 }
 
 /*

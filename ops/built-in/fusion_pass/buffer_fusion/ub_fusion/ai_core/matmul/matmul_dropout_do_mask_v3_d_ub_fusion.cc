@@ -89,12 +89,15 @@ void MatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &m
 
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
+
     return;
   }
   AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   AddElemwiseSplitMap(split_maps, elemWiseNodes1[0], pre);
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 Status MatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,

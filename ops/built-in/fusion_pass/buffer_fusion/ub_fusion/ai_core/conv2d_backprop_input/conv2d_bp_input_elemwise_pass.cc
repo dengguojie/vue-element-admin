@@ -93,8 +93,9 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     OP_LOGE(FUSED_OP_TYPE.c_str(), "deconv_node's input can not <= 0."), return);
   int inpre = deconv_nodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
-
-  if (!GetSplitMap(split_maps, deconv_nodes[0], FUSED_OP_TYPE)) {
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
+  if (!GetSplitMap(split_maps, deconv_nodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
      return;
   }
 
@@ -103,7 +104,7 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     inpre += 1;
     vector<int64_t> cout_dim = {1};
     vector<int64_t> split_flag = {-1};
-    for(auto split_map : split_maps) {
+    for(auto &split_map : split_maps) {
       auto output_split_infos = split_map.GetOutputSplitInfoVec();
       auto input_split_infos = split_map.GetInputSplitInfoVec();
       if (output_split_infos.empty() || input_split_infos.empty() || output_split_infos[0].GetAxis().empty()) {
@@ -121,7 +122,7 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     }
   }
 
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 /*

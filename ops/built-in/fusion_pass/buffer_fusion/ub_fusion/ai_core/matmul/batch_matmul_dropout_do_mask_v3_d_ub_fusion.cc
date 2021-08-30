@@ -36,6 +36,8 @@ static const string PATTERN_DROPOUTDOMASKV3D = "dropout_do_mask_v3_d";
 static const string PATTERN_OTHER_INPUT = "other_input";
 static const string PATTERN_OTHER_INPUT1 = "other_input1";
 static const string PATTERN_ADD = "add";
+static const string TYPE_DROPOUTDOMASKV3D = "DropOutDoMaskV3D";
+static const string TYPE_BATCHMATMUL = "BatchMatMul";
 }  // namespace
 
 vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatterns() {
@@ -85,14 +87,16 @@ void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMappi
 
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
     return;
   }
   AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   FUSION_PASS_CHECK(!elemWiseNodes1.empty(),
                     AddElemwiseSplitMap(split_maps, elemWiseNodes1[0], pre),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Add node matched"));
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,
@@ -104,10 +108,10 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
   vector<ge::NodePtr> add_nodes = GetMatchedNodesByDescName(PATTERN_ADD, mapping);
 
   FUSION_PASS_CHECK(batch_matmul_nodes.empty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "BatchMatMul node is not matched."),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "BatchMatMul node is not matched."),
                     return SUCCESS);
   FUSION_PASS_CHECK(dropout_nodes.empty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DropOutDoMaskV3D node is not matched."),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "DropOutDoMaskV3D node is not matched."),
                     return SUCCESS);
   FUSION_PASS_CHECK(add_nodes.empty(),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Elemwise node is not matched."),
@@ -117,7 +121,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
   // "dropout_do_mask -> batch_matmul1 (control-node) -> fusion_transpose
   // -> batch_matmul2 (control-node) -> dropout_do_mask"
   for (const auto& batch_matmul_node : batch_matmul_nodes) {
-    if (batch_matmul_node->GetType() != "BatchMatMul") {
+    if (batch_matmul_node->GetType() != TYPE_BATCHMATMUL) {
       OP_LOGD(FUSED_OP_TYPE.c_str(),
               "The op_type of node [%s] should be BatchMatMul, but actually is [%s].",
               batch_matmul_node->GetName().c_str(), batch_matmul_node->GetType().c_str());
@@ -149,7 +153,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     }
   }
   for (const auto& dropout_node : dropout_nodes) {
-    if (dropout_node->GetType() != "DropOutDoMaskV3D") {
+    if (dropout_node->GetType() != TYPE_DROPOUTDOMASKV3D) {
       OP_LOGD(FUSED_OP_TYPE.c_str(),
               "The op_type of node [%s] should be DropOutDoMaskV3D, but actually is [%s].",
               dropout_node->GetName().c_str(), dropout_node->GetType().c_str());
@@ -158,7 +162,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     for (const auto& dropout_control_node : dropout_node->GetInControlNodes()) {
       FUSION_PASS_CHECK(dropout_control_node == nullptr,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "in control of dropout is null."), return FAILED);
-      if (dropout_control_node->GetType() != "BatchMatMul") {
+      if (dropout_control_node->GetType() != TYPE_BATCHMATMUL) {
         continue;
       }
       // dropout_control_node is batch_matmul_node in this situation

@@ -137,16 +137,12 @@ void TbeConv3dDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, s
     fusion_inpre = inpre + addn_inpre + 1;
   }
 
-  OpCalcInfo op_calc_info;
   vector<AxisSplitMap> split_maps;
-  string op_slice_info_str = "";
-  ge::AttrUtils::GetStr(dx_nodes[0]->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
-
-  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
-  FUSION_PASS_CHECK(op_slice_info_str.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "op_slice_info_str is empty"), return);
-  split_maps = op_calc_info.GetAxisSplitMapVec();
-  FUSION_PASS_CHECK(split_maps.empty(), OP_LOGD(FUSED_OP_TYPE.c_str(), "axis split map vector is empty"), return);
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
+  if (!GetSplitMap(split_maps, dx_nodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
+    return;
+  }
 
   for(int i = inpre + 1; i <= fusion_inpre; i++) {
     for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
@@ -167,7 +163,7 @@ void TbeConv3dDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, s
     }
   }
 
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 /*

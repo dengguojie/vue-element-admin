@@ -76,7 +76,9 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
   }
 
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_L1space = 0;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
     return;
   }
   auto output0desc = GetCurrNodeOutputDesc(matmulNodes[0], 0);
@@ -91,7 +93,7 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
     DelSplitInfoByOutputAxis(split_maps, batch_index);
   }
 
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
 /*
@@ -119,7 +121,7 @@ Status MatmulReduceSumUbFusion::GetFusionNodes(const BufferFusionMapping& mappin
     auto output0desc = GetCurrNodeOutputDesc(reduceNode, 0);
     FUSION_PASS_CHECK(output0desc == nullptr,
               CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "output0desc is null"),
-              return FAILED);    
+              return FAILED);
     if (output0desc->GetDataType() != ge::DT_FLOAT) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support reduce output type not fp32, skip fusion.");
       return SUCCESS;

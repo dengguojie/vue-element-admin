@@ -50,7 +50,9 @@ Status ConvSliceInfoCalBase::ConvCalcFusionOpSliceInfo(vector<ge::NodePtr> &fusi
     OP_LOGD(fused_op_type.c_str(), "start calculate Conv2d fusion node slice info");
     fused_op_type_.assign(fused_op_type);
     vector<AxisSplitMap> split_maps;
-    if(!GetSplitMap(split_maps, first_fusion_node, fused_op_type_)) {
+    OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
+    int64_t min_tbe_L1Space = 0;
+    if (!GetSplitMap(split_maps, first_fusion_node, fused_op_type_, L1_fusion_type, min_tbe_L1Space)) {
         return FAILED;
     }
     int inputIdxBase = first_fusion_node->GetInDataNodes().size() - 1;
