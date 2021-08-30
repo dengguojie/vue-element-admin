@@ -249,14 +249,7 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
 void NLLLossCommonTiling(int64_t& bytes, int64_t& core_num, int64_t& ub_size, int64_t& need_core_num, int64_t& n_size,
                          int64_t& c_size, int64_t& per_core_size, int64_t& per_core_loop_cnt,
                          int64_t& per_core_left_size, int64_t& last_core_size, int64_t& last_core_loop_cnt,
-                         int64_t& last_core_left_size, int64_t& unit_size, int64_t& min_aligned, bool is_left_data) {
-  int64_t ub_part = 5;
-  int64_t data_one_block = GetFloorDiv(BLOCK_SIZE, bytes);
-  int64_t ub_x_size = GetFloorDiv(ub_size, ub_part);
-
-  // dma move 32byte unit
-  int64_t ub_max_line = GetFloorDiv(ub_x_size - GetMod(ub_x_size, data_one_block), unit_size);
-
+                         int64_t& last_core_left_size, int64_t& ub_max_line, int64_t& min_aligned, bool is_left_data) {
   // one core
   if (ub_max_line < min_aligned) {
     SetLastCoreTilingData(ub_max_line, n_size, need_core_num, per_core_size, per_core_loop_cnt, per_core_left_size,
@@ -267,6 +260,32 @@ void NLLLossCommonTiling(int64_t& bytes, int64_t& core_num, int64_t& ub_size, in
   need_core_num = core_num;
   RecursiveTiling(ub_max_line, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt, per_core_left_size,
                   last_core_size, last_core_loop_cnt, last_core_left_size, min_aligned, is_left_data);
+}
+
+int64_t CalculUbSizeNormWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size,
+                               const int64_t& ub_size, const int64_t& c_size, const int64_t& data_one_block) {
+  int64_t ub_max_line;
+  weight_size = GetCeilDiv(c_size, data_one_block) * data_one_block;
+  // 4: x, target, valid_x, valid_weight 32byte aligned
+  int64_t ub_remaining_size = ub_size - weight_size - 4 * data_one_block;
+  // 3: target, valid_x, valid_weight, need one for per line
+  ub_max_line = GetFloorDiv(ub_remaining_size, c_size + 3);
+  x_size = GetCeilDiv(ub_max_line * c_size, data_one_block) * data_one_block;
+  target_size = GetCeilDiv(ub_max_line, data_one_block) * data_one_block;
+  return ub_max_line;
+}
+
+int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size,
+                                const int64_t& ub_size, const int64_t& c_size, const int64_t& data_one_block) {
+  int64_t ub_max_line;
+  x_size = data_one_block;
+  weight_size = data_one_block;
+  // 2: x_size and weight_size used one block
+  // 3: target, valid_x, valid_weight equally divide the remaining space
+  target_size = GetFloorDiv(ub_size - 2 * data_one_block, 3);
+  // target_size 32byte unit
+  ub_max_line = target_size - GetMod(target_size, data_one_block);
+  return ub_max_line;
 }
 
 /*
@@ -295,8 +314,13 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   int64_t last_core_size = 0;
   int64_t last_core_loop_cnt = 0;
   int64_t last_core_left_size = 0;
+
+  int64_t x_size = 0;
+  int64_t target_size = 0;
+  int64_t weight_size = 0;
+  int64_t ub_max_line = 0;
+
   std::string reduction;
-  int64_t unit_size = 1;
   int64_t min_aligned = 1;
   bool is_left_data = true;
 
@@ -321,17 +345,16 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
 
   c_size = x_shape.back();
 
-  int64_t ub_part = 5;
-  int64_t ub_usable_size = GetFloorDiv(ub_size, ub_part);
   int64_t data_one_block = GetFloorDiv(BLOCK_SIZE, bytes);
-  int64_t c_real_move_size = GetCeilDiv(c_size, data_one_block) * data_one_block;
-
+  ub_max_line = CalculUbSizeNormWeight(x_size, target_size, weight_size,
+                                       ub_size, c_size, data_one_block);
   // c_size can move into ub
-  if (ub_usable_size >= c_real_move_size) {
+  if (ub_max_line >= 1) {
     tiling_mode = 1;
-    unit_size = c_size;
   } else {
     tiling_mode = 2;
+    ub_max_line = CalculUbSizeLargeWeight(x_size, target_size, weight_size,
+                                          ub_size, c_size, data_one_block);
   }
 
   if (reduction == "none") {
@@ -339,7 +362,7 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   }
 
   NLLLossCommonTiling(bytes, core_num, ub_size, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt,
-                      per_core_left_size, last_core_size, last_core_loop_cnt, last_core_left_size, unit_size,
+                      per_core_left_size, last_core_size, last_core_loop_cnt, last_core_left_size, ub_max_line,
                       min_aligned, is_left_data);
 
   OP_LOGD(op_type.c_str(), "NLLLossTiling: n_size=%lld, c_size=%lld", n_size, c_size);
@@ -348,6 +371,8 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
           per_core_size, per_core_loop_cnt, per_core_left_size);
   OP_LOGD(op_type.c_str(), "NLLLossTiling: last_core_size=%lld, last_core_loop_cnt=%lld, last_core_left_size=%lld",
           last_core_size, last_core_loop_cnt, last_core_left_size);
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: x_size=%lld, target_size=%lld, weight_size=%lld",
+          x_size, target_size, weight_size);
 
   // set tiling data
   ByteBufferPut(run_info.tiling_data, tiling_mode);
@@ -360,6 +385,9 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   ByteBufferPut(run_info.tiling_data, last_core_size);
   ByteBufferPut(run_info.tiling_data, last_core_loop_cnt);
   ByteBufferPut(run_info.tiling_data, last_core_left_size);
+  ByteBufferPut(run_info.tiling_data, x_size);
+  ByteBufferPut(run_info.tiling_data, target_size);
+  ByteBufferPut(run_info.tiling_data, weight_size);
 
   // block_dim, core num used in tik op
   run_info.block_dim = need_core_num;

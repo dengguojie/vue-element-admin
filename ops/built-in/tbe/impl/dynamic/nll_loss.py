@@ -192,6 +192,12 @@ def _init_tiling_params(tik_inst, tiling_reg_list):
     tiling_reg_list[8] = tik_inst.Scalar(TILING_CTRL_PARAM[0], "last_core_loop_count")
     # last core left size
     tiling_reg_list[9] = tik_inst.Scalar(TILING_CTRL_PARAM[0], "last_core_left_size")
+    # x size
+    tiling_reg_list[10] = tik_inst.Scalar(TILING_CTRL_PARAM[0], "x_size")
+    # target size
+    tiling_reg_list[11] = tik_inst.Scalar(TILING_CTRL_PARAM[0], "target_size")
+    # weight size
+    tiling_reg_list[12] = tik_inst.Scalar(TILING_CTRL_PARAM[0], "weight_size")
 
     return tiling_reg_list
 
@@ -221,6 +227,12 @@ def _get_tiling_params(tik_inst, ub_tiling, tiling_reg_list):
     tiling_reg_list[8].set_as(ub_tiling[8])
     # get last core left size
     tiling_reg_list[9].set_as(ub_tiling[9])
+    # get x size
+    tiling_reg_list[10].set_as(ub_tiling[10])
+    # get target size
+    tiling_reg_list[11].set_as(ub_tiling[11])
+    # get weight size
+    tiling_reg_list[12].set_as(ub_tiling[12])
 
 
 def _init_scalar_params(block_idx, scalar_params_list, tiling_data_list):
@@ -228,7 +240,7 @@ def _init_scalar_params(block_idx, scalar_params_list, tiling_data_list):
     init scalar params
     """
     _, c_size, per_core_size, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
-        core_target_offset, core_x_left_offset, core_target_left_offset, _ = scalar_params_list
+        core_target_offset, core_x_left_offset, core_target_left_offset, _, _, _, _ = scalar_params_list
 
     size, loop_cnt, left_size = tiling_data_list
     target_loop_size = (size - left_size) // loop_cnt
@@ -280,6 +292,9 @@ def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
     last_core_size = tiling_reg_list[7]
     last_core_loop_cnt = tiling_reg_list[8]
     last_core_left_size = tiling_reg_list[9]
+    x_size = tiling_reg_list[10]
+    target_size = tiling_reg_list[11]
+    weight_size = tiling_reg_list[12]
 
     core_loop_cnt = tik_inst.Scalar("int64", "core_loop_cnt")
     core_x_loop_size = tik_inst.Scalar("int64", "core_x_loop_size")
@@ -293,7 +308,7 @@ def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
 
     scalar_params = [need_core_num, c_size, per_core_size, core_loop_cnt, core_x_loop_size, core_target_loop_size,
                      core_left_size, core_x_offset, core_target_offset, core_x_left_offset,
-                     core_target_left_offset, target_index]
+                     core_target_left_offset, target_index, x_size, target_size, weight_size]
 
     # last core
     with tik_inst.if_scope(block_idx == need_core_num - 1):
@@ -375,13 +390,15 @@ def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
     """
     normal weight nllloss
     """
+    need_core_num, c_size, _, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
+        core_target_offset, core_x_left_offset, core_target_left_offset, target_index, x_size, target_size, \
+        weight_size = scalar_params
+
     data_x, data_target, data_weight, data_y, data_total_weight, reduction = trans_params
 
     ub_zero_x, ub_x, ub_target, ub_zero_weight, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space = \
-        _init_normal_weight_ub(tik_inst, data_x, data_target, data_weight, reduction)
-
-    need_core_num, c_size, _, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
-        core_target_offset, core_x_left_offset, core_target_left_offset, target_index = scalar_params
+        _init_normal_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, target_size,
+                               weight_size, reduction)
 
     with tik_inst.if_scope(block_idx < need_core_num):
         def _normal_weight(core_info, core_left_info):
@@ -454,11 +471,13 @@ def _large_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
     """
     data_x, data_target, data_weight, data_y, data_total_weight, reduction = trans_params
 
-    ub_x, ub_target, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space = \
-        _init_large_weight_ub(tik_inst, data_x, data_target, data_weight, reduction)
-
     need_core_num, c_size, _, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
-        core_target_offset, core_x_left_offset, core_target_left_offset, target_index = scalar_params
+        core_target_offset, core_x_left_offset, core_target_left_offset, target_index, x_size, target_size, \
+        weight_size = scalar_params
+
+    ub_x, ub_target, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space = \
+        _init_large_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, target_size,
+                              weight_size, reduction)
 
     with tik_inst.if_scope(block_idx < need_core_num):
         def _large_weight(core_info, core_left_info):
@@ -526,40 +545,38 @@ def _get_reduce_sum_ub_work_space(tik_inst, dtype, data_len):
     return ub_work_space
 
 
-def _init_normal_weight_ub(tik_inst, data_x, data_target, data_weight, reduction):
+def _init_normal_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, target_size, weight_size, reduction):
     """
     init normal weight ub
     """
-    ub_size = _get_max_element_in_ub(data_x.dtype, 5)
-    ub_all_x = tik_inst.Tensor(data_x.dtype, (ub_size + 8,), tik.scope_ubuf, "ub_all_x")
+    ub_all_x = tik_inst.Tensor(data_x.dtype, (x_size + 8,), tik.scope_ubuf, "ub_all_x")
     ub_zero_x = ub_all_x[0:8]
     ub_x = ub_all_x[8:]
-    ub_target = tik_inst.Tensor(data_target.dtype, (ub_size,), tik.scope_ubuf, "ub_target")
-    ub_all_weight = tik_inst.Tensor(data_weight.dtype, (ub_size + 8,), tik.scope_ubuf, "ub_all_weight")
+    ub_target = tik_inst.Tensor(data_target.dtype, (target_size,), tik.scope_ubuf, "ub_target")
+    ub_all_weight = tik_inst.Tensor(data_weight.dtype, (weight_size + 8,), tik.scope_ubuf, "ub_all_weight")
     ub_zero_weight = ub_all_weight[0:8]
     ub_weight = ub_all_weight[8:]
-    ub_valid_x = tik_inst.Tensor(data_x.dtype, (ub_size,), tik.scope_ubuf, "ub_valid_x")
-    ub_valid_weight = tik_inst.Tensor(data_weight.dtype, (ub_size,), tik.scope_ubuf, "ub_valid_weight")
+    ub_valid_x = tik_inst.Tensor(data_x.dtype, (target_size,), tik.scope_ubuf, "ub_valid_x")
+    ub_valid_weight = tik_inst.Tensor(data_weight.dtype, (target_size,), tik.scope_ubuf, "ub_valid_weight")
     ub_work_space = None
     if reduction == "sum":
-        ub_work_space = _get_reduce_sum_ub_work_space(tik_inst, data_x.dtype, ub_size)
+        ub_work_space = _get_reduce_sum_ub_work_space(tik_inst, data_x.dtype, target_size)
 
     return [ub_zero_x, ub_x, ub_target, ub_zero_weight, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space]
 
 
-def _init_large_weight_ub(tik_inst, data_x, data_target, data_weight, reduction):
+def _init_large_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, target_size, weight_size, reduction):
     """
     init large weight ub
     """
-    ub_size = _get_max_element_in_ub(data_x.dtype, 5)
-    ub_x = tik_inst.Tensor(data_x.dtype, (ub_size,), tik.scope_ubuf, "ub_x")
-    ub_target = tik_inst.Tensor(data_target.dtype, (ub_size,), tik.scope_ubuf, "ub_target")
-    ub_weight = tik_inst.Tensor(data_weight.dtype, (ub_size,), tik.scope_ubuf, "ub_weight")
-    ub_valid_x = tik_inst.Tensor(data_x.dtype, (ub_size,), tik.scope_ubuf, "ub_valid_x")
-    ub_valid_weight = tik_inst.Tensor(data_weight.dtype, (ub_size,), tik.scope_ubuf, "ub_valid_weight")
+    ub_x = tik_inst.Tensor(data_x.dtype, (x_size,), tik.scope_ubuf, "ub_x")
+    ub_target = tik_inst.Tensor(data_target.dtype, (target_size,), tik.scope_ubuf, "ub_target")
+    ub_weight = tik_inst.Tensor(data_weight.dtype, (weight_size,), tik.scope_ubuf, "ub_weight")
+    ub_valid_x = tik_inst.Tensor(data_x.dtype, (target_size,), tik.scope_ubuf, "ub_valid_x")
+    ub_valid_weight = tik_inst.Tensor(data_weight.dtype, (target_size,), tik.scope_ubuf, "ub_valid_weight")
     ub_work_space = None
     if reduction == "sum":
-        ub_work_space = _get_reduce_sum_ub_work_space(tik_inst, data_x.dtype, ub_size)
+        ub_work_space = _get_reduce_sum_ub_work_space(tik_inst, data_x.dtype, target_size)
 
     return [ub_x, ub_target, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space]
 
