@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-Dynamic PadV3D ut case
+Dynamic PadV3 ut case
 """
 from op_test_frame.ut import OpUT
 
@@ -60,5 +60,3 @@ ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case2)
 
 if __name__ == '__main__':
     ut_case.run("Ascend310","Ascend710","Ascend910A")
-
-

@@ -24,7 +24,6 @@ from impl.util.platform_adapter import register_operator
 from impl import constant_util as constant
 from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
 
-
 # max int64
 MAX_INT64 = 2 ** 64 - 1
 # tiling param nums
@@ -48,7 +47,6 @@ MODE3 = 3
 # judge how much ub size to fill the tensor
 THRESHHOLD_VALUE = 8192
 BLOCK = 32
-
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
 # pylint: disable=too-many-arguments,invalid-name
@@ -166,6 +164,9 @@ class PadV3Init(object):
         self.core_inner_start = self.tik_instance.Scalar(self.tiling_dtype, "core_inner_start", init_value=0)
 
     def get_pad_scalar(self):
+        """
+        get_pad_scalar
+        """
         constant_values_ub = self.tik_instance.Tensor(self.constant_values_dtype, (self.block_num,),
                                                       name='constant_values_ub', scope=tik.scope_ubuf)
         self.tik_instance.data_move(constant_values_ub, self.constant_values_gm, 0, 1, 1, 0, 0)
@@ -303,8 +304,6 @@ class PadV3Init(object):
         """
         self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
                                                   name="tiling_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
-                                                  name="tiling_gm", scope=tik.scope_gm)
         for i, input_dict in enumerate(input_dict_list):
             input_dtype = input_dict.get("dtype") if pad_input_idx != i else self.inner_dtype
             input_gm = self.tik_instance.Tensor(input_dtype, self.unknown_max_shape,
@@ -328,13 +327,13 @@ class PadV3Init(object):
         self.output_gm = self.output_gm_list[pad_outnput_idx]
 
     def fill_gm_output_tensor(self, core_index):
-        '''
+        """
         fill gm output tensor
         :param
         core_index: the index of each core
         :return:
         None
-        '''
+        """
         self.max_numel_vec_dup_one_loop = self.max_repeat_time * self.dump_mask_max_x
         total_output_tensor = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor', init_value=1)
         total_output_tensor_each_core = self.tik_instance.Scalar(dtype='int32',
@@ -345,10 +344,7 @@ class PadV3Init(object):
         for ele in self.tiling_output_shape:
             total_output_tensor.set_as(total_output_tensor * ele)
         block = self.tik_instance.Scalar(dtype='int32')
-        if self.x_dtype == 'float32':
-            block.set_as(BLOCK // 4)
-        elif self.x_dtype == 'float16':
-            block.set_as(BLOCK // 2)
+        block.set_as(BLOCK // 2)
         core_nums = self.tik_instance.Scalar(dtype='int32')
         core_nums.set_as(self.core_nums)
         total_output_tensor_each_core.set_as((total_output_tensor - 1) // core_nums + 1)
@@ -360,124 +356,62 @@ class PadV3Init(object):
         core_nums.set_as((total_output_tensor - 1) // total_output_tensor_each_core + 1)
         total_output_tensor_last_core.set_as(((total_output_tensor % total_output_tensor_each_core - 1) // block + 1)
                                              * block)
+        scale = 1
+        if self.x_dtype == "float32":
+            scale = 2
         with self.tik_instance.if_scope(core_index < core_nums):
             with self.tik_instance.new_stmt_scope():
+                fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHHOLD_VALUE,),
+                                                          name='fill_tensor_ub', scope=tik.scope_ubuf)
+                repeat_time = THRESHHOLD_VALUE // self.dump_mask_max_x
+                self.tik_instance.vec_dup(self.dump_mask_max_x // scale, fill_tensor_ub,
+                                          self.pad_scalar, repeat_time * scale, 8)
+                if self.x_dtype == "float32":
+                    fill_tensor_ub = fill_tensor_ub.reinterpret_cast_to("float16")
                 with self.tik_instance.if_scope(tik.all(core_index == core_nums - 1,
                                                         (total_output_tensor % total_output_tensor_each_core) > 0)):
                     with self.tik_instance.if_scope(total_output_tensor_last_core >= THRESHHOLD_VALUE):
-                        fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHHOLD_VALUE,),
-                                                                  name='fill_tensor_ub', scope=tik.scope_ubuf)
-                        repeat_time = THRESHHOLD_VALUE // self.dump_mask_max_x
-                        self.tik_instance.vec_dup(self.dump_mask_max_x,
-                                                  fill_tensor_ub,
-                                                  self.pad_scalar, repeat_time, 8)
                         times = self.tik_instance.Scalar(dtype='int32')
                         tail_burst_len = self.tik_instance.Scalar(dtype='int32')
-                        times.set_as(total_output_tensor_last_core // THRESHHOLD_VALUE)
-                        tail_burst_len.set_as(total_output_tensor_last_core % THRESHHOLD_VALUE // block)
-                        if self.x_dtype == 'float32':
-                            fill_tensor_ub = fill_tensor_ub.reinterpret_cast_to('float16')
+                        times.set_as(total_output_tensor_last_core // THRESHHOLD_VALUE // scale)
+                        tail_burst_len.set_as(total_output_tensor_last_core % (THRESHHOLD_VALUE * scale) // block)
                         with self.tik_instance.for_range(0, times) as i:
-                            if self.x_dtype == 'float32':
-                                offset_gm.set_as((core_index * total_output_tensor_each_core +
-                                                  i * THRESHHOLD_VALUE) * 2)
-                            elif self.x_dtype == 'float16':
-                                offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                                 i * THRESHHOLD_VALUE)
+                            offset_gm.set_as(core_index * total_output_tensor_each_core + i * THRESHHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
-                                                        THRESHHOLD_VALUE // block, 0, 0)
+                                                        THRESHHOLD_VALUE * scale // block, 0, 0)
                         with self.tik_instance.if_scope(tail_burst_len > 0):
-                            if self.x_dtype == 'float32':
-                                offset_gm.set_as((core_index * total_output_tensor_each_core +
-                                                  times * THRESHHOLD_VALUE) * 2)
-                            elif self.x_dtype == 'float16':
-                                offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                                 times * THRESHHOLD_VALUE)
+                            offset_gm.set_as(core_index * total_output_tensor_each_core +
+                                              times * THRESHHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
                                                         tail_burst_len, 0, 0)
 
                     with self.tik_instance.else_scope():
-                        fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHHOLD_VALUE,),
-                                                                  name='fill_tensor_ub', scope=tik.scope_ubuf)
-                        repeat_time = self.tik_instance.Scalar(dtype='int32')
-                        tail_mask = self.tik_instance.Scalar(dtype='int32')
-                        repeat_time.set_as(total_output_tensor_last_core // self.dump_mask_max_x)
-                        with self.tik_instance.if_scope(repeat_time > 0):
-                            self.tik_instance.vec_dup(self.dump_mask_max_x,
-                                                      fill_tensor_ub,
-                                                      self.pad_scalar, repeat_time, 8)
-                        tail_mask.set_as(total_output_tensor_last_core % self.dump_mask_max_x)
-                        with self.tik_instance.if_scope(tail_mask > 0):
-                            self.tik_instance.vec_dup(tail_mask,
-                                                      fill_tensor_ub[repeat_time * self.dump_mask_max_x],
-                                                      self.pad_scalar, 1, 8)
-
-                        if self.x_dtype == 'float32':
-                            fill_tensor_ub = fill_tensor_ub.reinterpret_cast_to('float16')
-                            offset_gm.set_as(core_index * total_output_tensor_each_core * 2)
-                        elif self.x_dtype == 'float16':
-                            offset_gm.set_as(core_index * total_output_tensor_each_core)
+                        offset_gm.set_as(core_index * total_output_tensor_each_core * scale)
                         self.tik_instance.data_move(self.output_gm[offset_gm],
                                                     fill_tensor_ub, 0, 1,
                                                     total_output_tensor_last_core // block, 0, 0)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.if_scope(total_output_tensor_each_core >= THRESHHOLD_VALUE):
-                        fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHHOLD_VALUE,),
-                                                                  name='fill_tensor_ub', scope=tik.scope_ubuf)
-                        repeat_time = THRESHHOLD_VALUE // self.dump_mask_max_x
-                        self.tik_instance.vec_dup(self.dump_mask_max_x,
-                                                  fill_tensor_ub,
-                                                  self.pad_scalar, repeat_time, 8)
                         times = self.tik_instance.Scalar(dtype='int32')
                         tail_burst_len = self.tik_instance.Scalar(dtype='int32')
-                        times.set_as(total_output_tensor_each_core // THRESHHOLD_VALUE)
-                        tail_burst_len.set_as(total_output_tensor_each_core % THRESHHOLD_VALUE // block)
-
-                        if self.x_dtype == 'float32':
-                            fill_tensor_ub = fill_tensor_ub.reinterpret_cast_to('float16')
+                        times.set_as(total_output_tensor_each_core // scale // THRESHHOLD_VALUE)
+                        tail_burst_len.set_as(total_output_tensor_each_core % (THRESHHOLD_VALUE * scale) // block)
                         with self.tik_instance.for_range(0, times) as i:
-                            if self.x_dtype == 'float32':
-                                offset_gm.set_as((core_index * total_output_tensor_each_core +
-                                                  i * THRESHHOLD_VALUE) * 2)
-                            elif self.x_dtype == 'float16':
-                                offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                                 i * THRESHHOLD_VALUE)
+                            offset_gm.set_as(core_index * total_output_tensor_each_core +
+                                             i * THRESHHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
-                                                        THRESHHOLD_VALUE // block, 0, 0)
+                                                        THRESHHOLD_VALUE * scale // block, 0, 0)
                         with self.tik_instance.if_scope(tail_burst_len > 0):
-                            if self.x_dtype == 'float32':
-                                offset_gm.set_as((core_index * total_output_tensor_each_core +
-                                                  times * THRESHHOLD_VALUE) * 2)
-                            elif self.x_dtype == 'float16':
-                                offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                                 times * THRESHHOLD_VALUE)
+                            offset_gm.set_as(core_index * total_output_tensor_each_core +
+                                             times * THRESHHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
                                                         tail_burst_len, 0, 0)
 
                     with self.tik_instance.else_scope():
-                        fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHHOLD_VALUE,),
-                                                                  name='fill_tensor_ub', scope=tik.scope_ubuf)
-                        repeat_time = self.tik_instance.Scalar(dtype='int32')
-                        tail_mask = self.tik_instance.Scalar(dtype='int32')
-                        repeat_time.set_as(total_output_tensor_each_core // self.dump_mask_max_x)
-                        with self.tik_instance.if_scope(repeat_time > 0):
-                            self.tik_instance.vec_dup(self.dump_mask_max_x,
-                                                      fill_tensor_ub,
-                                                      self.pad_scalar, repeat_time, 8)
-                        tail_mask.set_as(total_output_tensor_each_core % self.dump_mask_max_x)
-                        with self.tik_instance.if_scope(tail_mask > 0):
-                            self.tik_instance.vec_dup(tail_mask,
-                                                      fill_tensor_ub[repeat_time * self.dump_mask_max_x],
-                                                      self.pad_scalar, 1, 8)
-
-                        if self.x_dtype == 'float32':
-                            fill_tensor_ub = fill_tensor_ub.reinterpret_cast_to('float16')
-                            offset_gm.set_as(core_index * total_output_tensor_each_core * 2)
-                        elif self.x_dtype == 'float16':
-                            offset_gm.set_as(core_index * total_output_tensor_each_core)
+                        offset_gm.set_as(core_index * ((total_output_tensor_each_core - 1) // block + 1) * block)
                         self.tik_instance.data_move(self.output_gm[offset_gm],
                                                     fill_tensor_ub, 0, 1,
-                                                    total_output_tensor_each_core // block, 0, 0)
+                                                    ((total_output_tensor_each_core - 1) // block + 1) * scale, 0, 0)
 
     def pad_v3_d_compute_tiling(self):
         """
@@ -595,7 +529,7 @@ class PadV3Init(object):
         process_num_ub[1].set_as(copy_tail)
 
         def _run_one_dim(input_outer_idx, input_ub_list):
-            '''
+            """
             run one dim
             :param
             input_outer_idx: the input index of outer data
@@ -603,7 +537,7 @@ class PadV3Init(object):
             input_ub_list: the list of input ub
             :return:
             None
-            '''
+            """
             data_ub_ping, data_ub_pang, _ = input_ub_list
             output_outer_offset = self.tik_instance.Scalar(dtype="int64", name="output_outer_offset")
             input_gm_offset = input_outer_idx * self.tiling_input_shape[-1]
@@ -694,7 +628,7 @@ class PadV3Init(object):
         process_num_ub[2].set_as(copy_new_num - scalar_copy_num * (copy_loop_ceil - 1))
 
         def _run_one_dim(input_outer_idx, input_ub_list):
-            '''
+            """
             run one dim
             :param
             input_outer_idx: the input index of outer data
@@ -702,7 +636,7 @@ class PadV3Init(object):
             input_ub_list: the list of input ub
             :return:
             None
-            '''
+            """
             ub_one_block, data_ub_ping, data_ub_pang, _ = input_ub_list
             output_outer_offset = self.tik_instance.Scalar(dtype="int64", name="output_outer_offset")
             input_gm_offset = input_outer_idx * self.tiling_input_shape[-1]
@@ -756,8 +690,8 @@ class PadV3Init(object):
         if self.x_dtype == "float32":
             ping_data_ub_one_block = ping_data_ub_one_block.reinterpret_cast_to('float32')
             pang_data_ub_one_block = pang_data_ub_one_block.reinterpret_cast_to('float32')
-            self.tik_instance.vector_dup(self.block_num * 4, ping_data_ub_one_block[16:], self.pad_scalar, 4, 1, 8)
-            self.tik_instance.vector_dup(self.block_num * 4, pang_data_ub_one_block[16:], self.pad_scalar, 4, 1, 8)
+            self.tik_instance.vector_dup(self.block_num * 4, ping_data_ub_one_block[8:], self.pad_scalar, 2, 1, 8)
+            self.tik_instance.vector_dup(self.block_num * 4, pang_data_ub_one_block[8:], self.pad_scalar, 2, 1, 8)
             ping_data_ub_one_block = ping_data_ub_one_block.reinterpret_cast_to('float16')
             pang_data_ub_one_block = pang_data_ub_one_block.reinterpret_cast_to('float16')
         elif self.x_dtype == "float16":
@@ -848,7 +782,7 @@ class PadV3Init(object):
             vnchw_dst_stride1.set_as(0)
 
         def run_outer_by_outer(second_dim_start, do_inner_num, do_outer_num, align_tail, disable_sync_mte3=False):
-            '''
+            """
             run_outer_by_outer
             :param
             second_dim_start:the second dim start of input
@@ -862,10 +796,10 @@ class PadV3Init(object):
             disable_sync_mte3: disable_sync_mte3
             :return:
             None
-            '''
+            """
 
             def _run_one_outer(_outer_num_idx, ub_list):
-                '''
+                """
                 _run_one_outer
                 :param
                 _outer_num_idx:
@@ -873,7 +807,7 @@ class PadV3Init(object):
                 ub_list:
                 :return:
                 none
-                '''
+                """
                 origin_data_ub, vnchw_data_ub, vnchw_output_data_ub, _, _ = ub_list
                 _, _, _, origin_output_data_ub, origin_output_tail_data_ub = ub_list
                 input_outer_idx = _outer_num_idx + self.core_outer_start
@@ -961,7 +895,7 @@ class PadV3Init(object):
                         dst_offset = \
                             output_outer_offset \
                             + (self.tiling_pading_value[4][0] + second_dim_start + do_outer_num * do_inner_num) \
-                              * self.output_offset[5] \
+                            * self.output_offset[5] \
                             - self.block_num
                         self.tik_instance.data_move(self.output_gm[dst_offset],
                                                     origin_output_tail_data_ub[(do_outer_num - 1) * 16],
@@ -998,7 +932,7 @@ class PadV3Init(object):
             if self.x_dtype == "float32":
                 vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float32')
                 self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_ping, self.pad_scalar,
-                                             max_line_in_ub * max_output_size // self.block_num // 4, 1, 8)
+                                             max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                 vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float16')
 
             elif self.x_dtype == "float16":
@@ -1025,7 +959,7 @@ class PadV3Init(object):
             if self.x_dtype == "float32":
                 vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float32')
                 self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_pang, self.pad_scalar,
-                                             max_line_in_ub * max_output_size // self.block_num // 4, 1, 8)
+                                             max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                 vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float16')
             elif self.x_dtype == "float16":
                 self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_pang, self.pad_scalar,
@@ -1123,13 +1057,13 @@ class PadV3Init(object):
                     vnchw_dst_stride1.set_as(0)
 
                 def _run_one_outer(_outer_num_idx, ub_list):
-                    '''
+                    """
                     run_one_outer
                     :param _outer_num_idx:
                     :param ub_list:
                     :return:
                     None
-                    '''
+                    """
                     origin_data_ub, vnchw_data_ub, vnchw_output_data_ub, _, _ = ub_list
                     _, _, _, origin_output_data_ub, origin_output_tail_data_ub = ub_list
                     input_outer_idx = _outer_num_idx + self.core_outer_start
@@ -1244,7 +1178,7 @@ class PadV3Init(object):
                 if self.x_dtype == "float32":
                     vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float32')
                     self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_ping, self.pad_scalar,
-                                                 max_line_in_ub * max_output_size // self.block_num // 4, 1, 8)
+                                                 max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                     vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float16')
                 elif self.x_dtype == "float16":
                     self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_ping, self.pad_scalar,
@@ -1268,7 +1202,7 @@ class PadV3Init(object):
                 if self.x_dtype == "float32":
                     vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float32')
                     self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_pang, self.pad_scalar,
-                                                 max_line_in_ub * max_output_size // self.block_num // 4, 1, 8)
+                                                 max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                     vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float16')
                 elif self.x_dtype == "float16":
                     self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_pang, self.pad_scalar,
@@ -1371,7 +1305,7 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
         src_dtype = x.get("dtype").lower()
         paddings_dtype = paddings.get("dtype").lower()
 
-        supported_dtype = ("float16",)
+        supported_dtype = ("float16", "float32")
         para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
         para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
 
@@ -1381,4 +1315,3 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
         return obj.pad_compute()
     elif mode == 'reflect':
         return reflection_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
-

@@ -618,13 +618,11 @@ class ReflectionPadV3Init(object):
         input_ele_per_core = self.tik_instance.Scalar('int64', name='input_ele_per_core')
         output_ele_per_core = self.tik_instance.Scalar('int64', name='output_ele_per_core')
         ranges = self.tik_instance.Scalar('int64', name='ranges')
+        input_ele_per_core.set_as(self.not_last_core_num * self.tiling_input_dim_2 * self.tiling_input_dim_3)
+        output_ele_per_core.set_as(self.not_last_core_num * self.tiling_output_dim_2 * self.tiling_output_dim_3)
         with self.tik_instance.if_scope(core_index == self.core_uesd_num - 1):
-            input_ele_per_core.set_as(self.last_core_num * self.tiling_input_dim_2 * self.tiling_input_dim_3)
-            output_ele_per_core.set_as(self.last_core_num * self.tiling_output_dim_2 * self.tiling_output_dim_3)
             ranges.set_as(self.last_core_num)
         with self.tik_instance.else_scope():
-            input_ele_per_core.set_as(self.not_last_core_num * self.tiling_input_dim_2 * self.tiling_input_dim_3)
-            output_ele_per_core.set_as(self.not_last_core_num * self.tiling_output_dim_2 * self.tiling_output_dim_3)
             ranges.set_as(self.not_last_core_num)
         with self.tik_instance.new_stmt_scope():
             ping_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='ping_ub_1',
@@ -825,7 +823,7 @@ class ReflectionPadV3Init(object):
                                                                    * self.tiling_output_dim_3
                                                                    + (self.padding_index_2 + i) *
                                                                    self.tiling_output_dim_3 +
-                                                                   self.tiling_output_dim_3 - TRANS_MIN_BLKS +
+                                                                   self.tiling_input_dim_3 - TRANS_MIN_BLKS +
                                                                    self.padding_index_0], pang_ub_1, 0, 1, 1, 0, 0)
 
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
@@ -1262,3 +1260,4 @@ def reflection_pad_v3(x, paddings, constant_values, y, mode, padding_contiguous=
                               kernel_name)
     obj.init_src_dst_gm((x, paddings, constant_values), (y,), pad_input_idx=0, pad_outnput_idx=0)
     return obj.pad_compute()
+
