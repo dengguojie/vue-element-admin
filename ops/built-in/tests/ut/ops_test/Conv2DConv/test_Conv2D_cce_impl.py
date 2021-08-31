@@ -21,7 +21,7 @@ ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 def test_conv_quant_cce_conf(test_arg):
     import te
     from te import tvm
-    from topi.cce import util
+    from tbe.common import utils
     import te.lang.cce
     from te.lang.cce import cce_build_code
     from impl.conv2d import _conv_layer_cce
@@ -679,8 +679,7 @@ def test_conv_quant_cce_conf(test_arg):
     """
 
     print("-----------------------------------------------------")
-    print("[conv UNITTEST START topi/python/topi/cce/conv_layer.py]")
-
+    # print("[conv UNITTEST START topi/python/topi/cce/conv_layer.py]")
     # def test_conv_layer_cce_case1():
 
     #     print("[conv layer ut test case 1: test FP16]")

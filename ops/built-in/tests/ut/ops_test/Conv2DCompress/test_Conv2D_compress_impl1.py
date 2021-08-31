@@ -10,8 +10,8 @@ def test_conv2d_compress_impl1(test_arg):
     import te.lang.cce
     from te import tvm
     from te.platform.fusion_manager import fusion_manager
-    from topi import generic
-    from topi.cce import util
+    from tbe.dsl import auto_schedule
+    from tbe.common import utils
     from te import platform as cce_conf
     from te import platform as cce
     from impl.conv2d_compress import conv2dcompress_compute
@@ -112,7 +112,7 @@ def test_conv2d_compress_impl1(test_arg):
             config = {"print_ir": False, "need_build": True,
                       "name": "conv2d_compress_fusion", "tensor_list": total_input_tensors}
             with tvm.target.cce():
-                sch = generic.auto_schedule(res)
+                sch = auto_schedule(res)
             te.lang.cce.cce_build_code(sch, config)
     testcases = [
         {"fmap_shape": [1, 16, 100, 100], "filters_shape": [32, 16, 3, 3], "dtype": "int8", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 1, 1], "dilations": [1, 1, 1, 1]}

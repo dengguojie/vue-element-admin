@@ -7,10 +7,10 @@ ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 def test_dim_conv_cce(test_arg):
     import te
     from te import tvm
-    from topi.cce import util
+    from tbe.common import utils
     import te.lang.cce
     from te.lang.cce import cce_build_code
-    from topi import generic
+    from tbe.dsl import auto_schedule
 
 
     def _dim_conv_four2five_cce(input_shape, dtype, kernel_name="dim_conv_four2five_cce", need_build=True,
@@ -36,7 +36,7 @@ def test_dim_conv_cce(test_arg):
         None
 
         """
-        util.check_shape_rule(input_shape)
+        utils.check_shape_rule(input_shape)
 
         check_list = ["float16"]
         if not (dtype.lower() in check_list):
@@ -48,7 +48,7 @@ def test_dim_conv_cce(test_arg):
         with tvm.target.cce():
             raw_shape = input_shape
             output = te.lang.cce.compute_four2five(input, raw_shape)
-            sch = generic.auto_schedule(output)
+            sch = auto_schedule(output)
 
         config = {"print_ir": need_print,
                 "need_build": need_build,
@@ -80,7 +80,7 @@ def test_dim_conv_cce(test_arg):
         None
 
         """
-        util.check_shape_rule(input_shape)
+        utils.check_shape_rule(input_shape)
 
         check_list = ["float16"]
         if not (dtype.lower() in check_list):
@@ -92,7 +92,7 @@ def test_dim_conv_cce(test_arg):
         with tvm.target.cce():
             raw_shape = input_shape
             output = te.lang.cce.compute_five2four(input, raw_shape)
-            sch = generic.auto_schedule(output)
+            sch = auto_schedule(output)
 
         config = {"print_ir": need_print,
                 "need_build": need_build,

@@ -23,7 +23,6 @@ from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import common
 from tbe.tvm import api as tvm
-from topi.cce.util import check_load3d_w_out_1_support
 
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
@@ -64,6 +63,24 @@ def _check_support_v200():
     """
     soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
     if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
+        return True
+    return False
+
+
+def check_load3d_w_out_1_support():
+    """
+    check if current soc version load3d instruction support w_out==1 or not
+    only Ascend310 and Hi3796CS support w_out==1
+    when fmap_w(with padding) == filters_w(after dilation)
+    -------
+
+    Returns
+    -------
+    True: support
+    False: not support
+    """
+    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False
 

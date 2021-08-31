@@ -10,7 +10,7 @@ def test_conv2d_compress(test_arg):
     import sys
     from impl.conv2d_compress import conv2dcompress_compute
     from te import tvm
-    from topi import generic
+    from tbe.dsl import auto_schedule
     import te.lang.cce
     from te import platform as cceconf
     import math
@@ -83,7 +83,7 @@ def test_conv2d_compress(test_arg):
                 #requant
                 vreq_reg = tvm.placeholder(shape_req, name='vreq_reg', dtype='uint64')
                 out = _ascend_requant_compute(conv_res, vreq_reg, None, relu_flag=relu_flag)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 tensor_list = [fm, filter_w, vreq_reg, out]
             elif data_flow == 1:
                 # dequant_s16
@@ -96,7 +96,7 @@ def test_conv2d_compress(test_arg):
                     bias_tensor = None
                 out = _ascend_dequant_s16_compute(conv_res, vdeq_reg, bias_tensor, None, relu_flag=relu_flag)
 
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq_reg, bias_tensor, out]
                 else:
@@ -118,7 +118,7 @@ def test_conv2d_compress(test_arg):
                 fm2 = tvm.placeholder(conv_res.shape, name='fm2', dtype='int16')
                 out = _ascend_requant_s16_compute(requant_s16, conv16_reg, fm2, None, None, dual_output=False,
                                                   relu_flag=True)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out[0]]
                 else:
@@ -141,7 +141,7 @@ def test_conv2d_compress(test_arg):
                 fm2 = tvm.placeholder(conv_res.shape, name='fm2', dtype='int16')
                 out = _ascend_requant_s16_compute(requant_s16, conv16_reg, fm2, None, None, dual_output=True,
                                                   relu_flag=True)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out[0], out[1]]
                 else:
@@ -151,7 +151,7 @@ def test_conv2d_compress(test_arg):
                     dtype='uint64', attrs={'ori_shape': [shape_w[1] * 16]})
                 out = ascend_dequant_compute(conv_res, deq16_reg, None, \
                     sqrt_mode=False, relu_flag=relu_flag)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 tensor_list = [fm, filter_w, deq16_reg, out]
             else:
                 pass
@@ -265,7 +265,7 @@ def test_conv2d_compress(test_arg):
                 tensor_list.extend(out)
             else:
                 tensor_list.append(out)
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
         return sch, tensor_list
 
 

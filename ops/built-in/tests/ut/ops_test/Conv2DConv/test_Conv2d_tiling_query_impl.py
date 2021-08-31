@@ -4,9 +4,8 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 def test_tiling_query(test_arg):
-    import topi
-    import numpy as np
 
+    import numpy as np
     from te import tvm
     from te import platform as cce
     from te.platform import scope_ubuf

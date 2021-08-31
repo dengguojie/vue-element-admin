@@ -10,15 +10,14 @@ def TestConvSreadSwriteConf(test_arg):
     strided_read + conv + strided_write ut
     """
     import impl
-    import topi
     import unittest
     import json
     import te
     from te import tvm
-    from topi.cce import util
+    from tbe.common import utils
     import te.lang.cce
     from te.lang.cce import cce_build_code
-    from topi import generic
+    from tbe.dsl import auto_schedule
     from te.platform import cce_conf
     from te.platform.fusion_util import fusion_op
     from te.platform.fusion_manager import fusion_manager
@@ -90,7 +89,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(conv_res, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
         kernel_name = "conv2d_swrite"
         if bias is not None:
             tensor_list = [data, weight, bias_tensor, conv_swrite_res]
@@ -154,7 +153,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(conv_res, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
         kernel_name = "conv2d_swrite"
         if bias is not None:
             tensor_list = [data, weight, bias_tensor, conv_swrite_res]
@@ -221,7 +220,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(conv_res, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         kernel_name = "sread_conv_swrite"
         if bias is not None:
@@ -287,7 +286,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(conv_res, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         kernel_name = "sread_conv_swrite"
         if bias is not None:
@@ -356,7 +355,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(relu, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         if bias is not None:
             tensor_list = [data, weight, bias_tensor, conv_swrite_res]
@@ -422,7 +421,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(relu, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         if bias is not None:
             tensor_list = [data, weight, bias_tensor, conv_swrite_res]
@@ -487,7 +486,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(relu, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
 
         if bias is not None:
@@ -555,7 +554,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(relu, output_tensor, 1, \
                 stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
 
         if bias is not None:
@@ -648,7 +647,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(dequant_res, output_tensor, \
                 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         kernel_name = "sread_conv_dequant_quant_swrite"
 
@@ -739,7 +738,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(dequant_res, output_tensor, \
                 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         kernel_name = "sread_conv_dequant_quant_swrite"
 
@@ -826,7 +825,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(dequant_res, output_tensor, \
                 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
         kernel_name = "conv_dequant_swrite"
         if bias is not None:
             tensor_list = [data, weight, bias_tensor, dequant_scale, \
@@ -909,7 +908,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(dequant_res, output_tensor, \
                 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
         kernel_name = "conv_dequant_swrite"
         if bias is not None:
             tensor_list = [data, weight, bias_tensor, dequant_scale, \
@@ -1003,7 +1002,7 @@ def TestConvSreadSwriteConf(test_arg):
             conv_swrite_res = strided_write_compute(quant_res, output_tensor, \
                 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite_res)
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
 
         kernel_name = "sread_conv_dequant_quant_swrite"
 
@@ -1065,7 +1064,7 @@ def TestConvSreadSwriteConf(test_arg):
             y = {"shape": tuple(i.value for i in conv_res.shape)}
             conv_swrite = strided_write_compute(conv_res, y, 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite)
-            sch = generic.auto_schedule(conv_swrite)
+            sch = auto_schedule(conv_swrite)
 
         kernel_name = "sread_conv_swrite"
         if bias != None:
@@ -1126,7 +1125,7 @@ def TestConvSreadSwriteConf(test_arg):
             y = {"shape": tuple(i.value for i in conv_res.shape)}
             conv_swrite = strided_write_compute(conv_res, y, 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite)
-            sch = generic.auto_schedule(conv_swrite)
+            sch = auto_schedule(conv_swrite)
 
         kernel_name = "sread_conv_swrite"
         if bias != None:
@@ -1198,7 +1197,7 @@ def TestConvSreadSwriteConf(test_arg):
 
             conv_swrite = strided_write_compute(requant_res, y, 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite)
-            sch = generic.auto_schedule(conv_swrite)
+            sch = auto_schedule(conv_swrite)
 
         kernel_name = "conv_requant"
 
@@ -1270,7 +1269,7 @@ def TestConvSreadSwriteConf(test_arg):
 
             conv_swrite = strided_write_compute(requant_res, y, 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite)
-            sch = generic.auto_schedule(conv_swrite)
+            sch = auto_schedule(conv_swrite)
 
         kernel_name = "conv_requant"
 
@@ -1345,7 +1344,7 @@ def TestConvSreadSwriteConf(test_arg):
 
             conv_swrite = strided_write_compute(requant_res, y, 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite)
-            sch = generic.auto_schedule(conv_swrite)
+            sch = auto_schedule(conv_swrite)
 
         kernel_name = "conv_requant"
 
@@ -1419,7 +1418,7 @@ def TestConvSreadSwriteConf(test_arg):
 
             conv_swrite = strided_write_compute(requant_res, y, 1, stride_swrite, "strided_write")
             auto_sch_res = AutoScheduleOp(conv_swrite)
-            sch = generic.auto_schedule(conv_swrite)
+            sch = auto_schedule(conv_swrite)
 
         kernel_name = "conv_requant"
 

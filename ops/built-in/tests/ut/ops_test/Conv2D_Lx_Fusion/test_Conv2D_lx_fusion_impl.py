@@ -10,7 +10,7 @@ def test_conv2d_lx(test_arg):
     import numpy as np
     import te.lang.cce
     from te import tvm
-    from topi import generic
+    from tbe.dsl import auto_schedule
     from te import platform as cce_conf
     from impl.conv2d import conv2d_compute
     from impl.conv2d import _conv_layer_cce
@@ -137,7 +137,7 @@ def test_conv2d_lx(test_arg):
                 out.op.attrs["addr_type"] = out_addr_type[0]
                 tensor_list.append(out)
 
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
         return sch, tensor_list
 
@@ -201,7 +201,7 @@ def test_conv2d_lx(test_arg):
 
             res.op.attrs["addr_type"] = out_addr_type[0]
             tensor_list.append(res)
-            sch = generic.auto_schedule(res)
+            sch =  auto_schedule(res)
 
         return sch, tensor_list
 

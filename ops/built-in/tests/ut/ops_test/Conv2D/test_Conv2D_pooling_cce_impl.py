@@ -29,7 +29,7 @@ def test_conv2d_pooling(test_arg):
     from impl.pooling import pool_fuse_compute
     from impl.relu import relu_compute
     from te import tvm
-    from topi import generic
+    from tbe.dsl import auto_schedule
     import te.lang.cce
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
@@ -70,7 +70,7 @@ def test_conv2d_pooling(test_arg):
             out = pool_fuse_compute(conv_res, None, None, None, window, strides, pad=padding)
             print("the out shape is :", out.shape)
             auto_sch_res = AutoScheduleOp(out)
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
             if bias_flag:
                 tensor_list = [fm, filter_w, bias_tensor, out]
             else:

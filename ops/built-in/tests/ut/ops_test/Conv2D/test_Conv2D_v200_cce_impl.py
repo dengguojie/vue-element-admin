@@ -13,8 +13,8 @@ def test_conv2d_v200(test_arg):
     import te.lang.cce
     from te import tvm
     from te.platform.fusion_manager import fusion_manager
-    from topi import generic
-    from topi.cce import util
+    from tbe.dsl import auto_schedule
+    from tbe.common import utils
     from te import platform as cce_conf
     from tbe.dsl.compute.conv_compute import ConvParam
     from te import platform as cce
@@ -110,7 +110,7 @@ def test_conv2d_v200(test_arg):
                     attrs={'ori_shape': [c_out*16 if vector_flag else 1]})
                 out = ascend_requant_compute(conv_res, vreq_reg, None, relu_flag=True)
                 auto_sch_res = AutoScheduleOp(out)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 tensor_list = [fm, filter_w, vreq_reg, out]
             elif data_flow == 1:
                 # conv + dequant_s16
@@ -128,7 +128,7 @@ def test_conv2d_v200(test_arg):
                           'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 1, 1, 1], 'CUB_channel_wise_flag': False}
                 ConvParam.tiling = tiling
                 auto_sch_res = AutoScheduleOp(out)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq_reg, bias_tensor, out]
                 else:
@@ -147,7 +147,7 @@ def test_conv2d_v200(test_arg):
                 fm2 = tvm.placeholder(conv_res.shape, name='fm2', dtype='int16')
                 out = ascend_requant_s16_compute(requant_s16, conv16_reg, fm2, None, None, dual_output=False, relu_flag=True)
                 auto_sch_res = AutoScheduleOp(out[0])
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out[0]]
                 else:
@@ -182,7 +182,7 @@ def test_conv2d_v200(test_arg):
                                         )
                 outputs = [virtual_res, res_out_fp16, out_s8]
                 auto_sch_res = AutoScheduleOp(outputs[0])
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out[0], out[1]]
                 else:
@@ -199,7 +199,7 @@ def test_conv2d_v200(test_arg):
                           'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 1, 1, 1], 'CUB_channel_wise_flag': False}
                 ConvParam.tiling = tiling
                 auto_sch_res = AutoScheduleOp(out)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 tensor_list = [fm, filter_w, deq16_reg, out]
             elif data_flow == 5:
                 # conv + dequant_s16 + requants16 singleout
@@ -215,7 +215,7 @@ def test_conv2d_v200(test_arg):
                 fm2 = tvm.placeholder(conv_res.shape, name='fm2', dtype='int16')
                 out = ascend_requant_s16_compute(requant_s16, conv16_reg, fm2, None, None, dual_output=False, relu_flag=False)
                 auto_sch_res = AutoScheduleOp(out[0])
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out[0]]
                 else:
@@ -250,7 +250,7 @@ def test_conv2d_v200(test_arg):
                                         )
                 outputs = [virtual_res, res_out_fp16, out_s8]
                 auto_sch_res = AutoScheduleOp(outputs[0])
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
                 if bias_flag:
                     tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out[0], out[1]]
                 else:

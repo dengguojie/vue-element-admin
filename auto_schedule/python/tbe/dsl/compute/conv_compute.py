@@ -19,18 +19,16 @@ conv2d DSL interface.
 """
 from __future__ import division
 import math
-from topi.cce import util
-from topi.cce.util import check_load3d_w_out_1_support
 from tbe import tvm
-from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import CUBE_MKN
-from tbe.common.buildcfg import get_current_build_config
-from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.tvm.buffer_manager import get_buffer_manager
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute.conv_compute_v2 import conv_v220_compute
-from tbe.tvm.buffer_manager import get_buffer_manager
+from tbe.common import utils
 from tbe.common.testing.dsl_source_info import source_info_decorator
-
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.buildcfg import get_current_build_config
+from tbe.common.platform import CUBE_MKN
+from tbe.common.utils.errormgr import error_manager_cube as err_man
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
@@ -131,6 +129,24 @@ def is_support_v220():
     """
     soc_version = get_soc_spec("SOC_VERSION")
     if soc_version == "Ascend920":
+        return True
+    return False
+
+
+def check_load3d_w_out_1_support():
+    """
+    check if current soc version load3d instruction support w_out==1 or not
+    only Ascend310 and Hi3796CS support w_out==1
+    when fmap_w(with padding) == filters_w(after dilation)
+    -------
+
+    Returns
+    -------
+    True: support
+    False: not support
+    """
+    soc_version = get_soc_spec("SOC_VERSION")
+    if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False
 
@@ -247,8 +263,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     if not ConvParam.dynamic_flag:
         _check_fmap_range()
-        util.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
-    util.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
+        utils.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
+    utils.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
 
     if shape_in[1] != shape_w[1]:
         err_man.raise_err_scene_equal_limitation("conv2d", "input feature map channel", "filter channel")
@@ -393,6 +409,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         dma load3d: check kh*kw*c0*m0 not bigger than L1
         """
+
         if ConvParam.l0a_dma_flag:
             m_bit_ratio = {"float16": 2, "int8": 1}
             kernel_h = shape_w[2]
@@ -1864,7 +1881,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if len(data.shape) != 5:
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a 5 dim tvm.tensor.Tensor")
         check_dtype_list = ("int4", "int8", "float16", "bfloat16", "float32")
-        util.check_dtype_rule(data.dtype, check_dtype_list)
+        utils.check_dtype_rule(data.dtype, check_dtype_list)
 
         if optim_dict.get("use_v200_c04_flg") or optim_dict.get("v220_c04_mode") == "first_layer_c04":
             block_size_k = 4
@@ -1885,7 +1902,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a 4 dim tvm.tensor.Tensor")
         check_dtype_list = ("int4", "int8", "float16", "bfloat16", "float32")
 
-        util.check_dtype_rule(weight.dtype, check_dtype_list)
+        utils.check_dtype_rule(weight.dtype, check_dtype_list)
         block_size_k = CUBE_MKN[weight.dtype]['mac'][1]
 
         if weight.shape[3].value != block_size_k:

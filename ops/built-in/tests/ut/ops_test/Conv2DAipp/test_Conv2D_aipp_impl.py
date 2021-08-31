@@ -10,15 +10,14 @@ def test_conv_aipp(test_arg):
     aipp + conv ut
     """
     import impl
-    import topi
     import unittest
     import json
     import te
     from te import tvm
-    from topi.cce import util
     import te.lang.cce
     from te.lang.cce import cce_build_code
-    from topi import generic
+    from tbe.dsl import auto_schedule
+    from tbe.common import utils
     from te.platform import cce_conf
     from te.platform.fusion_util import fusion_op
     from te.platform.fusion_manager import fusion_manager
@@ -135,7 +134,7 @@ def test_conv_aipp(test_arg):
             out = leaky_relu_compute(conv_res, None, negative_slope=0)
             auto_sch_res = AutoScheduleOp(out)
             assert auto_sch_res.fusion_type == fusion_type
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
         kernel_name = "acr_fuse_1910"
         if bias != None:
@@ -245,7 +244,7 @@ def test_conv_aipp(test_arg):
             auto_sch_res = AutoScheduleOp(out)
             fusion_type = 813 if aipp_input_format == "YUV420SP_U8" else 45
             assert auto_sch_res.fusion_type == fusion_type
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
         kernel_name = "acr_fuse_1910"
         if bias != None:
@@ -362,7 +361,7 @@ def test_conv_aipp(test_arg):
             else:
                 fusion_type = 809 if aipp_input_format == "YUV420SP_U8" else 41
             assert auto_sch_res.fusion_type == fusion_type
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
         kernel_name = "acr_fuse_1910"
         if bias != None:

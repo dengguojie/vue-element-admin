@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 import te
 import tbe
-import topi
+from tbe.dsl import auto_schedule
 from te import tvm
 from te import platform as cce_conf
 from impl.conv2d_compress import conv2dcompress
@@ -79,7 +79,7 @@ def test_conv2d_compress_fused():
             res = ascend_dequant_compute(conv_out, deq_scale, None)
             tensor_list = [x_, filter_, deq_scale, compress_index, res]
             with tvm.target.cce():
-                sch = topi.generic.auto_schedule(res)
+                sch = auto_schedule(res)
             config = {
                 "name": "conv2d_compress_dequant",
                 "tensor_list": tensor_list,

@@ -10,8 +10,8 @@ def TestConv2dV200(test_arg):
     """
     import te.lang.cce
     from te import tvm
-    from topi import generic
-    from topi.cce import util
+    from tbe.dsl import auto_schedule
+    from tbe.common import utils
     from te import platform as cce_conf
     from te import platform as cce
     from impl.conv2d import conv2d_compute
@@ -150,7 +150,7 @@ def TestConv2dV200(test_arg):
                 if data_flow == 21:
                     out = leaky_relu_compute(conv_res, None)
                     auto_sch_res = AutoScheduleOp(out)
-                    sch = generic.auto_schedule(out)
+                    sch = auto_schedule(out)
                     tensor_list = [fm, filter_w, out]
                 elif data_flow in (22, 23):
                     fm2 = tvm.placeholder(conv_res.shape, name='fmap2', \
@@ -159,7 +159,7 @@ def TestConv2dV200(test_arg):
                     if data_flow == 23:
                         out = leaky_relu_compute(out, None)
                     auto_sch_res = AutoScheduleOp(out)
-                    sch = generic.auto_schedule(out)
+                    sch = auto_schedule(out)
                     tensor_list = [fm, filter_w, fm2, out]
                 elif data_flow in (24, 25):
                     if data_flow == 25:
@@ -168,7 +168,7 @@ def TestConv2dV200(test_arg):
                         conv_res = eltwise_compute([conv_res, fm2], None)
                     out = leaky_relu_compute(conv_res, None, negative_slope=0.1)
                     auto_sch_res = AutoScheduleOp(out)
-                    sch = generic.auto_schedule(out)
+                    sch = auto_schedule(out)
                     tensor_list = [fm, filter_w, out]
                     if data_flow == 25:
                         tensor_list = [fm, filter_w, fm2, out]
@@ -195,7 +195,7 @@ def TestConv2dV200(test_arg):
                     tensor_list.append(fm2)
                 tensor_list.append(out)
                 auto_sch_res = AutoScheduleOp(out)
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
             if data_flow in (60, 61, 62):
                 fm2 = tvm.placeholder(conv_res.shape, name='fmap2', dtype="float16", attrs={'ori_format': 'NCHW'})
                 res_fp16 = conv_res
@@ -233,7 +233,7 @@ def TestConv2dV200(test_arg):
                                         )
                 outputs = [virtual_res, res_out_fp16, out_s8]
                 auto_sch_res = AutoScheduleOp(outputs[0])
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
             if bias_flag:
                 fution_type = \
                 data_flow_fution_type_map_bias_true.get(\

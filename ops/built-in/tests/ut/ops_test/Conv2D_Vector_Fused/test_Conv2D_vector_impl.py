@@ -9,7 +9,7 @@ def test_conv2d_vector(test_arg):
     from te import tvm
     import te.lang.cce
     from te.lang.cce import cce_build_code, ConvParam
-    from topi import generic
+    from tbe.dsl import auto_schedule
     from impl.strided_write import strided_write_compute
     from impl.write_select import write_select_compute
     from te.platform.cce_policy import set_L1_info
@@ -34,7 +34,7 @@ def test_conv2d_vector(test_arg):
                                "stride_h": stride_h, "stride_w": stride_w,
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
-            sch = generic.auto_schedule(conv_res)
+            sch = auto_schedule(conv_res)
 
         config = {
             "print_ir": False,
@@ -64,7 +64,7 @@ def test_conv2d_vector(test_arg):
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
             res0 = te.lang.cce.vlog(conv_res)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
 
         config = {
             "print_ir": False,
@@ -87,7 +87,7 @@ def test_conv2d_vector(test_arg):
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
             res0 = te.lang.cce.vexp(conv_res)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
 
         config = {
             "print_ir": False,
@@ -110,7 +110,7 @@ def test_conv2d_vector(test_arg):
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
             res0 = te.lang.cce.vrelu(conv_res)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
 
         config = {
             "print_ir": False,
@@ -133,7 +133,7 @@ def test_conv2d_vector(test_arg):
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
             res0 = te.lang.cce.vmuls(conv_res, 3)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
 
         config = {
             "print_ir": False,
@@ -156,7 +156,7 @@ def test_conv2d_vector(test_arg):
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
             res0 = te.lang.cce.vadds(conv_res, 7)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
 
         config = {
             "print_ir": False,
@@ -179,7 +179,7 @@ def test_conv2d_vector(test_arg):
                                "filter_h": filter_h, "filter_w": filter_w,
                                'offset_x': 0, "dilate_w": 1, "dilate_h": 1})
             res0 = te.lang.cce.vabs(conv_res)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
 
         config = {
             "print_ir": False,
@@ -210,7 +210,7 @@ def test_conv2d_vector(test_arg):
             conv_shape = conv_res.shape
             eee = tvm.placeholder(conv_shape, name='eee', dtype="float16")
             res0 = te.lang.cce.vadd(conv_res, eee)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -234,7 +234,7 @@ def test_conv2d_vector(test_arg):
             conv_shape = conv_res.shape
             eee = tvm.placeholder(conv_shape, name='eee', dtype="float16")
             res0 = te.lang.cce.vsub(conv_res, eee)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -258,7 +258,7 @@ def test_conv2d_vector(test_arg):
             conv_shape = conv_res.shape
             eee = tvm.placeholder(conv_shape, name='eee', dtype="float16")
             res0 = te.lang.cce.vmul(conv_res, eee)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -282,7 +282,7 @@ def test_conv2d_vector(test_arg):
             conv_shape = conv_res.shape
             eee = tvm.placeholder(conv_shape, name='eee', dtype="float16")
             res0 = te.lang.cce.vmax(conv_res, eee)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -306,7 +306,7 @@ def test_conv2d_vector(test_arg):
             conv_shape = conv_res.shape
             eee = tvm.placeholder(conv_shape, name='eee', dtype="float16")
             res0 = te.lang.cce.vmin(conv_res, eee)
-            sch = generic.auto_schedule(res0)
+            sch = auto_schedule(res0)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -339,7 +339,7 @@ def test_conv2d_vector(test_arg):
             res3 = te.lang.cce.vmuls(res2, 3)
             res4 = te.lang.cce.vadds(res3, 33)
             res5 = te.lang.cce.vabs(res4)
-            sch = generic.auto_schedule(res5)
+            sch = auto_schedule(res5)
 
         config = {
             "print_ir": False,
@@ -377,7 +377,7 @@ def test_conv2d_vector(test_arg):
             res2 = te.lang.cce.vmul(res0, res1)
             res3 = te.lang.cce.vmin(res2, ddd)
             res4 = te.lang.cce.vmax(res3, conv_res)
-            sch = generic.auto_schedule(res4)
+            sch = auto_schedule(res4)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -414,7 +414,7 @@ def test_conv2d_vector(test_arg):
             res4 = te.lang.cce.vmax(res3, conv_res)
             res5 = te.lang.cce.vadd(res4, res3)
             res6 = te.lang.cce.vsub(res5, res2)
-            sch = generic.auto_schedule(res6)
+            sch = auto_schedule(res6)
         config = {
             "print_ir": False,
             "need_build": True,
@@ -448,7 +448,7 @@ def test_conv2d_vector(test_arg):
                   'CUB_matrix': [n, m, 16, 16], 'BL1_shape': None, 'AL1_shape': [], 'cout_bef_batch_flag': 1, "block_dim": [1,1,1],
                   'A_overhead_opt_flag':0, 'B_overhead_opt_flag':0}
             ConvParam.tiling = tt
-            sch = generic.auto_schedule(conv_res)
+            sch = auto_schedule(conv_res)
 
         config = {
             "print_ir": False,
@@ -478,7 +478,7 @@ def test_conv2d_vector(test_arg):
 
             ConvParam.tiling_query_param["default_tiling"] = True
 
-            sch = generic.auto_schedule(conv_res)
+            sch = auto_schedule(conv_res)
 
         config = {
             "print_ir": False,
@@ -513,7 +513,7 @@ def test_conv2d_vector(test_arg):
                 'manual_pingpong_buffer': {'AUB_pbuffer': 1, 'BUB_pbuffer': 1, 'AL1_pbuffer': 1, 'BL1_pbuffer': 1, 'AL0_pbuffer': 1, 'BL0_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1}, 'n_bef_batch_flag': False, 
                 'AL1_shape': [32, 1, 1, 1], 'BL1_shape': None, 'block_dim': [4, 2, 1, 1], 'CUB_channel_wise_flag': False}
 
-            sch = generic.auto_schedule(conv_res)
+            sch = auto_schedule(conv_res)
 
         config = {
             "print_ir": False,
@@ -582,7 +582,7 @@ def test_conv2d_vector(test_arg):
             res =write_select_compute(res1, output)
             stride = write_valid_shape[1]*write_valid_shape[2]*write_valid_shape[3]*write_valid_shape[4]
             conv_swrite_res = strided_write_compute(res, None, 1, stride, "strided_write")
-            sch = generic.auto_schedule(conv_swrite_res)
+            sch = auto_schedule(conv_swrite_res)
         config = {
             "print_ir": False,
             "need_build": True,

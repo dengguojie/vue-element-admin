@@ -24,7 +24,7 @@ def test_conv2d_v220(test_arg):
     from te import tvm
     from te.platform.cce_build import build_config
     from te.platform.cce_build import build_config_update
-    from topi import generic
+    from tbe.dsl import auto_schedule
     from tbe.common.platform.platform_info import get_soc_spec
 
 
@@ -377,7 +377,7 @@ def test_conv2d_v220(test_arg):
             if in_nd2nz_flag:
                 tensor_list[0] = fmap_ori
 
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
         config = {
             "print_ir": False,
@@ -669,7 +669,7 @@ def test_conv2d_v220(test_arg):
                                       pads, dilations)
             # out = leaky_relu_compute(conv_res, None, negative_slope=0)
             out = conv_res
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
         kernel_name = "aipp_fusion"
         tensor_list = [fmap, weight, out]

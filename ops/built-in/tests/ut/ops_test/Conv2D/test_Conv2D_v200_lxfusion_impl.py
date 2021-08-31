@@ -9,7 +9,7 @@ def test_conv2d_v200_lxfusion(test_arg):
     from functools import reduce
     from impl.conv2d import conv2d_compute
     from tbe import tvm
-    from topi import generic
+    from tbe.dsl import auto_schedule
     from tbe.dsl import build
     from tbe.common.platform.platform_info import set_current_compile_soc_info
     from impl.ascend_dequant_s16 import ascend_dequant_s16_compute
@@ -493,7 +493,7 @@ def test_conv2d_v200_lxfusion(test_arg):
                 buffer_manager.set_remapped_buffers(rb_list)
                 buffer_manager.set_tensor_list(tensor_list)
 
-                sch = generic.auto_schedule(out)
+                sch = auto_schedule(out)
 
             config = {
                 "print_ir": False,

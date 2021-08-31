@@ -26,8 +26,8 @@ def test_conv2d_lhisi(test_arg):
     import te.lang.cce
     from te import tvm
     from te.platform.fusion_manager import fusion_manager
-    from topi import generic
-    from topi.cce import util
+    from tbe.dsl import auto_schedule
+    from tbe.common import utils
     from te import platform as cce_conf
     from te import platform as cce
     from impl.conv2d import conv2d_compute
@@ -178,7 +178,7 @@ def test_conv2d_lhisi(test_arg):
                     auto_sch_res = AutoScheduleOp(outputs[0])
             else:
                 auto_sch_res = AutoScheduleOp(out)
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
 
             if bias_flag:
                 fution_type = \

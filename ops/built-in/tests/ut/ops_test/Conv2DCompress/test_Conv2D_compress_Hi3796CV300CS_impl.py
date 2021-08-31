@@ -7,7 +7,7 @@ def test_conv2d_compress_hi3796cv300cs(test_arg):
     import sys
     from impl.conv2d_compress import conv2dcompress_compute
     from te import tvm
-    from topi import generic
+    from tbe.dsl import auto_schedule
     import te.lang.cce
     from te import platform as cceconf
     import math
@@ -69,7 +69,7 @@ def test_conv2d_compress_hi3796cv300cs(test_arg):
                 tensor_list.extend(out)
             else:
                 tensor_list.append(out)
-            sch = generic.auto_schedule(out)
+            sch = auto_schedule(out)
         return sch, tensor_list
 
     def _conv_lhisi_fusion(fm_type, weight_type, output_type, fm_shape, w_shape,

@@ -10,8 +10,8 @@ def test_conv2d_rmpad(test_arg):
     import te.lang.cce
     from te import tvm
     from te.platform.fusion_manager import fusion_manager
-    from topi import generic
-    from topi.cce import util
+    from tbe.dsl import auto_schedule
+    from tbe.common import utils
     from te import platform as cce_conf
     from te import platform as cce
     from impl.conv2d import conv2d_compute
@@ -59,7 +59,7 @@ def test_conv2d_rmpad(test_arg):
         out = ascend_quant_compute(relu, None, scale=1, offset=0, sqrt_mode=False)
         out = conv2d_data_rm_compute(out, res_tensor=None)
         tensor_list = [fm, filter_w, vdeq, out]
-        sch = generic.auto_schedule(out)
+        sch = auto_schedule(out)
 
     config = {
         "print_ir": False,

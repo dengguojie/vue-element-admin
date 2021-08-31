@@ -10,7 +10,7 @@ def test_conv2d_l1_fp16(test_arg):
     import sys
     import te.lang.cce
     from te import tvm
-    from topi import generic
+    from tbe.dsl import auto_schedule
     from te import platform as cce_conf
     from impl.conv2d import conv2d_compute
     from impl.conv2d import _conv_layer_cce
@@ -253,7 +253,7 @@ def test_conv2d_l1_fp16(test_arg):
 
             res.op.attrs["addr_type"] = out_addr_type
             tensor_list.append(res)
-            sch = generic.auto_schedule(res)
+            sch = auto_schedule(res)
 
         return sch, tensor_list
 

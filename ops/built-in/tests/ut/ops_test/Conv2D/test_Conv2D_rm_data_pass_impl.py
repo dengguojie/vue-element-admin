@@ -8,7 +8,6 @@ ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 def test_conv_rm_data_pass(test_arg):
 
     import impl
-    import topi
     import json
     import te
     import copy

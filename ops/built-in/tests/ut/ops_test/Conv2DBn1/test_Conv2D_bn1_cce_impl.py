@@ -17,14 +17,13 @@ limitations under the License.
 """
 from op_test_frame.ut import OpUT
 from impl.conv2d import *
-from topi import generic
-
+from tbe.dsl import auto_schedule
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
 def test_bn(test_arg):
     import te
     from te import tvm
-    from topi.cce import util
+    from tbe.common import utils
     import te.lang.cce
     from te.lang.cce import cce_build_code
 
@@ -220,7 +219,7 @@ def test_bn(test_arg):
             outputs = [cast_0, mean_out]
             auto_sch_res = AutoScheduleOp(outputs[1])
 
-            sch = generic.auto_schedule([conv_res, mean, variance])
+            sch = auto_schedule([conv_res, mean, variance])
 
         config = {"print_ir": False,
                     "need_build": True,
