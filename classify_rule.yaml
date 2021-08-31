@@ -669,9 +669,6 @@ vector_B:
       - cmake/template/config.cmake
       - cmake/util/intf_pub_llt_gccnative.cmake
       - ops/built-in/CMakeLists.txt
-      - ops/built-in/framework/caffe_plugin/bias_plugin.cc
-      - ops/built-in/framework/onnx_plugin/adaptive_max_pool2d_plugin.cc
-      - ops/built-in/framework/onnx_plugin/addcmul_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
       - ops/built-in/framework/tf_plugin/cast_plugin.cc
@@ -705,6 +702,7 @@ vector_B:
       - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_max_fusion_pass.cc
@@ -770,6 +768,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tile_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_1d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
@@ -802,6 +801,7 @@ vector_B:
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
+      - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
