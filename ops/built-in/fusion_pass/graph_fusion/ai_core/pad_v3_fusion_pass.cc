@@ -220,6 +220,13 @@ Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     }
   }
 
+  Operator op = ge::OpDescUtils::CreateOperatorFromNode(pad_node);
+  if ((op.GetInputDesc("x").GetDataType() == ge::DT_INT64) ||
+      (op.GetInputDesc("paddings").GetDataType() == ge::DT_INT64)) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Inputs dtype is int64, not changed");
+    return NOT_CHANGED;
+  }
+
   if (PadMoveConsttoAttr(graph, pad_node) != SUCCESS) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), " PadMoveConsttoAttr failed.");
     return PARAM_INVALID;

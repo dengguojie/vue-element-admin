@@ -121,7 +121,7 @@ TEST_F(pad_v3_fusion_pass_test, pad_v3_fusion_pass_test_2) {
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "PadV3D") {
+    if (node->GetType() == "PadV3") {
       findD = true;
     }
   }
@@ -298,7 +298,7 @@ TEST_F(pad_v3_fusion_pass_test, pad_v3_fusion_pass_test_5) {
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "PadV3D") {
+    if (node->GetType() == "PadV3") {
       findD = true;
     }
   }
