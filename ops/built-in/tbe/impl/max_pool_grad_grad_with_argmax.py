@@ -200,7 +200,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
         return infer_hi_l1_2
 
     infer_hi_l1_2 = _cal_infer_hi_l1_2()
-    while infer_hi_l1_2 > max_hi_l1:
+    while infer_hi_l1_2 > max_hi_l1 and l0ub_howo > BLOCK_SIZE:
         l0ub_howo = l0ub_howo - BLOCK_SIZE
         infer_hi_l1_2 = _cal_infer_hi_l1_2()
 
