@@ -236,6 +236,7 @@ def _gen_conv2d_bp_input_920A_case():
     ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_2)
     ut_case.add_cust_test_func(test_func=_test_set2d_case_1)
 
+
 _gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
 #_gen_conv2d_bp_input_920A_case()

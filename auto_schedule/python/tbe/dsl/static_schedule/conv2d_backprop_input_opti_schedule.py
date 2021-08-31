@@ -2615,7 +2615,8 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].mem_unique()
             # in some specific fusion mode cub_tensor need to be reused_by
             if (fusion_type not in (FUSION_DX_DRELU, FUSION_DX_ADD_DRELU) and
-                not (bias_add_vector_ub is not None and dilate_ub is None)):
+                not (bias_add_vector_ub is not None and dilate_ub is None)) and \
+                not self.dx_para.get_para_map("cube_vector_split_flag"):
                 sch[c_ub].mem_unique()
 
         def _check_overload_dy(overload_flag_gm, overload_flag_l0c):
@@ -2789,7 +2790,7 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].op.axis[0]
         ]
         sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
-        if self.dx_para.get_para_map("cube_vector_split_flag"):
+        if self.dx_para.get_para_map("cube_vector_split_flag") and not var_map:
             sch[c_l0c].storage_align(sch[c_l0c].op.axis[2], CUBE_MUL_SHAPE, 0)
         if bias_l0c is not None:
             sch[bias_l0c].compute_at(sch[c_gm], c_slice_axis)
