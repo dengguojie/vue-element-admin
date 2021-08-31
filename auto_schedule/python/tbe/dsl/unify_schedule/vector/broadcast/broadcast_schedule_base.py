@@ -59,11 +59,17 @@ class BaseBroadcastSchedule:
     """
 
     class ComputeAt:
+        """
+        BaseBroadcast ComputeAt
+        """
         def __init__(self):
             self._compute_at_axis = None
 
         @property
         def compute_at_axis(self):
+            """
+            return compute_at_axis
+            """
             return self._compute_at_axis
 
         @compute_at_axis.setter
@@ -71,11 +77,17 @@ class BaseBroadcastSchedule:
             self._compute_at_axis = axis
 
     class EmitInsn:
+        """
+        BaseBroadcast EmitInsn Bean
+        """
         def __init__(self):
             self._emit_insn_axis = None
 
         @property
         def emit_insn_axis(self):
+            """
+            return emit_insn_axis
+            """
             return self._emit_insn_axis
 
         @emit_insn_axis.setter
@@ -451,7 +463,7 @@ class BaseBroadcastSchedule:
             input_shapes = list(map(list, zip(*input_shapes)))
             broadcast_axis = [False] * max_dim_length
             for i in range(max_dim_length - 1, -1, -1):
-                if any([input_shapes[i][0] != s for s in input_shapes[i]]):
+                if any(input_shapes[i][0] != s for s in input_shapes[i]):
                     broadcast_axis[i] = True
 
             max_available_ub = ((((self._ub_size - self._tmp_ub_size) // self._coexisting_quantity) //
@@ -663,10 +675,10 @@ class BaseBroadcastSchedule:
             else:
                 self._emit_insn_map[source] = [source.op.axis[0], DMA_COPY]
 
-        for tensor_i in (self._pure_middle_tensors - self._compute_inline_tensors):
+        for tensor_i in self._pure_middle_tensors - self._compute_inline_tensors:
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], get_insn(tensor_i)]
 
-        for source, target in (self._cache_write_buffer_tensor_map.items() - self._compute_inline_tensors):
+        for source, target in self._cache_write_buffer_tensor_map.items() - self._compute_inline_tensors:
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
 
         if len(self._out_tensors) > 1:
@@ -931,23 +943,23 @@ class BaseBroadcastSchedule:
             if param[1] == UNKNOWN_BROADCAST:
                 u_idx = self._ub_split_axis
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
-                is_all_const = all([isinstance(s, int) for s in util.shape_to_list(src_shapes)])
+                is_all_const = all(isinstance(s, int) for s in util.shape_to_list(src_shapes))
                 if is_all_const:
-                    attrs = dict(storage_bound=[tensor_bound])
+                    attrs = {"storage_bound":[tensor_bound]}
                     param[1] = VECTOR_BROADCAST
                 else:
                     src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                               tvm.expr.Call.PureIntrinsic, None, 0)
-                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound],
-                                 dynamic_fuse=False,
-                                 dynamic_split=False)
+                    attrs = {"src_shape":src_shape, "storage_bound":[tensor_bound],
+                                 "dynamic_fuse":False,
+                                 "dynamic_split":False}
                     if enable_dynamic_optimize(tensor_i):
                         attrs["dynamic_fuse"] = True
                         attrs["dynamic_split"] = True
             elif compile_broadcast_no_inline:
-                attrs = dict(storage_bound=[tensor_bound])
+                attrs = {"storage_bound":[tensor_bound]}
             elif tensor_i in self._out_tensors and self._is_one_dim:
-                attrs = dict(no_overlap=0)
+                attrs = {"no_overlap":0}
             if param[1] in (VECTOR_BROADCAST, UNKNOWN_BROADCAST) and tensor_i in self._compute_align_map:
                 attrs["last_src_valid_element"] = self._compute_align_map[tensor_i][1]
             sch[tensor_i].emit_insn(emit_insn_axis, param[1], attrs)
@@ -1033,7 +1045,7 @@ class BaseBroadcastSchedule:
 
 def _fake_node(tensors):
     dtype = tensors[0].dtype
-    dim_length = max([len(t.shape) for t in tensors])
+    dim_length = max(len(t.shape) for t in tensors)
     shape = [1] * dim_length
     for tensor_i in tensors:
         if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:

@@ -80,7 +80,7 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
                 current_space = len(dependent_map)
             else:
                 current_space = len(dependent_map) + 1
-            for tensor_i in dependent_map.keys():
+            for tensor_i in dependent_map:
                 if tensor_i in self._absorbable_broadcast_tensors and \
                         len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
                     current_space -= 1
@@ -123,8 +123,8 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
                     dependent_map.pop(_tensor_i)
 
         def _need_external_space(_tensor):
-            exist_absorbable_broadcast = any([x in self._absorbable_broadcast_tensors
-                                              for x in _tensor.op.input_tensors])
+            exist_absorbable_broadcast = any(x in self._absorbable_broadcast_tensors
+                                              for x in _tensor.op.input_tensors)
             if not exist_absorbable_broadcast:
                 return False
 

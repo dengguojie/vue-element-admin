@@ -71,6 +71,9 @@ class TilingStrategy(Enum):
 
 # noinspection PyMethodMayBeStatic
 class BroadcastComputation(Computation):
+    """
+    Broadcast Tilingcase Computation
+    """
     def __init__(self, outs, option):
         self.outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
         self.option = option
@@ -93,7 +96,7 @@ class BroadcastComputation(Computation):
                 dtype = out.dtype
 
         mode = operation.get_context().get_current_compute().get("_mode")
-        if mode == SPECIAL or mode == SPECIAL_SCALAR:
+        if mode in (SPECIAL, SPECIAL_SCALAR):
             tiling_case = self._calc_special_tiling_case(dim_len, dtype)
         elif mode == CONST or operation.get_context().get_mode() == STATIC:
             tiling_case = self._calc_const_tiling_case(dim_len)
@@ -348,16 +351,25 @@ class BroadcastTilingCase:
         self._is_one_dim = False
 
     def set_none_cut_tiling_case(self, tiling_key):
+        """
+        set_none_cut_tiling_case
+        """
         self._tiling_strategy = TilingStrategy.NONE_CUT
         self._tiling_key = tiling_key
 
     def set_const_tiling_case(self, tiling_key, is_one_dim=False):
+        """
+        set_const_tiling_case
+        """
         self._tiling_strategy = TilingStrategy.CONST
         self._tiling_key = tiling_key
         self._is_one_dim = is_one_dim
 
     def set_one_cut_tiling_case(self, tiling_key, block_split_axis,
                                 ub_split_axis, enable_db=False, is_one_dim=False):
+        """
+        set_one_cut_tiling_case
+        """
         self._tiling_strategy = TilingStrategy.ONE_CUT
         self._tiling_key = tiling_key
         self._block_split_axis = block_split_axis
@@ -366,6 +378,9 @@ class BroadcastTilingCase:
         self._is_one_dim = is_one_dim
 
     def set_one_dim_tiling_case(self, tiling_key, ub_factor_bound, enable_db=False, is_one_dim=False):
+        """
+        set_one_dim_tiling_case
+        """
         self._tiling_strategy = TilingStrategy.ONE_CUT
         self._tiling_key = tiling_key
         self._block_split_axis = 0
@@ -377,28 +392,49 @@ class BroadcastTilingCase:
 
     @property
     def tiling_strategy(self):
+        """
+        return tiling_strategy
+        """
         return self._tiling_strategy
 
     @property
     def enable_db(self):
+        """
+        enable_db
+        """
         return self._enable_db
 
     @property
     def is_one_dim(self):
+        """
+        return is_one_dim
+        """
         return self._is_one_dim
 
     @property
     def block_split_axis(self):
+        """
+        return block_split_axis
+        """
         return self._block_split_axis
 
     @property
     def ub_split_axis(self):
+        """
+        return ub_split_axis
+        """
         return self._ub_split_axis
 
     @property
     def tiling_key(self):
+        """
+        return tiling_key
+        """
         return self._tiling_key
 
     @property
     def ub_factor_bound(self):
+        """
+        return ub_factor_bound
+        """
         return self._ub_factor_bound
