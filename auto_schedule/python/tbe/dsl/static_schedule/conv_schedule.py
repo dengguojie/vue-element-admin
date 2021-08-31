@@ -4275,11 +4275,6 @@ class CceConvOp:
             compute_at of float/quant bias
             """
             if "int32_bias" in tensor_map.keys(): # quant bias
-                # split M -> M1 M0, then reorder
-                a2_axis, a3_axis = sch[c_col_bias].split(sch[c_col_bias].op.axis[3], config["mac"][0])
-                sch[c_col_bias].reorder(sch[c_col_bias].op.axis[0], sch[c_col_bias].op.axis[1],
-                                        sch[c_col_bias].op.axis[2], a2_axis, a3_axis, sch[c_col_bias].op.axis[4])
-
                 if tiling["CUB_channel_wise_flag"]:
                     sch[bias_ub].compute_at(sch[res_c], c_slice_axis)
                 else:
@@ -4348,10 +4343,6 @@ class CceConvOp:
                     continue
                 # elewise_single_relu is cloud, mini and es
                 if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
-                    continue
-                # bit tensor set_storage_bound for reluv2 fusion
-                if ConvParam.conv_reluv2_flag and "vcmpv_gt" in lop["op"]:
-                    sch[lop["dst_buffer"]].set_storage_bound(math.ceil(ub_storage_bound_size//8))
                     continue
                 if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
                     ub_storage_bound_size *= 2

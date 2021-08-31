@@ -118,6 +118,7 @@ def parse_tbe_compile_para(compile_para):
         tbe_compile_para["read_write_bank_conflict"] = (compile_para >> 1) & 1
         tbe_compile_para["out_of_order"] = (compile_para >> 2) & 1
         preload = (compile_para >> 3) & 1
+        tbe_compile_para["remove_duplicates_in_load"] = (compile_para >> 4) & 1
     return tbe_compile_para, preload
 
 
