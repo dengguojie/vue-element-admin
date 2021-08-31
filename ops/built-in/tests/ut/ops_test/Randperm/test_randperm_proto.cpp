@@ -22,4 +22,3 @@ TEST_F(randperm_test, randperm_infer_shape_test) {
   // check result
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
-

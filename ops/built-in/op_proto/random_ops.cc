@@ -135,10 +135,8 @@ INFER_FUNC_REG(RandomGamma, RandomGammaInfer);
 IMPLEMT_INFERFUNC(Randperm, RandpermInferShape) {
   Shape scalar_shape;
   (void)Scalar(scalar_shape);
-  auto attr_dtype = op.get_attr_dtype();
   
-  TensorDesc td = op.GetOutputDescByName("out");
-  td.SetDataType(ge::DataType(attr_dtype));
+  TensorDesc td = op.GetOutputDescByName("out");  
   td.SetShape(scalar_shape);
   (void)op.UpdateOutputDesc("out", td);
 
