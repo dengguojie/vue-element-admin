@@ -25,6 +25,7 @@
 #include "graph/utils/node_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "external/graph/operator_factory.h"
 
 using namespace std;
 using namespace ge;
@@ -80,6 +81,17 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
     }
 
     bool isTransposSupported = CheckOpSupported(transposeNode);
+
+    // need do AddInferFunc, otherwise transpose can't find the true InferShape.
+    if (isTransposSupported) {
+        auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", "Transpose");
+        if (realFusedOp.IsEmpty()) {
+            return FAILED;
+        }
+        auto realFusedOpDescPtr = ge::OpDescUtils::GetOpDescFromOperator(realFusedOp);
+        realFusedOp.BreakConnect();
+        transposeOpDesc->AddInferFunc(realFusedOpDescPtr->GetInferFunc());
+    }
 
     if (!isTransposSupported) {
         auto anchor = transposeNode->GetInDataAnchor(1);
