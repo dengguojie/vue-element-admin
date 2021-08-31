@@ -4875,6 +4875,14 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     stride_valid = !slice_params.stride_list.empty();
   }
 
+  if(!stride_valid && begin_len>0){
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    if(op_info->MutableInputDesc("stride") == nullptr){
+      stride_valid = true;
+      slice_params.stride_list.assign(begin_len, 1);
+    }
+  }
+
   OP_LOGD(op.GetName().c_str(), "begin_len:%lld", begin_len);
   if (shape.GetDims() == UNKNOWN_RANK  || !stride_valid) {
     TensorDesc output_desc = op.GetOutputDesc("y");

@@ -2431,8 +2431,8 @@ REG_OP(TopKPQDistanceMerge)
 *@par Outputs:
 *y: A Tensor. Has the same type as "x" . \n
 
-*@par Third-party framework compatibility
-* Compatible with the ONNX operator Slice.
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
 */
 REG_OP(StridedSliceV3)
     .INPUT(x, TensorType::BasicType())
