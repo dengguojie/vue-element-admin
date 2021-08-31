@@ -328,7 +328,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_6) {
 
   std::vector<int64_t> input{64, 64, 64, 64};
   std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{64, 64, 66, 66};
 
   TeOpTensor tensor_input;
@@ -376,7 +376,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_7) {
 
   std::vector<int64_t> input{2, 512, 10, 10};
   std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{2, 512, 12, 12};
 
   TeOpTensor tensor_input;
@@ -424,7 +424,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_8) {
 
   std::vector<int64_t> input{2, 512, 10, 211};
   std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{2, 512, 12, 213};
 
   TeOpTensor tensor_input;

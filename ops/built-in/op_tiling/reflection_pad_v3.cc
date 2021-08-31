@@ -32,6 +32,8 @@ namespace optiling {
 static const int64_t TILING_MODE_0 = 0;
 static const int64_t TILING_MODE_1 = 1;
 static const int64_t TILING_MODE_2 = 2;
+static const int64_t PADDINGS_DIM_INDEX_2 = 4;
+static const int64_t PADDINGS_DIM_INDEX_3 = 6;
 struct ReflectionPadV3CompileParams {
   int64_t core_num;
   std::string op_type;
@@ -193,8 +195,10 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
                            ReflectionPadV3TilingParams& tiling_params) {
   OP_LOGD("begin to GetTilingParam.");
   auto tiling_key = 0;
-  auto output_third = paddings_const_values[2] + input_shape[2] + paddings_const_values[3];
-  auto output_fourth = paddings_const_values[0] + input_shape[3] + paddings_const_values[1];
+  auto output_third = paddings_const_values[PADDINGS_DIM_INDEX_2] + input_shape[2]
+                      + paddings_const_values[PADDINGS_DIM_INDEX_2 + 1];
+  auto output_fourth = paddings_const_values[PADDINGS_DIM_INDEX_3] + input_shape[3]
+                      + paddings_const_values[PADDINGS_DIM_INDEX_3 + 1];
   int64_t core_used = 1;
   int64_t not_last_core_numel = 0;
   int64_t last_core_numel = 0;
@@ -223,10 +227,11 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   tiling_params.tiling_output_dim_2 = output_third;
   tiling_params.tiling_output_dim_3 = output_fourth;
   tiling_params.core_uesd_num = core_used;
-  tiling_params.padding_index_0 = paddings_const_values[0];
-  tiling_params.padding_index_1 = paddings_const_values[1];
-  tiling_params.padding_index_2 = paddings_const_values[2];
-  tiling_params.padding_index_3 = paddings_const_values[3];
+  // paddings_const_values is a vector containing 8 elements
+  tiling_params.padding_index_0 = paddings_const_values[PADDINGS_DIM_INDEX_3];
+  tiling_params.padding_index_1 = paddings_const_values[PADDINGS_DIM_INDEX_3 + 1];
+  tiling_params.padding_index_2 = paddings_const_values[PADDINGS_DIM_INDEX_2];
+  tiling_params.padding_index_3 = paddings_const_values[PADDINGS_DIM_INDEX_2 + 1];
   tiling_params.not_last_core_num = not_last_core_numel;
   tiling_params.last_core_num = last_core_numel;
   return true;

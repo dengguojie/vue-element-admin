@@ -23,6 +23,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl import constant_util as constant
 from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
+from impl.dynamic.replication_pad_v3 import replication_pad_v3
 
 # max int64
 MAX_INT64 = 2 ** 64 - 1
@@ -1315,3 +1316,5 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
         return obj.pad_compute()
     elif mode == 'reflect':
         return reflection_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
+    elif mode == 'edge':
+        return replication_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)

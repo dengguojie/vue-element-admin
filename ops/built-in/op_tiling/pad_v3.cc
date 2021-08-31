@@ -339,7 +339,7 @@ bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nl
 
     OP_LOGI(op_type, "end to run tiling, succ!");
   }
-  if (mode == "reflect") {
+  if (mode == "reflect" || mode == "edge") {
     ReflectionPadV3Tiling(op_type, op_paras, op_compile_info, run_info);
   }
   return true;
