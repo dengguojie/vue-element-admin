@@ -1924,8 +1924,8 @@ Status DynamicRNNGradDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
                                                                                     GetShape().GetDim(1),
                                    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"]).
                                                                                     GetShape().GetDim(2)};
-    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"]).SetShape(GeShape(init_c_dims));
-    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"]).
+    dynamicRNNGradNode->GetOpDesc()->MutableInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"])->SetShape(GeShape(init_c_dims));
+    dynamicRNNGradNode->GetOpDesc()->MutableInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"])->
                                                   SetOriginShape(GeShape(init_c_dims));
     std::string reshapeName = DynamicRNNGradName + "initCReshapeNode";
     reshapeInitC = DynamicAddInputReshapeNode(dynamicRNNGradNode, reshapeName,
@@ -1939,8 +1939,8 @@ Status DynamicRNNGradDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
                                                                                               GetShape().GetDim(1),
                                    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dh"])
                                                                                       .GetShape().GetDim(2)};
-    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dh"]).SetShape(GeShape(dh_dims));
-    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dh"]).SetOriginShape(GeShape(dh_dims));
+    dynamicRNNGradNode->GetOpDesc()->MutableInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dh"])->SetShape(GeShape(dh_dims));
+    dynamicRNNGradNode->GetOpDesc()->MutableInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dh"])->SetOriginShape(GeShape(dh_dims));
     std::string reshapeDhName = DynamicRNNGradName + "dHReshapeNode";
     reshapeDh = DynamicAddInputReshapeNode(dynamicRNNGradNode, reshapeDhName,
                                 dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dh"]).Clone(),
@@ -1953,8 +1953,8 @@ Status DynamicRNNGradDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
                                GetShape().GetDim(1),
                                    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dc"]).
                                GetShape().GetDim(2)};
-    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dc"]).SetShape(GeShape(dc_dims));
-    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dc"]).SetOriginShape(GeShape(dc_dims));
+    dynamicRNNGradNode->GetOpDesc()->MutableInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dc"])->SetShape(GeShape(dc_dims));
+    dynamicRNNGradNode->GetOpDesc()->MutableInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dc"])->SetOriginShape(GeShape(dc_dims));
     std::string reshapeDcName = DynamicRNNGradName + "dCReshapeNode";
     reshapeDc = DynamicAddInputReshapeNode(dynamicRNNGradNode, reshapeDcName,
                                  dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["dc"]).Clone(),
