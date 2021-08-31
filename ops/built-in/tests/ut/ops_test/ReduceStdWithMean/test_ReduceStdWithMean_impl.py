@@ -59,3 +59,48 @@ ut_case.add_case("Ascend910A", {
                False],
     "case_name": "test_reduce_std_with_mean_case_3",
 })
+
+ut_case.add_case("Ascend910A", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4), "shape": (3, 4),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4), "shape": (3, 4),
+                "param_type": "output"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 1), "shape": (3, 1),
+                "param_type": "output"},
+               [1,],
+               True,
+               True,
+               True,
+               0.001],
+    "case_name": "test_reduce_std_with_mean_case_4"
+})
+
+ut_case.add_case("Ascend910A", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
+                "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
+                "param_type": "output"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4), "shape": (3, 4),
+                "param_type": "output"},
+               [2,],
+               True,
+               False,
+               True,
+               0.001],
+    "case_name": "test_reduce_std_with_mean_case_5",
+})
+
+ut_case.add_case("Ascend910A", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
+                "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
+                "param_type": "output"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4), "shape": (3, 4),
+                "param_type": "output"},
+               [2,],
+               False,
+               False,
+               True,
+               0.001],
+    "case_name": "test_reduce_std_with_mean_case_6",
+})

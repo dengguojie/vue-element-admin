@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-reduce_std
+reduce_std_with_mean
 """
 import collections
 
@@ -32,14 +32,14 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 
 @register_operator_compute("ReduceStdWithMean", op_mode="dynamic", support_fusion=True)
-def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, kernel_name="reduce_std_with_mean"):
+def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_name="reduce_std_with_mean"):
     """
     calculating data
 
     Parameters
     ----------
     x : TVM tensor
-        the placeholder of x
+        the placeholder of X
     mean : TVM tensor
         the mean of X
     dim : int or intlist
@@ -50,10 +50,16 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, kernel_name="r
         hold dimension or not, default value is False
     kernel_name : str
         kernel name
+    invert: bool
+        controls whether the output is variance or inverse of variance, default value is False
+    epsilon: float
+        prevent division by 0
+    kernel_name: str
+        kernel name
 
     Returns
     -------
-    output tensorlist
+    output TVM tensor
     """
     x_type = x.dtype.lower()
 
@@ -105,23 +111,65 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, kernel_name="r
 
     # sum
     var = tbe.reduce_sum(var_muls, axis=dim, keepdims=keepdim)
+
     # calculate the square root
     y = tbe.vsqrt(var)
 
-    if y.dtype != x_type:
-        y = tbe.cast_to(y, dtype=x_type)
+    # Determine invert: If the value is false, the variance is output.
+    # If the value is true, the inverse of the variance is output.
+    if not invert:
+        if y.dtype != x_type:
+            y = tbe.cast_to(y, dtype=x_type)
 
-    # form a list and return
-    return y
+        # return variance
+        return y
+    else:
+        epsilon_value = tvm.const(epsilon, dtype=y.dtype)
+        y_epsilon = tbe.vadds(y, epsilon_value)
+        y_invert = tbe.vrec(y_epsilon)
+        if y_invert.dtype != x_type:
+            y_invert = tbe.cast_to(y_invert, dtype=x_type)
+
+        # return the inverse of variance
+        return y_invert
 
 
 @register_operator("ReduceStdWithMean")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
-def reduce_std_with_mean(x, mean, y, dim=None, unbiased=True, keepdims=False,
+def reduce_std_with_mean(x, mean, y, dim=None, unbiased=True, keepdims=False, invert=False, epsilon=0.001,
                          kernel_name="reduce_std_with_mean"):
+    """
+    Calculate variance or reciprocal of variance
+
+    Parameters:
+    ---------
+    x: dict
+        input tensor
+    mean: dict
+        mean value of input tensor
+    y: dict
+        output, variance or reciprocaal of variance
+    dim: int or list[int]
+        dimension to calculate, default value is None
+    unbiased: bool
+        control Bessel deviation, default value is True
+    keepdims: bool
+        hold dimension or not, default value is False
+    invert: bool
+        controls whether the output is variance or inverse of variance, default value is False
+    epsilon: float
+        prevent division by 0
+    kernel_name: str
+        cce kernel name, default value is reduce_std_with_mean
+    
+    Returns
+    -------
+    None
+    """
     # calculating data parameters
     dtype = x["dtype"]
     dtype_y = y["dtype"]
@@ -152,7 +200,8 @@ def reduce_std_with_mean(x, mean, y, dim=None, unbiased=True, keepdims=False,
                                      dtype=dtype_lower)
             data_mean = tvm.placeholder(mean_var_new, name="data_mean",
                                         dtype=dtype_lower)
-            res = reduce_std_with_mean_compute(data_x, data_mean, _axes.get("value"), unbiased, keepdims, kernel_name)
+            res = reduce_std_with_mean_compute(data_x, data_mean, _axes.get("value"), unbiased, keepdims,
+                                               invert, epsilon, kernel_name)
             tensors.append([data_x, data_mean, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

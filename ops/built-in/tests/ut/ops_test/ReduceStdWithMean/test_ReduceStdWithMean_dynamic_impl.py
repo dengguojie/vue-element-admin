@@ -53,6 +53,49 @@ case3 = {"params": [{"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "or
          "expect": "success",
          "support_expect": True}
 
+case4 = {"params": [{"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "ori_shape":(3, 4, 5), "ori_format":"ND", "range":[(3, 3), (4, 4), (5, 5)]},
+                    {"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "ori_shape":(3, 4, 1), "ori_format":"ND", "range":[(3, 3), (4, 4), (1, 1)]},
+                    {"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "ori_shape":(3, 4, 1), "ori_format":"ND", "range":[(3, 3), (4, 4), (1, 1)]},
+                    [2, ],
+                    False,
+                    True,
+                    True,
+                    0.001
+                    ],
+         "case_name": "test_dynamic_reduce_std_mean_case_4",
+         "expect": "success",
+         "support_expect": True}
+
+case5 = {"params": [{"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "ori_shape":(3, 4, 5), "ori_format":"ND", "range":[(3, 3), (4, 4), (5, 5)]},
+                    {"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "ori_shape":(3, 4, 1), "ori_format":"ND", "range":[(3, 3), (4, 4), (1, 1)]},
+                    {"shape":(-1, -1, -1), "dtype":"float32", "format":"ND", "ori_shape":(3, 4, 1), "ori_format":"ND", "range":[(3, 3), (4, 4), (1, 1)]},
+                    [2, ],
+                    True,
+                    True,
+                    True,
+                    0.001
+                    ],
+         "case_name": "test_dynamic_reduce_std_mean_case_5",
+         "expect": "success",
+         "support_expect": True}
+
+case6 = {"params": [{"shape":(-1, -1), "dtype":"float16", "format":"ND", "ori_shape":(3, 4), "ori_format":"ND", "range":[(3, 3), (4, 4)]},
+                    {"shape":(-1, -1), "dtype":"float16", "format":"ND", "ori_shape":(3, 1), "ori_format":"ND", "range":[(3, 3), (1, 1)]},
+                    {"shape":(-1, -1), "dtype":"float16", "format":"ND", "ori_shape":(3, 1), "ori_format":"ND", "range":[(3, 3), (1, 1)]},
+                    [1, ],
+                    True,
+                    True,
+                    True,
+                    0.001
+                    ],
+         "case_name": "test_dynamic_reduce_std_mean_case_6",
+         "expect": "success",
+         "support_expect": True}
+
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
