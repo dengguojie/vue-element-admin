@@ -15,35 +15,40 @@
 """
 scan_pq_codes.py
 """
-import numpy as np
-from impl.util import util_tik_comm_func
-from impl.util import util_common
-from impl.util.util_tik_comm_func import OpBase
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-from tbe.common.platform import set_current_compile_soc_info
 
 # max int64
 MAX_INT64 = 2 ** 63 - 1
 MIN_FP16 = -65504
 MAX_FP16 = 65504
 # tiling param num
-TILING_ARG_NUM = 16
+TILING_ARG_NUM = 8
 # reserved ub size
-RESERVED_UB_SIZE = 4 * 1024
-IVF_SEGMENT = 512
-INDEX_LEN = 16
-MAX_BUCKET_LEN = 64
 MASK_FLOAT16 = 128
-MASK_INT32 = 64
+MASK_FLOAT32 = 64
 BLOCK_INT32 = 8
 BLOCK_FLOAT16 = 16
-BLOCK_INT8 = 32
-DIV_RATE = 2
+BLOCK_UINT8 = 32
+FLOAT16_SIZE = 2
 IVF_UNIT_LEN = 16
+SLICE_SIZE = 2048
+SLICE_INNER_SIZE = 512
+IVF_SLICE_SIZE = SLICE_SIZE * IVF_UNIT_LEN
+IVF_SLICE_INNER_SIZE = SLICE_INNER_SIZE * IVF_UNIT_LEN
+INNER_LOOP_TIME = SLICE_SIZE // SLICE_INNER_SIZE
+INDEX_SHAPE = 1024
+ADC_TRANS_BUFFER_OFFSET = 256 * 16
+ADC_TRANS_BUFFER_SHAPE = ADC_TRANS_BUFFER_OFFSET * 2
+ADC_ASSIST_SHAPE = 16 * 64 * 16
+SLICE_TAIL_SIZE = 1024
+IVF_SLICE_TAIL_SIZE = SLICE_TAIL_SIZE * IVF_UNIT_LEN
+INNER_TAIL_LOOP_TIME = SLICE_TAIL_SIZE // SLICE_INNER_SIZE
+MAX_BUCKET_LEN = 64
+ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 
 
 def _ceil_div(dividend, divisor):
@@ -56,36 +61,42 @@ def _ceil_fill(dividend, divisor):
     return result
 
 
+def _floor_fill(dividend, divisor):
+    result = (dividend // divisor) * divisor
+    return result
+
+
 # pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
-class ScanPQCodes(object):
+class ScanPQCodes():
     """
     Function: use to store ScanPQCodes base parameters
     """
     def __init__(self, attrs, dtypes, bucket_shape):
-        profile = tik.Dprofile()
         self.tik_instance = tik.Tik()
         self.opt_config = {"out_of_bound_sync_check": True,
                            "enable_const_fold": True}
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
                                                   name="tiling_gm",
                                                   scope=tik.scope_gm)
         self.core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.bucket_loop = self.tik_instance.Scalar("int32", name="bucket_loop")
-        self.slice_size = 1024
+        # tiling params
+        self.bucket_num_total = self.tik_instance.Scalar("int64", name="bucket_num_total")
+        self.bucket_num_per_core = self.tik_instance.Scalar("int64", name="bucket_num_per_core")
+        self.bucket_num_left = self.tik_instance.Scalar("int64", name="bucket_num_left")
+        self.core_used_num = self.tik_instance.Scalar("int64", name="core_used_num")
+        self.bucket_start_base = self.tik_instance.Scalar("int64", name="bucket_start_base")
         # attrs
-        (group_size, total_limit, extreme_mode, split_count, split_index) = attrs
+        (total_limit, group_size, extreme_mode, split_count, split_index) = attrs
         self.group_size = group_size
         self.total_limit = total_limit
         self.extreme_mode = extreme_mode
-        self.is_second = False
         self.bucket_shape = bucket_shape
         self.split_count = split_count
         self.split_index = split_index
         # dtype
-        (ivf_dtype, bucket_list_dtype, bucket_base_distance_dtype,
-         bucket_limits_dtype, bucket_offsets_dtype,
-         adc_tables_dtype) = dtypes
+        (ivf_dtype, bucket_list_dtype, bucket_base_distance_dtype, bucket_limits_dtype,
+         bucket_offsets_dtype, adc_tables_dtype) = dtypes
         self.ivf_dtype = ivf_dtype
         self.bucket_list_dtype = bucket_list_dtype
         self.bucket_base_distance_dtype = bucket_base_distance_dtype
@@ -106,567 +117,516 @@ class ScanPQCodes(object):
         self.pq_ivf_gm = None
         self.pq_index_gm = None
         # ub
-        self.adc_tables_ub = self.tik_instance.Tensor(self.adc_tables_dtype,
-                                                      (256, 16, 16),
-                                                      name="adc_tables_ub",
-                                                      scope=tik.scope_ubuf)
+        self.adc_tables_ub_fp16 = None
+        self.adc_assist_ub_fp16 = None
+        self.adc_trans_ub_fp16 = None
+        self.assist_add_init_ub_fp32 = None
+        self.assist_pq_index_init_ub_fp32 = None
+        self.ivf_cur_process_ub_uint8 = None
+        self.pq_distance_ub_fp16 = None
+        self.block_extrim_ub_fp16 = None
+        self.grouped_extrim_distance_ub_fp16 = None
+        self.bucket_list_ub_int32 = None
+        self.bucket_base_distance_ub_fp16 = None
+        self.bucket_limits_ub_int32 = None
+        self.bucket_offsets_ub_int32 = None
+        self.ivf_cur_process_ub_fp32 = None
 
-        self.bucket_list_ub_int32 = self.tik_instance.Tensor("int32",
-                                                             (MAX_BUCKET_LEN,),
-                                                             name="bucket_list_ub_int32",
-                                                             scope=tik.scope_ubuf)
-        self.bucket_counts_ub_int32 = self.tik_instance.Tensor("int32",
-                                                               (MAX_BUCKET_LEN,),
-                                                               name="bucket_counts_ub_int32",
-                                                               scope=tik.scope_ubuf)
-        self.bucket_offsets_ub_int32 = self.tik_instance.Tensor("int32",
-                                                                (MAX_BUCKET_LEN,),
-                                                                name="bucket_offsets_ub_int32",
-                                                                scope=tik.scope_ubuf)
-        self.bucket_base_distance_ub_fp16 = self.tik_instance.Tensor(
-            self.bucket_base_distance_dtype, (MAX_BUCKET_LEN,),
-            name="bucket_base_distance_ub_fp16",
-            scope=tik.scope_ubuf)
-        self.actual_count_ub_int32 = self.tik_instance.Tensor("int32",
-                                                              (MAX_BUCKET_LEN,),
-                                                              name="actual_count_ub_int32",
-                                                              scope=tik.scope_ubuf)
-        self.buffer_ub_fp32 = self.tik_instance.Tensor("float32",
-                                                       (MAX_BUCKET_LEN,),
-                                                       name="buffer_ub_fp32",
-                                                       scope=tik.scope_ubuf)
-        self.adc_tables_trans2_ub = self.tik_instance.Tensor(
-            self.adc_tables_dtype, (16, 128, 16),
-            name="adc_tables_trans2_ub", scope=tik.scope_ubuf)
-        self.adc_tables_input_ub = self.tik_instance.Tensor(
-            self.adc_tables_dtype, (16, 256),
-            name="adc_tables_input_ub", scope=tik.scope_ubuf)
-        self.adc_tables_trans1_ub = self.tik_instance.Tensor(
-            self.adc_tables_dtype, (256, 16),
-            name="adc_tables_trans1_ub", scope=tik.scope_ubuf)
 
     def _init_gm_tensor(self):
         # input gm
-        self.ivf_gm = self.tik_instance.Tensor(self.ivf_dtype, (MAX_INT64,),
-                                               name="ivf", scope=tik.scope_gm)
-        self.bucket_list_gm = self.tik_instance.Tensor(self.bucket_list_dtype,
-                                                       (MAX_INT64,),
-                                                       name="bucket_list",
-                                                       scope=tik.scope_gm)
-        self.bucket_base_distance_gm = self.tik_instance.Tensor(
-            self.bucket_base_distance_dtype, (MAX_INT64,),
-            name="bucket_base_distance", scope=tik.scope_gm)
-        self.bucket_limits_gm = self.tik_instance.Tensor(
-            self.bucket_limits_dtype, (MAX_INT64,),
-            name="bucket_limits", scope=tik.scope_gm)
-        self.bucket_offsets_gm = self.tik_instance.Tensor(
-            self.bucket_offsets_dtype, (MAX_INT64,),
-            name="bucket_offsets", scope=tik.scope_gm)
-        self.adc_tables_gm = self.tik_instance.Tensor(self.adc_tables_dtype,
-                                                      (MAX_INT64,),
-                                                      name="adc_tables",
-                                                      scope=tik.scope_gm)
+        self.ivf_gm = self.tik_instance.Tensor(self.ivf_dtype, (MAX_INT64,), name="ivf", scope=tik.scope_gm)
+        self.bucket_list_gm = self.tik_instance.Tensor(self.bucket_list_dtype, (MAX_INT64,),
+                                                       name="bucket_list", scope=tik.scope_gm)
+        self.bucket_base_distance_gm = self.tik_instance.Tensor(self.bucket_base_distance_dtype, (MAX_INT64,),
+                                                                name="bucket_base_distance", scope=tik.scope_gm)
+        self.bucket_limits_gm = self.tik_instance.Tensor(self.bucket_limits_dtype, (MAX_INT64,),
+                                                         name="bucket_limits", scope=tik.scope_gm)
+        self.bucket_offsets_gm = self.tik_instance.Tensor(self.bucket_offsets_dtype, (MAX_INT64,),
+                                                          name="bucket_offsets", scope=tik.scope_gm)
+        self.adc_tables_gm = self.tik_instance.Tensor(self.adc_tables_dtype, (MAX_INT64,),
+                                                      name="adc_tables", scope=tik.scope_gm)
         # output gm
-        self.actual_count_gm = self.tik_instance.Tensor(self.bucket_list_dtype,
-                                                        (BLOCK_INT32,),
-                                                        name="actual_count",
-                                                        scope=tik.scope_gm)
-        self.pq_distance_gm = self.tik_instance.Tensor(self.adc_tables_dtype,
-                                                       (self.total_limit,),
-                                                       name="pq_distance",
-                                                       scope=tik.scope_gm)
-        self.grouped_extrim_distance_gm = self.tik_instance.Tensor(
-            self.adc_tables_dtype,
-            (_ceil_div(self.total_limit, self.group_size),),
-            name="grouped_extrim_distance", scope=tik.scope_gm)
-        self.pq_ivf_gm = self.tik_instance.Tensor(self.bucket_list_dtype,
-                                                  (self.total_limit,),
-                                                  name="pq_ivf",
-                                                  scope=tik.scope_gm)
-        self.pq_index_gm = self.tik_instance.Tensor(self.bucket_list_dtype,
-                                                    (self.total_limit,),
-                                                    name="pq_index",
-                                                    scope=tik.scope_gm)
+        self.actual_count_gm = self.tik_instance.Tensor(self.bucket_list_dtype, (1,),
+                                                        name="actual_count", scope=tik.scope_gm)
+        self.pq_distance_gm = self.tik_instance.Tensor(self.adc_tables_dtype, (self.total_limit,),
+                                                       name="pq_distance", scope=tik.scope_gm)
+        self.grouped_extrim_distance_gm = self.tik_instance.Tensor(self.adc_tables_dtype,
+                                                                   (_ceil_div(self.total_limit, self.group_size),),
+                                                                   name="grouped_extrim_distance", scope=tik.scope_gm)
+        self.pq_ivf_gm = self.tik_instance.Tensor(self.bucket_list_dtype, (self.total_limit,),
+                                                  name="pq_ivf", scope=tik.scope_gm)
+        self.pq_index_gm = self.tik_instance.Tensor(self.bucket_list_dtype, (self.total_limit,),
+                                                    name="pq_index", scope=tik.scope_gm)
 
-    def _vector_div(self, vector_ub, div_value):
-        self.tik_instance.vconv(MASK_INT32, "", self.buffer_ub_fp32, vector_ub,
-                                1, 1, 1, 8, 8)
-        div_value_fp32 = self.tik_instance.Scalar("float32",
-                                                  name="div_value_fp32")
-        div_value_fp32.set_as(1 / div_value)
-        self.tik_instance.vmuls(MASK_INT32, self.buffer_ub_fp32,
-                                self.buffer_ub_fp32, div_value_fp32, 1, 1, 1, 8,
-                                8)
-        self.tik_instance.vconv(MASK_INT32, "floor", vector_ub,
-                                self.buffer_ub_fp32, 1, 1, 1, 8, 8)
 
-    def _get_input_data_paras(self):
-        bucket_block_int32_num = self.tik_instance.Scalar("int32",
-                                                          name="bucket_block_int32_num")
-        bucket_block_int32_left = self.tik_instance.Scalar("int32",
-                                                           name="bucket_block_int32_left")
-        bucket_block_fp16_num = self.tik_instance.Scalar("int32",
-                                                         name="bucket_block_fp16_num")
-        bucket_block_fp16_left = self.tik_instance.Scalar("int32",
-                                                          name="bucket_block_fp16_left")
-        bucket_block_int32_num.set_as(self.bucket_shape // BLOCK_INT32)
-        bucket_block_int32_left.set_as(self.bucket_shape % BLOCK_INT32)
-        bucket_block_fp16_num.set_as(self.bucket_shape // BLOCK_FLOAT16)
-        bucket_block_fp16_left.set_as(self.bucket_shape % BLOCK_FLOAT16)
-        self.tik_instance.vector_dup(MAX_BUCKET_LEN,
-                                     self.bucket_counts_ub_int32, 0, 1, 1, 8)
-        with self.tik_instance.if_scope(bucket_block_int32_num > 0):
-            self.tik_instance.data_move(self.bucket_list_ub_int32,
-                                        self.bucket_list_gm, 0, 1,
-                                        bucket_block_int32_num, 0,
-                                        0)
-            self.tik_instance.data_move(self.bucket_counts_ub_int32,
-                                        self.bucket_limits_gm, 0, 1,
-                                        bucket_block_int32_num, 0, 0)
-            self.tik_instance.data_move(self.bucket_offsets_ub_int32,
-                                        self.bucket_offsets_gm, 0, 1,
-                                        bucket_block_int32_num, 0, 0)
-        with self.tik_instance.if_scope(bucket_block_int32_left > 0):
-            with self.tik_instance.for_range(0,
-                                             bucket_block_int32_left) as bucket_int32_idx:
-                self.bucket_list_ub_int32[bucket_int32_idx].set_as(
-                    self.bucket_list_gm[
-                        bucket_block_int32_num * BLOCK_INT32 + bucket_int32_idx])
-                self.bucket_counts_ub_int32[bucket_int32_idx].set_as(
-                    self.bucket_limits_gm[
-                        bucket_block_int32_num * BLOCK_INT32 + bucket_int32_idx])
-                self.bucket_offsets_ub_int32[bucket_int32_idx].set_as(
-                    self.bucket_offsets_gm[
-                        bucket_block_int32_num * BLOCK_INT32 + bucket_int32_idx])
-        with self.tik_instance.if_scope(bucket_block_fp16_num > 0):
-            self.tik_instance.data_move(self.bucket_base_distance_ub_fp16,
-                                        self.bucket_base_distance_gm, 0, 1,
-                                        bucket_block_fp16_num, 0, 0)
-        with self.tik_instance.if_scope(bucket_block_fp16_left > 0):
-            with self.tik_instance.for_range(0,
-                                             bucket_block_fp16_left) as bucket_fp16_idx:
-                self.bucket_base_distance_ub_fp16[bucket_fp16_idx].set_as(
-                    self.bucket_base_distance_gm[
-                        bucket_block_fp16_num * BLOCK_FLOAT16 + bucket_fp16_idx])
-        self._vector_div(self.bucket_counts_ub_int32, self.split_count)
-        unit_counts_ub_int32 = self.tik_instance.Tensor("int32",
-                                                        (MAX_BUCKET_LEN,),
-                                                        name="unit_counts_ub_int32",
-                                                        scope=tik.scope_ubuf)
-        self.tik_instance.vmuls(MASK_INT32, unit_counts_ub_int32,
-                                self.bucket_counts_ub_int32, self.split_index,
-                                1, 1,
-                                1, 8, 8)
-        self.tik_instance.vadd(MAX_BUCKET_LEN, self.bucket_offsets_ub_int32,
-                               self.bucket_offsets_ub_int32,
-                               unit_counts_ub_int32, 1, 1, 1, 1, 8, 8, 8)
+    def _init_ub_tensor(self):
+        self.adc_tables_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (256, 16, 16),
+                                                           name="adc_tables_ub_fp16",
+                                                           scope=tik.scope_ubuf)
+        self.adc_assist_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (ADC_ASSIST_SHAPE, ),
+                                                           name="adc_assist_ub_fp16", scope=tik.scope_ubuf)
+        self.adc_trans_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (ADC_TRANS_BUFFER_SHAPE, ),
+                                                          name="adc_trans_ub_fp16", scope=tik.scope_ubuf)
+        self.assist_add_init_ub_fp32 = self.tik_instance.Tensor("float32", (MASK_FLOAT32, ),
+                                                                name="assist_add_init_ub_fp32", scope=tik.scope_ubuf)
+        self.assist_pq_index_init_ub_fp32 = self.tik_instance.Tensor("float32", (INDEX_SHAPE, ),
+                                                                     name="assist_pq_index_init_ub_fp32",
+                                                                     scope=tik.scope_ubuf)
+        self.ivf_cur_process_ub_uint8 = self.tik_instance.Tensor(self.ivf_dtype, (IVF_SLICE_SIZE, ),
+                                                                name="ivf_cur_process_ub_uint8", scope=tik.scope_ubuf)
+        self.pq_distance_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (SLICE_SIZE, ),
+                                                            name="pq_distance_ub_fp16", scope=tik.scope_ubuf)
+        self.block_extrim_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (BLOCK_FLOAT16 * INNER_LOOP_TIME, ),
+                                                             name="block_extrim_ub_fp16", scope=tik.scope_ubuf)
+        self.grouped_extrim_distance_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (BLOCK_FLOAT16 * INNER_LOOP_TIME // 2, ),
+                                                                        name="grouped_extrim_distance_ub_fp16",
+                                                                        scope=tik.scope_ubuf)
+        self.bucket_list_ub_int32 = self.tik_instance.Tensor(self.bucket_list_dtype, (MAX_BUCKET_LEN, ),
+                                                             name="bucket_list_ub_int32",
+                                                             scope=tik.scope_ubuf)
+        self.bucket_base_distance_ub_fp16 = self.tik_instance.Tensor(self.bucket_base_distance_dtype, (MAX_BUCKET_LEN, ),
+                                                             name="bucket_base_distance_ub_fp16",
+                                                             scope=tik.scope_ubuf)
+        self.bucket_limits_ub_int32 = self.tik_instance.Tensor(self.bucket_limits_dtype, (MAX_BUCKET_LEN, ),
+                                                               name="bucket_limits_ub_int32",
+                                                               scope=tik.scope_ubuf)
+        self.bucket_offsets_ub_int32 = self.tik_instance.Tensor(self.bucket_offsets_dtype, (MAX_BUCKET_LEN, ),
+                                                                name="bucket_offsets_ub_int32",
+                                                                scope=tik.scope_ubuf)
+        self.ivf_cur_process_ub_fp32 = self.tik_instance.Tensor("float32", (IVF_SLICE_INNER_SIZE, ),
+                                                                name="ivf_cur_process_ub_fp32",
+                                                                scope=tik.scope_ubuf)
 
     def _tiling_args(self):
         """
         tiling_args
         """
-        tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,),
+        tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
                                              name="tiling_ub",
                                              scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
         tiling_para_index = 0
-        self.bucket_loop.set_as(tiling_ub[tiling_para_index])
-        # self.bucket_loop.set_as(2)
+        self.bucket_num_total.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.bucket_num_per_core.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.bucket_num_left.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.core_used_num.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.bucket_start_base.set_as(tiling_ub[tiling_para_index])
+
+
+    def _calc_output_count(self, output_count, bucket_start, bucket_idx):
+        output_count.set_as(0)
+        bucket_counts = self.tik_instance.Scalar("int32", name="bucket_counts")
+        with self.tik_instance.for_range(bucket_start, bucket_idx) as idx:
+            bucket_counts.set_as(self.bucket_limits_ub_int32[idx])
+            output_count.set_as(output_count + _ceil_fill(bucket_counts, SLICE_TAIL_SIZE))
+
 
     def _create_adc_table(self, bucket_idx):
         # conver adc_tables shape from (256,16) to (256,16,16) to prevent bank conflict
-        dst_list = [self.adc_tables_trans1_ub[16 * i] for i in range(16)]
-        src_list = [self.adc_tables_input_ub[256 * i] for i in range(16)]
+        adc_tables_trans1_ub = self.adc_trans_ub_fp16[ADC_TRANS_BUFFER_OFFSET : ]
+        adc_tables_input_ub = self.adc_trans_ub_fp16[ : ADC_TRANS_BUFFER_OFFSET]
+        dst_list = [adc_tables_trans1_ub[16 * i] for i in range(16)]
+        src_list = [adc_tables_input_ub[256 * i] for i in range(16)]
         # move in adc_tables
-        self.tik_instance.data_move(self.adc_tables_input_ub,
+        self.tik_instance.data_move(adc_tables_input_ub,
                                     self.adc_tables_gm[bucket_idx * 256 * 16],
-                                    0, 1, 256, 0,
-                                    0)
+                                    0, 1, 256, 0, 0)
         self.tik_instance.vnchwconv(False, False, dst_list, src_list, 16, 16, 1)
-        with self.tik_instance.for_range(0, 2) as i:
-            self.tik_instance.vector_dup(128, self.adc_tables_trans2_ub[i * 8 * 128 * 16], 0.0, 128, 1, 8)
-        with self.tik_instance.for_range(0, 2) as tran_idx:
-            self.tik_instance.data_move(self.adc_tables_trans2_ub,
-                                        self.adc_tables_trans1_ub[tran_idx * 128 * 16], 0, 1,
-                                        128, 0, 0)
-            dst_list = [self.adc_tables_ub[128 * 16 * 16 * tran_idx + 16 * j]
-                        for j in range(16)]
-            src_list = [self.adc_tables_trans2_ub[128 * 16 * j] for j in range(16)]
-            self.tik_instance.vnchwconv(False, False, dst_list, src_list, 128, 16, 1)
+        with self.tik_instance.for_range(0, 4) as tran_idx:
+            self.tik_instance.data_move(self.adc_assist_ub_fp16,
+                                        adc_tables_trans1_ub[tran_idx * 64 * 16],
+                                        0, 1, 64, 0, 0)
+            dst_list = [self.adc_tables_ub_fp16[64 * 16 * 16 * tran_idx + 16 * j] for j in range(16)]
+            src_list = [self.adc_assist_ub_fp16[64 * 16 * j] for j in range(16)]
+            self.tik_instance.vnchwconv(False, False, dst_list, src_list, 64, 16, 1)
 
-    def _run_one_core(self, ivf_input, ivf_output, ivf_max_base, index_base,
-                      do_num_per_core, bucket_base_distance,
-                      bucket_idx, is_dynamic):
-        thread_loop = self.tik_instance.Scalar("int32", name="thread_loop")
-        thread_tail_num = self.tik_instance.Scalar("int32",
-                                                   name="thread_tail_num")
-        handle_offset = self.tik_instance.Scalar("int32", name="handle_offset")
-        handle_buffer_size = self.tik_instance.Scalar("int32",
-                                                      name="handle_buffer_size")
-        bucket_id = self.tik_instance.Scalar("int32", name="bucket_id")
-        thread_loop.set_as(do_num_per_core // self.slice_size)
-        thread_tail_num.set_as(do_num_per_core % self.slice_size)
+
+    def _init_assist_ub(self):
+        assist_init_ub = self.tik_instance.Tensor("float32", (IVF_UNIT_LEN, ),
+                                                  name="assist_init_ub",
+                                                  scope=tik.scope_ubuf)
+        assist_value = self.tik_instance.Scalar("float32", name="assist_value")
+        assist_value.set_as(0)
+        assist_init_ub[0].set_as(assist_value)
+        assist_value.set_as(1)
+        assist_init_ub[1].set_as(assist_value)
+        assist_value.set_as(2)
+        assist_init_ub[2].set_as(assist_value)
+        assist_value.set_as(3)
+        assist_init_ub[3].set_as(assist_value)
+        assist_value.set_as(4)
+        assist_init_ub[4].set_as(assist_value)
+        assist_value.set_as(5)
+        assist_init_ub[5].set_as(assist_value)
+        assist_value.set_as(6)
+        assist_init_ub[6].set_as(assist_value)
+        assist_value.set_as(7)
+        assist_init_ub[7].set_as(assist_value)
+        self.tik_instance.vadds(8, assist_init_ub[8], assist_init_ub, 8, 1, 1, 1, 8, 8)
+        self.tik_instance.data_move(self.assist_add_init_ub_fp32, assist_init_ub, 0, 1, 2, 0, 0)
+        self.tik_instance.vmuls(16, self.assist_add_init_ub_fp32, self.assist_add_init_ub_fp32, 16, 1, 1, 1, 8, 8)
+        self.tik_instance.vadds(16, self.assist_add_init_ub_fp32[16], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 2, 2)
+        self.tik_instance.vadds(32, self.assist_add_init_ub_fp32[32], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 4, 4)
+        self.tik_instance.data_move(self.assist_pq_index_init_ub_fp32, assist_init_ub, 0, 1, 2, 0, 0)
+        self.tik_instance.vadds(16, self.assist_pq_index_init_ub_fp32[16], self.assist_pq_index_init_ub_fp32, 16, 1, 1, 1, 2, 2)
+        self.tik_instance.vadds(32, self.assist_pq_index_init_ub_fp32[32], self.assist_pq_index_init_ub_fp32, 32, 1, 1, 1, 4, 4)
+        self.tik_instance.vadds(64, self.assist_pq_index_init_ub_fp32[64], self.assist_pq_index_init_ub_fp32, 64, 1, 1, 1, 8, 8)
+        self.tik_instance.vadds(64, self.assist_pq_index_init_ub_fp32[128], self.assist_pq_index_init_ub_fp32, 128, 2, 1, 1, 8, 8)
+        self.tik_instance.vadds(64, self.assist_pq_index_init_ub_fp32[256], self.assist_pq_index_init_ub_fp32, 256, 4, 1, 1, 8, 8)
+        self.tik_instance.vadds(64, self.assist_pq_index_init_ub_fp32[512], self.assist_pq_index_init_ub_fp32, 512, 8, 1, 1, 8, 8)
+
+
+    def _get_input_data(self):
+        self.tik_instance.data_move(self.bucket_list_ub_int32, self.bucket_list_gm, 0, 1, 
+                                    _ceil_div(self.bucket_shape, BLOCK_INT32), 0, 0)
+        self.tik_instance.data_move(self.bucket_base_distance_ub_fp16, self.bucket_base_distance_gm, 0, 1, 
+                                    _ceil_div(self.bucket_shape, BLOCK_FLOAT16), 0, 0)
+        self.tik_instance.data_move(self.bucket_limits_ub_int32, self.bucket_limits_gm, 0, 1, 
+                                    _ceil_div(self.bucket_shape, BLOCK_INT32), 0, 0)
+        self.tik_instance.data_move(self.bucket_offsets_ub_int32, self.bucket_offsets_gm, 0, 1, 
+                                    _ceil_div(self.bucket_shape, BLOCK_INT32), 0, 0)
+
+
+    def _set_single_bucket_param(self, args):
+        (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input,
+         bucket_offset_output, bucket_max_offset) = args
         bucket_id.set_as(self.bucket_list_ub_int32[bucket_idx])
-        assist_add_ub = self.tik_instance.Tensor(self.bucket_offsets_dtype,
-                                                 [MAX_BUCKET_LEN, ],
-                                                 name="assist_add_ub",
-                                                 scope=tik.scope_ubuf)
-        assist_add_init_ub = self.bucket_list_ub_int32
-        with self.tik_instance.for_range(0, 64) as i:
-            assist_add_init_ub[i].set_as((i % 16) * 16)
-        self.tik_instance.data_move(assist_add_ub, assist_add_init_ub, 0, 1, 8,
-                                    0, 0)
-        if is_dynamic == 1:
-            grouped_extrim_distance_ub = self.tik_instance.Tensor(
-                self.adc_tables_dtype, (
-                    _ceil_div(do_num_per_core,
-                              self.slice_size) * BLOCK_FLOAT16,),
-                name="grouped_extrim_distance_ub",
-                scope=tik.scope_ubuf)
-            block_extrim_ub = self.tik_instance.Tensor(self.adc_tables_dtype, (
-                _ceil_div(do_num_per_core,
-                          self.slice_size) * BLOCK_FLOAT16 * 2,),
-                                                       name="block_extrim_ub",
-                                                       scope=tik.scope_ubuf)
-        else:
-            grouped_extrim_distance_ub = self.tik_instance.Tensor(
-                self.adc_tables_dtype, (2 * BLOCK_FLOAT16,),
-                name="grouped_extrim_distance_ub",
-                scope=tik.scope_ubuf)
-            block_extrim_ub = self.tik_instance.Tensor(self.adc_tables_dtype,
-                                                       (2 * BLOCK_FLOAT16 * 2,),
-                                                       name="block_extrim_ub",
-                                                       scope=tik.scope_ubuf)
+        bucket_base_dis.set_as(self.bucket_base_distance_ub_fp16[bucket_idx])
+        bucket_limit.set_as(self.bucket_limits_ub_int32[bucket_idx])
+        bucket_offset_input.set_as(self.bucket_offsets_ub_int32[bucket_idx])
+        bucket_offset_input.set_as(bucket_offset_input * IVF_UNIT_LEN)
+        self._calc_output_count(bucket_offset_output, self.bucket_start_base, bucket_idx)
+        bucket_max_offset.set_as(bucket_offset_output // self.group_size)
+        self._init_assist_ub()
 
-        def _ivf_inner_func(args):
-            (handle_buffer_size, handle_offset, block_extrim_ub, ivf_input,
-             ivf_output, index_base, thread_idx) = args
-            ub_size = self.tik_instance.Scalar("int32", name="ub_size")
-            ub_size.set_as(_ceil_fill(handle_buffer_size, self.group_size))
-            if is_dynamic == 1:
-                ivf_cur_process_ub_fp16 = self.tik_instance.Tensor(
-                    self.adc_tables_dtype, (ub_size, 16),
-                    name="ivf_cur_process_ub_fp16", scope=tik.scope_ubuf)
-            else:
-                ivf_cur_process_ub_fp16 = self.tik_instance.Tensor(
-                    self.adc_tables_dtype, (self.slice_size // 2, 16),
-                    name="ivf_cur_process_ub_fp16", scope=tik.scope_ubuf)
-            ivf_cur_process_ub_uint8 = self.adc_tables_trans2_ub.reinterpret_cast_to(
-                self.ivf_dtype)
-            assist_pq_index_ub = self.adc_tables_trans1_ub.reinterpret_cast_to(
-                "int32")
-            if is_dynamic == 1:
-                pq_distance_ub = self.tik_instance.Tensor(self.adc_tables_dtype,
-                                                          (ub_size,),
-                                                          name="pq_distance_ub",
-                                                          scope=tik.scope_ubuf)
-            else:
-                pq_distance_ub = self.tik_instance.Tensor(self.adc_tables_dtype,
-                                                          (self.slice_size // 2,),
-                                                          name="pq_distance_ub",
-                                                          scope=tik.scope_ubuf)
-            # input data
-            with self.tik_instance.if_scope(handle_buffer_size // 2 > 0):
-                self.tik_instance.data_move(
-                    ivf_cur_process_ub_uint8[thread_idx * ub_size * 16],
-                    self.ivf_gm[
-                        ivf_input * IVF_UNIT_LEN + handle_offset * IVF_UNIT_LEN],
-                    0, 1,
-                    handle_buffer_size // 2, 0, 0)
-            with self.tik_instance.if_scope(handle_buffer_size % 2 > 0):
-                with self.tik_instance.for_range(0, BLOCK_FLOAT16) as idx:
-                    ivf_cur_process_ub_uint8[thread_idx * ub_size * 16 + (
-                            handle_buffer_size // 2) * 16 + idx].set_as(
-                        self.ivf_gm[
-                            ivf_input * IVF_UNIT_LEN + handle_offset * IVF_UNIT_LEN + (
-                                    handle_buffer_size // 2) * 16 + idx]
-                    )
-            # ivf index reprocess
-            self.tik_instance.vconv(MASK_FLOAT16, "", ivf_cur_process_ub_fp16,
-                                    ivf_cur_process_ub_uint8[
-                                        thread_idx * ub_size * 16],
-                                    ub_size * 16 // MASK_FLOAT16,
-                                    1, 1, 8, 4)
-            ivf_cur_process_ub_int32 = self.adc_tables_trans2_ub.reinterpret_cast_to(
-                "int32")
-            self.tik_instance.vconv(MASK_INT32, "floor",
-                                    ivf_cur_process_ub_int32,
-                                    ivf_cur_process_ub_fp16,
-                                    ub_size * 16 // MASK_INT32, 1, 1, 8, 4)
 
-            self.tik_instance.vmuls(MASK_INT32, ivf_cur_process_ub_int32,
-                                    ivf_cur_process_ub_int32, 256,
-                                    ub_size * 16 // 64, 1, 1, 8, 8)
-            self.tik_instance.vadd(MASK_INT32, ivf_cur_process_ub_int32,
-                                   ivf_cur_process_ub_int32,
-                                   assist_add_ub, ub_size * 16 // MASK_INT32, 1,
-                                   1, 1, 8, 8, 0)
-            # *2 because offset Bytes
-            self.tik_instance.vmuls(MASK_INT32, ivf_cur_process_ub_int32,
-                                    ivf_cur_process_ub_int32, 2,
-                                    ub_size * 16 // MASK_INT32, 1, 1, 8, 8)
-            # distance calc
-            vgather_out_ub = ivf_cur_process_ub_fp16
-            pq_distance_vcgadd_ub = self.adc_tables_input_ub
-            self.tik_instance.vgather(handle_buffer_size * 16, vgather_out_ub,
-                                      self.adc_tables_ub,
-                                      ivf_cur_process_ub_int32, 1, 8, 0, 0,
-                                      "counter")
-            self.tik_instance.vcgadd(MASK_FLOAT16, pq_distance_vcgadd_ub[
-                thread_idx * ub_size], vgather_out_ub,
-                                     ub_size * 16 // MASK_FLOAT16, 1, 1, 8)
-            # tail for pq_distance_ub
-            with self.tik_instance.if_scope(
-                    handle_buffer_size % self.group_size > 0):
-                if self.extreme_mode == 1:
-                    self.tik_instance.vector_dup(self.group_size,
-                                                 pq_distance_ub[
-                                                     (
-                                                             handle_buffer_size // self.group_size) * self.group_size],
-                                                 MIN_FP16, 1, 1, 4)
-                else:
-                    self.tik_instance.vector_dup(self.group_size,
-                                                 pq_distance_ub[
-                                                     (handle_buffer_size // self.group_size) * self.group_size],
-                                                 MAX_FP16, 1, 1, 4)
-            with self.tik_instance.if_scope(
-                    handle_buffer_size // BLOCK_FLOAT16 > 0):
-                self.tik_instance.data_move(pq_distance_ub,
-                                            pq_distance_vcgadd_ub[
-                                                thread_idx * ub_size], 0, 1,
-                                            handle_buffer_size // BLOCK_FLOAT16,
-                                            0, 0)
-            with self.tik_instance.if_scope(handle_buffer_size % BLOCK_FLOAT16 > 0):
-                with self.tik_instance.for_range(0,
-                                                 handle_buffer_size % BLOCK_FLOAT16) as idx:
-                    vcgadd_offset = self.tik_instance.Scalar("int32",
-                                                             name="vcgadd_offset")
-                    vcgadd_offset.set_as(
-                        (handle_buffer_size // BLOCK_FLOAT16) * BLOCK_FLOAT16)
-                    pq_distance_ub[vcgadd_offset + idx].set_as(
-                        pq_distance_vcgadd_ub[
-                            thread_idx * ub_size + vcgadd_offset + idx])
-                    self.tik_instance.vadds(MASK_FLOAT16, pq_distance_ub,
-                                            pq_distance_ub, bucket_base_distance,
-                                            ub_size // MASK_FLOAT16, 1, 1, 8, 8)
-            # index and bucketid
-            assist_pq_index_init_ub = self.adc_tables_input_ub.reinterpret_cast_to(
-                "int32")
-            with self.tik_instance.for_range(0, self.slice_size // 2) as i:
-                assist_pq_index_init_ub[i].set_as(i)
-            with self.tik_instance.if_scope(
-                    ub_size // (self.slice_size // 2) > 0):
-                self.tik_instance.data_move(
-                    assist_pq_index_ub[thread_idx * ub_size],
-                    assist_pq_index_init_ub, 0, 1,
-                    (self.slice_size // 2) // 8, 0, 0)
-            with self.tik_instance.if_scope(
-                    ub_size % (self.slice_size // 2) > 0):
-                self.tik_instance.data_move(assist_pq_index_ub[
-                                                thread_idx * ub_size + (
-                                                        ub_size // (
-                                                        self.slice_size // 2)) * (
-                                                        self.slice_size // 2)],
-                                            assist_pq_index_init_ub, 0, 1,
-                                            (ub_size % (
-                                                    self.slice_size // 2)) // 8,
-                                            0, 0)
-            self.tik_instance.vadds(MASK_INT32, assist_pq_index_ub[
-                thread_idx * ub_size + (ub_size // (self.slice_size // 2)) * (
-                        self.slice_size // 2)],
-                                    assist_pq_index_ub[
-                                        (ub_size // (self.slice_size // 2)) * (
-                                                self.slice_size // 2)],
-                                    (ub_size // (self.slice_size // 2)) * (
-                                            self.slice_size // 2),
-                                    (ub_size % (self.slice_size // 2)) // 64, 1,
-                                    1, 8, 8)
-            self.tik_instance.vadds(MASK_INT32,
-                                    assist_pq_index_ub[thread_idx * ub_size],
-                                    assist_pq_index_ub[thread_idx * ub_size],
-                                    index_base + handle_offset, ub_size // 64,
-                                    1, 1, 8, 8)
-            # extreme
-            if self.extreme_mode == 1:
-                self.tik_instance.vcmax(self.group_size, block_extrim_ub[
-                    (handle_offset // self.group_size) * 2],
-                                        pq_distance_ub,
-                                        ub_size // self.group_size, 1, 1,
-                                        self.group_size // BLOCK_FLOAT16)
-            else:
-                self.tik_instance.vcmin(self.group_size, block_extrim_ub[
-                    (handle_offset // self.group_size) * 2],
-                                        pq_distance_ub,
-                                        ub_size // self.group_size, 1, 1,
-                                        self.group_size // BLOCK_FLOAT16)
-
-            # move out
-            self.tik_instance.data_move(
-                self.pq_distance_gm[ivf_output + handle_offset], pq_distance_ub, 0, 1,
-                ub_size // BLOCK_FLOAT16, 0, 0)
-            self.tik_instance.data_move(
-                self.pq_index_gm[ivf_output + handle_offset],
-                assist_pq_index_ub[thread_idx * ub_size], 0, 1,
-                ub_size // BLOCK_INT32, 0, 0)
-            pq_ivf_ub = assist_pq_index_ub
-            self.tik_instance.vector_dup(MASK_INT32,
-                                         pq_ivf_ub[thread_idx * ub_size],
-                                         bucket_id, ub_size // MASK_INT32,
-                                         1, 8)
-            self.tik_instance.data_move(
-                self.pq_ivf_gm[ivf_output + handle_offset],
-                pq_ivf_ub[thread_idx * ub_size], 0,
-                1, ub_size // BLOCK_INT32, 0, 0)
-
-        with self.tik_instance.for_range(0, thread_loop * 2,
-                                         thread_num=2) as thread_idx:
-            handle_buffer_size.set_as(self.slice_size // 2)
-            handle_offset.set_as(thread_idx * handle_buffer_size)
-            args = (
-                handle_buffer_size, handle_offset, block_extrim_ub, ivf_input,
-                ivf_output, index_base, thread_idx)
-            _ivf_inner_func(args)
-        with self.tik_instance.if_scope(thread_loop > 0):
-            self.tik_instance.vreduce(thread_loop * BLOCK_FLOAT16 * 2,
-                              grouped_extrim_distance_ub, block_extrim_ub, 1, 1,
-                              1, 2,
-                              0, 0, None, "counter")
-            self.tik_instance.data_move(
-                self.grouped_extrim_distance_gm[ivf_max_base],
-                grouped_extrim_distance_ub, 0, 1,
-                thread_loop, 0, 0)
-        # tail
-        with self.tik_instance.if_scope(thread_tail_num > 0):
-            tail_block_extrim_ub = self.tik_instance.Tensor(
-                self.adc_tables_dtype, (BLOCK_FLOAT16 * 2,),
-                name="tail_block_extrim_ub", scope=tik.scope_ubuf)
-            tail_ivf_base_input = self.tik_instance.Scalar("int32",
-                                                           name="tail_ivf_base_input")
-            tail_ivf_base_output = self.tik_instance.Scalar("int32",
-                                                            name="tail_ivf_base_output")
-            tail_index_base = self.tik_instance.Scalar("int32",
-                                                       name="tail_index_base")
-            tail_ivf_base_input.set_as(
-                ivf_input + thread_loop * self.slice_size)
-            tail_ivf_base_output.set_as(
-                ivf_output + thread_loop * self.slice_size)
-            tail_index_base.set_as(
-                index_base + thread_loop * self.slice_size)
-            args = (
-                thread_tail_num, 0, tail_block_extrim_ub, tail_ivf_base_input,
-                tail_ivf_base_output, tail_index_base, 0)
-            _ivf_inner_func(args)
-            self.tik_instance.data_move(
-                block_extrim_ub[thread_loop * BLOCK_FLOAT16 * 2],
-                tail_block_extrim_ub, 0, 1, 2,
-                0, 0)
-            self.tik_instance.vreduce(BLOCK_FLOAT16 * 2,
-                                      grouped_extrim_distance_ub[
-                                          thread_loop * BLOCK_FLOAT16],
-                                      block_extrim_ub[
-                                          thread_loop * BLOCK_FLOAT16 * 2], 1,
-                                      1, 1, 2, 0, 0, None,
-                                      "counter")
-            self.tik_instance.data_move(self.grouped_extrim_distance_gm[
-                                            ivf_max_base + thread_loop * BLOCK_FLOAT16],
-                                        grouped_extrim_distance_ub[
-                                            thread_loop * BLOCK_FLOAT16], 0, 1,
-                                        1, 0, 0)
-
-    def _run_multi_core(self, is_dynamic):
-        with self.tik_instance.for_range(0, self.core_nums,
-                                         block_num=self.core_nums) as core_idx:
-            ivf_base_output = self.tik_instance.Scalar("int32",
-                                                       name="ivf_base_output")
-            actual_count = self.tik_instance.Scalar("int32",
-                                                    name="actual_count")
-            bucket_counts = self.tik_instance.Scalar("int32",
-                                                     name="bucket_counts")
-            ivf_base_output.set_as(0)
-            actual_count.set_as(0)
-            with self.tik_instance.for_range(0, self.bucket_loop) as idx:
-                bucket_counts.set_as(self.bucket_counts_ub_int32[idx])
-                actual_count.set_as(
-                    actual_count + _ceil_fill(bucket_counts, self.group_size))
-            with self.tik_instance.for_range(0, self.bucket_loop) as bucket_idx:
-                core_used_num = self.tik_instance.Scalar("int32",
-                                                         name="core_used_num")
-                do_num_per_core = self.tik_instance.Scalar("int32",
-                                                           name="do_num_per_core")
-                do_num_tail_core = self.tik_instance.Scalar("int32",
-                                                            name="do_num_tail_core")
-                ivf_base = self.tik_instance.Scalar("int32", name="ivf_base")
-                ivf_input = self.tik_instance.Scalar("int32", name="ivf_input")
-                ivf_output = self.tik_instance.Scalar("int32",
-                                                      name="ivf_output")
-                ivf_max_base = self.tik_instance.Scalar("int32",
-                                                        name="ivf_max_base")
-                index_base = self.tik_instance.Scalar("int32",
-                                                      name="index_base")
-                bucket_base_distance = self.tik_instance.Scalar("float16",
-                                                                name="bucket_base_distance")
-                bucket_block_num = self.tik_instance.Scalar("int32",
-                                                            name="bucket_block_num")
-                core_block_offset = self.tik_instance.Scalar("int32",
-                                                             name="core_block_offset")
-                bucket_counts.set_as(self.bucket_counts_ub_int32[bucket_idx])
-                bucket_block_num.set_as(
-                    _ceil_div(bucket_counts, self.slice_size))
-                do_num_per_core.set_as(_ceil_div(bucket_block_num,
-                                                 self.core_nums) * self.slice_size)
-                core_used_num.set_as(_ceil_div(bucket_counts, do_num_per_core))
-                do_num_tail_core.set_as(bucket_counts % do_num_per_core)
-                bucket_base_distance.set_as(
-                    self.bucket_base_distance_ub_fp16[bucket_idx])
-                ivf_base.set_as(self.bucket_offsets_ub_int32[bucket_idx])
-                core_block_offset.set_as(core_idx * do_num_per_core)
-                ivf_input.set_as(ivf_base + core_block_offset)
-                ivf_output.set_as(ivf_base_output + core_block_offset)
-                ivf_max_base.set_as(
-                    ivf_base_output // self.group_size + core_block_offset // self.group_size)
-                index_base.set_as(core_block_offset)
-                with self.tik_instance.if_scope(core_idx == 0):
-                    self.actual_count_ub_int32[0].set_as(actual_count)
-                    self.tik_instance.data_move(self.actual_count_gm,
-                                                self.actual_count_ub_int32, 0, 1, 1,
-                                                0, 0)
-                    with self.tik_instance.if_scope(do_num_tail_core > 0):
-                        self._create_adc_table(bucket_idx)
-                with self.tik_instance.if_scope(core_idx < core_used_num - 1):
-                    self._run_one_core(ivf_input, ivf_output, ivf_max_base,
-                                       index_base, do_num_per_core,
-                                       bucket_base_distance, bucket_idx, is_dynamic)
-                with self.tik_instance.if_scope(core_idx == core_used_num - 1):
-                    self._run_one_core(ivf_input, ivf_output, ivf_max_base,
-                                       index_base, do_num_tail_core,
-                                       bucket_base_distance, bucket_idx, is_dynamic)
+    def _run_multi_core(self):
+        with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_idx:
+            bucket_id = self.tik_instance.Scalar("int32", name="bucket_id")
+            bucket_base_dis = self.tik_instance.Scalar(self.bucket_base_distance_dtype, name="bucket_base_dis")
+            bucket_limit = self.tik_instance.Scalar("int32", name="bucket_limit")
+            bucket_offset_input = self.tik_instance.Scalar("int32", name="bucket_offset_input")
+            bucket_offset_output = self.tik_instance.Scalar("int32", name="bucket_offset_output")
+            bucket_offset_max = self.tik_instance.Scalar("int32", name="bucket_offset_max")
+            bucket_loop_time = self.tik_instance.Scalar("int32", name="bucket_loop_time")
+            bucket_loop_tail = self.tik_instance.Scalar("int32", name="bucket_loop_tail")
+            actual_count_ub_int32 = self.tik_instance.Tensor("int32", (BLOCK_INT32, ),
+                                                                        name="actual_count_ub_int32",
+                                                                        scope=tik.scope_ubuf)
+            
+            def _inner_handle(loop_start, loop_end):
+                with self.tik_instance.for_range(loop_start, loop_end) as bucket_idx:
+                    args = (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input,
+                            bucket_offset_output, bucket_offset_max)
+                    self._set_single_bucket_param(args)
+                    bucket_loop_time.set_as(bucket_limit // SLICE_SIZE)
+                    bucket_loop_tail.set_as(bucket_limit % SLICE_SIZE)
+                    with self.tik_instance.if_scope(bucket_loop_time > 0):
+                        bucket_limit.set_as(bucket_loop_time * SLICE_SIZE)
+                        self._run_one_core_loop(args)
+                    with self.tik_instance.if_scope(bucket_loop_tail > 0):
+                        bucket_limit.set_as(bucket_loop_tail)
+                        bucket_offset_input.set_as(bucket_offset_input + bucket_loop_time * IVF_SLICE_SIZE)
+                        bucket_offset_output.set_as(bucket_offset_output + bucket_loop_time * SLICE_SIZE)
+                        bucket_offset_max.set_as(bucket_offset_max + bucket_loop_time * SLICE_SIZE // self.group_size)
+                        self._run_one_core_tail(args)
+            # calculate and output actual_total_num by core 0 for multi core
+            with self.tik_instance.if_scope(core_idx == 0):
+                actual_total_num = self.tik_instance.Scalar("int32", name="actual_total_num")
+                self._calc_output_count(actual_total_num, self.bucket_start_base, self.bucket_num_total)
+                actual_count_ub_int32[0].set_as(actual_total_num)
+                self.tik_instance.data_move(self.actual_count_gm, actual_count_ub_int32, 0, 1, 1, 0, 0)
+            # if coreid < core_used_num - 1, no tail data handle, one bucket data handled by one core
+            with self.tik_instance.if_scope(core_idx < self.core_used_num - 1):
+                _inner_handle(self.bucket_start_base + self.bucket_num_per_core * core_idx,
+                              self.bucket_start_base + self.bucket_num_per_core * (core_idx + 1))
+            # if coreid == core_used_num - 1, handle tail or last loop block 
+            with self.tik_instance.if_scope(core_idx == self.core_used_num - 1):
+                with self.tik_instance.if_scope(self.bucket_num_left):
+                    _inner_handle(self.bucket_start_base + self.bucket_num_per_core * core_idx,
+                                  self.bucket_start_base + self.bucket_num_per_core * core_idx + self.bucket_num_left)
                 with self.tik_instance.else_scope():
-                    with self.tik_instance.if_scope(core_idx < core_used_num):
-                        self._create_adc_table(bucket_idx)
-                        self._run_one_core(ivf_input, ivf_output, ivf_max_base,
-                                           index_base, do_num_per_core,
-                                           bucket_base_distance, bucket_idx,
-                                           is_dynamic)
-                        ivf_base_output.set_as(ivf_base_output + _ceil_fill(bucket_counts,
-                                                                     self.group_size))
+                    _inner_handle(self.bucket_start_base + self.bucket_num_per_core * core_idx,
+                                  self.bucket_start_base + self.bucket_num_per_core * (core_idx + 1))
 
-    def scan_pq_codes_operator(self, is_dynamic, kernel_name):
+
+    def _handle_input_data(self, args):
+        (bucket_offset_input, ivf_slice_size, inner_loop_time, thread_idx) = args
+        # input data
+        ivf_cur_process_ub_fp16 = self.adc_assist_ub_fp16
+        with self.tik_instance.if_scope(ivf_slice_size == IVF_SLICE_SIZE):
+            self.tik_instance.data_move(self.ivf_cur_process_ub_uint8,
+                            self.ivf_gm[bucket_offset_input + thread_idx * IVF_SLICE_SIZE],
+                            0, 1, IVF_SLICE_SIZE // BLOCK_UINT8, 0, 0)
+        with self.tik_instance.else_scope():
+            with self.tik_instance.if_scope(ivf_slice_size // BLOCK_UINT8 > 0):
+                self.tik_instance.data_move(self.ivf_cur_process_ub_uint8,
+                                self.ivf_gm[bucket_offset_input + thread_idx * IVF_SLICE_TAIL_SIZE],
+                                0, 1, ivf_slice_size // BLOCK_UINT8, 0, 0)
+            with self.tik_instance.if_scope(ivf_slice_size % BLOCK_UINT8 > 0):
+                with self.tik_instance.for_range(0, BLOCK_UINT8 // 2) as idx:
+                    self.ivf_cur_process_ub_uint8[(ivf_slice_size // BLOCK_UINT8) * BLOCK_UINT8 + idx].\
+                        set_as(self.ivf_gm[bucket_offset_input + thread_idx * IVF_SLICE_TAIL_SIZE + (ivf_slice_size // BLOCK_UINT8) * BLOCK_UINT8 + idx])
+
+        with self.tik_instance.for_range(0, inner_loop_time) as count_idx:
+            # ivf reprocess for vgather, coordination = (ivf * 256 + offset) * 2
+            self.tik_instance.vconv(MASK_FLOAT16, "", ivf_cur_process_ub_fp16,
+                                    self.ivf_cur_process_ub_uint8[count_idx * IVF_SLICE_INNER_SIZE],
+                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT16, 1, 1, 8, 4)
+            self.tik_instance.vconv(MASK_FLOAT32, "", self.ivf_cur_process_ub_fp32,
+                                    ivf_cur_process_ub_fp16,
+                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 8, 4)
+            self.tik_instance.vmuls(MASK_FLOAT32, self.ivf_cur_process_ub_fp32,
+                                    self.ivf_cur_process_ub_fp32, 256,
+                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+            self.tik_instance.vadd(MASK_FLOAT32, self.ivf_cur_process_ub_fp32,
+                                    self.ivf_cur_process_ub_fp32,
+                                    self.assist_add_init_ub_fp32,
+                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 1, 8, 8, 0)
+            self.tik_instance.vmuls(MASK_FLOAT32, self.ivf_cur_process_ub_fp32,
+                                    self.ivf_cur_process_ub_fp32, FLOAT16_SIZE,
+                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+            ivf_cur_process_ub_int32 = self.adc_assist_ub_fp16.reinterpret_cast_to("int32")
+            self.tik_instance.vconv(MASK_FLOAT32, "floor", ivf_cur_process_ub_int32,
+                                    self.ivf_cur_process_ub_fp32,
+                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+            # distance
+            vgather_result_ub_fp16 = self.ivf_cur_process_ub_fp32.reinterpret_cast_to("float16")
+            self.tik_instance.vgather(MASK_FLOAT16, vgather_result_ub_fp16, self.adc_tables_ub_fp16,
+                                        ivf_cur_process_ub_int32,
+                                        IVF_SLICE_INNER_SIZE // MASK_FLOAT16, 8, 0, 0, "normal")
+            self.tik_instance.vcgadd(MASK_FLOAT16, self.pq_distance_ub_fp16[count_idx * SLICE_INNER_SIZE],
+                                        vgather_result_ub_fp16,
+                                        IVF_SLICE_INNER_SIZE // MASK_FLOAT16, 1, 1, 8)
+
+
+    def _handle_pq_distance(self, args):
+        (bucket_offset_output, bucket_offset_max, slice_size, thread_idx) = args
+        # extrim
+        if self.extreme_mode == 1:
+            self.tik_instance.vcmax(self.group_size, self.block_extrim_ub_fp16,
+                                    self.pq_distance_ub_fp16,
+                                    slice_size // self.group_size, 1, 1, self.group_size // BLOCK_FLOAT16)
+        else:
+            self.tik_instance.vcmin(self.group_size, self.block_extrim_ub_fp16,
+                                    self.pq_distance_ub_fp16,
+                                    slice_size // self.group_size, 1, 1, self.group_size // BLOCK_FLOAT16)
+        self.tik_instance.vreduce((slice_size // self.group_size) * 2, self.grouped_extrim_distance_ub_fp16,
+                                    self.block_extrim_ub_fp16, 1,
+                                    1, 1, 1, 0, 0, None, "counter")
+        self.tik_instance.data_move(self.grouped_extrim_distance_gm[bucket_offset_max + (slice_size // self.group_size) * thread_idx],
+                                    self.grouped_extrim_distance_ub_fp16, 0, 1, (slice_size // self.group_size) // BLOCK_FLOAT16, 0, 0)
+        # distance out
+        self.tik_instance.data_move(self.pq_distance_gm[bucket_offset_output + slice_size * thread_idx],
+                                    self.pq_distance_ub_fp16, 0, 1,
+                                    slice_size // BLOCK_FLOAT16, 0, 0)
+
+
+    def _run_one_core_loop(self, args):
+        (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input,
+         bucket_offset_output, bucket_offset_max) = args
+        self._create_adc_table(bucket_idx)
+        thread_loop = self.tik_instance.Scalar("int32", name="thread_loop")
+        index_offset = self.tik_instance.Scalar("float32", name="index_offset")
+        thread_loop.set_as(bucket_limit // SLICE_SIZE)
+        with self.tik_instance.for_range(0, thread_loop) as thread_idx:
+            index_offset.set_as(thread_idx * SLICE_SIZE)
+            args = (bucket_offset_input, IVF_SLICE_SIZE, INNER_LOOP_TIME, thread_idx)
+            self._handle_input_data(args)
+            self.tik_instance.vadds(MASK_FLOAT16, self.pq_distance_ub_fp16,
+                                    self.pq_distance_ub_fp16, bucket_base_dis,
+                                    SLICE_SIZE // MASK_FLOAT16, 1, 1, 8, 8)
+            args_dis = (bucket_offset_output, bucket_offset_max, SLICE_SIZE, thread_idx)
+            self._handle_pq_distance(args_dis)     
+            # index set by assistant cube for performance
+            assist_pq_index_ub_fp32 = self.adc_trans_ub_fp16.reinterpret_cast_to("float32")
+            self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
+                                    0, 16, 1, 1, 8, 8)
+            self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32[INDEX_SHAPE], self.assist_pq_index_init_ub_fp32,
+                                    INDEX_SHAPE, 16, 1, 1, 8, 8)
+            self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32[INDEX_SHAPE * 2], self.assist_pq_index_init_ub_fp32,
+                                    INDEX_SHAPE * 2, 16, 1, 1, 8, 8)
+            self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32[INDEX_SHAPE * 3], self.assist_pq_index_init_ub_fp32,
+                                    INDEX_SHAPE * 3, 16, 1, 1, 8, 8)
+            self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, assist_pq_index_ub_fp32,
+                                    index_offset, SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+            assist_pq_index_ub_int32 = self.ivf_cur_process_ub_uint8.reinterpret_cast_to("int32")
+            self.tik_instance.vconv(MASK_FLOAT32, "round", assist_pq_index_ub_int32,
+                                    assist_pq_index_ub_fp32,
+                                    SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+            self.tik_instance.data_move(self.pq_index_gm[bucket_offset_output + SLICE_SIZE * thread_idx],
+                                        assist_pq_index_ub_int32, 0, 1,
+                                        SLICE_SIZE // BLOCK_INT32, 0, 0)
+            # bucket id
+            pq_ivf_ub_int32 = self.adc_trans_ub_fp16.reinterpret_cast_to("int32")
+            self.tik_instance.vector_dup(MASK_FLOAT32, pq_ivf_ub_int32,
+                                         bucket_id, SLICE_SIZE // MASK_FLOAT32, 1, 8)
+            self.tik_instance.data_move(self.pq_ivf_gm[bucket_offset_output + SLICE_SIZE * thread_idx],
+                                        pq_ivf_ub_int32, 0, 1,
+                                        SLICE_SIZE // BLOCK_INT32, 0, 0)            
+
+
+    def _handle_tail_loop_output(self, args):
+        (bucket_offset_output, index_offset, bucket_id, thread_idx) = args
+        # index
+        assist_pq_index_ub_fp32 = self.adc_trans_ub_fp16.reinterpret_cast_to("float32")
+        self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
+                                0, 16, 1, 1, 8, 8)
+        self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, assist_pq_index_ub_fp32,
+                                index_offset, SLICE_TAIL_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+        assist_pq_index_ub_int32 = self.ivf_cur_process_ub_uint8.reinterpret_cast_to("int32")
+        self.tik_instance.vconv(MASK_FLOAT32, "round", assist_pq_index_ub_int32,
+                                assist_pq_index_ub_fp32,
+                                SLICE_TAIL_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
+        self.tik_instance.data_move(self.pq_index_gm[bucket_offset_output + SLICE_TAIL_SIZE * thread_idx],
+                                    assist_pq_index_ub_int32, 0, 1,
+                                    SLICE_TAIL_SIZE // BLOCK_INT32, 0, 0)
+        # bucket id
+        pq_ivf_ub_int32 = self.adc_trans_ub_fp16.reinterpret_cast_to("int32")
+        self.tik_instance.vector_dup(MASK_FLOAT32, pq_ivf_ub_int32,
+                                        bucket_id, SLICE_TAIL_SIZE // MASK_FLOAT32, 1, 8)
+        self.tik_instance.data_move(self.pq_ivf_gm[bucket_offset_output + SLICE_TAIL_SIZE * thread_idx],
+                                    pq_ivf_ub_int32, 0, 1,
+                                    SLICE_TAIL_SIZE // BLOCK_INT32, 0, 0)
+
+
+    def _handle_pq_distance_tail(self, args):
+        (pq_distance_temp_ub_fp16, bucket_offset_max, slice_size, thread_idx) = args
+        # extrim
+        if self.extreme_mode == 1:
+            self.tik_instance.vcmax(self.group_size, self.block_extrim_ub_fp16,
+                                    pq_distance_temp_ub_fp16,
+                                    slice_size // self.group_size, 1, 1, self.group_size // BLOCK_FLOAT16)
+        else:
+            self.tik_instance.vcmin(self.group_size, self.block_extrim_ub_fp16,
+                                    pq_distance_temp_ub_fp16,
+                                    slice_size // self.group_size, 1, 1, self.group_size // BLOCK_FLOAT16)
+        self.tik_instance.vreduce((slice_size // self.group_size) * 2, self.grouped_extrim_distance_ub_fp16,
+                                    self.block_extrim_ub_fp16, 1,
+                                    1, 1, 1, 0, 0, None, "counter")
+
+
+    def _handle_tail_output(self, args):
+        (pq_distance_temp_ub_fp16, bucket_offset_output, bucket_offset_max, thread_tail_output_size,
+         index_offset, bucket_id, thread_loop) = args
+        tail_extrim_distance_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype,
+                                                                (BLOCK_FLOAT16,),
+                                                                name="tail_extrim_distance_ub_fp16",
+                                                                scope=tik.scope_ubuf)
+        tail_extrim_offset_base = self.tik_instance.Scalar("int32", name="tail_extrim_offset_base")
+        tail_extrim_gm_offset = self.tik_instance.Scalar("int32", name="tail_extrim_gm_offset")
+        tail_extrim_gm_left = self.tik_instance.Scalar("int32", name="tail_extrim_gm_left")
+        tail_extrim_ub_left = self.tik_instance.Scalar("int32", name="tail_extrim_ub_left")
+        tail_extrim_offset_base.set_as(bucket_offset_max + (SLICE_TAIL_SIZE // self.group_size) * thread_loop)
+        tail_extrim_ub_left.set_as(thread_tail_output_size // self.group_size)
+        tail_extrim_gm_left.set_as(BLOCK_FLOAT16 - tail_extrim_ub_left)
+        tail_extrim_gm_offset.set_as(tail_extrim_offset_base - tail_extrim_gm_left)
+        self.tik_instance.data_move(tail_extrim_distance_ub_fp16,
+                                    self.grouped_extrim_distance_gm[tail_extrim_gm_offset],
+                                    0, 1, 1, 0, 0)
+        with self.tik_instance.for_range(0, tail_extrim_ub_left) as i:
+            tail_extrim_distance_ub_fp16[tail_extrim_gm_left + i].set_as(self.grouped_extrim_distance_ub_fp16[i])        
+        self.tik_instance.data_move(self.grouped_extrim_distance_gm[tail_extrim_offset_base],
+                                    tail_extrim_distance_ub_fp16,
+                                    0, 1, 1, 0, 0)
+        self.tik_instance.data_move(self.pq_distance_gm[bucket_offset_output + thread_loop * SLICE_TAIL_SIZE],
+                                    pq_distance_temp_ub_fp16,
+                                    0, 1, SLICE_TAIL_SIZE // BLOCK_FLOAT16, 0, 0)
+        args_output = (bucket_offset_output, index_offset, bucket_id, thread_loop)
+        self._handle_tail_loop_output(args_output)
+
+    def _handle_tail(self, args):
+        (bucket_offset_input, bucket_offset_output, bucket_offset_max,
+         index_offset, bucket_id, thread_loop, thread_tail, bucket_base_dis) = args
+        pq_distance_temp_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (SLICE_TAIL_SIZE,),
+                                                            name="pq_distance_temp_ub_fp16",
+                                                            scope=tik.scope_ubuf)
+        thread_tail_input_size = self.tik_instance.Scalar("int32", name="thread_tail_input_size")
+        thread_tail_output_size = self.tik_instance.Scalar("int32", name="thread_tail_output_size")
+        thread_tail_input_size.set_as(thread_tail * IVF_UNIT_LEN)
+        thread_tail_output_size.set_as(_ceil_fill(thread_tail, self.group_size))
+        index_offset.set_as(thread_loop * SLICE_TAIL_SIZE)
+        if self.extreme_mode == 1:
+            self.tik_instance.vector_dup(MASK_FLOAT16, self.pq_distance_ub_fp16, MIN_FP16,
+                                         SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 8)
+            self.tik_instance.vector_dup(MASK_FLOAT16, pq_distance_temp_ub_fp16, MIN_FP16,
+                                         SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 8)
+        else:
+            self.tik_instance.vector_dup(MASK_FLOAT16, self.pq_distance_ub_fp16, MAX_FP16,
+                                         SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 8)
+            self.tik_instance.vector_dup(MASK_FLOAT16, pq_distance_temp_ub_fp16, MAX_FP16,
+                                         SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 8)
+        self.tik_instance.vector_dup(MASK_FLOAT16, self.ivf_cur_process_ub_uint8.reinterpret_cast_to("float16"),
+                                     0, IVF_SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 8)
+        args = (bucket_offset_input, thread_tail_input_size,
+                _ceil_fill(thread_tail, SLICE_INNER_SIZE) // SLICE_INNER_SIZE, thread_loop)
+        self._handle_input_data(args)
+        with self.tik_instance.if_scope(thread_tail // BLOCK_FLOAT16 > 0):
+            self.tik_instance.data_move(pq_distance_temp_ub_fp16,
+                                        self.pq_distance_ub_fp16, 0, 1,
+                                        thread_tail // BLOCK_FLOAT16, 0, 0)
+        with self.tik_instance.if_scope(thread_tail % BLOCK_FLOAT16 > 0):
+            with self.tik_instance.for_range(0, thread_tail % BLOCK_FLOAT16) as idx:
+                pq_offset = self.tik_instance.Scalar("int32", name="pq_offset")
+                pq_offset.set_as(_floor_fill(thread_tail, BLOCK_FLOAT16) + idx)
+                pq_distance_temp_ub_fp16[pq_offset].set_as(self.pq_distance_ub_fp16[pq_offset])
+        self.tik_instance.vadds(MASK_FLOAT16, pq_distance_temp_ub_fp16,
+                                pq_distance_temp_ub_fp16, bucket_base_dis,
+                                SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 1, 8, 8)        
+        args_dis = (pq_distance_temp_ub_fp16, bucket_offset_max, SLICE_TAIL_SIZE, thread_loop)
+        self._handle_pq_distance_tail(args_dis)
+        args_out = (pq_distance_temp_ub_fp16, bucket_offset_output, bucket_offset_max, thread_tail_output_size,
+                    index_offset, bucket_id, thread_loop)
+        self._handle_tail_output(args_out)
+
+
+    def _run_one_core_tail(self, args):
+        (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input,
+         bucket_offset_output, bucket_offset_max) = args
+        self._create_adc_table(bucket_idx)
+        thread_loop = self.tik_instance.Scalar("int32", name="thread_loop")
+        thread_tail = self.tik_instance.Scalar("int32", name="thread_tail")
+        index_offset = self.tik_instance.Scalar("float32", name="index_offset")
+        thread_loop.set_as(bucket_limit // SLICE_TAIL_SIZE)
+        thread_tail.set_as(bucket_limit % SLICE_TAIL_SIZE)
+        with self.tik_instance.for_range(0, thread_loop) as thread_idx:
+            index_offset.set_as(thread_idx * SLICE_TAIL_SIZE)
+            args = (bucket_offset_input, IVF_SLICE_TAIL_SIZE, INNER_TAIL_LOOP_TIME, thread_idx)
+            self._handle_input_data(args)
+            self.tik_instance.vadds(MASK_FLOAT16, self.pq_distance_ub_fp16,
+                                    self.pq_distance_ub_fp16, bucket_base_dis,
+                                    SLICE_TAIL_SIZE // MASK_FLOAT16, 1, 1, 8, 8)
+            args_dis = (bucket_offset_output, bucket_offset_max, SLICE_TAIL_SIZE, thread_idx)
+            self._handle_pq_distance(args_dis)
+            args_output = (bucket_offset_output, index_offset, bucket_id, thread_idx)
+            self._handle_tail_loop_output(args_output)
+        with self.tik_instance.if_scope(thread_tail > 0):
+            args_tail = (bucket_offset_input, bucket_offset_output, bucket_offset_max,
+                         index_offset, bucket_id, thread_loop, thread_tail, bucket_base_dis)
+            self._handle_tail(args_tail)
+
+
+    def scan_pq_codes_operator(self, kernel_name):
         """
         scan_pq_codes_operator
         """
         self._tiling_args()
         self._init_gm_tensor()
-        self._get_input_data_paras()
-        self._run_multi_core(0)
-        ub_size_bytes = tbe_platform.get_soc_spec(
-            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
-        ub_once_size = 122 * 1024
+        self._init_ub_tensor()
+        self._get_input_data()
+        self._run_multi_core()
         # Build CCE
         # this "global_variable_link" flag suggest ccec.py do link without "-r" option
         # which will result in global variable in cce file with wrong address
         tbe_context.get_context().add_compile_info("vars", {
-            "ub_total_size": ub_size_bytes,
-            "ub_once_size": ub_once_size})
+                                                   "core_nums": self.core_nums,
+                                                   "split_count": self.split_count,
+                                                   "split_index": self.split_index})
         input_list = [self.ivf_gm, self.bucket_list_gm,
                       self.bucket_base_distance_gm,
                       self.bucket_limits_gm, self.bucket_offsets_gm,
@@ -743,7 +703,7 @@ def scan_pq_codes(ivf, bucket_list, bucket_base_distance, bucket_limits,
                   bucket_offsets, adc_tables,
                   actual_count, pq_distance, grouped_extrim_distance, pq_ivf,
                   pq_index,
-                  group_size, total_limit, extreme_mode, split_count,
+                  total_limit, group_size, extreme_mode, split_count,
                   split_index, kernel_name="scan_pq_codes"):
     args_list = (
         ivf, bucket_list, bucket_base_distance, bucket_limits, bucket_offsets,
@@ -761,11 +721,6 @@ def scan_pq_codes(ivf, bucket_list, bucket_base_distance, bucket_limits,
     dtypes = (ivf_dtype, bucket_list_dtype, bucket_base_distance_dtype,
               bucket_limits_dtype, bucket_offsets_dtype,
               adc_tables_dtype)
-    attrs = (group_size, total_limit, extreme_mode, split_count, split_index)
+    attrs = (total_limit, group_size, extreme_mode, split_count, split_index)
     obj = ScanPQCodes(attrs, dtypes, bucket_shape)
-    if bucket_list.get("shape") == -1:
-        is_dynamic = 1
-    else:
-        is_dynamic = 0
-    is_dynamic = 0
-    return obj.scan_pq_codes_operator(is_dynamic, kernel_name)
+    return obj.scan_pq_codes_operator(kernel_name)

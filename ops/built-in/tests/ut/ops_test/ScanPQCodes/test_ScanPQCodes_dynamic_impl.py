@@ -25,7 +25,7 @@ def test_1951_uint8_small_shape_001(test_arg):
             {"shape": (1, 16, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 16, 256), "ori_format": "ND",
              "range": [(1, 1), (16, 16), (256, 256)]},
 
-            {"shape": (8,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND",
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND",
              "range": [(1, 1)]},
             {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1, ), "ori_format": "ND",
              "range": [(1, 1)]},
@@ -35,7 +35,7 @@ def test_1951_uint8_small_shape_001(test_arg):
              "range": [(1, 1)]},
             {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND",
              "range": [(1, 1)]},
-            64, 10240, 0, 1, 0,
+            10240, 64, 0, 1, 0,
             "test_1951_uint8_small_shape_001")
     set_current_compile_soc_info(test_arg)
 
@@ -66,7 +66,7 @@ def test_1951_uint8_small_shape_002(test_arg):
              "range": [(1, 1)]},
             {"shape": (5,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
              "range": [(1, 1)]},
-            64, 204800, 0, 1, 0,
+            204800, 64, 0, 1, 0,
             "test_1951_uint8_small_shape_002")
     set_current_compile_soc_info(test_arg)
 

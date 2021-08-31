@@ -239,16 +239,16 @@ TEST_F(ScanPQCodesProtoTest, ScanPQCodesInferShapeTest_1) {
   ge::op::ScanPQCodes op;
   op.UpdateInputDesc("ivf", create_desc_shape_range({2048, 16}, ge::DT_UINT8, 
                             ge::FORMAT_ND, {2048, 16}, ge::FORMAT_ND, {{2048, 20480}, {16, 16}}));
-  op.UpdateInputDesc("bucket_list", create_desc_shape_range({8}, ge::DT_INT32, ge::FORMAT_ND, {8},
-                                    ge::FORMAT_ND, {{8, 8}}));
-  op.UpdateInputDesc("bucket_base_distance", create_desc_shape_range({8}, ge::DT_FLOAT16, ge::FORMAT_ND, {8},
-                                             ge::FORMAT_ND, {{8, 8}}));
+  op.UpdateInputDesc("bucket_list", create_desc_shape_range({1}, ge::DT_INT32, ge::FORMAT_ND, {8},
+                                    ge::FORMAT_ND, {{1, 1}}));
+  op.UpdateInputDesc("bucket_base_distance", create_desc_shape_range({1}, ge::DT_FLOAT16, ge::FORMAT_ND, {8},
+                                             ge::FORMAT_ND, {{1, 1}}));
   op.UpdateInputDesc("bucket_limits", create_desc_shape_range({8}, ge::DT_INT32, ge::FORMAT_ND, {8},
-                                      ge::FORMAT_ND, {{8, 8}}));
-  op.UpdateInputDesc("bucket_offsets", create_desc_shape_range({8}, ge::DT_INT32, ge::FORMAT_ND, {8},
-                                       ge::FORMAT_ND, {{8, 8}}));
-  op.UpdateInputDesc("adc_tables", create_desc_shape_range({8}, ge::DT_FLOAT16, ge::FORMAT_ND, {8},
-                                   ge::FORMAT_ND, {{8, 8}}));
+                                      ge::FORMAT_ND, {{1, 1}}));
+  op.UpdateInputDesc("bucket_offsets", create_desc_shape_range({1}, ge::DT_INT32, ge::FORMAT_ND, {8},
+                                       ge::FORMAT_ND, {{1, 1}}));
+  op.UpdateInputDesc("adc_tables", create_desc_shape_range({1}, ge::DT_FLOAT16, ge::FORMAT_ND, {8},
+                                   ge::FORMAT_ND, {{1, 1}}));
 
   op.SetAttr("total_limit", 2048);
   
@@ -267,10 +267,10 @@ TEST_F(ScanPQCodesProtoTest, ScanPQCodesInferShapeTest_1) {
   EXPECT_EQ(pq_index_desc.GetDataType(), ge::DT_INT32);
 
   std::vector<int64_t> actual_count_expect_shape = {1};
-  std::vector<int64_t> pq_distance_expect_shape = {2048};
-  std::vector<int64_t> grouped_extreme_distance_expect_shape = {32};
-  std::vector<int64_t> pq_ivf_expect_shape = {2048};
-  std::vector<int64_t> pq_index_expect_shape = {2048};
+  std::vector<int64_t> pq_distance_expect_shape = {3072};
+  std::vector<int64_t> grouped_extreme_distance_expect_shape = {48};
+  std::vector<int64_t> pq_ivf_expect_shape = {3072};
+  std::vector<int64_t> pq_index_expect_shape = {3072};
   EXPECT_EQ(actual_count_desc.GetShape().GetDims(), actual_count_expect_shape);
   EXPECT_EQ(pq_distance_desc.GetShape().GetDims(), pq_distance_expect_shape);
   EXPECT_EQ(grouped_extreme_distance_desc.GetShape().GetDims(), grouped_extreme_distance_expect_shape);
