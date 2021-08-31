@@ -6,14 +6,12 @@ This class mainly involves compile and run mindspore op.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved Â© 2020-201
 """
-try:
-    import sys
-    import os
-    import subprocess
-    from . import utils
-except ImportError as import_error:
-    sys.exit("[ms_op_runner] Unable to import module: %s." % str(
-        import_error))
+
+import os
+import subprocess
+
+from . import utils
+
 
 BUILD_INTERMEDIATES_HOST = 'build/intermediates/host'
 RUN_OUT = 'run/out'

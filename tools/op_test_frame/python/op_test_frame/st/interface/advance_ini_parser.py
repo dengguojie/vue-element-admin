@@ -9,6 +9,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2021
 """
 from io import StringIO
 from configparser import ConfigParser
+
 from . import utils
 
 ADVANCE_SECTION = 'RUN'
@@ -31,8 +32,7 @@ class AdvanceIniArgs:
 
     def get_ascend_global_log_level(self):
         """
-        Function Description:
-            get ascend_global_log_level
+        Function Description: get ascend_global_log_level
         :return: ascend_global_log_level
         """
 
@@ -40,8 +40,7 @@ class AdvanceIniArgs:
 
     def get_ascend_slog_print_to_stdout(self):
         """
-        Function Description:
-            get ascend_slog_print_to_stdout
+        Function Description: get ascend_slog_print_to_stdout
         :return: ascend_slog_print_to_stdout
         """
 
@@ -172,6 +171,8 @@ class AdvanceIniParser:
             utils.print_error_log('Failed to add section to config file')
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_AND_RUN_ERROR)
+        finally:
+            pass
         advance_ini_option_list = self.config.options(ADVANCE_SECTION)
         if len(advance_ini_option_list) == 0:
             utils.print_error_log(

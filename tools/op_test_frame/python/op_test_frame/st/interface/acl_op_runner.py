@@ -6,17 +6,15 @@ This class mainly involves compile and run acl op.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import sys
-    import os
-    import time
-    import subprocess
-    from . import utils
-    from op_test_frame.common import op_status
-    from . import op_st_case_info
-except ImportError as import_error:
-    sys.exit("[acl_op_runner] Unable to import module: %s." % str(
-        import_error))
+
+import os
+import time
+import subprocess
+
+from op_test_frame.common import op_status
+
+from . import utils
+from . import op_st_case_info
 
 CMAKE_LIST_FILE_NAME = 'CMakeLists.txt'
 BUILD_INTERMEDIATES_HOST = 'build/intermediates/host'
@@ -85,6 +83,8 @@ class AclOpRunner:
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED, "compile_acl_code",
                                         None, cmd_str)
+        finally:
+            pass
         utils.print_info_log('Finish to compile %s.' % self.path)
         self.add_op_st_stage_result(op_status.SUCCESS, "compile_acl_code",
                                     None, cmd_str)
@@ -107,6 +107,8 @@ class AclOpRunner:
             self.add_op_st_stage_result(op_status.FAILED,
                                         "atc_single_op_convert",
                                         None, cmd_str)
+        finally:
+            pass
         self.add_op_st_stage_result(op_status.SUCCESS,
                                     "atc_single_op_convert",
                                     None, cmd_str)
@@ -330,6 +332,8 @@ class AclOpRunner:
             self._get_op_case_result_and_show_data(csv_file, op_name_list)
         except IOError:
             utils.print_error_log("Operate directory of profiling data failed")
+        finally:
+            pass
 
     def process(self):
         """
@@ -341,17 +345,20 @@ class AclOpRunner:
 
 def get_op_case_info_from_csv_file(csv_file, op_name_list):
     """
-     get op case info from csv file
+    get op case info from csv file
     """
     each_case_info_list = []
     op_case_info_list = []
     with open(csv_file, 'r') as csv_file_obj:
         try:
             import csv  # pylint: disable=import-outside-toplevel
-        except import_error:
+        except ImportError as import_error:
             utils.print_error_log(
-                "[acl_op_runner] Unable to import the CSV file. Please check.")
+                "[acl_op_runner] Unable to import the CSV file: %s. Please check."
+                % str(import_error))
             return op_case_info_list
+        finally:
+            pass
         row_list = list(csv.reader(csv_file_obj))
         if not row_list:
             utils.print_error_log("The CSV summary file is empty. Please check.")

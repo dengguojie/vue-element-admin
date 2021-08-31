@@ -8,17 +8,15 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-try:
-    import os
-    import sys
-    from . import utils
-    from . import st_report
-    from . import op_st_case_info
-    from . import dynamic_handle
-    from . import case_design as CD
-    from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-except ImportError as import_error:
-    sys.exit("[subcase_design] Unable to import module: %s." % str(import_error))
+import os
+
+from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
+
+from . import utils
+from . import st_report
+from . import op_st_case_info
+from . import dynamic_handle
+from . import case_design as CD
 
 ATTR_REQUIRED_KEYS = ["name", "type", "value"]
 SUPPORT_TYPE_LIST = list(utils.ATTR_TYPE_MAP.values())
@@ -240,6 +238,8 @@ class SubCaseDesign:
                                                        name, str(ex)))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            finally:
+                pass
         return json_obj
 
     def _check_attr_value_valid(self, attr, fuzz_dict=None):

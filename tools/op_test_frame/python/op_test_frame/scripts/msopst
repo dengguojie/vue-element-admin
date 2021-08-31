@@ -6,10 +6,11 @@ This file mainly involves class for parsing input arguments.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-
 import os
 import sys
 import argparse
+from atexit import register
+
 from op_test_frame.st.interface import utils
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
 from op_test_frame.st.interface.ms_op_runner import MsOpRunner
@@ -23,7 +24,6 @@ from op_test_frame.st.interface.model_parser import change_shape
 from op_test_frame.st.interface.model_parser import get_shape
 from op_test_frame.st.interface import st_report
 from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
-from atexit import register
 
 abnormal_termination = False
 
@@ -106,6 +106,8 @@ def _do_mi_cmd(args, cmd, report):
             pass
     except utils.OpTestGenException as ex:
         sys.exit(ex.error_info)
+    finally:
+        pass
 
 
 def _do_run_cmd(args, report):
@@ -126,6 +128,8 @@ def _do_run_cmd(args, report):
 
     except utils.OpTestGenException as ex:
         sys.exit(ex.error_info)
+    finally:
+        pass
 
 
 def _gen_build_convert_run(args, report):
@@ -338,6 +342,8 @@ def main():
             generator.generate()
         except utils.OpTestGenException as ex:
             sys.exit(ex.error_info)
+        finally:
+            pass
     elif sys.argv[1] == 'run':
         _do_run_cmd(args, report)
     else:

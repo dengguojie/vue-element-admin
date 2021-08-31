@@ -22,6 +22,7 @@ apply info classes: OpSTCaseReport, OpSTReport
 import os
 import stat
 import json
+
 from op_test_frame.common import op_status
 from op_test_frame.utils import file_util
 from .op_st_case_info import OpSTCaseTrace
@@ -70,9 +71,9 @@ class OpSTCaseReport:
         :return: OpSTCaseReport object
         """
         if not json_obj:
-            return None
+            return utils.RETURN_NONE
         return OpSTCaseReport(OpSTCaseTrace.parser_json_obj(
-            json_obj["trace_detail"]))
+            json_obj.get("trace_detail")))
 
 
 class OpSTReport:
@@ -95,7 +96,6 @@ class OpSTReport:
         """
         self.report_list.append(case_rpt)
 
-
     def get_case_report(self, case_name):
         """
         get OpSTCaseReport object by case name
@@ -108,11 +108,11 @@ class OpSTReport:
         if case_count < 1:
             utils.print_warn_log("There is no test case named %s. Please "
                                  "check." % case_name)
-            return None
+            return utils.RETURN_NONE
         if case_count > 1:
             utils.print_warn_log("There is %d test case named %s. Please "
                                  "check. " % (case_count, case_name))
-            return None
+            return utils.RETURN_NONE
         return case_reports[0]
 
     def _to_json_obj(self):
@@ -163,8 +163,8 @@ run command: %s
         with open(report_file) as r_f:
             json_str = r_f.read()
         json_obj = json.loads(json_str)
-        self.run_cmd = json_obj["run_cmd"]
-        for case_rpt in [OpSTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
+        self.run_cmd = json_obj.get("run_cmd")
+        for case_rpt in (OpSTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj.get("report_list")):
             self.add_case_report(case_rpt)
 
     def save(self, report_data_path):
@@ -181,7 +181,7 @@ run command: %s
         json_str = json.dumps(json_obj, indent=4)
         try:
             if not os.path.exists(report_data_path):
-                with os.fdopen(os.open(report_data_path, DATA_FILE_FLAGS,
+                with open(os.open(report_data_path, DATA_FILE_FLAGS,
                                        DATA_FILE_MODES), 'w') as rpt_fout:
                     rpt_fout.write(json_str)
             else:
@@ -192,6 +192,8 @@ run command: %s
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(report_data_dir, str(ex)))
             raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+        finally:
+            pass
 
     @staticmethod
     def parser_json_obj(json_obj):
@@ -200,8 +202,8 @@ run command: %s
         :param json_obj: the json content
         :return: the OpSTReport object
         """
-        rpt = OpSTReport(json_obj["run_cmd"])
-        for case_rpt in [OpSTCaseReport.parser_json_obj(case_obj) for case_obj
-                         in json_obj["report_list"]]:
+        rpt = OpSTReport(json_obj.get("run_cmd"))
+        for case_rpt in (OpSTCaseReport.parser_json_obj(case_obj) for case_obj
+                         in json_obj.get("report_list")):
             rpt.add_case_report(case_rpt)
         return rpt

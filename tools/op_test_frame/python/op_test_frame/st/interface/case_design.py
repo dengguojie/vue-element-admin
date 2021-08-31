@@ -8,14 +8,12 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-try:
-    import os
-    import sys
-    from . import utils
-    from .subcase_design_fuzz import SubCaseDesignFuzz
-    from .subcase_design_cross import SubCaseDesignCross
-except ImportError as import_error:
-    sys.exit("[case_design] Unable to import module: %s." % str(import_error))
+
+import os
+
+from . import utils
+from .subcase_design_fuzz import SubCaseDesignFuzz
+from .subcase_design_cross import SubCaseDesignCross
 
 OP = 'op'
 INPUT_DESC = 'input_desc'

@@ -7,17 +7,16 @@ This class mainly involves generate data.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import sys
-    import os
-    import numpy as np
-    import importlib
-    import functools
-    from . import utils
-    from . import dynamic_handle
-except ImportError as import_error:
-    sys.exit(
-        "[data_generator] Unable to import module: %s." % str(import_error))
+
+import sys
+import os
+import importlib
+import functools
+
+import numpy as np
+
+from . import utils
+from . import dynamic_handle
 
 
 class DataGenerator:
@@ -173,6 +172,8 @@ class DataGenerator:
                 'large to invoke MemoryError. %s' % (file_path, error))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+        finally:
+            pass
 
     def _get_input_desc_and_gen_data(
             self, case, case_name, calc_func_params_tmp, param_info_list):
@@ -210,6 +211,8 @@ class DataGenerator:
                         file_path, error))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+            finally:
+                pass
             if input_desc.get('name'):
                 input_name = input_desc.get('name')
                 calc_func_params_tmp.update(
@@ -307,6 +310,8 @@ class DataGenerator:
                     expect_func, expect_func_file, str(ex)))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        finally:
+            pass
         if not isinstance(expect_result_tensors, (list, tuple)):
             expect_result_tensors = [expect_result_tensors, ]
         return expect_result_tensors, expect_func

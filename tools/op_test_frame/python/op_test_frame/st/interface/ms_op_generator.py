@@ -8,52 +8,51 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved Â© 2020
 Change History: 2020-07-11 file Created
 """
-try:
-    import os
-    import sys
-    import numpy as np
-    import json
-    import importlib
-    from shutil import copytree
-    from shutil import copy2
-    from shutil import Error
-    from op_test_frame.st.interface import utils
-    from op_test_frame.st.interface import op_st_case_info
-    from op_test_frame.st.template import code_snippet
-    from op_test_frame.common import op_status
-except (ImportError,) as import_error:
-    sys.exit(
-        "[ms_op_generator]Unable to import module: %s." % str(import_error))
+
+import os
+import sys
+import json
+import importlib
+from shutil import copytree
+from shutil import copy2
+from shutil import Error
+
+import numpy as np
+
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface import op_st_case_info
+from op_test_frame.st.template import code_snippet
+from op_test_frame.common import op_status
 
 
 def _create_ms_op_json_content(testcase_list):
     content = []
     for testcase_struct in testcase_list:
         # init dic with op name
-        tmp_dic = {'op': testcase_struct['op']}
+        tmp_dic = {'op': testcase_struct.get('op')}
 
         # process input desc
         if "input_desc" in testcase_struct.keys():
             tmp_dic['input_desc'] = []
-            for input_desc_input_dic in testcase_struct['input_desc']:
-                input_desc_dic = {'type': input_desc_input_dic['type'],
-                                  'shape': input_desc_input_dic['shape']}
-                tmp_dic['input_desc'].append(input_desc_dic)
+            for input_desc_input_dic in testcase_struct.get('input_desc'):
+                input_desc_dic = {'type': input_desc_input_dic.get('type'),
+                                  'shape': input_desc_input_dic.get('shape')}
+                tmp_dic.get('input_desc').append(input_desc_dic)
 
         # process output desc
         if "output_desc" in testcase_struct.keys():
             tmp_dic['output_desc'] = []
-            for output_desc_input_dic in testcase_struct['output_desc']:
+            for output_desc_input_dic in testcase_struct.get('output_desc'):
                 output_desc_dic = {
-                    'type': output_desc_input_dic['type'],
-                    'shape': output_desc_input_dic['shape']}
-                tmp_dic['output_desc'].append(output_desc_dic)
+                    'type': output_desc_input_dic.get('type'),
+                    'shape': output_desc_input_dic.get('shape')}
+                tmp_dic.get('output_desc').append(output_desc_dic)
 
         # process attr
         if "attr" in testcase_struct.keys():
             tmp_dic['attr'] = []
-            for attr_dic in testcase_struct['attr']:
-                tmp_dic['attr'].append(attr_dic)
+            for attr_dic in testcase_struct.get('attr'):
+                tmp_dic.get('attr').append(attr_dic)
 
         # only append non-repetitive json struct
         if tmp_dic not in content:
@@ -63,7 +62,9 @@ def _create_ms_op_json_content(testcase_list):
         return str(json.dumps(content, sort_keys=True, indent=2))
     except TypeError:
         utils.print_error_log("")
-    return None
+    finally:
+        pass
+    return utils.RETURN_NONE
 
 
 def _write_content_to_file(content, file_path):
@@ -75,6 +76,8 @@ def _write_content_to_file(content, file_path):
         utils.print_error_log("Unable to write content into file(%s): %s." % file_path
                               % str(err))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
     utils.print_info_log("File %s generated successfully." % file_path)
 
 
@@ -86,6 +89,8 @@ def _append_content_to_file(content, file_path):
         utils.print_error_log("Unable to write file(%s): %s." % file_path
                               % str(err))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
     utils.print_info_log("Content appended to %s successfully." % file_path)
 
 
@@ -111,6 +116,8 @@ def copy_template(src, dst):
                 copy2(srcname, dstname)
         except (IOError, OSError) as why:
             errors.append((srcname, dstname, str(why)))
+        finally:
+            pass
     if errors:
         raise Error(errors)
 
@@ -134,7 +141,7 @@ class MsOpGenerator:
         if self.machine_type:
             self.output_path = output_path
         else:
-            op_name_path = os.path.join(output_path, testcase_list[0]['op'])
+            op_name_path = os.path.join(output_path, testcase_list[0].get('op'))
             if not os.path.exists(op_name_path):
                 try:
                     os.makedirs(op_name_path, mode=0o750)
@@ -142,6 +149,8 @@ class MsOpGenerator:
                     utils.print_error_log(
                         "Failed to create %s. %s" % (op_name_path, str(err)))
                     sys.exit(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                finally:
+                    pass
             else:
                 utils.print_error_log("Specified output path already has %s "
                                       "directory, please delete or move it and "
@@ -170,6 +179,8 @@ class MsOpGenerator:
                 ' the reason is %s.' % (op_name_impl, op_name_op_info, error))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        finally:
+            pass
         ms_ops_input_list = mindspore_ops_info.get('inputs')
         # get input param type
         for input_list in ms_ops_input_list:
@@ -209,7 +220,7 @@ class MsOpGenerator:
             input_args = ','.join(input_name_list)
             input_name = ','.join(input_name_tensor_list)
             return input_args, input_name
-        return None
+        return utils.RETURN_NONE
 
     def _mkdir_input_data_path(self, testcase_struct):
         input_paths = []
@@ -313,6 +324,8 @@ class MsOpGenerator:
         ms_param_type_list = self._get_mindspore_input_param_type()
         testcase_py_func_content = ''
         func_content = ''
+        input_count = 1
+        input_name_list = []
         for testcase_struct in self.testcase_list:
             # create input data path
             input_data_abs_paths = self._mkdir_input_data_path(testcase_struct)
@@ -376,7 +389,7 @@ class MsOpGenerator:
     def generate(self):
         """
         Function Description:
-            generate mindspore op python files containing info of testcases
+        generate mindspore op python files containing info of testcases
         :return:
         """
         self._mkdir_output_dir()
@@ -386,8 +399,7 @@ class MsOpGenerator:
 
     def get_device_id(self):
         """
-        Function Description:
-            get device id
+        Function Description: get device id
         :return:
         """
         return self.device_id

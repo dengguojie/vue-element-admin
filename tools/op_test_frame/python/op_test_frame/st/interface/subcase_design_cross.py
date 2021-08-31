@@ -8,15 +8,11 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-try:
-    import sys
-    import itertools
-    from . import utils
-    from . import dynamic_handle
-    from . import case_design as CD
-    from . import subcase_design as SD
-except ImportError as import_error:
-    sys.exit("[subcase_design_cross] Unable to import module: %s." % str(import_error))
+import itertools
+from . import utils
+from . import dynamic_handle
+from . import case_design as CD
+from . import subcase_design as SD
 
 # due to orthogonal combination, type need to behind shape.
 INPUT_CROSS_LIST = ['format', 'shape', 'type', 'data_distribute', 'value_range']
@@ -390,7 +386,7 @@ class SubCaseDesignCross(SD.SubCaseDesign):
             output_case_list = self._cross_tensor(
                 output_desc_list, OUTPUT_CROSS_LIST)
         count = self._get_count(input_case_list, output_case_list)
-        prefix = self.json_obj[CD.CASE_NAME].replace('/', '_') + '_'
+        prefix = '{}{}'.format(self.json_obj.get(CD.CASE_NAME).replace('/', '_'), '_')
         if self.multi:
             if self.json_obj.get(CD.ST_MODE) == "ms_python_train":
                 prefix += 'sub_'

@@ -8,17 +8,15 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-try:
-    import os
-    import sys
-    import importlib
-    import copy
-    from . import utils
-    from . import dynamic_handle
-    from . import case_design as CD
-    from . import subcase_design as SD
-except ImportError as import_error:
-    sys.exit("[subcase_design_fuzz] Unable to import module: %s." % str(import_error))
+import os
+import sys
+import importlib
+import copy
+
+from . import utils
+from . import dynamic_handle
+from . import case_design as CD
+from . import subcase_design as SD
 
 
 FUZZ_CASE_NUM = 'fuzz_case_num'
@@ -66,6 +64,8 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                     FUZZ_FUNCTION, fuzz_file, str(ex)))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        finally:
+            pass
         return fuzz_function
 
     def _check_fuzz_case_num_valid(self, json_obj):
@@ -287,7 +287,8 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         """
         fuzz_function = self.check_fuzz_valid(self.json_obj)
         loop_num = self._check_fuzz_case_num_valid(self.json_obj)
-        prefix = self.json_obj[CD.CASE_NAME].replace('/', '_') + '_fuzz_case_'
+        prefix = '{}{}'.format(self.json_obj.get(CD.CASE_NAME).replace('/', '_'),
+                               '_fuzz_case_')
         pyfile, function = self._check_expect_output_param(self.json_obj)
         repeat_case_num = 0
         for _ in range(loop_num):

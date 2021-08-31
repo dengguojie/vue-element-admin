@@ -55,10 +55,10 @@ class OpSTCase:
         """
         if not json_obj:
             return None
-        op_case = OpSTCase(case_name=json_obj["case_name"],
-                           op_params=json_obj["op_params"])
-        op_case.expect_data_paths = json_obj["expect_data_paths"]
-        op_case.planned_output_data_paths = json_obj["planned_output_data_paths"]
+        op_case = OpSTCase(case_name=json_obj.get("case_name"),
+                           op_params=json_obj.get("op_params"))
+        op_case.expect_data_paths = json_obj.get("expect_data_paths")
+        op_case.planned_output_data_paths = json_obj.get("planned_output_data_paths")
         op_case.input_data_paths = json_obj["input_data_path"]
         return op_case
 
@@ -107,10 +107,10 @@ class OpSTStageResult:
         :return: OpSTStageResult object
         """
         if json_obj.get("cmd"):
-            return OpSTStageResult(json_obj["status"], json_obj["stage_name"],
-                                   json_obj["result"], json_obj["cmd"])
-        return OpSTStageResult(json_obj["status"], json_obj["stage_name"],
-                               json_obj["result"])
+            return OpSTStageResult(json_obj.get("status"), json_obj.get("stage_name"),
+                                   json_obj.get("result"), json_obj.get("cmd"))
+        return OpSTStageResult(json_obj.get("status"), json_obj.get("stage_name"),
+                               json_obj.get("result"))
 
 
 class OpSTCaseTrace:
@@ -155,7 +155,7 @@ class OpSTCaseTrace:
         """
         if not json_obj:
             return None
-        res = OpSTCaseTrace(OpSTCase.parser_json_obj(json_obj["st_case_info"]))
+        res = OpSTCaseTrace(OpSTCase.parser_json_obj(json_obj.get("st_case_info")))
         res.stage_result = [OpSTStageResult.parser_json_obj(stage_obj) for
-                            stage_obj in json_obj["stage_result"]]
+                            stage_obj in json_obj.get("stage_result")]
         return res

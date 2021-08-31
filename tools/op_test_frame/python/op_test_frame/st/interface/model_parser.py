@@ -7,13 +7,11 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 Change History: 2020-07-11 file Created
 """
-try:
-    import sys
-    import os
-    import importlib
-    from . import utils
-except (ImportError,) as import_error:
-    sys.exit("[model_parser]Unable to import module: %s." % str(import_error))
+
+import os
+import importlib
+
+from . import utils
 
 GET_MODEL_NODES_FUNC = 'get_model_nodes'
 GET_SHAPE_FUNC = 'get_shape'
@@ -53,6 +51,8 @@ def _function_call(args, op_type, func_name):
             'Failed to execute "%s". %s' % (func_name, str(ex)))
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+    finally:
+        pass
 
 
 def get_model_nodes(args, op_type):
@@ -62,14 +62,15 @@ def get_model_nodes(args, op_type):
     :param args: the argument
     :return: the list of nodes.
     eg:
-    node_list:[{"op_type": 'Add',
-                "layer": 'fp32_vars/add',
-                "input_dtype": ['float','float'],
-                "input_shape": [[8,56,56,256],[8,56,56,256]],
-                "output_dtype": ['float'],
-                "output_shape": [[8,56,56,256]],
-                "attr": [{'name :'T', type:'type', value:'AT_FLOAT'}]
-                }]
+    node_list:
+    [{"op_type": 'Add',
+    "layer": 'fp32_vars/add',
+    "input_dtype": ['float','float'],
+    "input_shape": [[8,56,56,256],[8,56,56,256]],
+    "output_dtype": ['float'],
+    "output_shape": [[8,56,56,256]],
+    "attr": [{'name :'T', type:'type', value:'AT_FLOAT'}]
+    }]
     """
     return _function_call(args, op_type, GET_MODEL_NODES_FUNC)
 

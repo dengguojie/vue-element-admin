@@ -7,22 +7,21 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 Change History: 2020-07-11 file Created
 """
-try:
-    import os
-    import sys
-    import json
-    from shutil import copytree
-    from shutil import copy2
-    from shutil import Error
-    from . import utils
-    from . import op_st_case_info
-    from ..template import code_snippet
-    from op_test_frame.common import op_status
-    from . import dynamic_handle
-    from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-except (ImportError,) as import_error:
-    sys.exit(
-        "[acl_op_generator]Unable to import module: %s." % str(import_error))
+
+import os
+import sys
+import json
+from shutil import copytree
+from shutil import copy2
+from shutil import Error
+
+from op_test_frame.common import op_status
+from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
+
+from . import utils
+from . import op_st_case_info
+from ..template import code_snippet
+from . import dynamic_handle
 
 
 def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
@@ -86,7 +85,7 @@ def _create_acl_op_json_content(testcase_list, compile_flag):
                             'value') in utils.ATTR_TYPE_SUPPORT_TYPE_MAP.keys():
                         attr_dic['value'] = utils.ATTR_TYPE_SUPPORT_TYPE_MAP.get(
                             attr_dic.get('value'))
-                tmp_dic['attr'].append(attr_dic)
+                tmp_dic.get('attr').append(attr_dic)
 
         # only append non-repetitive json struct
         if tmp_dic not in content:
@@ -96,7 +95,9 @@ def _create_acl_op_json_content(testcase_list, compile_flag):
         return str(json.dumps(content, sort_keys=True, indent=2))
     except TypeError:
         utils.print_error_log("")
-    return None
+    finally:
+        pass
+    return ""
 
 
 def _write_content_to_file(content, file_path):
@@ -108,6 +109,8 @@ def _write_content_to_file(content, file_path):
         utils.print_error_log("Unable to write file(%s): %s." % (file_path,
                                                                  str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
     utils.print_info_log("File %s generated successfully." % file_path)
 
 
@@ -119,6 +122,8 @@ def _append_content_to_file(content, file_path):
         utils.print_error_log("Unable to write file(%s): %s." % (file_path,
                                                                  str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
     utils.print_info_log("Content appended to %s successfully." % file_path)
 
 
@@ -149,13 +154,13 @@ def _get_input_desc(testcase_struct):
         if input_desc_dic.get('format') in utils.OPTIONAL_TYPE_LIST or \
                 input_desc_dic.get('type') == utils.TYPE_UNDEFINED:
             input_desc_dic['shape'] = []
-            input_shape_list.append(input_desc_dic['shape'])
+            input_shape_list.append(input_desc_dic.get('shape'))
             input_data_type_list.append("DT_UNDEFINED")
             input_format_list.append("UNDEFINED")
         else:
             input_shape_list.append(input_shape)
-            input_data_type_list.append(input_desc_dic['type'])
-            input_format_list.append(input_desc_dic['format'])
+            input_data_type_list.append(input_desc_dic.get('type'))
+            input_format_list.append(input_desc_dic.get('format'))
 
     input_shape_data = utils.format_list_str(input_shape_list)
     input_data_type = utils.map_to_acl_datatype_enum(input_data_type_list)
@@ -163,13 +168,13 @@ def _get_input_desc(testcase_struct):
 
     input_file_path_list = []
     input_num = 0
-    for input_desc_dic in testcase_struct['input_desc']:
+    for input_desc_dic in testcase_struct.get('input_desc'):
         if input_desc_dic.get('format') in utils.OPTIONAL_TYPE_LIST or \
                 input_desc_dic.get('type') == utils.TYPE_UNDEFINED:
             input_data_path = ""
             input_file_path_list.append(input_data_path)
             continue
-        input_data_name = "{}_input_{}".format(testcase_struct['case_name'],
+        input_data_name = "{}_input_{}".format(testcase_struct.get('case_name'),
                                                str(input_num))
         input_data_path = os.path.join("test_data", "data", input_data_name)
         input_file_path_list.append(input_data_path)
@@ -183,13 +188,13 @@ def _get_output_desc(testcase_struct):
     output_shape_list = []
     output_data_type_list = []
     output_format_list = []
-    for output_desc_dic in testcase_struct['output_desc']:
+    for output_desc_dic in testcase_struct.get('output_desc'):
         # consider dynamic shape scenario
         output_shape = dynamic_handle.replace_shape_to_typical_shape(
             output_desc_dic)
         output_shape_list.append(output_shape)
-        output_data_type_list.append(output_desc_dic['type'])
-        output_format_list.append(output_desc_dic['format'])
+        output_data_type_list.append(output_desc_dic.get('type'))
+        output_format_list.append(output_desc_dic.get('format'))
 
     output_shape_data = utils.format_list_str(output_shape_list)
     output_data_type = utils.map_to_acl_datatype_enum(output_data_type_list)
@@ -198,7 +203,7 @@ def _get_output_desc(testcase_struct):
     output_file_path_list = []
     output_num = 0
     for _ in testcase_struct.get('output_desc'):
-        output_data_name = "{}_output_{}".format(testcase_struct['case_name'],
+        output_data_name = "{}_output_{}".format(testcase_struct.get('case_name'),
                                                  str(output_num))
         output_data_path = os.path.join("result_files", output_data_name)
         output_file_path_list.append(output_data_path)
@@ -312,6 +317,8 @@ def copy_template(src, dst):
                 copy2(srcname, dstname)
         except (IOError, OSError) as why:
             errors.append((srcname, dstname, str(why)))
+        finally:
+            pass
     if errors:
         raise Error(errors)
 
@@ -336,7 +343,7 @@ class AclOpGenerator:
         if self.machine_type:
             self.output_path = output_path
         else:
-            op_name_path = os.path.join(output_path, testcase_list[0]['op'])
+            op_name_path = os.path.join(output_path, testcase_list[0].get('op'))
             if not os.path.exists(op_name_path):
                 try:
                     os.makedirs(op_name_path, mode=0o750)
@@ -344,10 +351,12 @@ class AclOpGenerator:
                     utils.print_error_log(
                         "Failed to create %s. %s" % (op_name_path, str(err)))
                     sys.exit(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                finally:
+                    pass
             else:
                 utils.print_error_log("Specified output path already has \"%s\""
                                       " directory, please delete or move it "
-                                      "and retry." % testcase_list[0]['op'])
+                                      "and retry." % testcase_list[0].get('op'))
             self.output_path = op_name_path
 
     def _copy_entire_template_dir(self):
@@ -364,9 +373,9 @@ class AclOpGenerator:
         for testcase_struct in self.testcase_list:
             testcase_content, output_paths = \
                 _create_exact_testcase_content(testcase_struct, self.device_id)
-            testcase_name = testcase_struct['case_name']
+            testcase_name = testcase_struct.get('case_name')
             testcase_function_content = code_snippet.TESTCASE_FUNCTION.format(
-                op_name=testcase_struct['op'],
+                op_name=testcase_struct.get('op'),
                 testcase_name=testcase_name,
                 testcase_content=testcase_content)
             testcase_cpp_content += testcase_function_content
@@ -399,7 +408,7 @@ class AclOpGenerator:
     def generate(self):
         """
         Function Description:
-            generate acl op c++ files containing info of testcases
+        generate acl op c++ files containing info of testcases
         :return:
         """
         self._copy_entire_template_dir()
@@ -410,7 +419,7 @@ class AclOpGenerator:
     def get_device_id(self):
         """
         Function Description:
-            get device_id
+        get device_id
         :return: device_id
         """
         return self.device_id

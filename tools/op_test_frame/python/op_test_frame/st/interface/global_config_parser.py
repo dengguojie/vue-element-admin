@@ -8,6 +8,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2021
 Change History: 2021-04-12 file Created
 """
 import os
+
 from . import utils
 
 WHITE_LIST_FILE_NAME = "white_list_config.json"
@@ -20,7 +21,7 @@ AICPU_PROTO2INI_TYPE_MAP = "DTYPE_TO_AICPU_TYPE_MAP"
 
 class WhiteLists:
     """
-       the class for white lists, according to st/config/white_list_config.json
+    The class for white lists, according to st/config/white_list_config.json
     """
     def __init__(self):
         self.format_map = None
@@ -30,7 +31,9 @@ class WhiteLists:
         self.aicpu_ir2ini_type_map = None
 
     def init_white_lists(self):
-        """init white lists"""
+        """
+        init white lists
+        """
         config_dir = os.path.join(os.path.dirname(__file__), "..")
         config_path = os.path.join(config_dir, "config", WHITE_LIST_FILE_NAME)
         config_dict = utils.load_json_file(config_path)
@@ -43,14 +46,14 @@ class WhiteLists:
 
     def get_aicpu_ir2ini_type_map(self):
         """
-        get aicpu_ir2ini_type_map
+        Get aicpu_ir2ini_type_map
         """
         return self.aicpu_ir2ini_type_map
 
 
 class GlobalConfig:
     """
-    the class for global config.
+    The class for global config.
     """
     _instance = None
 
@@ -70,5 +73,7 @@ class GlobalConfig:
         return cls._instance
 
     def get_white_lists(self):
-        """get white lists"""
+        """
+        Get white lists
+        """
         return self.white_lists

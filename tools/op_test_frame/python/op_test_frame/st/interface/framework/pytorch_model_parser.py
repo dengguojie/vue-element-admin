@@ -1,27 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Function:
- PytorchModelParse class. This class mainly get case info from onnx model.
+PytorchModelParse class. This class mainly get case info from onnx model.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 Change History: 2020-07-11 file Created
 """
+
+import os
+
+import onnx
 import google
+from onnx import helper
+from onnx import shape_inference
+from onnx import TensorProto
 
-try:
-    import sys
-    import os
-
-    import onnx
-    from onnx import helper
-    from onnx import shape_inference
-    from onnx import TensorProto
-
-    from .. import utils
-except (ImportError,) as import_error:
-    sys.exit(
-        "[pytorch_model_parser] Unable to import module: %s." % str(import_error))
+from .. import utils
 
 TMP_SHAPE_FILE = 'tmp_shape.json'
 TMP_GA_PATH_FILE = 'tmp_ga_path.json'
@@ -112,6 +107,8 @@ def _load_model(model_path):
                               "Please check the model.".format(model_path))
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+    finally:
+        pass
     return model
 
 
@@ -129,6 +126,8 @@ def _infer_model_shape(origin_model, input_nums=None):
         utils.print_warn_log("The model tensor shape cannot be inferred, "
                              "skip inference shape.")
         return origin_model
+    finally:
+        pass
     return infer_model
 
 
@@ -306,7 +305,7 @@ class PyTorchModelParse:
     def _get_model_inputs(self):
         graph = _load_model(self.model_path).graph
         all_tensors = _parse_tensor_info(graph.input, {})
-        params = [init.name for init in graph.initializer]
+        params = (init.name for init in graph.initializer)
         input_shape_map = {}
         for tensor_name, tensor_info in all_tensors.items():
             if tensor_name in params:
@@ -352,6 +351,8 @@ class PyTorchModelParse:
                                           "please check it.".format(input_tensor.name))
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                finally:
+                    pass
                 graph.input.remove(input_tensor)
                 graph.input.insert(0, new_input_tensor)
         return op_info
@@ -371,6 +372,8 @@ class PyTorchModelParse:
                                           list(map(int, op_info.get("new_shape")))))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        finally:
+            pass
 
         utils.print_info_log("The {} input shape has been changed.".format(self.model_path))
         _, tmp_filename = os.path.split(real_path)

@@ -8,20 +8,18 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-try:
-    import os
-    import sys
-    import json
-    import time
-    import copy
-    import re
-    import importlib
-    from . import utils
-    from .model_parser import get_model_nodes
-    from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-except ImportError as import_error:
-    sys.exit(
-        "[case_generator] Unable to import module: %s." % str(import_error))
+import os
+import sys
+import json
+import time
+import copy
+import re
+import importlib
+
+from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
+
+from . import utils
+from .model_parser import get_model_nodes
 
 INI_INPUT = 'input'
 INI_OUTPUT = 'output'
@@ -71,7 +69,7 @@ class CaseGenerator:
         value = value.replace(' ', '')
         if not value.startswith('[[') or not value.endswith(']]'):
             raise ValueError
-        # skip [[ and ]]
+        # skip
         value = value[2:-2].split('],[')
         new_value = []
         for item in value:
@@ -121,6 +119,8 @@ class CaseGenerator:
                 'The default value(%s) is invalid for type(%s). Please modify '
                 'the default value in "%s" attr. %s' % (
                     default_value_str, attr_type, attr_name, ex))
+        finally:
+            pass
         return default_value
 
     def _parse_ini_to_json(self):
@@ -191,6 +191,8 @@ class CaseGenerator:
                 ' the reason is %s.' % (module_name, class_name, error))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        finally:
+            pass
         self._get_basic_op_info_mindspore(mindspore_ops_info)
         # update mindspore operation of attr information in op_info
         if mindspore_ops_info.get('attr'):
@@ -389,7 +391,9 @@ class CaseGenerator:
             utils.print_warn_log(
                 "Can't parse operator information of %s in %s,"
                 "please check." % (op_key, head_file))
-            return None
+        finally:
+            pass
+        return ""
 
     def _get_aicpu_op_info_from_ini_file(self):
         """
@@ -417,7 +421,7 @@ class CaseGenerator:
                 start_str = line[line.find(op_key):]
                 # match name.
                 name = self._parse_name_from_op_proto_file(op_key, start_str)
-                if name is None:
+                if name == "":
                     break
                 # match type.
                 input_tensor_type = start_str[start_str.find("{")
@@ -477,6 +481,8 @@ class CaseGenerator:
                             "Can't parse operator information of %s, "
                             "please check." % attr_name)
                         return
+                    finally:
+                        pass
                     format_default_value = utils.format_dict_to_list(
                         defaultvalue)
                     default_value = format_default_value.replace(
@@ -550,6 +556,7 @@ class CaseGenerator:
 
     @staticmethod
     def _generate_aicpu_op_desc(value, base_case, op_key):
+        op_desc = {}
         variable_name = value.get('name')
         if value.get('format') is None or len(value.get('format')) == 0:
             op_format = []
@@ -590,8 +597,9 @@ class CaseGenerator:
         if not count_ini_with_type:
             self._find_aicpu_op_proto_path()
 
-        base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
-                                  + '_001',
+        base_case = {'case_name': ''.join(['Test_',
+                                           self.op_type.replace('/', '_'),
+                                           '_001']),
                      'op': self.op_type,
                      'input_desc': [],
                      'output_desc': []}
@@ -604,18 +612,18 @@ class CaseGenerator:
             elif key.startswith("attr_"):
                 if 'attr' not in base_case:
                     base_case['attr'] = []
-                base_case['attr'].append(self._make_attr(key, value))
+                base_case.get('attr').append(self._make_attr(key, value))
         # format/type/shape is empty in input_desc.
-        if not base_case['input_desc']:
+        if not base_case.get('input_desc'):
             input_desc = {'format': [], 'type': [],
                           'shape': [], 'data_distribute': ['uniform'],
                           'value_range': [[0.1, 1.0]]}
-            base_case['input_desc'].append(input_desc)
+            base_case.get('input_desc').append(input_desc)
         # format/type/shape is empty in output_desc.
-        if not base_case['output_desc']:
+        if not base_case.get('output_desc'):
             output_desc = {'format': [], 'type': [],
                            'shape': []}
-            base_case['output_desc'].append(output_desc)
+            base_case.get('output_desc').append(output_desc)
         # generate base case from model
         if self.args.model_path != "":
             return self._generate_base_case_from_model(base_case, True)
@@ -647,18 +655,20 @@ class CaseGenerator:
                           'data_distribute': ['uniform'],
                           'value_range': [[0.1, 1.0]]}
         input_desc.update({'name': input_name})
-        base_case['input_desc'].append(input_desc)
+        base_case.get('input_desc').append(input_desc)
 
     def _generate_aicore_base_case(self):
         if self.input_file_path.endswith(".py"):
-            base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
-                                      + '_001',
+            base_case = {'case_name': ''.join(['Test_',
+                                              self.op_type.replace('/', '_'),
+                                              '_001']),
                          'st_mode': 'ms_python_train',
                          'op': self.op_type,
                          'input_desc': [], 'output_desc': []}
         else:
-            base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
-                                      + '_001',
+            base_case = {'case_name': ''.join(['Test_',
+                                              self.op_type.replace('/', '_'),
+                                              '_001']),
                          'op': self.op_type,
                          'input_desc': [], 'output_desc': []}
 
@@ -679,11 +689,11 @@ class CaseGenerator:
                                    'type': output_dtype,
                                    'shape': []}
                 output_desc.update({'name': output_name})
-                base_case['output_desc'].append(output_desc)
+                base_case.get('output_desc').append(output_desc)
             elif key.startswith("attr_"):
                 if 'attr' not in base_case:
                     base_case['attr'] = []
-                base_case['attr'].append(self._make_attr(key, value))
+                base_case.get('attr').append(self._make_attr(key, value))
         self._check_desc_valid(base_case, 'output_desc')
 
         # generate base case from model
@@ -704,12 +714,12 @@ class CaseGenerator:
                           'shape': node.get('input_shape')[index],
                           'data_distribute': ['uniform'],
                           'value_range': [[0.1, 1.0]]}
-            new_base_case['input_desc'].append(input_desc)
+            new_base_case.get('input_desc').append(input_desc)
         for (index, dtype) in enumerate(node.get('output_dtype')):
             output_desc = {'format': ['ND'],
                            'type': dtype,
                            'shape': node.get('output_shape')[index]}
-            new_base_case['output_desc'].append(output_desc)
+            new_base_case.get('output_desc').append(output_desc)
         return new_base_case
 
     def _update_aicore_io_from_model(self, base_case, node):
@@ -728,7 +738,7 @@ class CaseGenerator:
                     % (layer_name, len(node.get('input_shape')),
                        len(base_case.get('input_desc')),
                        ))
-                return None
+                return {}
             if len(node.get('output_shape')) != len(
                     base_case.get('output_desc')):
                 utils.print_warn_log(
@@ -739,7 +749,7 @@ class CaseGenerator:
                     % (len(node.get('output_shape')),
                        layer_name,
                        len(base_case.get('output_desc')),))
-                return None
+                return {}
 
             new_base_case = {
                 'case_name': 'Test_%s' % layer_name,
@@ -760,6 +770,8 @@ class CaseGenerator:
             utils.print_error_log("Failed to create case. %s" % error)
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+        finally:
+            pass
         return new_base_case
 
     @staticmethod
@@ -910,5 +922,7 @@ class CaseGenerator:
             utils.print_error_log(
                 'Failed to generate file %s. %s' % (json_path, str(io_error)))
             raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+        finally:
+            pass
         utils.print_info_log(
             "Generate test case file %s successfully." % json_path)

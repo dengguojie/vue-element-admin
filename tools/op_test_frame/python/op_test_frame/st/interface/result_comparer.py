@@ -21,6 +21,7 @@ result compare
 import os
 import time
 import numpy as np
+
 from op_test_frame.common import op_status
 from op_test_frame.st.interface import utils
 from op_test_frame.st.interface import op_st_case_info
@@ -189,6 +190,8 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
                                       data_compe.astype(np.float32)))
     except MemoryError:
         return result, 0.0, max_error
+    finally:
+        pass
     _display_output(real_data, data_compe, start, end, diff_thd)
     result, err_list, fulfill_percent = _get_error_percent(
         [diff_abs, diff_thd, max_diff_hd], real_data, data_compe, split_count,

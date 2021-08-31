@@ -12,7 +12,9 @@ NEW_STR_KEY = ['shape_range']
 
 
 def check_typical_shape_valid(typical_shape, json_path):
-    """check typical_shape are integers and greater than 0"""
+    """
+    check typical_shape are integers and greater than 0
+    """
     for dim in typical_shape:
         if not isinstance(dim, int):
             utils.print_error_log(
@@ -29,7 +31,9 @@ def check_typical_shape_valid(typical_shape, json_path):
 
 
 def check_not_dynamic_shape(shape_list):
-    """check whether dynamic shape, otherwise return False"""
+    """
+    check whether dynamic shape, otherwise return False
+    """
     if not shape_list:
         return False
     # check -1 or -2 in shape_list value as a basis, return True.
@@ -47,7 +51,9 @@ def check_not_dynamic_shape(shape_list):
 
 
 def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):
-    """update cur_params dict"""
+    """
+    update cur_params dict
+    """
     shape_list = cur_params.get('shape')
     for dim in shape_list:
         if dim in (utils.SHAPE_DYNAMIC_SCENARIOS_ONE,

@@ -1,22 +1,19 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Function:
- TFModelParse class. This class mainly get case info from tf model.
+TFModelParse class. This class mainly get case info from tf model.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 Change History: 2020-07-11 file Created
 """
-try:
-    import os
-    import sys
-    import tensorflow as tf
-    from tensorflow.core.framework import tensor_shape_pb2
-    from .. import utils
-except (ImportError,) as import_error:
-    sys.exit(
-        "[tf_model_parser] Unable to import module: %s." % str(import_error))
 
+import os
+
+import tensorflow as tf
+from tensorflow.core.framework import tensor_shape_pb2
+
+from .. import utils
 
 TMP_SHAPE_FILE = 'tmp_shape.json'
 TMP_GA_PATH_FILE = 'tmp_ga_path.json'
@@ -106,6 +103,8 @@ def _get_node_attr(node, key):
             'Failed to load tf graph . %s' % (str(ex)))
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_GET_KEY_ERROR)
+    finally:
+        pass
 
 
 def _tf_utils_load_graph_def(filename):
@@ -120,6 +119,8 @@ def _tf_utils_load_graph_def(filename):
             'Failed to load tf graph "%s". %s' % (filename, str(ex)))
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_TF_LOAD_ERROR)
+    finally:
+        pass
 
 
 def _tf_utils_get_operators(graph_def):
@@ -133,6 +134,8 @@ def _tf_utils_get_operators(graph_def):
             'Failed to get operators. %s' % (str(ex)))
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_TF_GET_OPERATORS_ERROR)
+    finally:
+        pass
 
 
 def _tf_utils_write_graph(graph_def, dir_name, new_graph_path):
@@ -145,6 +148,8 @@ def _tf_utils_write_graph(graph_def, dir_name, new_graph_path):
             'Failed to write new graph file %s. %s' % (new_graph_path,
                                                        str(ex)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
 
 
 def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
@@ -172,7 +177,7 @@ def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
     for attr_key in node_info.attr.keys():
         value_data = node_info.attr[attr_key]
         attr = _parse_attr(attr_key, value_data)
-        op_infos["attr"].append(attr)
+        op_infos.get("attr").append(attr)
     nodes_list.append(op_infos)
     return nodes_list
 
@@ -187,11 +192,11 @@ def _get_nodes_list(model_path, ini_op_type):
                    "output_dtype": [], "input_shape": [],
                    "output_shape": []}
         for input_tensor in operator.inputs:
-            op_info["input_shape"].append(input_tensor.get_shape())
-            op_info["input_dtype"].append(input_tensor.dtype)
+            op_info.get("input_shape").append(input_tensor.get_shape())
+            op_info.get("input_dtype").append(input_tensor.dtype)
         for out_tensor in operator.outputs:
-            op_info["output_shape"].append(out_tensor.get_shape())
-            op_info["output_dtype"].append(out_tensor.dtype)
+            op_info.get("output_shape").append(out_tensor.get_shape())
+            op_info.get("output_dtype").append(out_tensor.dtype)
         ops.append(op_info)
     for i, node_info in enumerate(graph_def.node):
         op_type = node_info.op
