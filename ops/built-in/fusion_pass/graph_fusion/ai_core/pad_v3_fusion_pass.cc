@@ -221,8 +221,7 @@ Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   }
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(pad_node);
-  if ((op.GetInputDesc("x").GetDataType() == ge::DT_INT64) ||
-      (op.GetInputDesc("paddings").GetDataType() == ge::DT_INT64)) {
+  if (op.GetInputDesc("x").GetDataType() == ge::DT_INT64) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Inputs dtype is int64, not changed");
     return NOT_CHANGED;
   }
