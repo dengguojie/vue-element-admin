@@ -21,6 +21,7 @@ from .addcdiv import addcdiv
 from .aipp import aipp
 from .avg_pool_1d import avg_pool_1d
 from .avg_pool import avg_pool
+from .pad_v3_grad import pad_v3_grad
 from .avg_pool_grad import avg_pool_grad
 from .embedding_dense_grad import embedding_dense_grad
 from .one_hot import one_hot

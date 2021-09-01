@@ -39,7 +39,7 @@ TEST_F(OneHotTiling, one_hot_tiling_0) {
 
     std::vector<int64_t> input0{3, 3, 32, 32, 16};
     std::vector<int32_t> depth{32};
-    std::vector<int32_t> off_value{0};
+    std::vector<int32_t> off_value{1};
     std::vector<int64_t> output{3, 3, 32, 32, 16, 32};
 
     TeOpTensor tensor_input0;
@@ -69,7 +69,7 @@ TEST_F(OneHotTiling, one_hot_tiling_0) {
     op_compile_info.key = "12345671";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 4608 2 32 147456 147456 1 4718592 4608 0 0 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "0 4608 2 32 147456 147456 1 4718592 4608 0 0 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_1) {
@@ -802,4 +802,3 @@ TEST_F(OneHotTiling, one_hot_tiling_17) {
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 7 30 4224 1 4224 1364352 0 11 4 ");
 }
-

@@ -531,6 +531,98 @@ IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
 COMMON_INFER_FUNC_REG(PadV3, PadV3InferShape);
 // ----------------PadV3 Op End-------------------
 
+// ----------------PadV3Grad Op Begin-------------------
+static graphStatus PadV3GradInferShapeAndType(ge::Operator& op, std::vector<int64_t>& paddings) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  auto input_dtype = input_desc->GetDataType();
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(input_dtype);
+
+  if (!IsUnknown(input_shape)) {
+    // calce the output shape
+    vector<int64_t> output_shape;
+    for (size_t dim = 0; dim < input_shape.size(); dim++) {
+      output_shape.push_back(input_shape[dim] - paddings[dim * 2] - paddings[dim * 2 + 1]);
+    }
+    output_desc->SetShape(GeShape(output_shape));
+
+    return GRAPH_SUCCESS;
+  }
+
+  // input shape is -2, output is -2
+  if (IsUnknownRankShape(input_shape)) {
+    output_desc->SetShape(GeShape(input_shape));
+
+    return GRAPH_SUCCESS;
+  }
+
+  // input shape is -1, will get the shape and range
+  // calcu the output shape
+  vector<int64_t> output_shape;
+  for (size_t dim = 0; dim < input_shape.size(); dim++) {
+    if (input_shape[dim] == -1) {
+      output_shape.push_back(input_shape[dim]);
+    } else {
+      output_shape.push_back(input_shape[dim] - paddings[dim * 2] - paddings[dim * 2 + 1]);
+    }
+  }
+  output_desc->SetShape(GeShape(output_shape));
+
+  // calcu the output range
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_shape, input_range);
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  for (size_t dim = 0; dim < input_shape.size(); dim++) {
+    auto range_min = input_range[dim].first - paddings[dim * 2] - paddings[dim * 2 + 1];
+    auto range_max = input_range[dim].second == -1 ?
+                     -1 : input_range[dim].second - paddings[dim * 2] - paddings[dim * 2 + 1];
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+  }
+  output_desc->SetShapeRange(output_range);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(PadV3GradInferShape) {
+  const vector<string> depend_names = {"paddings"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+  Tensor paddings_tensor;
+  if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
+    OP_LOGE(op.GetName().c_str(), "Get Const Value [paddings] failed, Setting shape to UNKNOWN_DIM");
+    Shape shape_x = op.GetInputDesc("x").GetShape();
+    vector<int64_t> shape;
+    for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+      shape.push_back(UNKNOWN_DIM);
+    }
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    Shape out_shape(shape);
+    tensordesc_output.SetShape(out_shape);
+    tensordesc_output.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+    return GRAPH_SUCCESS;
+  }
+
+  DataType dtype = op.GetInputDesc("paddings").GetDataType();
+
+  std::vector<int64_t> paddings;
+  if (!GetConstValue(op, paddings_tensor, dtype, paddings)) {
+    OP_LOGE(op.GetName().c_str(), "Get Const Value [paddings] failed ");
+    return GRAPH_FAILED;
+  }
+
+  bool paddings_contiguous = true;
+  if (op.GetAttr("paddings_contiguous", paddings_contiguous) == GRAPH_FAILED) {
+    OP_LOGI(op.GetName().c_str(), "Get attr [paddings_contiguous] failed");
+  }
+  return PadV3GradInferShapeAndType(op, paddings);
+}
+
+COMMON_INFER_FUNC_REG(PadV3Grad, PadV3GradInferShape);
+// ----------------PadV3Grad Op End-------------------
 
 // ----------------MirrorPad Op Begin-------------------
 COMMON_INFER_FUNC_REG(MirrorPad, PadInferShape);

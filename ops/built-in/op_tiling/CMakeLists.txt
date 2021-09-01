@@ -50,6 +50,7 @@ set(_optiling_files
   conv2d.cc
   conv2d_transpose.cc
   conv3d.cc
+  pad_v3_grad.cc
   mse_loss.cc
   mse_loss_grad.cc
   conv3d_backprop_filter.cc

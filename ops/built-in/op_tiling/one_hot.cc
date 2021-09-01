@@ -167,16 +167,6 @@ namespace optiling{
         return core_used;
     }
 
-    int32_t GetIsZeroOffValue(int32_t off_value)
-    {
-        int32_t is_zero_off_value = 0;
-        if (off_value == 0)
-        {
-            is_zero_off_value = 1;
-        }
-        return is_zero_off_value;
-    }
-
     int32_t CalTilingMode(std::vector<int64_t> x_shape, int32_t depth, int32_t axis, int32_t core_num)
     {
         OP_LOGD("CalTilingMode is running");
@@ -304,7 +294,7 @@ namespace optiling{
     }
 
     void CalRunningInfo(OneHotTilingParams &tiling_params, int32_t core_num, int32_t depth,
-                        int32_t axis, int32_t off_value, std::vector<int64_t> x_shape)
+                        int32_t axis, std::vector<int64_t> x_shape)
     {
         OP_LOGD("CalRunningInfo is running");
         std::vector<int64_t> merged_x_shape;
@@ -336,7 +326,6 @@ namespace optiling{
         tiling_params.last_dim_x = last_dim_x;
         tiling_params.numel_shape_off_value_tensor = numel_merged_x;
         tiling_params.mode_of_cal_with_axis = CalTilingMode(x_shape, depth, axis, core_num);
-        tiling_params.is_zero_off_value = GetIsZeroOffValue(off_value);
         CalCoreInfo(tiling_params, core_num, depth, axis, x_shape);
     }
 
@@ -394,10 +383,8 @@ namespace optiling{
         const int32_t* depth_ptr = reinterpret_cast<const int32_t *>(std::get<0>(
             op_paras.const_inputs.at("depth")));
         depth = *depth_ptr;
-        const int32_t* off_value_ptr = reinterpret_cast<const int32_t *>(std::get<0>(
-            op_paras.const_inputs.at("off_value")));
-        auto off_value = *off_value_ptr;
-        CalRunningInfo(tiling_params, core_num, depth, axis, off_value, x_shape);
+        OP_LOGD("depth=%d.", depth);
+        CalRunningInfo(tiling_params, core_num, depth, axis, x_shape);
         SetRunningInfo(tiling_params, run_info);
         PrintTilingParams(tiling_params);
 
