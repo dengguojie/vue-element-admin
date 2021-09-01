@@ -23,7 +23,7 @@ from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.dsl.compute import util as compute_util
 from tbe.dsl.compute.cube_util import shape_to_list
 
-from tbe.common.tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
 
@@ -881,7 +881,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 "op_type": "conv3d_backprop_filter",
                 "kernel_name": kernel_name
             }
-            tiling = get_tiling.get_tiling(info_dict)
+            tiling = get_tiling(info_dict)
         else:
             tiling = dynamic_para.get("tiling_strategy")
 

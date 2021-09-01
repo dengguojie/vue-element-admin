@@ -77,9 +77,6 @@ _BIT_RATIO_DICT = {
     "int4": 0.5
 }
 
-# pads valid mode to be [0, 0, 0, 0]
-_PADDING_VAILD = [0, 0, 0, 0, 0, 0]
-
 _L1FUSION_INPUT_CTR = 2
 
 _OUT_BACKPROP_TARGET_FORMAT = "NDHWC"
