@@ -64,13 +64,16 @@ bool StridedSliceV3Tiling(const std::string& opType, const TeOpParas& opParas, c
 
   //reading tensor begin end axes from tiling start
   std::vector<int64_t> input_axes_values;
+  std::vector<int64_t> input_strides_values;
   map<string, std::pair<int, vector<int64_t>&>> const_params = {
       {"begin", {1, slice_params_output.begin_list}},
       {"end", {2, slice_params_output.end_list}},
-      {"axes", {4, input_axes_values}},
+      {"axes", {3, input_axes_values}},
+      {"strides", {4, slice_params_output.stride_list}},
   };
 
   bool axes_exist = true;
+  bool strides_exist = true;
   for (auto& item : const_params) {
     auto& name = item.first;
     int index = item.second.first;
@@ -78,6 +81,10 @@ bool StridedSliceV3Tiling(const std::string& opType, const TeOpParas& opParas, c
     if (!GetConstValue(opParas, name, opParas.inputs[index].tensor[0].dtype, values)) {
       if(name == "axes"){
         axes_exist = false;
+        continue;
+      }
+      if(name == "strides"){
+        strides_exist = false;
         continue;
       }
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get %s values failed", name.c_str());
@@ -89,6 +96,10 @@ bool StridedSliceV3Tiling(const std::string& opType, const TeOpParas& opParas, c
     for(size_t i = 0; i < slice_params_output.begin_list.size(); ++i){
       input_axes_values.push_back(static_cast<int64_t>(i));
     }
+  }
+
+  if(!strides_exist){
+    slice_params_output.stride_list.assign(slice_params_output.begin_list.size(), 1);
   }
 
   //the len of axes,begin,end must be the same  
@@ -109,6 +120,7 @@ bool StridedSliceV3Tiling(const std::string& opType, const TeOpParas& opParas, c
     std::vector<int64_t> processed_begin(begin_len, 0);
     //init end list with shape max
     std::vector<int64_t> processed_end = slice_params_output.input;
+    std::vector<int64_t> processed_strides(begin_len, 1);
     //init to max shape,like[20,10,5]
     //assign the begin end values accoring to the axes values 
     //begin[0,0] end [10,5] axes [0,-2]  with  shape [20,10,5]
@@ -133,11 +145,12 @@ bool StridedSliceV3Tiling(const std::string& opType, const TeOpParas& opParas, c
       }
       processed_end[axes_index] = slice_params_output.end_list[i];
       processed_begin[axes_index] = slice_params_output.begin_list[i];
+      processed_strides[axes_index] = slice_params_output.stride_list[i];
     }
     //assign the proceseed value back to slice params
     slice_params_output.begin_list.assign(processed_begin.begin(),processed_begin.end());
     slice_params_output.end_list.assign(processed_end.begin(),processed_end.end());
-
+    slice_params_output.stride_list.assign(processed_strides.begin(),processed_strides.end());
   }
   
   // for start list processing
@@ -171,7 +184,7 @@ bool StridedSliceV3Tiling(const std::string& opType, const TeOpParas& opParas, c
   }
 
   //setting the  default stride,now only support 1
-  slice_params_output.stride_list.assign(slice_params_output.end_list.size(), 1);
+  //slice_params_output.stride_list.assign(slice_params_output.end_list.size(), 1);
   OP_LOGD(opType.c_str(), "origin stridedslicev3 params for stridedslice: %s", slice_params_output.to_string().c_str());
 
   int32_t core_num = GetCompileInfo<int32_t>(opCompileInfo, "block_dim");

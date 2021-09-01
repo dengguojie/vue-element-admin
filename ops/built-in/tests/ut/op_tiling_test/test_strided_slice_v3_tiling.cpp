@@ -107,6 +107,7 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_axes) {
       {4, 4, 4, 4},
       {4},
       {4},
+      {},
       {4},
       //no axes
   };
@@ -466,4 +467,64 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_mask_neg) {
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
+}
+
+TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_stride) {
+  using namespace optiling;
+  optiling::OpRunInfo op_run_info;
+  auto iter =
+      optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+  vector<vector<int64_t>> input_shapes = {
+      {4, 4, 4, 4},
+      {4},
+      {4},
+      {4},
+      {},//no stride
+  };
+
+  vector<string> dtypes = {"float16", "int32", "int32", "int32","int32"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = input_shapes[0];
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+  vector<int32_t> begin = {1, 1, 1, -1000};
+  vector<int32_t> end = {3, 3, 3, 3000};
+  vector<int32_t> axes = {0, 1, 2, -1};
+  opParas.const_inputs["begin"] =
+      std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) begin.data(),
+                                                      begin.size() * sizeof(int32_t), ge::Tensor());
+  opParas.const_inputs["end"] =
+      std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) end.data(),
+                                                      end.size() * sizeof(int32_t), ge::Tensor());
+  opParas.const_inputs["axes"] =
+      std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) axes.data(),
+                                                      axes.size() * sizeof(int32_t), ge::Tensor());
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
+ 
+  OpRunInfo runInfo;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  std::cout << to_string(runInfo.tiling_data) << std::endl;
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.tiling_data),
+            "1 3 4 4 16 2 2 8 1 1 4 3 3 12 1 1 1 ");
 }

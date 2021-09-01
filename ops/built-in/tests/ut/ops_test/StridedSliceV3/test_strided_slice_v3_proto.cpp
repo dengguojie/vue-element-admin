@@ -331,8 +331,10 @@ TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_no_stride_no_end) {
                 {},
                 output_shape, output_shape_range);
 
-  std::vector<int64_t> expected_output_shape = {-1, -1, 11, 12};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 8},{0, 7},{11, 11},{12, 12}};
+  //std::vector<int64_t> expected_output_shape = {-1, -1, 11, 12};
+  std::vector<int64_t> expected_output_shape = {-2};
+  //std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 8},{0, 7},{11, 11},{12, 12}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }

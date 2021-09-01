@@ -29,7 +29,7 @@ from .strided_slice import StridedSlice
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def strided_slice_v3(x, begin, end, strides, axes, y, kernel_name="strided_slice_v3"):
+def strided_slice_v3(x, begin, end, axes, strides, y, kernel_name="strided_slice_v3"):
     """
     algorithm: slice
     calculating: this operation extracts a slice of size size
@@ -46,10 +46,10 @@ def strided_slice_v3(x, begin, end, strides, axes, y, kernel_name="strided_slice
         shape and dtype of begin, represents the index of the first value to select.
     end: dict.
         shape and dtype of end, represents the index of the last value to select.
-    strides: dict.
-        shape and dtype of strides, step length to select.
     axes:dict
         axes of begin and end pairs to select
+    strides: dict.
+        shape and dtype of strides, step length to select.
     kernel_name: str
         cce kernel name, default value is "stride_slice_v3".
 

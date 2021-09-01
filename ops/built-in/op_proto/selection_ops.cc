@@ -4831,7 +4831,7 @@ VERIFY_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeVerify);
 
 // ----------------StridedSlicev3 Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
-  const vector<string> depend_names = {"begin", "end", "strides","axes"};
+  const vector<string> depend_names = {"begin", "end", "axes", "strides"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // Get input shape
@@ -4875,15 +4875,17 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     stride_valid = !slice_params.stride_list.empty();
   }
 
+  OP_LOGD(op.GetName().c_str(), "input stride_valid:%d", stride_valid);
+  OP_LOGD(op.GetName().c_str(), "input begin_len:%lld", begin_len);
   if(!stride_valid && begin_len>0){
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-    if(op_info->MutableInputDesc("stride") == nullptr){
+    if(op_info->MutableInputDesc("strides") == nullptr){
       stride_valid = true;
       slice_params.stride_list.assign(begin_len, 1);
     }
   }
-
-  OP_LOGD(op.GetName().c_str(), "begin_len:%lld", begin_len);
+  OP_LOGD(op.GetName().c_str(), "input stride_list:%s", to_string(slice_params.stride_list).c_str());
+  
   if (shape.GetDims() == UNKNOWN_RANK  || !stride_valid) {
     TensorDesc output_desc = op.GetOutputDesc("y");
     output_desc.SetDataType(input_dtype);
