@@ -154,7 +154,7 @@ graphStatus Merge(const GeShape& s0, const GeShape& s1, GeShape& out, const char
  * @param shape_changed status whether shape has changed
  */
 void MergeShape(const Shape &shared_shape, const Shape &value_shape,
-                std::vector<int64_t> out, bool &shape_changed);
+                std::vector<int64_t> &out, bool &shape_changed);
 
 /**
  * Merge two shape ranges

@@ -389,7 +389,7 @@ graphStatus Merge(const GeShape& s0, const GeShape& s1, GeShape& out, const char
 }
 
 void MergeShape(const Shape &shared_shape, const Shape &value_shape,
-                std::vector<int64_t> out, bool &shape_changed) {
+                std::vector<int64_t> &out, bool &shape_changed) {
   for (size_t i = 0; i < out.size(); ++i) {
     if (shared_shape.GetDim(i) == value_shape.GetDim(i) ||
         shared_shape.GetDim(i) == -1) {
