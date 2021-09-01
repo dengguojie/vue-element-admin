@@ -175,11 +175,15 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                       return PARAM_INVALID);
   }
 
+  size_t input_idx = 0;
   for (auto inputNode : fusedInputNodes) {
     uint32_t index = inputNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(0)->GetIdx();
     ge::GeTensorDesc desc = inputNode->GetOutAllNodes().at(0)->GetOpDesc()->GetInputDesc(index);
-    fusedConcatv2dOpDesc->AddInputDesc(desc);
+    string name = "x" + std::to_string(input_idx);
+    fusedConcatv2dOpDesc->AddInputDesc(name, desc);
+    input_idx++;
   }
+
   ge::NodePtr fusedConcatv2dNode = graph.AddNode(fusedConcatv2dOpDesc);
 
   index = 0;
