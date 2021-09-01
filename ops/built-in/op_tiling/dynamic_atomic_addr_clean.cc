@@ -18,6 +18,7 @@
  * \file dynamic_atomic_addr_clean.cpp
  * \brief
  */
+#include <vector>
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
@@ -187,10 +188,7 @@ bool CheckSize(const std::string& op_type, const uint32_t& size) {
 bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& op_paras,
                                   const nlohmann::json& opCompileInfoJson, OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "op[%s] op tiling begin.", op_type.c_str());
-  if (op_paras.const_inputs.find("workspace_size") == op_paras.const_inputs.end()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op : workspace_size not exists");
-    return false;
-  }
+  std::vector<int64_t> workspace_size_list;
   uint32_t workspace_num = 1;
   uint32_t core_num = 1;
   uint32_t ub_size = 256 * 1024;
@@ -201,8 +199,26 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
     return false;
   }
   OP_LOGI(op_type.c_str(), "op[%s] GetCompileParams success.", op_type.c_str());
-  for (size_t i = 0; i < workspace_num; i++) {
-    int64_t addr_tensor_size = std::get<1>(op_paras.const_inputs.at("workspace_size"));
+  if (opCompileInfoJson.find("_workspace_size_list") == opCompileInfoJson.end()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: _workspace_size_list not exists");
+    if (op_paras.const_inputs.find("workspace_size") == op_paras.const_inputs.end()) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: workspace_size not exists");
+      return false;
+    }
+    for (size_t i = 0; i < workspace_num; i++) {
+      int64_t addr_tensor_size = std::get<1>(op_paras.const_inputs.at("workspace_size"));
+      workspace_size_list.push_back(addr_tensor_size);
+      OP_LOGD(op_type.c_str(), "op: addr_tensor_size=%d", addr_tensor_size);
+    }
+  } else {
+    const auto& workspace_size_list_1 = opCompileInfoJson["_workspace_size_list"];
+    for (auto iter = workspace_size_list_1.begin(); iter != workspace_size_list_1.end(); iter++) {
+      workspace_size_list.push_back((int64_t)*iter);
+    }
+  }
+  auto size_count = workspace_size_list.size();
+  for (size_t i = 0; i < size_count; i++) {
+    int64_t addr_tensor_size = workspace_size_list[i];
     bool flag = CheckSize(op_type, addr_tensor_size);
     if (!flag) {
       return false;
