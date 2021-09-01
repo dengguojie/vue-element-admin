@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 from impl import roi_align_vbi
+from impl import roi_align_true
 from te.utils.error_manager import error_manager_vector
 
 
@@ -3551,6 +3552,12 @@ def roi_align(feature_map_dict,
     """
     dtype = feature_map_dict.get("dtype")
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if roi_end_mode == 2 and cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910):
+        if dtype != "float32":
+            raise RuntimeError("when roi_end_mode is 2, dtype only supports float32")
+
+        return roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_h, pool_w,
+                              sample_ratio, kernel_name)
 
     if ((cce_product in (tbe_platform.ASCEND_610, "Ascend615")) \
             and (dtype == "float16") and \

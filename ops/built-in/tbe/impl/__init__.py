@@ -254,6 +254,8 @@ from .square import square
 from .confusion_softmax_grad import confusion_softmax_grad
 from .confusion_transpose_d import confusion_transpose_d
 from .bn_training_update_v2 import bn_training_update_v2
+from .roi_align_true import roi_align_true
+from .roi_align_grad_pt import roi_align_grad_pt
 
 # hz it1
 from .asin_grad import asin_grad

@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 from te.utils.error_manager import error_manager_vector
+from impl import roi_align_grad_pt
 
 
 # C0 size
@@ -1319,7 +1320,7 @@ def roi_align_grad_compute_multicore(
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def roi_align_grad(y_diff,
                    rois,
                    rois_n,
@@ -1329,6 +1330,7 @@ def roi_align_grad(y_diff,
                    pooled_height,
                    spatial_scale,
                    sample_num,
+                   roi_end_mode=1,
                    kernel_name="roi_align_grad"):
     """
     algorithm: floor
@@ -1355,6 +1357,7 @@ def roi_align_grad(y_diff,
         spatial_scale
     sample_num: int
         sample_num
+    roi_end_mode: int
     kernel_name: str
         kernel name
 
@@ -1383,8 +1386,12 @@ def roi_align_grad(y_diff,
 
     output_grad_shape = x_diff.get("shape")
 
-    tik_instance = roi_align_grad_compute_multicore(
-        grad_shape, rois_shape, rois_shape[0], pooled_width, pooled_height,
-        spatial_scale, sample_num, output_grad_shape, kernel_name)
+    if roi_end_mode == 1:
+        tik_instance = roi_align_grad_compute_multicore(
+            grad_shape, rois_shape, rois_shape[0], pooled_width, pooled_height,
+            spatial_scale, sample_num, output_grad_shape, kernel_name)
+    else:
+        tik_instance = roi_align_grad_pt(y_diff, rois, x_diff, pooled_width, pooled_height, spatial_scale, sample_num,
+                                         roi_end_mode, kernel_name)
 
     return tik_instance
