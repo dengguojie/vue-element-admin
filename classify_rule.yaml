@@ -38,44 +38,50 @@ onnx:
     ut_check: true
     st_check: false
 
-auto_schdule:
+auto_schedule:
   commiter:
     "xxx"
-  team: "auto_schdule" ##组件名称
+  team: "auto_schedule" ##组件名称
   src:
     release:
-      - ops/built-in/op_tiling/broadcast.cc
-      - ops/built-in/op_tiling/broadcast.h
-      - ops/built-in/op_tiling/eletwise.cc
-      - ops/built-in/op_tiling/eletwise.h
-      - ops/built-in/op_tiling/error_log.h
-      - ops/built-in/op_tiling/lock.cc
-      - ops/built-in/op_tiling/lock.h
-      - ops/built-in/op_tiling/op_tiling.h
-      - ops/built-in/op_tiling/reduce_tiling.cc
-      - ops/built-in/op_tiling/reduce_tiling.h
-      - ops/built-in/op_tiling/tiling_dispatch.cc
-      - ops/built-in/op_tiling/vector_tiling.h
-      - ops/built-in/op_tiling/vector_tiling_log.h
+      - lang/cce/api.py
+      - lang/cce/auto_cast.py
+      - lang/cce/__init__.py
+      - lang/cce/te_compute/broadcast_compute.py
+      - lang/cce/te_compute/cast_compute.py
+      - lang/cce/te_compute/common.py
+      - lang/cce/te_compute/concat_compute.py
+      - lang/cce/te_compute/elewise_compute.py
+      - lang/cce/te_compute/__init__.py
+      - lang/cce/te_compute/inplace_compute.py
+      - lang/cce/te_compute/pooling2d_compute.py
+      - lang/cce/te_compute/reduction_compute.py
+      - lang/cce/te_compute/segment_compute.py
+      - lang/cce/te_compute/util.py
+      - lang/cce/te_schedule/cce_schedule_declarations.py
+      - lang/cce/te_schedule/cce_schedule.py
+      - lang/cce/te_schedule/__init__.py
+      - lang/cce/te_schedule/pattern.py
+      - lang/cce/te_schedule/util.py
       - tbe/common/context/__init__.py
       - tbe/common/context/op_context.py
       - tbe/common/context/op_info.py
-      - tbe/common/utils/AscendLog.py
-      - tbe/common/utils/__init__.py
       - tbe/common/utils/const.py
-      - tbe/common/utils/errormgr/__init__.py
-      - tbe/common/utils/errormgr/error_manager_vector.py
+      - tbe/common/utils/__init__.py
       - tbe/common/utils/log.py
       - tbe/common/utils/op_tiling.py
       - tbe/common/utils/para_check.py
       - tbe/common/utils/shape_util.py
-      - tbe/dsl/__init__.py
+      - tbe/common/utils/errormgr/errormanager.json
+      - tbe/common/utils/errormgr/error_manager_util.py
+      - tbe/common/utils/errormgr/error_manager_vector.py
+      - tbe/common/utils/errormgr/__init__.py
       - tbe/dsl/api.py
-      - tbe/dsl/base/__init__.py
-      - tbe/dsl/base/classifier/__init__.py
       - tbe/dsl/base/classifier/broadcast_elewise_classifier.py
       - tbe/dsl/base/classifier/elewise_classifier.py
+      - tbe/dsl/base/classifier/__init__.py
       - tbe/dsl/base/classifier/known_reduce_classifier.py
+      - tbe/dsl/base/classifier/mixed_reduce_classifier.py
       - tbe/dsl/base/classifier/norm_classifier.py
       - tbe/dsl/base/classifier/pure_elewise_classifier.py
       - tbe/dsl/base/classifier/reduce_classifier.py
@@ -84,38 +90,28 @@ auto_schdule:
       - tbe/dsl/base/classifier/util.py
       - tbe/dsl/base/context.py
       - tbe/dsl/base/expr_compare.py
+      - tbe/dsl/base/__init__.py
       - tbe/dsl/base/operation.py
       - tbe/dsl/base/shape_classifier.py
       - tbe/dsl/base/var.py
-      - tbe/dsl/compute/__init__.py
-      - tbe/dsl/compute/array.py
-      - tbe/dsl/compute/avg_pool2d.py
       - tbe/dsl/compute/cast.py
-      - tbe/dsl/compute/common.py
-      - tbe/dsl/compute/inplace.py
+      - tbe/dsl/compute/__init__.py
       - tbe/dsl/compute/math.py
       - tbe/dsl/compute/max_pool2d.py
       - tbe/dsl/compute/nn.py
       - tbe/dsl/compute/pooling2d.py
       - tbe/dsl/compute/reduce.py
       - tbe/dsl/compute/util.py
-      - tbe/dsl/instrinsic/__init__.py
-      - tbe/dsl/instrinsic/cce_emitinsn_params.py
-      - tbe/dsl/instrinsic/cce_intrin.py
-      - tbe/dsl/instrinsic/cce_intrin_md.py
-      - tbe/dsl/instrinsic/cce_util.py
-      - tbe/dsl/static_schedule/__init__.py
-      - tbe/dsl/static_schedule/avg_pool2d_schedule.py
-      - tbe/dsl/static_schedule/cce_schedule.py
+      - tbe/dsl/__init__.py
       - tbe/dsl/static_schedule/cce_schedule_declarations.py
       - tbe/dsl/static_schedule/cce_schedule_distribution_rules.py
       - tbe/dsl/static_schedule/cce_schedule_mappings.py
-      - tbe/dsl/static_schedule/concat_schedule.py
+      - tbe/dsl/static_schedule/cce_schedule.py
       - tbe/dsl/static_schedule/elewise_multi_schedule.py
       - tbe/dsl/static_schedule/elewise_schedule.py
       - tbe/dsl/static_schedule/elewise_schedule_new.py
       - tbe/dsl/static_schedule/elewise_speel_schedule.py
-      - tbe/dsl/static_schedule/inplace_schedule.py
+      - tbe/dsl/static_schedule/__init__.py
       - tbe/dsl/static_schedule/max_pool2d_schedule.py
       - tbe/dsl/static_schedule/op_pattern.py
       - tbe/dsl/static_schedule/pattern.py
@@ -126,15 +122,10 @@ auto_schdule:
       - tbe/dsl/static_schedule/reduce_5hdc_intrin.py
       - tbe/dsl/static_schedule/reduce_5hdc_schedule.py
       - tbe/dsl/static_schedule/reduce_atomic_schedule.py
-      - tbe/dsl/static_schedule/reduce_mean_mid_reduce_high_performance_schedule.py
       - tbe/dsl/static_schedule/reduce_multi_schedule.py
-      - tbe/dsl/static_schedule/segment_schedule.py
-      - tbe/dsl/static_schedule/segment_speel_schedule.py
-      - tbe/dsl/static_schedule/split_schedule.py
       - tbe/dsl/static_schedule/util.py
       - tbe/dsl/static_schedule/vector_schedule.py
       - tbe/dsl/static_schedule/workspace_multi_schedule.py
-      - tbe/dsl/unify_schedule/__init__.py
       - tbe/dsl/unify_schedule/auto_schedule.py
       - tbe/dsl/unify_schedule/broadcast_schedule.py
       - tbe/dsl/unify_schedule/broadcast_tilingcase.py
@@ -144,6 +135,9 @@ auto_schdule:
       - tbe/dsl/unify_schedule/elewise_schedule.py
       - tbe/dsl/unify_schedule/elewise_tilingcase.py
       - tbe/dsl/unify_schedule/empty_schedule.py
+      - tbe/dsl/unify_schedule/__init__.py
+      - tbe/dsl/unify_schedule/norm_schedule.py
+      - tbe/dsl/unify_schedule/norm_tilingcase.py
       - tbe/dsl/unify_schedule/pattern_parser.py
       - tbe/dsl/unify_schedule/reduce_atomic_schedule.py
       - tbe/dsl/unify_schedule/reduce_schedule.py
@@ -152,43 +146,39 @@ auto_schdule:
       - tbe/dsl/unify_schedule/unify_auto_schedule.py
       - tbe/dsl/unify_schedule/util.py
       - tbe/dsl/unify_schedule/vector_info.py
-      - tbe/dsl/unify_schedule/vector_schedule_base.py
       - tbe/dsl/unify_schedule/vector_schedule.py
+      - tbe/dsl/unify_schedule/vector_schedule_base.py
       - tbe/dsl/unify_schedule/vector_tilingcase.py
-      - te/lang/__init__.py
-      - te/lang/cce/__init__.py
-      - te/lang/cce/api.py
-      - te/lang/cce/auto_cast.py
-      - te/lang/cce/te_compute/__init__.py
-      - te/lang/cce/te_compute/broadcast_compute.py
-      - te/lang/cce/te_compute/cast_compute.py
-      - te/lang/cce/te_compute/common.py
-      - te/lang/cce/te_compute/concat_compute.py
-      - te/lang/cce/te_compute/elewise_compute.py
-      - te/lang/cce/te_compute/inplace_compute.py
-      - te/lang/cce/te_compute/irbuilder_api.py
-      - te/lang/cce/te_compute/pooling2d_compute.py
-      - te/lang/cce/te_compute/reduction_compute.py
-      - te/lang/cce/te_compute/segment_compute.py
-      - te/lang/cce/te_compute/util.py
-      - te/lang/cce/te_schedule/__init__.py
-      - te/lang/cce/te_schedule/cce_schedule.py
-      - te/lang/cce/te_schedule/cce_schedule_declarations.py
-      - te/lang/cce/te_schedule/pattern.py
-      - te/lang/cce/te_schedule/util.py
-      - te/lang/dynamic/__init__.py
-      - te/lang/dynamic/schedule/__init__.py
-      - te/lang/dynamic/schedule/constants.py
-      - te/lang/tune/__init__.py
-      - te/utils/AscendLog.py
-      - te/utils/__init__.py
-      - te/utils/cce.py
-      - te/utils/error_manager/__init__.py
-      - te/utils/error_manager/error_manager_vector.py
-      - te/utils/op_utils.py
-      - te/utils/para_check.py
-      - te/utils/shape_util.py
-      - te/utils/tbe_log.py
+      - utils/cce.py
+      - utils/error_manager/error_manager_util.py
+      - utils/error_manager/error_manager_vector.py
+      - utils/error_manager/__init__.py
+      - utils/__init__.py
+      - utils/op_utils.py
+      - utils/para_check.py
+      - utils/shape_util.py
+      - utils/tbe_log.py
+      - ops/built-in/op_tiling/broadcast.cc
+      - ops/built-in/op_tiling/broadcast.h
+      - ops/built-in/op_tiling/eletwise.cc
+      - ops/built-in/op_tiling/eletwise.h
+      - ops/built-in/op_tiling/lock.cc
+      - ops/built-in/op_tiling/lock.h
+      - ops/built-in/op_tiling/norm.cc
+      - ops/built-in/op_tiling/norm.h
+      - ops/built-in/op_tiling/op_tiling.h
+      - ops/built-in/op_tiling/reduce_tiling.cc
+      - ops/built-in/op_tiling/reduce_tiling.h
+      - ops/built-in/op_tiling/tiling_dispatch.cc
+      - ops/built-in/op_tiling/vector_tiling.h
+      - ops/built-in/op_tiling/vector_tiling_log.h
+      - ops/built-in/op_tiling/broadcast_v2.cc
+      - ops/built-in/op_tiling/broadcast_v2.h
+      - ops/built-in/op_tiling/eletwise_v2.cc
+      - ops/built-in/op_tiling/eletwise_v2.h
+      - ops/built-in/op_tiling/reduce_tiling_v2.cc
+      - ops/built-in/op_tiling/reduce_tiling_v2.h
+      - tbe/dsl/unify_schedule/vector/      
     unrelease:
     llt:
       ut_check: true
