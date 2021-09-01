@@ -17,7 +17,6 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
-from impl.dynamic.replication_pad_v3_grad import replication_pad_v3_grad
 
 # max int64
 MAX_INT64 = 2 ** 64 - 1
@@ -44,9 +43,9 @@ PER2 = 2
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
 # pylint: disable=too-many-arguments,invalid-name
-class PadV3GradInit(object):
+class ReplicationPadV3GradInit(object):
     """
-    Function: class that execute pad_v3_grad
+    Function: class that execute replication_pad_v3_grad
     """
 
     def __init__(self, x, paddings, y, mode, padding_contiguous=True,
@@ -114,7 +113,7 @@ class PadV3GradInit(object):
         self.padding_index_2 = self.tik_instance.Scalar(self.tiling_dtype, "padding_index_2", init_value=0)
         self.padding_index_3 = self.tik_instance.Scalar(self.tiling_dtype, "padding_index_3", init_value=0)
 
-        # core scaler init
+        # core scalar init
         self.core_uesd_num = self.tik_instance.Scalar(self.tiling_dtype, "core_uesd_num", init_value=0)
         self.not_last_core_num = self.tik_instance.Scalar(self.tiling_dtype, "not_last_core_num", init_value=0)
         self.last_core_num = self.tik_instance.Scalar(self.tiling_dtype, "last_core_num", init_value=0)
@@ -183,9 +182,9 @@ class PadV3GradInit(object):
         self.input_gm = self.input_gm_list[pad_input_idx]
         self.output_gm = self.output_gm_list[pad_outnput_idx]
 
-    def pad_v3_grad_compute_tiling(self):
+    def replication_pad_v3_grad_compute_tiling(self):
         """
-        pad_v3_grad_compute_tiling
+        replication_pad_v3_grad_compute_tiling
         """
         tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,),
                                              name="tiling_ub", scope=tik.scope_ubuf)
@@ -202,8 +201,8 @@ class PadV3GradInit(object):
         """
         ub_size_second_mode = 2
         per_ub_size = self.ub_size_bytes // self.inner_bytes_size // ub_size_second_mode
-        align_input_dim_2 = self.tik_instance.Scalar('int64', name='align_output_dim_2')
-        align_input_dim_3 = self.tik_instance.Scalar('int64', name='align_output_dim_3')
+        align_input_dim_2 = self.tik_instance.Scalar('int64', name='align_input_dim_2')
+        align_input_dim_3 = self.tik_instance.Scalar('int64', name='align_input_dim_3')
         time_2 = self.tik_instance.Scalar('int64', name='time_2')
         time_3 = self.tik_instance.Scalar('int64', name='time_3')
         input_ele_per_core = self.tik_instance.Scalar('int64', name='input_ele_per_core')
@@ -222,12 +221,12 @@ class PadV3GradInit(object):
         time_2.set_as(align_input_dim_2 // TRANS_MIN_BLKS)
         time_3.set_as(align_input_dim_3 // TRANS_MIN_BLKS)
         units.set_as((TRANS_MIN_BLKS - 1) // (self.tiling_output_dim_2 * self.tiling_output_dim_3) + 1)
-        first_ub_need_first_move_lines.set_as(units * self.tiling_output_dim_2 -
-                                              TRANS_MIN_BLKS // self.tiling_output_dim_3)
-        first_ub_not_complete_offset.set_as(self.tiling_output_dim_3 - ((TRANS_MIN_BLKS - (units - 1) *
-                                                                         self.tiling_output_dim_3 *
-                                                                         self.tiling_output_dim_2) %
-                                                                        self.tiling_output_dim_3))
+        first_ub_need_first_move_lines.set_as(units * self.tiling_output_dim_2
+                                              - TRANS_MIN_BLKS // self.tiling_output_dim_3)
+        first_ub_not_complete_offset.set_as(self.tiling_output_dim_3 - ((TRANS_MIN_BLKS - (units - 1)
+                                                                        * self.tiling_output_dim_3
+                                                                        * self.tiling_output_dim_2)
+                                                                        % self.tiling_output_dim_3))
         first_ub_need_last_move_lines.set_as((TRANS_MIN_BLKS - (units - 1) * self.tiling_output_dim_3 *
                                               self.tiling_output_dim_2) // self.tiling_output_dim_3)
         first_ub_first_offset.set_as((first_ub_need_first_move_lines - 1)
@@ -257,50 +256,42 @@ class PadV3GradInit(object):
                 loop.set_as(align_input_dim_3 // MAX_MASK)
                 remain_mask.set_as(align_input_dim_3 % MAX_MASK)
                 with self.tik_instance.for_range(0, self.tiling_input_dim_2) as i:
-                    self.tik_instance.data_move(ping_ub_1[i * align_input_dim_3], 
-                                                self.input_gm[core_index * input_ele_per_core 
-                                                              + index * self.tiling_input_dim_2 
-                                                              * self.tiling_input_dim_3 
-                                                              + i * self.tiling_input_dim_3],
+                    self.tik_instance.data_move(ping_ub_1[i * align_input_dim_3],
+                                                          self.input_gm[core_index * input_ele_per_core
+                                                          + index * self.tiling_input_dim_2 * self.tiling_input_dim_3
+                                                          + i * self.tiling_input_dim_3],
                                                 0, 1, align_input_dim_3 // self.block_num, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_2) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
+                                              ping_ub_1[self.padding_index_2 * align_input_dim_3],
+                                              ping_ub_1[self.padding_index_2 * align_input_dim_3],
                                               ping_ub_1[i * align_input_dim_3],
                                               loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
                         self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[i * align_input_dim_3 + loop * MAX_MASK],
-                                                  1, 8, 8, 8)
+                                                ping_ub_1[self.padding_index_2 * align_input_dim_3 + loop * MAX_MASK],
+                                                ping_ub_1[self.padding_index_2 * align_input_dim_3 + loop * MAX_MASK],
+                                                ping_ub_1[i * align_input_dim_3 + loop * MAX_MASK],
+                                                1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, self.padding_index_3) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) *
+                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3) *
                                                         align_input_dim_3],
-                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) *
+                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3) *
                                                         align_input_dim_3],
                                               ping_ub_1[(self.tiling_input_dim_2 - 1 - i) * align_input_dim_3],
                                               loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
                         self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[(self.tiling_input_dim_2 - 1 - 
-                                                            self.padding_index_3 * 2 + i) *
+                                                    ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3) *
                                                             align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.tiling_input_dim_2 - 1 - 
-                                                            self.padding_index_3 * 2 + i) *
+                                                    ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3) *
                                                             align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.tiling_input_dim_2 - 1 - i) 
-                                                            * align_input_dim_3
+                                                    ping_ub_1[(self.tiling_input_dim_2 - 1 - i) * align_input_dim_3
                                                             + loop * MAX_MASK],
-                                                  1, 8, 8, 8)
+                                                    1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, time_2) as i:
                     with self.tik_instance.for_range(0, time_3) as j:
@@ -318,39 +309,32 @@ class PadV3GradInit(object):
                 remain_mask.set_as(align_input_dim_2 % MAX_MASK)
                 with self.tik_instance.for_range(0, self.padding_index_0) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_input_dim_2],
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_input_dim_2],
+                                              pang_ub_1[self.padding_index_0 * align_input_dim_2],
+                                              pang_ub_1[self.padding_index_0 * align_input_dim_2],
                                               pang_ub_1[i * align_input_dim_2], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
                         self.tik_instance.vec_add(remain_mask,
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[i * align_input_dim_2 + MAX_MASK * loop], 1, 8, 8, 8)
+                                                pang_ub_1[self.padding_index_0 * align_input_dim_2 + MAX_MASK * loop],
+                                                pang_ub_1[self.padding_index_0 * align_input_dim_2 + MAX_MASK * loop],
+                                                pang_ub_1[i * align_input_dim_2 + MAX_MASK * loop], 1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, self.padding_index_1) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) *
+                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1) *
                                                         align_input_dim_2],
-                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) *
+                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1) *
                                                         align_input_dim_2],
                                               pang_ub_1[(self.tiling_input_dim_3 - 1 - i) * align_input_dim_2],
                                               loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
                         self.tik_instance.vec_add(remain_mask,
-                                                  pang_ub_1[(self.tiling_input_dim_3 - 1 - 
-                                                            self.padding_index_1 * 2 + i) *
+                                                pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1) *
                                                             align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[(self.tiling_input_dim_3 - 1 - 
-                                                            self.padding_index_1 * 2 + i) *
+                                                pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1) *
                                                             align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[(self.tiling_input_dim_3 - 1 - i) 
-                                                            * align_input_dim_2
+                                                pang_ub_1[(self.tiling_input_dim_3 - 1 - i) * align_input_dim_2
                                                             + MAX_MASK * loop],
-                                                  1, 8, 8, 8)
+                                                1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, time_2) as i:
                     with self.tik_instance.for_range(0, time_3) as j:
@@ -514,29 +498,22 @@ class PadV3GradInit(object):
             remain_mask.set_as(align_input_dim_3 % MAX_MASK)
             with self.tik_instance.for_range(0, ranges) as index:
                 with self.tik_instance.for_range(0, TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(ping_ub_1[i * align_input_dim_3], self.input_gm[core_index *
-                                                                                                input_ele_per_core +
-                                                                                                index *
-                                                                         self.tiling_input_dim_2 *
-                                                                    self.tiling_input_dim_3 + i *
-                                                                                            self.tiling_input_dim_3]
+                    self.tik_instance.data_move(ping_ub_1[i * align_input_dim_3],
+                                                self.input_gm[core_index * input_ele_per_core
+                                                + index * self.tiling_input_dim_2 * self.tiling_input_dim_3 + i
+                                                * self.tiling_input_dim_3]
                                                 , 0, 1, align_input_dim_3 // self.block_num, 0, 0)
-
 
                 with self.tik_instance.for_range(0, self.padding_index_2) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
+                                              ping_ub_1[self.padding_index_2 * align_input_dim_3],
+                                              ping_ub_1[self.padding_index_2 * align_input_dim_3],
                                               ping_ub_1[i * align_input_dim_3],
                                               loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
                         self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
+                                                  ping_ub_1[self.padding_index_2 * align_input_dim_3 + loop * MAX_MASK],
+                                                  ping_ub_1[self.padding_index_2 * align_input_dim_3 + loop * MAX_MASK],
                                                   ping_ub_1[i * align_input_dim_3 + loop * MAX_MASK],
                                                   1, 8, 8, 8)
 
@@ -551,10 +528,10 @@ class PadV3GradInit(object):
                 with self.tik_instance.for_range(0, self.padding_index_3) as i:
                     self.tik_instance.vec_add(MAX_MASK,
                                               ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                        (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
+                                                        (TRANS_MIN_BLKS - 1 - self.padding_index_3) *
                                                         align_input_dim_3],
                                               ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                        (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
+                                                        (TRANS_MIN_BLKS - 1 - self.padding_index_3) *
                                                         align_input_dim_3],
                                               ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
                                                         (TRANS_MIN_BLKS - 1 - i) * align_input_dim_3],
@@ -562,10 +539,10 @@ class PadV3GradInit(object):
                     with self.tik_instance.if_scope(remain_mask > 0):
                         self.tik_instance.vec_add(remain_mask,
                                                   ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                            (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
+                                                            (TRANS_MIN_BLKS - 1 - self.padding_index_3) *
                                                             align_input_dim_3 + loop * MAX_MASK],
                                                   ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                            (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
+                                                            (TRANS_MIN_BLKS - 1 - self.padding_index_3) *
                                                             align_input_dim_3 + loop * MAX_MASK],
                                                   ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
                                                             (TRANS_MIN_BLKS - 1 - i) * align_input_dim_3 +
@@ -610,17 +587,14 @@ class PadV3GradInit(object):
                 remain_mask_col.set_as(align_inter % MAX_MASK)
                 with self.tik_instance.for_range(0, self.padding_index_0) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_inter],
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_inter], pang_ub_1[i * align_inter],
+                                              pang_ub_1[self.padding_index_0 * align_inter],
+                                              pang_ub_1[self.padding_index_0 * align_inter],
+                                              pang_ub_1[i * align_inter],
                                               loop_col, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask_col > 0):
                         self.tik_instance.vec_add(remain_mask_col,
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_inter + loop_col * MAX_MASK],
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_inter + loop_col * MAX_MASK],
+                                                  pang_ub_1[self.padding_index_0 * align_inter + loop_col * MAX_MASK],
+                                                  pang_ub_1[self.padding_index_0 * align_inter + loop_col * MAX_MASK],
                                                   pang_ub_1[i * align_inter + loop_col * MAX_MASK],
                                                   1, 8, 8, 8)
 
@@ -634,8 +608,7 @@ class PadV3GradInit(object):
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 self.tik_instance.data_move(self.work_space[core_index * WORK_SIZE], ping_ub_1, 0,
-                                            1, TRANS_MIN_BLKS * 2 *
-                                            align_input_dim_3 // self.block_num, 0, 0)
+                                            1, TRANS_MIN_BLKS * 2 * align_input_dim_3 // self.block_num, 0, 0)
 
                 with self.tik_instance.for_range(self.padding_index_2, TRANS_MIN_BLKS) as i:
                     self.tik_instance.data_move(block_ub,
@@ -674,16 +647,17 @@ class PadV3GradInit(object):
 
                 with self.tik_instance.for_range(0, self.padding_index_1) as i:
                     self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
+                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1) *
                                                         align_inter],
-                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
-                                                        align_inter], pang_ub_2[(TRANS_MIN_BLKS - 1 - i) * align_inter],
+                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1) *
+                                                        align_inter],
+                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - i) * align_inter],
                                               loop_col, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask_col > 0):
                         self.tik_instance.vec_add(remain_mask_col,
-                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
+                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1) *
                                                             align_inter + loop_col * MAX_MASK],
-                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
+                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1) *
                                                             align_inter + loop_col * MAX_MASK],
                                                   pang_ub_2[(TRANS_MIN_BLKS - 1 - i) * align_inter +
                                                             loop_col * MAX_MASK], 1, 8, 8, 8)
@@ -821,7 +795,7 @@ class PadV3GradInit(object):
         """
         pad_grad_compute
         """
-        self.pad_v3_grad_compute_tiling()
+        self.replication_pad_v3_grad_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True}
 
         # add compile info
@@ -841,12 +815,14 @@ class PadV3GradInit(object):
 
 
 @register_operator("PadV3Grad")
-def pad_v3_grad(x, paddings, y, mode='reflect', padding_contiguous=True, kernel_name="pad_v3_grad"):
+def replication_pad_v3_grad(x, paddings, y, mode='edge',
+                            padding_contiguous=True,
+                            kernel_name="replication_pad_v3_grad"):
     """ calculating pad_v3_grad tensor by paddings parameters
 
     Parameters
     ----------
-    x : dict
+    x: dict
         shape and dtype of input
     paddings: dict
         shape and dtype of output
@@ -855,7 +831,7 @@ def pad_v3_grad(x, paddings, y, mode='reflect', padding_contiguous=True, kernel_
         before the contents of tensor in that dimension, and paddings[D, 1]
         indicates
         how many values to add after the contents of tensor in that dimension.
-    y : dict
+    y: dict
         shape and dtype of output
     mode : str
         the mode of pad
@@ -868,14 +844,11 @@ def pad_v3_grad(x, paddings, y, mode='reflect', padding_contiguous=True, kernel_
     -------
     None.
     """
-    if mode == "reflect":
-        src_dtype = x.get("dtype").lower()
-        paddings_dtype = paddings.get("dtype").lower()
-        supported_dtype = ("float16")
-        para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
-        para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
-        obj = PadV3GradInit(x, paddings, y, mode, padding_contiguous, kernel_name)
-        obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
-        return obj.pad_grad_compute()
-    elif mode == "edge":
-        return replication_pad_v3_grad(x, paddings, y, mode, padding_contiguous, kernel_name)
+    src_dtype = x.get("dtype").lower()
+    paddings_dtype = paddings.get("dtype").lower()
+    supported_dtype = ("float16")
+    para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
+    para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
+    obj = ReplicationPadV3GradInit(x, paddings, y, mode, padding_contiguous, kernel_name)
+    obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
+    return obj.pad_grad_compute()

@@ -35,7 +35,24 @@ case1 = {
     "support_expect": True
 }
 
+case2 = {
+    "params": [
+        {"shape": (-1, -1, -1, -1), "dtype": "float16", "ori_shape": (-1, -1, -1, -1),
+        "format": "ND", "ori_format": "ND", "range": ((-1, 1), (-1, 1), (-1, 1), (-1, 1))},
+        {"shape": (-1), "dtype": "int32", "ori_shape": (-1),
+        "format": "ND", "ori_format": "ND", "range": ((1, -1))},
+        {"shape": (-1, -1, -1, -1), "dtype": "float16", "ori_shape": (-1, -1, -1, -1),
+        "format": "ND", "ori_format": "ND", "range": ((1, -1), (1, -1), (-1, -1), (-1, -1))},
+        "edge"
+    ],
+    "case_name": "dynamic_pad_v3_grad_02",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
 ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case1)
+ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case2)
 
 if __name__ == '__main__':
     ut_case.run("Ascend310","Ascend710","Ascend910A")
