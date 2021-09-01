@@ -331,6 +331,8 @@ from .layer_norm_grad import layer_norm_grad
 from .l1_loss_grad import l1_loss_grad
 from .bn_training_update_grad import bn_training_update_grad
 from .lp_loss import lp_loss
+from .lp_norm_reduce import lp_norm_reduce
+from .lp_norm_update import lp_norm_update
 from .lp_norm import lp_norm
 from .masked_scale import masked_scale
 from .scatter_non_aliasing_add import scatter_non_aliasing_add

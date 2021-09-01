@@ -939,6 +939,71 @@ COMMON_INFER_FUNC_REG(LpNorm, LpNormInfer);
 VERIFY_FUNC_REG(LpNorm, LpNormVerify);
 // ----------------LpNorm END---------------------
 
+// ----------------LpNormReduce Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(LpNormReduceInfer) {;
+  Shape x_shape = op.GetInputDescByName("x").GetShape();
+  DataType x_type = op.GetInputDescByName("x").GetDataType();
+  Format x_format = op.GetInputDescByName("x").GetFormat();
+  size_t dim_num = x_shape.GetDimNum();
+  std::vector<int64_t> x_axes = {};
+  std::vector<int64_t> new_axes = {};
+  std::vector<int64_t> y_vec = {};
+  std::vector<int64_t> x_dim_members = x_shape.GetDims();
+  bool keep_dim = false;
+  int32_t indice;
+  (void)op.GetAttr("keepdim", keep_dim);
+  if (op.GetAttr("axes", x_axes) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "axes will use default value");
+  }
+  if (x_axes.empty()) {
+    for (size_t i = 0; i < dim_num; i++) {
+      new_axes.push_back(static_cast<int64_t>(i));
+    }
+  } else {
+    for (size_t i = 0; i < x_axes.size(); i++) {
+      indice = (x_axes[i] < 0) ? (x_axes[i] + dim_num) : x_axes[i];
+      new_axes.push_back(indice);
+    }
+  }
+  for (size_t i = 0; i < x_shape.GetDimNum(); i++) {
+    if (find(new_axes.begin(), new_axes.end(), i) != new_axes.end()) {
+      if (keep_dim == true) {
+        y_vec.push_back(1);
+      }
+    } else {
+      y_vec.push_back(x_dim_members[i]);
+    }
+  }
+  ge::Shape output_shape(y_vec);
+  // update output desc
+  ge::TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(output_shape);
+  if (x_axes.empty()) {
+    std::vector<std::pair<int64_t, int64_t>> o_range;
+    output_desc.SetShapeRange(o_range);
+  }
+  output_desc.SetDataType(x_type);
+  output_desc.SetFormat(x_format);
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(LpNormReduce, LpNormReduceInfer);
+// ----------------LpNormReduce END---------------------
+
+// ----------------LpNormUpdate Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(LpNormUpdateInfer) {
+  Shape x_shape =  op.GetInputDescByName("x").GetShape();
+  DataType x_type =  op.GetInputDescByName("x").GetDataType();
+  // update output desc
+  ge::TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(x_shape);
+  output_desc.SetDataType(x_type);
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(LpNormUpdate, LpNormUpdateInfer);
+// ----------------LpNormUpdate END---------------------
+
 // ----------------Trunc---------------------
 IMPLEMT_COMMON_INFERFUNC(TruncInferShape) {
     TensorDesc output_desc = op.GetOutputDesc("output_y");
