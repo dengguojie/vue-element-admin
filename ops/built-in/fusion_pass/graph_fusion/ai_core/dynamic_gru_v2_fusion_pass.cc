@@ -414,6 +414,12 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     return NOT_CHANGED;
   }
 
+  int64_t input_x = gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(2);
+  int64_t hidden_size = gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0);
+  if ((input_x % 16 != 0) || (hidden_size % 16 != 0)) {
+    return NOT_CHANGED;
+  }
+
   bool split = false;
   if (!JudgeSplit(gru_node, split)) {
     return FAILED;

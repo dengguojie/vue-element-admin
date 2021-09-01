@@ -864,7 +864,12 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
 
   int64_t num_step = shape_x.GetDims().at(0);
   int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t input_size = shape_x.GetDims().at(2);
   int64_t hidden_size = shape_w_hidden.GetDims().at(0);
+  bool flag_transdatarnn = false;
+  if ((input_size % 16 != 0) || (hidden_size % 16 != 0)) {
+    flag_transdatarnn = true;
+  }
 
   vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
 
@@ -895,8 +900,16 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
   CHECK(op.UpdateOutputDesc("hidden_new", new_tensor_desc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
-  w_input_tensor_desc.SetFormat(FORMAT_HWCN);
-  w_hidden_tensor_desc.SetFormat(FORMAT_HWCN);
+  if (flag_transdatarnn) {
+    w_input_tensor_desc.SetFormat(FORMAT_ND);
+    w_hidden_tensor_desc.SetFormat(FORMAT_ND);
+    ge::AttrUtils::SetInt(op_desc, "input_size", input_size);
+    ge::AttrUtils::SetInt(op_desc, "hidden_size", hidden_size);
+  } else {
+    w_input_tensor_desc.SetFormat(FORMAT_HWCN);
+    w_hidden_tensor_desc.SetFormat(FORMAT_HWCN);
+  }
+  
   CHECK(op.UpdateInputDesc("weight_input", w_input_tensor_desc) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateIntputDesc failed."), return GRAPH_FAILED);
   CHECK(op.UpdateInputDesc("weight_hidden", w_hidden_tensor_desc) != GRAPH_SUCCESS,
