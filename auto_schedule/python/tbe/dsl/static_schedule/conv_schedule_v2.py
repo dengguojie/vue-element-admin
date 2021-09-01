@@ -21,13 +21,13 @@ from collections import deque
 from functools import reduce
 from tbe import tvm
 from tbe.common.platform import platform_info as cce
-from te.platform.cce_params import scope_fb0, scope_fb1
+from te.platform.cce_params import scope_fb0, scope_fb1, scope_bt
 from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.static_schedule import util
-import pdb
+
 
 NON_L1_FUSION = -1
 DEPTH_L1_FUSION = 0
@@ -78,8 +78,8 @@ class FixpipeFusion:
     Class of fixpipe on-the-fly fusion.
     """
     def __init__(self):
-        self.quant_mode = None
-        self.relu_mode = None
+        self.quant_pre_flag = False
+        self.relu_pre_flag = False
         self.weight_input = None
         self.inline_tensors = []
         self.fixpipe_inputs = [] # scale of dequant/requant, weight_input of prelu
@@ -95,7 +95,8 @@ class FixpipeFusion:
         while tensor_queue:
             src_tensor = tensor_queue.popleft()
             tag = src_tensor.op.tag
-            if tag == "convolution_c_col":
+
+            if tag in ("convolution_c_col", "convolution_c_col_bias"):
                 break
             if is_placeholder(src_tensor):
                 self.fixpipe_inputs.append(src_tensor)
@@ -104,6 +105,9 @@ class FixpipeFusion:
 
             if tag == "elewise_binary_add" and "weight_input" in src_tensor.op.attrs:
                 self.weight_input = src_tensor.op.attrs["weight_input"].op.input_tensors[0]
+                self.relu_pre_flag = True
+            if tag in ("dequant_remove_pad", "requant_remove_pad"):
+                self.quant_pre_flag = True
 
             if src_tensor.op.input_tensors:
                 append_list = list(i for i in src_tensor.op.input_tensors)
@@ -113,6 +117,12 @@ class FixpipeFusion:
         self.inline_tensors = self.inline_tensors[1: ] # res cannot be inlined
         self.inline_tensors = list(set(self.inline_tensors))
         self.fixpipe_inputs = list(set(self.fixpipe_inputs))
+
+    def fetch_quant_relu_flag(self):
+        """
+        fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
+        """
+        return self.quant_pre_flag, self.relu_pre_flag
 
     def fixpipe_inputs_set_scope(self, sch, op_graph):
         """
@@ -133,12 +143,12 @@ class FixpipeFusion:
             input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
             self.cache_read_tensors.extend([input_fb, input_l1])
 
-    def fixpipe_inputs_compute_at(self, sch, res, bindcore_axis):
+    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis):
         """
         Attach the inputs of fixpipe fusion ops to res tensor.
         """
         for tensor in self.cache_read_tensors:
-            sch[tensor].compute_at(sch[res], bindcore_axis)
+            sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
 
     def inline_fixpipe_tensor(self, sch):
         """
@@ -170,12 +180,44 @@ class InputNd2Nz:
         sch[al1].set_scope(scope_al1)
         return al1
 
+    def inline_input_nd_dynamic(self, sch, tensor_map, dynamic_flag):
+        """
+        inline al1 in nd2nz dynamic situation (group = 1).
+        """
+        if self.flag and dynamic_flag:
+            input_nd_dynamic = tensor_map["fmap"]
+            sch[input_nd_dynamic].compute_inline()
+
     def al1_nd2nz_emit_insn(self, sch, al1):
         """
         Dma for the al1 tensor in nd2nz situation.
         """
         sch[al1].emit_insn(al1.op.axis[1],
-                           'dma_copy',
+                           "dma_copy",
+                           {"layout_transform": "nd2nz"})
+
+
+class WeightNd2Nz:
+    """
+    Class of weight nd2nz.
+    """
+    def __init__(self, conv_param):
+        self.flag = conv_param.weight_nd_flag
+
+    def check_bl1_nd2nz_tiling(self, tiling):
+        """
+        Check whether the bl1 tiling is None in weight nd2nz situation.
+        """
+        if self.flag and tiling["BL1_shape"] is None:
+            err_man.raise_err_specific(
+                "conv2d", "BL1 tiling cannot be None when weight nd2nz.")
+
+    def bl1_nd2nz_emit_insn(self, sch, bl1):
+        """
+        Dma for the bl1 tensor in weight nd2nz situation.
+        """
+        sch[bl1].emit_insn(bl1.op.axis[0],
+                           "dma_copy",
                            {"layout_transform": "nd2nz"})
 
 
@@ -191,7 +233,7 @@ class OutputNz2Nd:
         Emit insn for res in output nz2nd situation.
         """
         sch[res].emit_insn(res_pragma_axis,
-                           'dma_copy',
+                           "dma_copy",
                            attrs={"layout_transform": "nz2nd"})
 
 
@@ -321,6 +363,7 @@ class AippFusion:
                         "crop_size_w": aipp_map["crop_size_w"]}
         sch[al1].emit_insn(al1.op.axis[1], "load_image_to_cbuf", aipp_map_res)
 
+
 class DynamicShape:
     """
     Class of dynamic shape.
@@ -429,7 +472,7 @@ class DynamicShape:
 
             if al1_tiling:
                 multi_m_al1 = tiling_param["multi_m_al1"]
-                k_al1 = tiling_param["k_al1"]
+                k1_al1 = tiling_param["k1_al1"]
                 m_al1 = multi_m_al1 * m_cl0
                 if self.hw_dynamic:
                     additional_rows = tvm.select(
@@ -444,7 +487,7 @@ class DynamicShape:
                     else:
                         additional_rows = 2
                 m_al1 = modify_m_for_load3d()
-                al1_bound = m_al1*k_al1*in_c0
+                al1_bound = m_al1*k1_al1*in_c0
             else:
                 if strideh_opti_flag:
                     in_height = (in_height - 1) // stride_h + 1
@@ -468,7 +511,7 @@ class DynamicShape:
         if self.hw_dynamic:
             sch[res].pragma(res_pragma_axis, "gm_no_sync", 1)
 
-    def dynamic_mode_im2col_v2(self, sch, conv_param, tensor_param, tiling_param, emit_insn_dict):
+    def dynamic_mode_im2col_v2(self, sch, conv_param, tensor_param, tiling_param, emit_insn_dict, input_nd_flag):
         """
         Use im2col_v2 in dynamic shape situation.
         """
@@ -512,8 +555,13 @@ class DynamicShape:
             'group_flag': 1,
             'l1_group_flag': 1
         }
-        sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', im2col_attr)
+
         sch[al0].emit_insn(dynamic_al0_pragma_axis, 'im2col_v2', im2col_attr_0)
+        if input_nd_flag:
+            im2col_attr.update({"layout_transform": "nd2nz"})
+            sch[al1].emit_insn(al1.op.axis[2], "dma_copy", im2col_attr)
+        else:
+            sch[al1].emit_insn(al1.op.axis[0], "dma_copy", im2col_attr)
 
 
 class StridedRead:
@@ -598,8 +646,8 @@ class Im2colDma:
         """
         Emit insn for al1_im2col and al0.
         """
-        sch[al1_im2col].emit_insn(al1_im2col.op.axis[5], 'dma_copy')
-        sch[al0].emit_insn(al0_axis_list[0], 'dma_copy')
+        sch[al1_im2col].emit_insn(al1_im2col.op.axis[5], "dma_copy")
+        sch[al0].emit_insn(al0_axis_list[0], "dma_copy")
 
 
 class InnerBatch:
@@ -728,6 +776,8 @@ class Conv2dSchedule:
         self._co1_opt = self._para_dict["cout1_opt"]
         self._batch, self._in_c1, self._in_height, self._in_width, self._in_c0 = self._para_dict["a_shape"]
         self._quant_fusion_muti_groups_in_cl0 = self._co1_opt % 2 == 1 and self._group_opt > 1 and res.dtype == "int8"
+        self._bias_tensor = self._para_dict["bias_tensor"]
+        self._bias_flag = self._bias_tensor is not None
 
         # self._tiling params
         self._tiling_query_param = conv_param.tiling_query_param
@@ -740,6 +790,7 @@ class Conv2dSchedule:
         #====================create feature instance=============================
         self._fixpipe_fusion = FixpipeFusion()
         self._input_nd2nz = InputNd2Nz(conv_param)
+        self._weight_nd2nz = WeightNd2Nz(conv_param)
         self._output_nz2nd = OutputNz2Nd(res)
         self._lx_fusion = LxFusion(conv_param)
         self._aipp_fusion = AippFusion(conv_param)
@@ -774,6 +825,7 @@ class Conv2dSchedule:
         c_shape = tiling_query_param["c_shape"]
         mad_dtype = tiling_query_param["mad_dtype"]
         bias_flag = tiling_query_param["bias_flag"]
+        quant_pre_flag, relu_pre_flag = self._fixpipe_fusion.fetch_quant_relu_flag()
 
         # group conv, send one group_opt a, b, c shape to tiling
         info_dict = {"op_type": 'conv2d',
@@ -790,13 +842,15 @@ class Conv2dSchedule:
                      "dilation": [self._dilate_h, self._dilate_w],
                      "group": self._group_opt,
                      "bias_flag": bias_flag,
+                     "fixpipe_buffer_dict": {"quant_pre_flag": quant_pre_flag, "relu_pre_flag": relu_pre_flag},
                      "in_fm_memory_type": self._lx_fusion.input_memory_type,
                      "out_fm_memory_type": self._lx_fusion.output_memory_type,
                      "l1_fusion_type": self._lx_fusion.l1_fusion_type,
                      "fm_l1_valid_size": self._lx_fusion.fmap_l1_valid_size,
                      "fusion_type": self._fusion_type,
                      "kernel_name": conv_param.kernel_name,
-                     "special_mode": {"use_c04_mode": 2 if self._c04.flag else 0}, # 3 for v220 c04
+                     "special_mode": {"use_c04_mode": 2 if self._c04.flag else 0, # 3 for v220 c04
+                                      "input_nd_flag": self._input_nd2nz.flag},
                      "placeholder_fmap_5hd_shape": list(self._dim_map["fmap_5hd_shape"]),
                      #=============to be deleted====================
                      "fused_coefficient": [0, 0, 0],
@@ -930,6 +984,8 @@ class Conv2dSchedule:
 
         self._lx_fusion.check_l1fusion_tiling(tiling)
 
+        self._weight_nd2nz.check_bl1_nd2nz_tiling(tiling)
+
         self._dynamic_shape.check_dynamic_overhead_opt_flag(tiling)
 
         self._inner_batch.set_l0b_innerbatch_flag(tiling, batch_cl0)
@@ -1001,6 +1057,9 @@ class Conv2dSchedule:
             """
             if self._tiling["BL1_shape"] is None:
                 bl1 = None
+            elif self._weight_nd2nz.flag:
+                bl1 = weight
+                sch[bl1].set_scope(cce.scope_cbuf)
             else:
                 bl1 = sch.cache_read(weight, cce.scope_cbuf, [cl0])
             return bl1
@@ -1014,6 +1073,17 @@ class Conv2dSchedule:
             else:
                 bl0 = sch.cache_read(bl1, cce.scope_cb, [cl0])
             return bl0
+
+        def config_bias():
+            """
+            Config bias scope.
+            """
+            if self._bias_flag:
+                bias_l1 = sch.cache_read(self._bias_tensor, cce.scope_cbuf, [cl0])
+                bias_bt = sch.cache_read(bias_l1, scope_bt, [cl0])
+                return bias_l1, bias_bt
+
+            return None, None
 
         #========set scope && cache_read && cache_write==========
         tensor_map = self._tensor_map
@@ -1030,6 +1100,7 @@ class Conv2dSchedule:
         al0 = config_al0()
         bl1 = config_bl1()
         bl0 = config_bl0()
+        bias_l1, bias_bt = config_bias()
 
         self._fixpipe_fusion.fixpipe_inputs_set_scope(sch, self._op_graph)
 
@@ -1037,7 +1108,8 @@ class Conv2dSchedule:
                         "fmap": fmap, "weight": weight,
                         "fmap_row_major": fmap_row_major, "fmap_row_major_reshape": fmap_row_major_reshape,
                         "al1_im2col": al1_im2col,
-                        "al0": al0, "bl0": bl0, "cl0": cl0}
+                        "al0": al0, "bl0": bl0, "cl0": cl0,
+                        "bias_l1": bias_l1, "bias_bt": bias_bt}
         return tensor_param
 
 
@@ -1090,6 +1162,9 @@ class Conv2dSchedule:
         self._im2col_dma.inline_al1_im2coldma(sch, al1, fmap_row_major)
         self._im2col_dma.align_al1_im2col(sch, al1_im2col, self._block_k0)
         self._strided_read.process_strided_read(sch, al1, self._strideh_opti.flag)
+
+        # inline input_nd
+        self._input_nd2nz.inline_input_nd_dynamic(sch, self._tensor_map, self._dynamic_shape.flag)
 
         # dynamic shape
         self._dynamic_shape.handle_var_range(sch)
@@ -1172,6 +1247,14 @@ class Conv2dSchedule:
                 consumer, target_axis = get_bl1_attach_info()
                 sch[bl1].compute_at(sch[consumer], target_axis)
 
+        def bias_compute_at():
+            """
+            Handle bias attach.
+            """
+            if self._bias_flag:
+                sch[bias_l1].compute_at(sch[res], fixpipe_slice_axis)
+                sch[bias_bt].compute_at(sch[res], fixpipe_slice_axis)
+
         #==========================parse tiling==================================
         al1_tiling = self._tiling["AL1_shape"]
         bl1_tiling = self._tiling["BL1_shape"]
@@ -1246,6 +1329,8 @@ class Conv2dSchedule:
         bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
         fmap_row_major = tensor_param["fmap_row_major"]
+        bias_l1 = tensor_param["bias_l1"]
+        bias_bt = tensor_param["bias_bt"]
 
         # tile
         #===================================tile al0============================================
@@ -1539,13 +1624,15 @@ class Conv2dSchedule:
             bl1_at_cl0_axis = cl0_kooi
 
         #===============================attach=======================================
-        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, bindcore_axis)
+        fixpipe_slice_axis = cl0_at_res_axis if self._group_opt*self._co1_opt > 16 else bindcore_axis
+        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         sch[al0].compute_at(sch[cl0], al0_at_cl0_axis)
         bl0_compute_at()
         al1_compute_at()
         bl1_compute_at()
+        bias_compute_at()
 
         tiling_param = {"al1_tiling": al1_tiling,
                         "al0_tiling": al0_tiling,
@@ -1559,7 +1646,8 @@ class Conv2dSchedule:
                         "out_hw": self._out_hw}
         if al1_tiling:
             tiling_param.update({"multi_m_al1": multi_m_al1,
-                                 "k_al1": k_al1})
+                                 "k_al1": k_al1,
+                                 "k1_al1": k1_al1})
 
         emit_insn_dict = {"al0_axis_list": al0_axis_list,
                           "bindcore_axis": bindcore_axis,
@@ -1592,18 +1680,16 @@ class Conv2dSchedule:
             sch[cl0].preload()
 
         #=================================CL0 storage align======================================
-        # storage_align when channel merging
-        _, mc_cl0, m0_cl0, n0_cl0, _, _ = cl0_tiling
-        merge_num = {"int4": 4, "int8": 2}
+        _, _, m0_cl0, n0_cl0, _, _ = cl0_tiling
+
         # CL0 shape: [group_opt, batch, co1_opt, howo, co0]
+        sch[cl0].storage_align(sch[cl0].op.axis[2],
+                               m0_cl0*n0_cl0,
+                               0)
+
+        # align cl0 memory allocation when channel merging
         if res.dtype in ("int4", "int8"):
-            sch[cl0].storage_align(sch[cl0].op.axis[1],
-                                   merge_num[res.dtype]*mc_cl0*m0_cl0*n0_cl0,
-                                   0)
-        else:
-            sch[cl0].storage_align(sch[cl0].op.axis[2],
-                                   m0_cl0*n0_cl0,
-                                   0)
+            sch[cl0].set_storage_bound(reduce((lambda x, y: x*y), cl0_tiling))
 
         #=================================lxfusion======================================
         self._lx_fusion.config_l1_tensormap(sch, fmap, al1, self._op_graph)
@@ -1619,8 +1705,10 @@ class Conv2dSchedule:
         Enable pingpong buffer.
         """
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
+
         del pingpong_buffer["AUB_pbuffer"]
-        del pingpong_buffer["BUB_pbuffer"]
+        if "BUB_pbuffer" in pingpong_buffer:
+            del pingpong_buffer["BUB_pbuffer"]
         del pingpong_buffer["CUB_pbuffer"]
         del pingpong_buffer["UBG_pbuffer"]
 
@@ -1683,7 +1771,7 @@ class Conv2dSchedule:
                     Emit insn for al1 in common usage.
                     """
                     sch[al1].emit_insn(al1.op.axis[0],
-                                       'dma_copy',
+                                       "dma_copy",
                                        {"mem_align": 1})
 
                 if self._im2col_dma.flag:
@@ -1713,13 +1801,29 @@ class Conv2dSchedule:
 
             if self._dynamic_shape.flag:
                 self._dynamic_shape.dynamic_mode_im2col_v2(
-                    sch, conv_param, tensor_param, tiling_param, emit_insn_dict)
+                    sch, conv_param, tensor_param, tiling_param, emit_insn_dict, self._input_nd2nz.flag)
             else:
                 setfmatrix_dict = config_setfmatrix()
                 al1_emit_insn()
                 self._lx_fusion.al1_l1fusion_pragma(sch, al1)
                 al0_emit_insn()
                 get_weight_repeat_number()
+
+        def bl1_emit_insn():
+            """
+            Emit insn for bl1.
+            """
+            def bl1_common_emit_insn():
+                """
+                Emit insn for bl1 in common usage.
+                """
+                if bl1_tiling is not None:
+                    sch[bl1].emit_insn(bl1.op.axis[0], "dma_copy")
+
+            if self._weight_nd2nz.flag:
+                return self._weight_nd2nz.bl1_nd2nz_emit_insn(sch, bl1)
+
+            return bl1_common_emit_insn()
 
         def get_weight_repeat_number():
             """
@@ -1740,10 +1844,39 @@ class Conv2dSchedule:
             """
             Emit insn for res tensor.
             """
+            layout_transform_dict = {
+                "int4": "channel_merge",
+                "int8": "channel_merge",
+                "float32": "channel_split"
+            }
+
+            def res_channel_merge_split_emit_insn():
+                """
+                Emit insn for res tensor in channel merge/split situation.
+                """
+                sch[res].emit_insn(res_pragma_axis, "dma_copy",
+                                   attrs={"layout_transform": layout_transform_dict[res.dtype]})
+
+            def res_common_emit_insn():
+                """
+                Emit insn for res tensor in common usage.
+                """
+                sch[res].emit_insn(res_pragma_axis, "dma_copy")
+
             if self._output_nz2nd.flag:
-                self._output_nz2nd.res_nz2nd_emit_insn(sch, res, res_pragma_axis)
-            else:
-                sch[res].emit_insn(res_pragma_axis, 'dma_copy')
+                return self._output_nz2nd.res_nz2nd_emit_insn(sch, res, res_pragma_axis)
+            if res.dtype in ("int4", "int8", "float32"):
+                return res_channel_merge_split_emit_insn()
+
+            return res_common_emit_insn()
+
+        def bias_emit_insn():
+            """
+            Emit insn for bias.
+            """
+            if self._bias_flag:
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
 
         #=============================prepare params=========================================
         conv_param = self._conv_param
@@ -1755,6 +1888,8 @@ class Conv2dSchedule:
         cl0 = tensor_param["cl0"]
         al1_im2col = tensor_param["al1_im2col"]
         fmap_row_major = tensor_param["fmap_row_major"]
+        bias_l1 = tensor_param["bias_l1"]
+        bias_bt = tensor_param["bias_bt"]
 
         bl1_tiling = tiling_param["bl1_tiling"]
         bl0_tiling = tiling_param["bl0_tiling"]
@@ -1770,16 +1905,17 @@ class Conv2dSchedule:
         #=============================emit insn=========================================
         im2col_emit_insn()
 
-        if bl1_tiling is not None:
-            sch[bl1].emit_insn(bl1.op.axis[0], 'dma_copy')
+        bl1_emit_insn()
 
-        sch[bl0].emit_insn(bl0.op.axis[0], 'dma_copy')
+        sch[bl0].emit_insn(bl0.op.axis[0], "dma_copy")
 
         mad_dict = {"mad_pattern": 2, "k_outer": k_outer}
 
         sch[cl0].emit_insn(cl0_pragma_axis, 'mad', mad_dict)
 
         res_emit_insn()
+
+        bias_emit_insn()
 
         self._fixpipe_fusion.fixpipe_inputs_emit_insn(sch)
 

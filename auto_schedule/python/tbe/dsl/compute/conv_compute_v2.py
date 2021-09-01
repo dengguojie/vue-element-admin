@@ -22,7 +22,7 @@ from enum import Enum
 from tbe import tvm
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
-import pdb
+
 
 OP_TAG = "convolution_"
 
@@ -222,16 +222,16 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         def im2col_row_major_reshape(row_major_reshape_shape, fmap_row_major, compute_dtype):
             """
-            Merge the in_c1, kernel_h, kernel_w, in_c0 axes into k axis.
+            Merge the in_c1_opt, kernel_h, kernel_w, in_c0 axes into k axis.
             """
-            _, _, out_hw, in_c1, kernel_h, kernel_w, in_c0 = fmap_row_major.shape
+            _, _, out_hw, in_c1_opt, kernel_h, kernel_w, in_c0 = fmap_row_major.shape
             row_major_reshape = tvm.compute(
                 row_major_reshape_shape,
                 lambda group_idx, n_idx, howo_idx, k_idx:
                 tvm.select(
-                    tvm.all(k_idx < in_c1*kernel_h*kernel_w*in_c0,
+                    tvm.all(k_idx < in_c1_opt*kernel_h*kernel_w*in_c0,
                             howo_idx < out_hw,
-                            group_idx*k1_size + k_idx < reduce_value),
+                            group_idx*k_size + k_idx < reduce_value),
                     fmap_row_major(group_idx,
                                    n_idx,
                                    howo_idx,
@@ -306,6 +306,41 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         axis_k1 = tvm.reduce_axis((0, reduce_k1), name='cin_1_kh_kw')
         axis_k0 = tvm.reduce_axis((0, block_k0), name='cin_0')
+
+        if bias_tensor is not None:
+            c_col = tvm.compute(
+                mad_shape,
+                lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
+                tvm.sum(
+                    tvm.select(
+                        tvm.all((group_idx * reduce_k1 + axis_k1) * block_k0 + axis_k0 < reduce_value),
+                        tvm.select(
+                            tvm.all(axis_k1.var == 0, axis_k0.var == 0),
+                            (fmap_im2col[group_idx,
+                                         batch_idx,
+                                         howo_idx // block_m0,
+                                         axis_k1,
+                                         howo_idx % block_m0,
+                                         axis_k0] *
+                             weight[group_idx * reduce_k1 + axis_k1,
+                                    co1_idx,
+                                    co0_idx,
+                                    axis_k0]).astype(mad_dtype) +
+                            bias_tensor[(group_idx * co1_opt + co1_idx) * block_n0 + co0_idx],
+                            (fmap_im2col[group_idx,
+                                         batch_idx,
+                                         howo_idx // block_m0,
+                                         axis_k1,
+                                         howo_idx % block_m0,
+                                         axis_k0] *
+                             weight[group_idx * reduce_k1 + axis_k1,
+                                    co1_idx,
+                                    co0_idx,
+                                    axis_k0]).astype(mad_dtype))),
+                    axis=[axis_k1, axis_k0]),
+                name='mad1',
+                tag=OP_TAG + "c_col_bias")
+            return c_col
 
         c_col = tvm.compute(
             mad_shape,
@@ -450,6 +485,13 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     if input_nd_flag: # to be completed
         strideh_opti_flag = False
 
+    # weight_nd_flag
+    weight_nd_flag = weight.op.tag == "NHWC_trans_FZ"
+
+    if weight_nd_flag and group > 1:
+        err_man.raise_err_specific(
+            "conv2d", "Group > 1 is not supported when weight nd2nz.")
+
     #======================calculate certain shape params for compute to use=================
     batch, in_c1, in_height, in_width, in_c0 = fmap_5hd_shape
 
@@ -458,8 +500,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     # K
     row_major_c0 = 4 if c04_flag else in_c0
-    k1_size = (in_c1*kernel_h*kernel_w*row_major_c0 + block_k0 - 1) // block_k0
-    k_size = (in_c1*kernel_h*kernel_w*in_c0 + block_k0 - 1) // block_k0*block_k0
+    k1_size = (ci1_opt*kernel_h*kernel_w*row_major_c0 + block_k0 - 1) // block_k0
+    k_size = (ci1_opt*kernel_h*kernel_w*in_c0 + block_k0 - 1) // block_k0*block_k0
 
     reduce_value = in_c1*kernel_h*kernel_w*block_k0
 
@@ -539,6 +581,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     conv_param.v220_c04_mode = c04_mode
     conv_param.strideh_opti_flag = strideh_opti_flag
     conv_param.input_nd_flag = input_nd_flag
+    conv_param.weight_nd_flag = weight_nd_flag
 
     #==============save tiling_info_dict for conv2d_tiling_case=============
     tiling_query_param = conv_param.tiling_query_param

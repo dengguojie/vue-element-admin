@@ -467,6 +467,7 @@ class ConvParam:
         cls.dequant_doubleout_flag = False # mark v100 v200 conv_dequant_*_quant doubleout
         cls.v220_c04_mode = "disabled"
         cls.input_nd_flag = False
+        cls.weight_nd_flag = False
         cls.multi_conv2d_fusion_flag = False # mark multi conv2d fusion
         cls.bias_init_align_dim_flag = False
         cls.fusion_para = {"input_memory_type": [],
