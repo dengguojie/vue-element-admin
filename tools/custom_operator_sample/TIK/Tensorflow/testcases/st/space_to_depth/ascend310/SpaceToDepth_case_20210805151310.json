@@ -11,10 +11,10 @@
                     "float16"
                 ],
                 "shape": [
-                    40,
-                    -1,
-                    -1,
-                    16
+                    100,
+                    87,
+                    870,
+                    11
                 ],
                 "data_distribute": [
                     "uniform"
@@ -24,22 +24,6 @@
                         0.1,
                         1.0
                     ]
-                ],
-                "shape_range":[
-                    [
-                        8,
-                        8
-                    ],
-                    [
-                        12,
-                        12
-                    ]
-                ],
-                "typical_shape": [
-                    40,
-                    8,
-                    12,
-                    16
                 ],
                 "name": "x"
             },
@@ -72,26 +56,10 @@
                     "float16"
                 ],
                 "shape": [
-                    40,
-                    -1,
-                    -1,
-                    16
-                ],
-                "shape_range":[
-                    [
-                        4,
-                        4
-                    ],
-                    [
-                        6,
-                        6
-                    ]
-                ],
-                "typical_shape": [
-                    40,
-                    4,
-                    6,
-                    16
+                    100,
+                    87,
+                    870,
+                    11
                 ],
                 "name": "y"
             }
@@ -100,7 +68,7 @@
             {
                 "name": "block_size",
                 "type": "int",
-                "value": 2
+                "value": 87
             },
             {
                 "name": "data_format",
