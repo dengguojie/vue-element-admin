@@ -31,7 +31,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
-# from te.domain.rl_bank import rl_bank
+from tbe.common.register import register_param_generalization
 from tbe.common.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
@@ -728,11 +728,97 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
 
     if activation not in ["tanh"]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
-    
+
     if gate_order not in ["ijfo", "ifjo"]:
         error_manager_vector.raise_err_check_params_rules("DynamicRNN",
                                                           "gate_order in ['ijfo', 'ifjo']",
                                                           "gate_order", str(gate_order))
+
+
+@register_param_generalization("DynamicRNN")
+def dynamic_rnn_generalization(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
+                               wco, mask, y, output_h, output_c, i, j, f, o, tanhc,
+                               cell_type="LSTM", direction="UNIDIRECTIONAL", cell_depth=1,
+                               use_peephole=False, keep_prob=1.0, cell_clip=-1.0, num_proj=0,
+                               time_major=True, activation="tanh", forget_bias=0.0, gate_order="ijfo",
+                               is_training=True, impl_mode="high_performance", generalize_config=None):
+    """
+    only T, b support -1
+    input:
+    input_x (T, b, input_size)
+    weight (input_size + hidden_size, hidden_size * 4)
+    bias (hidden_size * 4)
+    seq_length (T, b, hidden_size)  optional input
+    init_h (1, b, hidden_size)  optional input
+    init_c (1, b, hidden_size)  optional input
+    wci only support None
+    wcf only support None
+    wco only support None
+    mask only support None
+
+    output:
+    y (T, b, hidden_size)
+    output_h (T, b, hidden_size)
+    output_c (T, b, hidden_size)
+    i (T, b, hidden_size)
+    j (T, b, hidden_size)
+    f (T, b, hidden_size)
+    o (T, b, hidden_size)
+    tanhc (T, b, hidden_size)
+    """
+    result = []
+    if len(input_x["ori_shape"]) != 3:
+        error_manager_vector.raise_err_specific_reson("DynamicRNN", "input_x's shape illegal, please check!")
+    if len(weight["ori_shape"]) != 2:
+        error_manager_vector.raise_err_specific_reson("DynamicRNN", "weight's shape illegal, please check!")
+    param_input_size = input_x["ori_shape"][2]
+    param_hidden_size = weight["ori_shape"][1] / 4
+
+    range_input_x = [(1, -1), (1, -1), (param_input_size, param_input_size)]
+    shape_input_x = (-1, -1, param_input_size)
+
+    range_weight = [(weight["ori_shape"][0], weight["ori_shape"][0]),
+                    (weight["ori_shape"][1], weight["ori_shape"][1])]
+    shape_weight = (weight["ori_shape"][0], weight["ori_shape"][1])
+
+    range_bias = [(bias["ori_shape"][0], bias["ori_shape"][0])]
+    shape_bias = (bias["ori_shape"][0],)
+
+    range_output = [(1, -1), (1, -1), (param_hidden_size, param_hidden_size)]
+    shape_output = (-1, -1, param_hidden_size)
+
+    input_x["ori_shape"], input_x["ori_range"] = shape_input_x, range_input_x
+    weight["ori_shape"], weight["ori_range"] = shape_weight, range_weight
+    bias["ori_shape"], bias["ori_range"] = shape_bias, range_bias
+
+    y["ori_shape"], y["ori_range"] = shape_output, range_output
+    output_h["ori_shape"], output_h["ori_range"] = shape_output, range_output
+    output_c["ori_shape"], output_c["ori_range"] = shape_output, range_output
+    i["ori_shape"], i["ori_range"] = shape_output, range_output
+    j["ori_shape"], j["ori_range"] = shape_output, range_output
+    f["ori_shape"], f["ori_range"] = shape_output, range_output
+    o["ori_shape"], o["ori_range"] = shape_output, range_output
+    tanhc["ori_shape"], tanhc["ori_range"] = shape_output, range_output
+
+    if seq_length is not None:
+        range_seq_length = [(1, -1), (1, -1), (param_hidden_size, param_hidden_size)]
+        shape_seq_length = (-1, -1, param_hidden_size)
+        seq_length["ori_shape"], seq_length["ori_range"] = shape_seq_length, range_seq_length
+
+    if (init_h is not None and init_c is not None):
+        range_init = [(1, 1), (1, -1), (param_hidden_size, param_hidden_size)]
+        shape_init = (1, -1, param_hidden_size)
+        init_h["ori_shape"], init_h["ori_range"] = shape_init, range_init
+        init_c["ori_shape"], init_c["ori_range"] = shape_init, range_init
+
+    result.append([input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
+                   wco, mask, y, output_h, output_c, i, j, f, o, tanhc,
+                   {"cell_type": cell_type}, {"direction": direction}, {"cell_depth": cell_depth},
+                   {"use_peephole": use_peephole}, {"keep_prob": keep_prob}, {"cell_clip": cell_clip},
+                   {"num_proj": num_proj}, {"time_major": time_major}, {"activation": activation},
+                   {"forget_bias": forget_bias}, {"gate_order": gate_order}, {"is_training": is_training}])
+
+    return result
 
 
 @register_operator("DynamicRNN")
@@ -746,7 +832,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
@@ -854,17 +940,18 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                  scope=scope_gm, name='weight')
     bias = tik_instance.Tensor(shape=shape_bias, scope=scope_gm,
                                dtype=bias_dtype, name='bias')
-    
+
     is_using_seq_mask = False
     is_valid_mask = False
     if seq_length is not None:
+        shape_seq_length = (t_size, hidden_size, m_size, 16, 16)
         is_using_seq_mask = True
         if seq_length.get("dtype").lower() == "int32":
-            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+            seq_mask_gm = tik_instance.Tensor(shape=shape_seq_length, scope=scope_gm,
                                               dtype="int32", name='seq_mask_gm')
         else:
             is_valid_mask = True
-            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+            seq_mask_gm = tik_instance.Tensor(shape=shape_seq_length, scope=scope_gm,
                                           dtype="float16", name='seq_mask_gm')
     else:
         seq_mask_gm = None
@@ -1014,7 +1101,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 o_t_sigmoid_gm_var = None
                 j_t_tanh_gm_var = None
                 c_t_tanh_gm_var = None
-                
+
             if is_valid_mask:
                 seq_mask_gm_var = seq_mask_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                               :,
@@ -1022,7 +1109,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                               :, :]
             else:
                 seq_mask_gm_var = None
-                
+
             input_list = [input_x_var, weight, bias, s_init_h_gm_var,
                           s_init_c_gm_var, state_h_last,
                           state_c_last, sync, seq_mask_gm_var]
@@ -1067,7 +1154,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                         output_list,
                         [is_gate_output, is_first_round, is_global_init,
                          forget_bias, gate_order, is_dynamic])
-                
+
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
                     tik_instance.call_module(
@@ -1076,12 +1163,11 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                         output_list,
                         [is_gate_output, is_first_round, is_global_init,
                          forget_bias, gate_order, is_dynamic])
-    """
+
     tiling_key_value_list = []
     for idx in rl_idx_list_first:
-        tiling_key_value_list.append(idx)
-    """
-    
+        tiling_key_value_list.append([idx])
+
     config_map = {
         "dump_cce_code": False,
     }
@@ -1103,7 +1189,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                             flowtable=(tiling_gm,),
                             extend_params={"build_multi_kernels":{
                                     "tiling_key":[tiling_index],
-                                    "tiling_key_value":[[0]]
+                                    "tiling_key_value":tiling_key_value_list
                             }}
                             )
     else:
@@ -1566,11 +1652,19 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     update_h_gm_as_y_back_mid = update_h_gm_as_y_back
     if seq_mask_gm is not None:
-        update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
-        update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
-        # update_h_diff_mask = vmul(update_h_diff, seq_mask_ub_fp32)
-        update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
-    
+        if fp16_input_output:
+            update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
+            update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
+            update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
+        else:
+            s_state_h_ub_for_element_fp32 = tvm.compute(shape_h,
+                                        lambda *indices: s_state_h_ub_for_element(*indices).astype('float32'),
+                                        name="s_state_h_ub_for_element_cast",
+                                        tag="elewise_single_cast")
+            update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element_fp32)
+            update_h_diff_mask = vmul(update_h_diff, seq_mask_ub_fp32)
+            update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element_fp32)
+
     if fp16_input_output:
         update_h_gm = tvm.compute(shape_i,
                                   lambda *indices: update_h_gm_as_y_back_mid(*indices),
@@ -1595,15 +1689,19 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                        c_t_tanh_gm]
     else:
         return_list = [update_h_gm, update_c_gm, update_h_gm_as_y]
-    """
-    return_list, sch_list, index_list, tune_shape_list = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor=sync0, dynamic=True)
-    if sch_list is not None:
+
+    return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor=sync0, dynamic=True)
+    sch_list, tune_shape_list = s
+    index_list = []
+    for i in range(len(tune_shape_list)):
+        index_list.append(tune_shape_list[i][2])
+    if sch_list is not None and len(sch_list) > 0:
         if is_dynamic:
             for i in range(len(sch_list)):
                 sch_list[i].set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[i][1], input_x.shape[2] > 0))
-        tbe_context.get_context.add_compile_info("vars", {"tune_shape_list": tune_shape_list})
+        tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
         return return_list, sch_list, index_list
-    """
+
     bank_manager.update_bank_hit_info(True)
     # schedule
     s = create_schedule([update_h_gm.op])
@@ -2077,4 +2175,5 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[update_h_gm_as_y_back].emit_insn(update_h_gm_as_y_back.op.axis[0],
                                        'phony_insn')
 
-    return return_list, s
+    tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": [[-1, -1, 0]]})
+    return return_list, [s], [0]

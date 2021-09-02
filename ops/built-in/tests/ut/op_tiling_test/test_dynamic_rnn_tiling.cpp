@@ -41,7 +41,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_0) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicRNN");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
-  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,8,0]]}}";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,128,0],[64,64,1]]}}";
 
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
@@ -89,10 +89,10 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_0) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456";
+  op_compile_info.key = "123456a001";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "32 8 -1 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "32 8 0 ");
 }
 
 TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_1) {
@@ -101,13 +101,15 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_1) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicRNN");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
-  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,8,0]]}}";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[-1, -1, 0], [99, 99, 1]]}}";
 
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
   vector<vector<int64_t>> input_shapes = {
       {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
   };
 
   vector<std::string> dtypes = {"float16", "float16", "float16"};
@@ -147,9 +149,11 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_1) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456";
+  op_compile_info.key = "123456a002";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "32 8 0 ");
+  
 }
 
 TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_2) {
@@ -159,6 +163,181 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_2) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,8,0]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
+  vector<vector<int64_t>> input_shapes = {
+      {8,32},
+      {8,32},
+      {512},
+  };
+
+  vector<std::string> dtypes = {"float16", "float16", "float16"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  vector<vector<int64_t>> output_shapes = {
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+  };
+
+  vector<std::string> out_dtypes = {"float16", "float16", "float16", "float16",
+                           "float16", "float16", "float16", "float16"};
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    tensorOutputsArg.tensor.clear();
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.dtype = out_dtypes[i];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456a003";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_3) {
+  using namespace optiling;
+  std::string op_name = "DynamicRNN";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicRNN");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,444,0]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
+  vector<vector<int64_t>> input_shapes = {
+    {32,32,8,16,16},
+    {40,32,16,16},
+    {512},
+  };
+
+  vector<std::string> dtypes = {"float16", "float16", "float16"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  vector<vector<int64_t>> output_shapes = {
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+  };
+
+  vector<std::string> out_dtypes = {"float16", "float16", "float16", "float16",
+                           "float16", "float16", "float16", "float16"};
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    tensorOutputsArg.tensor.clear();
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.dtype = out_dtypes[i];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456a004";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_4) {
+  using namespace optiling;
+  std::string op_name = "DynamicRNN";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicRNN");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,6]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
+  vector<vector<int64_t>> input_shapes = {
+    {32,32,8,16,16},
+  };
+
+  vector<std::string> dtypes = {"float16", "float16", "float16"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  vector<vector<int64_t>> output_shapes = {
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+  };
+
+  vector<std::string> out_dtypes = {"float16", "float16", "float16", "float16",
+                           "float16", "float16", "float16", "float16"};
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    tensorOutputsArg.tensor.clear();
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.dtype = out_dtypes[i];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456a005";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_5) {
+  using namespace optiling;
+  std::string op_name = "DynamicRNN";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicRNN");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32, 8, 0]]}}";
 
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
@@ -206,7 +385,66 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_2) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456";
+  op_compile_info.key = "123456a006";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_6) {
+  using namespace optiling;
+  std::string op_name = "DynamicRNN";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicRNN");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,444]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
+  vector<vector<int64_t>> input_shapes = {
+    {32,32,8,16,16},
+    {40,32,16,16},
+    {512},
+  };
+
+  vector<std::string> dtypes = {"float16", "float16", "float16"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  vector<vector<int64_t>> output_shapes = {
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+      {32,8,8,16,16},
+  };
+
+  vector<std::string> out_dtypes = {"float16", "float16", "float16", "float16",
+                           "float16", "float16", "float16", "float16"};
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    tensorOutputsArg.tensor.clear();
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.dtype = out_dtypes[i];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456a007";
   OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
