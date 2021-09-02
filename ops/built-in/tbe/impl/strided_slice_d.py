@@ -28,6 +28,7 @@ from te.domain.rl_bank import rl_bank
 from te.utils.error_manager import error_manager_vector
 from impl import strided_slice_for_last_dim
 from impl import copy_only
+from impl import common_util
 from impl import strided_slice_fast_last_dim
 from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
@@ -38,6 +39,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.platform_adapter import tik
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
@@ -806,8 +808,18 @@ def _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, stride
     for i in range(0, len(output_shape) - 1):
         if input_shape[i] != output_shape[i]:
             return False
+    dtype_size = common_util.get_data_size(dtype)
+    total_ub_length = tik.Dprofile().get_unified_buffer_size() // dtype_size
+    if len(input_shape) == 1:
+        total_dim = input_shape[-1]
+    else:
+        total_dim = functools.reduce(lambda x, y: x * y, input_shape[0:])
+    if input_shape[-1] >= 32 and input_shape[-1] < 7500 and len(output_shape) > 1 and \
+            output_shape[-1] >= 32 and total_dim > total_ub_length * 0.8:
+        return False
     if 0 <= begin[-1] < end[-1] <= input_shape[-1]:
         return True
+    return False
 
 
 def _check_strides_larger_than_one(strides):
