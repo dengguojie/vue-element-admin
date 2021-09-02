@@ -534,7 +534,7 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
                    reduce_axis, keepdims=True)
         pd_x     = pd_xl*np.power((data_variance + EPSLON), (-0.5))
                    + pd_var*(2.0/m)*(data_x - data_mean) + pd_mean*(1.0/m)
-        res_for_gamma = 
+        res_for_gamma =
         (data_x - data_mean)*np.power((data_variance + EPSLON), (-0.5))
 
     Parameters

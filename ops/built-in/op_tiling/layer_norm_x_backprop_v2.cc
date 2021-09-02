@@ -61,7 +61,7 @@ namespace optiling {
     ByteBufferPut(run_info.tiling_data, fmap_x0);
     ByteBufferPut(run_info.tiling_data, fmap_x1);
 
-    run_info.block_dim = 32;
+    run_info.block_dim = core_num;
     run_info.tiling_key = 10000;
     GELOGI("LayerNormXBackpropTilingV2 end.");
     return true;

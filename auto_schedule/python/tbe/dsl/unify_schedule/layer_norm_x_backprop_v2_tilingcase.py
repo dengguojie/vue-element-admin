@@ -41,7 +41,6 @@ class TilingStrategy(Enum):
     TilingStrategy
     """
     NONE_CUT = auto()
-    ONE_CUT = auto()
 
 
 @register_tiling_case(pattern=Pattern.LAYER_NORM_X_BACKPROP_V2)
@@ -60,8 +59,6 @@ def calc_layer_norm_x_backprop_v2(outs, option=None):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     out = outs[0]
     shape = util.shape_to_list(out.shape)
-    dim_len = len(shape)
-    avaiable_dim_len = dim_len - 1
     cases = []
 
     base_key = 10000
