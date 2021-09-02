@@ -73,11 +73,9 @@ static Status ParseOpToGraphCompress(const ge::Operator& op, Graph& graph) {
   ge::Operator compress;
   auto where = op::Where("compress_condition").set_input_x(data1);
   if (need_flatten) {
-    int start_axis = 0;
-    int end_axis = -1;
-    auto flatten =
-        op::FlattenV2("compress_flatten").set_input_x(data0).set_attr_axis(start_axis).set_attr_end_axis(end_axis);
-    compress = op::GatherV2("compress").set_input_x(flatten).set_input_indices(where).set_input_axis(const_op);
+    auto flatten = op::Flatten("compress_flatten").set_input_x(data0).set_attr_axis(0);
+    auto squeeze = op::Squeeze("squeeze").set_input_x(flatten).set_attr_axis(0);
+    compress = op::GatherV2("compress").set_input_x(squeeze).set_input_indices(where).set_input_axis(const_op);
   } else {
     compress = op::GatherV2("compress").set_input_x(data0).set_input_indices(where).set_input_axis(const_op);
   }
