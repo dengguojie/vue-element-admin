@@ -512,5 +512,6 @@ def test_get_op_support_info_dynamic_dx_1(test_arg):
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_dx_0)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_dx_1)
 
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

@@ -11,6 +11,7 @@ from impl.util.platform_adapter import tbe
 from te.platform.cce_conf import te_set_version
 from impl.trans_data import trans_data_compute
 
+
 ut_case = OpUT(
     "conv2d_backprop_filter_d",
     "impl.conv2d_backprop_filter_d",

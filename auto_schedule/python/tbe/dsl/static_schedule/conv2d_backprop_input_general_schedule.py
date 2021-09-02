@@ -1109,7 +1109,10 @@ def general_schedule(
         tiling = get_tiling(info_dict)
     else:
         tiling = tiling_case
+
+    if var_map or (cube_vector_split and (stride_h > 1 or stride_w > 1)):
         # close overhead flag in dynamic mode
+        # close overhead flag in v220 when stride > 1
         tiling['A_overhead_opt_flag'] = 0
         tiling['B_overhead_opt_flag'] = 0
 

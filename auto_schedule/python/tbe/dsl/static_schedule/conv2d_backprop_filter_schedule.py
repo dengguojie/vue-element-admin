@@ -1328,7 +1328,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 c_fmap_mad_at, c_grads_mad_at,
                                 c_fmap_mad_insn, c_grads_mad_insn)
         else:
-            sch[dw_ddr].compute_inline()
+            sch[dw_ddr].compute_inline(instant=True)
             dw_ddr = dw_res_trans
             ddr_batch, ddr_hw, ddr_c = sch[dw_ddr].op.axis
             # split the tensor axis to get [group, grads_c, hw, fmap_c1, fmap_c0]
