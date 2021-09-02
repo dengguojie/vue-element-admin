@@ -475,3 +475,15 @@ public:
 #endif
 """
     # =======================================================
+
+    def get_ini_op(self):
+        """
+        get ini op
+        """
+        return self.INI_OP
+
+    def get_ini_input(self):
+        """
+        get ini input
+        """
+        return self.INI_INPUT

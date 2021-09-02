@@ -6,19 +6,15 @@ This file mainly involves the common function.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import os.path
-    import sys
-    import time
-    import re
-    import stat
-    import json
-    from shutil import copytree
-    from shutil import copy2
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][utils]Unable to import module: %s." % str(
-        import_error))
+import os
+import os.path
+import sys
+import time
+import re
+import stat
+import json
+from shutil import copytree
+from shutil import copy2
 
 # error code for user:success
 MS_OP_GEN_NONE_ERROR = 0
@@ -182,6 +178,8 @@ def read_json_file(json_path):
         print_error_log(
             'Failed to open json file %s. %s' % (json_path, str(io_error)))
         raise MsOpGenException(MS_OP_GEN_OPEN_FILE_ERROR)
+    finally:
+        pass
 
 
 class CheckFromConfig:
@@ -344,11 +342,11 @@ class CheckFromConfig:
 def check_name_valid(name):
     """
     Function Description:
-        check name valid
+    check name valid
     Parameter:
-        name: the name to check
+    name: the name to check
     Return Value:
-        MsOpGenException
+    MsOpGenException
     """
     if name == "":
         print_warn_log("The input name is \"\"")
@@ -364,10 +362,10 @@ def check_name_valid(name):
 def check_path_valid(path, isdir=False):
     """
     Function Description:
-        check path valid
+    check path valid
     Parameter:
-        path: the path to check
-        isdir: the path is dir or file
+    path: the path to check
+    isdir: the path is dir or file
     """
     if path == "":
         print_error_log("The path is null. Please check whether the argument is valid.")
@@ -381,6 +379,8 @@ def check_path_valid(path, isdir=False):
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(path, str(ex)))
             raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+        finally:
+            pass
     if not os.path.exists(path):
         print_error_log('The path {} does not exist. Please check whether '
                         'the path exists.'.format(path))
@@ -433,6 +433,8 @@ def copy_template(src, dst, is_skip_exist=False):
                 copy2(srcname, dstname)
         except (OSError, os.error) as why:
             errors.append((srcname, dstname, str(why)))
+        finally:
+            pass
 
     if errors:
         print_error_log(errors)
@@ -442,11 +444,11 @@ def copy_template(src, dst, is_skip_exist=False):
 def get_content_from_double_quotes(line):
     """
     Function Description:
-        get content list between two double quotes
+    get content list between two double quotes
     Parameter:
-        path: content line containing double quotes
+    path: content line containing double quotes
     Return Value:
-        VectorComparisonErrorCode
+    VectorComparisonErrorCode
     """
     pattern = re.compile('"(.*)"')
     match = pattern.findall(line)
@@ -467,6 +469,8 @@ def make_dirs(op_dir):
     except OSError as err:
         print_error_log("Unable to make dir: %s." % str(err))
         raise MsOpGenException(MS_OP_GEN_MAKE_DIRS_ERROR)
+    finally:
+        pass
 
 
 def read_file(op_file):
@@ -483,6 +487,8 @@ def read_file(op_file):
         print_error_log(
             'Failed to open file %s. %s' % (op_file, str(io_error)))
         raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+    finally:
+        pass
 
 
 def write_files(op_file, new_str):
@@ -502,6 +508,8 @@ def write_files(op_file, new_str):
     except OSError as err:
         print_error_log("Unable to write file(%s): %s." % op_file % str(err))
         raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
     print_info_log("File %s generated successfully." % op_file)
 
 
@@ -521,6 +529,8 @@ def write_json_file(json_path, content):
         print_error_log(
             'Failed to generate json file %s. %s' % (json_path, str(io_error)))
         raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
+    finally:
+        pass
     print_info_log(
         "Generate file %s successfully." % json_path)
 

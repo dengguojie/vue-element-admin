@@ -6,14 +6,10 @@ This file mainly involves class for parsing input arguments.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-try:
-    import os
-    import sys
-    import argparse
-    from . import utils
-except (ImportError,) as import_error:
-    sys.exit("[ERROR][arg_parser]Unable to import module: %s." % str(
-        import_error))
+import os
+import sys
+import argparse
+from . import utils
 
 
 class ArgParser:  # pylint: disable=too-many-instance-attributes

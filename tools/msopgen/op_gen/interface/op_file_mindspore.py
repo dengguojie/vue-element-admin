@@ -225,7 +225,7 @@ class OpFileMindSpore(OPFile):
     def generate_info_cfg():
         """
         Function Description:
-            generate operator info config file
+        generate operator info config file
         Parameter:
         Return Value:""
         """

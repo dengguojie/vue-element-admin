@@ -21,18 +21,29 @@ else ()
     message(STATUS "env INC_PATH: ${INC_PATH}")
 endif()
 
+if (EXISTS ${INC_PATH}/runtime)
+    set(ACL_NAME "runtime")
+else ()
+    set(ACL_NAME "acllib")
+endif()
+
 set(LIB_PATH $ENV{NPU_HOST_LIB})
 
 if (NOT DEFINED ENV{NPU_HOST_LIB})
-    set(LIB_PATH "/usr/local/Ascend/acllib/lib64/stub/")
+    set(LIB_PATH "/usr/local/Ascend/${ACL_NAME}/lib64/stub/")
     message(STATUS "set default LIB_PATH: ${LIB_PATH}")
 else ()
     message(STATUS "env LIB_PATH: ${LIB_PATH}")
 endif()
 
+if ("${LIB_PATH}" MATCHES "acllib")
+    set(ACL_NAME "acllib")
+endif()
+message(STATUS "set acllib package name: ${ACL_NAME}")
+
 # Header path
 include_directories(
-    ${INC_PATH}/acllib/include/
+    ${INC_PATH}/${ACL_NAME}/include/
     ../inc
 )
 

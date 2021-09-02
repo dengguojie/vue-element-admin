@@ -251,7 +251,7 @@ class OpFileAiCore(OPFile):
     def _mapping_info_cfg_type(op_type):
         op_type = op_type.strip()
         if op_type in OpFileAiCore.CFG_INFO_TYPE_MAP:
-            return OpFileAiCore.CFG_INFO_TYPE_MAP[op_type]
+            return OpFileAiCore.CFG_INFO_TYPE_MAP.get(op_type)
         utils.print_warn_log("The input/output type '%s' "
                              "is not supported by the .ini file. "
                              "Please check. If "

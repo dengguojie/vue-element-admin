@@ -40,7 +40,7 @@ class IrRow:
     DYNAMIC_OUTPUT_NAME = 'DYNAMIC_OUTPUT'
     ATTR_NAME = 'ATTR'
     REQUIRED_ATTR_NAME = 'REQUIRED_ATTR'
-    
+
     def __init__(self, row):
         if len(row) >= IrRow.IR_TEMPLATE_VALID_NCLOS:
             self.classify = row[IrRow.IR_TEMPLATE_CLASSIFY_CLO]
@@ -152,7 +152,7 @@ class IROpInfo(OpInfo):
         json_data = {}
         json_data.setdefault(IrRow.IR_DEFAULT_SHEET_NAME, [])
         for op_name in op_names:
-            json_data[IrRow.IR_DEFAULT_SHEET_NAME].append({"OP": op_name})
+            json_data.get(IrRow.IR_DEFAULT_SHEET_NAME).append({"OP": op_name})
         _, ir_file_name = os.path.split(self.op_path)
         json_path = os.path.join(self.output_path, ir_file_name + ".json")
         utils.write_json_file(json_path, json_data)

@@ -39,7 +39,9 @@ def _do_mi_cmd(argument):
 
 
 def main():
-    """main function"""
+    """
+    main function
+    """
     # 1.parse input argument and check arguments valid
     try:
         argument = ArgParser()
