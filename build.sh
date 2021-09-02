@@ -309,6 +309,8 @@ usage() {
   echo "    --install_etrans  download and install Ascend, using package/etrans/ the latest extrans package"
   echo "        *** You must use a single quotation mark for your username and password.***"
   echo "        *** example ./build.sh --install_daily 'username' 'password'   ***"
+  echo "    --install_local  If you use the above two commands to download and install, the installation fails for some reasons. "
+  echo "                     After solving the problem, you can use this command to install locally, so as to save download time."
   echo ""
   echo ""
   echo      $dotted_line
