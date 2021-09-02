@@ -14,13 +14,15 @@ http://www.apache.org/licenses/LICENSE-2.0
 axpy_v1
 """
 
-import te.lang.cce
-from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from topi import generic
-from topi.cce import util
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 
 
+# pylint: disable=locally-disabled,too-many-locals,unused-argument
 @fusion_manager.register("axpy_v1")
 def axpy_v1_compute(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
     """
@@ -43,15 +45,15 @@ def axpy_v1_compute(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
     -------
     output tensor
     """
-    shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
 
-    input_a = te.lang.cce.broadcast(input_a, shape_x)
-    res = te.lang.cce.vmla(input_a, input_x, input_y)
+    input_a = tbe.broadcast(input_a, shape_x)
+    res = tbe.vmla(input_a, input_x, input_y)
 
     return res
 
 
-@util.check_input_type(dict, dict, dict, dict, str)
+@para_check.check_input_type(dict, dict, dict, dict, str)
 def axpy_v1(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
     """
     calculating data
@@ -91,13 +93,13 @@ def axpy_v1(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
     input_dtype_x = dtype_x.lower()
     input_dtype_y = dtype_y.lower()
 
-    util.check_shape_rule(shape_a)
-    util.check_shape_rule(shape_x)
-    util.check_shape_rule(shape_y)
-    util.check_tensor_shape_size(shape_a)  # check the size of tensor shape
-    util.check_tensor_shape_size(shape_x)
-    util.check_tensor_shape_size(shape_y)
-    util.check_kernel_name(kernel_name)  # check kernel_name
+    para_check.check_shape_rule(shape_a)
+    para_check.check_shape_rule(shape_x)
+    para_check.check_shape_rule(shape_y)
+    para_check.check_tensor_shape_size(shape_a)  # check the size of tensor shape
+    para_check.check_tensor_shape_size(shape_x)
+    para_check.check_tensor_shape_size(shape_y)
+    para_check.check_kernel_name(kernel_name)  # check kernel_name
 
     if len(ori_shape_a) != 4 and len(ori_shape_a) != 2:
         raise RuntimeError("input_a should be 2D or 4D")
@@ -113,7 +115,7 @@ def axpy_v1(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
     dtype = dtype_a
     check_tuple = ("float16",)
 
-    util.check_dtype_rule(dtype, check_tuple)
+    para_check.check_dtype_rule(dtype, check_tuple)
 
     data_input_a = tvm.placeholder(shape_a, name="data_input_a", dtype=input_dtype_a)
     data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=input_dtype_x)
@@ -123,7 +125,7 @@ def axpy_v1(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
 
     # auto schedule
     with tvm.target.cce():
-        schedule = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
     # operator build
     config = {"print_ir": False,
@@ -131,4 +133,4 @@ def axpy_v1(input_a, input_x, input_y, output, kernel_name="axpy_v1"):
               "name": kernel_name,
               "tensor_list": [data_input_a, data_input_x, data_input_y, res]}
 
-    te.lang.cce.cce_build_code(schedule, config)
+    tbe.build(schedule, config)
