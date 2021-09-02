@@ -123,16 +123,11 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  int64_t offsets = 2;
-  int64_t size_num = 2;
-  ge::TensorDesc tensorDesc;
+  int32_t offsets = 2;
+  int32_t size_num = 2;
   std::vector<int64_t> dims = {1};
-  ge::Shape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(ge::DT_INT64);
-
-  ge::Tensor tensor_offsets(tensorDesc, reinterpret_cast<uint8_t*>(&offsets), sizeof(int64_t));
-  ge::Tensor tensor_size(tensorDesc, reinterpret_cast<uint8_t*>(&size_num), sizeof(int64_t));
+  ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
+  ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
   auto data_offsets = op::Const("data_offsets").set_attr_value(tensor_offsets);
   auto data_size = op::Const("data_size").set_attr_value(tensor_size);
 
