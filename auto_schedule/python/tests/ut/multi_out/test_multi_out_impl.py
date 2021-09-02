@@ -74,14 +74,27 @@ case2 = {
                {"shape": (2, 149, 16, 16), "dtype": "float32", "format": "ND"},
                {"shape": (2, 149, 16, 16), "dtype": "float32", "format": "ND"}
                ],
-    "case_name": "test_multi_out_1",
+    "case_name": "test_multi_out_2",
+    "expect": "success",
+    "support_expect": True
+}
+
+case3 = {
+    "params": [{"shape": (5, 5, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (5, 5, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (5, 5, 512), "dtype": "float32", "format": "ND"},
+               {"shape": (5, 5, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (5, 5, 512), "dtype": "float32", "format": "ND"}
+               ],
+    "case_name": "test_multi_out_3",
     "expect": "success",
     "support_expect": True
 }
 
 compile_case = [
     case1,
-    case2
+    case2,
+    case3
 ]
 for item in compile_case:
     ut_case.add_case(case=item)

@@ -482,6 +482,29 @@ class ElewiseSchedule(VectorSchedule):
                     block_split_axis = block_split_axis - 1
                     block_split_inner_size = 1
 
+        if block_split_axis != 0 or (block_split_axis == 0 and 
+                                     block_split_inner_size != shape[0]):
+            if len(self._mid_output_tensors) > 1:
+                for tensor in self._mid_output_tensors:
+                    _out_shape = self._shape_to_list(tensor.shape)
+                    _out_dtype = tensor.dtype
+                    if _out_shape == shape and _out_dtype == dtype:
+                        continue
+
+                    _tmp_block_inner = math.ceil(_out_shape[block_split_axis] / block_split_outer_size)
+                    
+                    if block_split_axis == len(_out_shape) - 1:
+                        _block_size = _tmp_block_inner * DTYPE_WIDTH_MAP[_out_dtype] * 2
+                    else:
+                        _block_shape_size = _tmp_block_inner * functools.reduce(lambda x, y: x * y,
+                                                                                _out_shape[block_split_axis + 1:])
+                        _block_size = _block_shape_size * DTYPE_WIDTH_MAP[_out_dtype] * 2
+
+                    if _block_size < 32:
+                        block_split_axis = 0
+                        block_split_inner_size = shape[block_split_axis]
+                        block_split_outer_size = 1
+
         max_ub_count = self._get_max_ub_count()
         self._max_ub_count = max_ub_count
 
