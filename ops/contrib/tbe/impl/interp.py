@@ -16,10 +16,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 interp
 """
 import te
-from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
-from topi.cce import util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from .interp_common import GlobalParams
 from .interp_in_hw_eq_out_hw import compute_with_in_hw_eq_out_hw
 from .interp_in_hw_eq_one_fp16 import compute_with_in_hw_eq_one_fp16
@@ -77,18 +78,18 @@ def interp_compute(images, y, size, kernel_name):
     -------
     res
     """
-    images_shape = te.lang.cce.util.shape_to_list(images.shape)
+    images_shape = shape_util.shape_to_list(images.shape)
     shape_out = list(images_shape)
     shape_out[-2] = size[-1]
     shape_out[-3] = size[-2]
-    util.check_tensor_shape_size(shape_out)
+    para_check.check_tensor_shape_size(shape_out)
 
     res = tvm.extern(tuple(shape_out), [images], lambda ins, outs: _interp_ir(ins[0], outs[0]), name="res",
                      dtype="float32")
     return res
 
 
-@util.check_input_type(dict, dict, int, int, int, int, int, int, str)
+@para_check.check_input_type(dict, dict, int, int, int, int, int, int, str)
 def interp(images, y, height, width, zoom_factor, shrink_factor, pad_beg, pad_end, kernel_name="interp"):
     """interp schedule main part
 
@@ -118,11 +119,11 @@ def interp(images, y, height, width, zoom_factor, shrink_factor, pad_beg, pad_en
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     image_dtype = images.get("dtype")
     image_shape = images.get("shape")
 
-    util.check_shape_rule(image_shape)
+    para_check.check_shape_rule(image_shape)
     check_list = ["float16", "float32"]
     if image_dtype not in check_list:
         raise RuntimeError("only support %s while dtype is %s" % (str(check_list), image_dtype))
@@ -130,11 +131,11 @@ def interp(images, y, height, width, zoom_factor, shrink_factor, pad_beg, pad_en
         raise RuntimeError("The ndim of input must be 5," " while input ndim is %d" % (len(image_shape)))
 
     size = [height, width]
-    util.check_shape_rule(size)
+    para_check.check_shape_rule(size)
     if (image_shape[2] > 2048 or image_shape[3] > 2048) or (size[0] > 2048 or size[1] > 2048):
         raise RuntimeError("in or out h/w size should not larger than 2048")
 
-    util.check_tensor_shape_size(image_shape)
+    para_check.check_tensor_shape_size(image_shape)
 
     image_data = tvm.placeholder(image_shape, dtype=image_dtype, name="image_data")
     res = interp_compute(image_data, y, size, kernel_name)
