@@ -608,15 +608,15 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             "cout_ori": cout
         }
         tiling_info_dict_tmp = DynamicConv2dBpFilterParams.tiling_info_dict
-        tiling_info_dict_tmp["group"] = group_dict["real_g"]
-        tiling_info_dict_tmp["A_shape"][1] = group_dict["cout_g"] // c0_size
-        tiling_info_dict_tmp["B_shape"][1] = group_dict["cin1_g"]
-        tiling_info_dict_tmp["C_shape"][0] = group_dict["cout_g"]
-        tiling_info_dict_tmp["C_shape"][1] = group_dict["cin1_g"]
+        tiling_info_dict_tmp["group"] = group_dict.get("real_g")
+        tiling_info_dict_tmp.get("A_shape")[1] = group_dict.get("cout_g") // c0_size
+        tiling_info_dict_tmp.get("B_shape")[1] = group_dict.get("cin1_g")
+        tiling_info_dict_tmp.get("C_shape")[0] = group_dict.get("cout_g")
+        tiling_info_dict_tmp.get("C_shape")[1] = group_dict.get("cin1_g")
         DynamicConv2dBpFilterParams.tiling_info_dict = tiling_info_dict_tmp
         self.group_dict = group_dict
 
-    def _deconv_dw_access(self):
+    def deconv_dw_access(self):
         """
         complete compute generation, including input check,
         compute definition and result record
@@ -636,97 +636,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         complete compute definition
 
         """
-
-        def _grads_2_fractal(grads_shape_fractal, grads_2_matrix):
-            """
-            compute definiton of loading grads_matrix to L0A
-
-            Parameters:
-            ----------
-            grads_shape_fractal : shape of result tensor in L0A
-
-            grads_2_matrix : input tensor in L1
-
-            Returns
-            -------
-            None
-            """
-
-            def __grads_2_fractal_compute(indices, grads_2_matrix):
-                """
-                do coordinate calculation
-
-                """
-
-                group_dict = self.group_dict
-
-                (group_indices, batch_indices,
-                    grads_c1_indices, hw_mad_1_indices,
-                    grads_c0_indices, hw_mad_0_indices) = indices
-
-                batch_size_index = batch_indices
-                grads_c1_index = (
-                                    group_indices * group_dict["cout_g"]
-                                 ) // BLOCK_SIZE + grads_c1_indices
-                grads_hw_index = (
-                                    hw_mad_1_indices * BLOCK_SIZE
-                                 ) + hw_mad_0_indices
-                grads_c0_index = grads_c0_indices
-
-                return grads_2_matrix(batch_size_index, grads_c1_index,
-                                      grads_hw_index, grads_c0_index)
-
-            return tvm.compute(grads_shape_fractal,
-                               lambda *indices:
-                               __grads_2_fractal_compute(indices,
-                                                         grads_2_matrix),
-                               name='grads_2_fractal',
-                               tag='grads_2_fractal')
-
-        def _fmap_2_fractal_load2d(fmap_shape_fractal, fmap_2_matrix):
-            """
-            compute definiton of loading fmap_matrix to L0B
-
-            Parameters:
-            ----------
-            fmap_shape_fractal : shape of result tensor in L0B
-
-            fmap_2_matrix : input tensor in L1
-
-            Returns
-            -------
-            None
-            """
-
-            def __fmap_2_fractal_load2d_compute(indices, fmap_2_matrix):
-                """
-                do coordinate calculation
-
-                """
-                (group_indices, batch_indices,
-                    hw_mad_1_indices, fmap_c1_indices,
-                    fmap_c0_indices, hw_mad_0_indices) = indices
-
-                batch_size_index = batch_indices
-                fmap_c1_index = fmap_c1_indices
-                c1_index = (
-                               group_indices * self.group_dict["cin1_g"]
-                           ) + fmap_c1_index
-
-                fmap_hw_index = (
-                                    hw_mad_1_indices * BLOCK_SIZE
-                                ) + hw_mad_0_indices
-                fmap_c0_index = fmap_c0_indices
-
-                return fmap_2_matrix(batch_size_index, c1_index,
-                                     fmap_hw_index, fmap_c0_index)
-
-            return tvm.compute(fmap_shape_fractal,
-                               lambda *indices:
-                               __fmap_2_fractal_load2d_compute
-                               (indices, fmap_2_matrix),
-                               name='famp_2_fractal',
-                               tag='famp_2_fractal')
 
         fmap_dtype = self.fmap_dtype
 
@@ -763,11 +672,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             
         # group dict
         group_dict = self.group_dict
-        real_g = group_dict["real_g"]
-        fmap_c1_g = group_dict["cin1_g"]
-        grads_channel_g = group_dict["cout_g"]
-        cin_ori = group_dict["cin_ori"]
-        cout_ori = group_dict["cout_ori"]
+        real_g = group_dict.get("real_g")
+        fmap_c1_g = group_dict.get("cin1_g")
+        grads_channel_g = group_dict.get("cout_g")
+        cin_ori = group_dict.get("cin_ori")
+        cout_ori = group_dict.get("cout_ori")
 
         # align to 16
         hw_mad = (grads_height*grads_width + BLOCK_SIZE - 1) \
@@ -793,8 +702,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                BLOCK_SIZE)
 
         self.shapelist['grads_fractal'] = grads_shape_fractal
-        grads_fractal = _grads_2_fractal(grads_shape_fractal,
-                                         grads_matrix)
+        grads_fractal = self._grads_2_fractal(grads_shape_fractal,
+                                              grads_matrix)
         if not self.flag_all_one_case:
             if not self.var_map:
                 # shape of fmap_original_matrix, corresponding to set_fmatrix
@@ -809,7 +718,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                                     fmap_shape_original_matrix
 
                 fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
-                                                self.fmap, fmap_dtype)
+                                                  self.fmap, fmap_dtype)
                 # move fmap to L0B
                 fmap_shape_fmap_matrix = (real_g, batch_size,
                                           hw_mad//BLOCK_SIZE,
@@ -819,7 +728,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
                 fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
-                                                fmap_matrix, fmap_dtype)
+                                                    fmap_matrix, fmap_dtype)
             else:
                 fmap_l1_shape = (real_g, batch_size, fmap_c1_g,
                                     fmap_height, fmap_width, fmap_c0)
@@ -862,8 +771,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                   BLOCK_SIZE)
             self.shapelist['fmap_matrix'] = fmap_shape_fractal
 
-            fmap_fractal = _fmap_2_fractal_load2d(fmap_shape_fractal,
-                                                  fmap_matrix)
+            fmap_fractal = self._fmap_2_fractal_load2d(fmap_shape_fractal,
+                                                       fmap_matrix)
 
         # shape of result dw [n1,m,n0]
         dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
@@ -873,20 +782,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         # do mmad
         dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
 
-        def _lambda_func_dw_cc(*params):
-            return dw_cc(*params)
-
-        # move dw_cc to UB
-        dw_ubuf = tvm.compute(dw_shape, _lambda_func_dw_cc,
-                              name='dw_ubuf', tag="dw_ubuf")
-
-        def _lambda_func_dw_ubuf(*params):
-            return dw_ubuf(*params)
-
         # move to ddr
-        self.dw_ddr = tvm.compute(dw_shape, _lambda_func_dw_ubuf,
-                                  name='dw_ddr', tag=self.optag + "dw_ddr",
-                                  attrs={'kernel_name': self.kernel_name})
+        self.dw_ddr = dw_cc
 
         return 1
 
@@ -910,7 +807,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
             """
 
-            grads_width = self.shapelist['grads_5hd'][3]
+            grads_width = self.shapelist.get('grads_5hd')[3]
 
             batch_indices, grads_c1_indices, hw_mad_indices, grads_c0_indices \
                 = indices
@@ -937,6 +834,52 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                            __grads_2_matrix_compute(indices, grads),
                            name='grads_2_matrix',
                            tag='grads_2_matrix')
+
+    def _grads_2_fractal(self, grads_shape_fractal, grads_2_matrix):
+        """
+        compute definiton of loading grads_matrix to L0A
+
+        Parameters:
+        ----------
+        grads_shape_fractal : shape of result tensor in L0A
+
+        grads_2_matrix : input tensor in L1
+
+        Returns
+        -------
+        None
+        """
+
+        def __grads_2_fractal_compute(indices, grads_2_matrix):
+            """
+            do coordinate calculation
+
+            """
+
+            group_dict = self.group_dict
+
+            (group_indices, batch_indices,
+                grads_c1_indices, hw_mad_1_indices,
+                grads_c0_indices, hw_mad_0_indices) = indices
+
+            batch_size_index = batch_indices
+            grads_c1_index = (
+                                group_indices * group_dict.get("cout_g")
+                                ) // BLOCK_SIZE + grads_c1_indices
+            grads_hw_index = (
+                                hw_mad_1_indices * BLOCK_SIZE
+                                ) + hw_mad_0_indices
+            grads_c0_index = grads_c0_indices
+
+            return grads_2_matrix(batch_size_index, grads_c1_index,
+                                    grads_hw_index, grads_c0_index)
+
+        return tvm.compute(grads_shape_fractal,
+                            lambda *indices:
+                            __grads_2_fractal_compute(indices,
+                                                      grads_2_matrix),
+                            name='grads_2_fractal',
+                            tag='grads_2_fractal')
 
     def _fmap_2_matrix(self, fmap_shape_original_matrix, fmap, fmap_dtype):
         """
@@ -972,7 +915,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
             """
 
-            _, _, fmap_height, fmap_width, _ = self.shapelist['fmap_5hd']
+            _, _, fmap_height, fmap_width, _ = self.shapelist.get('fmap_5hd')
 
             batch_indices, \
                 hw_fuse_indices, \
@@ -1045,7 +988,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             do coordinate calculation
 
             """
-            fmap_width = self.shapelist['fmap_5hd'][3]
+            fmap_width = self.shapelist.get('fmap_5hd')[3]
             batch_indices, fmap_c1_indices, hw_mad_indices, fmap_c0_indices \
                 = indices
             batch_size_index = batch_indices
@@ -1103,7 +1046,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             """
 
             _, hw_fuse, _, kernel_height, kernel_width, _ \
-                = self.shapelist['fmap_original_matrix']
+                = self.shapelist.get('fmap_original_matrix')
 
             # batch_size
             # hw_mad//block_size_K
@@ -1118,7 +1061,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             c1_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
                             // BLOCK_SIZE) // kernel_width) // kernel_height
 
-            c1_index = group_index * self.group_dict["cin1_g"] + c1_vm_index
+            c1_index = group_index * self.group_dict.get("cin1_g") + c1_vm_index
 
             kh_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
                             // BLOCK_SIZE) // kernel_width) % kernel_height
@@ -1141,6 +1084,51 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                                     fmap_2_col_matrix),
                            name='fmap_2_col_fractal',
                            tag='fmap_2_col_fractal')
+
+    def _fmap_2_fractal_load2d(self, fmap_shape_fractal, fmap_2_matrix):
+        """
+        compute definiton of loading fmap_matrix to L0B
+
+        Parameters:
+        ----------
+        fmap_shape_fractal : shape of result tensor in L0B
+
+        fmap_2_matrix : input tensor in L1
+
+        Returns
+        -------
+        None
+        """
+
+        def __fmap_2_fractal_load2d_compute(indices, fmap_2_matrix):
+            """
+            do coordinate calculation
+
+            """
+            (group_indices, batch_indices,
+                hw_mad_1_indices, fmap_c1_indices,
+                fmap_c0_indices, hw_mad_0_indices) = indices
+
+            batch_size_index = batch_indices
+            fmap_c1_index = fmap_c1_indices
+            c1_index = (
+                            group_indices * self.group_dict.get("cin1_g")
+                        ) + fmap_c1_index
+
+            fmap_hw_index = (
+                                hw_mad_1_indices * BLOCK_SIZE
+                            ) + hw_mad_0_indices
+            fmap_c0_index = fmap_c0_indices
+
+            return fmap_2_matrix(batch_size_index, c1_index,
+                                    fmap_hw_index, fmap_c0_index)
+
+        return tvm.compute(fmap_shape_fractal,
+                            lambda *indices:
+                            __fmap_2_fractal_load2d_compute
+                            (indices, fmap_2_matrix),
+                            name='famp_2_fractal',
+                            tag='famp_2_fractal')
 
     def _mad(self, mad_shape, grads, fmap):  # pylint: disable=R0913,R0914
         """
@@ -1170,7 +1158,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         """
 
         batch_size, _, grads_height, grads_width, _ \
-            = self.shapelist['grads_5hd']
+            = self.shapelist.get('grads_5hd')
         hw_fuse = grads_height*grads_width
 
         batch_axis = tvm.reduce_axis((0, batch_size), name='axis_b')
@@ -1190,8 +1178,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                      fmap[g, batch_axis, k_1, fkk, fmap_c0,
                                           k_0]).astype(self.res_dtype),
                                     axis=[batch_axis, k_axis]),
-                            name='dw', tag="dw",
-                            attrs={'mode': mode})
+                            name='dw', tag=self.optag + "dw",
+                            attrs={'mode': mode, 'kernel_name': self.kernel_name})
         return c_col
 
     def _im2col_fractal_v2(self, shape, img2col_para):
@@ -1296,7 +1284,7 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
                                             groups=groups,
                                             res_dtype=res_dtype,
                                             kernel_name=kernel_name)
-    deconv_dw_object._deconv_dw_access()
+    deconv_dw_object.deconv_dw_access()
 
     return deconv_dw_object.res_tensor
 

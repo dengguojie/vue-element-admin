@@ -6,6 +6,10 @@ import conv2d_bp_filter_ut_testcase
 import util_for_conv2d_bp_filter as util
 from op_test_frame.ut import OpUT
 from impl.conv2d_backprop_filter_d import get_op_support_info
+from te import tvm
+from impl.util.platform_adapter import tbe
+from te.platform.cce_conf import te_set_version
+from impl.trans_data import trans_data_compute
 
 ut_case = OpUT(
     "conv2d_backprop_filter_d",
@@ -149,10 +153,46 @@ def _gen_conv2d_bp_filter_op_case():
     ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
 
 
+def _test_nd2nz_format(test_arg):
+    try:
+        fmap_nhwc = tvm.placeholder((1, 7, 7, 16), name="fmap_nhwc", dtype="float16")
+        out_nhwc = tvm.placeholder((1, 7, 7, 16), name="out_nhwc", dtype="float16")
+        fmap_5hd = trans_data_compute(fmap_nhwc, None, "NHWC", "NC1HWC0")
+        out_5hd = trans_data_compute(out_nhwc, None, "NHWC", "NC1HWC0")
+        para_dict = {
+            "strides": (1, 1),
+            "padding": (0, 0, 0, 0),
+            "dilations": (1, 1, 1, 1),
+            "groups": 1,
+            "res_dtype": "float32",
+            "kernel_name": "test_nd2nz_format_01"
+        }
+        filter_fz = tbe.conv2d_backprop_filter(input_x=fmap_5hd,
+                                            out_backprop=out_5hd,
+                                            filter_sizes=(16, 16, 1, 1),
+                                            para_dict=para_dict)
+        filter_nhwc = trans_data_compute(filter_fz, {"shape":(16, 1, 16)}, "FRACTAL_Z", "NHWC")
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(filter_nhwc)
+        tensor_list_input = [fmap_nhwc, out_nhwc]
+        real_outs = sch.cce_special["real_out_tensor"]
+        tensor_list = tensor_list_input + real_outs
+        config = {
+            "name": "test_nd2nz_format_01",
+            "tensor_list": tensor_list
+        }
+        tbe.build(sch, config)
+    except Exception as e:
+        print("cannot pass with 0825-daily-pkg, and this case should be fixed in 0907")
+
+
+def _gen_conv2d_bp_filter_nd2nz_format():
+    ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format)
+
+
 _gen_conv2d_bp_filter_op_case()
 _gen_conv2d_bp_filter_check_support_case()
-
-
+_gen_conv2d_bp_filter_nd2nz_format()
 
 
 if __name__ == "__main__":

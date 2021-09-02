@@ -361,19 +361,19 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 tvm.const(0, src.dtype)),
                 name="res_nc1hwc0",
                 attrs={"ori_format": "NHWC", "ori_shape": src.shape},
-                tag = "NHWC_trans_5HD")
+                tag="NHWC_trans_5HD")
     elif src_format == "NC1HWC0" and dst_format == "NHWC":
         src_n, src_c1, src_hw, src_c0 = tuple(i.value for i in src.shape)
         dst_shape = dst.get("shape")
         dst_tensor = tvm.compute(dst_shape,
             lambda n_idx, hw_idx, c_idx: src(n_idx,
             c_idx // src_c0, hw_idx, c_idx % src_c0),
-            name = "res_nhwc",
-            tag = "5HD_trans_NHWC")
+            name="res_nhwc",
+            tag="5HD_trans_NHWC")
     elif src_format == "NHWC" and dst_format == "FRACTAL_Z":
         src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)
         dst_n1 = _ceil_div(src_n, fractal_n0)
-        dst_c0 = c0_dict[src.dtype]
+        dst_c0 = c0_dict.get(src.dtype)
         dst_c1 = _ceil_div(src_c, dst_c0)
         dst_shape = dst_c1 * src_h * src_w, dst_n1, fractal_n0, dst_c0
         hw = src_h * src_w
@@ -382,9 +382,9 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             lambda  i, j, k, l: src(j * fractal_n0 + k,
             (i % hw) // src_w, (i % hw) % src_w,
             (i // hw) * dst_c0 + l),
-            name = "res_fractal_z_weight",
+            name="res_fractal_z_weight",
             attrs={"ori_format": "NHWC", "ori_shape": src.shape},
-            tag = "NHWC_trans_FZ"
+            tag="NHWC_trans_FZ"
         )
     elif src_format == "ND" and dst_format == "FRACTAL_NZ":
         # transform fotmat ND to Nz, the dst_format is Zz actually when input dtype is fp32
@@ -421,7 +421,6 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             attrs={"ori_format": "ND", "ori_shape": src.shape, "format": dst_format, "ND_trans_Nz": 1},
             tag="gemm"
         )
-        
     elif src_format == "FRACTAL_NZ" and dst_format == "ND":
         src_shape = tuple(i.value for i in src.shape)
         dst_shape = src.op.attrs["ori_shape"]
@@ -434,7 +433,23 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 tag="gemm",
                 name="res_nd",
                 attrs={"ori_format": "FRACTAL_NZ",
-                    "ori_shape": src.shape, "Nz_trans_ND": 1})
+                       "ori_shape": src.shape, "Nz_trans_ND": 1})
+    elif src_format == "FRACTAL_Z" and dst_format == "NHWC":
+        group, src_fkk, src_n, src_c0 = tuple(i.value for i in src.shape)
+        dst_shape = dst.get("shape")
+        _, hw_length, _ = dst_shape
+
+        dst_tensor = tvm.compute(
+            dst_shape,
+            lambda n_idx, hw_idx, c_idx:
+                # block_dim_reduce, group, fww, n, c0
+                src(n_idx // src_n,
+                    c_idx // src_c0 * hw_length + hw_idx,
+                    n_idx,
+                    c_idx % src_c0),
+            name="res_nhwc",
+            tag="FZ_trans_NHWC"
+        )
     else:
         raise RuntimeError("not support this kind of format transfer !")
 
