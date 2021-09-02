@@ -52,7 +52,7 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
     }
     T **getPtr() const { return data_ptr_; }
 
-    T getv(int grp, int grpi) const { return data_ptr_[grp][grpi]; }
+    T getv(const int32_t grp, const int32_t grpi) const { return data_ptr_[grp][grpi]; }
   };
 
   template <typename T>
@@ -68,7 +68,7 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
   int32_t k_ = 0;
   int32_t group_size_ = 0;
   uint32_t data_batch_ = 0;
-  bool isMinHeap_ = true;
+  bool is_min_heap_ = true;
 
   template <typename T>
   uint32_t GetInputAndCheck(CpuKernelContext &ctx, InputsData<T> &input_data);
@@ -81,21 +81,30 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
                          Item<T> topk_ptr[]);
 
   template <typename T>
-  uint32_t GetDistanceTopKHeap(Item<T> topk_ptr[], const Item<T> grp_max_ptr[],
+  uint32_t GetDistanceTopKHeap(Item<T> topk_ptr[],
+                               const Item<T> grp_extreme_ptr[],
                                const InputsData<T> &inputs_data);
 
   template <typename T>
-  uint32_t GetGroupedMaxDistanceTopKHeap(Item<T> grp_max_ptr[],
-                                         const InputsData<T> &input_data);
+  uint32_t GetGroupedDistanceTopKHeap(Item<T> grp_extreme_ptr[],
+                                      const InputsData<T> &input_data);
 
   template <typename T>
-  void MakeHeap(Item<T> arr_ptr[], int32_t n);
+  void MakeHeap(Item<T> arr_ptr[], const int32_t n);
 
   template <typename T>
-  void PopHeap(Item<T> arr_ptr[], int32_t n, Item<T> *res);
+  void PopHeap(Item<T> arr_ptr[], const int32_t n, Item<T> *const res);
 
   template <typename T>
-  void HeapFixdown(Item<T> a[], int32_t i, int32_t n);
+  void HeapFixdown(Item<T> a[], const int32_t index, const int32_t n);
+
+  template <typename T>
+  void SortHeap(Item<T> arr_ptr[], const int32_t n);
+
+  template <typename T>
+  void InitGrpExtreme(Item<T> grp_extreme_ptr[],
+                      const InputsData<T> &input_data, int32_t &grp,
+                      int32_t &grpi);
 };
 }  // namespace aicpu
 #endif

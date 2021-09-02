@@ -270,11 +270,11 @@ set(_cpu_kernels_ut_files
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/sub/src/sub_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
+  testcase/top_k_pq_distance/src/top_k_pq_distance_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
   testcase/where/src/where_utest.cpp
-  testcase/top_k_pq_distance/src/top_k_pq_distance_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
