@@ -128,9 +128,9 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
   FilterElemwiseNodes(elemwise_nodes, quant_nodes, strided_write_nodes, fusion_nodes);
 
   if (quant_nodes.empty()) {
-    TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, false);
+    TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, false, L1FUSION_BASIC);
   } else {
-    TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, true);
+    TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, true, L1FUSION_BASIC);
   }
 
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippCommonFusionPass.");

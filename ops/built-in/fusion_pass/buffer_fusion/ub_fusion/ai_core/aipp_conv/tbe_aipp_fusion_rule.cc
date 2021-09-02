@@ -275,7 +275,7 @@ bool TbeAippFusionRule::CheckElemwiseValidation(ge::NodePtr elemwise_node) {
 }
 
 void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
-                                     const bool &is_deal_c_axis) {
+                                     const bool &is_deal_c_axis, const OpL1FusionType& aipp_L1_fusion_type) {
   std::string fused_op_type = "FusedOp";
   if (conv_nodes.empty()) {
     OP_LOGD(fused_op_type.c_str(), "conv node not matched");
@@ -299,7 +299,7 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
     OP_LOGD(fused_op_type.c_str(), "init op_calc_info failed");
     return;
   }
-  op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
+  op_calc_info.SetL1FusionEnable(aipp_L1_fusion_type);
   op_calc_info.SetAxisSplitMaps(split_maps);
   op_calc_info.SetMinTbeL1Space(min_tbe_L1Space);
   std::string op_slice_info_str = "";
