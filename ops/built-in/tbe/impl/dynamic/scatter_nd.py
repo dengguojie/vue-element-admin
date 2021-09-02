@@ -113,7 +113,7 @@ class ScatterNd():
                                                is_atomic_add=True)
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape", scope=tik.scope_gm)
+        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape_gm", scope=tik.scope_gm)
         self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
@@ -1416,7 +1416,7 @@ class ScatterNd():
                 "indices_size": self.indices_dtype_bytes_size,
                 "support_atomic": self.support_atomic
             })
-        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        opt_config = {"out_of_bound_sync_check": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.indices_gm, self.updates_gm, self.shape_gm),
                                    outputs=(self.out_gm),

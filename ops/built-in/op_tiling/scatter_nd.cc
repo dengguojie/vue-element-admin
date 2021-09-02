@@ -37,7 +37,6 @@ const int64_t OUT_SPECIAL_DIM_1 = 1;
 const int64_t OUT_SPECIAL_DIM_2 = 80;
 const int64_t OUT_SPECIAL_DIM_3 = 300000;
 const int64_t OUT_SPECIAL_DIM_4 = 256;
-const int64_t OUT_SPECIAL_DIM_5 = 279424;
 // 32b aligned, ub can store all updatesNum, float32 atomic
 const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can't store all updatesNum, float32 atomic
@@ -398,8 +397,7 @@ bool CheckScatterNdHighPerfShape(std::vector<int64_t> outShape, std::vector<int6
 
   if ((outShape[0] == OUT_SPECIAL_DIM_0 && outShape[1] == OUT_SPECIAL_DIM_1) ||
       (outShape[0] == OUT_SPECIAL_DIM_0 && outShape[1] == OUT_SPECIAL_DIM_2) ||
-      (outShape[0] == OUT_SPECIAL_DIM_3 && outShape[1] == OUT_SPECIAL_DIM_4) ||
-      (outShape[0] == OUT_SPECIAL_DIM_5 && outShape[1] == OUT_SPECIAL_DIM_1)) {
+      (outShape[0] == OUT_SPECIAL_DIM_3 && outShape[1] == OUT_SPECIAL_DIM_4)) {
     return true;
   }
   return false;
