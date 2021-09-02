@@ -57,6 +57,7 @@ from .add_mat_mat_elements import add_mat_mat_elements
 from .tile_with_axis import tile_with_axis
 from .bias import bias
 from .dequantize import dequantize
+from .dynamic_rnn_v2 import dynamic_rnn_v2
 from .bninference_d import bninference_d
 from .bn_training_reduce import bn_training_reduce
 from .bounding_box_decode import bounding_box_decode

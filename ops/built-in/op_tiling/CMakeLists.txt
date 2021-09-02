@@ -59,6 +59,7 @@ set(_optiling_files
   dynamic_lstm_grad_cell.cc
   deconvolution.cc
   dynamic_atomic_addr_clean.cc
+  dynamic_rnn_v2.cc
   eletwise.cc
   eletwise_v2.cc
   broadcast.cc
