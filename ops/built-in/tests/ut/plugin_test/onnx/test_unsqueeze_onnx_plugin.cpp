@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class unsqueeze_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(unsqueeze_onnx_plugin_test, unsqueeze_axes_V9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -35,6 +37,7 @@ TEST_F(unsqueeze_onnx_plugin_test, unsqueeze_axes_V9) {
 }
 
 TEST_F(unsqueeze_onnx_plugin_test, unsqueeze_axes_V11) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -52,6 +55,7 @@ TEST_F(unsqueeze_onnx_plugin_test, unsqueeze_axes_V11) {
 }
 
 TEST_F(unsqueeze_onnx_plugin_test, unsqueeze_axes_V12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

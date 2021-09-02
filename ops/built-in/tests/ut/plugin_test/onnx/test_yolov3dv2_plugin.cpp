@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -15,6 +16,7 @@ class yolov3dv2_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(yolov3dv2_onnx_plugin_test, yolov3dv2_onnx_plugin_test_case_1) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -27,5 +29,5 @@ TEST_F(yolov3dv2_onnx_plugin_test, yolov3dv2_onnx_plugin_test_case_1) {
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }

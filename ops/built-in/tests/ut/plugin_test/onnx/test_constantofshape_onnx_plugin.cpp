@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class constantofshape_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V11) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -32,6 +34,7 @@ TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V11) {
 }
 
 TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -46,6 +49,7 @@ TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V9) {
 }
 
 TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -60,6 +64,7 @@ TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V12) {
 }
 
 TEST_F(constantofshape_onnx_plugin_test, test_constantofshape_V13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -22,6 +23,7 @@ protected:
 
 TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_test_case_1)
 {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -41,6 +43,7 @@ TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_tes
 
 TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_test_case_2)
 {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -60,6 +63,7 @@ TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_tes
 
 TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_test_case_3)
 {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -79,6 +83,7 @@ TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_tes
 
 TEST_F(global_average_pool_onnx_plugin_test, global_average_pool_onnx_plugin_test_case_4)
 {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

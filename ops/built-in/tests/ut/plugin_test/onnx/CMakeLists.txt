@@ -46,6 +46,7 @@ target_link_libraries(ops_cpp_onnx_plugin_utest PRIVATE
         ops_all_onnx_plugin_llt
         opsproto_llt
         -Wl,--no-whole-archive
+        parser_common
         fmk_onnx_parser
         )
 

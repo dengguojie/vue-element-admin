@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class split_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(split_onnx_plugin_test, test_split_v11_no_default) {
+  CleanGlobal();
   ge::Graph graph;
   std::cout << __FILE__ << std::endl;
   std::string caseDir = __FILE__;
@@ -30,6 +32,7 @@ TEST_F(split_onnx_plugin_test, test_split_v11_no_default) {
 }
 
 TEST_F(split_onnx_plugin_test, test_split_v11_default_split) {
+  CleanGlobal();
   ge::Graph graph;
   std::cout << __FILE__ << std::endl;
   std::string caseDir = __FILE__;
@@ -42,6 +45,7 @@ TEST_F(split_onnx_plugin_test, test_split_v11_default_split) {
 }
 
 TEST_F(split_onnx_plugin_test, test_split_v13_no_default) {
+  CleanGlobal();
   ge::Graph graph;
   std::cout << __FILE__ << std::endl;
   std::string caseDir = __FILE__;
@@ -54,6 +58,7 @@ TEST_F(split_onnx_plugin_test, test_split_v13_no_default) {
 }
 
 TEST_F(split_onnx_plugin_test, test_split_v13_default_split) {
+  CleanGlobal();
   ge::Graph graph;
   std::cout << __FILE__ << std::endl;
   std::string caseDir = __FILE__;
@@ -66,6 +71,7 @@ TEST_F(split_onnx_plugin_test, test_split_v13_default_split) {
 }
 
 TEST_F(split_onnx_plugin_test, test_split_v11_split) {
+  CleanGlobal();
   ge::Graph graph;
   std::cout << __FILE__ << std::endl;
   std::string caseDir = __FILE__;

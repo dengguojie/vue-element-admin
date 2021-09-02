@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -19,6 +20,7 @@ class shrink_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(shrink_onnx_plugin_test, shrink_onnx_plugin_test_case_01) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

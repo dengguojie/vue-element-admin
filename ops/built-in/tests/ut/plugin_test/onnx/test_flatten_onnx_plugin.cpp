@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class flatten_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_neg1) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -32,6 +34,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_neg1) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_0) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -47,6 +50,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_0) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_2) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -62,6 +66,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_2) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_3) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -77,6 +82,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_3) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_4) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -92,6 +98,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_input_4d_axis_4) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_v12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -107,6 +114,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_v12) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_v13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -122,6 +130,7 @@ TEST_F(flatten_onnx_plugin_test, test_flatten_v13) {
 }
 
 TEST_F(flatten_onnx_plugin_test, test_flatten_v9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

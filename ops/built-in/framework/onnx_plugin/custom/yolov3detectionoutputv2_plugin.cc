@@ -30,6 +30,9 @@ Status ParseParamsYolov3detectionoutputv2(const Message* op_src, ge::Operator& o
     ONNX_PLUGIN_LOGE("Yolov3detectionoutputv2", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
+  int n = node->input_size();
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  op_desc->AddDynamicInputDesc("x", n);
 
   int N = 10;
   int boxes = 3;

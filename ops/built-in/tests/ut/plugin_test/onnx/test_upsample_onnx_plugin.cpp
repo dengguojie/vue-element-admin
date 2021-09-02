@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class upsample_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(upsample_onnx_plugin_test, test_upsample_linear_case_V11) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -35,6 +37,7 @@ TEST_F(upsample_onnx_plugin_test, test_upsample_linear_case_V11) {
   EXPECT_EQ(nodes.size(), 4);
 }
 TEST_F(upsample_onnx_plugin_test, test_upsample_nearest_case_V11) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

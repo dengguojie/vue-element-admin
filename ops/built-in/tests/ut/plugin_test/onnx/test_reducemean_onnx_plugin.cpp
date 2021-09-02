@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class reducemean_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(reducemean_onnx_plugin_test, test_reducemean_case_1) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -36,6 +38,7 @@ TEST_F(reducemean_onnx_plugin_test, test_reducemean_case_1) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, test_reducemean_case_2) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -54,6 +57,7 @@ TEST_F(reducemean_onnx_plugin_test, test_reducemean_case_2) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_default_V13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -72,6 +76,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_default_V13) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_keepdims_V13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -90,6 +95,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_keepdims_V13) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_negative_V13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -108,6 +114,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_negative_V13) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_not_keepdims_V13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -126,6 +133,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_not_keepdims_V13) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_default_V12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -144,6 +152,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_default_V12) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_keepdims_V12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -162,6 +171,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_keepdims_V12) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_negative_V12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -180,6 +190,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_negative_V12) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_not_keepdims_V12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -198,6 +209,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_not_keepdims_V12) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_default_V9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -216,6 +228,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_default_V9) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_keepdims_V9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -234,6 +247,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_keepdims_V9) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_negative_V9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -252,6 +266,7 @@ TEST_F(reducemean_onnx_plugin_test, ReduceMean_negative_V9) {
 }
 
 TEST_F(reducemean_onnx_plugin_test, ReduceMean_not_keepdims_V9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

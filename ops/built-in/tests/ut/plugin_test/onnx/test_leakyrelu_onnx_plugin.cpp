@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class leaky_relu_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(leaky_relu_onnx_plugin_test, test_leaky_relu_case_1) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -36,6 +38,7 @@ TEST_F(leaky_relu_onnx_plugin_test, test_leaky_relu_case_1) {
 }
 
 TEST_F(leaky_relu_onnx_plugin_test, test_leaky_relu_case_default) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

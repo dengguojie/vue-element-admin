@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class eyelike_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(eyelike_onnx_plugin_test, eyelike_onnx_plugin_test_case) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

@@ -1,18 +1,0 @@
-HJ-TopK-onnx:„
-$
-Xvaluesindices"TopK*
-k 
-test-modelZ
-X
-
-
-b
-
-values_ref
-
-
-b
-indices_ref
-
-
-B	

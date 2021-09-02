@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class conv_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_1) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -36,6 +38,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_1) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_2) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -54,6 +57,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_2) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_3) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -72,6 +76,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_3) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_4) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -90,6 +95,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_4) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_5) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -108,6 +114,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_5) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_6) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -126,6 +133,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_6) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_7) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -144,6 +152,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_7) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_8) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -162,6 +171,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_8) {
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

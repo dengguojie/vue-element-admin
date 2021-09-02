@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -19,6 +20,7 @@ class reduceL2_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(reduceL2_onnx_plugin_test, ReduceL2_default) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -37,6 +39,7 @@ TEST_F(reduceL2_onnx_plugin_test, ReduceL2_default) {
 }
 
 TEST_F(reduceL2_onnx_plugin_test, ReduceL2_keepdims) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -55,6 +58,7 @@ TEST_F(reduceL2_onnx_plugin_test, ReduceL2_keepdims) {
 }
 
 TEST_F(reduceL2_onnx_plugin_test, ReduceL2_negative) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -73,6 +77,7 @@ TEST_F(reduceL2_onnx_plugin_test, ReduceL2_negative) {
 }
 
 TEST_F(reduceL2_onnx_plugin_test, ReduceL2_not_keepdims) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

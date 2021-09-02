@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class lrn_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_case_1) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -36,6 +38,7 @@ TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_case_1) {
 }
 
 TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_v9) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -54,6 +57,7 @@ TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_v9) {
 }
 
 TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_v12) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -72,6 +76,7 @@ TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_v12) {
 }
 
 TEST_F(lrn_onnx_plugin_test, lrn_onnx_plugin_test_v13) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -18,6 +19,7 @@ class reducelogsum_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(reducelogsum_onnx_plugin_test, test_reducelogsum_case_V11) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;
@@ -36,6 +38,7 @@ TEST_F(reducelogsum_onnx_plugin_test, test_reducelogsum_case_V11) {
 }
 
 TEST_F(reducelogsum_onnx_plugin_test, test_reducelogsum_case1_V11) {
+  CleanGlobal();
   ge::Graph graph;
 
   std::cout << __FILE__ << std::endl;

@@ -1,6 +1,7 @@
 
 #include "gtest/gtest.h"
 #include "onnx_parser.h"
+#include "parser_common.h"
 
 using namespace ge;
 
@@ -16,8 +17,9 @@ class abs_onnx_plugin_test : public testing::Test {
 };
 
 TEST_F(abs_onnx_plugin_test, abs_onnx_plugin_test_case_1) {
+  CleanGlobal();
   ge::Graph graph;
-
+  
   std::cout << __FILE__ << std::endl;
   std::string caseDir = __FILE__;
   std::size_t idx = caseDir.find_last_of("/");
