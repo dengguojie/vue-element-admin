@@ -94,7 +94,7 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   ge::GeShape origin_input_shape(input_desc.GetOriginShape().GetDims());
   ge::Format data_format = input_desc.GetFormat();
   ge::DataType data_type = input_desc.GetDataType();
-  auto ret = new_desc->AddInputDesc(GeTensorDesc(input_shape, data_format, data_type));
+  auto ret = new_desc->AddInputDesc("x1", GeTensorDesc(input_shape, data_format, data_type));
   FUSION_PASS_CHECK(ret != SUCCESS,
                     CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMulNode AddInputDesc one fail."), return FAILED);
   auto new_input_desc1 = new_desc->GetInputDesc(0);
@@ -110,7 +110,7 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   ge::GeShape origin_input_shape1(input_desc1.GetOriginShape().GetDims());
   ge::Format data_format1 = input_desc1.GetFormat();
   ge::DataType data_type1 = input_desc1.GetDataType();
-  ret = new_desc->AddInputDesc(GeTensorDesc(input_shape1, data_format1, data_type1));
+  ret = new_desc->AddInputDesc("x2", GeTensorDesc(input_shape1, data_format1, data_type1));
   FUSION_PASS_CHECK(ret != SUCCESS,
                     CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMulNode AddinputDesc two fail."), return FAILED);
   auto new_input_desc2 = new_desc->GetInputDesc(1);
@@ -126,7 +126,7 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   ge::GeShape origin_output_shape(output_desc.GetOriginShape().GetDims());
   ge::Format output_format = output_desc.GetFormat();
   ge::DataType output_dtype = output_desc.GetDataType();
-  ret = new_desc->AddOutputDesc(GeTensorDesc(output_shape, output_format, output_dtype));
+  ret = new_desc->AddOutputDesc("y", GeTensorDesc(output_shape, output_format, output_dtype));
   FUSION_PASS_CHECK(ret != GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMulNode AddoutputDesc fail."), return FAILED);
   auto new_output_desc = new_desc->GetOutputDesc(0);
