@@ -22,7 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 from impl import roi_align_vbi
-from impl import roi_align_true
+from impl.roi_align_true import roi_align_true
 from te.utils.error_manager import error_manager_vector
 
 
