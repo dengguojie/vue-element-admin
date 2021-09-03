@@ -219,7 +219,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     dtype = input_x.get("dtype").lower()
     ori_input_format = input_x.get("ori_format")
     if length_x_ori == 2:
-        if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1:
+        if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1 and shape_x_ori[1] * 2 < UB_SIZE_LIMIT:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16",
