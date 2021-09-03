@@ -208,6 +208,23 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
                 return FAILED;
             }
         }
+        if (mode_def->GetName().find("gradients/vit-b16/Transformer/encoderblock") != std::string::npos) {
+          OP_LOGI(kOpType, "gradients/vit-b16/Transformer/encoderblock is found");
+          if (mode_def->GetName().find("LayerNorm_2/batchnorm/mul_grad/Mul") != std::string::npos) {
+            if (mode_def->GetOpType() == "Mul") {
+              OP_LOGI(kOpType, "Mul is found,name is %s",mode_def->GetName().c_str());
+              auto input_desc0 = mode_def->GetInputDesc(0);
+              std::string input_name = ScopeUtil::StringReplaceAll(input_desc0.GetName(), "^", "");
+              auto input_desc1 = mode_def->GetInputDesc(1);
+              std::string input_name1 = ScopeUtil::StringReplaceAll(input_desc1.GetName(), "^", "");
+              if ((input_name.find("gradients/AddN") != std::string::npos) ||
+              (input_name1.find("gradients/AddN") != std::string::npos)) {
+                OP_LOGI(kOpType, "scope result is not fusion");
+                return FAILED;
+              }
+            }
+          }
+        }
     }
 
     if (scope->SubType() == kScopeType) {

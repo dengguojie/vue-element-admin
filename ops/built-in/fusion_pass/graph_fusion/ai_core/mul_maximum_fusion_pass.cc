@@ -271,7 +271,9 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   maximumNode->GetOutDataAnchor(0)->UnlinkAll();
   FUSION_PASS_CHECK(graph.RemoveNode(maximumNode) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maximum node failed."), return FAILED);
-
+  std::map<string, uint32_t> input_name_id;
+  input_name_id["x"] = 0;
+  mulNode->GetOpDesc()->UpdateInputName(input_name_id);
   fusionNodes.push_back(mulNode);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MulMaximumFusionPass fusion end");
   return SUCCESS;
