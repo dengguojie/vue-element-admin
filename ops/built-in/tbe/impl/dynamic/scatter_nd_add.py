@@ -84,7 +84,7 @@ class ScatterNdAdd():
         self.indices_ub_num = self.ub_size_bytes // 96 * 32 // self.indices_dtype_bytes_size
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indice_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.adds_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="adds_gm", scope=tik.scope_gm)
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
 
@@ -119,7 +119,7 @@ class ScatterNdAdd():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32",)
+        indices_support_dtype_list = ("int32", "int64")
         var_support_dtype_list = ("float32", "float16", "int32")
         para_check.check_dtype(self.indice_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")

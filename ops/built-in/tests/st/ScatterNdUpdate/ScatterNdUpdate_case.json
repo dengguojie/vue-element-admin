@@ -1,286 +1,267 @@
 [
   {
     "op": "ScatterNdUpdate",
-    "input_desc": [
-      {
-        "shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_format": "ND",
+    "case_name" : "test_scatter_nd_update_tilingmode1",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 8],
+         "typical_shape": [512, 8],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
         "format": "ND",
-        "name": "var",
-        "type": "int8"
+        "shape": [-1, 1],
+        "typical_shape": [256, 1],
+        "shape_range": [[100, 600]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
       },
       {
-        "shape": [
-          128,
-          1
-        ],
-        "ori_shape": [
-          128,
-          1
-        ],
-        "ori_format": "ND",
         "format": "ND",
-        "name": "indices",
-        "type": "int32"
-      },
-      {
-        "shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "updates",
-        "type": "int8"
+        "shape": [-1, 8],
+        "typical_shape": [256, 8],
+        "shape_range": [[100, 600]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
       }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "var_out",
-        "type": "int8"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_ScatterNdUpdate_002"
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 8],
+         "typical_shape": [512, 8],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
   },
   {
     "op": "ScatterNdUpdate",
-    "input_desc": [
-      {
-        "shape": [
-          128,
-          32
-        ],
-        "ori_shape": [
-          128,
-          32
-        ],
-        "ori_format": "ND",
+    "case_name" : "test_scatter_nd_update_tilingmode2",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 8],
+         "typical_shape": [512, 8],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
         "format": "ND",
-        "name": "var",
-        "type": "uint8"
+        "shape": [-1, 1],
+        "typical_shape": [3845, 1],
+        "shape_range": [[1, 6000]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
       },
       {
-        "shape": [
-          128,
-          1
-        ],
-        "ori_shape": [
-          128,
-          1
-        ],
-        "ori_format": "ND",
         "format": "ND",
-        "name": "indices",
-        "type": "int32"
-      },
-      {
-        "shape": [
-          128,
-          32
-        ],
-        "ori_shape": [
-          128,
-          32
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "updates",
-        "type": "uint8"
+        "shape": [-1, 8],
+        "typical_shape": [3845, 8],
+        "shape_range": [[1, 6000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
       }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          128,
-          32
-        ],
-        "ori_shape": [
-          128,
-          32
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "var_out",
-        "type": "uint8"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_ScatterNdUpdate_003"
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 8],
+         "typical_shape": [512, 8],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
   },
   {
     "op": "ScatterNdUpdate",
-    "input_desc": [
-      {
-        "shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_format": "ND",
+    "case_name" : "test_scatter_nd_update_tilingmode3",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [100, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
         "format": "ND",
-        "name": "var",
-        "type": "int8"
+        "shape": [-1, 1],
+        "typical_shape": [20, 1],
+        "shape_range": [[10, 60]],
+        "type": "int32",
+        "value_range": [[1, 100]],
+        "data_distribute" : "uniform",
+        "name": "indices"
       },
       {
-        "shape": [
-          128,
-          1
-        ],
-        "ori_shape": [
-          128,
-          1
-        ],
-        "ori_format": "ND",
         "format": "ND",
-        "name": "indices",
-        "type": "int32"
-      },
-      {
-        "shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "updates",
-        "type": "int8"
+        "shape": [-1, 7],
+        "typical_shape": [20, 7],
+        "shape_range": [[10, 60]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
       }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_shape": [
-          128,
-          512,
-          7,
-          7
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "var_out",
-        "type": "int8"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_ScatterNdUpdate_006"
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [100, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
   },
   {
     "op": "ScatterNdUpdate",
-    "input_desc": [
-      {
-        "shape": [
-          128,
-          32
-        ],
-        "ori_shape": [
-          128,
-          32
-        ],
-        "ori_format": "ND",
+    "case_name" : "test_scatter_nd_update_tilingmode4",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [512, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
         "format": "ND",
-        "name": "var",
-        "type": "uint8"
+        "shape": [-1, 1],
+        "typical_shape": [3845, 1],
+        "shape_range": [[1000, 6000]],
+        "type": "int32",
+        "value_range": [[1, 100]],
+        "data_distribute" : "uniform",
+        "name": "indices"
       },
       {
-        "shape": [
-          128,
-          1
-        ],
-        "ori_shape": [
-          128,
-          1
-        ],
-        "ori_format": "ND",
         "format": "ND",
-        "name": "indices",
-        "type": "int32"
+        "shape": [-1, 7],
+        "typical_shape": [3845, 7],
+        "shape_range": [[1000, 6000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [512, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
+  },
+  {
+    "op": "ScatterNdUpdate",
+    "case_name" : "test_scatter_nd_update_tilingmode5",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 10],
+         "typical_shape": [100, 10],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [20, 1],
+        "shape_range": [[10, 6000]],
+        "type": "int32",
+        "value_range": [[1, 100]],
+        "data_distribute" : "uniform",
+        "name": "indices"
       },
       {
-        "shape": [
-          128,
-          32
-        ],
-        "ori_shape": [
-          128,
-          32
-        ],
-        "ori_format": "ND",
         "format": "ND",
-        "name": "updates",
-        "type": "uint8"
+        "shape": [-1, 10],
+        "typical_shape": [20, 10],
+        "shape_range": [[10, 6000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
       }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          128,
-          32
-        ],
-        "ori_shape": [
-          128,
-          32
-        ],
-        "ori_format": "ND",
-        "format": "ND",
-        "name": "var_out",
-        "type": "uint8"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_ScatterNdUpdate_007"
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 10],
+         "typical_shape": [100, 10],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
   }
 ]

@@ -1,0 +1,303 @@
+[
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode1",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [256, 1],
+        "shape_range": [[100, 600]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 8],
+        "typical_shape": [256, 8],
+        "shape_range": [[100, 600]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [256, 8]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [512, 8],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode2",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [38450, 1],
+        "shape_range": [[10000, 60000]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 8],
+        "typical_shape": [38450, 8],
+        "shape_range": [[10000, 60000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [38450, 8]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [38450, 8],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode3",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [20, 1],
+        "shape_range": [[10, 60]],
+        "type": "int32",
+        "value_range": [[1, 20]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 7],
+        "typical_shape": [20, 7],
+        "shape_range": [[10, 60]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [20, 7]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [512, 8],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode4",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [38450, 1],
+        "shape_range": [[10000, 60000]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 7],
+        "typical_shape": [38450, 7],
+        "shape_range": [[10000, 60000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [38450, 7]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [38450, 7],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode5",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [20, 1],
+        "shape_range": [[10, 60]],
+        "type": "int32",
+        "value_range": [[1, 20]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 10],
+        "typical_shape": [20, 10],
+        "shape_range": [[10, 60]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [20, 10]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [20, 10],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode16",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [31052, 1],
+        "shape_range": [[10000, 60000]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 256],
+        "typical_shape": [31052, 256],
+        "shape_range": [[10000, 60000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [300000, 256]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [300000, 256],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_tilingmode17",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [640000, 1],
+        "shape_range": [[100000, 640000]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 80],
+        "typical_shape": [640000, 80],
+        "shape_range": [[100000, 640000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [640000, 80]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [640000, 80],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
+  }
+]

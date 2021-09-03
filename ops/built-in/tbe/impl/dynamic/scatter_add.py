@@ -110,7 +110,7 @@ class ScatterAdd():
                                                name="var_gm",
                                                scope=tik.scope_gm,
                                                is_atomic_add=True)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
@@ -137,7 +137,7 @@ class ScatterAdd():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32",)
+        indices_support_dtype_list = ("int32", "int64")
         var_support_dtype_list = ("float32", "int32", "float16")
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")

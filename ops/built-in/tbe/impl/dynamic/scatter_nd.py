@@ -114,7 +114,7 @@ class ScatterNd():
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
@@ -134,7 +134,7 @@ class ScatterNd():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32",)
+        indices_support_dtype_list = ("int32", "int64")
         updates_support_dtype_list = ("float32", "int32", "float16")
         shape_support_dtype_list = ("int32",)
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")

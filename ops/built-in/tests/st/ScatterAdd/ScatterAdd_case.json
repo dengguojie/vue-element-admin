@@ -1,7 +1,7 @@
 [
   {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode1",
+    "op": "ScatterAdd",
+    "case_name" : "test_scatter_add_tilingmode1",
      "input_desc": [
        {
          "format": "ND",
@@ -53,14 +53,14 @@
      ]
   },
   {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode3",
+    "op": "ScatterAdd",
+    "case_name" : "test_scatter_add_tilingmode2",
      "input_desc": [
        {
          "format": "ND",
          "shape": [-1, 8],
-         "typical_shape": [51200, 8],
-         "shape_range": [[100, 60000]],
+         "typical_shape": [512, 8],
+         "shape_range": [[100, 600]],
          "type": "float32",
          "value_range": [[0, 1]],
          "data_distribute" : "uniform",
@@ -69,18 +69,18 @@
        {
         "format": "ND",
         "shape": [-1],
-        "typical_shape": [256],
+        "typical_shape": [3845],
         "shape_range": [[1, 6000]],
         "type": "int32",
-        "value_range": [[1, 51200]],
+        "value_range": [[1, 512]],
         "data_distribute" : "uniform",
         "name": "indices"
       },
       {
         "format": "ND",
         "shape": [-1, 8],
-        "typical_shape": [256, 8],
-        "shape_range": [[100, 60000]],
+        "typical_shape": [3845, 8],
+        "shape_range": [[1, 6000]],
         "type": "float32",
         "value_range": [[0, 1]],
         "data_distribute" : "uniform",
@@ -91,113 +91,7 @@
        {
          "format": "ND",
          "shape": [-1, 8],
-         "typical_shape": [51200, 8],
-         "shape_range": [[100, 60000]],
-         "type": "float32",
-         "name": "var"
-       }
-     ],
-     "attr": [
-         {
-          "name": "use_locking",
-          "value": false,
-          "type": "bool"
-         }
-     ]
-  },
-  {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode4",
-     "input_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 8],
-         "typical_shape": [51200, 8],
-         "shape_range": [[10000, 60000]],
-         "type": "float32",
-         "value_range": [[0, 1]],
-         "data_distribute" : "uniform",
-         "name": "var"
-       },
-       {
-        "format": "ND",
-        "shape": [-1],
-        "typical_shape": [51200],
-        "shape_range": [[10000, 60000]],
-        "type": "int32",
-        "value_range": [[1, 51200]],
-        "data_distribute" : "uniform",
-        "name": "indices"
-      },
-      {
-        "format": "ND",
-        "shape": [-1, 8],
-        "typical_shape": [51200, 8],
-        "shape_range": [[10000, 60000]],
-        "type": "float32",
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform",
-        "name": "update"
-      }
-     ],
-     "output_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 8],
-         "typical_shape": [51200, 8],
-         "shape_range": [[10000, 60000]],
-         "type": "float32",
-         "name": "var"
-       }
-     ],
-     "attr": [
-         {
-          "name": "use_locking",
-          "value": false,
-          "type": "bool"
-         }
-     ]
-  },
-  {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode5",
-     "input_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 7],
-         "typical_shape": [512, 7],
-         "shape_range": [[100, 600]],
-         "type": "float32",
-         "value_range": [[0, 1]],
-         "data_distribute" : "uniform",
-         "name": "var"
-       },
-       {
-        "format": "ND",
-        "shape": [-1],
-        "typical_shape": [256],
-        "shape_range": [[100, 600]],
-        "type": "int32",
-        "value_range": [[1, 100]],
-        "data_distribute" : "uniform",
-        "name": "indices"
-      },
-      {
-        "format": "ND",
-        "shape": [-1, 7],
-        "typical_shape": [256, 7],
-        "shape_range": [[100, 600]],
-        "type": "float32",
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform",
-        "name": "update"
-      }
-     ],
-     "output_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 7],
-         "typical_shape": [512, 7],
+         "typical_shape": [512, 8],
          "shape_range": [[100, 600]],
          "type": "float32",
          "name": "var"
@@ -212,14 +106,14 @@
      ]
   },
   {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode7",
+    "op": "ScatterAdd",
+    "case_name" : "test_scatter_add_tilingmode3",
      "input_desc": [
        {
          "format": "ND",
          "shape": [-1, 7],
-         "typical_shape": [51200, 7],
-         "shape_range": [[10000, 60000]],
+         "typical_shape": [100, 7],
+         "shape_range": [[100, 600]],
          "type": "float32",
          "value_range": [[0, 1]],
          "data_distribute" : "uniform",
@@ -228,8 +122,8 @@
        {
         "format": "ND",
         "shape": [-1],
-        "typical_shape": [256],
-        "shape_range": [[10, 6000]],
+        "typical_shape": [20],
+        "shape_range": [[10, 60]],
         "type": "int32",
         "value_range": [[1, 100]],
         "data_distribute" : "uniform",
@@ -238,7 +132,113 @@
       {
         "format": "ND",
         "shape": [-1, 7],
-        "typical_shape": [256, 7],
+        "typical_shape": [20, 7],
+        "shape_range": [[10, 60]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [100, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
+  },
+  {
+    "op": "ScatterAdd",
+    "case_name" : "test_scatter_add_tilingmode4",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [512, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [3845],
+        "shape_range": [[1000, 6000]],
+        "type": "int32",
+        "value_range": [[1, 100]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 7],
+        "typical_shape": [3845, 7],
+        "shape_range": [[1000, 6000]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "update"
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 7],
+         "typical_shape": [512, 7],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "name": "var"
+       }
+     ],
+     "attr": [
+         {
+          "name": "use_locking",
+          "value": false,
+          "type": "bool"
+         }
+     ]
+  },
+  {
+    "op": "ScatterAdd",
+    "case_name" : "test_scatter_add_tilingmode5",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 10],
+         "typical_shape": [100, 10],
+         "shape_range": [[100, 600]],
+         "type": "float32",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "var"
+       },
+       {
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [20],
+        "shape_range": [[10, 6000]],
+        "type": "int32",
+        "value_range": [[1, 100]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 10],
+        "typical_shape": [20, 10],
         "shape_range": [[10, 6000]],
         "type": "float32",
         "value_range": [[0, 1]],
@@ -249,9 +249,9 @@
      "output_desc": [
        {
          "format": "ND",
-         "shape": [-1, 7],
-         "typical_shape": [51200, 7],
-         "shape_range": [[10000, 60000]],
+         "shape": [-1, 10],
+         "typical_shape": [100, 10],
+         "shape_range": [[100, 600]],
          "type": "float32",
          "name": "var"
        }
@@ -265,14 +265,14 @@
      ]
   },
   {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode8",
+    "op": "ScatterAdd",
+    "case_name" : "test_scatter_add_tilingmode14",
      "input_desc": [
        {
          "format": "ND",
-         "shape": [-1, 7],
-         "typical_shape": [51200, 7],
-         "shape_range": [[10000, 60000]],
+         "shape": [-1, 1],
+         "typical_shape": [5, 1],
+         "shape_range": [[1, 6]],
          "type": "float32",
          "value_range": [[0, 1]],
          "data_distribute" : "uniform",
@@ -281,8 +281,8 @@
        {
         "format": "ND",
         "shape": [-1],
-        "typical_shape": [51200],
-        "shape_range": [[10000, 60000]],
+        "typical_shape": [1],
+        "shape_range": [[1, 6]],
         "type": "int32",
         "value_range": [[1, 5]],
         "data_distribute" : "uniform",
@@ -290,9 +290,9 @@
       },
       {
         "format": "ND",
-        "shape": [-1, 7],
-        "typical_shape": [51200, 7],
-        "shape_range": [[10000, 60000]],
+        "shape": [-1, 1],
+        "typical_shape": [1, 1],
+        "shape_range": [[1, 6]],
         "type": "float32",
         "value_range": [[0, 1]],
         "data_distribute" : "uniform",
@@ -302,115 +302,9 @@
      "output_desc": [
        {
          "format": "ND",
-         "shape": [-1, 7],
-         "typical_shape": [51200, 7],
-         "shape_range": [[10000, 60000]],
-         "type": "float32",
-         "name": "var"
-       }
-     ],
-     "attr": [
-         {
-          "name": "use_locking",
-          "value": false,
-          "type": "bool"
-         }
-     ]
-  },
-  {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode9",
-     "input_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 9],
-         "typical_shape": [51200, 9],
-         "shape_range": [[10000, 60000]],
-         "type": "float32",
-         "value_range": [[0, 1]],
-         "data_distribute" : "uniform",
-         "name": "var"
-       },
-       {
-        "format": "ND",
-        "shape": [-1],
-        "typical_shape": [256],
-        "shape_range": [[100, 600]],
-        "type": "int32",
-        "value_range": [[1, 5]],
-        "data_distribute" : "uniform",
-        "name": "indices"
-      },
-      {
-        "format": "ND",
-        "shape": [-1, 9],
-        "typical_shape": [256, 9],
-        "shape_range": [[100, 600]],
-        "type": "float32",
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform",
-        "name": "update"
-      }
-     ],
-     "output_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 9],
-         "typical_shape": [51200, 9],
-         "shape_range": [[10000, 60000]],
-         "type": "float32",
-         "name": "var"
-       }
-     ],
-     "attr": [
-         {
-          "name": "use_locking",
-          "value": false,
-          "type": "bool"
-         }
-     ]
-  },
-  {
-    "op": "ScatterMax",
-    "case_name" : "test_scatter_max_tilingmode10",
-     "input_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 9],
-         "typical_shape": [51200, 9],
-         "shape_range": [[10000, 60000]],
-         "type": "float32",
-         "value_range": [[0, 1]],
-         "data_distribute" : "uniform",
-         "name": "var"
-       },
-       {
-        "format": "ND",
-        "shape": [-1],
-        "typical_shape": [51200],
-        "shape_range": [[10000, 60000]],
-        "type": "int32",
-        "value_range": [[1, 5]],
-        "data_distribute" : "uniform",
-        "name": "indices"
-      },
-      {
-        "format": "ND",
-        "shape": [-1, 9],
-        "typical_shape": [51200, 9],
-        "shape_range": [[10000, 60000]],
-        "type": "float32",
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform",
-        "name": "update"
-      }
-     ],
-     "output_desc": [
-       {
-         "format": "ND",
-         "shape": [-1, 9],
-         "typical_shape": [51200, 9],
-         "shape_range": [[10000, 60000]],
+         "shape": [-1, 1],
+         "typical_shape": [5, 1],
+         "shape_range": [[1, 6]],
          "type": "float32",
          "name": "var"
        }
