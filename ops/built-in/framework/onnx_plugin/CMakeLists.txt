@@ -135,6 +135,7 @@ set(_onnx_plugins
   global_lppool_plugin.cc
   reduce_log_sum_exp_plugin.cc
   trilu_plugin.cc
+  maxunpool_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
