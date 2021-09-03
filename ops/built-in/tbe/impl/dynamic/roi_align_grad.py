@@ -1014,7 +1014,7 @@ class RoiAlignGrad():
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def roi_align_grad(y_diff,
                    rois,
                    rois_n,
@@ -1024,6 +1024,7 @@ def roi_align_grad(y_diff,
                    pooled_height,
                    spatial_scale,
                    sample_num,
+                   roi_end_mode=1,
                    kernel_name="roi_align_grad"):
     """
     calculating roi_align_grad,
@@ -1049,6 +1050,8 @@ def roi_align_grad(y_diff,
         spatial_scale
     sample_num: int
         sample_num
+    roi_end_mode: int
+        roi_end_mode
     kernel_name: str
         kernel name
 
