@@ -146,18 +146,36 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     elif src_format.upper() == "FRACTAL_Z" and dst_format.upper() == "NCHW" and \
             src.get("dtype") == "int8" and src.get("shape")[-1] == 32 and groups == 1:
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "NHWC" and dst_format.upper() == "NC1HWC0" and \
-            src.get("dtype") == "bfloat16":
+    elif src_format.upper() in ("NHWC","ND") and dst_format.upper() in ("NC1HWC0", "FRACTAL_NZ") and \
+            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
         trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "NC1HWC0" and dst_format.upper() == "NHWC" and \
-            src.get("dtype") == "bfloat16":
+    elif src_format.upper() in ("NC1HWC0", "FRACTAL_NZ") and dst_format.upper() in ("NHWC", "ND") and \
+            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     elif src_format.upper() == "NCHW" and dst_format.upper() == "NC1HWC0" and \
-            src.get("dtype") == "bfloat16":
+            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
         trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
     elif src_format.upper() == "NC1HWC0" and dst_format.upper() == "NCHW" and \
-            src.get("dtype") == "bfloat16":
+            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "HWCN" \
+            and dst_format.upper() == "FRACTAL_Z" and groups > 1 and groups == src.get("shape")[-1]:
+        dst_format = "C1HWNCOC0"
+        axis_h, axis_w, axis_c, axis_n = src.get("shape")
+        axis_c = axis_c * groups
+        axis_n = 1
+        src["shape"] = (axis_h, axis_w, axis_c, axis_n)
+        depthwise_weight_4d_2_6d(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "FRACTAL_Z" \
+            and dst_format.upper() == "HWCN" and groups > 1 and groups == dst.get("shape")[-1]:
+        src_format = "C1HWNCOC0"
+        axis_h, axis_w, axis_c, axis_n = dst.get("shape")
+        axis_c = axis_c * groups
+        axis_n = 1
+        axis_c1 = (axis_c + 15) // 16
+        src["shape"] = (axis_c1, axis_h, axis_w, axis_n, 16, 16)
+        dst["shape"] = (axis_h, axis_w, axis_c, axis_n)
+        depthwise_weight_6d_2_4d(src, dst, src_format, dst_format, kernel_name)
     elif (src_format.upper() == "NHWC" or src_format.upper() == "NCHW") \
             and dst_format.upper() == "NC1HWC0":
         if check_whether_2d(src_format.upper(), src):

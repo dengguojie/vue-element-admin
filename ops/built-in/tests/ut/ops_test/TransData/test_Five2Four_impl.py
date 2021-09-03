@@ -50,6 +50,9 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_trans_data_case((3200, 25, 1, 304, 16), (3200, 400, 1, 304),
                                      "bfloat16", "nchw_10", "success", "NCHW"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((3200, 25, 1, 304, 16), (3200, 1, 304, 400),
+                                     "bfloat16", "nhwc_11", "success", "NHWC"))
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3, 2, 4, 5, 16), (3, 4, 5, 19),
                                      "float16", "nhwc_1", "success", "NHWC"))

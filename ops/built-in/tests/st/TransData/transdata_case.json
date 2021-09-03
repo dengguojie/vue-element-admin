@@ -434,5 +434,87 @@
               }
           ]
 
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_016",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_hwcn_2_zng",
+    "input_desc": [
+      {
+        "format": "HWCN",
+        "shape": [25, 2, 1, 16],
+        "type": "float16",
+        "value_range": [[0, 0]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_Z",
+        "shape": [1, 25, 2, 1, 16, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "HWCN",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "FRACTAL_Z",
+                  "type": "string"
+              },
+              {
+                  "name": "groups",
+                  "value": 16,
+                  "type": "int"
+              }
+          ]
+
+  },
+  {
+    "op": "TransData",
+    "case_name" : "test_transdata_017",
+    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_zng_2_hwcn",
+    "input_desc": [
+      {
+        "format": "FRACTAL_Z",
+        "shape": [1, 25, 2, 1, 16, 16],
+        "type": "float16",
+        "value_range": [[0, 0]],
+        "data_distribute" : "uniform",
+        "name": "src"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "HWCN",
+        "shape": [25, 2, 1, 16],
+        "type": "float16",
+        "name": "dst"
+      }
+    ],
+    "attr": [
+              {
+                  "name": "src_format",
+                  "value": "FRACTAL_Z",
+                  "type": "string"
+              },
+              {
+                  "name": "dst_format",
+                  "value": "HWCN",
+                  "type": "string"
+              },
+              {
+                  "name": "groups",
+                  "value": 16,
+                  "type": "int"
+              }
+          ]
+
   }
 ]

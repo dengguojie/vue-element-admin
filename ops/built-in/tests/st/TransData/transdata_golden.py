@@ -105,3 +105,49 @@ def calc_expect_func_nz_2_nd(src, dst, src_format, dst_format):
     output_tensor = tmp_input_tensor[:, :n_pad, :c_pad]
 
     return output_tensor
+
+
+def calc_expect_func_hwcn_2_zng(src, dst, src_format, dst_format, groups):
+     in_shape = src.get("shape")
+     input_tensor = src.get("value")
+     dst_shape = dst.get("shape")
+
+     axis_h, axis_w, axis_c, axis_n = in_shape
+     axis_c = axis_c * groups
+     axis_c0 = dst_shape[-1]
+     axis_n = 1
+     axis_ni = 16
+     axis_c1 = _ceil_div(axis_c, axis_c0)
+     axis_no = _ceil_div(axis_n, axis_ni)
+     c_pad = _pad_len(axis_c, axis_c0)
+     n_pad = _pad_len(axis_n, axis_ni)
+
+     tmp_input_tensor = input_tensor.reshape(axis_h, axis_w, axis_c, axis_n)
+     tmp_input_tensor = np.pad(tmp_input_tensor, ((0, 0), (0, 0), (0, c_pad), (0, n_pad)), mode="constant", constant_values=(0, 0))
+     tmp_input_tensor = tmp_input_tensor.reshape(axis_h, axis_w, axis_c1, axis_c0, axis_no, axis_ni)
+     output_tensor = np.transpose(tmp_input_tensor, axes=(2, 0, 1, 4, 5, 3))
+
+     return output_tensor
+
+
+def calc_expect_func_zng_2_hwcn(src, dst, src_format, dst_format, groups):
+     in_shape = src.get("shape")
+     input_tensor = src.get("value")
+     dst_shape = dst.get("shape")
+
+     axis_h, axis_w, axis_c, axis_n = dst_shape
+     axis_c = axis_c * groups
+     axis_n = 1
+     axis_c0 = dst_shape[-1]
+     axis_ni = 16
+     axis_c1 = _ceil_div(axis_c, axis_c0)
+     axis_no = _ceil_div(axis_n, axis_ni)
+     c_pad = None if axis_c1 * axis_c0 == axis_c else axis_c - axis_c1 * axis_c0
+     n_pad = None if axis_no * axis_ni == axis_n else axis_n - axis_no * axis_ni
+
+     tmp_input_tensor = np.transpose(input_tensor, axes=(1, 2, 0, 5, 3, 4))
+     tmp_input_tensor = tmp_input_tensor.reshape(axis_h, axis_w, axis_c1*axis_c0, axis_no*axis_ni)
+     output_tensor = tmp_input_tensor[:, :, :c_pad, :n_pad]
+
+     return output_tensor
+
