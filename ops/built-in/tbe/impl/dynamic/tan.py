@@ -176,6 +176,6 @@ def tan(input_x, output_y, kernel_name="tan"):
     config = {
         "print_ir": False,
         "name": kernel_name,
-        "tensor_list": [data_input, res]
+        "tensor_list": tensors
     }
     tbe.build(schedules, config)
