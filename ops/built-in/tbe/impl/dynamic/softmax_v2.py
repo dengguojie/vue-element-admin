@@ -75,9 +75,15 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             "te.lang.cce.vexp", "float32"):
         data_subtrac = tbe.cast_to(data_subtrac, "float32")
         has_improve_precision = True
-    data_exp = tbe.vexp(data_subtrac)
 
     tbe_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if data_subtrac.dtype == "float32" and tbe_product in ("Ascend310",):
+        data_subtrac = tbe.cast_to(data_subtrac, "float16")
+        data_exp = tbe.vexp(data_subtrac)
+        data_exp = tbe.cast_to(data_exp, "float32")
+    else:
+        data_exp = tbe.vexp(data_subtrac)
+
     if data_exp.dtype == "float16" and tbe_product in ("Ascend310",):
         data_exp = tbe.cast_to(data_exp, "float32")
         has_improve_precision = True
