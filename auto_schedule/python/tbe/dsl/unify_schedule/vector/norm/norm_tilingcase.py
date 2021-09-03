@@ -36,6 +36,7 @@ from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import get_op_context
+from tbe.dsl.base.operation import register_build_pointcut
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
@@ -401,6 +402,38 @@ def _get_pattern_key(shape, reduce_idx_list):
             pattern += 2 ** (length - i - 1)
 
     return pattern
+
+
+def _after_build():
+    def _encode_var_name(_var_names):
+        after_encode_name = []
+        for name in _var_names:
+            names = name[1:].split('_')
+            if names[0] == 'dim':
+                after_encode_name.append(100 + int(names[1]))
+            elif names[0] == 'block':
+                after_encode_name.append(200)
+            elif names[0] == 'ub':
+                after_encode_name.append(300)
+            else:
+                _raise_error("unknown var name in norm schedule, please check")
+
+        return after_encode_name
+
+    normal_vars = get_compile_info().get(CompileInfo.NORMAL_VARS)
+    norm_vars = {}
+    for tiling_key, var_names in normal_vars.items():
+        norm_vars[tiling_key] = _encode_var_name(var_names)
+    add_compile_info_inner("_norm_vars", norm_vars)
+
+
+@register_build_pointcut(pattern=Pattern.NORM)
+def build_pointcut(func, *args, **kwargs):
+    """
+    norm build pointcut
+    """
+    func(*args, **kwargs)
+    _after_build()
 
 
 class NormComputeGraphInfo:
@@ -891,7 +924,7 @@ class NormComputeGraphInfo:
             sub_tensor_list = self.workspace_tensor_and_sub_graph_map[_workspace_tensor]["sub_tensor_list"]
             for reduce_tensor in self.reduce_tensor_set:
                 if reduce_tensor in sub_tensor_list:
-                     _coexisting_quantity += 1
+                    _coexisting_quantity += 1
 
             return _coexisting_quantity
 

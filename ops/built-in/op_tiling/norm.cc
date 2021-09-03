@@ -19,6 +19,7 @@
  * \brief tiling function of op
  */
 #include <algorithm>
+#include <numeric>
 #include "norm.h"
 #include "error_log.h"
 #include "graph/utils/op_desc_utils.h"
@@ -60,15 +61,18 @@ int64_t Norm::CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<in
 bool Norm::GetInput()
 {
   int64_t max_product = -1;
-  std::vector<int64_t> local_input_shape{std::vector<int64_t>(10, 0)};
   // find before reduce shape
   for (std::size_t i = 0; i < op_paras.GetInputsSize(); i++) {
-    local_input_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->GetShape().GetDims();
+    const auto& local_input_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->
+            GetShape().GetDims();
     int64_t current_product = std::accumulate(local_input_shape.begin(), local_input_shape.end(), 1,
                                               std::multiplies<int64_t>());
     if (current_product > max_product) {
       max_product = current_product;
-      input_shape_ori = local_input_shape;
+      for (std::size_t j = 0; j < local_input_shape.size(); j++) {
+        input_shape_ori[j] = local_input_shape[j];
+      }
+      input_shape_ori.resize(local_input_shape.size());
     }
   }
 
@@ -78,8 +82,11 @@ bool Norm::GetInput()
 bool Norm::Init()
 {
   try {
-    reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
-
+    const auto& local_reduce_axis = op_info.at("_ori_axis").get<std::vector<int32_t>>();
+    for (std::size_t i = 0; i < local_reduce_axis.size(); i++) {
+      reduce_axis_ori[i] = local_reduce_axis[i];
+    }
+    reduce_axis_ori.resize(local_reduce_axis.size());
     // Convert reduce axis (-1 -> length+1)
     // CHECK AXIS VALUE
     int32_t max_value = int32_t(input_shape_ori.size());
@@ -112,7 +119,7 @@ bool Norm::FusedReduceAxis()
    * if after fused, pattern is R, pattern will be AR by padding "1".
    * */
   std::vector<int32_t> pos(input_shape_ori.size());
-  for (auto item : reduce_axis_ori) {
+  for (const auto& item : reduce_axis_ori) {
     pos[item] = 1;
   }
 
@@ -168,25 +175,11 @@ bool Norm::FusedReduceAxis()
 
 bool Norm::GetCompileInfo()
 {
-  std::vector<int32_t> common_info;
   try {
-    common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
-    compileInfo.workspace_type = op_info.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
-    compileInfo.workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
-    compileInfo.workspace_diff_count = op_info.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
-    // CHECK VALUE
-    V_CHECK_EQ(compileInfo.workspace_type.size(), compileInfo.workspace_bytes.size(),
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
-               return false);
-    V_OP_TILING_CHECK(compileInfo.workspace_diff_count >= 0 &&
-                      (uint32_t)compileInfo.workspace_diff_count <= compileInfo.workspace_type.size(),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_diff_count is %d that is illegal",
-                                                      compileInfo.workspace_diff_count),
-                      return false);
+    const auto& common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
     V_CHECK_EQ(common_info.size(), 5,
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 5"),
                return false);
-
     // Get Data
     compileInfo.core_num = common_info[0];
     compileInfo.min_block_size = common_info[1];
@@ -475,7 +468,7 @@ bool Norm::ProcessReorderAxis()
 
   int num_r = reduce_axis.size();
   int num_a = input_shape.size() - num_r;
-  for (auto item : reduce_axis) {
+  for (const auto& item : reduce_axis) {
     reduce_flag[item] = 1;
   }
   // position of first R index in reorder shape
@@ -730,6 +723,34 @@ bool Norm::ProcessTiling()
   return ret;
 }
 
+bool Norm::GetVarValue()
+{
+  std::size_t count_var = 0;
+  // obtain var value
+  if (!compileInfo.is_const) {
+    try {
+      const auto& var_pattern = op_info.at("_norm_vars").at(std::to_string(tiling_key)).get<std::vector<int32_t>>();
+      for (const auto& var : var_pattern) {
+        if (var >= 300) {
+          var_value[count_var] = (int32_t)tilingInfo.ub_tiling_factor;
+          count_var++;
+        } else if (var >= 200) {
+          var_value[count_var] = (int32_t)tilingInfo.block_tiling_factor;
+          count_var++;
+        } else {
+          var_value[count_var] = (int32_t)input_shape[var % 100];
+          count_var++;
+        }
+      }
+      var_value.resize(count_var);
+    } catch (const std::exception &e) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var value error. Error message: %s", e.what());
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Norm::DoTiling()
 {
   /* Situations of DoTiling include:
@@ -769,8 +790,15 @@ bool Norm::DoTiling()
   // calculate some variables
   block_size = compileInfo.min_block_size;
 
-  input_align_shape = input_shape;
-  input_align_shape.back() = (input_align_shape.back() + block_size - 1) / block_size * block_size;
+  for (std::size_t i = 0; i < input_shape.size(); i++) {
+    if (i == input_shape.size() - 1) {
+      input_align_shape[i] = (input_shape[i] + block_size - 1) / block_size * block_size;
+      continue;
+    }
+    input_align_shape[i] = input_shape[i];
+  }
+  input_align_shape.resize(input_shape.size());
+
   shape_after_reduce_product = CalcAfterReduceShapeProduct(input_shape, reduce_axis);
   reduce_product = CalcReduceShapeProduct(input_shape, reduce_axis);
 
@@ -792,30 +820,14 @@ bool Norm::DoTiling()
   // calculate workspace size
   ret = ret && CalcWorkspace();
   // calculate tiling key
-  tiling_key = CalcTilingKey();
-  // obtain var value
-  if (!compileInfo.is_const) {
-    try {
-      compileInfo.var_list = op_info.at("_vars").at(std::to_string(tiling_key)).get<std::vector<std::string>>();
-      for (std::size_t i = 0; i < input_shape.size(); i++) {
-        std::string concat_var = "_dim_";
-        concat_var += std::to_string(i);
-        if (std::find(compileInfo.var_list.begin(),
-                      compileInfo.var_list.end(),
-                      concat_var) != compileInfo.var_list.end()) {
-          var_value.emplace_back((int32_t)input_shape[i]);
-          OP_LOGD(op_type.c_str(), "the %dth of input shape:%d", i, (int32_t)input_shape[i]);
-        }
-      }
-    } catch (const std::exception &e) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var value error. Error message: %s", e.what());
-      return false;
-    }
-  }
+  ret = ret && CalcTilingKey();
+  // get var value
+  ret = ret && GetVarValue();
+
   return ret;
 }
 
-int32_t Norm::CalcTilingKey()
+bool Norm::CalcTilingKey()
 {
   std::vector<int> pos;
   std::vector<int> coefficient;
@@ -830,36 +842,52 @@ int32_t Norm::CalcTilingKey()
   for (std::size_t i = 0; i < coefficient.size(); i++) {
     key += pos[i] * coefficient[i];
   }
-  return key;
+  tiling_key = key;
+
+  return true;
 }
 
 bool Norm::CalcWorkspace()
 {
-  if (compileInfo.workspace_type.size() != 0) {
+    const auto& workspace_type = op_info.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
+    const auto& workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
+    const auto& workspace_diff_count = op_info.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
+    // CHECK VALUE
+    V_CHECK_EQ(workspace_type.size(), workspace_bytes.size(),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
+               return false);
+    V_OP_TILING_CHECK(workspace_diff_count >= 0 && (uint32_t)workspace_diff_count <= workspace_type.size(),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_diff_count is %d that is illegal",
+                                                      workspace_diff_count),
+                      return false);
+
+  std::size_t workspace_count = workspace_type.size();
+  if (workspace_count != 0) {
     if (is_need_workspace) {
       int64_t shape_after_reduce_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
       int64_t shape_before_reduce_align_product = std::accumulate(input_align_shape.begin(),
                                                                   input_align_shape.end(),
                                                                   1,
                                                                   std::multiplies<int64_t>());
-      for (std::size_t i = 0; i < compileInfo.workspace_type.size(); i++) {
+      for (std::size_t i = 0; i < workspace_count; i++) {
         // workspace sch may need fake workspace
-        if (!is_partial_reorder && i >= compileInfo.workspace_type.size() -
-            (int32_t)compileInfo.workspace_diff_count) {
-          workspace.emplace_back(32);
+        if (!is_partial_reorder && i >= workspace_count - (int32_t)workspace_diff_count) {
+          workspace[i] = 32;
         } else {
-          if (compileInfo.workspace_type[i] == 1) {
-            workspace.emplace_back(shape_before_reduce_align_product * compileInfo.workspace_bytes[i]);
+          if (workspace_type[i] == 1) {
+            workspace[i] = shape_before_reduce_align_product * workspace_bytes[i];
           } else {
-            workspace.emplace_back(shape_after_reduce_align_product * compileInfo.workspace_bytes[i]);
+            workspace[i] = shape_after_reduce_align_product * workspace_bytes[i];
           }
         }
       }
     } else if (!compileInfo.is_const) {
-      std::vector<int64_t> local_workspace(compileInfo.workspace_type.size(), 32);
-      workspace = local_workspace;
+      for (std::size_t i = 0; i < workspace_count; i++) {
+        workspace[i] = 32;
+      }
     }
   }
+  workspace.resize(workspace_count);
   return true;
 }
 
@@ -871,7 +899,7 @@ bool Norm::ConstInputProcPost()
     workspace = op_info.at("_const_workspace_size").get<std::vector<std::int64_t>>();
     run_info.SetBlockDim(op_info.at("_block_dims").get<std::int32_t>());
     run_info.SetTilingKey(const_tiling_key);
-    for (auto item : workspace) {
+    for (const auto& item : workspace) {
       run_info.AddWorkspace(item);
     }
   } catch (const std::exception &e) {
@@ -905,22 +933,13 @@ bool Norm::WriteTilingData()
   run_info.SetTilingKey(tiling_key);
   run_info.SetBlockDim(tilingInfo.block_dim);
 
-  for (auto item : workspace) {
+  for (const auto& item : workspace) {
     run_info.AddWorkspace(item);
   }
 
-  for (auto item : var_value) {
+  for (const auto& item : var_value) {
     run_info.AddTilingData(item);
   }
-
-  if (is_split_block) {
-    run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
-  }
-  run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_factor);
-  OP_LOGD(op_type.c_str(), "block tilling axis:%d", tilingInfo.block_tiling_axis);
-  OP_LOGD(op_type.c_str(), "block tilling factor:%d", tilingInfo.block_tiling_factor);
-  OP_LOGD(op_type.c_str(), "ub tilling axis:%d", tilingInfo.ub_tiling_axis);
-  OP_LOGD(op_type.c_str(), "ub tilling factor:%d", tilingInfo.ub_tiling_factor);
 
   return true;
 }

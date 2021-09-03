@@ -54,10 +54,6 @@ struct CompileInfoNorm {
   int64_t workspace_max_ub_count{-1};
   int32_t core_num{-1};
   int32_t min_block_size{-1};
-  std::vector<int32_t> workspace_type;
-  std::vector<int32_t> workspace_bytes;
-  int32_t workspace_diff_count{0};
-  std::vector<std::string> var_list;
 };
 
 class Norm {
@@ -81,7 +77,7 @@ class Norm {
     bool NeedRefineBlockTiling();
     bool DoTiling();
     bool ConstInputProcPost();
-    int32_t CalcTilingKey();
+    bool CalcTilingKey();
     bool CalcWorkspace();
     bool WriteTilingData();
 
@@ -91,6 +87,7 @@ class Norm {
     int64_t CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis);
     int32_t CalcPattern(std::vector<int64_t>& shape, std::vector<int32_t>& axis);
     bool IsNeedWorkspace();
+    bool GetVarValue();
     int32_t GetBlockDim(int32_t tiling_axis, int64_t tiling_factor);
     int64_t CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
     int64_t CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
@@ -104,7 +101,7 @@ class Norm {
     TilingInfoNorm tilingInfo;
     ReorderInfoNorm reorderInfo;
 
-    std::vector<int64_t> input_shape_ori;
+    std::vector<int64_t> input_shape_ori{std::vector<int64_t>(10, 0)};
     std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
     std::vector<int64_t> input_shape{std::vector<int64_t>(10, 0)};
     std::vector<int32_t> reduce_axis{std::vector<int32_t>(10, 0)};
@@ -112,8 +109,8 @@ class Norm {
     // assistant
     std::vector<int64_t> input_align_shape{std::vector<int64_t>(10, 0)};
     std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
-    std::vector<int64_t> workspace;
-    std::vector<int32_t> var_value;
+    std::vector<int64_t> workspace{std::vector<int64_t>(10, 0)};
+    std::vector<int32_t> var_value{std::vector<int32_t>(10, 0)};
 
     bool is_last_axis_reduce{false};
     bool is_need_workspace{false};
