@@ -116,12 +116,94 @@ case5 = {
     "format_expect": [],
     "support_expect": True
 }
+case6 = {
+    "params": [{
+        "shape": (-2,),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (4, 16, 480, 640),
+        "ori_format": "NCHW"
+    }, {
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NCHW",
+        "ori_shape": (34, 31, 51, 16),
+        "ori_format": "NCHW"
+    }, (800, 1067), True, False],
+    "case_name": "resize_nearest_neighbor_v2_d_6",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+case7 = {
+    "params": [{
+        "shape": (34, 2, 200, 16),
+        "dtype": "float16",
+        "format": "ABCD",
+        "ori_shape": (34, 2, 300, 200, 16),
+        "ori_format": "ABCD"
+    }, {
+        "shape": (34, 2, 200, 16),
+        "dtype": "float16",
+        "format": "NCHW",
+        "ori_shape": (34, 2, 300, 200, 16),
+        "ori_format": "NCHW"
+    }, (300, 200), False, True],
+    "case_name": "resize_nearest_neighbor_v2_d_7",
+    "expect": "failed",
+    "format_expect": [],
+    "support_expect": True
+}
+case8 = {
+    "params": [{
+        "shape": (-2,),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (4, 16, 480, 640),
+        "ori_format": "NCHW"
+    }, {
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NCHW",
+        "ori_shape": (34, 31, 51, 16),
+        "ori_format": "NCHW"
+    }, (3000, 1067), True, False],
+    "case_name": "resize_nearest_neighbor_v2_d_8",
+    "expect": "failed",
+    "format_expect": [],
+    "support_expect": True
+}
+case9 = {
+    "params": [{
+        "shape": (-2,),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (4, 16, 480, 640),
+        "ori_format": "NCHW"
+    }, {
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NCHW",
+        "ori_shape": (34, 31, 51, 16),
+        "ori_format": "NCHW"
+    }, (-10, 1067), True, False],
+    "case_name": "resize_nearest_neighbor_v2_d_9",
+    "expect": "failed",
+    "format_expect": [],
+    "support_expect": True
+}
+
+
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
 
 if __name__ == '__main__':
     ut_case.run()
