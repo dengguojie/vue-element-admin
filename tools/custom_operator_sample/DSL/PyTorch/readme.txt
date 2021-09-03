@@ -28,11 +28,17 @@ Function: Compute norm for p equals 0, 1, 2, -inf, inf, or other integers.
 MaskedFill
 Function: Replace the value of X with a value according to mask.
 
+ReduceStd
+Function: Calculates the standard deviation and average value of Tensors.
+
 SigmoidCrossEntropyWithLogitsGradV2
 Function: Compute the sigmoid cross entropy loss of "predict" and "target".
 
 SigmoidCrossEntropyWithLogitsGrad
 Function: Compute gradients of sigmoid_cross_entropy_with_logits_v2.
+
+SmoothL1Loss
+Function: Computes the regression box of the RPN. It is a FasterRCNN operator .
 
 Softplus
 Function: Computes softplus: log(exp(x) + 1).

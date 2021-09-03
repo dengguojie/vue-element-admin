@@ -22,14 +22,32 @@ Developers can add their own custom operator implementations based on this sampl
 
 [Sample Overview]
 *****custom operator samples*****
+ApplyAdamD
+Function: Updates "var" according to the Adam algorithm.
+
+BasicLSTMCell
+Function: Basic LSTM Cell forward calculation.
+
 BatchNorm
 Function: Perform data normalization on FeatureMap.
+
+Conv3D
+Function: Computes a 3D convolution given 5D "x" and "filter" tensors.
+
+Fill
+Function: Creates a tensor filled with a scalar value.
+
+InplaceUpdate
+Function: Updates specified rows with values in v.
 
 MaxPool
 Function: Perform max pooling on the input.
 
 Mul
 Function: Return x1 * x2 element-wise.
+
+Pad
+Function: Pads a tensor.
 
 ReduceAll
 Function: Calculate the "logical sum" of elements of a tensor in a dimension.
@@ -39,3 +57,6 @@ Function: Computes a 2D convolution given 4D "x" and "filter" tensors.
 
 Relu
 Function: Computes rectified linear: "max(x, 0)".
+
+UnsortedSegmentMax
+Function: Computes the maximum along segments of a tensor.

@@ -18,3 +18,8 @@
 [Introduction]
 This sample contains code samples for AI CPU custom operator development and provides corresponding build scripts.
 Developers can add their own custom operator implementations based on this sample and then build the project to obtain a custom operator package (OPP).
+
+[Sample Overview]
+*****custom operator samples*****
+AdaptiveMaxPool2d
+Function: Reslove the complexity of pooling function.

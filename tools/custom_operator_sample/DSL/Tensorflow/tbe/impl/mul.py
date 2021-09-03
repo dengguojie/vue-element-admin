@@ -15,6 +15,7 @@
 """
 mul
 """
+import functools
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
@@ -104,297 +105,415 @@ def _broadcast_zn_rule(shape0, shape1, format0, format1):
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
 # pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
+def op_sub_select_format(x, y, output, kernel_name="mul"):
+    """
+    Dynamic matching format
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input_x
+    y : dict
+        shape and dtype of input_y
+    output : dict
+        shape and dtype of output, should be same shape and type as input
+
+    kernel_name : str
+        kernel name, default value is "pt_muls"
+
+    Returns
+    -------
+    None
+    """
+    shape_x1 = x.get("ori_shape")
+    shape_x2 = y.get("ori_shape")
+
+    shape_x1 = shape_util.scalar2tensor_one(shape_x1)
+    shape_x2 = shape_util.scalar2tensor_one(shape_x2)
+
+    enum_x2 = functools.reduce(lambda x, y: x * y, shape_x2)
+
+    dtype_list = ["float16", "float", "int32", "int16", "uint8", "int8"]
+    vmul_support_s16 = tbe_platform.api_check_support("te.lang.cce.vmul", "int16")
+    vmul_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
+    if not vmul_support_s16:
+        dtype_list.remove("int16")
+    if not vmul_support_fp32:
+        dtype_list.remove("float")
+        # If the platform does not support float32 data type,
+        # neither of uint8 and int8 is supported at the same time
+        dtype_list.remove("uint8")
+        dtype_list.remove("int8")
+
+    if len(shape_x2) == 1 and enum_x2 == 1:
+        format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
+        dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
+        format_list_for_non_one = format_list * len(dtype_list)
+        format_list_for_one = [y.get("format")] * len(format_list) * len(dtype_list)
+        unknownshape_format_list = ["ND"] * len(format_list) * len(dtype_list)
+    else:
+        return None
+
+    if -1 in shape_x1 or -1 in shape_x2:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_non_one),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_one),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype=",".join(dtype_list_total),
+                                                format=",".join(format_list_for_non_one),
+                                                unknownshape_format=",".join(unknownshape_format_list))
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_non_one))
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_one))
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype=",".join(dtype_list_total),
+                                                format=",".join(format_list_for_non_one))
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
+# pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
+# pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
 def op_select_format(x, y, output, kernel_name="mul"):
     """
-    select format dynamically
+    select format dynamically\n
+
     1.when the lengths of x's shape and y's shape are the same and equal to 5, the formats of x and
     y are the same and are one of [NDHWC,DHWCN,NCDHW], and x's shape == y's shape: support ND, NDC1HWC0,
-    FRACTAL_Z_3D format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")
-    > y's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")
-    > support conversion to NDC1HWC0 operation:
-    > x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")
-    > y's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")
+    FRACTAL_Z_3D format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        y's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        support conversion to NDC1HWC0 operation:\n
+        x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+        y's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
 
     2.when the lengths of x's shape and y's shape are the same and equal to 5, the formats of x and
     y are the same and are one of [NDHWC,DHWCN,NCDHW], x's shape != y's shape, and x's dim of c == y's
-    dim of c: support ND, NDC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")
-    > y's Tensor(shape=(1, 2, 3, 4, 6), "NDHWC")
-    > support conversion to NDC1HWC0 operation:
-    > x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")
-    > y's Tensor(shape=(1, 2, 1, 3, 4, 16), "NDC1HWC0")
+    dim of c: support ND, NDC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        y's Tensor(shape=(1, 2, 3, 4, 6), "NDHWC")\n
+        support conversion to NDC1HWC0 operation:\n
+        x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+        y's Tensor(shape=(1, 2, 1, 3, 4, 16), "NDC1HWC0")\n
 
     3.when the lengths of x's shape and y's shape are the same and equal to 5,the formats of x and
     y are the same and are one of [NDHWC,DHWCN,NCDHW], x's shape != y's shape, x's dim of c == y's dim
-    of c, and x's dim of n == y's dim of n: support ND, NDC1HWC0, FRACTAL_Z_3D format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")
-    > y's Tensor(shape=(2, 2, 3, 4, 6), "NDHWC")
-    > support conversion to NDC1HWC0 operation:
-    > x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")
-    > y's Tensor(shape=(2, 2, 1, 3, 4, 16), "NDC1HWC0")
+    of c, and x's dim of n == y's dim of n: support ND, NDC1HWC0, FRACTAL_Z_3D format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        y's Tensor(shape=(2, 2, 3, 4, 6), "NDHWC")\n
+        support conversion to NDC1HWC0 operation:\n
+        x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+        y's Tensor(shape=(2, 2, 1, 3, 4, 16), "NDC1HWC0")\n
 
     4.when the lengths of x's shape >= 2, the lengths of y's shape >= 2, and x's shape[-2:] == y's shape[-2:]:
-    support ND, FRACTAL_NZ format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 3, 4), "ND")
-    > y's Tensor(shape=(1, 3, 4), "ND")
-    > support conversion to FRACTAL_NZ operation:
-    > x's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")
-    > y's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")
+    support ND, FRACTAL_NZ format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4), "ND")\n
+        y's Tensor(shape=(1, 3, 4), "ND")\n
+        support conversion to FRACTAL_NZ operation:\n
+        x's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")\n
+        y's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")\n
 
     5.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NCHW,
     x's dim of c == y's dim of c or x's dim of c / 16 == 1 or y's dim of c / 16 == 1, and x's dim of
-    n == y's dim of n or x's dim of n == 1 or y's dim of n == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 16, 4, 5), "NCHW")
-    > y's Tensor(shape=(2, 16, 4, 16), "NCHW")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")
-    > y's Tensor(shape=(1, 1, 4, 16, 16), "NC1HWC0")
+    n == y's dim of n or x's dim of n == 1 or y's dim of n == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 16, 4, 5), "NCHW")\n
+        y's Tensor(shape=(2, 16, 4, 16), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 4, 16, 16), "NC1HWC0")\n
 
     6.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
-    x's dim of h == y's dim of h, and x's dim of w == 1 or y's dim of w == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 4, 16, 5), "HWCN")
-    > y's Tensor(shape=(2, 1, 16, 4), "HWCN")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")
+    x's dim of h == y's dim of h, and x's dim of w == 1 or y's dim of w == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 4, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 1, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")\n
 
     7.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
-    x's dim of w == y's dim of w, and x's dim of h == 1 or y's dim of h == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 4, 16, 5), "HWCN")
-    > y's Tensor(shape=(2, 4, 16, 4), "HWCN")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(5, 1, 1, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")
+    x's dim of w == y's dim of w, and x's dim of h == 1 or y's dim of h == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 4, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 1, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
 
     8.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
-    x's dim of w == y's dim of w, and x's dim of h == y's dim of h: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 4, 16, 5), "HWCN")
-    > y's Tensor(shape=(2, 4, 16, 4), "HWCN")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")
+    x's dim of w == y's dim of w, and x's dim of h == y's dim of h: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 4, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
 
     9.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
-    and x's dim of w == x's dim of h == 1 or y's dim of h == y's dim of w == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 1, 16, 5), "HWCN")
-    > y's Tensor(shape=(2, 4, 16, 4), "HWCN")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(5, 1, 1, 1, 16), "NC1HWC0")
-    > y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")
+    and x's dim of w == x's dim of h == 1 or y's dim of h == y's dim of w == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 1, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
 
     10.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
-    and x's dim of h == y's dim of w == 1 or x's dim of w == y's dim of h == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 2, 16, 5), "HWCN")
-    > y's Tensor(shape=(2, 1, 16, 4), "HWCN")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(5, 1, 1, 2, 16), "NC1HWC0")
-    > y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")
+    and x's dim of h == y's dim of w == 1 or x's dim of w == y's dim of h == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 1, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 1, 2, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")\n
 
     11.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
-    x's dim of h == y's dim of h, and x's dim of n == 1 or y's dim of n == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 2, 3, 16), "NHWC")
-    > y's Tensor(shape=(2, 2, 4, 16), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")
+    x's dim of h == y's dim of h, and x's dim of n == 1 or y's dim of n == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 2, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")\n
 
     12.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
-    x's dim of n == y's dim of n, and x's dim of h == 1 or y's dim of h == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 1, 3, 16), "NHWC")
-    > y's Tensor(shape=(2, 2, 4, 16), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 1, 3, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")
+    x's dim of n == y's dim of n, and x's dim of h == 1 or y's dim of h == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 1, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 2, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 1, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")\n
 
     13.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
-    x's dim of n == y's dim of n, and x's dim of h == y's dim of h: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 3, 3, 16), "NHWC")
-    > y's Tensor(shape=(2, 3, 4, 16), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")
+    x's dim of n == y's dim of n, and x's dim of h == y's dim of h: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 3, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
 
     14.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
-    and x's dim of n == x's dim of h == 1 or y's dim of n == y's dim of h == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 1, 3, 16), "NHWC")
-    > y's Tensor(shape=(2, 3, 4, 16), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 1, 3, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")
+    and x's dim of n == x's dim of h == 1 or y's dim of n == y's dim of h == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 1, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 3, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 1, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
 
     15.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
-    and x's dim of n == y's dim of h == 1 or x's dim of h == y's dim of n == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 3, 3, 16), "NHWC")
-    > y's Tensor(shape=(2, 1, 4, 16), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 3, 3, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 1, 4, 16), "NC1HWC0")
+    and x's dim of n == y's dim of h == 1 or x's dim of h == y's dim of n == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 3, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 1, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 3, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 1, 4, 16), "NC1HWC0")\n
 
     16.when the lengths of x's shape and y's shape are the same and equal to 4, the formats of x and y are
     the same and are one of [NDHWC,DHWCN,NCDHW], x's dim of c % 16 == 0 and y's dim of c % 16 == 0, x's
     dim of n % 16 == 0 and y's dim of n % 16 == 0, and when x, y are converted to FRACTAL_Z format
     (each dim of x, y dim_i(x[dim_i] == y[dim_i] or x[dim_i] == 1 or y[dim_i] == 1)): support ND,
-    FRACTAL_Z format.
-    > example:
-    > original:
-    > x's Tensor(shape=(16, 16, 3, 4), "NCHW")
-    > y's Tensor(shape=(32, 16, 2, 6), "NCHW")
-    > support conversion to FRACTAL_Z operation:
-    > x's Tensor(shape=(12, 1, 16, 16), "FRACTAL_Z")
-    > y's Tensor(shape=(12, 2, 16, 16), "FRACTAL_Z")
+    FRACTAL_Z format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
+        y's Tensor(shape=(32, 16, 2, 6), "NCHW")\n
+        support conversion to FRACTAL_Z operation:\n
+        x's Tensor(shape=(12, 1, 16, 16), "FRACTAL_Z")\n
+        y's Tensor(shape=(12, 2, 16, 16), "FRACTAL_Z")\n
 
     17.when the lengths of x's shape and y's shape are the same and equal to 4, the formats of x and y
     are one of [NCHW,NHWC,HWCN], x's shape == y's shape, and any axis value in x != -1: support
-    ND, NC1HWC0, FRACTAL_NZ format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 2, 3, 4), "NCHW")
-    > y's Tensor(shape=(1, 2, 3, 4), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")
+    ND, NC1HWC0, FRACTAL_NZ format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
+        y's Tensor(shape=(1, 2, 3, 4), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")\n
 
     18.when the lengths of y's shape == 1, first dim of y == 1, the lengths of x's shape == 4, and the
-    format of x is one of [NCHW,NHWC,HWCN]: support ND, C1HWNCoC0, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1, 2, 3, 4), "NCHW")
-    > y's Tensor(shape=(1), "ND")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")
+    format of x is one of [NCHW,NHWC,HWCN]: support ND, C1HWNCoC0, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
+        y's Tensor(shape=(1), "ND")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
 
     19.when the lengths of y's shape == 1, first dim of y == 1, the lengths of x's shape == 4, the format of x
     is one of [NCHW,NHWC,HWCN], x's dim of c % 16 == 0, and x's dim of n % 16 == 0:
-    support ND, C1HWNCoC0, NC1HWC0, FRACTAL_Z format.
-    > example:
-    > original:
-    > x's Tensor(shape=(16, 16, 3, 4), "NCHW")
-    > y's Tensor(shape=(1), "ND")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")
+    support ND, C1HWNCoC0, NC1HWC0, FRACTAL_Z format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
+        y's Tensor(shape=(1), "ND")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
 
     20.when the lengths of x's shape == 1, first dim of x == 1, the lengths of y's shape == 4, the format of y
-    is one of [NCHW,NHWC,HWCN]: support ND, C1HWNCoC0, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1), "ND")
-    > y's Tensor(shape=(1, 2, 3, 4), "NCHW")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")
-    > y's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")
+    is one of [NCHW,NHWC,HWCN]: support ND, C1HWNCoC0, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1), "ND")\n
+        y's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
 
     21.when the lengths of x's shape == 1, first dim of x == 1, the lengths of y's shape == 4, the format of y
     is one of [NCHW,NHWC,HWCN], y's dim of c % 16 == 0, and y's dim of n % 16 == 0:
-    support ND, C1HWNCoC0, NC1HWC0, FRACTAL_Z format.
-    > example:
-    > original:
-    > x's Tensor(shape=(1), "ND")
-    > y's Tensor(shape=(16, 16, 3, 4), "NCHW")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")
-    > y's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")
+    support ND, C1HWNCoC0, NC1HWC0, FRACTAL_Z format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1), "ND")\n
+        y's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")\n
 
     22.when the lengths of x's shape and y's shape are the same and equal to 1, first dim of x % 16 == 0,
-    and first dim of y % 16 == 0: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(16), "ND")
-    > y's Tensor(shape=(16), "ND")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")
-    > y's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")
+    and first dim of y % 16 == 0: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(16), "ND")\n
+        y's Tensor(shape=(16), "ND")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")\n
 
     23.when first dim of x != 1, the lengths of x's shape == 1, the lengths of y's shape == 4, x's format == y's
-    format, and the format of y is one of ("NHWC",): support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2), "NHWC")
-    > y's Tensor(shape=(2, 3, 4, 5), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")
+    format, and the format of y is one of ("NHWC",): support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2), "NHWC")\n
+        y's Tensor(shape=(2, 3, 4, 5), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")\n
 
     24.when first dim of x != 1, the lengths of x's shape == 1, the lengths of y's shape == 4, x's format == y's
     format, the format of y is one of ("NCHW", "HWCN"), and y's dim of c == first dim of x or y's dim of c == 1 or
-    first dim of x / 16 == 1: support ND, C1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2), "NCHW")
-    > y's Tensor(shape=(2, 2, 4, 5), "NCHW")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")
+    first dim of x / 16 == 1: support ND, C1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2), "NCHW")\n
+        y's Tensor(shape=(2, 2, 4, 5), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
 
     25.when first dim of y != 1, the lengths of x's shape == 4, the lengths of y's shape == 1, x's format == y's
-    format, and the format of x is one of ("NHWC",): support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 3, 4, 5), "NHWC")
-    > y's Tensor(shape=(2), "NHWC")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")
+    format, and the format of x is one of ("NHWC",): support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5), "NHWC")\n
+        y's Tensor(shape=(2), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
 
     26.when first dim of y != 1, the lengths of x's shape == 4, the lengths of y's shape == 1, x's format == y's
     format, the format of x is one of ("NCHW", "HWCN"), and x's dim of c == first dim of y or x's dim of c == 1 or
-    y's dim of c / 16 == 1 or first dim of y / 16 == 1: support ND, NC1HWC0 format.
-    > example:
-    > original:
-    > x's Tensor(shape=(2, 2, 4, 5), "NCHW")
-    > y's Tensor(shape=(2), "NCHW")
-    > support conversion to NC1HWC0 operation:
-    > x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")
-    > y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")
+    y's dim of c / 16 == 1 or first dim of y / 16 == 1: support ND, NC1HWC0 format.\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 2, 4, 5), "NCHW")\n
+        y's Tensor(shape=(2), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
     """
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Ascend910"):
+        param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
+        if param_dynamic_in_json is not None:
+            return param_dynamic_in_json
+
     shape_x = x.get("ori_shape")
     shape_y = y.get("ori_shape")
 
     shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_y = shape_util.scalar2tensor_one(shape_y)
+
+    size_x = functools.reduce(lambda x, y: x * y, shape_x)
+    size_y = functools.reduce(lambda x, y: x * y, shape_y)
+    temp_format = None
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
@@ -418,6 +537,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
+    list_input = [x, y]
     if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
             (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
         x_cdim = shape_x[format_x.index("C")]
@@ -448,8 +568,45 @@ def op_select_format(x, y, output, kernel_name="mul"):
         elif x_cdim == y_cdim and x_ndim == y_ndim:
             format_list.append("FRACTAL_Z_3D")
 
+    if (len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1):
+        temp_format = format_x if len(shape_x) == 4 and size_y == 1 else format_y
+    if ((len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1)) and temp_format in format_4d_list:
+        temp_shape = shape_x if len(shape_x) == 4 and size_y == 1 else shape_y
+        dim_c = temp_shape[temp_format.index("C")]
+        dim_n = temp_shape[temp_format.index("N")]
+        second_last_dim = temp_shape[-2]
+        last_dim = temp_shape[-1]
+        format_list.append("NC1HWC0")
+        if last_dim % 16 == 0 and second_last_dim % 16 == 0:
+            format_list.append("FRACTAL_NZ")
+        if dim_c % 16 == 0 and dim_n % 16 == 0:
+            format_list.append("FRACTAL_Z")
+        for dtype in dtype_list:
+            dtype_total = dtype_total + [dtype] * len(format_list)
+        format_list = format_list * len_format_list
+        if len(shape_x) == 4 and size_y == 1:
+            x1_format_list = format_list
+            x2_format_list = ["ND"] * len(format_list)
+        else:
+            x1_format_list = ["ND"] * len(format_list)
+            x2_format_list = format_list
+        y_format_list = format_list
+
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="x1",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(x1_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x2",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(x2_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype=",".join(dtype_total),
+                                                format=",".join(y_format_list))
+
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
-    if len(shape_x) >= 2 and len(shape_y) >= 2:
+    elif len(shape_x) >= 2 and len(shape_y) >= 2:
         if shape_x[-2:] == shape_y[-2:]:
             format_list.append("FRACTAL_NZ")
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
@@ -479,12 +636,16 @@ def op_select_format(x, y, output, kernel_name="mul"):
                         format_list.append("NC1HWC0")
                     if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
                         format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
                     format_list.append("FRACTAL_Z")
+            if x_cdim == 1 and y_cdim == 1 and format_x == format_y and format_x.upper() in ("NCHW", "HWCN"):
+                format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y) and -1 not in shape_x:
                 format_list.append("NC1HWC0")
-            if format_x == format_y and list(shape_x) == list(shape_y):
+            if format_x == format_y and list(shape_x) == list(shape_y) and \
+                    util_common.is_same_group(list_input):
                 format_list.append("FRACTAL_Z")
 
         for dtype in dtype_list:
@@ -529,7 +690,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
                     format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
                     format_list.append("FRACTAL_Z")
 
@@ -603,12 +765,22 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                         format=",".join(format_list1))
 
     # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
-    elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
+    elif (len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1) or (
+          len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and shape_x[0] % 16 == 0):
         if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             format_list.append("FRACTAL_Z")
-        format_list.append("FRACTAL_NZ")
+        if len(shape_x) >= 2:
+            if shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_x) == 2 and len(shape_y) == 1:
+            x_1dim = shape_x[-1]
+            x_2dim = shape_x[-2]
+            if x_1dim % 16 == 0 and x_2dim % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and shape_x[0] % 16 == 0:
+            format_list.append("NC1HWC0")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
@@ -646,12 +818,22 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                     format=",".join(format_list0))
 
     # ND+ND,scalar+5HD,scalar+FZ,scalar+6D,ND+NZ
-    elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
+    elif (len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1) or (
+          len(shape_y) == 1 and len(shape_x) == 1 and shape_x[0] == 1 and shape_y[0] % 16 == 0):
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             format_list.append("FRACTAL_Z")
-        format_list.append("FRACTAL_NZ")
+        if len(shape_y) >= 2:
+            if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_y) == 2 and len(shape_x) == 1:
+            y_1dim = shape_y[-1]
+            y_2dim = shape_y[-2]
+            if y_1dim % 16 == 0 and y_2dim % 16 == 0:
+                format_list.append("FRACTAL_NZ")
+        if len(shape_y) == 1 and len(shape_x) == 1 and shape_x[0] == 1 and shape_y[0] % 16 == 0:
+            format_list.append("NC1HWC0")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
@@ -875,7 +1057,7 @@ def _infer_shape(format_pattern, x, y):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("mul")
-def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
+def mul_compute(input_x, input_y, output_data, is_scene_1D=False, kernel_name="mul"):
     """
     calculating element-wise mul
 
@@ -896,23 +1078,29 @@ def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
     """
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
-
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                              shape_y,
-                                                              param_name_input1="x",
-                                                              param_name_input2="y")
-    if shape_x != shape_y and len(shape_x) == 2 and len(shape_y) == 2:
-        res = _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max)
-        if res is not None:
-            return res
-
     x_dtype = input_x.dtype.lower()
-    if x_dtype in ("uint8", "int8"):
-        input_x = tbe.cast_to(input_x, "float32")
-        input_y = tbe.cast_to(input_y, "float32")
 
-    input_x = tbe.broadcast(input_x, shape_max)
-    input_y = tbe.broadcast(input_y, shape_max)
+    if is_scene_1D:
+        if x_dtype in ("uint8", "int8"):
+            input_x = tbe.cast_to(input_x, "float32")
+            input_y = tbe.cast_to(input_y, "float32")
+        input_y = tbe.broadcast(input_y, shape_x)
+    else:
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_y,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="y")
+        if shape_x != shape_y and len(shape_x) == 2 and len(shape_y) == 2:
+            res = _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max)
+            if res is not None:
+                return res
+
+        if x_dtype in ("uint8", "int8"):
+            input_x = tbe.cast_to(input_x, "float32")
+            input_y = tbe.cast_to(input_y, "float32")
+
+        input_x = tbe.broadcast(input_x, shape_max)
+        input_y = tbe.broadcast(input_y, shape_max)
     res = tbe.vmul(input_x, input_y)
 
     if x_dtype in ("uint8", "int8"):
@@ -1026,16 +1214,22 @@ def mul(x, y, output, kernel_name="mul"):
         new_check_list.remove("float32")
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                              shape_y,
-                                                              param_name_input1="x",
-                                                              param_name_input2="y")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if para_check.is_scalar(shape_y) and cce_product in ("Ascend910"):
+        is_scene_1D = True
+        shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
+    else:
+        is_scene_1D = False
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_y,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="y")
+        shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
-    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     input_y = tvm.placeholder(shape_y, dtype=dtype_x, name="y")
 
-    res = mul_compute(input_x, input_y, output, kernel_name)
+    res = mul_compute(input_x, input_y, output, is_scene_1D, kernel_name)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

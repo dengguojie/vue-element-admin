@@ -40,3 +40,6 @@ Function: Multiply matrix 'a' by matrix 'b' in batches.
 
 MatrixCombine
 Function: Move the batch matrix to the result matrix diagonal part.
+
+CholeskyTrsm
+Function: Only compute the res of the diag part of input matrix with dim 128.

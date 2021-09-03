@@ -25,7 +25,7 @@ from te.utils import shape_util
 # pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("masked_fill")
 def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
-    '''
+    """
     calculating masked_fill
     :param x: TVM tensor
                    the output of previous layer
@@ -37,35 +37,67 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
                     kernel name, default value is "masked_fill"
     :return:y
             TVM tensor
-    '''
+    """
 
     ori_dtype = x.dtype
-    if x.dtype in ('int8', 'int32'):
+    if x.dtype == 'int8':
         x = tbe.cast_to(x, 'float16')
 
     x_shape = tbe.util.shape_to_list(x.shape)
     mask_shape = tbe.util.shape_to_list(mask.shape)
     # computer output shape
-    x_shape, mask_shpae, target_shape = shape_util.broadcast_shapes(x_shape, mask_shape)
+    x_shape, mask_shape, target_shape = shape_util.broadcast_shapes(x_shape, mask_shape)
     target_dtype = x.dtype
-    mask = tbe.cast_to(mask, x.dtype)
-    if value.dtype != x.dtype:
-        value = tbe.cast_to(value, x.dtype)
 
-    if mask_shape != target_shape:
-        mask = tbe.broadcast(mask, target_shape)
-    tensor_ones = tbe.broadcast(tvm.const(1, target_dtype), target_shape)
-    value = tbe.broadcast(value, target_shape)
     if x_shape != target_shape:
         x = tbe.broadcast(x, target_shape)
 
-    tensor_mask_value = tbe.vmul(mask, value)
-    tensor_mask_sub = tbe.vsub(tensor_ones, mask)
-    tensor_x_mul = tbe.vmul(x, tensor_mask_sub)
-    y = tbe.vadd(tensor_x_mul, tensor_mask_value)
+    if x.dtype == 'int32':
+        mask = tbe.cast_to(mask, 'float16')
+    mask = tbe.cast_to(mask, x.dtype)
+    if mask_shape != target_shape:
+        mask = tbe.broadcast(mask, target_shape)
+
+    if value.dtype != x.dtype:
+        value = tbe.cast_to(value, x.dtype)
+    value = tbe.broadcast(value, target_shape)
+
+    tensor_ones = tbe.broadcast(tvm.const(1, target_dtype), target_shape)
+
+    if x.dtype == 'int32':
+        y = masked_fill_compute_int32(x, mask, value, tensor_ones)
+        return y
+
+    y = tbe.vcmpsel(mask, tensor_ones, 'ne', x, value)
 
     if y.dtype != ori_dtype:
         y = tbe.cast_to(y, ori_dtype)
+
+    return y
+
+
+def masked_fill_compute_int32(x, mask, value, tensor_ones):
+    """
+    calculating masked_fill dtype is int32
+    :param x: TVM tensor
+                   the output of previous layer
+    :param mask: TVM tensor
+                    mask dtype is bool
+    :param value: scalar or TVM tensor
+                    the value to fill in with
+    :param tensor_ones: TVM tensor
+                    the tensor of 1
+    :return:y
+            TVM tensor
+    """
+    # mask * value
+    tensor_mask_value = tbe.vmul(mask, value)
+    # tensor_ones - mask
+    tensor_mask_mul = tbe.vsub(tensor_ones, mask)
+    # x*[tensor_ones-mask]
+    tensor_x_mul = tbe.vmul(x, tensor_mask_mul)
+    # x*[tensor_ones-mask] + mask*value
+    y = tbe.vadd(tensor_x_mul, tensor_mask_value)
 
     return y
 
@@ -74,7 +106,7 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
-    '''
+    """
     :param x: dict
                     shape and dtype of tensor x input
     :param mask: dict
@@ -87,7 +119,7 @@ def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
     :param kernel_name: str
                       kernel name, default value is "masked _fill"
     :return: none
-    '''
+    """
 
     x_shape = x.get("shape")
     x_dtype = x.get("dtype")
@@ -139,6 +171,5 @@ def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
         schedule = tbe.auto_schedule(y)
 
     config = {"name": kernel_name,
-              "tensor_list": [data_x, data_mask, data_value, y],
-              }
-    tbe.cce_build_code(schedule, config)
+              "tensor_list": [data_x, data_mask, data_value, y]}
+    tbe.build(schedule, config)

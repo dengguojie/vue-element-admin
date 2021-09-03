@@ -23,6 +23,7 @@ from tbe.dsl import auto_schedule
 from tbe.dsl import build
 from tbe.dsl.compute.conv_compute import conv
 from tbe.common.register import register_op_compute
+from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
@@ -30,6 +31,7 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man
 from .util import util_select_op_base
 from .util import util_conv2d
 
+DYNAMIC_VALUE = -1
 
 @para_check.check_input_type(dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
                              (tuple, list), (tuple, list), (tuple, list), int, str, int, str)
@@ -182,6 +184,9 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                 ["NCHW", "NHWC", "HWCN"], format_w)
         if shape_fm != (-2,) and shape_fm[1] <= 4:
             c0_optim_flg = True
+        # dynamic conv2d doesn't support C04
+        if DYNAMIC_VALUE in shape_fm:
+            c0_optim_flg = False
         if (shape_filter[2] == 1) and (shape_filter[3] == 1):
             c0_optim_flg = False
         # format NC1HWC0_C04 can only be used at first conv layer
@@ -219,8 +224,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                                                     format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
         else:
             # only dynamic_hw or dynamic_batch is supported by dynamic conv2d
-            if (shape_fm == (-2,)) or (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
-                (shape_fm[2] == -1 and shape_fm[3] == -1 and -1 not in shape_fm[:2]):
+            if (shape_fm == (-2,)) or (DYNAMIC_VALUE in shape_fm):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,int8",
                                                        format="NC1HWC0,NC1HWC0",
@@ -241,20 +245,20 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                                                         unknownshape_format="NC1HWC0,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,int8",
-                                                       format="NC1HWC0,NC1HWC0")
+                                                       datatype="float16,int8,int4",
+                                                       format="NC1HWC0,NC1HWC0,NC1HWC0")
                 input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                                       datatype="float16,int8",
-                                                       format="FRACTAL_Z,FRACTAL_Z")
+                                                       datatype="float16,int8,int4",
+                                                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z")
                 input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                       datatype="float16,int32",
-                                                       format="ND,ND")
+                                                       datatype="float16,int32,int32",
+                                                       format="ND,ND,ND")
                 input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                       datatype="int8,int8",
-                                                       format="ND,ND")
+                                                       datatype="int8,int8,int8",
+                                                       format="ND,ND,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,int32",
-                                                        format="NC1HWC0,NC1HWC0")
+                                                        datatype="float16,int32,int32",
+                                                        format="NC1HWC0,NC1HWC0,NC1HWC0")
         return [input0, input1, input2, input3, output0]
 
     params = [inputs, weights, bias, offset_w, outputs, strides,
@@ -474,7 +478,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     """
     # for pylint, otherwise "Dangerous default value [] as argument"
     if optim_dict is None:
-        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
+        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False, "v220_c04_mode": "disabled"}
 
     if fusion_para is None:
         fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1, "slice_offset": (0, 0, 0, 0, 0)}
@@ -497,9 +501,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                                               kernel_name, dilateh, dilatew,
                                                               optim_dict, groups)
 
-    c0_val = 16
-    if in_dtype == "int8":
-        c0_val = 32
+    c0_val = CUBE_MKN[in_dtype]['mac'][1]
 
     enlarge = min(
         util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori), groups)
@@ -598,21 +600,8 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     -------
     None
     """
-    slice_info = {"_op_slice_info":
-                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],
-                                  "outputList": [{"idx": 0, "axis": [0]}]},
-                                 {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],
-                                  "outputList": [{"idx": 0, "axis": [2]}]},
-                                 {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],
-                                  "outputList": [{"idx": 0, "axis": [3]}]},
-                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],
-                                  "outputList": [{"idx": 0, "axis": [1]}]}],
-                   "reduceMaps": [],
-                   "l1FusionEnable": 2,
-                   "minTbeL1Space": 0}}
-    if bias:
-        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
-        slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+    bias_idx = 2
+    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
 
     # >>> start: process for dynamic shape
     shape_x = inputs.get("ori_shape")

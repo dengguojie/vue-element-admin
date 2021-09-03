@@ -27,3 +27,6 @@ Function: Image Processing Intersection-over-Union(IoU) Calculation, Iou = Area 
 
 SortV2
 Function: Sort the elements of the input tensor along a given dimension in ascending order by value.
+
+Sort
+Function: Sort the input tensor and return the value of index.
