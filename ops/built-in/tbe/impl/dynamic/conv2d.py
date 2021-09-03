@@ -35,7 +35,11 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.common.utils.errormgr import error_manager_util
 from impl.util import fusion_util
 from impl.util import util_conv2d
-from impl.util.util_cube_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import check_l1_size
+from impl.util.util_conv2d_dynamic import create_fuzz_range
+from impl.util.util_conv2d_dynamic import correct_input_range
+from impl.util.util_cube_dynamic import BIT_RATIO_DICT
 from impl.util.platform_adapter import tbe_platform
 
 NONETYPE = type(None)
@@ -43,73 +47,82 @@ H_DIM = 2
 W_DIM = 3
 SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
+DYNAMIC_VALUE = -1
 
-
-def correct_fuzz_build_range(inputs, weights, strides, pads, dilations):
+def gen_conv2d_range(inputs, weights, strides, pads, dilations):
     """
-    get input w range within L1 size
-
-    Notice
-    ------
-    the proper range are not smaller then shape value
-
-    Parameters
-    ----------
-    same to conv2d
-
-    Returns
-    -------
-    None
+    fuzz input range
     """
-    valid = isinstance(inputs.get("range"), (list, tuple)) and len(inputs["range"]) >= 4
-    if not valid:
-        return
-    proper_range = list(map(list, inputs["range"]))
-    pos_h = inputs["ori_format"].find("H")
-    pos_w = inputs["ori_format"].find("W")
-    pos_range_h = pos_h
-    pos_range_w = pos_w
-    if len(proper_range) > 4:
-        pos_range_h = 2
-        pos_range_w = 3
-    # -1 shape range is set by user, should not change
-    invaild = (None in proper_range[pos_range_h]) \
-              or (None in proper_range[pos_range_w]) \
-              or inputs["ori_shape"][pos_w] == -1
-    if invaild:
-        return
-    # >>> start: get the max proper w right range, at least same to shape value
-    type_byte = int(re.findall(r'\d+', inputs["dtype"])[0]) // 8
-    pad_top, pad_bottom, pad_left, pad_right = pads
-    filter_h_dilation = (weights["ori_shape"][weights["ori_format"].find("H")] - 1) * dilations[pos_h] + 1
-    filter_w_dilation = (weights["ori_shape"][weights["ori_format"].find("W")] - 1) * dilations[pos_w] + 1
-    l1_size = tbe_platform.get_soc_spec("L1_SIZE")
-    proper_w = proper_range[pos_range_w][1]
-    for i in list(range(proper_w, inputs["ori_shape"][pos_w] - 1, -1)):
-        if -1 in pads:
-            w_out = i + strides[pos_w] - 1 // strides[pos_w]
+    op_type = "conv2d"
+    x_shape = inputs.get("ori_shape")
+    x_format = inputs.get("ori_format")
+    x_range = inputs.get("ori_range")
+    w_shape = weights.get("ori_shape")
+    w_format = weights.get("ori_format")
+
+    idx_n = 0
+    if x_format == "NCHW":
+        idx_c = 1
+        idx_h = 2
+        idx_w = 3
+        dilh = dilations[2]
+        dilw = dilations[3]
+    elif x_format == "NHWC":
+        idx_h = 1
+        idx_w = 2
+        idx_c = 3
+        dilh = dilations[1]
+        dilw = dilations[2]
+    else:
+        err_man.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC.")
+
+    # x_range instance when empty
+    if not x_range:
+        x_range = list()
+        for idx in range(len(x_shape)):
+            if x_shape[idx] == DYNAMIC_VALUE:
+                x_range.append([1, -1])
+            else:
+                x_range.append([x_shape[idx], x_shape[idx]])
+
+    if w_format == "NCHW":
+        kh = w_shape[2]
+        kw = w_shape[3]
+    elif w_format == "NHWC":
+        kh = w_shape[1]
+        kw = w_shape[2]
+    elif w_format == "HWCN":
+        kh = w_shape[0]
+        kw = w_shape[1]
+    else:
+        err_man.raise_err_specific_user(op_type, "input filter format only support NCHW, NHWC or HWCN.")
+
+    kh_dilate = dilh*(kh - 1) + 1
+    kw_dilate = dilw*(kw - 1) + 1
+    grade_n = [0, 1, 3, 7, 15, 31, ((1<<31) - 1)]
+    grade_h = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
+    grade_w = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
+    grade_map = dict()
+    grade_map[idx_n] = grade_n
+    grade_map[idx_h] = grade_h
+    grade_map[idx_w] = grade_w
+    input_range = [[], [], [], []]
+
+    for idx, grade_item in grade_map.items():
+        # allow input_shape -1 with range
+        if x_shape[idx] == DYNAMIC_VALUE:
+            input_range[idx] = x_range[idx]
         else:
-            w_out = (i + (pad_left + pad_right) - filter_w_dilation) // strides[pos_w] + 1
-        limit_h_out = math.floor(tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][0] / w_out) + 2
-        limit_size = ((limit_h_out - 1) * strides[pos_h] + filter_h_dilation) * i
-        limit_size = limit_size * tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][1] * type_byte
-        proper_w = i
-        if limit_size < l1_size:
-            break
-    # <<< end: get the max proper w right range, at least same to shape value
-    # >>> start: change input range and ori_range if exists
-    if proper_w != proper_range[pos_range_w][1]:
-        proper_range[pos_range_w][1] = proper_w
-        to_print = "conv2d fuzz build range changed from {} to {}".format(inputs["range"], proper_range)
-        inputs["range"] = proper_range
-        valid = isinstance(inputs.get("ori_range"), (list, tuple)) and len(inputs["ori_range"]) == 4
-        if valid:
-            ori_range = list(map(list, inputs["ori_range"]))
-            ori_range[pos_w][1] = proper_w
-            to_print = "{}, ori_range changed from {} to {}".format(to_print, inputs["ori_range"], proper_range)
-            inputs["ori_range"] = ori_range
-        warnings.warn(to_print)
-    # <<< end: change input range and ori_range if exists
+            input_range[idx] = create_fuzz_range(op_type, x_shape[idx], grade_item)
+
+    input_range[idx_c] = [x_shape[idx_c], x_shape[idx_c]]
+    # output_h or output_w > 0
+    correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, kw_dilate, pads)
+    # check mini tiling exceed l1buffer
+    if x_shape[idx_w] != DYNAMIC_VALUE:
+        check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads)
+
+    return input_range
 
 
 @register_param_generalization("Conv2D")
@@ -150,30 +163,20 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
         if unknow_rank:
             err_man.raise_err_specific_user("conv2d", "not support unknow_rank under mode {}".format(
                 generalize_config["mode"]))
-        correct_fuzz_build_range(inputs, weights, strides, pads, dilations)
+        x_range = gen_conv2d_range(inputs, weights, strides, pads, dilations)
+        inputs["ori_range"] = x_range
         have_range = {"inputs": inputs, "outputs": outputs}
-        support_format = ["NCHW", "NHWC"]
         for name, tensor in have_range.items():
-            # modify tesnors have range
-            if tensor.get("ori_format") not in support_format:
-                err_man.raise_err_specific_user("conv2d", "invalid {} ori_format {}, only support {}".format(
-                    name, str(tensor.get("ori_format")), str(support_format)))
             # only change shape NHW dim to -1, range is already set at infershape
             valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
                 err_man.raise_err_specific_user("conv2d", "invalid {} ori_shape {}, only support {}d".format(
-                        name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
-            if not valid:
-                err_man.raise_err_specific_user("conv2d", "invalid {} ori_shape {}, only support {}d".format(
-                        name, str(tensor.get("shape")), str(SHAPE_LEN)))
+                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
         result.append([inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                        groups, data_format, offset_x, kernel_name])
     return result
-
 
 
 def set_default_para():

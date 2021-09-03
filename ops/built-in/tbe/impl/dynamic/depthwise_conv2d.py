@@ -15,14 +15,152 @@
 """
 depthwise_conv2d
 """
+import math
 from tbe import tvm
 from tbe.common import register as tbe_register
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from .conv2d import conv2d
 from .conv2d import conv2d_fusion_compute
+from impl.util.util_cube_dynamic import BIT_RATIO_DICT
+from impl.util.platform_adapter import tbe_platform
+from impl.util.util_conv2d_dynamic import check_l1_size
+from impl.util.util_conv2d_dynamic import create_fuzz_range
+from impl.util.util_conv2d_dynamic import correct_input_range
 
 NONETYPE = type(None)
+ORI_SHAPE_LEN = 4
+DYNAMIC_VALUE = -1
+
+
+def gen_depthwise_conv2d_range(inputs, weights, strides, pads, dilations):
+    """
+    fuzz input range
+    """
+    op_type = "depthwise_conv2d"
+    x_shape = inputs.get("ori_shape")
+    x_format = inputs.get("ori_format")
+    x_range = inputs.get("ori_range")
+    w_shape = weights.get("ori_shape")
+    w_format = weights.get("ori_format")
+
+    idx_n = 0
+    if x_format == "NCHW":
+        idx_c = 1
+        idx_h = 2
+        idx_w = 3
+        dilh = dilations[2]
+        dilw = dilations[3]
+    elif x_format == "NHWC":
+        idx_h = 1
+        idx_w = 2
+        idx_c = 3
+        dilh = dilations[1]
+        dilw = dilations[2]
+    else:
+        err_man.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC")
+
+    # x_range instance when empty
+    if not x_range:
+        x_range = list()
+        for idx in range(len(x_shape)):
+            if x_shape[idx] == DYNAMIC_VALUE:
+                x_range.append([1, -1])
+            else:
+                x_range.append([x_shape[idx], x_shape[idx]])
+
+    if w_format == "NCHW":
+        kh = w_shape[2]
+        kw = w_shape[3]
+    elif w_format == "NHWC":
+        kh = w_shape[1]
+        kw = w_shape[2]
+    elif w_format == "HWCN":
+        kh = w_shape[0]
+        kw = w_shape[1]
+    else:
+        err_man.raise_err_specific_user(op_type, "input filter format only support NCHW, NHWC or HWCN")
+
+    kh_dilate = dilh*(kh - 1) + 1
+    kw_dilate = dilw*(kw - 1) + 1
+    grade_n = [0, 1, 3, 7, 15, 31, ((1<<31) - 1)]
+    grade_h = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
+    grade_w = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
+    grade_map = dict()
+    grade_map[idx_n] = grade_n
+    grade_map[idx_h] = grade_h
+    grade_map[idx_w] = grade_w
+    input_range = [[], [], [], []]
+
+    for idx, grade_item in grade_map.items():
+        # allow input_shape -1 with range
+        if x_shape[idx] == DYNAMIC_VALUE:
+            input_range[idx] = x_range[idx]
+        else:
+            input_range[idx] = create_fuzz_range(op_type, x_shape[idx], grade_item)
+
+    input_range[idx_c] = [x_shape[idx_c], x_shape[idx_c]]
+    # output_h or output_w > 0
+    correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, kw_dilate, pads)
+    # check fmap exceed l1buffer
+    if x_shape[idx_w] != DYNAMIC_VALUE:
+        check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads)
+
+    return input_range
+
+
+@tbe_register.register_param_generalization("DepthwiseConv2D")
+def depthwise_conv2d_generalization(x, filter, bias, offset_w, y, strides, dilations=(1, 1, 1, 1),
+                                    pads=(0, 0, 0, 0), data_format='NHWC', offset_x=0, kernel_name="depthwise_conv2d",
+                                    generalize_config=None):
+    """
+    depthwise_conv2d generalization
+
+    Notice
+    ------
+    run after infershape and before operator compile
+    only modify input and output tensors with range
+
+    for use:
+        1. te fusion distinguish .o (remove the generalization dim)
+        2. pass them to the operator to follow the dynanmic shape process
+
+    Parameters
+    ----------
+    same to depthwise_conv2d
+
+    Returns
+    -------
+    list of params list:
+        single item under "keep_rank" mode and multiple under "all_shape"
+    """
+    if generalize_config is None:
+        generalize_config = {"mode": "keep_rank"}
+    support_mode = ["keep_rank"]
+    if generalize_config.get("mode") not in support_mode:
+        err_man.raise_err_specific_user("depthwise_conv2d", "invalid generalize mode {}, only support {}".format(
+            str(generalize_config.get("mode")), str(support_mode)))
+    result = []
+    if generalize_config["mode"] == "keep_rank": # fuzz build situation
+        # unknow_rank inputs ori_shape is [-2], others' shape length is 4
+        unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
+        if unknow_rank:
+            err_man.raise_err_specific_user("depthwise_conv2d", "not support unknow_rank under mode {}".format(
+                generalize_config["mode"]))
+        x_range = gen_depthwise_conv2d_range(x, filter, strides, pads, dilations)
+        x["ori_range"] = x_range
+        have_range = {"x": x, "y": y}
+        for name, tensor in have_range.items():
+            # only change shape NHW dim to -1, range is already set at infershape
+            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+            if not valid:
+                err_man.raise_err_specific_user("depthwise_conv2d", "invalid {} ori_shape {}, only support {}d".format(
+                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
+               if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+        result.append([x, filter, bias, offset_w, y, strides, dilations, pads, data_format, offset_x, kernel_name])
+    return result
+
 
 @tbe_register.register_op_compute("DepthwiseConv2D", op_mode="dynamic", support_fusion=True)
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (tvm.tensor.Tensor, NONETYPE),

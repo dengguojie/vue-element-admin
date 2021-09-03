@@ -687,9 +687,7 @@ TEST_F(Conv2DProtoTest, conv2dFuzzBuildAllStaticShape) {
     ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tensor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{16, 31}, {3,3}, {16, 31}, {16, 31}};
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-    EXPECT_EQ((input_range == expect_x_range), true);
 }
 
 // fuzz build partial static shape
@@ -713,9 +711,7 @@ TEST_F(Conv2DProtoTest, conv2dFuzzBuildPartialStaticShape) {
     ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tensor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{1, 16}, {16, 31}, {16, 31}, {3,3}};
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-    EXPECT_EQ((input_range == expect_x_range), true);
 }
 
 // fuzz build all static shape with padding
@@ -764,9 +760,7 @@ TEST_F(Conv2DProtoTest, conv2dFuzzBuildCorrectLeftRange) {
     ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tensor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{1, 1}, {93, 93}, {32, 63}, {385, 511}};
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-    EXPECT_EQ((input_range == expect_x_range), true);
 }
 
 
@@ -845,9 +839,7 @@ TEST_F(Conv2DProtoTest, conv2dFuzzBuildAllStaticShape_1) {
     ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tensor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{16, 31}, {3,3}, {1024, 4096}, {16, 31}};
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-    EXPECT_EQ((input_range == expect_x_range), true);
 }
 
 // x format is valid

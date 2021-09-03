@@ -31,7 +31,11 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_register
-from impl.util.util_cube_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import check_l1_size
+from impl.util.util_conv2d_dynamic import create_fuzz_range
+from impl.util.util_conv2d_dynamic import correct_input_range
+from impl.util.util_cube_dynamic import BIT_RATIO_DICT
 from tbe.dsl.compute.conv_compute import conv
 from tbe.dsl.compute.conv_compute import ConvParam
 
@@ -54,6 +58,7 @@ SHAPE_LEN = 5
 H_DIM = 2
 W_DIM = 3
 ORI_SHAPE_LEN = 4
+DYNAMIC_VALUE = -1
 
 class AvgPool:
     def __init__(self, dtype, ksize, strides, padding, kernel_name):
@@ -868,6 +873,67 @@ def correct_fuzz_build_range(x, ksize, strides, padding, data_format):
     # <<< end: change input range and ori_range if exists
 
 
+def gen_avg_pool_range(inputs, ksize, strides, padding):
+    """
+    fuzz input range
+    """
+    op_type = "avg_pool"
+    x_shape = inputs.get("ori_shape")
+    x_format = inputs.get("ori_format")
+    x_range = inputs.get("ori_range")
+
+    idx_n = 0
+    if x_format == "NCHW":
+        idx_c = 1
+        idx_h = 2
+        idx_w = 3
+    elif x_format == "NHWC":
+        idx_h = 1
+        idx_w = 2
+        idx_c = 3
+    else:
+        err_man.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC")
+
+    # x_range instance when empty
+    if not x_range:
+        x_range = list()
+        for idx in range(len(x_shape)):
+            if x_shape[idx] == DYNAMIC_VALUE:
+                x_range.append([1, -1])
+            else:
+                x_range.append([x_shape[idx], x_shape[idx]])
+
+    kh = ksize[idx_h]
+    kw = ksize[idx_w]
+    if padding == "SAME":
+        pads = [-1, -1, -1, -1]
+    else:
+        pads = [0, 0, 0, 0]
+    grade_n = [0, 1, 3, 7, 15, 31, ((1<<31) - 1)]
+    grade_h = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
+    grade_w = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
+    grade_map = dict()
+    grade_map[idx_n] = grade_n
+    grade_map[idx_h] = grade_h
+    grade_map[idx_w] = grade_w
+    input_range = [[], [], [], []]
+
+    for idx, grade_item in grade_map.items():
+        # allow input_shape -1 with range
+        if x_shape[idx] == DYNAMIC_VALUE:
+            input_range[idx] = x_range[idx]
+        else:
+            input_range[idx] = create_fuzz_range(op_type, x_shape[idx], grade_item)
+
+    input_range[idx_c] = [x_shape[idx_c], x_shape[idx_c]]
+    # output_h or output_w > 0
+    correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh, kw, pads)
+    # check fmap exceed l1buffer
+    if x_shape[idx_w] != DYNAMIC_VALUE:
+        check_l1_size(op_type, inputs, kh, kw, strides, pads)
+
+    return input_range
+
 @tbe_register.register_param_generalization("AvgPool")
 def avg_pool_generalization(x, filter, bias, y, ksize, strides, padding="VALID",
                             data_format='NHWC', offset_x=0, kernel_name="avg_pool", generalize_config=None):
@@ -904,21 +970,17 @@ def avg_pool_generalization(x, filter, bias, y, ksize, strides, padding="VALID",
     if unknow_rank:
         error_manager_cube.raise_err_specific_user("avg_pool", "not support unknow_rank under mode {}".format(
             generalize_config["mode"]))
-    correct_fuzz_build_range(x, ksize, strides, padding, data_format)
+    x_range = gen_avg_pool_range(x, ksize, strides, padding)
+    x["ori_range"] = x_range
     have_range = {"x": x, "y": y}
     for name, tensor in have_range.items():
         # only change shape NHW dim to -1, range is already set at infershape
         valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
         if not valid:
             error_manager_cube.raise_err_specific_user("avg_pool", "invalid {} ori_shape {}, only support {}d".format(
-                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-        valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
-        if not valid:
-            error_manager_cube.raise_err_specific_user("avg_pool", "invalid {} ori_shape {}, only support {}d".format(
-                    name, str(tensor.get("shape")), str(SHAPE_LEN)))
+                name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
         tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
             if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-        tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
     result.append([x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name])
     return result
 

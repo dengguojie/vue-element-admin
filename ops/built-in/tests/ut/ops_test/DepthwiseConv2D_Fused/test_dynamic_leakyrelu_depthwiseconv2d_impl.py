@@ -13,7 +13,7 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
     from impl.dynamic.leaky_relu import leaky_relu_compute
     from impl.dynamic.depthwise_conv2d import depthwise_compute
     from impl.util.platform_adapter import operation
-    from impl.util.util_cube_dynamic import Conv2dParaProcess
+    from impl.util.util_conv2d_dynamic import Conv2dParaProcess
     from tbe.dsl import auto_schedule
     from tbe.common.context import op_context
     from tbe.tvm.target import cce

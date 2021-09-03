@@ -1806,28 +1806,13 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
       return GRAPH_FAILED;
     }
   }
+  // fuzz build allow shape dim -1 with range
   // fuzz_build switch
   bool fuzz_build = false;
   op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build
   if ((!unknown_rank) && fuzz_build) {
     OP_LOGD(op.GetName().c_str(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    if (!GenFuzzyCompileShapeRange(op, input_tensor_desc, input_range)){
-      return GRAPH_FAILED;
-    }
-    int32_t kh = ksize_list[h_output_position];
-    int32_t kw = ksize_list[w_output_position];
-    // left range should ensure output >= 1
-    if (!CorrectFuzzyCompileRangeStart(op, input_tensor_desc, input_range, kh, kw)){
-      return GRAPH_FAILED;
-    }
-    // only need to set input fuzz build range
-    graphStatus ret = input_tensor_desc->SetShapeRange(input_range);
-    if (ret != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "set input range failed");
-      return GRAPH_FAILED;
-    }
   }
   OP_LOGD(op.GetName().c_str(), "Leave AvgPoolInferShape");
   return GRAPH_SUCCESS;

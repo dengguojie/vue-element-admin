@@ -982,6 +982,21 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
       return GRAPH_FAILED;
     }
   }
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // change pads to -1 when padding is SAME
+    std::string pad_str;
+    op.GetAttr("padding", pad_str);
+    if (pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build.");
+    }
+  }
+
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   OP_LOGI(op_name.GetString(), "leave op_proto inferfunction!");
   return GRAPH_SUCCESS;
@@ -4617,30 +4632,13 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
   // fuzz build allow shape dim -1 with range
   if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    if (!GenConv2dShapeRange(op, x_tensor, input_range)){
-      return GRAPH_FAILED;
-    }
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
     // change pad to -1 when padding is SAME
     std::string pad_str;
     op.GetAttr("padding", pad_str);
     if (pad_str == "SAME") {
       op.SetAttr("pads", {-1, -1, -1, -1});
       OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
-    }
-    int32_t kh_dilate = dilh * (kh - 1) + 1;
-    int32_t kw_dilate = dilw * (kw - 1) + 1;
-    // left range should ensure output >= 1
-    if (!CorrectConv2DRangeStart(op, x_tensor, input_range, kh_dilate, kw_dilate)){
-      return GRAPH_FAILED;
-    }
-    // only need to set input fuzz build range
-    graphStatus ret = x_tensor->SetShapeRange(input_range);
-    CHECK_INFO(ret != GRAPH_SUCCESS, return GRAPH_FAILED, "set input range failed");
-    for (size_t i = 0; i < input_range.size(); i++) {
-      OP_LOGD(op_name.GetString(), "input Range[%u] is (%lld, %lld)", i, input_range[i].first, input_range[i].second);
     }
   }
   OP_LOGD(op_name.GetString(), "Leave Conv2DInfer.");

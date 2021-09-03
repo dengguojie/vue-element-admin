@@ -3,7 +3,7 @@
 from op_test_frame.ut import OpUT
 import conv2D_ut_testcase as tc
 from te import tvm
-from impl.util.util_cube_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import Conv2dParaProcess
 
 ut_case = OpUT("Conv2D", "impl.dynamic.conv2d",
                "conv2d")

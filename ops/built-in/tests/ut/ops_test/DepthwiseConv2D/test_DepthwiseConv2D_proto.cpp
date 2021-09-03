@@ -35,7 +35,7 @@ class DepthwiseConv2DProtoTest : public testing::Test {
 //     .ATTR(offset_x, Int, 0)
 //     .OP_END_FACTORY_REG(DepthwiseConv2D)
 
-TEST_F(DepthwiseConv2DProtoTest, conv2dSplicDataTest) {
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dSplicDataTest) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
     depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({3, 3, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{3, 3, 16, 1},ge::FORMAT_HWCN));
@@ -362,4 +362,123 @@ TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dDynamicSplitH) {
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
     auto ret = op_desc->InferDataSlice();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// fuzz build all static shape
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dFuzzBuildAllStaticShape) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.SetAttr("_fuzz_build", true);
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori(
+        {16, 3, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 3, 16, 16}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori(
+        {1, 3, 3, 5}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 3, 5}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori(
+        {16, 1, 14, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 1, 14, 12}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = depthwiseconv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    tensor_desc_x->GetShapeRange(input_range);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// fuzz build partial static shape
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dFuzzBuildPartialStaticShape) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.SetAttr("_fuzz_build", true);
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range(
+        {-1, 16, 16, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, 16, 16, 3}, ge::FORMAT_NHWC, {{1, 16}, {}, {}, {}}));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori(
+        {1, 3, 3, 5}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 3, 5}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori(
+        {-1, 14, 12, 1}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, 14, 12, 1}, ge::FORMAT_NHWC));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = depthwiseconv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    tensor_desc_x->GetShapeRange(input_range);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// fuzz build all static shape with padding
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dFuzzBuildAllStaticShapeWithPadding) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.SetAttr("_fuzz_build", true);
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori(
+        {16, 3, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 3, 16, 16}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori(
+        {1, 3, 3, 5}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 3, 5}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori(
+        {16, 1, 14, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 1, 14, 12}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("padding", "SAME");
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    std::vector<int32_t> pads_list;
+    depthwiseconv2d.GetAttr("pads", pads_list);
+    std::vector<int32_t> expect_pads = {-1, -1, -1, -1};
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    EXPECT_EQ((pads_list == expect_pads), true);
+}
+
+// fuzz build correct left range
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dFuzzBuildCorrectLeftRange) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.SetAttr("_fuzz_build", true);
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori(
+        {1, 93, 47, 452}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 93, 47, 452}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori(
+        {1, 93, 31, 97}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 93, 31, 97}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori(
+        {-1, 1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 1, -1, -1}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 4, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("groups", 3);
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 4});
+    auto status = depthwiseconv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    tensor_desc_x->GetShapeRange(input_range);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// fuzz build all static shape
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dFuzzBuildAllStaticShape_1) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.SetAttr("_fuzz_build", true);
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori(
+        {16, 3, 4096, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 3, 4096, 16}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori(
+        {1, 3, 3, 5}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 3, 5}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori(
+        {16, 1, 4094, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 1, 4094, 12}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = depthwiseconv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    tensor_desc_x->GetShapeRange(input_range);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
