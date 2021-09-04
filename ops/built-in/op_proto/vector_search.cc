@@ -320,13 +320,11 @@ IMPLEMT_COMMON_INFERFUNC(ScanPQCodesShape) {
   GeTensorDescPtr bucketListDesc = opDest->MutableInputDesc("bucket_list");
   std::vector<int64_t> bucketListShape = bucketListDesc->MutableShape().GetDims();
   int64_t bucketNumbers = bucketListShape[0];
-  DataType inputDtypeBucketOffsets = opDest->MutableInputDesc("bucket_offsets")->GetDataType();
-  DataType inputDtypeAdcTable = opDest->MutableInputDesc("adc_tables")->GetDataType();
-  opDest->MutableOutputDesc("actual_count")->SetDataType(inputDtypeBucketOffsets);
-  opDest->MutableOutputDesc("pq_distance")->SetDataType(inputDtypeAdcTable);
-  opDest->MutableOutputDesc("grouped_extreme_distance")->SetDataType(inputDtypeAdcTable);
-  opDest->MutableOutputDesc("pq_ivf")->SetDataType(inputDtypeBucketOffsets);
-  opDest->MutableOutputDesc("pq_index")->SetDataType(inputDtypeBucketOffsets);
+  opDest->MutableOutputDesc("actual_count")->SetDataType(ge::DT_INT32);
+  opDest->MutableOutputDesc("pq_distance")->SetDataType(ge::DT_FLOAT16);
+  opDest->MutableOutputDesc("grouped_extreme_distance")->SetDataType(ge::DT_FLOAT16);
+  opDest->MutableOutputDesc("pq_ivf")->SetDataType(ge::DT_INT32);
+  opDest->MutableOutputDesc("pq_index")->SetDataType(ge::DT_INT32);
   int32_t totalLimit = 0;
   op.GetAttr("total_limit", totalLimit);
   int32_t groupSize = 0;

@@ -30,6 +30,7 @@ TILING_ARG_NUM = 8
 # reserved ub size
 MASK_FLOAT16 = 128
 MASK_FLOAT32 = 64
+BLOCK_INT64 = 4
 BLOCK_INT32 = 8
 BLOCK_FLOAT16 = 16
 BLOCK_UINT8 = 32
@@ -72,7 +73,7 @@ class ScanPQCodes():
     """
     Function: use to store ScanPQCodes base parameters
     """
-    def __init__(self, attrs, dtypes, bucket_shape):
+    def __init__(self, attrs, dtypes):
         self.tik_instance = tik.Tik()
         self.opt_config = {"out_of_bound_sync_check": True,
                            "enable_const_fold": True}
@@ -91,7 +92,6 @@ class ScanPQCodes():
         self.group_size = group_size
         self.total_limit = total_limit
         self.extreme_mode = extreme_mode
-        self.bucket_shape = bucket_shape
         self.split_count = split_count
         self.split_index = split_index
         # dtype
@@ -129,7 +129,7 @@ class ScanPQCodes():
         self.bucket_list_ub_int32 = None
         self.bucket_base_distance_ub_fp16 = None
         self.bucket_limits_ub_int32 = None
-        self.bucket_offsets_ub_int32 = None
+        self.bucket_offsets_ub_int64 = None
         self.ivf_cur_process_ub_fp32 = None
 
 
@@ -191,8 +191,8 @@ class ScanPQCodes():
         self.bucket_limits_ub_int32 = self.tik_instance.Tensor(self.bucket_limits_dtype, (MAX_BUCKET_LEN, ),
                                                                name="bucket_limits_ub_int32",
                                                                scope=tik.scope_ubuf)
-        self.bucket_offsets_ub_int32 = self.tik_instance.Tensor(self.bucket_offsets_dtype, (MAX_BUCKET_LEN, ),
-                                                                name="bucket_offsets_ub_int32",
+        self.bucket_offsets_ub_int64 = self.tik_instance.Tensor(self.bucket_offsets_dtype, (MAX_BUCKET_LEN, ),
+                                                                name="bucket_offsets_ub_int64",
                                                                 scope=tik.scope_ubuf)
         self.ivf_cur_process_ub_fp32 = self.tik_instance.Tensor("float32", (IVF_SLICE_INNER_SIZE, ),
                                                                 name="ivf_cur_process_ub_fp32",
@@ -205,7 +205,7 @@ class ScanPQCodes():
         tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
                                              name="tiling_ub",
                                              scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_ARG_NUM // BLOCK_INT64, 0, 0)
         tiling_para_index = 0
         self.bucket_num_total.set_as(tiling_ub[tiling_para_index])
         tiling_para_index = tiling_para_index + 1
@@ -218,12 +218,25 @@ class ScanPQCodes():
         self.bucket_start_base.set_as(tiling_ub[tiling_para_index])
 
 
-    def _calc_output_count(self, output_count, bucket_start, bucket_idx):
+    def _calc_output_count(self, output_count, bucket_idx):
         output_count.set_as(0)
-        bucket_counts = self.tik_instance.Scalar("int32", name="bucket_counts")
-        with self.tik_instance.for_range(bucket_start, bucket_idx) as idx:
-            bucket_counts.set_as(self.bucket_limits_ub_int32[idx])
-            output_count.set_as(output_count + _ceil_fill(bucket_counts, SLICE_TAIL_SIZE))
+        with self.tik_instance.if_scope(bucket_idx // MAX_BUCKET_LEN > 0):
+            with self.tik_instance.for_range(0, bucket_idx // MAX_BUCKET_LEN) as loop_idx:
+                self.tik_instance.data_move(self.bucket_limits_ub_int32,
+                                            self.bucket_limits_gm[self.bucket_start_base + loop_idx * MAX_BUCKET_LEN], 0, 1, 
+                                            MAX_BUCKET_LEN // BLOCK_INT32, 0, 0)
+                bucket_counts = self.tik_instance.Scalar("int32", name="bucket_counts")
+                with self.tik_instance.for_range(0, MAX_BUCKET_LEN) as idx:
+                    bucket_counts.set_as(self.bucket_limits_ub_int32[idx])
+                    output_count.set_as(output_count + _ceil_fill(bucket_counts, SLICE_TAIL_SIZE))
+        with self.tik_instance.if_scope(bucket_idx % MAX_BUCKET_LEN > 0):
+            self.tik_instance.data_move(self.bucket_limits_ub_int32,
+                                        self.bucket_limits_gm[self.bucket_start_base + _floor_fill(bucket_idx, MAX_BUCKET_LEN)], 0, 1, 
+                                        _ceil_div(bucket_idx % MAX_BUCKET_LEN, BLOCK_INT32), 0, 0)
+            bucket_counts = self.tik_instance.Scalar("int32", name="bucket_counts")
+            with self.tik_instance.for_range(0, bucket_idx % MAX_BUCKET_LEN) as idx:
+                bucket_counts.set_as(self.bucket_limits_ub_int32[idx])
+                output_count.set_as(output_count + _ceil_fill(bucket_counts, SLICE_TAIL_SIZE))            
 
 
     def _create_adc_table(self, bucket_idx):
@@ -234,7 +247,7 @@ class ScanPQCodes():
         src_list = [adc_tables_input_ub[256 * i] for i in range(16)]
         # move in adc_tables
         self.tik_instance.data_move(adc_tables_input_ub,
-                                    self.adc_tables_gm[bucket_idx * 256 * 16],
+                                    self.adc_tables_gm[(bucket_idx + self.bucket_start_base) * 256 * 16],
                                     0, 1, 256, 0, 0)
         self.tik_instance.vnchwconv(False, False, dst_list, src_list, 16, 16, 1)
         with self.tik_instance.for_range(0, 4) as tran_idx:
@@ -281,38 +294,42 @@ class ScanPQCodes():
         self.tik_instance.vadds(64, self.assist_pq_index_init_ub_fp32[512], self.assist_pq_index_init_ub_fp32, 512, 8, 1, 1, 8, 8)
 
 
-    def _get_input_data(self):
-        self.tik_instance.data_move(self.bucket_list_ub_int32, self.bucket_list_gm, 0, 1, 
-                                    _ceil_div(self.bucket_shape, BLOCK_INT32), 0, 0)
-        self.tik_instance.data_move(self.bucket_base_distance_ub_fp16, self.bucket_base_distance_gm, 0, 1, 
-                                    _ceil_div(self.bucket_shape, BLOCK_FLOAT16), 0, 0)
-        self.tik_instance.data_move(self.bucket_limits_ub_int32, self.bucket_limits_gm, 0, 1, 
-                                    _ceil_div(self.bucket_shape, BLOCK_INT32), 0, 0)
-        self.tik_instance.data_move(self.bucket_offsets_ub_int32, self.bucket_offsets_gm, 0, 1, 
-                                    _ceil_div(self.bucket_shape, BLOCK_INT32), 0, 0)
+    def _get_input_data(self, bucket_idx):
+        self.tik_instance.data_move(self.bucket_list_ub_int32,
+                                    self.bucket_list_gm[_floor_fill(bucket_idx, MAX_BUCKET_LEN) + self.bucket_start_base], 0, 1, 
+                                    _ceil_div((bucket_idx % MAX_BUCKET_LEN) + 1, BLOCK_INT32), 0, 0)
+        self.tik_instance.data_move(self.bucket_base_distance_ub_fp16,
+                                    self.bucket_base_distance_gm[_floor_fill(bucket_idx, MAX_BUCKET_LEN) + self.bucket_start_base], 0, 1, 
+                                    _ceil_div((bucket_idx % MAX_BUCKET_LEN) + 1, BLOCK_FLOAT16), 0, 0)
+        self.tik_instance.data_move(self.bucket_offsets_ub_int64,
+                                    self.bucket_offsets_gm[_floor_fill(bucket_idx, MAX_BUCKET_LEN) + self.bucket_start_base], 0, 1, 
+                                    _ceil_div((bucket_idx % MAX_BUCKET_LEN) + 1, BLOCK_INT64), 0, 0)
+        self.tik_instance.data_move(self.bucket_limits_ub_int32,
+                                    self.bucket_limits_gm[_floor_fill(bucket_idx, MAX_BUCKET_LEN) + self.bucket_start_base], 0, 1, 
+                                    _ceil_div((bucket_idx % MAX_BUCKET_LEN) + 1, BLOCK_INT32), 0, 0)
 
 
     def _set_single_bucket_param(self, args):
         (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input,
          bucket_offset_output, bucket_max_offset) = args
-        bucket_id.set_as(self.bucket_list_ub_int32[bucket_idx])
-        bucket_base_dis.set_as(self.bucket_base_distance_ub_fp16[bucket_idx])
-        bucket_limit.set_as(self.bucket_limits_ub_int32[bucket_idx])
-        bucket_offset_input.set_as(self.bucket_offsets_ub_int32[bucket_idx])
+        bucket_id.set_as(self.bucket_list_ub_int32[bucket_idx % MAX_BUCKET_LEN])
+        bucket_base_dis.set_as(self.bucket_base_distance_ub_fp16[bucket_idx % MAX_BUCKET_LEN])
+        bucket_limit.set_as(self.bucket_limits_ub_int32[bucket_idx % MAX_BUCKET_LEN])
+        bucket_offset_input.set_as(self.bucket_offsets_ub_int64[bucket_idx % MAX_BUCKET_LEN])
         bucket_offset_input.set_as(bucket_offset_input * IVF_UNIT_LEN)
-        self._calc_output_count(bucket_offset_output, self.bucket_start_base, bucket_idx)
+        self._calc_output_count(bucket_offset_output, bucket_idx)
         bucket_max_offset.set_as(bucket_offset_output // self.group_size)
         self._init_assist_ub()
 
 
     def _run_multi_core(self):
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_idx:
-            bucket_id = self.tik_instance.Scalar("int32", name="bucket_id")
+            bucket_id = self.tik_instance.Scalar(self.bucket_list_dtype, name="bucket_id")
             bucket_base_dis = self.tik_instance.Scalar(self.bucket_base_distance_dtype, name="bucket_base_dis")
-            bucket_limit = self.tik_instance.Scalar("int32", name="bucket_limit")
-            bucket_offset_input = self.tik_instance.Scalar("int32", name="bucket_offset_input")
-            bucket_offset_output = self.tik_instance.Scalar("int32", name="bucket_offset_output")
-            bucket_offset_max = self.tik_instance.Scalar("int32", name="bucket_offset_max")
+            bucket_limit = self.tik_instance.Scalar(self.bucket_limits_dtype, name="bucket_limit")
+            bucket_offset_input = self.tik_instance.Scalar(self.bucket_offsets_dtype, name="bucket_offset_input")
+            bucket_offset_output = self.tik_instance.Scalar(self.bucket_limits_dtype, name="bucket_offset_output")
+            bucket_offset_max = self.tik_instance.Scalar(self.bucket_limits_dtype, name="bucket_offset_max")
             bucket_loop_time = self.tik_instance.Scalar("int32", name="bucket_loop_time")
             bucket_loop_tail = self.tik_instance.Scalar("int32", name="bucket_loop_tail")
             actual_count_ub_int32 = self.tik_instance.Tensor("int32", (BLOCK_INT32, ),
@@ -323,6 +340,7 @@ class ScanPQCodes():
                 with self.tik_instance.for_range(loop_start, loop_end) as bucket_idx:
                     args = (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input,
                             bucket_offset_output, bucket_offset_max)
+                    self._get_input_data(bucket_idx)
                     self._set_single_bucket_param(args)
                     bucket_loop_time.set_as(bucket_limit // SLICE_SIZE)
                     bucket_loop_tail.set_as(bucket_limit % SLICE_SIZE)
@@ -338,21 +356,21 @@ class ScanPQCodes():
             # calculate and output actual_total_num by core 0 for multi core
             with self.tik_instance.if_scope(core_idx == 0):
                 actual_total_num = self.tik_instance.Scalar("int32", name="actual_total_num")
-                self._calc_output_count(actual_total_num, self.bucket_start_base, self.bucket_num_total)
+                self._calc_output_count(actual_total_num, self.bucket_num_total)
                 actual_count_ub_int32[0].set_as(actual_total_num)
                 self.tik_instance.data_move(self.actual_count_gm, actual_count_ub_int32, 0, 1, 1, 0, 0)
             # if coreid < core_used_num - 1, no tail data handle, one bucket data handled by one core
             with self.tik_instance.if_scope(core_idx < self.core_used_num - 1):
-                _inner_handle(self.bucket_start_base + self.bucket_num_per_core * core_idx,
-                              self.bucket_start_base + self.bucket_num_per_core * (core_idx + 1))
+                _inner_handle(self.bucket_num_per_core * core_idx,
+                              self.bucket_num_per_core * (core_idx + 1))
             # if coreid == core_used_num - 1, handle tail or last loop block 
             with self.tik_instance.if_scope(core_idx == self.core_used_num - 1):
                 with self.tik_instance.if_scope(self.bucket_num_left):
-                    _inner_handle(self.bucket_start_base + self.bucket_num_per_core * core_idx,
-                                  self.bucket_start_base + self.bucket_num_per_core * core_idx + self.bucket_num_left)
+                    _inner_handle(self.bucket_num_per_core * core_idx,
+                                  self.bucket_num_per_core * core_idx + self.bucket_num_left)
                 with self.tik_instance.else_scope():
-                    _inner_handle(self.bucket_start_base + self.bucket_num_per_core * core_idx,
-                                  self.bucket_start_base + self.bucket_num_per_core * (core_idx + 1))
+                    _inner_handle(self.bucket_num_per_core * core_idx,
+                                  self.bucket_num_per_core * (core_idx + 1))
 
 
     def _handle_input_data(self, args):
@@ -446,13 +464,13 @@ class ScanPQCodes():
             # index set by assistant cube for performance
             assist_pq_index_ub_fp32 = self.adc_trans_ub_fp16.reinterpret_cast_to("float32")
             self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
-                                    0, 16, 1, 1, 8, 8)
+                                    0, INDEX_SHAPE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32[INDEX_SHAPE], self.assist_pq_index_init_ub_fp32,
-                                    INDEX_SHAPE, 16, 1, 1, 8, 8)
+                                    INDEX_SHAPE, INDEX_SHAPE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32[INDEX_SHAPE * 2], self.assist_pq_index_init_ub_fp32,
-                                    INDEX_SHAPE * 2, 16, 1, 1, 8, 8)
+                                    INDEX_SHAPE * 2, INDEX_SHAPE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32[INDEX_SHAPE * 3], self.assist_pq_index_init_ub_fp32,
-                                    INDEX_SHAPE * 3, 16, 1, 1, 8, 8)
+                                    INDEX_SHAPE * 3, INDEX_SHAPE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, assist_pq_index_ub_fp32,
                                     index_offset, SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
             assist_pq_index_ub_int32 = self.ivf_cur_process_ub_uint8.reinterpret_cast_to("int32")
@@ -476,7 +494,7 @@ class ScanPQCodes():
         # index
         assist_pq_index_ub_fp32 = self.adc_trans_ub_fp16.reinterpret_cast_to("float32")
         self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
-                                0, 16, 1, 1, 8, 8)
+                                0, INDEX_SHAPE // MASK_FLOAT32, 1, 1, 8, 8)
         self.tik_instance.vadds(MASK_FLOAT32, assist_pq_index_ub_fp32, assist_pq_index_ub_fp32,
                                 index_offset, SLICE_TAIL_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
         assist_pq_index_ub_int32 = self.ivf_cur_process_ub_uint8.reinterpret_cast_to("int32")
@@ -618,7 +636,6 @@ class ScanPQCodes():
         self._tiling_args()
         self._init_gm_tensor()
         self._init_ub_tensor()
-        self._get_input_data()
         self._run_multi_core()
         # Build CCE
         # this "global_variable_link" flag suggest ccec.py do link without "-r" option
@@ -661,7 +678,7 @@ def _para_dtype_check(args_list):
                            param_name="bucket_base_distance")
     para_check.check_dtype(bucket_limits_dtype, ("int32"),
                            param_name="bucket_limits")
-    para_check.check_dtype(bucket_offsets_dtype, ("int32"),
+    para_check.check_dtype(bucket_offsets_dtype, ("int64"),
                            param_name="bucket_offsets")
     para_check.check_dtype(adc_tables_dtype, ("float16"),
                            param_name="adc_tables")
@@ -717,10 +734,9 @@ def scan_pq_codes(ivf, bucket_list, bucket_base_distance, bucket_limits,
     bucket_limits_dtype = bucket_limits.get("dtype").lower()
     bucket_offsets_dtype = bucket_offsets.get("dtype").lower()
     adc_tables_dtype = adc_tables.get("dtype").lower()
-    bucket_shape = bucket_list.get("shape")[0]
     dtypes = (ivf_dtype, bucket_list_dtype, bucket_base_distance_dtype,
               bucket_limits_dtype, bucket_offsets_dtype,
               adc_tables_dtype)
     attrs = (total_limit, group_size, extreme_mode, split_count, split_index)
-    obj = ScanPQCodes(attrs, dtypes, bucket_shape)
+    obj = ScanPQCodes(attrs, dtypes)
     return obj.scan_pq_codes_operator(kernel_name)

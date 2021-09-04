@@ -129,6 +129,105 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "8 1 0 8 0 ");
 }
+
+TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
+  using namespace optiling;
+  std::string op_name = "ScanPQCodes";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 2, \"split_index\": 0}}";
+
+  std::vector<int64_t> ivfShape{40960, 16};
+  std::vector<int64_t> bucketListShape{2};
+  std::vector<int64_t> pqDistanceShape{40960};
+
+  TeOpTensor tensorIvf;
+  tensorIvf.shape = ivfShape;
+  tensorIvf.dtype = "uint8";
+
+  TeOpTensor tensorBucketList;
+  tensorBucketList.shape = bucketListShape;
+  tensorBucketList.dtype = "int32";
+
+  TeOpTensor tensorPQDistance;
+  tensorPQDistance.shape = pqDistanceShape;
+  tensorPQDistance.dtype = "float16";
+
+  TeOpTensorArg tensorIvfArg;
+  tensorIvfArg.tensor.push_back(tensorIvf);
+  tensorIvfArg.arg_type = TA_SINGLE;
+  
+  TeOpTensorArg tensorBucketListArg;
+  tensorBucketListArg.tensor.push_back(tensorBucketList);
+  tensorBucketListArg.arg_type = TA_SINGLE;
+
+  TeOpTensorArg tensorPQDistanceArg;
+  tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
+  tensorPQDistanceArg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensorIvfArg);
+  opParas.inputs.push_back(tensorBucketListArg);
+  opParas.outputs.push_back(tensorPQDistanceArg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "scanPQCodes.key0";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 2 0 ");
+}
+TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
+  using namespace optiling;
+  std::string op_name = "ScanPQCodes";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 2, \"split_index\": 1}}";
+
+  std::vector<int64_t> ivfShape{20480, 16};
+  std::vector<int64_t> bucketListShape{2};
+  std::vector<int64_t> pqDistanceShape{20480};
+
+  TeOpTensor tensorIvf;
+  tensorIvf.shape = ivfShape;
+  tensorIvf.dtype = "uint8";
+
+  TeOpTensor tensorBucketList;
+  tensorBucketList.shape = bucketListShape;
+  tensorBucketList.dtype = "int32";
+
+  TeOpTensor tensorPQDistance;
+  tensorPQDistance.shape = pqDistanceShape;
+  tensorPQDistance.dtype = "float16";
+
+  TeOpTensorArg tensorIvfArg;
+  tensorIvfArg.tensor.push_back(tensorIvf);
+  tensorIvfArg.arg_type = TA_SINGLE;
+  
+  TeOpTensorArg tensorBucketListArg;
+  tensorBucketListArg.tensor.push_back(tensorBucketList);
+  tensorBucketListArg.arg_type = TA_SINGLE;
+
+  TeOpTensorArg tensorPQDistanceArg;
+  tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
+  tensorPQDistanceArg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensorIvfArg);
+  opParas.inputs.push_back(tensorBucketListArg);
+  opParas.outputs.push_back(tensorPQDistanceArg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "scanPQCodes.key0";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 2 0 ");
+}
 /*
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   using namespace optiling;
@@ -178,7 +277,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 */
-TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
+TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);

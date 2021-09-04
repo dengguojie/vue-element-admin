@@ -73,17 +73,17 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   int64_t bucketNumLeft = 0;
   int64_t coreUsedNum = 0;
   int64_t bucketStartBase = 0;
-  if (splitCount == 1) {
-    bucketNumTotal = bucketShape[0];
+  if (splitCount > 1) {
+    bucketNumTotal = (splitIndex < splitCount - 1) ? (bucketShape[0] / splitCount) : (bucketShape[0] - (bucketShape[0] / splitCount));
   } else {
-    bucketNumTotal = (splitIndex < splitCount - 1) ? bucketShape[0] / splitCount :
-                      bucketShape[0] - (bucketShape[0] / splitCount);
+    bucketNumTotal = bucketShape[0];
   }
   bucketNumPerCore = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
   bucketNumLeft = bucketNumTotal % bucketNumPerCore;
   coreUsedNum = ScanPQCodesCeilDiv(bucketNumTotal, bucketNumPerCore);
   bucketStartBase = bucketNumTotal * splitIndex;
   ScanPQCodesTilingParams params{bucketNumTotal, bucketNumPerCore, bucketNumLeft, coreUsedNum, bucketStartBase};
+  run_info.block_dim = coreUsedNum;
   ScanPQCodesWriteTilingParams(params, run_info);
   ScanPQCodesPrintTilingParams(opType, params);
   return true;
