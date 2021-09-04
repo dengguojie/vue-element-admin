@@ -663,7 +663,7 @@ def depthwise_conv2d_backprop_filter(input_fm,
     with tvm.target.cce():
         sch = tbe.auto_schedule(res.get('op_res'))
     # get real output tensor
-    real_out = res.get('op_res')[0].op.input_tensors[0].op.input_tensors[0]   
+    real_out = res.get('op_res')[0]
     tensor_list = res.get('op_placeholder') + [real_out]
     config = {'print_ir': False,
               'name': kernel_name,

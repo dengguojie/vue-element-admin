@@ -1178,7 +1178,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                      fmap[g, batch_axis, k_1, fkk, fmap_c0,
                                           k_0]).astype(self.res_dtype),
                                     axis=[batch_axis, k_axis]),
-                            name='dw', tag=self.optag + "dw",
+                            name='dw_ddr', tag=self.optag + "dw_ddr",
                             attrs={'mode': mode, 'kernel_name': self.kernel_name})
         return c_col
 
