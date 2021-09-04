@@ -2516,6 +2516,8 @@ COMMON_INFER_FUNC_REG(ExpandD, ExpandDInferShape);
 IMPLEMT_COMMON_INFERFUNC(CalcBucketsLimitAndOffsetInferShape) {
   TensorDesc td = op.GetInputDesc("bucket_list");
   (void)op.UpdateOutputDesc("buckets_limit", td);
+  TensorDesc td_ivf_offset = op.GetInputDesc("ivf_offset");
+  td.SetDataType(td_ivf_offset.GetDataType());
   (void)op.UpdateOutputDesc("buckets_offset", td);
   return GRAPH_SUCCESS;
 }

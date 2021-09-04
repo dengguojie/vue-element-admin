@@ -37,10 +37,12 @@ class CalcBucketsLimitAndOffsetCpuKernel : public CpuKernel {
 
  private:
   uint32_t InitParams(CpuKernelContext &ctx);
+  template <typename T>
+  uint32_t DoCompute();
 
  private:
   int64_t input_num_elements_[kInputNum]{0};
-  int32_t *datas_[kInputNum + kOutputNum]{0};
+  void *datas_[kInputNum + kOutputNum]{0};
   int64_t total_limit_{0};
 };
 }  // namespace aicpu

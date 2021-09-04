@@ -39,7 +39,7 @@ uint32_t CalcBucketsLimitAndOffsetCpuKernel::InitParams(CpuKernelContext &ctx) {
         (num_elements >= 0), KERNEL_STATUS_PARAM_INVALID,
         "%s op input[%u] elements num should >= 0, but got [%lld]",
         kCalcBucketsLimitAndOffset, i, num_elements);
-    int32_t *input_data = reinterpret_cast<int32_t *>(input->GetData());
+    auto input_data = input->GetData();
     KERNEL_CHECK_NULLPTR(input_data, KERNEL_STATUS_PARAM_INVALID,
                          "%s op input[%u] data is nullptr.",
                          kCalcBucketsLimitAndOffset, i);
@@ -48,7 +48,7 @@ uint32_t CalcBucketsLimitAndOffsetCpuKernel::InitParams(CpuKernelContext &ctx) {
   }
   for (uint32_t i = 0; i < kOutputNum; ++i) {
     auto output = ctx.Output(i);
-    int32_t *output_data = reinterpret_cast<int32_t *>(output->GetData());
+    auto output_data = output->GetData();
     KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
                          "%s op output[%u] data is nullptr.",
                          kCalcBucketsLimitAndOffset, i);
@@ -62,26 +62,29 @@ uint32_t CalcBucketsLimitAndOffsetCpuKernel::InitParams(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CalcBucketsLimitAndOffsetCpuKernel::Compute(CpuKernelContext &ctx) {
-  auto ret = InitParams(ctx);
-  if (ret != KERNEL_STATUS_OK) {
-    return ret;
-  }
+template <typename T>
+uint32_t CalcBucketsLimitAndOffsetCpuKernel::DoCompute() {
   int32_t *counts = new int32_t[input_num_elements_[0]];
+  int32_t *bucket_list = reinterpret_cast<int32_t *>(datas_[0]);
+  int32_t *ivf_counts = reinterpret_cast<int32_t *>(datas_[1]);
+  T *ivf_offset = reinterpret_cast<T *>(datas_[2]);
+  int32_t *buckets_limit = reinterpret_cast<int32_t *>(datas_[3]);
+  T *buckets_offset = reinterpret_cast<T *>(datas_[4]);
+
   for (int64_t i = 0; i < input_num_elements_[0]; ++i) {
-    if ((datas_[0][i] >= input_num_elements_[1]) ||
-        (datas_[0][i] >= input_num_elements_[2])) {
+    if ((bucket_list[i] >= input_num_elements_[1]) ||
+        (bucket_list[i] >= input_num_elements_[2])) {
       KERNEL_LOG_ERROR(
           "%s op input0[%lld] = %d is out of range input1 num elements [0, "
           "%lld) or input2 num elements [0, %lld).",
-          kCalcBucketsLimitAndOffset, i, datas_[0][i], input_num_elements_[1],
+          kCalcBucketsLimitAndOffset, i, bucket_list[i], input_num_elements_[1],
           input_num_elements_[2]);
       delete[] counts;
       return KERNEL_STATUS_PARAM_INVALID;
     }
-    counts[i] = datas_[1][datas_[0][i]];
-    datas_[3][i] = counts[i];
-    datas_[4][i] = datas_[2][datas_[0][i]];
+    counts[i] = ivf_counts[bucket_list[i]];
+    buckets_limit[i] = counts[i];
+    buckets_offset[i] = ivf_offset[bucket_list[i]];
   }
   std::sort(counts, counts + input_num_elements_[0]);
   int64_t rest = total_limit_;
@@ -94,12 +97,24 @@ uint32_t CalcBucketsLimitAndOffsetCpuKernel::Compute(CpuKernelContext &ctx) {
     rest -= counts[i];
   }
   for (int64_t i = 0; i < input_num_elements_[0]; ++i) {
-    if (static_cast<int64_t>(datas_[3][i]) > limit) {
-      datas_[3][i] = static_cast<int32_t>(limit);
+    if (static_cast<int64_t>(buckets_limit[i]) > limit) {
+      buckets_limit[i] = static_cast<T>(limit);
     }
   }
   delete[] counts;
   return KERNEL_STATUS_OK;
+}
+
+uint32_t CalcBucketsLimitAndOffsetCpuKernel::Compute(CpuKernelContext &ctx) {
+  auto ret = InitParams(ctx);
+  if (ret != KERNEL_STATUS_OK) {
+    return ret;
+  }
+  // 2 is input ivf_offset
+  if (ctx.Input(2)->GetDataType() == DT_INT32) {
+    return DoCompute<int32_t>();
+  }
+  return DoCompute<int64_t>();
 }
 
 REGISTER_CPU_KERNEL(kCalcBucketsLimitAndOffset,
