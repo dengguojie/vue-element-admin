@@ -59,34 +59,49 @@ class TFOpInfo(OpInfo):
         line = line.replace('\"\"', utils.EMPTY).replace('\\', utils.EMPTY)
         line_point_list = line.split(".")
         for info_str in line_point_list:
-            if info_str is None or len(info_str) == 0:
+            continue_flag, op_name = self._check_info_str(info_str, op_name)
+            if continue_flag:
                 continue
-            if "REGISTER_OP" in info_str:
-                match_list = utils.get_content_from_double_quotes(info_str)
-                if match_list:
-                    utils.print_info_log(
-                        "The op type is %s." % str(match_list[0]))
-                    op_name = match_list[0]
-                else:
-                    op_name = ""
+            continue_flag, input_info_lines, output_info_lines, attr_info_lines = self._parse_info_lines(
+                info_str, input_info_lines, output_info_lines, attr_info_lines)
+            if continue_flag:
                 continue
-            if info_str.startswith("Input") or info_str.startswith("Output") \
-                    or info_str.startswith("Attr"):
-                match_list = utils.get_content_from_double_quotes(info_str)
-                if not match_list:
-                    utils.print_warn_log("An error occurs during parsing by (\"key:value\"), "
-                                         "continue.")
-                    continue
-                if info_str.startswith("Input"):
-                    input_info_lines.append(match_list[0])
-                elif info_str.startswith("Output"):
-                    output_info_lines.append(match_list[0])
-                elif info_str.startswith("Attr"):
-                    attr_info_lines.append(match_list[0])
-                else:
-                    continue
         self._init_op_info(op_name, input_info_lines, output_info_lines,
                            attr_info_lines)
+
+    @staticmethod
+    def _check_info_str(info_str, op_name):
+        if info_str is None or len(info_str) == 0:
+            return True, op_name
+        if "REGISTER_OP" in info_str:
+            match_list = utils.get_content_from_double_quotes(info_str)
+            if match_list:
+                utils.print_info_log(
+                    "The op type is %s." % str(match_list[0]))
+                op_name = match_list[0]
+            else:
+                op_name = ""
+            return True, op_name
+        return False, op_name
+
+    @staticmethod
+    def _parse_info_lines(info_str, input_info_lines, output_info_lines, attr_info_lines):
+        if info_str.startswith("Input") or info_str.startswith("Output") \
+                or info_str.startswith("Attr"):
+            match_list = utils.get_content_from_double_quotes(info_str)
+            if not match_list:
+                utils.print_warn_log("An error occurs during parsing by (\"key:value\"), "
+                                     "continue.")
+                return True, input_info_lines, output_info_lines, attr_info_lines
+            if info_str.startswith("Input"):
+                input_info_lines.append(match_list[0])
+            elif info_str.startswith("Output"):
+                output_info_lines.append(match_list[0])
+            elif info_str.startswith("Attr"):
+                attr_info_lines.append(match_list[0])
+            else:
+                return True, input_info_lines, output_info_lines, attr_info_lines
+        return False, input_info_lines, output_info_lines, attr_info_lines
 
     def _init_op_info(self, op_name, input_info_lines, output_info_lines,
                       attr_info_lines):
@@ -158,13 +173,13 @@ class TFOpInfo(OpInfo):
                 return ""
             type_info = types[1:types.index("}")]
             types = type_info.split(",")
-            attr_info["types"] = list(
+            attr_info["types"] = (
                 self._mapping_input_output_type(t.strip(), name)
                 for t in types)
             if "=" in types:
                 default_type = types[types.index("="):]
                 attr_info["default_type"] = default_type
-            attr_info["types"] = list(x for x in attr_info.get("types") if x != "")
+            attr_info["types"] = (x for x in attr_info.get("types") if x != "")
             return ",".join(attr_info.get("types"))
         return self._mapping_input_output_type(types.strip(), name)
 

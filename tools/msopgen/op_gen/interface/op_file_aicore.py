@@ -86,36 +86,9 @@ class OpFileAiCore(OPFile):
         # 2.make [op_type]_compute()
         op_input = ", ".join(list(self.op_info.parsed_input_info))
         op_output = ", ".join(list(self.op_info.parsed_output_info))
-        if len(self.op_info.parsed_attr_info) == 0:
-            head_str += OPTmpl.PY_COMPUTE_WITHOUT_ATTR.format(
-                name=self.op_info.fix_op_type,
-                input_name=op_input,
-                output=op_output)
-        else:
-            attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
-            head_str += OPTmpl.PY_COMPUTE_WITH_ATTR.format(
-                name=self.op_info.fix_op_type,
-                input_name=op_input,
-                output=op_output,
-                attr=attr)
-        head_str += OPTmpl.PY_COMPUTE_END.format(input_name=op_input)
+        head_str = self._generate_impl_compute(head_str, op_input, op_output)
         # 3.make [op_type]()
-        if len(self.op_info.parsed_attr_info) == 0:
-            head_str += OPTmpl.PY_DEF_WITHOUT_ATTR.format(
-                op_params=op_params_for_check,
-                name=self.op_info.fix_op_type,
-                input_name=op_input,
-                output=op_output)
-        else:
-            attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
-            head_str += OPTmpl.PY_DEF_WITH_ATTR.format(
-                op_params=op_params_for_check,
-                name=self.op_info.fix_op_type,
-                input_name=op_input,
-                output=op_output,
-                attr=attr)
-        for name in self.op_info.parsed_input_info:
-            head_str += OPTmpl.PY_PLACEHOLDER.format(name=name)
+        head_str = self._generate_impl_define_head(head_str, op_input, op_output, op_params_for_check)
         input_data = ", ".join("data_" + x
                                for x in self.op_info.parsed_input_info)
         output_data = ", ".join(y for y in self.op_info.parsed_output_info)
@@ -134,14 +107,49 @@ class OpFileAiCore(OPFile):
                 attr=attr)
         head_str += OPTmpl.PY_TARGET_CCE
         head_str += OPTmpl.PY_BUILD.format(input_data=input_data,
-                                            left_braces=utils.LEFT_BRACES,
-                                            right_braces=utils.RIGHT_BRACES)
+                                           left_braces=utils.LEFT_BRACES,
+                                           right_braces=utils.RIGHT_BRACES)
         # create py_dir
         py_dir = os.path.join(self.output_path, utils.IMPL_DIR)
         py_path = os.path.join(py_dir, self.op_info.fix_op_type +
                                utils.IMPL_SUFFIX)
         utils.make_dirs(py_dir)
         utils.write_files(py_path, head_str)
+
+    def _generate_impl_compute(self, head_str, op_input, op_output):
+        if len(self.op_info.parsed_attr_info) == 0:
+            head_str += OPTmpl.PY_COMPUTE_WITHOUT_ATTR.format(
+                name=self.op_info.fix_op_type,
+                input_name=op_input,
+                output=op_output)
+        else:
+            attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
+            head_str += OPTmpl.PY_COMPUTE_WITH_ATTR.format(
+                name=self.op_info.fix_op_type,
+                input_name=op_input,
+                output=op_output,
+                attr=attr)
+        head_str += OPTmpl.PY_COMPUTE_END.format(input_name=op_input)
+        return head_str
+
+    def _generate_impl_define_head(self, head_str, op_input, op_output, op_params_for_check):
+        if len(self.op_info.parsed_attr_info) == 0:
+            head_str += OPTmpl.PY_DEF_WITHOUT_ATTR.format(
+                op_params=op_params_for_check,
+                name=self.op_info.fix_op_type,
+                input_name=op_input,
+                output=op_output)
+        else:
+            attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
+            head_str += OPTmpl.PY_DEF_WITH_ATTR.format(
+                op_params=op_params_for_check,
+                name=self.op_info.fix_op_type,
+                input_name=op_input,
+                output=op_output,
+                attr=attr)
+        for name in self.op_info.parsed_input_info:
+            head_str += OPTmpl.PY_PLACEHOLDER.format(name=name)
+        return head_str
 
     def generate_info_cfg(self):
         """
@@ -206,11 +214,11 @@ class OpFileAiCore(OPFile):
     def _generate_input_output_info_cfg(self, parsed_info, template_string):
         new_str = ""
         for (index, name) in enumerate(parsed_info):
-            ir_types = list(x for x in
-                            parsed_info[name][utils.INFO_IR_TYPES_KEY] if
-                            x != "")
-            ini_types = list(self._mapping_info_cfg_type(x) for x in ir_types)
-            ini_types = list(x for x in ini_types if x != "")
+            ir_types = (x for x in
+                        parsed_info[name][utils.INFO_IR_TYPES_KEY] if
+                        x != "")
+            ini_types = (self._mapping_info_cfg_type(x) for x in ir_types)
+            ini_types = (x for x in ini_types if x != "")
             ini_types = ",".join(ini_types)
 
             # pram_type, when generator from tf ir, default param is 'required'

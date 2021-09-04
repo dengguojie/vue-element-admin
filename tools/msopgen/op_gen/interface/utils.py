@@ -174,6 +174,8 @@ def read_json_file(json_path):
                     'Failed to load json file %s. Please modify it. %s'
                     % (json_path, str(ex)))
                 raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+            finally:
+                pass
     except IOError as io_error:
         print_error_log(
             'Failed to open json file %s. %s' % (json_path, str(io_error)))
@@ -422,15 +424,8 @@ def copy_template(src, dst, is_skip_exist=False):
         srcname = os.path.join(src, name)
         dstname = os.path.join(dst, name)
         try:
-            if os.path.isdir(srcname):
-                if os.path.isdir(dstname) and len(os.listdir(dstname)) != 0:
-                    if is_skip_exist:
-                        continue
-                    print_error_log("{} is not empty. Please check.".format(dstname))
-                    sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
-                copytree(srcname, dstname)
-            else:
-                copy2(srcname, dstname)
+            if copy_src_to_dst(srcname, dstname, is_skip_exist):
+                continue
         except (OSError, os.error) as why:
             errors.append((srcname, dstname, str(why)))
         finally:
@@ -439,6 +434,34 @@ def copy_template(src, dst, is_skip_exist=False):
     if errors:
         print_error_log(errors)
         raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
+
+
+def copy_src_to_dst(srcname, dstname, is_skip_exist):
+    """
+    copy sub template files  from src dir to dest dir
+    :param srcname: source sub dir
+    :param dstname: dest sub dir
+    :param is_skip_exist: skip when dir is exist
+    """
+    if os.path.isdir(srcname):
+        if copy_exist_file(dstname, is_skip_exist):
+            return True
+        copytree(srcname, dstname)
+    else:
+        copy2(srcname, dstname)
+
+
+def copy_exist_file(dstname, is_skip_exist):
+    """
+    copy file is exist
+    :param dstname: dest sub dir
+    :param is_skip_exist: skip when dir is exist
+    """
+    if os.path.isdir(dstname) and len(os.listdir(dstname)) != 0:
+        if is_skip_exist:
+            return True
+        print_error_log("{} is not empty. Please check.".format(dstname))
+        sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
 
 
 def get_content_from_double_quotes(line):

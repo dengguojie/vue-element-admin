@@ -12,7 +12,7 @@ import argparse
 from . import utils
 
 
-class ArgParser:  # pylint: disable=too-many-instance-attributes
+class ArgParser:
     """
     CLass for parsing input arguments
     """

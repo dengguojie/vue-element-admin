@@ -188,6 +188,8 @@ class IROpInfo(OpInfo):
         except OSError as err:
             utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
             raise utils.MsOpGenException(utils.MS_OP_GEN_READ_FILE_ERROR)
+        finally:
+            pass
         return ir_template, sheet_names
 
     @staticmethod
@@ -217,17 +219,20 @@ class IROpInfo(OpInfo):
                 return False
         return True
 
-    @staticmethod
-    def _del_with_merged_cell(sheet_data, col_span):
+    def _del_with_merged_cell(self, sheet_data, col_span):
         if sheet_data.merged_cells:
             for item in sheet_data.merged_cells:
                 # item contain the scope of the merged cell, e.g. [0, 3, 0, 3]
-                for row in range(item[0], item[1]):
-                    for col in range(item[2], item[3]):
-                        # only the first block has value, file the value of
-                        # first block in other blocks
-                        if (row, col) != (item[0], item[2]):
-                            col_span.update({(row, col): (item[0], item[2])})
+                self._del_with_row_col(item, col_span)
+
+    @staticmethod
+    def _del_with_row_col(item, col_span):
+        for row in range(item[0], item[1]):
+            for col in range(item[2], item[3]):
+                # only the first block has value, file the value of
+                # first block in other blocks
+                if (row, col) != (item[0], item[2]):
+                    col_span.update({(row, col): (item[0], item[2])})
 
     def _read_sheet_data(self, sheet_data):
         rows = sheet_data.nrows
@@ -237,29 +242,34 @@ class IROpInfo(OpInfo):
         ir_map = {}
         for i in range(IrRow.IR_TEMPLATE_FIRST_ROW, rows):
             row = []
-            for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
-                # if the block is merged block, fetch value from col span
-                if col_span.get((i, j)):
-                    op_value = str(
-                        sheet_data.cell_value(*col_span.get((i, j)))).strip()
-                else:
-                    op_value = str(sheet_data.cell_value(i, j)).strip()
-                if j == 0:
-                    # if the op name is invalid , skip the row
-                    if utils.check_name_valid(
-                            op_value) == utils.MS_OP_GEN_NONE_ERROR:
-                        row.append(op_value)
-                    else:
-                        break
-                else:
+            ir_map = self._deal_with_row(col_span, sheet_data, i, row, ir_map)
+        return ir_map
+
+    @staticmethod
+    def _deal_with_row(col_span, sheet_data, row_item, row, ir_map):
+        for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
+            # if the block is merged block, fetch value from col span
+            if col_span.get((row_item, j)):
+                op_value = str(
+                    sheet_data.cell_value(*col_span.get((row_item, j)))).strip()
+            else:
+                op_value = str(sheet_data.cell_value(row_item, j)).strip()
+            if j == 0:
+                # if the op name is invalid , skip the row
+                if utils.check_name_valid(
+                        op_value) == utils.MS_OP_GEN_NONE_ERROR:
                     row.append(op_value)
-            if row and len(row[0]) > 0:
-                ir_row = IrRow(row)
-                if row[0] in ir_map:
-                    ir_map[row[0]].append(ir_row)
                 else:
-                    ir_row_list = [ir_row]
-                    ir_map[row[0]] = ir_row_list
+                    break
+            else:
+                row.append(op_value)
+        if row and len(row[0]) > 0:
+            ir_row = IrRow(row)
+            if row[0] in ir_map:
+                ir_map[row[0]].append(ir_row)
+            else:
+                ir_row_list = [ir_row]
+                ir_map[row[0]] = ir_row_list
         return ir_map
 
     def _choose_op(self, op_names):
@@ -274,31 +284,35 @@ class IROpInfo(OpInfo):
                 sys.exit(utils.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
-            utils.print_info_log("There is more than one operator in the sheet:")
-            i = 1
-            for op_name in op_names:
-                print(i, op_name)
-                i += 1
-            while True:
-                op_number = input('Input the number of the ops:')
-                if op_number.isdigit():
-                    op_number = int(op_number)
-                    if op_number < 1 or op_number > len(op_names):
-                        utils.print_warn_log(
-                            "The input is out of range. Please retype one.")
-                    else:
-                        op_name = op_names[op_number - 1]
-                        utils.print_info_log("You have chosen: " + op_name)
-                        return op_name
-                else:
-                    utils.print_warn_log(
-                        "The input is not a number. Please retype!")
+            return self._choose_op_name(op_names)
         elif len(op_names) == 0:
             utils.print_error_log("There is no op info to read.")
             return ""
         else:
             utils.print_info_log("Start to parse the op: " + op_names[0])
             return op_names[0]
+
+    @staticmethod
+    def _choose_op_name(op_names):
+        utils.print_info_log("There is more than one operator in the sheet:")
+        i = 1
+        for op_name in op_names:
+            print(i, op_name)
+            i += 1
+        while True:
+            op_number = input('Input the number of the ops:')
+            if op_number.isdigit():
+                op_number = int(op_number)
+                if op_number < 1 or op_number > len(op_names):
+                    utils.print_warn_log(
+                        "The input is out of range. Please retype one.")
+                else:
+                    op_name = op_names[op_number - 1]
+                    utils.print_info_log("You have chosen: " + op_name)
+                    return op_name
+            else:
+                utils.print_warn_log(
+                    "The input is not a number. Please retype!")
 
     def _add_input_output(self, prefix, ir_row, param_type):
         ir_name = ir_row.name.strip()
