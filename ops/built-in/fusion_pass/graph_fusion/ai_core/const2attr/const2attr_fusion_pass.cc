@@ -213,6 +213,11 @@ REGISTER_CONST2ATTR("SpaceToBatchNDD")
     .SetConstToAttr(1, "block_shape", "SetListInt")
     .SetConstToAttr(2, "paddings", "SetListInt");
 
+REGISTER_CONST2ATTR("ScatterNdD")
+    .OriginOpType("ScatterNd")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(2, "shape", "SetListInt");
+
 REGISTER_CONST2ATTR("Conv2DBackpropFilterD")
     .OriginOpType("Conv2DBackpropFilter")
     .NeedCheckSupported(true)

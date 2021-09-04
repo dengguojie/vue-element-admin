@@ -35,5 +35,26 @@ ut_case.add_case("Ascend910A", case6)
 ut_case.add_case("Ascend910A", case7)
 ut_case.add_case("Ascend910A", case8)
 
+from impl.scatter_nd_d import check_supported
+def test_check_support(test_arg):
+    check_supported({"shape": (-1,32,1), "dtype": "float16", "format": "ND", "ori_shape": (-1,32,1),"ori_format": "ND", "param_type": "indice"},
+    {"shape": (1,32,100), "dtype": "float16", "format": "ND", "ori_shape": (1,32,100),"ori_format": "ND", "param_type": "x"},
+    {"shape": (17, 28, 100), "dtype": "float16", "format": "ND", "ori_shape": (17, 28, 100),"ori_format": "ND", "param_type": "y"},
+    [17 ,28, 100])
+    check_supported({"shape": (-1,32,1), "dtype": "float16", "format": "ND", "ori_shape": (-1,32,1),"ori_format": "ND", "param_type": "indice"},
+    {"shape": (1,32,1), "dtype": "float16", "format": "ND", "ori_shape": (1,32,1),"ori_format": "ND", "param_type": "x"},
+    {"shape": (17, 28, 1), "dtype": "float16", "format": "ND", "ori_shape": (17, 28, 1),"ori_format": "ND", "param_type": "y"},
+    [17 ,28, 1])
+    check_supported({"shape": (1,32,2), "dtype": "float16", "format": "ND", "ori_shape": (1,32,2),"ori_format": "ND", "param_type": "indice"},
+    {"shape": (1,32,100), "dtype": "float16", "format": "ND", "ori_shape": (1,32,100),"ori_format": "ND", "param_type": "x"},
+    {"shape": (17, 28, 100), "dtype": "float16", "format": "ND", "ori_shape": (17, 28, 100),"ori_format": "ND", "param_type": "y"},
+    [17 ,28, 100])
+    check_supported({"shape": (1,32,2), "dtype": "float16", "format": "ND", "ori_shape": (1,32,2),"ori_format": "ND", "param_type": "indice"},
+    {"shape": (1,32,100), "dtype": "int8", "format": "ND", "ori_shape": (1,32,100),"ori_format": "ND", "param_type": "x"},
+    {"shape": (17, 28, 100), "dtype": "int8", "format": "ND", "ori_shape": (17, 28, 100),"ori_format": "ND", "param_type": "y"},
+    [17 ,28, 100])
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

@@ -15,6 +15,8 @@
 """
 scatter_nd_d
 """
+from functools import reduce
+
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -23,6 +25,28 @@ from impl import scatter_nd_d_help
 from impl import constant_util
 from impl import common_util
 
+
+def check_supported(indices, x, y, shape, kernel_name="scatter_nd_d"):
+    """
+    check support dynamiclly
+    """
+    x_dtype = x.get('dtype')
+    data_size = 4
+    if x_dtype in ("float32", "int32"):
+        data_size = 4
+    elif x_dtype in ("float16",):
+        data_size = 2
+    elif x_dtype in ("int8", "uint8"):
+        data_size = 1
+    indices_shape = list(indices.get('ori_shape'))
+    shape_value = list(shape)
+    if indices_shape[-1] == 1 and x_dtype in ("float", "float32", "float16", "int32"):
+        return False, "279424, dynamic shape high perm branch."
+    shape_value += [1]
+    update_slice = reduce(lambda a, b: a * b, shape_value[indices_shape[-1]:])
+    if data_size > 0 and update_slice > 0 and update_slice < (32 / data_size):
+        return False, "ScatterNdD update slice < 32byte, graph not changed."
+    return True, ""
 
 # pylint: disable=invalid-name, too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

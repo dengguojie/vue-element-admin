@@ -15,6 +15,8 @@
 """
 scatter_nd
 """
+from functools import reduce
+
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -41,6 +43,34 @@ def ceil_div(value_x, value_y):
     do ceil division
     """
     return (value_x + value_y - 1) // value_y
+
+
+def check_supported(indices, x, shape, y, kernel_name="ScatterNd"):
+    """
+    check support dynamiclly
+    """
+    x_dtype = x.get('dtype')
+    indices_shape = list(indices.get('ori_shape'))
+    x_shape = list(x.get('ori_shape'))
+    shape_shape = list(shape.get('ori_shape'))
+
+    if reduce(lambda a, b: a * b, indices_shape + x_shape + shape_shape) < 0:
+        return True, "dynamic shape support"
+    if indices_shape[-1] == 1:
+        return True,"indices last dim is 1, support dynamic shape"
+    data_size = 4
+    if x_dtype in ("float32", "int32"):
+        data_size = 4
+    elif x_dtype in ("float16",):
+        data_size = 2
+    elif x_dtype in ("int8", "uint8"):
+        data_size = 1
+    shape_value = list(shape.get('const_value'))
+    shape_value += [1]
+    update_slice = reduce(lambda a, b: a * b, shape_value[indices_shape[-1]:])
+    if data_size > 0 and update_slice > 0 and update_slice < (32 / data_size):
+        return False, "ScatterNdD update slice < 32byte, graph not changed."
+    return True, ""
 
 
 # pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes
@@ -113,7 +143,7 @@ class ScatterNd():
                                                is_atomic_add=True)
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape_gm", scope=tik.scope_gm)
+        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape", scope=tik.scope_gm)
         self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
@@ -1416,7 +1446,7 @@ class ScatterNd():
                 "indices_size": self.indices_dtype_bytes_size,
                 "support_atomic": self.support_atomic
             })
-        opt_config = {"out_of_bound_sync_check": True}
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.indices_gm, self.updates_gm, self.shape_gm),
                                    outputs=(self.out_gm),
