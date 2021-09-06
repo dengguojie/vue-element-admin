@@ -766,7 +766,6 @@ def dynamic_rnn_generalization(input_x, weight, bias, seq_length, init_h, init_c
     o (T, b, hidden_size)
     tanhc (T, b, hidden_size)
     """
-    result = []
     if len(input_x["ori_shape"]) != 3:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "input_x's shape illegal, please check!")
     if len(weight["ori_shape"]) != 2:
@@ -811,6 +810,7 @@ def dynamic_rnn_generalization(input_x, weight, bias, seq_length, init_h, init_c
         init_h["ori_shape"], init_h["ori_range"] = shape_init, range_init
         init_c["ori_shape"], init_c["ori_range"] = shape_init, range_init
 
+    result = []
     result.append([input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                    wco, mask, y, output_h, output_c, i, j, f, o, tanhc,
                    {"cell_type": cell_type}, {"direction": direction}, {"cell_depth": cell_depth},

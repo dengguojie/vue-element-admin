@@ -117,7 +117,7 @@ bool DynamicRnnTiling(const std::string& opType, const TeOpParas& opParas, const
     OP_LOGE(opType.c_str(), "DynamicRnnTiling get tune_shape_list error.");
     return false;
   }
-  OP_LOGI(opType.c_str(), "wangxing001");
+
   // init running parameters
   DynamicRnnParam runParams;
   InitRunningParams(runParams);
@@ -126,12 +126,12 @@ bool DynamicRnnTiling(const std::string& opType, const TeOpParas& opParas, const
   int32_t sequenceLength = xShape[0];
   int32_t dynamicrnnbatch = xShape[2];
   int32_t cheque_index = GetLibItem(opType, op_info, xShape);
-  OP_LOGI(opType.c_str(), "wangxing002");
+
   if (cheque_index == -2) {
     OP_LOGE(opType.c_str(), "DynamicRnnTiling has no matched schedule.");
     return false;
   }
-  OP_LOGI(opType.c_str(), "wangxing003");
+
   runInfo.tiling_key = cheque_index;
   runParams.sequenceLength = sequenceLength;
   runParams.dynamicrnnbatch = dynamicrnnbatch;
