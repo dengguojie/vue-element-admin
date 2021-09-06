@@ -200,7 +200,7 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
   }
   OP_LOGI(op_type.c_str(), "op[%s] GetCompileParams success.", op_type.c_str());
   if (opCompileInfoJson.find("_workspace_size_list") == opCompileInfoJson.end()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: _workspace_size_list not exists");
+    OP_LOGW(op_type.c_str(), "key _workspace_size_list not exists.");
     if (op_paras.const_inputs.find("workspace_size") == op_paras.const_inputs.end()) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: workspace_size not exists");
       return false;
