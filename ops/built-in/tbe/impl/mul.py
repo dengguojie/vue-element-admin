@@ -184,6 +184,51 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
     return param_dynamic_in_json
 
 
+def _can_broad(x, y):
+    if x[2]:
+        x[0] *= 16
+        y[0] *= 16
+    if x[3]:
+        x[1] *= 16
+        y[1] *= 16
+    return (x[0] == y[0] and (x[1] == 16 or y[1] == 16 or x[1] == y[1])) or (
+            x[1] == y[1] and (x[0] == 16 or y[0] == 16)) or x[0] == y[1] == 16 or x[0] == x[1] == 16 or x[1] == y[
+               0] == 16 or y[0] == y[1] == 16
+
+
+def _gen_para(dtype_total, format_list0, format_list1, format_list2, unknownshape_format_list, shape_x, shape_y):
+    if -1 in shape_x or -1 in shape_y:
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="x1",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list0),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x2",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list1),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype=",".join(dtype_total),
+                                                format=",".join(format_list2),
+                                                unknownshape_format=",".join(unknownshape_format_list))
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="x1",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list0))
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x2",
+                                               datatype=",".join(dtype_total),
+                                               format=",".join(format_list1))
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype=",".join(dtype_total),
+                                                format=",".join(format_list2))
+    return [input0, input1, output0]
+
+
 # pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
 # pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
 def op_select_format(x, y, output, kernel_name="mul"):
@@ -511,10 +556,6 @@ def op_select_format(x, y, output, kernel_name="mul"):
     shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_y = shape_util.scalar2tensor_one(shape_y)
 
-    size_x = functools.reduce(lambda x, y: x * y, shape_x)
-    size_y = functools.reduce(lambda x, y: x * y, shape_y)
-    temp_format = None
-
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     dtype_list = ["float16", "float", "int32", "int16", "uint8", "int8"]
@@ -534,166 +575,86 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     dtype_total = []
     format_nd = ["ND"]
-    format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
     list_input = [x, y]
-    if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
-            (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
-        x_cdim = shape_x[format_x.index("C")]
-        x_wdim = shape_x[format_x.index("W")]
-        x_hdim = shape_x[format_x.index("H")]
-        x_ndim = shape_x[format_x.index("N")]
-        y_cdim = shape_y[format_y.index("C")]
-        y_wdim = shape_y[format_y.index("W")]
-        y_hdim = shape_y[format_y.index("H")]
-        y_ndim = shape_y[format_y.index("N")]
 
-    if (len(shape_y) == 1 and len(shape_x) == 4) and format_x in format_4d_list:
+    x_flag = {"5d": len(shape_x) == 5 and format_x in format_5d_list,
+              "4d": len(shape_x) == 4 and format_x in format_4d_list,
+              "Scalar": len(shape_x) == 1 and shape_x[0] == 1}
+    y_flag = {"5d": len(shape_y) == 5 and format_y in format_5d_list,
+              "4d": len(shape_y) == 4 and format_y in format_4d_list,
+              "Scalar": len(shape_y) == 1 and shape_y[0] == 1}
+    if x_flag["5d"] or x_flag["4d"]:
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
-    if (len(shape_x) == 1 and len(shape_y) == 4) and format_y in format_4d_list:
+    if y_flag["5d"] or y_flag["4d"]:
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
+    common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
+            not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
+    format_flag = {"NDC1HWC0": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim,
+                   "FRACTAL_Z_3D": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim and x_ndim == y_ndim,
+                   "FRACTAL_NZ": len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:],
+                   "NC1HWC0": x_flag["4d"] and y_flag["4d"] and ((format_y == format_x and
+                               ((x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim) and _can_broad(
+                               [shape_x[format_x.index(format_x[0])], shape_x[format_x.index(format_x[1])],
+                                format_x[0] != "C", format_x[1] != "C"],
+                               [shape_y[format_y.index(format_y[0])], shape_y[format_y.index(format_y[1])],
+                                format_y[0] != "C", format_y[1] != "C"])) or
+                               (list(shape_x) == list(shape_y) and -1 not in shape_x) or
+                               (common_flag["half_16_div_flg"] and (x_cdim == y_cdim or x_cdim == 16 or y_cdim == 16))),
+                   "FRACTAL_Z": x_flag["4d"] and y_flag["4d"] and format_x == format_y and (
+                           (x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0
+                            and util_common.is_support_fractal_z_inputs(list_input)
+                            and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y)) or
+                           (x_cdim == 1 and y_cdim == 1 and format_x.upper() in ("NCHW", "HWCN"))
+                           or (list(shape_x) == list(shape_y) and util_common.is_same_group(list_input))
+                           or (x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and
+                               util_common.is_support_fractal_z_inputs(list_input) and _broadcast_zn_rule(
+                               shape_x, shape_y, format_x, format_y))),
+                   "ND": True
+                   }
+
+    format_flag["C1HWNCoC0"] = (x_flag["4d"] and y_flag["Scalar"]) or (x_flag["Scalar"] and y_flag["4d"])
+    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or (x_flag["4d"] and y_flag["Scalar"]) or (
+            x_flag["Scalar"] and y_flag["4d"])
+    format_flag["FRACTAL_Z"] = format_flag["FRACTAL_Z"] or (x_flag["4d"] and y_flag["Scalar"]) or (
+            x_flag["Scalar"] and y_flag["4d"])
+    format_flag["FRACTAL_NZ"] = format_flag["FRACTAL_NZ"] or (
+            len(shape_x) >= 2 and y_flag["Scalar"] and shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0) or (
+                                        len(shape_y) >= 2 and x_flag["Scalar"] and shape_y[-1] % 16 == 0 and
+                                        shape_y[-2] % 16 == 0)
+
+    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or \
+                             (len(shape_x) == len(shape_y) == 1 and shape_x[0] % 16 == shape_y[0] % 16 == 0) or \
+                             (len(shape_x) == 1 and y_flag["4d"] and format_x == format_y and
+                              (format_y in ("NHWC",) or
+                               (format_y in ("NCHW", "HWCN") and
+                                (y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or shape_x[0] // 16 == 1)))) or \
+                             (len(shape_y) == 1 and x_flag["4d"] and format_x == format_y and
+                              (format_x in ("NHWC",) or
+                               (format_x in ("NCHW", "HWCN") and
+                                (x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or shape_y[0] // 16 == 1)))) or \
+                             (x_flag["4d"] and y_flag["4d"] and x_cdim % 16 == 0 and y_cdim % 16 == 0 and ())
 
     # NDC1HWC0 FRACTAL_Z_3D
-    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
-        if list(shape_x) == list(shape_y):
-            format_list.append("NDC1HWC0")
-        elif x_cdim == y_cdim:
-            format_list.append("NDC1HWC0")
-    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
-        if list(shape_x) == list(shape_y):
-            format_list.append("FRACTAL_Z_3D")
-        elif x_cdim == y_cdim and x_ndim == y_ndim:
-            format_list.append("FRACTAL_Z_3D")
 
-    if (len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1):
-        temp_format = format_x if len(shape_x) == 4 and size_y == 1 else format_y
-    if ((len(shape_x) == 4 and size_y == 1) or (len(shape_y) == 4 and size_x == 1)) and temp_format in format_4d_list:
-        temp_shape = shape_x if len(shape_x) == 4 and size_y == 1 else shape_y
-        dim_c = temp_shape[temp_format.index("C")]
-        dim_n = temp_shape[temp_format.index("N")]
-        second_last_dim = temp_shape[-2]
-        last_dim = temp_shape[-1]
-        format_list.append("NC1HWC0")
-        if last_dim % 16 == 0 and second_last_dim % 16 == 0:
-            format_list.append("FRACTAL_NZ")
-        if dim_c % 16 == 0 and dim_n % 16 == 0:
-            format_list.append("FRACTAL_Z")
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * len(format_list)
-        format_list = format_list * len_format_list
-        if len(shape_x) == 4 and size_y == 1:
-            x1_format_list = format_list
-            x2_format_list = ["ND"] * len(format_list)
-        else:
-            x1_format_list = ["ND"] * len(format_list)
-            x2_format_list = format_list
-        y_format_list = format_list
-
-        input0 = util_select_op_base.gen_param(classify="input0",
-                                               name="x1",
-                                               datatype=",".join(dtype_total),
-                                               format=",".join(x1_format_list))
-        input1 = util_select_op_base.gen_param(classify="input1",
-                                               name="x2",
-                                               datatype=",".join(dtype_total),
-                                               format=",".join(x2_format_list))
-        output0 = util_select_op_base.gen_param(classify="output0",
-                                                name="y",
-                                                datatype=",".join(dtype_total),
-                                                format=",".join(y_format_list))
+    format_list = [i for i in format_flag if format_flag[i]]
 
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
-    elif len(shape_x) >= 2 and len(shape_y) >= 2:
-        if shape_x[-2:] == shape_y[-2:]:
-            format_list.append("FRACTAL_NZ")
-        if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
-            if (x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim:
-                if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16
-                                                       == 1) and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
-                    format_list.append("NC1HWC0")
-                if format_x == format_y == "HWCN":
-                    if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_wdim == y_wdim and x_hdim == y_hdim:
-                        format_list.append("NC1HWC0")
-                    if (x_wdim == x_hdim == 1) or (y_hdim == y_wdim == 1):
-                        format_list.append("NC1HWC0")
-                    if (x_hdim == y_wdim == 1) or (x_wdim == y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                if format_x == format_y == "NHWC":
-                    if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_ndim == y_ndim and x_hdim == y_hdim:
-                        format_list.append("NC1HWC0")
-                    if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                    if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                        format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0 and \
-                    util_common.is_support_fractal_z_inputs(list_input):
-                if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
-                    format_list.append("FRACTAL_Z")
-            if x_cdim == 1 and y_cdim == 1 and format_x == format_y and format_x.upper() in ("NCHW", "HWCN"):
-                format_list.append("FRACTAL_Z")
-            if list(shape_x) == list(shape_y) and -1 not in shape_x:
-                format_list.append("NC1HWC0")
-            if format_x == format_y and list(shape_x) == list(shape_y) and \
-                    util_common.is_same_group(list_input):
-                format_list.append("FRACTAL_Z")
+    if len(shape_x) >= 2 and len(shape_y) >= 2:
 
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
         unknownshape_format_list = ["ND"] * len(format_list)
-        if -1 in shape_x or -1 in shape_y:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list),
-                                                    unknownshape_format=",".join(unknownshape_format_list))
-        else:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list))
+        param_list = _gen_para(dtype_total, format_list, format_list, format_list, unknownshape_format_list, shape_x, shape_y)
 
     # NZ+ND,ND+ND,5HD+5HD,FZ+FZ,ND+NZ
     elif len(shape_x) >= 2 and len(shape_y) >= 2 and (
             (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or
             (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))):
-        if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
-                    format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and \
-                    util_common.is_support_fractal_z_inputs(list_input):
-                if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
-                    format_list.append("FRACTAL_Z")
 
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -704,263 +665,47 @@ def op_select_format(x, y, output, kernel_name="mul"):
         format_list1 = format_list + format_nd * len_format_list
         unknownshape_format_list = ["ND"] * len(dtype_total)
         if _can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y):
-            if -1 in shape_x or -1 in shape_y:
-                input0 = util_select_op_base.gen_param(classify="input0",
-                                                       name="x1",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list0),
-                                                       unknownshape_format=",".join(unknownshape_format_list))
-                input1 = util_select_op_base.gen_param(classify="input1",
-                                                       name="x2",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list1),
-                                                       unknownshape_format=",".join(unknownshape_format_list))
-                output0 = util_select_op_base.gen_param(classify="output0",
-                                                        name="y",
-                                                        datatype=",".join(dtype_total),
-                                                        format=",".join(format_list0),
-                                                        unknownshape_format=",".join(unknownshape_format_list))
-            else:
-                input0 = util_select_op_base.gen_param(classify="input0",
-                                                       name="x1",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list0))
-                input1 = util_select_op_base.gen_param(classify="input1",
-                                                       name="x2",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list1))
-                output0 = util_select_op_base.gen_param(classify="output0",
-                                                        name="y",
-                                                        datatype=",".join(dtype_total),
-                                                        format=",".join(format_list0))
+            param_list = _gen_para(dtype_total, format_list0, format_list1, format_list0,
+                                                unknownshape_format_list, shape_x, shape_y)
         else:
-            if -1 in shape_x or -1 in shape_y:
-                input0 = util_select_op_base.gen_param(classify="input0",
-                                                       name="x1",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list1),
-                                                       unknownshape_format=",".join(unknownshape_format_list))
-                input1 = util_select_op_base.gen_param(classify="input1",
-                                                       name="x2",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list0),
-                                                       unknownshape_format=",".join(unknownshape_format_list))
-                output0 = util_select_op_base.gen_param(classify="output0",
-                                                        name="y",
-                                                        datatype=",".join(dtype_total),
-                                                        format=",".join(format_list1),
-                                                        unknownshape_format=",".join(unknownshape_format_list))
-            else:
-                input0 = util_select_op_base.gen_param(classify="input0",
-                                                       name="x1",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list1))
-                input1 = util_select_op_base.gen_param(classify="input1",
-                                                       name="x2",
-                                                       datatype=",".join(dtype_total),
-                                                       format=",".join(format_list0))
-                output0 = util_select_op_base.gen_param(classify="output0",
-                                                        name="y",
-                                                        datatype=",".join(dtype_total),
-                                                        format=",".join(format_list1))
-
+            param_list = _gen_para(dtype_total, format_list1, format_list0, format_list1,
+                                                unknownshape_format_list, shape_x, shape_y)
     # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
-    elif (len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1) or (
-          len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and shape_x[0] % 16 == 0):
-        if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
-            format_list.append("C1HWNCoC0")
-            format_list.append("NC1HWC0")
-            format_list.append("FRACTAL_Z")
-        if len(shape_x) >= 2:
-            if shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0:
-                format_list.append("FRACTAL_NZ")
-        if len(shape_x) == 2 and len(shape_y) == 1:
-            x_1dim = shape_x[-1]
-            x_2dim = shape_x[-2]
-            if x_1dim % 16 == 0 and x_2dim % 16 == 0:
-                format_list.append("FRACTAL_NZ")
-        if len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and shape_x[0] % 16 == 0:
-            format_list.append("NC1HWC0")
+    elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
+
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
         format_list0 = format_list
         format_list1 = format_nd * len(format_list)
         unknownshape_format_list = ["ND"] * len(dtype_total)
-        if -1 in shape_x or -1 in shape_y:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list0),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list1),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list0),
-                                                    unknownshape_format=",".join(unknownshape_format_list))
-        else:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list0))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list1))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list0))
+        param_list = _gen_para(dtype_total, format_list0, format_list1, format_list0,
+                                            unknownshape_format_list, shape_x, shape_y)
 
     # ND+ND,scalar+5HD,scalar+FZ,scalar+6D,ND+NZ
-    elif (len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1) or (
-          len(shape_y) == 1 and len(shape_x) == 1 and shape_x[0] == 1 and shape_y[0] % 16 == 0):
-        if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
-            format_list.append("C1HWNCoC0")
-            format_list.append("NC1HWC0")
-            format_list.append("FRACTAL_Z")
-        if len(shape_y) >= 2:
-            if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
-                format_list.append("FRACTAL_NZ")
-        if len(shape_y) == 2 and len(shape_x) == 1:
-            y_1dim = shape_y[-1]
-            y_2dim = shape_y[-2]
-            if y_1dim % 16 == 0 and y_2dim % 16 == 0:
-                format_list.append("FRACTAL_NZ")
-        if len(shape_y) == 1 and len(shape_x) == 1 and shape_x[0] == 1 and shape_y[0] % 16 == 0:
-            format_list.append("NC1HWC0")
+    elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
+
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
         format_list0 = format_list
         format_list1 = format_nd * len(format_list)
         unknownshape_format_list = ["ND"] * len(dtype_total)
-        if -1 in shape_x or -1 in shape_y:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list1),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list0),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list0),
-                                                    unknownshape_format=",".join(unknownshape_format_list))
-        else:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list1))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list0))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list0))
+        param_list = _gen_para(dtype_total, format_list1, format_list0, format_list0,
+                                            unknownshape_format_list, shape_x, shape_y)
     # ND+ND,5HD+5HD
     else:
-        if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
-            format_list.append("NC1HWC0")
-        if len(shape_x) == 1 and len(shape_y) == 4:
-            if format_x == format_y and format_y in ("NHWC",):
-                format_list.append("NC1HWC0")
-            if format_x == format_y and format_y in ("NCHW", "HWCN"):
-                if y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or shape_x[0] // 16 == 1:
-                    format_list.append("NC1HWC0")
-        if len(shape_y) == 1 and len(shape_x) == 4:
-            if format_x == format_y and format_x in ("NHWC",):
-                format_list.append("NC1HWC0")
-            if format_x == format_y and format_x in ("NCHW", "HWCN"):
-                if x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or x_cdim // 16 == 1 or shape_y[0] // 16 == 1:
-                    format_list.append("NC1HWC0")
-        if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
-            if format_x == format_y == "NCHW" or format_x == format_y == "HWCN" or format_x == format_y == "NHWC":
-                if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                    if (x_cdim // 16 == 1 or y_cdim // 16 == 1) or (x_cdim == y_cdim):
-                        if x_ndim == y_ndim:
-                            if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_hdim == y_hdim and x_wdim == y_wdim:
-                                format_list.append("NC1HWC0")
-                            if (x_wdim == x_hdim == 1) or (y_wdim == y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if (x_hdim == 1 and y_wdim == 1) or (x_wdim == 1 and y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                        if x_hdim == y_hdim:
-                            if x_ndim == y_ndim and (x_wdim == 1 or y_wdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_wdim == y_wdim and (x_ndim == 1 or y_ndim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_ndim == y_ndim and x_wdim == y_wdim:
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == x_wdim == 1) or (y_ndim == y_wdim == 1):
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == 1 and y_wdim == 1) or (x_wdim == 1 and y_ndim == 1):
-                                format_list.append("NC1HWC0")
-                        if x_wdim == y_wdim:
-                            if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_ndim == y_ndim and x_hdim == y_hdim:
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                                format_list.append("NC1HWC0")
+
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         len_format_list = len(dtype_list)
         format_list = format_list * len_format_list
         unknownshape_format_list = ["ND"] * len(dtype_total)
-        if -1 in shape_x or -1 in shape_y:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list),
-                                                   unknownshape_format=",".join(unknownshape_format_list))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list),
-                                                    unknownshape_format=",".join(unknownshape_format_list))
-        else:
-            input0 = util_select_op_base.gen_param(classify="input0",
-                                                   name="x1",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list))
-            input1 = util_select_op_base.gen_param(classify="input1",
-                                                   name="x2",
-                                                   datatype=",".join(dtype_total),
-                                                   format=",".join(format_list))
-            output0 = util_select_op_base.gen_param(classify="output0",
-                                                    name="y",
-                                                    datatype=",".join(dtype_total),
-                                                    format=",".join(format_list))
+        param_list = _gen_para(dtype_total, format_list, format_list, format_list,
+                                            unknownshape_format_list, shape_x, shape_y)
 
-    param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
-
 
 def _mul_check_format(x, y):
     """
@@ -1101,6 +846,7 @@ def mul_compute(input_x, input_y, output_data, is_scene_1D=False, kernel_name="m
 
         input_x = tbe.broadcast(input_x, shape_max)
         input_y = tbe.broadcast(input_y, shape_max)
+
     res = tbe.vmul(input_x, input_y)
 
     if x_dtype in ("uint8", "int8"):
