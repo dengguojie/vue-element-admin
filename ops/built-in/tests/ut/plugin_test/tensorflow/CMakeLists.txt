@@ -19,7 +19,7 @@ add_executable(ops_cpp_plugin_utest
         )
 
 target_include_directories(ops_cpp_plugin_utest PRIVATE
-        ${GTEST_INCLUDE}
+	${GTEST_INCLUDE}
         ${METADEF_INCLUDE}/graph
         ${ATC_INCLUDE}/parser
         )
