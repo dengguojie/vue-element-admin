@@ -19,7 +19,7 @@ cce diag function:we can use this function to build and generate llvm code on cp
 """
 import numpy as np
 from te import tvm
-from topi.util import get_const_tuple
+from tbe.common.utils import shape_to_list
 
 
 def cce_diag(config_map=None):
@@ -70,15 +70,16 @@ def cce_diag(config_map=None):
         if ref_input_func is None:
             for tensor in input_tensors:
                 np_inputs.append(
-                    np.random.uniform(size=get_const_tuple(tensor.shape)).astype(tensor.dtype))
+                    np.random.uniform(size=shape_to_list(tensor.shape)).astype(tensor.dtype))
         else:
             np_inputs = ref_input_func(*input_tensors)
         for np_input in np_inputs:
             tvm_inputs.append(tvm.nd.array(np_input, ctx))
 
+
         for tensor in output_tensors:
             tvm_outputs.append(
-                tvm.nd.array(np.zeros(get_const_tuple(tensor.shape), dtype=tensor.dtype), ctx))
+                tvm.nd.array(np.zeros(shape_to_list(tensor.shape), dtype=tensor.dtype), ctx))
 
         mod(*(tvm_inputs + tvm_outputs))
         if ref_output_func is None:

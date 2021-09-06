@@ -15,4 +15,4 @@
 """
 lang
 """
-from topi import generic
+

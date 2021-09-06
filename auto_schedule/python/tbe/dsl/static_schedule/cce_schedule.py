@@ -44,7 +44,7 @@ from tbe.common.rl_bank import rl_bank
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common.utils import shape_to_list
-from topi.cce import util  # pylint: disable=E0401
+from tbe.common.utils import check_kernel_name
 
 from .util import gen_dfs_tensor_map
 from .util import generic_dispatch
@@ -1415,7 +1415,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     if config_map is None:
         config_map = {}
     elif "name" in config_map:
-        util.check_kernel_name(config_map["name"])
+        check_kernel_name(config_map["name"])
 
     # for RL tune getting tensor_list
     bank_manager.set_tensor_list(config_map.get("tensor_list", []))
