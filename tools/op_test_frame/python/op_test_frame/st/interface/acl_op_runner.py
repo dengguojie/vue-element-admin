@@ -14,33 +14,8 @@ import subprocess
 from op_test_frame.common import op_status
 
 from . import utils
+from .const_manager import ConstManager
 from . import op_st_case_info
-
-CMAKE_LIST_FILE_NAME = 'CMakeLists.txt'
-BUILD_INTERMEDIATES_HOST = 'build/intermediates/host'
-RUN_OUT = 'run/out'
-MAIN = 'main'
-PROF = 'prof'
-INSTALL_PATH = 'install_path'
-MSPROF_REL_PATH = '/toolkit/tools/profiler/bin/msprof'
-MSPROF_PYC_REL_PATH = '/toolkit/tools/profiler/profiler_tool/analysis/msprof/msprof.py'
-SUMMARY_REL_PATH = 'summary'
-OP_SUMMARY_CSV = 'op_summary_0_1.csv'
-PROF_PYTHON_CMD = "python3.7"
-NULL_RESULT_FILE_LINE_NUM = 2
-RESULT_FILE_COLUMN_NUM = 3
-RESULT_FILE_CASE_NAME_COLUMN_NUM = 1
-SHOW_DATA_UPPER_LIMLT = 20
-SHOW_TOP_TEN_DATA = 10
-SHOW_LAST_TEN_DATA = 10
-PROF_TIME_UNIT = 'us'
-OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST = [
-     'Op Name', 'Task Type', 'Task Duration(us)', 'Task ID']
-OP_NAME_INDEX = 0
-TASK_TYPE_INDEX = 1
-TASK_DURATION_INDEX = 2
-TASK_ID_INDEX = 3
-OP = 'op'
 
 
 class AclOpRunner:
@@ -59,27 +34,26 @@ class AclOpRunner:
         Compile acl op
         """
         utils.print_info_log('Start to compile %s.' % self.path)
-        cmakelist_path = os.path.join(self.path, CMAKE_LIST_FILE_NAME)
+        cmakelist_path = os.path.join(self.path, ConstManager.CMAKE_LIST_FILE_NAME)
         if not os.path.exists(cmakelist_path):
             utils.print_error_log(
                 'There is no %s in %s. Please check the path for compile.' % (
-                    CMAKE_LIST_FILE_NAME, self.path))
+                    ConstManager.CMAKE_LIST_FILE_NAME, self.path))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
         # do cmake and make
-        build_path = os.path.join(self.path, BUILD_INTERMEDIATES_HOST)
+        build_path = os.path.join(self.path, ConstManager.BUILD_INTERMEDIATES_HOST)
         utils.check_path_valid(build_path, True)
         os.chdir(build_path)
         cmake_cmd = ['cmake', '../../..', '-DCMAKE_CXX_COMPILER=g++',
                      '-DCMAKE_SKIP_RPATH=TRUE']
-        make_cmd = ['make']
         cmd_str = "cd %s && %s && %s" % (build_path, " ".join(cmake_cmd),
-                                         " ".join(make_cmd))
+                                         " ".join(['make']))
         utils.print_info_log("Compile command line: %s " % cmd_str)
         try:
             self._execute_command(cmake_cmd)
-            self._execute_command(make_cmd)
+            self._execute_command(['make'])
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED, "compile_acl_code",
                                         None, cmd_str)
@@ -92,7 +66,7 @@ class AclOpRunner:
         self.set_log_level_env()
         # do atc single op model conversion
         utils.print_info_log('Start to convert single op.')
-        run_out_path = os.path.join(self.path, RUN_OUT)
+        run_out_path = os.path.join(self.path, ConstManager.RUN_OUT)
         os.chdir(run_out_path)
         atc_cmd = self._get_atc_cmd()
         cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
@@ -145,7 +119,7 @@ class AclOpRunner:
         if process.returncode != 0:
             utils.print_error_log('Failed to execute command: %s' % cmd)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def set_log_level_env(self):
         """
@@ -168,18 +142,18 @@ class AclOpRunner:
         """
         Run acl op
         """
-        main_path = os.path.join(self.path, 'run', 'out', MAIN)
+        main_path = os.path.join(self.path, 'run', 'out', ConstManager.MAIN)
         utils.print_info_log('Start to run %s.' % main_path)
         if not os.path.exists(main_path):
             utils.print_error_log(
                 'There is no execute file "%s" in %s. Please check the path '
-                'for running.' % (MAIN, os.path.dirname(main_path)))
+                'for running.' % (ConstManager.MAIN, os.path.dirname(main_path)))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         out_path = os.path.dirname(main_path)
         utils.check_path_valid(out_path, True)
         os.chdir(out_path)
-        run_cmd = ['./' + MAIN]
+        run_cmd = ['./' + ConstManager.MAIN]
         get_performance_mode = False
         if self.advance_args is not None:
             get_performance_mode = self.advance_args.get_performance_mode_flag()
@@ -197,20 +171,20 @@ class AclOpRunner:
         :param out_path: path of binary main
         :return:
         """
-        toolkit_root_path = os.getenv(INSTALL_PATH)
+        toolkit_root_path = os.getenv(ConstManager.INSTALL_PATH)
         if not os.path.exists(toolkit_root_path):
             utils.print_error_log("Path of env install_path: "
                                   "%s does not exist" % toolkit_root_path)
             return
         if os.path.exists(toolkit_root_path):
             utils.print_info_log("Env install_path is " + toolkit_root_path)
-        run_cmd = [toolkit_root_path + MSPROF_REL_PATH, '--application=./main',
-                   '--aicpu=on', '--runtime-api=on', '--output=./' + PROF]
+        run_cmd = [toolkit_root_path + ConstManager.MSPROF_REL_PATH, '--application=./main',
+                   '--aicpu=on', '--runtime-api=on', '--output=./' + ConstManager.PROF]
         utils.print_info_log("Run command line: cd %s && %s " % (
             out_path, " ".join(run_cmd)))
         self._execute_command(run_cmd)
         utils.print_info_log('Finish to run main with msprof.')
-        self.prof_analyze(os.path.join(out_path, PROF), toolkit_root_path)
+        self.prof_analyze(os.path.join(out_path, ConstManager.PROF), toolkit_root_path)
 
     @staticmethod
     def _prof_get_op_case_info_from_csv_file(csv_file, op_name_list):
@@ -228,15 +202,15 @@ class AclOpRunner:
     def _prof_get_op_name_from_report(self, run_result_list):
         op_name_list = []
         for line in run_result_list:
-            if len(line.split("  ")) != RESULT_FILE_COLUMN_NUM:
+            if len(line.split("  ")) != ConstManager.RESULT_FILE_COLUMN_NUM:
                 continue
-            case_name = line.split("  ")[RESULT_FILE_CASE_NAME_COLUMN_NUM]
+            case_name = line.split("  ")[ConstManager.RESULT_FILE_CASE_NAME_COLUMN_NUM]
             case_report = self.report.get_case_report(case_name)
             if not case_report:
                 utils.print_error_log("According case info in "
                                       "st_report.json is not found, please check")
                 return []
-            op_name = case_report.trace_detail.st_case_info.op_params.get(OP)
+            op_name = case_report.trace_detail.st_case_info.op_params.get(ConstManager.OP)
             if not op_name:
                 utils.print_error_log("The op name got from st_report.json is empty. Please check")
                 return []
@@ -263,8 +237,27 @@ class AclOpRunner:
             prof_result = op_st_case_info.OpSTStageResult(
                 op_status.SUCCESS,
                 "profiling_analysis",
-                op_case_info[idx][TASK_DURATION_INDEX] + PROF_TIME_UNIT)
+                op_case_info[idx][ConstManager.TASK_DURATION_INDEX] + ConstManager.PROF_TIME_UNIT)
             report_obj.trace_detail.add_stage_result(prof_result)
+
+    def _read_result_txt(self):
+        result_txt = os.path.join(self.path, utils.ConstVariable.RUN_OUT, 'result_files',
+                                  'result.txt')
+        if not os.path.exists(result_txt) or \
+                not os.access(result_txt, os.R_OK):
+            utils.print_error_log("Failed to get %s. Please check "
+                                  "run result." % result_txt)
+            return []
+
+        txt = utils.read_file(result_txt)
+        run_result_list = txt.split('\n')
+        if len(run_result_list) <= utils.ConstVariable.NULL_RESULT_FILE_LINE_NUM:
+            utils.print_error_log("Only got less than or equal to"
+                                  " one line in result.txt, please check "
+                                  "%s" % result_txt)
+            return []
+        run_result_list.pop()
+        return run_result_list
 
     def prof_analyze(self, prof_base_path, toolkit_root_path):
         """
@@ -290,31 +283,17 @@ class AclOpRunner:
             utils.print_info_log("Start to analyze profiling data in %s" % job_path)
 
             # start to read result.txt and get op execute times
-            result_txt = os.path.join(self.path, RUN_OUT, 'result_files',
-                                      'result.txt')
-            if not os.path.exists(result_txt) or \
-                    not os.access(result_txt, os.R_OK):
-                utils.print_error_log("Failed to get %s. Please check "
-                                      "run result." % result_txt)
+            run_result_list = self._read_result_txt()
+            if not run_result_list:
                 return
-
-            txt = utils.read_file(result_txt)
-            run_result_list = txt.split('\n')
-            if len(run_result_list) <= NULL_RESULT_FILE_LINE_NUM:
-                utils.print_error_log("Only got less than or equal to"
-                                      " one line in result.txt, please check "
-                                      "%s" % result_txt)
-                return
-            run_result_list.pop()
-
             # start to do export summary
-            analyze_cmd = [PROF_PYTHON_CMD,
-                           toolkit_root_path + MSPROF_PYC_REL_PATH,
+            analyze_cmd = [ConstManager.PROF_PYTHON_CMD,
+                           toolkit_root_path + ConstManager.MSPROF_PYC_REL_PATH,
                            'export', 'summary',
                            '-dir=./']
             self._execute_command(analyze_cmd)
 
-            csv_file = os.path.join(job_path, SUMMARY_REL_PATH, OP_SUMMARY_CSV)
+            csv_file = os.path.join(job_path, ConstManager.SUMMARY_REL_PATH, ConstManager.OP_SUMMARY_CSV)
             if not os.path.exists(csv_file) or \
                     not os.access(csv_file, os.R_OK):
                 utils.print_error_log("Failed to get %s. Please check the CSV "
@@ -364,23 +343,23 @@ def get_op_case_info_from_csv_file(csv_file, op_name_list):
             utils.print_error_log("The CSV summary file is empty. Please check.")
             return op_case_info_list
         column_line_list = row_list.pop(0)  # remove column line
-        for each_case_iter in OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST:
+        for each_case_iter in ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST:
             if each_case_iter not in column_line_list:
                 utils.print_error_log("%s not found in the column line. Please check."
                                       % each_case_iter)
                 return op_case_info_list
         task_id_column_idx = column_line_list.index(
-            OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[TASK_ID_INDEX])
+            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.TASK_ID_INDEX])
         op_time_column_idx = column_line_list.index(
-            OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[TASK_DURATION_INDEX])
+            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.TASK_DURATION_INDEX])
         op_name_column_idx = column_line_list.index(
-            OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[OP_NAME_INDEX])
+            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.OP_NAME_INDEX])
         task_type_column_idx = column_line_list.index(
-            OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[TASK_TYPE_INDEX])
-        row_list = sorted(row_list, key=lambda x: int(x[task_id_column_idx]))
+            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.TASK_TYPE_INDEX])
+        row_list_sorted = sorted(row_list, key=lambda x: int(x[task_id_column_idx]))
 
         op_idx = 0
-        for _, row in enumerate(row_list):
+        for _, row in enumerate(row_list_sorted):
             if op_idx == len(op_name_list):
                 break
             if op_name_list[op_idx] in os.path.split(
@@ -404,18 +383,18 @@ def display_op_case_info(op_case_info_list):
     utils.print_info_log(
         '---------------------------------------------------')
     op_case_count = len(op_case_info_list)
-    if op_case_count <= SHOW_DATA_UPPER_LIMLT:
+    if op_case_count <= ConstManager.SHOW_DATA_UPPER_LIMLT:
         for i in range(op_case_count):
             utils.print_info_log('%s \t %s \t %f' % (
-                op_case_info_list[i][OP_NAME_INDEX], op_case_info_list[i][TASK_TYPE_INDEX],
-                float(op_case_info_list[i][TASK_DURATION_INDEX])))
+                op_case_info_list[i][ConstManager.OP_NAME_INDEX], op_case_info_list[i][ConstManager.TASK_TYPE_INDEX],
+                float(op_case_info_list[i][ConstManager.TASK_DURATION_INDEX])))
     else:
-        for i in range(SHOW_TOP_TEN_DATA):
+        for i in range(ConstManager.SHOW_TOP_TEN_DATA):
             utils.print_info_log('%s \t %s \t %f' % (
-                op_case_info_list[i][OP_NAME_INDEX], op_case_info_list[i][TASK_TYPE_INDEX],
-                float(op_case_info_list[i][TASK_DURATION_INDEX])))
+                op_case_info_list[i][ConstManager.OP_NAME_INDEX], op_case_info_list[i][ConstManager.TASK_TYPE_INDEX],
+                float(op_case_info_list[i][ConstManager.TASK_DURATION_INDEX])))
         utils.print_info_log('...   \t   ...   \t   ...')
-        for i in range(op_case_count - SHOW_LAST_TEN_DATA, op_case_count):
+        for i in range(op_case_count - ConstManager.SHOW_LAST_TEN_DATA, op_case_count):
             utils.print_info_log('%s \t %s \t %f' % (
-                op_case_info_list[i][OP_NAME_INDEX], op_case_info_list[i][TASK_TYPE_INDEX],
-                float(op_case_info_list[i][TASK_DURATION_INDEX])))
+                op_case_info_list[i][ConstManager.OP_NAME_INDEX], op_case_info_list[i][ConstManager.TASK_TYPE_INDEX],
+                float(op_case_info_list[i][ConstManager.TASK_DURATION_INDEX])))

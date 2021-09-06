@@ -4,6 +4,7 @@ import os
 import sys
 from unittest import mock
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface.case_generator import CaseGenerator
 
 class OpstArgs:
@@ -20,7 +21,7 @@ class TestUtilsMethods(unittest.TestCase):
             case = CaseGenerator(args)
             case.check_argument_valid()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_msopst_parse_bool_value(self):
         args = OpstArgs("/home/test.txt", "/home")
@@ -42,7 +43,7 @@ class TestUtilsMethods(unittest.TestCase):
                 case = CaseGenerator(args)
                 case._parse_py_to_json()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def test_msopst_parse_py_to_json_error2(self):
         with pytest.raises(utils.OpTestGenException) as error:
@@ -51,7 +52,7 @@ class TestUtilsMethods(unittest.TestCase):
                 case = CaseGenerator(args)
                 case._parse_py_to_json()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def test_msopst_check_op_info_list_valid_error1(self):
         with pytest.raises(utils.OpTestGenException) as error:
@@ -59,7 +60,7 @@ class TestUtilsMethods(unittest.TestCase):
             case = CaseGenerator(args)
             case._check_op_info_list_valid("","","")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def test_msopst_check_op_info_list_valid_error2(self):
         with pytest.raises(utils.OpTestGenException) as error:
@@ -67,7 +68,7 @@ class TestUtilsMethods(unittest.TestCase):
             case = CaseGenerator(args)
             case._check_op_info_list_valid(["","a"],"","")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def test_msopst_check_op_info_list_valid_error3(self):
         args = OpstArgs("/home/test.py", "/home")
@@ -80,7 +81,7 @@ class TestUtilsMethods(unittest.TestCase):
             case = CaseGenerator(args)
             case._make_attr("attr_require","")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def test_msopst_check_desc_valid_error(self):
         with pytest.raises(utils.OpTestGenException) as error:
@@ -88,4 +89,4 @@ class TestUtilsMethods(unittest.TestCase):
             case = CaseGenerator(args)
             case._check_desc_valid({"key_test":""},"key_test")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)

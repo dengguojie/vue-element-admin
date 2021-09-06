@@ -2,6 +2,7 @@ import unittest
 import pytest
 from unittest import mock
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface import model_parser
 
 class Args:
@@ -17,14 +18,14 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(utils.OpTestGenException) as error:
             model_parser.get_model_nodes(args,'')
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
     def test_msopst_get_model_nodes2(self):
         args = Args('./a.json', '', './a.pb')
         with pytest.raises(utils.OpTestGenException) as error:
             model_parser.get_model_nodes(args,'')
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
 if __name__ == '__main__':
     unittest.main()

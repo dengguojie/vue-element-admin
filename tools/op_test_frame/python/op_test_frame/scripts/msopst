@@ -24,6 +24,7 @@ from op_test_frame.st.interface.model_parser import change_shape
 from op_test_frame.st.interface.model_parser import get_shape
 from op_test_frame.st.interface import st_report
 from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
+from op_test_frame.st.interface.const_manager import ConstManager
 
 abnormal_termination = False
 
@@ -33,7 +34,7 @@ def _check_device_id(device_id):
         utils.print_error_log(
             'please enter an integer number for device id,'
             'now is %s.' % device_id)
-        sys.exit(utils.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
+        sys.exit(ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
     return
 
 
@@ -115,7 +116,7 @@ def _do_run_cmd(args, report):
         if args.soc_version == '':
             utils.print_error_log(
                 'The value of "soc_version" is empty. Please modify it.')
-            sys.exit(utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         # check device id invaild
         _check_device_id(args.device_id)
         if args.config_file != "":
@@ -137,16 +138,16 @@ def _gen_build_convert_run(args, report):
     get_advance_args = AdvanceIniParser(args.config_file)
     get_advance_args.get_advance_args_option()
     acl_mode = get_advance_args.get_mode_flag()
-    if acl_mode == utils.BOTH_GEN_AND_RUN_ACL_PROJ or \
-            acl_mode == utils.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE:
+    if acl_mode == ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ or \
+            acl_mode == ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE:
         # gen op project and build & convert & execute the project.
         case_list = _generate_op_project(args, report, False)
         _runner_and_compare(args, case_list, report, get_advance_args)
-    elif acl_mode == utils.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
+    elif acl_mode == ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
         # only gen op project.
         _generate_op_project(args, report, False)
-    elif acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ or \
-            acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
+    elif acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ or \
+            acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
         # only build & convert & execute the project.
         # when the report is input,should avoid update the report
         global abnormal_termination
@@ -328,7 +329,7 @@ def main():
 
     if len(sys.argv) <= 1:
         parse.print_usage()
-        sys.exit(utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
     args = parse.parse_args(sys.argv[1:])
     # run/mi gen command generator report.
     report = st_report.OpSTReport(" ".join(sys.argv))
@@ -349,7 +350,7 @@ def main():
     else:
         _do_mi_cmd(args, sys.argv[2], report)
     utils.print_info_log("Process finished!")
-    sys.exit(utils.OP_TEST_GEN_NONE_ERROR)
+    sys.exit(ConstManager.OP_TEST_GEN_NONE_ERROR)
 
 
 if __name__ == "__main__":

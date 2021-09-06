@@ -6,7 +6,13 @@ This file mainly involves op file content.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-MAIN_CPP_CONTENT = """
+
+
+class CodeTemplate:
+    """
+    class CodeTemplate
+    """
+    MAIN_CPP_CONTENT = """
 /**
 * @file main.cpp
 *
@@ -33,13 +39,13 @@ int main()
 }}
 """
 
-TESTCASE_CALL = """
+    TESTCASE_CALL = """
     if (!{function_name}()) {{
         cout << "{function_name} execute failed!";
     }}
 """
 
-TESTCASE_FUNCTION = """
+    TESTCASE_FUNCTION = """
 OP_TEST({op_name}, {testcase_name})
 {{
     {testcase_content}
@@ -47,7 +53,7 @@ OP_TEST({op_name}, {testcase_name})
 
 """
 
-TESTCASE_CONTENT = """
+    TESTCASE_CONTENT = """
     std::string opType = "{op_name}";
     OpTestDesc opTestDesc(opType);
     // input parameter init
@@ -68,15 +74,15 @@ TESTCASE_CONTENT = """
     EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc, deviceId), opTestDesc, "{testcase_name}");
 """
 
-# -----mindspore test .py file--------------------------
-PYTEST_INI_CONTEN = """
+    # -----mindspore test .py file--------------------------
+    PYTEST_INI_CONTEN = """
 [pytest]
 log_cli = 1
 log_cli_level = INFO
 log_cli_format = %(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)
 log_cli_date_format=%Y-%m-%d %H:%M:%S
 """
-TESTCASE_IMPORT_CONTENT = """import numpy as np
+    TESTCASE_IMPORT_CONTENT = """import numpy as np
 import pytest
 import time
 import logging
@@ -91,7 +97,7 @@ logger = logging.getLogger(__name__)
 
 """
 
-TESTCASE_CLASS_CONTENT_NO_ATTR = """
+    TESTCASE_CLASS_CONTENT_NO_ATTR = """
 class Net(nn.Cell):
     \"""Net definition\"""
 
@@ -103,12 +109,12 @@ class Net(nn.Cell):
         return self.{op_lower}({inputs})
 """
 
-TESTCASE_CLASS_CONTENT_WITH_ATTR_CONSTRUCT = """
+    TESTCASE_CLASS_CONTENT_WITH_ATTR_CONSTRUCT = """
     def construct(self, {inputs}):
         return self.{op_lower}({inputs})
 """
 
-TESTCASE_CLASS_CONTENT_WITH_ATTR = """
+    TESTCASE_CLASS_CONTENT_WITH_ATTR = """
 class Net(nn.Cell):
     \"""Net definition\"""
 
@@ -117,16 +123,16 @@ class Net(nn.Cell):
         self.{op_lower} = {op_name}({attr_value})
     {attr_constrct}
 """
-TESTCASE_TEST_NET_INPUT = """
+    TESTCASE_TEST_NET_INPUT = """
     {input_name} = np.fromfile('{file}', np.{np_type})
     {input_name}.shape = {op_shape}
 """
 
-TESTCASE_TEST_TENSOR = """Tensor({input_name})"""
-TESTCASE_TEST_NET_OUTPUT = """{output_name} = {op_lower}_test({tensor})
+    TESTCASE_TEST_TENSOR = """Tensor({input_name})"""
+    TESTCASE_TEST_NET_OUTPUT = """{output_name} = {op_lower}_test({tensor})
 """
 
-TESTCASE_TEST_NET = """
+    TESTCASE_TEST_NET = """
 def {subcase}():
     {inputs}
     {op_lower}_test = Net()

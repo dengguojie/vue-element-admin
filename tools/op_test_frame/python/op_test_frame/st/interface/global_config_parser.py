@@ -10,13 +10,7 @@ Change History: 2021-04-12 file Created
 import os
 
 from . import utils
-
-WHITE_LIST_FILE_NAME = "white_list_config.json"
-FORMAT_ENUM_MAP = "FORMAT_ENUM_MAP"   # FORMAT_ENUM_MAP the map according to graph/types.h
-DTYPE_LIST = "DTYPE_LIST"
-MINDSPORE_DTYPE_LIST = "MINDSPORE_DTYPE_LIST"
-DATA_DISTRIBUTION_LIST = "DATA_DISTRIBUTION_LIST"
-AICPU_PROTO2INI_TYPE_MAP = "DTYPE_TO_AICPU_TYPE_MAP"
+from .const_manager import ConstManager
 
 
 class WhiteLists:
@@ -35,13 +29,13 @@ class WhiteLists:
         init white lists
         """
         config_dir = os.path.join(os.path.dirname(__file__), "..")
-        config_path = os.path.join(config_dir, "config", WHITE_LIST_FILE_NAME)
+        config_path = os.path.join(config_dir, "config", ConstManager.WHITE_LIST_FILE_NAME)
         config_dict = utils.load_json_file(config_path)
-        self.format_map = config_dict.get(FORMAT_ENUM_MAP)
-        self.type_list = config_dict.get(DTYPE_LIST)
-        self.mindspore_type_list = config_dict.get(MINDSPORE_DTYPE_LIST)
-        self.data_distribution_list = config_dict.get(DATA_DISTRIBUTION_LIST)
-        self.aicpu_ir2ini_type_map = config_dict.get(AICPU_PROTO2INI_TYPE_MAP)
+        self.format_map = config_dict.get(ConstManager.FORMAT_ENUM_MAP)
+        self.type_list = config_dict.get(ConstManager.DTYPE_LIST)
+        self.mindspore_type_list = config_dict.get(ConstManager.MINDSPORE_DTYPE_LIST)
+        self.data_distribution_list = config_dict.get(ConstManager.DATA_DISTRIBUTION_LIST)
+        self.aicpu_ir2ini_type_map = config_dict.get(ConstManager.AICPU_PROTO2INI_TYPE_MAP)
         return config_dict
 
     def get_aicpu_ir2ini_type_map(self):

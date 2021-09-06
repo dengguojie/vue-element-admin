@@ -2,6 +2,7 @@ import unittest
 import pytest
 from unittest import mock
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface.framework.tf_model_parser import TFModelParse
 from op_test_frame.st.interface.framework import tf_model_parser
 
@@ -42,7 +43,7 @@ class TestUtilsMethods(unittest.TestCase):
             tf_model_parser = TFModelParse(args)
             tf_model_parser.get_tf_model_nodes('Conv2D')
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_msopst_map_tf_input_output_dtype(self):
         tf_dtype_list = ["float32", "float16", "int8", "int16", "int32",
@@ -66,7 +67,7 @@ class TestUtilsMethods(unittest.TestCase):
             tf_model_parser = TFModelParse(args)
             tf_model_parser.get_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_msopst_get_shape_error02_tf_load_failed(self):
         args = Args("", OUTPUT_PATH_VALID,
@@ -76,7 +77,7 @@ class TestUtilsMethods(unittest.TestCase):
                 tf_model_parser = TFModelParse(args)
                 tf_model_parser.get_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_TF_LOAD_ERROR)
+                         ConstManager.OP_TEST_GEN_TF_LOAD_ERROR)
 
     def test_msopst_get_shape_error03_invalid_output_path(self):
         args = Args("", OUTPUT_PATH_INVALID,
@@ -85,7 +86,7 @@ class TestUtilsMethods(unittest.TestCase):
             tf_model_parser = TFModelParse(args)
             tf_model_parser.get_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_msopst_change_shape_success01(self):
         args = Args(INPUT_JSON_PATH_VALID, OUTPUT_PATH_VALID,
@@ -127,7 +128,7 @@ class TestUtilsMethods(unittest.TestCase):
                         tf_model_parser = TFModelParse(args)
                         tf_model_parser.change_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
+                         ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
 
     def test_msopst_change_shape_no_placeholder02(self):
         args = Args(INPUT_JSON_PATH_VALID, OUTPUT_PATH_VALID,
@@ -142,7 +143,7 @@ class TestUtilsMethods(unittest.TestCase):
                         tf_model_parser = TFModelParse(args)
                         tf_model_parser.change_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
+                         ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
 
     def test_msopst_change_shape_error01_invalid_input_path(self):
         args = Args("./a.txt", OUTPUT_PATH_VALID,
@@ -151,7 +152,7 @@ class TestUtilsMethods(unittest.TestCase):
             tf_model_parser = TFModelParse(args)
             tf_model_parser.change_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_msopst_attr_value_shape_list_error01(self):
         self.assertEqual(tf_model_parser._attr_value_shape_list(None), [])
@@ -167,13 +168,13 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(utils.OpTestGenException) as error:
             tf_model_parser._tf_utils_get_operators("")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_TF_GET_OPERATORS_ERROR)
+                         ConstManager.OP_TEST_GEN_TF_GET_OPERATORS_ERROR)
 
     def test_msopst_tf_utils_write_graph_error01(self):
         with pytest.raises(utils.OpTestGenException) as error:
             tf_model_parser._tf_utils_write_graph("", "", "")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_msopst_check_ori_shape_and_notice_01(self):
         args = Args(INPUT_PATH_VALID, OUTPUT_PATH_VALID,

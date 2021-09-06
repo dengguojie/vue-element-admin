@@ -12,17 +12,12 @@ import os
 import importlib
 
 from . import utils
-
-GET_MODEL_NODES_FUNC = 'get_model_nodes'
-GET_SHAPE_FUNC = 'get_shape'
-CHANGE_SHAPE_FUNC = 'change_shape'
-FILE_NAME_SUFFIX = '_model_parser'
-FRAMEWORK_CONFIG_PATH = './framework/framework.json'
+from .const_manager import ConstManager
 
 
 def _get_framework_type(path):
     cur_dir = os.path.split(os.path.realpath(__file__))[0]
-    config_path = os.path.join(cur_dir, FRAMEWORK_CONFIG_PATH)
+    config_path = os.path.join(cur_dir, ConstManager.FRAMEWORK_CONFIG_PATH)
     framework_dict = utils.load_json_file(config_path)
     suffix_list = list()
     for (key, value) in list(framework_dict.items()):
@@ -34,7 +29,7 @@ def _get_framework_type(path):
         'The model file "%s" is invalid, only supports %s file. '
         'Please modify it.' % (path, suffix_list))
     raise utils.OpTestGenException(
-        utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
 
 def _function_call(args, op_type, func_name):
@@ -50,7 +45,7 @@ def _function_call(args, op_type, func_name):
         utils.print_error_log(
             'Failed to execute "%s". %s' % (func_name, str(ex)))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
     finally:
         pass
 
@@ -72,7 +67,7 @@ def get_model_nodes(args, op_type):
     "attr": [{'name :'T', type:'type', value:'AT_FLOAT'}]
     }]
     """
-    return _function_call(args, op_type, GET_MODEL_NODES_FUNC)
+    return _function_call(args, op_type, ConstManager.GET_MODEL_NODES_FUNC)
 
 
 def get_shape(args):
@@ -81,7 +76,7 @@ def get_shape(args):
     :param args: the argument
     :return: the shape list
     """
-    return _function_call(args, '', GET_SHAPE_FUNC)
+    return _function_call(args, '', ConstManager.GET_SHAPE_FUNC)
 
 
 def change_shape(args):
@@ -90,4 +85,4 @@ def change_shape(args):
     :param args: the argument
     :return: the shape list
     """
-    return _function_call(args, '', CHANGE_SHAPE_FUNC)
+    return _function_call(args, '', ConstManager.CHANGE_SHAPE_FUNC)

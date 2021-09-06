@@ -4,6 +4,7 @@ import os
 import sys
 from unittest import mock
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface.st_report import OpSTReport
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
 from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
@@ -25,7 +26,7 @@ class TestUtilsMethods(unittest.TestCase):
                 runner = AclOpRunner('/home', 'ddd', 'report')
                 runner.acl_compile()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def test_msopst_compile2(self):
         report = OpSTReport()
@@ -52,7 +53,7 @@ class TestUtilsMethods(unittest.TestCase):
                 runner = AclOpRunner('/home', 'ddd', report)
                 runner.run()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def test_msopst_run2(self):
         report = OpSTReport()

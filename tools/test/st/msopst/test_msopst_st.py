@@ -10,6 +10,7 @@ import os
 import importlib.util
 import importlib.machinery
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface import model_parser
 from op_test_frame.st.interface.framework import tf_model_parser
 from op_test_frame.st.interface.framework.tf_model_parser import TFModelParse
@@ -153,7 +154,7 @@ class TestUtilsMethods(unittest.TestCase):
                      mock.patch('os.path.isdir', return_value=False):
                     msopst.main()
         self.assertEqual(error.value.code,
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     # ------------------create case.json for TBE ------------
     def test_create_cmd_for_tbe(self):
@@ -183,7 +184,7 @@ class TestUtilsMethods(unittest.TestCase):
                         '.check_path_valid'):
                     msopst.main()
         self.assertEqual(
-            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+            error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
 
     # -----------------get information from model-----------------
     def test_create_cmd_and_update_aicore_info_from_model(self):
@@ -209,7 +210,7 @@ class TestUtilsMethods(unittest.TestCase):
                         '_function_call', return_value=data):
                     msopst.main()
         self.assertEqual(
-            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+            error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
 
     def test_create_cmd_and_update_aicpu_info_from_model(self):
         """
@@ -234,7 +235,7 @@ class TestUtilsMethods(unittest.TestCase):
                         '_function_call', return_value=data):
                     msopst.main()
         self.assertEqual(
-            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+            error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
 
     def test_model_parser_1(self):
         """
@@ -246,7 +247,7 @@ class TestUtilsMethods(unittest.TestCase):
             tf_model_parser = TFModelParse(args)
             tf_model_parser.get_tf_model_nodes("Conv2D")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_get_info_from_model_fun(self):
         """
@@ -307,7 +308,7 @@ class TestUtilsMethods(unittest.TestCase):
                         tf_model_parser = TFModelParse(args)
                         tf_model_parser.change_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
+                         ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
 
     def test_model_parser_4(self):
         """
@@ -318,7 +319,7 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(utils.OpTestGenException) as error:
             model_parser.get_model_nodes(args, '')
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                         ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
     def test_model_parser_5(self):
         """
@@ -350,7 +351,7 @@ class TestUtilsMethods(unittest.TestCase):
                 tf_model_parser = TFModelParse(args)
                 tf_model_parser.get_shape()
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_TF_LOAD_ERROR)
+                         ConstManager.OP_TEST_GEN_TF_LOAD_ERROR)
 
     # ---------------------compare with cpu data---------------------
     def test_run_cmd_and_compare_npu_data_and_cpu_data(self):
@@ -404,12 +405,14 @@ class TestUtilsMethods(unittest.TestCase):
                                         'builtins.open',
                                         mock.mock_open(read_data=data)) \
                                         as open_file:
-                                    with mock.patch('os.makedirs'):
-                                        with mock.patch('os.chmod'):
-                                            open_file.write = None
-                                            msopst.main()
+                                    with mock.patch('os.open'):
+                                        with mock.patch('os.fdopen'):
+                                            with mock.patch('os.makedirs'):
+                                                with mock.patch('os.chmod'):
+                                                    open_file.write = None
+                                                    msopst.main()
         self.assertEqual(
-            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+            error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
         DataGenerator.gen_data = self.gen_data_
 
     def test_compare_func_1(self):
@@ -527,7 +530,7 @@ class TestUtilsMethods(unittest.TestCase):
 
             data_generator.gen_data([1, 4], -10, 4, 'int32', 'xx')
             self.assertEqual(error.value.args[0],
-                             utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                             ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_gen_data_2(self):
         """
@@ -652,7 +655,7 @@ class TestUtilsMethods(unittest.TestCase):
             with mock.patch('sys.argv', args):
                 msopst.main()
         self.assertEqual(
-            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+            error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
 
     def test_create_cmd_for_aicpu_from_ini_file(self):
         """
@@ -666,7 +669,7 @@ class TestUtilsMethods(unittest.TestCase):
             with mock.patch('sys.argv', args):
                 msopst.main()
         self.assertEqual(
-            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+            error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
 
     # ------------------------paramType is optional---------------
     def test_create_cmd_form_with_optional_ini(self):
@@ -778,7 +781,7 @@ class TestUtilsMethods(unittest.TestCase):
                                     '.importlib.import_module'):
                         msopst.main()
         self.assertEqual(error.value.code,
-                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_ms_op_generator(self):
         """
@@ -844,7 +847,7 @@ class TestUtilsMethods(unittest.TestCase):
                     msopst.main()
         try:
             self.assertEqual(
-                error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+                error.value.code, ConstManager.OP_TEST_GEN_NONE_ERROR)
         finally:
             test_utils.clear_out_path(ST_OUTPUT)
 

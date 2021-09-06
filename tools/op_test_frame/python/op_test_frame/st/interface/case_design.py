@@ -14,15 +14,7 @@ import os
 from . import utils
 from .subcase_design_fuzz import SubCaseDesignFuzz
 from .subcase_design_cross import SubCaseDesignCross
-
-OP = 'op'
-INPUT_DESC = 'input_desc'
-OUTPUT_DESC = 'output_desc'
-ATTR = 'attr'
-CASE_NAME = 'case_name'
-ST_MODE = 'st_mode'
-FUZZ_IMPL = 'fuzz_impl'
-REQUIRED_KEYS = [OP, INPUT_DESC, OUTPUT_DESC, CASE_NAME]
+from .const_manager import ConstManager
 
 
 def check_required_key_valid(json_obj, required_key_list, tensor, json_path):
@@ -34,8 +26,8 @@ def check_required_key_valid(json_obj, required_key_list, tensor, json_path):
     :param json_path: the path of json object
     :return: none
     """
-    if json_obj.get(ST_MODE) == "ms_python_train":
-        required_key_list.append(ST_MODE)
+    if json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
+        required_key_list.append(ConstManager.ST_MODE)
     missing_keys = []
     for key in required_key_list:
         if key not in json_obj:
@@ -45,7 +37,7 @@ def check_required_key_valid(json_obj, required_key_list, tensor, json_path):
             'The "%s" is missing key: %s. Please modify it in file %s.' % (
                 tensor, missing_keys, json_path))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+            ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
 
 class CaseDesign:
@@ -75,7 +67,7 @@ class CaseDesign:
                     'The file "%s" is invalid, only supports .json file. '
                     'Please modify it.' % json_path)
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                    ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
             utils.check_path_valid(json_path)
             json_file_list.append(json_path)
         self.json_path_list = json_file_list
@@ -98,22 +90,22 @@ class CaseDesign:
                 if json_obj.get("compile_flag"):
                     compile_flag = json_obj.get("compile_flag")
                     continue
-                check_required_key_valid(json_obj, REQUIRED_KEYS, 'case',
+                check_required_key_valid(json_obj, ConstManager.REQUIRED_KEYS, 'case',
                                          self.current_json_path)
                 # skip the case name not in case_name_list
                 if self.case_name_list and \
-                        json_obj[CASE_NAME] not in self.case_name_list:
+                        json_obj[ConstManager.CASE_NAME] not in self.case_name_list:
                     continue
-                if json_obj[CASE_NAME] in self.case_name_to_json_file_map:
+                if json_obj[ConstManager.CASE_NAME] in self.case_name_to_json_file_map:
                     utils.print_error_log(
                         'The case name "%s" already exists. Please modify or '
                         'remove the redundant case name in file %s.'
-                        % (json_obj[CASE_NAME], self.current_json_path))
+                        % (json_obj[ConstManager.CASE_NAME], self.current_json_path))
                     raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-                self.case_name_to_json_file_map[json_obj[CASE_NAME]] = json_path
+                        ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+                self.case_name_to_json_file_map[json_obj[ConstManager.CASE_NAME]] = json_path
 
-                if json_obj.get(FUZZ_IMPL):
+                if json_obj.get(ConstManager.FUZZ_IMPL):
                     subcase_parse = SubCaseDesignFuzz(self.current_json_path,
                                                       json_obj,
                                                       total_case_in_file,
@@ -145,5 +137,5 @@ class CaseDesign:
                 'There is no case to generate for %s. Please modify the case '
                 'name argument.' % case_info)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         return case_list

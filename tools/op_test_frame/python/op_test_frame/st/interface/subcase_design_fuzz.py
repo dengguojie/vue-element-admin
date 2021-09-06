@@ -15,13 +15,8 @@ import copy
 
 from . import utils
 from . import dynamic_handle
-from . import case_design as CD
 from . import subcase_design as SD
-
-
-FUZZ_CASE_NUM = 'fuzz_case_num'
-FUZZ_FUNCTION = 'fuzz_branch'
-MAX_FUZZ_CASE_NUM = 2000
+from .const_manager import ConstManager
 
 
 class SubCaseDesignFuzz(SD.SubCaseDesign):
@@ -35,14 +30,14 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         :param json_obj: the json_obj of json object
         :return: fuzz_function
         """
-        fuzz_impl_path = json_obj.get(CD.FUZZ_IMPL)
+        fuzz_impl_path = json_obj.get(ConstManager.FUZZ_IMPL)
         dir_path = os.path.dirname(self.current_json_path)
         real_fuzz_path = os.path.join(dir_path, fuzz_impl_path)
-        if os.path.splitext(real_fuzz_path)[-1] != utils.PY_FILE:
+        if os.path.splitext(real_fuzz_path)[-1] != ConstManager.PY_FILE:
             utils.print_error_log(
                 'The fuzz file "%s" is invalid, only supports .py file. '
                 'Please modify it.' % fuzz_impl_path)
-            raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         utils.check_path_valid(real_fuzz_path)
         # get fuzz function from fuzz file
         sys.path.append(os.path.dirname(real_fuzz_path))
@@ -52,39 +47,39 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                                                             real_fuzz_path))
         try:
             module = importlib.import_module(module_name)
-            if not hasattr(module, FUZZ_FUNCTION):
+            if not hasattr(module, ConstManager.FUZZ_FUNCTION):
                 utils.print_error_log('%s has no attribute "%s"' % (real_fuzz_path,
-                                                                    FUZZ_FUNCTION))
+                                                                    ConstManager.FUZZ_FUNCTION))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
-            fuzz_function = getattr(module, FUZZ_FUNCTION)
+                    ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            fuzz_function = getattr(module, ConstManager.FUZZ_FUNCTION)
         except Exception as ex:
             utils.print_error_log(
                 'Failed to execute function "%s" in %s. %s' % (
-                    FUZZ_FUNCTION, fuzz_file, str(ex)))
+                    ConstManager.FUZZ_FUNCTION, fuzz_file, str(ex)))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         finally:
             pass
         return fuzz_function
 
     def _check_fuzz_case_num_valid(self, json_obj):
-        fuzz_case_num = json_obj.get(FUZZ_CASE_NUM)
+        fuzz_case_num = json_obj.get(ConstManager.FUZZ_CASE_NUM)
         if isinstance(fuzz_case_num, int):
-            if 0 < fuzz_case_num <= MAX_FUZZ_CASE_NUM:
+            if 0 < fuzz_case_num <= ConstManager.MAX_FUZZ_CASE_NUM:
                 return fuzz_case_num
             utils.print_error_log(
                 'The "%s" is invalid in %s, only supports 1~%s. '
-                'Please modify it.' % (FUZZ_CASE_NUM,
+                'Please modify it.' % (ConstManager.FUZZ_CASE_NUM,
                                        self.current_json_path,
-                                       MAX_FUZZ_CASE_NUM))
+                                       ConstManager.MAX_FUZZ_CASE_NUM))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         utils.print_error_log(
             'The "%s" is invalid in %s, only supports integer. '
-            'Please modify it.' % (FUZZ_CASE_NUM, self.current_json_path))
+            'Please modify it.' % (ConstManager.FUZZ_CASE_NUM, self.current_json_path))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
     def _check_fuzz_value_valid(self, json_tuple, param_type, fuzz_dict,
                                 required=True):
@@ -99,7 +94,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                     'The fuzz case, each of the fields can be configured with '
                     'one profile only. Please modify %s in file %s.' % (key, self.current_json_path))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
             param_value = json_obj.get(key)[0]
         else:
             param_value = json_obj.get(key)
@@ -109,7 +104,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 'Only supports %s. Please modify it in file %s.' %
                 (key, param_type, support_list, self.current_json_path))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         return param_value
 
     def _check_fuzz_shape_valid(self, json_tuple, param_type, fuzz_dict,
@@ -128,13 +123,13 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
             'supports [] in fuzz case. Please modify it in file %s.' % (
                 shape_value, key, param_type, self.current_json_path))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+            ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def _check_fuzz_data_distribute_valid(self, json_obj, key, param_type,
                                           fuzz_dict):
-        if key in json_obj and utils.VALUE not in json_obj:
+        if key in json_obj and ConstManager.VALUE not in json_obj:
             data_distribute_value = self._check_fuzz_value_valid(
-                (json_obj, key, SD.WHITE_LISTS.data_distribution_list),
+                (json_obj, key, self.WHITE_LISTS.data_distribution_list),
                 param_type, fuzz_dict)
         else:
             data_distribute_value = 'uniform'
@@ -142,7 +137,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
 
     def _check_fuzz_value_range_valid(self, json_obj, key, param_type,
                                       fuzz_dict):
-        if key in json_obj and utils.VALUE not in json_obj:
+        if key in json_obj and ConstManager.VALUE not in json_obj:
             self._check_key_exist(json_obj, key, param_type)
             json_obj = self._replace_fuzz_param(json_obj, key, param_type,
                                                 fuzz_dict)
@@ -157,7 +152,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                     'supports [] in fuzz case. Please modify it in file %s.' % (
                         value_range, key, param_type, self.current_json_path))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         else:
             value_range = [0.1, 1.0]
         return value_range
@@ -169,14 +164,14 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 'The value of "%s" is empty. Please modify it in '
                 'file %s.' % (desc_type, self.current_json_path))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         for desc_obj in json_obj[desc_type]:
             type_value = self._check_fuzz_value_valid(
-                (desc_obj, 'type', SD.WHITE_LISTS.mindspore_type_list),
+                (desc_obj, 'type', self.WHITE_LISTS.mindspore_type_list),
                 desc_type, fuzz_dict)
             shape_value = self._check_fuzz_shape_valid(
                 (desc_obj, 'shape'), desc_type, fuzz_dict)
-            if desc_type == CD.INPUT_DESC:
+            if desc_type == ConstManager.INPUT_DESC:
                 data_distribute = self._check_fuzz_data_distribute_valid(
                     desc_obj, 'data_distribute', desc_type, fuzz_dict)
                 value_range = self._check_fuzz_value_range_valid(
@@ -187,7 +182,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                             'data_distribute': data_distribute}
                 # check whether has value.
                 desc_obj = self._replace_fuzz_param(
-                    desc_obj, utils.VALUE, desc_type, fuzz_dict)
+                    desc_obj, ConstManager.VALUE, desc_type, fuzz_dict)
                 self._deal_with_value(desc_obj, one_desc, for_fuzz=True)
             else:
                 one_desc = {'type': type_value,
@@ -222,19 +217,19 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         if not dynamic_handle.check_not_dynamic_shape(json_obj.get('shape')):
             return one_input_desc
         typical_shape = self._check_fuzz_shape_valid(
-            (json_obj, utils.TYPICAL_SHAPE), param_type, fuzz_dict)
+            (json_obj, ConstManager.TYPICAL_SHAPE), param_type, fuzz_dict)
         dynamic_handle.check_typical_shape_valid(typical_shape,
                                                  self.current_json_path)
-        one_input_desc[utils.TYPICAL_SHAPE] = typical_shape
+        one_input_desc[ConstManager.TYPICAL_SHAPE] = typical_shape
         shape_range = self._check_fuzz_shape_range_valid(
-            json_obj, utils.SHAPE_RANGE, param_type, fuzz_dict)
-        one_input_desc[utils.SHAPE_RANGE] = shape_range
+            json_obj, ConstManager.SHAPE_RANGE, param_type, fuzz_dict)
+        one_input_desc[ConstManager.SHAPE_RANGE] = shape_range
         return one_input_desc
 
     def _make_desc_list_fuzz(self, json_obj, fuzz_dict, desc_type):
         desc_list = []
         if len(json_obj[desc_type]) == 0:
-            if desc_type == CD.INPUT_DESC:
+            if desc_type == ConstManager.INPUT_DESC:
                 utils.print_warn_log(
                     'The value of "input_desc" is empty.')
                 return desc_list
@@ -242,17 +237,17 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 'The value of "%s" is empty. Please modify it in '
                 'file %s.' % (desc_type, self.current_json_path))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         for desc_obj in json_obj[desc_type]:
             format_value = self._check_fuzz_value_valid(
-                (desc_obj, 'format', list(SD.WHITE_LISTS.format_map.keys())),
+                (desc_obj, 'format', list(self.WHITE_LISTS.format_map.keys())),
                 desc_type, fuzz_dict)
             type_value = self._check_fuzz_value_valid(
-                (desc_obj, 'type', SD.WHITE_LISTS.type_list),
+                (desc_obj, 'type', self.WHITE_LISTS.type_list),
                 desc_type, fuzz_dict)
             shape_value = self._check_fuzz_shape_valid(
                 (desc_obj, 'shape'), desc_type, fuzz_dict)
-            if desc_type == CD.INPUT_DESC:
+            if desc_type == ConstManager.INPUT_DESC:
                 data_distribute = self._check_fuzz_data_distribute_valid(
                     desc_obj, 'data_distribute', desc_type, fuzz_dict)
                 value_range = self._check_fuzz_value_range_valid(
@@ -263,7 +258,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                             'data_distribute': data_distribute}
                 # check whether has value.
                 desc_obj = self._replace_fuzz_param(
-                    desc_obj, utils.VALUE, desc_type, fuzz_dict)
+                    desc_obj, ConstManager.VALUE, desc_type, fuzz_dict)
                 self._deal_with_value(desc_obj, one_desc, for_fuzz=True)
             else:
                 one_desc = {'format': format_value, 'type': type_value,
@@ -272,7 +267,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
             one_desc = self._deal_with_ori_filed_data_fuzz(
                 desc_obj, desc_type, fuzz_dict, one_desc)
             # check whether the shape is dynamic.
-            if desc_obj.get(utils.TYPICAL_SHAPE) is not None:
+            if desc_obj.get(ConstManager.TYPICAL_SHAPE) is not None:
                 one_desc = self._deal_with_dynamic_shape_fuzz(
                     desc_obj, desc_type, fuzz_dict, one_desc)
             if desc_obj.get("name"):
@@ -287,41 +282,41 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         """
         fuzz_function = self.check_fuzz_valid(self.json_obj)
         loop_num = self._check_fuzz_case_num_valid(self.json_obj)
-        prefix = '{}{}'.format(self.json_obj.get(CD.CASE_NAME).replace('/', '_'),
+        prefix = '{}{}'.format(self.json_obj.get(ConstManager.CASE_NAME).replace('/', '_'),
                                '_fuzz_case_')
         pyfile, function = self._check_expect_output_param(self.json_obj)
         repeat_case_num = 0
         for _ in range(loop_num):
             ori_json = copy.deepcopy(self.json_obj)
             fuzz_dict = fuzz_function()
-            if self.json_obj.get(CD.ST_MODE) == "ms_python_train":
+            if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
                 input_desc_list = self._make_desc_list_ms_fuzz(self.json_obj,
                                                                fuzz_dict,
-                                                               CD.INPUT_DESC)
+                                                               ConstManager.INPUT_DESC)
                 output_desc_list = self._make_desc_list_ms_fuzz(self.json_obj,
                                                                 fuzz_dict,
-                                                                CD.OUTPUT_DESC)
+                                                                ConstManager.OUTPUT_DESC)
             else:
                 input_desc_list = self._make_desc_list_fuzz(self.json_obj,
                                                             fuzz_dict,
-                                                            CD.INPUT_DESC)
+                                                            ConstManager.INPUT_DESC)
                 output_desc_list = self._make_desc_list_fuzz(self.json_obj,
                                                              fuzz_dict,
-                                                             CD.OUTPUT_DESC)
+                                                             ConstManager.OUTPUT_DESC)
             attr_list = self._check_attr_valid(self.json_obj, fuzz_dict)
-            case = {CD.OP: self.json_obj[CD.OP],
-                    CD.INPUT_DESC: input_desc_list,
-                    CD.OUTPUT_DESC: output_desc_list,
+            case = {ConstManager.OP: self.json_obj[ConstManager.OP],
+                    ConstManager.INPUT_DESC: input_desc_list,
+                    ConstManager.OUTPUT_DESC: output_desc_list,
                     'case_name': prefix + '%03d' % self.case_idx}
-            if self.json_obj.get(CD.ST_MODE) == "ms_python_train":
-                case[CD.ST_MODE] = "ms_python_train"
+            if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
+                case[ConstManager.ST_MODE] = "ms_python_train"
             if len(attr_list) > 0:
-                case[CD.ATTR] = attr_list
+                case[ConstManager.ATTR] = attr_list
             self.case_idx, self.total_case_list = \
                 self._add_case_to_total_case(case, self.case_idx,
                                              [pyfile, function], self.total_case_list)
             self.json_obj = ori_json
         utils.print_info_log('Create %d fuzz test cases for %s.'
                              % (loop_num - repeat_case_num,
-                                self.json_obj[CD.CASE_NAME]))
+                                self.json_obj[ConstManager.CASE_NAME]))
         return self.total_case_list

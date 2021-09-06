@@ -14,9 +14,7 @@ import tensorflow as tf
 from tensorflow.core.framework import tensor_shape_pb2
 
 from .. import utils
-
-TMP_SHAPE_FILE = 'tmp_shape.json'
-TMP_GA_PATH_FILE = 'tmp_ga_path.json'
+from ..const_manager import ConstManager
 
 
 def _map_tf_input_output_dtype(tf_dtype):
@@ -88,7 +86,7 @@ def _parse_attr(attr_key, value_data):
         attr['type'] = "list(float)"
         attr['value'] += value_data.list.f
     else:
-        value_data = str(value_data).replace('\n', utils.EMPTY).split(":")
+        value_data = str(value_data).replace('\n', ConstManager.EMPTY).split(":")
         if len(value_data) == 2:
             attr['type'] = value_data[0]
             attr['value'] = value_data[1]
@@ -102,7 +100,7 @@ def _get_node_attr(node, key):
         utils.print_error_log(
             'Failed to load tf graph . %s' % (str(ex)))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_GET_KEY_ERROR)
+            ConstManager.OP_TEST_GEN_GET_KEY_ERROR)
     finally:
         pass
 
@@ -118,7 +116,7 @@ def _tf_utils_load_graph_def(filename):
         utils.print_error_log(
             'Failed to load tf graph "%s". %s' % (filename, str(ex)))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_TF_LOAD_ERROR)
+            ConstManager.OP_TEST_GEN_TF_LOAD_ERROR)
     finally:
         pass
 
@@ -133,7 +131,7 @@ def _tf_utils_get_operators(graph_def):
         utils.print_error_log(
             'Failed to get operators. %s' % (str(ex)))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_TF_GET_OPERATORS_ERROR)
+            ConstManager.OP_TEST_GEN_TF_GET_OPERATORS_ERROR)
     finally:
         pass
 
@@ -147,7 +145,7 @@ def _tf_utils_write_graph(graph_def, dir_name, new_graph_path):
         utils.print_error_log(
             'Failed to write new graph file %s. %s' % (new_graph_path,
                                                        str(ex)))
-        raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
     finally:
         pass
 
@@ -162,15 +160,15 @@ def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
     input_shape = _tensor_shape_list(ops[i]['input_shape'])
     op_infos["input_shape"] = input_shape
     # input_dtype
-    input_dtype = [_map_tf_input_output_dtype(x.name) for x in
-                   ops[i]['input_dtype']]
+    input_dtype = list((_map_tf_input_output_dtype(x.name) for x in
+                   ops[i]['input_dtype']))
     op_infos["input_dtype"] = input_dtype
     # output_shape
     output_shape = _tensor_shape_list(ops[i]['output_shape'])
     op_infos["output_shape"] = output_shape
     # output_dtype
-    output_dtype = [_map_tf_input_output_dtype(x.name) for x in
-                    ops[i]['output_dtype']]
+    output_dtype = list((_map_tf_input_output_dtype(x.name) for x in
+                    ops[i]['output_dtype']))
     op_infos["output_dtype"] = output_dtype
 
     # attr
@@ -243,7 +241,7 @@ class TFModelParse:
             utils.print_error_log("Failed to change the shape. Maybe there is no "
                                   "matched layer. Please check the input shape.")
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
+                ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
         dir_name, tmp_filename = os.path.split(real_path)
         prefix, _ = os.path.splitext(tmp_filename)
         first_new_shape = '_'.join(
@@ -340,7 +338,7 @@ class TFModelParse:
             utils.print_error_log("There is no \"placeholder\" operator."
                                   "Please check the model.")
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_TF_GET_PLACEHOLDER_ERROR)
+                ConstManager.OP_TEST_GEN_TF_GET_PLACEHOLDER_ERROR)
         return placeholder_shape_map
 
     @staticmethod
@@ -368,9 +366,10 @@ class TFModelParse:
         interface for IDE , get "Placeholder" shape from tf model
         generate the json file with the shape store in
         """
+        tmp_shape_file = 'tmp_shape.json'
         self._check_get_shape_argument_valid()
         shape_map = self._get_shape_fn(self.model_path)
-        json_path = os.path.join(self.output_path, TMP_SHAPE_FILE)
+        json_path = os.path.join(self.output_path, tmp_shape_file)
         utils.write_json_file(json_path, shape_map)
 
     def _check_get_nodes_argument_valid(self, op_type):
@@ -388,7 +387,7 @@ class TFModelParse:
                 'The file "%s" is invalid, only supports .json file. '
                 'Please modify it.' % self.input_file)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         utils.check_path_valid(self.input_file)
         utils.check_path_valid(self.model_path)
         utils.check_path_valid(os.path.realpath(self.output_path), True)
@@ -398,12 +397,13 @@ class TFModelParse:
         interface for IDE , change "Placeholder" shape from tf model
         generate the json file with the new model path store in
         """
+        tmp_ga_path_file = 'tmp_ga_path.json'
         self._check_change_shape_argument_valid()
         new_shape_map = utils.load_json_file(self.input_file)
         _, new_model_path = self._change_shape_fn(self.model_path,
                                                   new_shape_map)
         json_path = os.path.realpath(os.path.join(self.output_path,
-                                                  TMP_GA_PATH_FILE))
+                                                  tmp_ga_path_file))
         utils.write_json_file(json_path, {'new_model_path': new_model_path})
 
 

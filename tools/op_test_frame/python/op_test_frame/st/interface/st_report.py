@@ -26,11 +26,8 @@ import json
 from op_test_frame.common import op_status
 from op_test_frame.utils import file_util
 from .op_st_case_info import OpSTCaseTrace
+from .const_manager import ConstManager
 from . import utils
-
-DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
-DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
 class OpSTCaseReport:
@@ -71,7 +68,7 @@ class OpSTCaseReport:
         :return: OpSTCaseReport object
         """
         if not json_obj:
-            return utils.RETURN_NONE
+            return ""
         return OpSTCaseReport(OpSTCaseTrace.parser_json_obj(
             json_obj.get("trace_detail")))
 
@@ -102,23 +99,23 @@ class OpSTReport:
         :param case_name: the test case name
         :return: the OpSTCaseReport object
         """
-        case_reports = [x for x in self.report_list if x.case_name ==
-                        case_name]
+        case_reports = list((x for x in self.report_list if x.case_name ==
+                        case_name))
         case_count = len(case_reports)
         if case_count < 1:
             utils.print_warn_log("There is no test case named %s. Please "
                                  "check." % case_name)
-            return utils.RETURN_NONE
+            return ""
         if case_count > 1:
             utils.print_warn_log("There is %d test case named %s. Please "
                                  "check. " % (case_count, case_name))
-            return utils.RETURN_NONE
+            return ""
         return case_reports[0]
 
     def _to_json_obj(self):
         return {
             "run_cmd": self.run_cmd,
-            "report_list": [case_rpt.to_json_obj() for case_rpt in self.report_list]
+            "report_list": list((case_rpt.to_json_obj() for case_rpt in self.report_list))
         }
 
     def _summary_txt(self):
@@ -177,21 +174,22 @@ run command: %s
         report_data_path = os.path.realpath(report_data_path)
         report_data_dir = os.path.dirname(report_data_path)
         if not os.path.exists(report_data_dir):
-            file_util.makedirs(report_data_dir, mode=DATA_DIR_MODES)
+            file_util.makedirs(report_data_dir, mode=ConstManager.DATA_DIR_MODES)
         json_str = json.dumps(json_obj, indent=4)
         try:
             if not os.path.exists(report_data_path):
-                with open(os.open(report_data_path, DATA_FILE_FLAGS,
-                                       DATA_FILE_MODES), 'w') as rpt_fout:
+                with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
+                                       ConstManager.DATA_FILE_MODES), 'w') as rpt_fout:
                     rpt_fout.write(json_str)
             else:
-                with open(report_data_path, 'w') as rpt_file:
+                with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
+                                       ConstManager.DATA_FILE_MODES), 'w') as rpt_file:
                     rpt_file.write(json_str)
         except OSError as ex:
             utils.print_error_log(
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(report_data_dir, str(ex)))
-            raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         finally:
             pass
 

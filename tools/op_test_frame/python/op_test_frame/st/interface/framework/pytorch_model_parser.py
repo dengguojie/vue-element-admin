@@ -16,41 +16,47 @@ from onnx import helper
 from onnx import shape_inference
 from onnx import TensorProto
 
+from ..const_manager import ConstManager
 from .. import utils
 
-TMP_SHAPE_FILE = 'tmp_shape.json'
-TMP_GA_PATH_FILE = 'tmp_ga_path.json'
-ONNX_DTYPE_MAP = {
-    1: 'float',
-    2: 'uint8',
-    3: 'int8',
-    4: 'uint16',
-    5: 'int16',
-    6: 'int32',
-    7: 'int64',
-    8: 'str',
-    9: 'bool',
-    10: 'float16',
-    11: 'double',
-    12: 'uint32',
-    13: 'uint64'
-}
-ONNX_TENSOR_DTYPE = {
-    0: TensorProto.FLOAT,
-    1: TensorProto.FLOAT,
-    2: TensorProto.UINT8,
-    3: TensorProto.INT8,
-    4: TensorProto.UINT16,
-    5: TensorProto.INT16,
-    6: TensorProto.INT32,
-    7: TensorProto.INT64,
-    8: TensorProto.STRING,
-    9: TensorProto.BOOL,
-    10: TensorProto.FLOAT16,
-    11: TensorProto.DOUBLE,
-    12: TensorProto.UINT32,
-    13: TensorProto.UINT64
-}
+
+class PytorchConstVaraible:
+    """
+    class PytorchConstVaraible
+    """
+    TMP_SHAPE_FILE = 'tmp_shape.json'
+    TMP_GA_PATH_FILE = 'tmp_ga_path.json'
+    ONNX_DTYPE_MAP = {
+        1: 'float',
+        2: 'uint8',
+        3: 'int8',
+        4: 'uint16',
+        5: 'int16',
+        6: 'int32',
+        7: 'int64',
+        8: 'str',
+        9: 'bool',
+        10: 'float16',
+        11: 'double',
+        12: 'uint32',
+        13: 'uint64'
+    }
+    ONNX_TENSOR_DTYPE = {
+        0: TensorProto.FLOAT,
+        1: TensorProto.FLOAT,
+        2: TensorProto.UINT8,
+        3: TensorProto.INT8,
+        4: TensorProto.UINT16,
+        5: TensorProto.INT16,
+        6: TensorProto.INT32,
+        7: TensorProto.INT64,
+        8: TensorProto.STRING,
+        9: TensorProto.BOOL,
+        10: TensorProto.FLOAT16,
+        11: TensorProto.DOUBLE,
+        12: TensorProto.UINT32,
+        13: TensorProto.UINT64
+    }
 
 
 def get_shape_and_notice(shape, layer_name):
@@ -106,7 +112,7 @@ def _load_model(model_path):
         utils.print_error_log("{} is not a valid model file. "
                               "Please check the model.".format(model_path))
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+            ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
     finally:
         pass
     return model
@@ -117,7 +123,7 @@ def _infer_model_shape(origin_model, input_nums=None):
     tensors = origin_model.graph.initializer
     for i, tensor in enumerate(tensors):
         value_info = helper.make_tensor_value_info(tensor.name,
-                                                   ONNX_TENSOR_DTYPE.get(tensor.data_type),
+                                                   PytorchConstVaraible.ONNX_TENSOR_DTYPE.get(tensor.data_type),
                                                    tensor.dims)
         graph.input.insert(input_nums + i, value_info)
     try:
@@ -146,7 +152,7 @@ def _get_tensor_shape(tensor_names, all_tensors):
 def _update_tensor_info(name, dtype, shape, all_tensors):
     tensor_info = {
         'shape': shape,
-        'dtype': ONNX_DTYPE_MAP.get(dtype)
+        'dtype': PytorchConstVaraible.ONNX_DTYPE_MAP.get(dtype)
     }
     all_tensors.update({name: tensor_info})
 
@@ -190,7 +196,7 @@ def _get_all_tensors(graph):
             continue
         all_tensors.update({
             param_tensor.name: {
-                'dtype': ONNX_DTYPE_MAP.get(param_tensor.data_type),
+                'dtype': PytorchConstVaraible.ONNX_DTYPE_MAP.get(param_tensor.data_type),
                 'shape': param_tensor.dims
             }
         })
@@ -229,7 +235,7 @@ def _get_op_attr(node):
     for attr in node.attribute:
         attr_info = {
             'name': attr.name,
-            'type': ONNX_DTYPE_MAP.get(attr.type)
+            'type': PytorchConstVaraible.ONNX_DTYPE_MAP.get(attr.type)
         }
         try:
             attr_value = helper.get_attribute_value(attr)
@@ -297,7 +303,7 @@ class PyTorchModelParse:
                 'The file "%s" is invalid, only supports .json file. '
                 'Please modify it.' % self.input_file)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         utils.check_path_valid(self.input_file)
         utils.check_path_valid(self.model_path)
         utils.check_path_valid(self.output_path, True)
@@ -324,7 +330,7 @@ class PyTorchModelParse:
         utils.check_path_valid(self.model_path)
         utils.check_path_valid(self.output_path, True)
         input_shape_map = self._get_model_inputs()
-        json_path = os.path.join(self.output_path, TMP_SHAPE_FILE)
+        json_path = os.path.join(self.output_path, PytorchConstVaraible.TMP_SHAPE_FILE)
         utils.write_json_file(json_path, input_shape_map)
 
     @staticmethod
@@ -350,7 +356,7 @@ class PyTorchModelParse:
                     utils.print_error_log("Input {} new shape dim must be int, "
                                           "please check it.".format(input_tensor.name))
                     raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                        ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
                 finally:
                     pass
                 graph.input.remove(input_tensor)
@@ -371,7 +377,7 @@ class PyTorchModelParse:
                                   .format(self.model_path,
                                           list(map(int, op_info.get("new_shape")))))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         finally:
             pass
 
@@ -394,7 +400,7 @@ class PyTorchModelParse:
         new_shape_map = utils.load_json_file(self.input_file)
         new_model_path = self._change_shape_fn(new_shape_map)
         json_path = os.path.realpath(os.path.join(self.output_path,
-                                                  TMP_GA_PATH_FILE))
+                                                  PytorchConstVaraible.TMP_GA_PATH_FILE))
         utils.write_json_file(json_path, {'new_model_path': new_model_path})
 
     def get_model_nodes(self, ini_op_type):

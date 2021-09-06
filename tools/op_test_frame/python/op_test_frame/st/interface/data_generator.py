@@ -17,6 +17,7 @@ import numpy as np
 
 from . import utils
 from . import dynamic_handle
+from .const_manager import ConstManager
 
 
 class DataGenerator:
@@ -52,7 +53,7 @@ class DataGenerator:
             if input_size != data_size:
                 utils.print_error_log("The size of data from %s not equal to input shape size." % value)
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
             data.shape = input_shape
             return data
         data = np.array(value, dtype=dtype)
@@ -60,7 +61,7 @@ class DataGenerator:
             return data
         utils.print_error_log("The value shape is not equal to the input shape.")
         raise utils.OpTestGenException(
-            utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+            ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     @staticmethod
     def gen_data(data_shape, min_value, max_value, dtype,
@@ -74,11 +75,9 @@ class DataGenerator:
         :param distribution: the data distribution
         :return: the numpy data
         """
-        dtype = utils.map_type_to_expect_type(dtype)
-        np_type = getattr(np, dtype)
-        real_dtype = np_type
+        np_type = getattr(np, utils.map_type_to_expect_type(dtype))
 
-        if real_dtype == np.bool:
+        if np_type == np.bool:
             min_value = 0
             max_value = 2  # [0, 2) in uniform
             np_type = np.int8
@@ -149,9 +148,9 @@ class DataGenerator:
             utils.print_error_log('The distribution(%s) is invalid.' %
                                   distribution)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-        if real_dtype == np.bool:
-            data = data.astype(real_dtype)
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        if np_type == np.bool:
+            data = data.astype(np_type)
         return data
 
     def _gen_input_data(self, input_shape, input_desc, file_path):
@@ -171,7 +170,7 @@ class DataGenerator:
                 'Failed to generate data for %s. The shape is too '
                 'large to invoke MemoryError. %s' % (file_path, error))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
         finally:
             pass
 
@@ -181,7 +180,7 @@ class DataGenerator:
         get input desc info
         """
         for index, input_desc in enumerate(case.get('input_desc')):
-            if input_desc.get('type') in utils.OPTIONAL_TYPE_LIST:
+            if input_desc.get('type') in ConstManager.OPTIONAL_TYPE_LIST:
                 continue
             # consider dynamic shape scenario
             input_shape = dynamic_handle.replace_shape_to_typical_shape(
@@ -194,7 +193,7 @@ class DataGenerator:
                     'The file %s already exists, please delete it then'
                     ' retry.' % file_path)
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
             data = self._gen_input_data(input_shape, input_desc, file_path)
             try:
                 input_dic = {
@@ -204,13 +203,13 @@ class DataGenerator:
                     'format': input_desc.get('format')
                 }
                 data.tofile(file_path)
-                os.chmod(file_path, utils.WRITE_MODES)
+                os.chmod(file_path, ConstManager.WRITE_MODES)
             except OSError as error:
                 utils.print_warn_log(
                     'Failed to generate data for %s. %s' % (
                         file_path, error))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
             finally:
                 pass
             if input_desc.get('name'):
@@ -309,7 +308,7 @@ class DataGenerator:
                 'Failed to execute function "%s" in %s. %s' % (
                     expect_func, expect_func_file, str(ex)))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         finally:
             pass
         if not isinstance(expect_result_tensors, (list, tuple)):

@@ -2,6 +2,7 @@ import unittest
 import pytest
 from unittest import mock
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface import acl_op_generator
 
 class TestUtilsMethods(unittest.TestCase):
@@ -10,7 +11,7 @@ class TestUtilsMethods(unittest.TestCase):
             with mock.patch('os.fdopen', side_effect=OSError):
                 acl_op_generator._write_content_to_file("content", "/home")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_msopst_create_acl_op_json_content_error(self):
         with mock.patch('json.dumps', side_effect=TypeError):
@@ -21,7 +22,7 @@ class TestUtilsMethods(unittest.TestCase):
             with mock.patch('builtins.open', side_effect=OSError):
                 acl_op_generator._append_content_to_file("content", "/home")
         self.assertEqual(error.value.args[0],
-                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                         ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_msopst_copy_template_error1(self):
         with pytest.raises(SystemExit) as error:

@@ -17,23 +17,16 @@ import re
 import importlib
 
 from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-
+from .const_manager import ConstManager
 from . import utils
 from .model_parser import get_model_nodes
-
-INI_INPUT = 'input'
-INI_OUTPUT = 'output'
-IO_TYPE = ['inputs', 'outputs']
-OP_NAME = 'op_name'
-REQUIRED_OP_INFO_KEYS = ["paramType", "name"]
-PARAM_TYPE_VALID_VALUE = ["dynamic", "optional", "required"]
-WHITE_LISTS = GC.instance().white_lists
 
 
 class CaseGenerator:
     """
     the class for design test case.
     """
+    WHITE_LISTS = GC.instance().white_lists
 
     def __init__(self, args):
         self.input_file_path = os.path.realpath(args.input_file)
@@ -47,11 +40,11 @@ class CaseGenerator:
         check input argument valid
         """
         if os.path.splitext(self.input_file_path)[-1] \
-                not in utils.INPUT_SUFFIX_LIST:
+                not in ConstManager.INPUT_SUFFIX_LIST:
             utils.print_error_log(
                 'The file "%s" is invalid, only supports .ini or .py file. '
                 'Please modify it.' % self.input_file_path)
-            raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         utils.check_path_valid(self.input_file_path)
         utils.check_path_valid(self.output_path, True)
 
@@ -93,10 +86,10 @@ class CaseGenerator:
         elif attr_type == 'listFloat':
             default_value = list(map(float, value_list))
         elif attr_type == 'listStr':
-            default_value = [x.strip() for x in value_list]
+            default_value = list((x.strip() for x in value_list))
         elif attr_type == 'listBool':
-            default_value = [self._parse_bool_value(x) for x in
-                             value_list]
+            default_value = list((self._parse_bool_value(x) for x in
+                             value_list))
         return default_value
 
     def _get_default_attr_value(self, attr_type, default_value_str, attr_name):
@@ -123,6 +116,42 @@ class CaseGenerator:
             pass
         return default_value
 
+    def _get_op_info(self, index, line):
+        key_value = line.split('=')
+        if len(key_value) != 2:
+            utils.print_error_log(
+                'At line %d, "%s" is invalid in file %s, only '
+                'supports "xx.yy=zz". Please modify it.' % (
+                    index, line, self.input_file_path))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+        keys = key_value[0].split('.')
+        if len(keys) != 2:
+            utils.print_error_log(
+                'At line %d, "%s" is invalid in file %s, only '
+                'supports "xx.yy=zz". Please modify it.' % (
+                    index, line, self.input_file_path))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+        key0 = keys[0].strip()
+        if key0 not in self.op_info:
+            self.op_info[key0] = {}
+        re_compile = re.compile(' ')
+        self.op_info[key0][keys[1].strip()] = re_compile.sub('', key_value[1])
+
+    def _get_tbe_ops_info(self, line, tbe_ops_info, index):
+        if line.endswith("]"):
+            self.op_type = line[1:-1].strip()
+            self.op_info = {}
+            tbe_ops_info[self.op_type] = self.op_info
+        else:
+            utils.print_error_log(
+                'At line %d, "%s" is invalid in file %s, only '
+                'supports "[xx]". Please modify it.' % (
+                    index, line, self.input_file_path))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+
     def _parse_ini_to_json(self):
         tbe_ops_info = {}
         with open(self.input_file_path) as ini_file:
@@ -133,46 +162,16 @@ class CaseGenerator:
                     continue
                 # such as [Add]
                 if line.startswith("["):
-                    if line.endswith("]"):
-                        self.op_type = line[1:-1].strip()
-                        self.op_info = {}
-                        tbe_ops_info[self.op_type] = self.op_info
-                    else:
-                        utils.print_error_log(
-                            'At line %d, "%s" is invalid in file %s, only '
-                            'supports "[xx]". Please modify it.' % (
-                                index, line, self.input_file_path))
-                        raise utils.OpTestGenException(
-                            utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                    self._get_tbe_ops_info(line, tbe_ops_info, index)
                 else:
-                    key_value = line.split('=')
-                    if len(key_value) != 2:
-                        utils.print_error_log(
-                            'At line %d, "%s" is invalid in file %s, only '
-                            'supports "xx.yy=zz". Please modify it.' % (
-                                index, line, self.input_file_path))
-                        raise utils.OpTestGenException(
-                            utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-                    keys = key_value[0].split('.')
-                    if len(keys) != 2:
-                        utils.print_error_log(
-                            'At line %d, "%s" is invalid in file %s, only '
-                            'supports "xx.yy=zz". Please modify it.' % (
-                                index, line, self.input_file_path))
-                        raise utils.OpTestGenException(
-                            utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-                    key0 = keys[0].strip()
-                    if key0 not in self.op_info:
-                        self.op_info[key0] = {}
-                    re_compile = re.compile(' ')
-                    self.op_info[key0][keys[1].strip()] = re_compile.sub('', key_value[1])
+                    self._get_op_info(index, line)
         if len(tbe_ops_info) != 1:
             utils.print_error_log(
                 'There are %d operator in file %s, only supports one operator '
                 'in .ini file. Please modify it.' % (
                     len(tbe_ops_info), self.input_file_path))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def _parse_py_to_json(self):
         expect_func_file = self.input_file_path
@@ -190,7 +189,7 @@ class CaseGenerator:
                 'Failed to import "%s" to get operation information of "%s",'
                 ' the reason is %s.' % (module_name, class_name, error))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         finally:
             pass
         self._get_basic_op_info_mindspore(mindspore_ops_info)
@@ -201,15 +200,29 @@ class CaseGenerator:
                     attr_name = 'attr_' + attr_info.get('name')
                     self.op_info[attr_name] = attr_info
 
+    @staticmethod
+    def _get_mindspore_op_dtype(mindspore_ops_info, count_input):
+        dtype = []
+        for value in mindspore_ops_info.get('dtype_format'):
+            if not value[count_input]:
+                utils.print_error_log(
+                    'The dtype_format of this opeartor is null, '
+                    'please modify it')
+                raise utils.OpTestGenException(
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+            dtype.append(value[count_input][0])
+        dtype_str = ','.join(dtype)
+        return dtype_str
+
     def _get_basic_op_info_mindspore(self, mindspore_ops_info):
         """
         get basic operator information, i/o represent input/output.
         """
-        if mindspore_ops_info.get(OP_NAME) is None:
+        if mindspore_ops_info.get(ConstManager.OP_NAME) is None:
             utils.print_warn_log("Op_name is null. Please modify it.")
-        self.op_type = mindspore_ops_info.get(OP_NAME)
+        self.op_type = mindspore_ops_info.get(ConstManager.OP_NAME)
         count_input = 0
-        for i_o_type in IO_TYPE:
+        for i_o_type in ConstManager.IO_TYPE:
             op_info = mindspore_ops_info.get(i_o_type)
             for i_o_desc in op_info:
                 if not i_o_desc.get('name'):
@@ -217,7 +230,7 @@ class CaseGenerator:
                         'This %s of this operator is null, '
                         'please modify it.' % i_o_type)
                     raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                        ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
                 op_name = i_o_desc.get('name')
                 op_key = "{}{}".format(i_o_type[:-1], count_input)
                 if op_key not in self.op_info:
@@ -225,18 +238,8 @@ class CaseGenerator:
                 self.op_info[op_key]['name'] = op_name
                 self.op_info[op_key]['paramType'] = i_o_desc.get('param_type')
                 self.op_info[op_key]['shape'] = i_o_desc.get('shape')
-
-                dtype = []
-                for value in mindspore_ops_info.get('dtype_format'):
-                    if not value[count_input]:
-                        utils.print_error_log(
-                            'The dtype_format of this opeartor is null, '
-                            'please modify it')
-                        raise utils.OpTestGenException(
-                            utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-                    dtype.append(value[count_input][0])
-                dtypes = ','.join(dtype)
-                self.op_info[op_key]['dtype'] = dtypes
+                self.op_info[op_key]['dtype'] = self._get_mindspore_op_dtype(
+                    mindspore_ops_info, count_input)
                 count_input += 1
 
     @staticmethod
@@ -245,14 +248,14 @@ class CaseGenerator:
             utils.print_error_log(
                 'The value of "%s" is empty. Please modify it.' % op_info_key)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
         for value in value_list:
             if value == '':
                 utils.print_error_log(
                     'The value of "%s" is empty. Only supports %s. Please '
                     'modify it.' % (op_info_key, support_list))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
             if value not in support_list:
                 utils.print_warn_log(
                     'The value(%s) of "%s" is invalid. '
@@ -262,7 +265,7 @@ class CaseGenerator:
     def _check_basic_filed_vaild(self, dtype_count, op_info, op_info_key):
         # check paramType valid
         self._check_op_info_list_valid(
-            [op_info["paramType"]], PARAM_TYPE_VALID_VALUE,
+            [op_info["paramType"]], ConstManager.PARAM_TYPE_VALID_VALUE,
             op_info_key + '.paramType')
 
         # check dtype valid
@@ -272,11 +275,11 @@ class CaseGenerator:
             if self.input_file_path.endswith(".py"):
                 self._check_op_info_list_valid(
                     dtype_list,
-                    WHITE_LISTS.mindspore_type_list,
+                    self.WHITE_LISTS.mindspore_type_list,
                     op_info_key + '.dtype')
             else:
                 self._check_op_info_list_valid(
-                    dtype_list, WHITE_LISTS.type_list,
+                    dtype_list, self.WHITE_LISTS.type_list,
                     op_info_key + '.dtype')
             current_dtype_count = len(dtype_list)
             if dtype_count == 0:
@@ -288,14 +291,14 @@ class CaseGenerator:
                     'consistent with the number "dtype" of the outputs '
                     'in %s. Please modify.' % self.input_file_path)
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
         else:
             op_info["dtype"] = ''
         # check format valid
         if 'format' in op_info:
             format_list = op_info["format"].split(",")
             self._check_op_info_list_valid(
-                format_list, list(WHITE_LISTS.format_map.keys()),
+                format_list, list(self.WHITE_LISTS.format_map.keys()),
                 op_info_key + '.format')
 
             if current_dtype_count != len(format_list):
@@ -305,28 +308,32 @@ class CaseGenerator:
                         current_dtype_count, op_info_key,
                         len(format_list), op_info_key))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
         else:
             op_info["format"] = ''
+
+    @staticmethod
+    def check_required_key(op_info, op_info_key, missing_keys):
+        for required_key in ConstManager.REQUIRED_OP_INFO_KEYS:
+            if required_key not in op_info:
+                missing_keys.append(required_key)
+        if len(missing_keys) > 0:
+            utils.print_error_log(
+                'The "%s" is missing: %s. Please modify it.' % (
+                    op_info_key, missing_keys))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def _check_op_info(self):
         utils.print_info_log('Start to check valid for op info.')
         dtype_count = 0
         for op_info_key in self.op_info:
-            if op_info_key.startswith(INI_INPUT) or op_info_key.startswith(
-                    INI_OUTPUT):
+            if op_info_key.startswith(ConstManager.INI_INPUT) or op_info_key.startswith(
+                    ConstManager.INI_OUTPUT):
                 op_info = self.op_info[op_info_key]
                 missing_keys = []
                 # check required key is missing
-                for required_key in REQUIRED_OP_INFO_KEYS:
-                    if required_key not in op_info:
-                        missing_keys.append(required_key)
-                if len(missing_keys) > 0:
-                    utils.print_error_log(
-                        'The "%s" is missing: %s. Please modify it.' % (
-                            op_info_key, missing_keys))
-                    raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                self.check_required_key(op_info, op_info_key, missing_keys)
                 # check paramType/dtype/format vaild.
                 self._check_basic_filed_vaild(dtype_count, op_info, op_info_key)
         utils.print_info_log('Finish to check valid for op info.')
@@ -338,14 +345,14 @@ class CaseGenerator:
                 utils.print_error_log(
                     'The "%s" is missing "type". Please modify it.' % key)
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                    ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
             self._check_op_info_list_valid(
                 [value.get('type')],
-                list(utils.ATTR_TYPE_MAP.keys()), key + '.type')
+                list(ConstManager.ATTR_TYPE_MAP.keys()), key + '.type')
         # defaultValue is None
         data_type = None
         if value.get('type') is not None:
-            data_type = utils.ATTR_TYPE_MAP.get(value.get('type'))
+            data_type = ConstManager.ATTR_TYPE_MAP.get(value.get('type'))
         default_value = None
         if 'defaultValue' in value and data_type is not None:
             default_value = self._get_default_attr_value(
@@ -360,7 +367,7 @@ class CaseGenerator:
                 'The number of %s is zero in file %s. Please modify it.'
                 % (key[:-5], self.input_file_path))
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     @staticmethod
     def _delete_comments(content):
@@ -402,26 +409,27 @@ class CaseGenerator:
         """
         count_ini_with_type = 0
         for (key, _) in list(self.op_info.items()):
-            if key.startswith(INI_INPUT) or key.startswith(INI_OUTPUT):
+            if key.startswith(ConstManager.INI_INPUT) or key.startswith(ConstManager.INI_OUTPUT):
                 # check and transform type of Tensor.
                 op_tensor = self.op_info.get(key)
-                if op_tensor.get('type') is not None:
-                    tensor_type = list(set(op_tensor.get('type').split(',')))
-                    self._check_op_info_list_valid(tensor_type, list(
-                        WHITE_LISTS.aicpu_ir2ini_type_map.keys()), key + '.type')
-                    if tensor_type:
-                        self.op_info.get(key)['type'] = op_tensor.get('type')
-                    count_ini_with_type += 1
+                if op_tensor.get('type') is None:
+                    continue
+                tensor_type = list(set(op_tensor.get('type').split(',')))
+                self._check_op_info_list_valid(tensor_type, list(
+                    self.WHITE_LISTS.aicpu_ir2ini_type_map.keys()), key + '.type')
+                if tensor_type:
+                    self.op_info.get(key)['type'] = op_tensor.get('type')
+                count_ini_with_type += 1
         return count_ini_with_type
 
     def _parse_aicpu_input_output_info(self, line, input_count, output_count):
-        for op_key in iter(utils.IN_OUT_OP_KEY_MAP):
+        for op_key in iter(ConstManager.IN_OUT_OP_KEY_MAP):
             if line.startswith(op_key):
                 # find keyword.
                 start_str = line[line.find(op_key):]
                 # match name.
                 name = self._parse_name_from_op_proto_file(op_key, start_str)
-                if name == "":
+                if not name:
                     break
                 # match type.
                 input_tensor_type = start_str[start_str.find("{")
@@ -429,34 +437,60 @@ class CaseGenerator:
 
                 op_info_key = ''
                 # record the input information of key
-                if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'input':
+                if ConstManager.IN_OUT_OP_KEY_MAP.get(op_key) == 'input':
                     op_info_key = '%s%s' % (
-                        utils.IN_OUT_OP_KEY_MAP.get(op_key), input_count)
+                        ConstManager.IN_OUT_OP_KEY_MAP.get(op_key), input_count)
                     input_count += 1
                 # record the output information of key
-                if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'output':
+                if ConstManager.IN_OUT_OP_KEY_MAP.get(op_key) == 'output':
                     op_info_key = '%s%s' % (
-                        utils.IN_OUT_OP_KEY_MAP.get(op_key), output_count)
+                        ConstManager.IN_OUT_OP_KEY_MAP.get(op_key), output_count)
                     output_count += 1
                 if op_info_key not in self.op_info:
                     self.op_info[op_info_key] = {}
                 if op_info_key:
                     input_tensor_type = input_tensor_type.replace(
-                        utils.NEW_LINE_MARK, utils.EMPTY)
+                        ConstManager.NEW_LINE_MARK, ConstManager.EMPTY)
                     input_tensor_type = input_tensor_type.replace(
-                        utils.SPACE, utils.EMPTY)
+                        ConstManager.SPACE, ConstManager.EMPTY)
                     dtype_list = list(set(input_tensor_type.split(
-                        utils.COMMA)))
+                        ConstManager.COMMA)))
                     self._check_op_info_list_valid(dtype_list, list(
-                        WHITE_LISTS.aicpu_ir2ini_type_map.keys()), INI_INPUT + '.type')
+                        self.WHITE_LISTS.aicpu_ir2ini_type_map.keys()), ConstManager.INI_INPUT + '.type')
                     self.op_info[op_info_key]['name'] = name
                     self.op_info[op_info_key][
                         'type'] = input_tensor_type.replace(' ', '')
                     self.op_info[op_info_key]['format'] = ''
         return input_count, output_count
 
+    def _get_attr_tensor_type(self, op_key, type_attrs, attr_name):
+        attr_tensor_type = ''
+        if op_key == 'ATTR':
+            # example: .ATTR(attr1, Float, 0.001)
+            try:
+                attr_tensor_type = type_attrs.split(',', 1)[0]
+                default_value_str = type_attrs.split(',', 1)[1]
+            except IndexError:
+                utils.print_warn_log(
+                    "Can't parse operator information of %s, "
+                    "please check." % attr_name)
+                default_value_str = {}
+            finally:
+                pass
+            format_default_value = utils.format_dict_to_list(
+                default_value_str)
+            default_value = format_default_value.replace(
+                ConstManager.NEW_LINE_MARK, ConstManager.EMPTY)
+            self.op_info[attr_name]['defaultValue'] = \
+                default_value.replace(
+                    ConstManager.QUOTATION_MARK, ConstManager.EMPTY)
+        else:
+            # example: .REQUIRED_ATTR(attr2, Int)
+            attr_tensor_type = type_attrs.split(')')[0]
+        return attr_tensor_type
+
     def _parse_aicpu_attr(self, line):
-        for op_key in utils.AICPU_ATTR_LIST:
+        for op_key in ConstManager.AICPU_ATTR_LIST:
             if line.startswith(op_key):
                 # find keyword.
                 attr_str = line[line.find(op_key):]
@@ -471,35 +505,14 @@ class CaseGenerator:
                 # obtain type txt.
                 type_attrs = attr_str[attr_str.find(",") + 1:].strip()
                 # match type consider different attr.
-                if op_key == 'ATTR':
-                    # example: .ATTR(attr1, Float, 0.001)
-                    try:
-                        attr_tensor_type = type_attrs.split(',', 1)[0]
-                        defaultvalue = type_attrs.split(',', 1)[1]
-                    except IndexError:
-                        utils.print_warn_log(
-                            "Can't parse operator information of %s, "
-                            "please check." % attr_name)
-                        return
-                    finally:
-                        pass
-                    format_default_value = utils.format_dict_to_list(
-                        defaultvalue)
-                    default_value = format_default_value.replace(
-                        utils.NEW_LINE_MARK, utils.EMPTY)
-                    self.op_info[attr_name]['defaultValue'] = \
-                        default_value.replace(
-                            utils.QUOTATION_MARK, utils.EMPTY)
-                else:
-                    # example: .REQUIRED_ATTR(attr2, Int)
-                    attr_tensor_type = type_attrs.split(')')[0]
+                attr_tensor_type = self._get_attr_tensor_type(op_key, type_attrs, attr_name)
                 # check invalid for attr type.
                 self._check_op_info_list_valid(
                     [attr_tensor_type],
-                    list(utils.OP_PROTO_PARSE_ATTR_TYPE_MAP.keys()),
+                    list(ConstManager.OP_PROTO_PARSE_ATTR_TYPE_MAP.keys()),
                     'attr_' + name + '.type')
                 self.op_info[attr_name]['type'] = \
-                    utils.OP_PROTO_PARSE_ATTR_TYPE_MAP.get(attr_tensor_type)
+                    ConstManager.OP_PROTO_PARSE_ATTR_TYPE_MAP.get(attr_tensor_type)
 
     def _parse_aicpu_op_proto(self, file_path):
         # read op_name.h as an txt.
@@ -511,11 +524,11 @@ class CaseGenerator:
             if reg_op_info_str.startswith('REG_OP'):
                 # delete code comments in op_name.h and format.
                 no_comments_content = self._delete_comments(reg_op_info_str)
-                new_line = no_comments_content.replace('\n', utils.EMPTY)\
-                    .replace('\r', utils.EMPTY) \
-                    .replace('\t', utils.EMPTY)
-                pattern = re.compile(utils.SPACE)
-                line = pattern.sub(utils.EMPTY, new_line)
+                new_line = no_comments_content.replace('\n', ConstManager.EMPTY)\
+                    .replace('\r', ConstManager.EMPTY) \
+                    .replace('\t', ConstManager.EMPTY)
+                pattern = re.compile(ConstManager.SPACE)
+                line = pattern.sub(ConstManager.EMPTY, new_line)
                 line_point_list = line.split(').')
                 # record the number of input and output.
                 input_count = 0
@@ -554,15 +567,14 @@ class CaseGenerator:
             utils.print_warn_log("There are unavailable operator information "
                                  "in %s." % op_proto_file_path)
 
-    @staticmethod
-    def _generate_aicpu_op_desc(value, base_case, op_key):
+    def _generate_aicpu_op_desc(self, value, base_case, op_key):
         op_desc = {}
         variable_name = value.get('name')
         if value.get('format') is None or len(value.get('format')) == 0:
             op_format = []
         else:
             format_value = value.get('format').replace(
-                utils.QUOTATION_MARK, utils.EMPTY)
+                ConstManager.QUOTATION_MARK, ConstManager.EMPTY)
             op_format = list(set(format_value.split(',')))
 
         if value.get('type') is None or len(value.get('type')) == 0:
@@ -571,9 +583,9 @@ class CaseGenerator:
             dtype_list = list(set(value.get('type').split(',')))
             trans_dtype_list = []
             for dtype_key in dtype_list:
-                if dtype_key in WHITE_LISTS.aicpu_ir2ini_type_map.keys():
+                if dtype_key in self.WHITE_LISTS.aicpu_ir2ini_type_map.keys():
                     trans_dtype_list.append(
-                        WHITE_LISTS.aicpu_ir2ini_type_map.get(dtype_key))
+                        self.WHITE_LISTS.aicpu_ir2ini_type_map.get(dtype_key))
             op_dtype = trans_dtype_list
 
         if op_key == 'input_desc':
@@ -597,16 +609,14 @@ class CaseGenerator:
         if not count_ini_with_type:
             self._find_aicpu_op_proto_path()
 
-        base_case = {'case_name': ''.join(['Test_',
-                                           self.op_type.replace('/', '_'),
-                                           '_001']),
+        base_case = {'case_name': 'Test_%s_001' % self.op_type.replace('/', '_'),
                      'op': self.op_type,
                      'input_desc': [],
                      'output_desc': []}
         for (key, value) in list(self.op_info.items()):
-            if key.startswith(INI_INPUT):
+            if key.startswith(ConstManager.INI_INPUT):
                 self._generate_aicpu_op_desc(value, base_case, 'input_desc')
-            elif key.startswith(INI_OUTPUT):
+            elif key.startswith(ConstManager.INI_OUTPUT):
                 self._generate_aicpu_op_desc(value, base_case,
                                              'output_desc')
             elif key.startswith("attr_"):
@@ -659,23 +669,19 @@ class CaseGenerator:
 
     def _generate_aicore_base_case(self):
         if self.input_file_path.endswith(".py"):
-            base_case = {'case_name': ''.join(['Test_',
-                                              self.op_type.replace('/', '_'),
-                                              '_001']),
+            base_case = {'case_name': 'Test_%s_001' % self.op_type.replace('/', '_'),
                          'st_mode': 'ms_python_train',
                          'op': self.op_type,
                          'input_desc': [], 'output_desc': []}
         else:
-            base_case = {'case_name': ''.join(['Test_',
-                                              self.op_type.replace('/', '_'),
-                                              '_001']),
+            base_case = {'case_name': 'Test_%s_001' % self.op_type.replace('/', '_'),
                          'op': self.op_type,
                          'input_desc': [], 'output_desc': []}
 
         for (key, value) in list(self.op_info.items()):
-            if key.startswith(INI_INPUT):
+            if key.startswith(ConstManager.INI_INPUT):
                 self._generate_input_desc(value, base_case)
-            elif key.startswith(INI_OUTPUT):
+            elif key.startswith(ConstManager.INI_OUTPUT):
                 output_name = value.get('name')
                 output_format = [] if len(value['format']) == 0 else \
                     list(set(value['format'].split(',')))
@@ -769,7 +775,7 @@ class CaseGenerator:
         except KeyError as error:
             utils.print_error_log("Failed to create case. %s" % error)
             raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
         finally:
             pass
         return new_base_case
@@ -783,14 +789,14 @@ class CaseGenerator:
                     'check the model or try to change the "placeholder" '
                     'shape to fix the problem.' % (shape, layer_name))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
             if dim <= 0:
                 utils.print_error_log(
                     'The input shape(%s) of layer(%s) must be greater than 0. '
                     'Please check the model or try to change the "placeholder"'
                     ' shape to fix the problem.' % (shape, layer_name))
                 raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def _update_aicpu_attr_from_model(self, node, new_base_case):
         # The node won't be None and must has the key 'attr'.
@@ -811,9 +817,9 @@ class CaseGenerator:
             # format attr_value when attr's type is 'string'.
             if attr.get('type') == 'string':
                 attr_format_value = item.get('value').replace(
-                    utils.QUOTATION_MARK, utils.EMPTY)
+                    ConstManager.QUOTATION_MARK, ConstManager.EMPTY)
                 attr_value = attr_format_value.replace(
-                    utils.SPACE, utils.EMPTY)
+                    ConstManager.SPACE, ConstManager.EMPTY)
             new_attr = {'name': node_attr_name,
                         'type': attr['type'],
                         'value': attr_value}
@@ -914,14 +920,14 @@ class CaseGenerator:
         json_path = os.path.join(self.output_path, file_name)
 
         try:
-            with os.fdopen(os.open(json_path, utils.WRITE_FLAGS,
-                                   utils.WRITE_MODES), 'w+') as file_object:
+            with os.fdopen(os.open(json_path, ConstManager.WRITE_FLAGS,
+                                   ConstManager.WRITE_MODES), 'w+') as file_object:
                 file_object.write(
                     json.dumps(base_case, sort_keys=False, indent=4))
         except IOError as io_error:
             utils.print_error_log(
                 'Failed to generate file %s. %s' % (json_path, str(io_error)))
-            raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
         finally:
             pass
         utils.print_info_log(
