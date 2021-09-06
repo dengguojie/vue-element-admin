@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 from te import tik
-from topi.cce import util
+from impl.util.platform_adapter import para_check
 
 
 class Utils:
@@ -283,8 +283,7 @@ class CTCGreedyDecoder:
                       tmp_vector, tmp_vector_len, repeat_time, tmp_vector_mask, last_data_len, blank_index,
                       vconv_repeat_time, tmp_result_fp16, vconv_last_data_len)
 
-
-# @util.check_input_type(dict, dict, int, int, bool, int, str)
+# pylint: disable=unused-argument
 def ctc_greedy_decoder(inputs, output,
                        sequence_length,
                        merge_repeated=True,
@@ -308,12 +307,13 @@ def ctc_greedy_decoder(inputs, output,
     -------
     None
     """
-    util.check_kernel_name(kernel_name)
+    para_check.check_kernel_name(kernel_name)
     shape = inputs.get("shape")
     dtype = inputs.get("dtype")
 
-    util.check_shape_rule(shape)
-    util.check_tensor_shape_size(shape)
+    para_check.check_shape_rule(shape)
+    para_check.check_tensor_shape_size(shape)
+
     check_list = ["float16"]
     if dtype not in check_list:
         raise RuntimeError("only support %s while dtype is %s" % (str(check_list), dtype))
