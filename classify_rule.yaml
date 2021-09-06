@@ -1215,7 +1215,6 @@ vector_B:
       - ops/built-in/tbe/impl/trans_data_negative_target_tc.py
       - ops/built-in/tbe/impl/trans_data_positive_source_ntc.py
       - ops/built-in/tbe/impl/trans_data_positive_source_tc.py
-      - ops/built-in/tbe/impl/transpose_d.py
       - ops/built-in/tbe/impl/transpose_d_014253_big.py
       - ops/built-in/tbe/impl/unsorted_segment_max_d.py
       - ops/built-in/tbe/impl/unsorted_segment_min.py
