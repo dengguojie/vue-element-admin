@@ -222,7 +222,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/one_hot_fusion_pass.cc
   graph_fusion/ai_core/pack_fusion_pass.cc
   graph_fusion/ai_core/pad_conv2d_fusion_pass.cc
-  graph_fusion/ai_core/padd_depthwise_conv2d_fusion_pass.cc
+  graph_fusion/ai_core/pad_depthwise_conv2d_fusion_pass.cc
   graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
   graph_fusion/ai_core/pad_fusion_pass.cc
   graph_fusion/ai_core/pad_v2_fusion_pass.cc

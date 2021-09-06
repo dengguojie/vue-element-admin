@@ -15,11 +15,11 @@
  */
 
 /*!
- * \file padd_depthwise_conv2d_fusion_pass.h
- * \brief padd depthwise_conv2d fusion pass
+ * \file pad_depthwise_conv2d_fusion_pass.h
+ * \brief pad depthwise_conv2d fusion pass
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PADD_DEPTHWISE_CONV2D_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PADD_DEPTHWISE_CONV2D_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PAD_DEPTHWISE_CONV2D_FUSION_PASS_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PAD_DEPTHWISE_CONV2D_FUSION_PASS_H_
 
 #include <vector>
 #include <string>
@@ -27,7 +27,7 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class PaddDepthwiseConv2dFusionPass : public PatternFusionBasePass {
+class PadDepthwiseConv2dFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
@@ -36,4 +36,4 @@ class PaddDepthwiseConv2dFusionPass : public PatternFusionBasePass {
   const string FUSED_OP_TYPE = "DepthwiseConv2D";
 };
 }  // namespace fe
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PADD_DEPTHWISE_CONV2D_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PAD_DEPTHWISE_CONV2D_FUSION_PASS_H_

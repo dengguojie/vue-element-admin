@@ -15,12 +15,12 @@
  */
 
 /*!
- * \file padd_depthwise_conv2d_fusion_pass.cpp
- * \brief padd depthwise_conv2d fusion pass
+ * \file pad_depthwise_conv2d_fusion_pass.cpp
+ * \brief pad depthwise_conv2d fusion pass
  */
 #include <memory>
 #include <string>
-#include "padd_depthwise_conv2d_fusion_pass.h"
+#include "pad_depthwise_conv2d_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
@@ -28,23 +28,24 @@
 #include "pattern_fusion_util.h"
 #include "graph/utils/graph_utils.h"
 #include "error_util.h"
+#include "tbe_ops_pass_util.h"
 
 namespace fe {
 
 static const string PATTERN_INPUTS1 = "input1";
-static const string PATTERN_PADD = "padd";
+static const string PATTERN_PADD = "pad";
 static const string PATTERN_DEPTHWISECONV2D = "depthwise_conv2d";
-static const string PADD = "PadD";
+static const string PADD = "Pad";
 static const string PADDINGS = "paddings";
 static const string PADS = "pads";
 static const string PADDING = "padding";
 static const string DEPTHWISECONV2D = "DepthwiseConv2D";
 static const int DIM_NUM4 = 4;
 static const int DIRECTION_COUNT = 2;
-vector<FusionPattern*> PaddDepthwiseConv2dFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PaddDepthwiseConv2dFusionPass pattern begin");
+vector<FusionPattern*> PadDepthwiseConv2dFusionPass::DefinePatterns() {
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass pattern begin");
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("PaddDepthwiseConv2dFusionPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("PadDepthwiseConv2dFusionPass");
 
   FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
@@ -55,16 +56,17 @@ vector<FusionPattern*> PaddDepthwiseConv2dFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_DEPTHWISECONV2D, {PATTERN_PADD, PATTERN_INPUTS1})
       .SetOutput(PATTERN_DEPTHWISECONV2D);
   patterns.push_back(pattern);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PaddDepthwiseConv2dFusionPass pattern end");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass pattern end");
   return patterns;
 }
 
-Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+Status PadDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                              vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PaddDepthwiseConv2dFusionPass fusion begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass fusion begin");
   ge::NodePtr paddNode = GetNodeFromMapping(PATTERN_PADD, mapping);
   FUSION_PASS_CHECK(paddNode == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
                     return PARAM_INVALID);
+  NOT_CHANGED_WITH_DYNAMIC_NODE({paddNode});
 
   ge::NodePtr depthwiseConv2dNode = GetNodeFromMapping(PATTERN_DEPTHWISECONV2D, mapping);
   FUSION_PASS_CHECK(depthwiseConv2dNode == nullptr,
@@ -79,7 +81,7 @@ Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   }
 
   if (paddingMode != "VALID") {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PaddDepthwiseConv2dFusion can only support VALID padding mode.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PadDepthwiseConv2dFusion can only support VALID padding mode.");
     return NOT_CHANGED;
   }
 
@@ -95,9 +97,19 @@ Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                             "Padnode have multiple depthwise_conv2d outputs,"
                             " can not fusion."),
                     return NOT_CHANGED);
+
+  std::vector<int64_t> pad_value;
+  FUSION_PASS_CHECK(!GetIntConstValue(paddNode, "paddings", pad_value),
+                    OP_LOGW(paddNode->GetName().c_str(), "Get const value of paddings failed"),
+  return FAILED);
+
   vector<vector<int64_t>> paddings;
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetListListInt(paddNode->GetOpDesc(), PADDINGS, paddings),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Get paddNode paddings attr failed."), return NOT_CHANGED);
+  for (size_t i = 1; i < pad_value.size(); i += 2) {
+    vector<int64_t> one_value;
+    one_value.push_back(pad_value[i - 1]);
+    one_value.push_back(pad_value[i]);
+    paddings.push_back(one_value);
+  }
 
   if (paddings.size() < DIM_NUM4 || paddings[0].size() < DIRECTION_COUNT || paddings[1].size() < DIRECTION_COUNT ||
       paddings[2].size() < DIRECTION_COUNT || paddings[3].size() < DIRECTION_COUNT) {
@@ -205,8 +217,8 @@ Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                     return FAILED);
   fusionNodes.push_back(depthwiseConv2dNode);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PaddDepthwiseConv2dFusionPass fusion end");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass fusion end");
   return SUCCESS;
 }
-REGISTER_PASS("PaddDepthwiseConv2dFusionPass", BUILT_IN_GRAPH_PASS, PaddDepthwiseConv2dFusionPass);
+REGISTER_PASS("PadDepthwiseConv2dFusionPass", BUILT_IN_GRAPH_PASS, PadDepthwiseConv2dFusionPass);
 }  // namespace fe
