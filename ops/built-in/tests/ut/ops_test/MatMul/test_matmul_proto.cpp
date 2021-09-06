@@ -199,6 +199,16 @@ TEST_F(matmul_infer_test, dynamic_normal) {
   Check(op, {-1, -1}, {{1, 3}, {2, 9}});
 }
 
+TEST_F(matmul_infer_test, dynamic_normal_2) {
+  auto op = CreateMatMulOp(OP_TUPLE{{-2}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           OP_TUPLE{{-2}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {-2}, {});
+}
+
 // cut n in NZ
 TEST_F(matmul_infer_test, split_test0) {
   ge::op::MatMul op;
@@ -315,10 +325,12 @@ TEST_F(matmul_infer_test, supportcheckerror1) {
   op.SetAttr("transpose_x1", transpose_x1);
   op.SetAttr("transpose_x2", transpose_x2);
   op.SetAttr("_fuzz_build", true);
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  EXPECT_EQ(verify_ret, GRAPH_SUCCESS);
+  EXPECT_EQ(infer_ret, GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
   std::vector<std::pair<int64_t,int64_t>> output_range;
@@ -345,7 +357,9 @@ TEST_F(matmul_infer_test, supportcheckerror2) {
   op.SetAttr("transpose_x1", transpose_x1);
   op.SetAttr("transpose_x2", transpose_x2);
   op.SetAttr("_fuzz_build", true);
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
+  auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -370,7 +384,9 @@ TEST_F(matmul_infer_test, supportcheckerror3) {
   op.SetAttr("transpose_x1", transpose_x1);
   op.SetAttr("transpose_x2", transpose_x2);
   op.SetAttr("_fuzz_build", true);
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
+  auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -395,7 +411,9 @@ TEST_F(matmul_infer_test, supportcheckerror4) {
   op.SetAttr("transpose_x1", transpose_x1);
   op.SetAttr("transpose_x2", transpose_x2);
   op.SetAttr("_fuzz_build", true);
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
+  auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
@@ -420,7 +438,9 @@ TEST_F(matmul_infer_test, supportcheckerror5) {
   op.SetAttr("transpose_x1", transpose_x1);
   op.SetAttr("transpose_x2", transpose_x2);
   op.SetAttr("_fuzz_build", true);
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
+  auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
 
   // check result
   EXPECT_EQ(ret, ge::GRAPH_FAILED);

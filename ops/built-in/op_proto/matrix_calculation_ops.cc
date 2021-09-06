@@ -28,6 +28,7 @@
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <array>
 
 #include "util/util.h"
 #include "util/common_shape_fns.h"
@@ -1132,6 +1133,313 @@ graphStatus GetMatMulOutputShape(Operator &op,
   return GRAPH_SUCCESS;
 }
 
+class AdhocInferShapeMatMul {
+ public:
+  AdhocInferShapeMatMul(const AscendString &op_name, 
+                        const vector<int64_t> &shape_a, 
+                        const vector<int64_t> &shape_b,
+                        vector<std::pair<int64_t, int64_t>> &range_a, 
+                        vector<std::pair<int64_t, int64_t>> &range_b,
+                        bool trans_a, 
+                        bool trans_b,
+                        vector<int64_t> &shape_out, 
+                        vector<std::pair<int64_t, int64_t>> &range_out,
+                        bool has_bias=false,
+                        const vector<int64_t> &shape_bias=vector<int64_t> (),
+                        const vector<std::pair<int64_t, int64_t>> &range_bias=vector<std::pair<int64_t, int64_t>> ()) :
+      op_name(op_name),
+      shape_a(shape_a),
+      shape_b(shape_b),
+      range_a(range_a),
+      range_b(range_b),
+      trans_a(trans_a),
+      trans_b(trans_b),
+      shape_out(shape_out),
+      range_out(range_out),
+      has_bias(has_bias),
+      shape_bias(shape_bias),
+      range_bias(range_bias) {}
+
+  ~AdhocInferShapeMatMul() {}
+
+  bool InferShape();
+
+ protected:
+  static const int64_t BASE_LEN = 2;
+
+  bool InitializeShapeAndRange(const vector<int64_t>& shape,
+                              const vector<std::pair<int64_t, int64_t>>& range,
+                              std::array<int64_t, BASE_LEN>& infer_shape,
+                              std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range);
+  bool InferMKN();
+  bool InferBias();
+  void SimplifyShapeAndRange();
+
+  const AscendString& op_name;
+  const vector<int64_t> &shape_a;
+  const vector<int64_t> &shape_b;
+  const vector<int64_t> &shape_bias;
+  vector<std::pair<int64_t, int64_t>> &range_a;
+  vector<std::pair<int64_t, int64_t>> &range_b;
+  const vector<std::pair<int64_t, int64_t>> &range_bias;
+  bool trans_a;
+  bool trans_b;
+  bool has_bias;
+  vector<int64_t> &shape_out;
+  vector<std::pair<int64_t, int64_t>> &range_out;
+
+  std::array<int64_t, BASE_LEN> infer_shape_a;
+  std::array<int64_t, BASE_LEN> infer_shape_b;
+  std::array<std::pair<int64_t, int64_t>, BASE_LEN> infer_range_a;
+  std::array<std::pair<int64_t, int64_t>, BASE_LEN> infer_range_b;
+};
+
+void AdhocInferShapeMatMul::SimplifyShapeAndRange() {
+  if (!IsUnKnownShape(shape_out)) {
+    range_out = {};
+    return;
+  }
+  for (size_t i = 0; i < range_out.size(); i++) {
+    if (range_out[i].first == range_out[i].second) {
+      shape_out[i] = range_out[i].first;
+    }
+
+    // reverse normalize
+    if (range_out[i].second == NORMALIZE_INFINITE_RANGE) {
+      range_out[i] = {range_out[i].first, INFINITE_RANGE};
+    }
+  }
+}
+
+bool AdhocInferShapeMatMul::InferBias() {
+  // 1) shape_bias = {} or {-2}
+  if (shape_bias.empty() || shape_bias == UNKNOWN_RANK) {
+    return true;
+  }
+  // 2) shape_out = {-2}, shape_bias = {-1} or {dim}
+  if (shape_out == UNKNOWN_RANK) {
+    if (shape_bias.back() > 0) {
+      shape_out = {UNKNOWN_DIM, shape_bias.back()};
+      range_out = {FULL_RANGE, {shape_bias.back(), shape_bias.back()}};
+      return true;
+    }
+    if (shape_bias.back() == UNKNOWN_DIM && range_bias.empty()) {
+      return true;
+    }
+    shape_out = {UNKNOWN_DIM, shape_bias.back()};
+    range_out = {FULL_RANGE, range_bias.back()};
+    return true;
+  }
+  // 3) shape_bias = {-1}, n = -1
+  if (shape_bias.back() == UNKNOWN_DIM && shape_out.back() == UNKNOWN_DIM) {
+    // Compatible with old version
+    if (range_bias.empty() || range_bias.back() == FULL_RANGE || range_bias.back() == EMPTY_RANGE) {
+      return true;
+    }
+    auto range_out_upper = range_out.back().second == INFINITE_RANGE ? NORMALIZE_INFINITE_RANGE : range_out.back().second;
+    auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ? NORMALIZE_INFINITE_RANGE : range_bias.back().second;
+    auto lower_bound = std::max(range_out.back().first, range_bias.back().first);
+    auto upper_bound = std::min(range_out_upper, range_bias_upper);
+    if (lower_bound <= upper_bound) {
+      range_out.back() = {lower_bound, upper_bound};
+      return true;
+    }
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] range n(%ld, %ld) and bias(%ld, %ld) must have intersections",
+    range_out.back().first, range_out.back().second, range_bias.back().first, range_bias.back().second);
+    return false;
+  }
+  // 4) shape_bias = {-1}, n > 0
+  if (shape_bias.back() == UNKNOWN_DIM) {
+    if (range_bias.empty()) {
+      return true;
+    }
+    auto range_bias_lower = range_bias.back().first;
+    auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ? NORMALIZE_INFINITE_RANGE : range_bias.back().second;
+    if (range_bias_lower <= shape_out.back() && shape_out.back() <= range_bias_upper) {
+      return true;
+    }
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension n (%ld) must be in range(%ld, %ld)",
+                          shape_out.back(), range_bias_lower, range_bias_upper);
+    return false;
+  }
+  // 5) shape_bias > 0, n = -1
+  if (shape_out.back() == UNKNOWN_DIM) {
+    auto range_out_lower = range_out.back().first;
+    auto range_out_upper = range_out.back().second == INFINITE_RANGE ? NORMALIZE_INFINITE_RANGE : range_out.back().second;
+    if (range_out_lower <= shape_bias.back() && shape_bias.back() <= range_out_upper) {
+      shape_out.back() = shape_bias.back();
+      range_out.back() = {shape_bias.back(), shape_bias.back()};
+      return true;
+    }
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension bias (%ld) must be in range(%ld, %ld)",
+                          shape_bias.back(), range_out_lower, range_out_upper);
+    return false;
+  }
+  // 6) shape_bias > 0, n > 0
+  if (shape_bias.back() != shape_out.back()) {
+    OP_LOGE(op_name.GetString(), "[InferShape] The dimension of n (%lld) and bias (%lld) tensors must be the same", 
+            shape_bias.back(), shape_out.back());
+    return false;
+  }
+
+  return true;
+}
+
+bool AdhocInferShapeMatMul::InferMKN() {
+  int64_t idx_m = trans_a ? 1 : 0;
+  int64_t idx_k_a = trans_a ? 0 : 1;
+  int64_t idx_k_b = trans_b ? 1 : 0;
+  int64_t idx_n_b = trans_b ? 0 : 1;
+
+  auto m = infer_shape_a[idx_m];
+  auto k_a = infer_shape_a[idx_k_a];
+  auto k_b = infer_shape_b[idx_k_b];
+  auto n_b = infer_shape_b[idx_n_b];
+  auto n = n_b;
+  // ka = -1, kb = -1
+  if (k_a == UNKNOWN_DIM && k_b == UNKNOWN_DIM) {
+    auto lower_bound = std::max(infer_range_a[idx_k_a].first, infer_range_b[idx_k_b].first);
+    auto upper_bound = std::min(infer_range_a[idx_k_a].second, infer_range_b[idx_k_b].second);
+    // infer_range_ka & infer_range_kb != NULL
+    if (lower_bound <= upper_bound) {
+      shape_out= {m, n};
+      range_out = {infer_range_a[idx_m], infer_range_b[idx_n_b]};
+      return true;
+    }
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] range k_a(%ld, %ld) and k_b(%ld, %ld) must have intersections",
+    infer_range_a[idx_k_a].first, infer_range_a[idx_k_a].second, infer_range_b[idx_k_b].first, infer_range_b[idx_k_b].second);
+    return false;
+  }
+  // ka = -1, kb != -1
+  if (k_a == UNKNOWN_DIM) {
+    if (infer_range_a[idx_k_a].first <= k_b && k_b <= infer_range_a[idx_k_a].second) {
+      shape_out= {m, n};
+      range_out = {infer_range_a[idx_m], infer_range_b[idx_n_b]};
+      return true;
+    }
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension of k_b (%ld) must be in range(%ld, %ld)",
+                          k_b, infer_range_a[idx_k_a].first, infer_range_a[idx_k_a].second);
+    return false;
+  }
+  // ka != -1, kb = -1
+  if (k_b == UNKNOWN_DIM) {
+    if (infer_range_b[idx_k_b].first <= k_a && k_a <= infer_range_b[idx_k_b].second) {
+      shape_out= {m, n};
+      range_out = {infer_range_a[idx_m], infer_range_b[idx_n_b]};
+      return true;
+    }
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension of k_a (%ld) must be in range(%ld, %ld)",
+                          k_a, infer_range_b[idx_k_b].first, infer_range_b[idx_k_b].second);
+    return false;
+  }
+  // ka != -1, kb != -1
+  if (k_a != k_b) {
+    OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
+    OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same", k_a, k_b);
+    return false;
+  }
+  shape_out= {m, n};
+  range_out = {infer_range_a[idx_m], infer_range_b[idx_n_b]};
+
+  return true;
+}
+
+bool AdhocInferShapeMatMul::InitializeShapeAndRange(const vector<int64_t>& shape,
+                                                    const vector<std::pair<int64_t, int64_t>>& range,
+                                                    std::array<int64_t, BASE_LEN>& infer_shape,
+                                                    std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range) {
+  // Dynamic shape: {-2}
+  // infer_shape: {-1, ..., -1}; infer_range: {{1, MAX}, ..., {1, MAX}}
+  if (shape == UNKNOWN_RANK) {
+    infer_shape = {UNKNOWN_DIM, UNKNOWN_DIM};
+    infer_range = {NORMALIZE_FULL_RANGE, NORMALIZE_FULL_RANGE};
+    return true;
+  }
+  // Dynamic shape: {..., -1, ...}
+  infer_shape = {shape[0], shape[1]};
+  infer_range = {NORMALIZE_FULL_RANGE, NORMALIZE_FULL_RANGE};
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (shape[i] <=0 && shape[i] != -1 ) {
+      // Error
+      return false;
+    }
+    // shape[i] > 0
+    if (shape[i] > 0) {
+      infer_range[i] = {shape[i], shape[i]};
+      continue;
+    }
+    // shape[i] == -1
+    if (range.empty()) {
+      // range {} -> infer_range {1, MAX}
+      infer_range[i] = NORMALIZE_FULL_RANGE;
+      continue;
+    }
+    if (range[i] == EMPTY_RANGE) {
+      // range {0, 0} -> infer_range {1, MAX}
+      infer_range[i] = NORMALIZE_FULL_RANGE;
+    } else if (range[i].second == INFINITE_RANGE) {
+      // range {a, -1} -> infer_range {a, MAX}
+      infer_range[i] = {range[i].first, NORMALIZE_INFINITE_RANGE};
+    } else {
+      // range {a, b} -> infer_range {a, b}
+      infer_range[i] = range[i];
+    }
+  }
+
+  return true;
+}
+
+bool AdhocInferShapeMatMul::InferShape() {
+  // 1) Static shape
+  if (!IsUnknownShape(shape_a) && !IsUnknownShape(shape_b)) {
+
+    int64_t idx_m = trans_a ? 1 : 0;
+    int64_t idx_k_a = trans_a ? 0 : 1;
+    int64_t idx_k_b = trans_b ? 1 : 0;
+    int64_t idx_n = trans_b ? 0 : 1;
+
+    if (shape_a[idx_k_a] != shape_b[idx_k_b]) {
+      OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
+      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same",
+              shape_a[idx_k_a], shape_b[idx_k_b]);
+      return false;
+    }
+    shape_out = {shape_a[idx_m], shape_b[idx_n]};
+    range_out = {};
+    if (has_bias) {
+      CHECK(!InferBias(), OP_LOGE(op_name.GetString(), "Infer bias failed."), return false);
+    }
+    return true;
+  }
+  // 2) Dynamic shape
+  // 2.1) both {-2}
+  if (shape_a == UNKNOWN_RANK && shape_b == UNKNOWN_RANK) {
+    shape_out = UNKNOWN_RANK;
+    range_out = {};
+    OP_LOGW(op_name.GetString(), "[InferShape] cannot derive any shape and range information of output");
+    if (has_bias) {
+      CHECK(!InferBias(), OP_LOGE(op_name.GetString(), "Infer bias failed."), return false);
+    }
+    return true;
+  }
+  // 2.2) {..., -1, ...}, single {-2}
+  // Initialize infer_shape & infer_range
+  CHECK(!InitializeShapeAndRange(shape_a, range_a, infer_shape_a, infer_range_a),
+                                  OP_LOGE(op_name.GetString(), "Initialize infer_shape & infer_range failed."), return false);
+  CHECK(!InitializeShapeAndRange(shape_b, range_b, infer_shape_b, infer_range_b),
+                                  OP_LOGE(op_name.GetString(), "Initialize infer_shape & infer_range failed."), return false);
+  // 3) Infer output shape
+  CHECK(!InferMKN(), OP_LOGE(op_name.GetString(), "Failed to infer output shape."), return false);
+  // 4) InferBias
+  if (has_bias) {
+    CHECK(!InferBias(), OP_LOGE(op_name.GetString(), "Infer bias failed."), return false);
+  }
+  // 5) Postprocess
+  SimplifyShapeAndRange();
+
+  return true;
+}
+
 bool InferMatmulInputNZ(const Operator &op,
                         vector<vector<int64_t>> &output,
                         bool trans_a, bool trans_b) {
@@ -1456,6 +1764,22 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   if (CheckInputDataType(op, "x2", support_list) == false) {
     return GRAPH_FAILED;
   }
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  ge::TensorDesc desc_a = op.GetInputDescByName("x1");
+  ge::TensorDesc desc_b = op.GetInputDescByName("x2");
+  auto shape_a = desc_a.GetShape().GetDims();
+  auto shape_b = desc_b.GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
+  desc_a.GetShapeRange(shape_range_a);
+  desc_b.GetShapeRange(shape_range_b);
+
+  CHECK(!IsRangeValid(shape_a, shape_range_a, opName.GetString(), false), 
+        OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
+  CHECK(!IsRangeValid(shape_b, shape_range_b, opName.GetString(), false), 
+        OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
+
   return GRAPH_SUCCESS;
 }
 
@@ -1463,33 +1787,65 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   auto tensordesc_output = op_desc->MutableOutputDesc("y");
   CHECK_PTR_NULL(tensordesc_output, "tensor output desc", return GRAPH_FAILED);
   auto tensordesc_x1 = op_desc->GetInputDesc("x1");
   auto tensordesc_x2 = op_desc->GetInputDesc("x2");
-
   auto dtype = tensordesc_x1.GetDataType();
 
   OP_LOGD(opName.GetString(), "start judge the dtype for matmul!");
   if (dtype == DT_FLOAT) {
     OP_LOGW(opName.GetString(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
-
   OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "transpose").c_str());
+
+  ge::TensorDesc desc_a = op.GetInputDescByName("x1");
+  ge::TensorDesc desc_b = op.GetInputDescByName("x2");
+  auto shape_a = desc_a.GetShape().GetDims();
+  auto shape_b = desc_b.GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
+  desc_a.GetShapeRange(shape_range_a);
+  desc_b.GetShapeRange(shape_range_b);
+
+  bool trans_a = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
+    OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
+            opName.GetString(), "transpose_x1");
+    return GRAPH_FAILED;
+  }
+  if(shape_a.size() == 1 && shape_a[0] > 0) {
+    shape_a.insert(shape_a.begin(), 1);
+    shape_range_a.insert(shape_range_a.begin(), make_pair<int64_t, int64_t>(1, 1));
+  }
+  if(shape_b.size() == 1 && shape_b[0] > 0) {
+    shape_b.push_back(1);
+    shape_range_b.push_back(make_pair<int64_t, int64_t>(1, 1));
+  }
+  bool trans_b = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", trans_b)) {
+    OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
+            opName.GetString(), "transpose_x2");
+    return GRAPH_FAILED;
+  }
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "transpose", false)) {
-    return GRAPH_FAILED;
-  }
+  AdhocInferShapeMatMul obj(opName, shape_a, shape_b, shape_range_a, shape_range_b,
+                              trans_a, trans_b, shape_out, shape_range_out);
+  CHECK(!obj.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
 
   ge::GeShape shape_out_desc{shape_out};
   tensordesc_output->SetShapeRange(shape_range_out);
   tensordesc_output->SetShape(shape_out_desc);
   tensordesc_output->SetOriginShape(shape_out_desc);
   tensordesc_output->SetDataType(tensordesc_x1.GetDataType());
+
   return GRAPH_SUCCESS;
 }
 
@@ -1529,6 +1885,32 @@ IMPLEMT_VERIFIER(MatMulV2, MatMulV2Verify) {
   if (CheckInputDataType(op, "x2", support_list) == false) {
     return GRAPH_FAILED;
   }
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  ge::TensorDesc desc_a = op.GetInputDescByName("x1");
+  ge::TensorDesc desc_b = op.GetInputDescByName("x2");
+  auto shape_a = desc_a.GetShape().GetDims();
+  auto shape_b = desc_b.GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
+  desc_a.GetShapeRange(shape_range_a);
+  desc_b.GetShapeRange(shape_range_b);
+
+  CHECK(!IsRangeValid(shape_a, shape_range_a, opName.GetString(), false), 
+        OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
+  CHECK(!IsRangeValid(shape_b, shape_range_b, opName.GetString(), false), 
+        OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
+
+  ge::TensorDesc desc_bias;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_bias;
+  vector<int64_t> shape_bias;
+  if (ge::GRAPH_SUCCESS == op.TryGetInputDesc("bias", desc_bias)) {
+    shape_bias = desc_bias.GetShape().GetDims();
+    desc_bias.GetShapeRange(shape_range_bias);
+    CHECK(!IsRangeValid(shape_bias, shape_range_bias, opName.GetString(), false), 
+        OP_LOGE(opName.GetString(), "Precheck bias shape failed."), return GRAPH_FAILED);
+  }
+
   return GRAPH_SUCCESS;
 }
 
@@ -1557,12 +1939,54 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "transpose").c_str());
 
-  std::vector<int64_t> shape_out;
-  std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Check the transpose attr.");
-  if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "transpose", false)) {
+  ge::TensorDesc desc_a = op.GetInputDescByName("x1");
+  ge::TensorDesc desc_b = op.GetInputDescByName("x2");
+  auto shape_a = desc_a.GetShape().GetDims();
+  auto shape_b = desc_b.GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_a;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_b;
+  desc_a.GetShapeRange(shape_range_a);
+  desc_b.GetShapeRange(shape_range_b);
+
+  ge::TensorDesc desc_bias;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_bias;
+  vector<int64_t> shape_bias;
+  bool has_bias = false;
+  if (ge::GRAPH_SUCCESS == op.TryGetInputDesc("bias", desc_bias)) {
+    shape_bias = desc_bias.GetShape().GetDims();
+    desc_bias.GetShapeRange(shape_range_bias);
+    has_bias = true;
+  }
+
+  bool trans_a = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
+    OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
+            opName.GetString(), "transpose_x1");
     return GRAPH_FAILED;
   }
+  if(shape_a.size() == 1 && shape_a[0] > 0) {
+    shape_a.insert(shape_a.begin(), 1);
+    shape_range_a.insert(shape_range_a.begin(), make_pair<int64_t, int64_t>(1, 1));
+  }
+  if(shape_b.size() == 1 && shape_b[0] > 0) {
+    shape_b.push_back(1);
+    shape_range_b.push_back(make_pair<int64_t, int64_t>(1, 1));
+  }
+  bool trans_b = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", trans_b)) {
+    OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
+            opName.GetString(), "transpose_x2");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> shape_out;
+  std::vector<std::pair<int64_t, int64_t>> shape_range_out;
+  AdhocInferShapeMatMul obj(opName, shape_a, shape_b, shape_range_a, shape_range_b,
+              trans_a, trans_b, shape_out, shape_range_out, has_bias, shape_bias, shape_range_bias);
+  CHECK(!obj.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
+
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] The transpose attr is Ok.");
   ge::GeShape shape_out_desc{shape_out};
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start to set output shape.");

@@ -33,6 +33,18 @@ vector<CASE_TUPLE> testcase_matmul = {
                false,
                false,
                RES_TUPLE{{2, 5}, {}, PASS}},
+    CASE_TUPLE{OP_TUPLE{{2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5, 5}, DT_FLOAT16, FORMAT_ND, {}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{}, {}, FAILED}},
+    CASE_TUPLE{OP_TUPLE{{2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{}, {}, FAILED}},
     CASE_TUPLE{OP_TUPLE{{7, 8}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{8, 9}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{2, 17}}}, false, false, RES_TUPLE{{7, 9}, {}, PASS}},
     CASE_TUPLE{OP_TUPLE{{7, 8}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{8, -1}, DT_FLOAT16, FORMAT_ND, {{8, 8}, {4, 33}}},
@@ -62,6 +74,27 @@ vector<CASE_TUPLE> testcase_matmul = {
                false,
                true,
                RES_TUPLE{{7, 9}, {}, PASS}},
+    // intersect k
+    CASE_TUPLE{OP_TUPLE{{7, -1}, DT_FLOAT16, FORMAT_ND, {{7, 7}, {4, 9}}},
+               OP_TUPLE{{9, 10}, DT_FLOAT16, FORMAT_ND, {{9, 9}, {10, 10}}},
+               {},
+               false,
+               true,
+               RES_TUPLE{{}, {}, FAILED}},
+    // intersect k
+    CASE_TUPLE{OP_TUPLE{{7, 7}, DT_FLOAT16, FORMAT_ND, {{7, 7}, {7, 7}}},
+               OP_TUPLE{{9, -1}, DT_FLOAT16, FORMAT_ND, {{9, 9}, {1, 10}}},
+               {},
+               false,
+               true,
+               RES_TUPLE{{7, 9}, {}, PASS}},
+    // intersect k
+    CASE_TUPLE{OP_TUPLE{{7, 12}, DT_FLOAT16, FORMAT_ND, {{7, 7}, {12, 12}}},
+               OP_TUPLE{{9, 10}, DT_FLOAT16, FORMAT_ND, {{9, 9}, {10, 10}}},
+               {},
+               false,
+               true,
+               RES_TUPLE{{}, {}, FAILED}},
     // all -2
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
@@ -78,13 +111,49 @@ vector<CASE_TUPLE> testcase_matmul = {
     CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{4, 80}}}, false, false, RES_TUPLE{{-1, -1}, {{4, 9}, {4, 60}}, PASS}},
+    // intersect n
+    CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
+               OP_TUPLE{{5, 7}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {7, 7}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{14, 80}}}, false, false, RES_TUPLE{{}, {}, FAILED}},
+    // intersect n
+    CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
+               OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{61, 80}}}, false, false, RES_TUPLE{{}, {}, FAILED}},
+    // intersect n
+    CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
+               OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
+               OP_TUPLE{{70}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{}, {}, FAILED}},
+    // intersect n
+    CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
+               OP_TUPLE{{5, 7}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {7, 7}}},
+               OP_TUPLE{{7}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-1, 7}, {{4, 9}, {7, 7}}, PASS}},
+    // intersect n
+    CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
+               OP_TUPLE{{5, 7}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {7, 7}}},
+               OP_TUPLE{{8}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{}, {}, FAILED}},
     // change -1 to fix shape
     CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{1, -1}, {5, 5}}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{5, 5}}}, false, false, RES_TUPLE{{-1, 5}, {{1, -1}, {5, 5}}, PASS}},
+    // change -1 to fix shape
+    CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{1, -1}, {5, 5}}},
+               OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
+               OP_TUPLE{{10}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-1, 10}, {{1, -1}, {10, 10}}, PASS}},
     // all -2
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-2}, {}, PASS}},
+    // all -2
+    CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-2}, {}, PASS}},
+    // all -2
+    CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{1, 10}}}, false, false, RES_TUPLE{{-1, -1}, {{1, -1}, {1, 10}}, PASS}},
+    // all -2
+    CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{6}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-1, 6}, {{1, -1}, {6, 6}}, PASS}},
     /* dts */
     CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{1, 60}, {5, 5}}},
                OP_TUPLE{{6, -1}, DT_FLOAT16, FORMAT_ND, {{6, 6}, {5, 90}}},
@@ -266,11 +335,14 @@ MatMulV2 CreateMatMulV2Op(OP_TUPLE a, OP_TUPLE b, OP_TUPLE bias,
 }
 
 void Operate(MatMulV2& op, bool expected_result) {
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
 
   if (expected_result == PASS) {
-    EXPECT_EQ(ret, GRAPH_SUCCESS);
+    EXPECT_EQ(verify_ret, GRAPH_SUCCESS);
+    EXPECT_EQ(infer_ret, GRAPH_SUCCESS);
   } else {
+    auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
     EXPECT_EQ(ret, GRAPH_FAILED);
   }
 }
