@@ -240,15 +240,15 @@ class NonZero():
 
             tail_offset_gm_scalar = self.tik_instance.Scalar(init_value=0, dtype="int32")
             tail_offset_ub_scalar = self.tik_instance.Scalar(init_value=0, dtype="int32")
-            tail_offset_gm = (burst_ub - 1) * self.ub_minimum_num + tail_n + res_blk_num_cur_core
-            tail_offset_ub = (burst_ub - 1) * self.ub_minimum_num + tail_n
+            tail_offset_gm = burst_ub * self.ub_minimum_num + res_blk_num_cur_core
+            tail_offset_ub = burst_ub * self.ub_minimum_num
             tail_offset_gm_scalar.set_as(tail_offset_gm)
             tail_offset_ub_scalar.set_as(tail_offset_ub)
             with self.tik_instance.if_scope(burst_ub == 0):
                 tail_offset_gm_scalar.set_as(res_blk_num_cur_core)
                 tail_offset_ub_scalar.set_as(0)
             
-            with self.tik_instance.for_range(0, self.ub_minimum_num) as _idx:
+            with self.tik_instance.for_range(0, tail_n) as _idx:
                 row_align_tensor[_idx].set_as(dst_ub_row[tail_offset_ub + _idx])
                 col_align_tensor[_idx].set_as(dst_ub_col[tail_offset_ub + _idx])
             
