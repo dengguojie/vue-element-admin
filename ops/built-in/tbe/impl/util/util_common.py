@@ -127,14 +127,13 @@ def write_code(wkspace_dict, kernel_name):
     """
     fname = tbe_platform.cce_conf.get_kernel_meta_dir() + "/" + kernel_name + ".json"
     fname = os.path.realpath(fname)
-    if fname.startswith(os.getcwd()):
-        if os.path.exists(fname):
-            with open(fname, "r") as f_var:
-                load_dict = json.load(f_var)
-            load_dict.update(wkspace_dict)
-            with open(fname, "w") as f_var:
-                json.dump(load_dict, f_var, sort_keys=True,
-                          indent=4, separators=(',', ':'))
+    if os.path.exists(fname):
+        with open(fname, "r") as f_var:
+            load_dict = json.load(f_var)
+        load_dict.update(wkspace_dict)
+        with open(fname, "w") as f_var:
+            json.dump(load_dict, f_var, sort_keys=True,
+                      indent=4, separators=(',', ':'))
 
 
 def lcm(param1, param2):
