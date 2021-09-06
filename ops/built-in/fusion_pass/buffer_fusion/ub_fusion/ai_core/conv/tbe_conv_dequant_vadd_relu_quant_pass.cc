@@ -27,6 +27,7 @@
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "conv2d_slice_info_cal_base.h"
+#include "common/util/platform_info.h"
 
 using namespace ge;
 
@@ -482,6 +483,17 @@ static void UpdateFusionNodes(vector<ge::NodePtr> &conv_nodes, vector<ge::NodePt
  */
 Status ConvDequantVaddReluQuantFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do ConvDequantVaddReluQuant!");
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS) {
+    OP_LOGW(fused_op_type_.c_str(), "Get platform info failed, not fusion.");
+    return SUCCESS;
+  }
+  if (optionalInfo.soc_version == "Ascend920A") {
+    OP_LOGD(fused_op_type_.c_str(), "Fusion pass not support this soc version[%s].",
+            optionalInfo.soc_version.c_str());
+    return SUCCESS;
+  }
   bool use_common_rules_flag = true;
   vector<ge::NodePtr> eltwise_node = GetMatchedNodesByDescName(kPatternEltwise, mapping);
   if (!eltwise_node.empty()) {
