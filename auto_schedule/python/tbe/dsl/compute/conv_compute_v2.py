@@ -326,7 +326,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                     co1_idx,
                                     co0_idx,
                                     axis_k0]).astype(mad_dtype) +
-                            bias_tensor[(group_idx * co1_opt + co1_idx) * block_n0 + co0_idx],
+                            bias_tensor[0, group_idx * co1_opt + co1_idx, 0, 0, co0_idx],
                             (fmap_im2col[group_idx,
                                          batch_idx,
                                          howo_idx // block_m0,

@@ -16,7 +16,7 @@
 ascend_quant
 """
 import functools
-
+from tbe.common.platform.platform_info import get_soc_spec
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -27,6 +27,21 @@ from impl import ascend_quant_util as util
 
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
+def is_support_v220():
+    """
+    Check if Ascend920A version.
+
+    Returns
+    -------
+    True: Ascend920A version.
+    False: other version.
+    """
+    soc_version = get_soc_spec("SOC_VERSION")
+    if soc_version == "Ascend920":
+        return True
+    return False
+
+
 def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr
@@ -116,6 +131,8 @@ def _reform_compute_generate(tensor, in_shape, out_shape, val_info, nz_format_fl
             else:
                 new_indice[i] = indice[i]
 
+        if val_info is None:
+            return tensor(*new_indice)
         if val_info[0]:
             return tensor(*new_indice) + val_info[1]
 
@@ -346,6 +363,28 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     -------
     None
     """
+    if is_support_v220() and x.op.name == "res_conv2d":
+        scale_exp = tvm.const(scale, "float32")
+        offset_exp = tvm.const(offset, "float32")
+
+        ni, ci1, hiwi, ci0 = (i.value for i in x.shape)
+        dst_type = 2
+        align_num = 2 if dst_type == 2 else 4
+        ci1_align = (ci1 + align_num - 1) // align_num
+
+        input_shape = ni, ci1, hiwi, ci0
+        output_shape = ni, ci1_align, hiwi, ci0*align_num
+
+        reform_x = tvm.compute(output_shape,
+                               _reform_compute_generate(x, input_shape, output_shape, None, False),
+                               name='reform_input')
+        res = tvm.compute(
+            output_shape,
+            lambda *indice:
+            tvm.quant_cast(reform_x(*indice), scale_exp, offset_exp, _dst_type_conversion(dst_type=2)),
+            name='res_quant')
+        return res
+
     x_dtype = x.dtype
     in_shape, l1_fusion_flag = _get_input_l1_info(x)
     y_addr_type = _get_out_l1_info(y)

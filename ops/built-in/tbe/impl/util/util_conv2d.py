@@ -8,12 +8,14 @@ provide common function used by conv2d
 """
 
 import math
+from impl.util import util_select_op_base
 import json
 from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+
 
 PAD_SHAPE_DIM = 2
 # fmapH, fmapW must be in [1,4096]
@@ -640,6 +642,7 @@ def use_v200_c04_check(shape_fm, shape_filter, params):
         use_v200_c04_flg = True
     return use_v200_c04_flg
 
+
 def check_soc_and_dtype(op_params):
     """
     simply check op support version and input dtype
@@ -732,3 +735,102 @@ def get_op_support_info_static_common(bias, bias_idx):
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
 
     return slice_info
+
+
+def v220_gen_param(inputs, weights, shape_fm, c0_optim_flag):
+    """
+    Gen op info in v220 situation.
+    """
+    if not inputs.get("is_first_layer"):
+        c0_optim_flag = False
+
+    if c0_optim_flag:
+        if inputs.get("is_first_layer"):
+            # first layer c04 (only set when aipp + conv2d).
+            dtype_dict = {
+                "input0": "float16", # fmap
+                "input1": "float16", # weight
+                "input2": "float32", # bias
+                "input3": "int8", # offset_w
+                "output0": "float16", # y
+            }
+            format_dict = {
+                "input0": "NC1HWC0_C04", # fmap
+                "input1": "FRACTAL_Z_C04", # weight
+                "input2": "NC1HWC0", # bias
+                "input3": "ND", # offset_w
+                "output0": "NC1HWC0", # y
+            }
+        else:
+            # not first layer c04
+            dtype_dict = {
+                "input0": "float16,float32,int8", # fmap
+                "input1": "float16,float32,int8", # weight
+                "input2": "float32,float32,int32", # bias
+                "input3": "int8,int8,int8", # offset_w
+                "output0": "float16,float32,int32", # y
+            }
+            format_dict = {
+                "input0": "NC1HWC0,NC1HWC0,NC1HWC0", # fmap
+                "input1": "FRACTAL_Z_C04,FRACTAL_Z_C04,FRACTAL_Z_C04", # weight
+                "input2": "NC1HWC0,NC1HWC0,NC1HWC0", # bias
+                "input3": "ND,ND,ND", # offset_w
+                "output0": "NC1HWC0,NC1HWC0,NC1HWC0", # y
+            }
+    else:
+        dtype_dict = {
+            "input0": "float16,bfloat16,float32,int8", # fmap
+            "input1": "float16,bfloat16,float32,int8", # weight
+            "input2": "float32,float32,float32,int32", # bias
+            "input3": "int8,int8,int8,int8", # offset_w
+            "output0": "float16,bfloat16,float32,int32", # y
+        }
+        format_dict = {
+            "input0": "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0", # fmap
+            "input1": "FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z", # weight
+            "input2": "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0", # bias
+            "input3": "ND,ND,ND,ND", # offset_w
+            "output0": "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0", # y
+        }
+
+    # only dynamic_hw or dynamic_batch is supported by dynamic conv2d.
+    dynamic_flag = (shape_fm == (-2,)) or (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
+        (shape_fm[2] == -1 and shape_fm[3] == -1 and -1 not in shape_fm[:2])
+
+    if not c0_optim_flag and dynamic_flag:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype=dtype_dict["input0"],
+                                               format=format_dict["input0"],
+                                               unknownshape_format=format_dict["input0"])
+        input1 = util_select_op_base.gen_param(classify="input1", name="filter",
+                                               datatype=dtype_dict["input1"],
+                                               format=format_dict["input1"],
+                                               unknownshape_format=format_dict["input1"])
+        input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                               datatype=dtype_dict["input2"],
+                                               format=format_dict["input2"])
+        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                               datatype=dtype_dict["input3"],
+                                               format=format_dict["input3"])
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype=dtype_dict["output0"],
+                                                format=format_dict["output0"],
+                                                unknownshape_format=format_dict["output0"])
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype=dtype_dict["input0"],
+                                               format=format_dict["input0"])
+        input1 = util_select_op_base.gen_param(classify="input1", name="filter",
+                                               datatype=dtype_dict["input1"],
+                                               format=format_dict["input1"])
+        input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                               datatype=dtype_dict["input2"],
+                                               format=format_dict["input2"])
+        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                               datatype=dtype_dict["input3"],
+                                               format=format_dict["input3"])
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype=dtype_dict["output0"],
+                                                format=format_dict["output0"])
+
+    return [input0, input1, input2, input3, output0]

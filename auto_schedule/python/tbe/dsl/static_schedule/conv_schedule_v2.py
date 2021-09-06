@@ -168,6 +168,7 @@ class FixpipeFusion:
 class InputNd2Nz:
     """
     Class of input nd2nz.
+    Transform the fmap of NHWC format in ddr to the fmap_l1 of 5hd format in L1.
     """
     def __init__(self, conv_param):
         self.flag = conv_param.input_nd_flag
@@ -200,6 +201,7 @@ class InputNd2Nz:
 class WeightNd2Nz:
     """
     Class of weight nd2nz.
+    Transform the weight of NHWC format in ddr to the weight_l1 of fracZ format in L1.
     """
     def __init__(self, conv_param):
         self.flag = conv_param.weight_nd_flag
@@ -224,6 +226,7 @@ class WeightNd2Nz:
 class OutputNz2Nd:
     """
     Class of output nz2nd.
+    Transform the output of 5hd format in L0C to the output of NHWC format in DDR.
     """
     def __init__(self, res):
         self.flag = res.op.tag == "5HD_trans_NHWC"
@@ -809,7 +812,6 @@ class Conv2dSchedule:
         if self._aipp_fusion.flag:
             self._fmap_dtype = "float16"
 
-
     def fetch_info_dict(self, tiling_case):
         """
         Fetch the info_dict to get tiling.
@@ -850,6 +852,7 @@ class Conv2dSchedule:
                      "fusion_type": self._fusion_type,
                      "kernel_name": conv_param.kernel_name,
                      "special_mode": {"use_c04_mode": 2 if self._c04.flag else 0, # 3 for v220 c04
+                                      # disable strideh opti when input nd2nz.
                                       "input_nd_flag": self._input_nd2nz.flag},
                      "placeholder_fmap_5hd_shape": list(self._dim_map["fmap_5hd_shape"]),
                      #=============to be deleted====================
@@ -859,7 +862,6 @@ class Conv2dSchedule:
                      "pooling_stride": [0, 0],
                      }
         return info_dict
-
 
     def fetch_tiling(self, info_dict, tiling_case):
         """
@@ -924,7 +926,6 @@ class Conv2dSchedule:
             self._tiling = self._dynamic_shape.fetch_tiling_case()
         else:
             self._tiling = get_v220_tiling(info_dict)
-
 
     def verify_tiling(self):
         """
@@ -997,7 +998,6 @@ class Conv2dSchedule:
         #==================modify tiling to be deleted=========================
         modify_bl0_tiling()
         modify_bl1_tiling()
-
 
     def config_scope(self):
         """
@@ -1112,7 +1112,6 @@ class Conv2dSchedule:
                         "bias_l1": bias_l1, "bias_bt": bias_bt}
         return tensor_param
 
-
     def special_process_pre(self, tensor_param):
         """
         Special process before tiling is parsed.
@@ -1169,7 +1168,6 @@ class Conv2dSchedule:
         # dynamic shape
         self._dynamic_shape.handle_var_range(sch)
         self._dynamic_shape.disable_memory_reuse(sch, tensor_param)
-
 
     def tile_attach_tensor(self, res, tensor_param):
         """
@@ -1660,7 +1658,6 @@ class Conv2dSchedule:
 
         return tiling_param, emit_insn_dict
 
-
     def special_process_post(self, res, conv_param, tensor_param, tiling_param, emit_insn_dict):
         """
         Special process before tiling is parsed.
@@ -1699,7 +1696,6 @@ class Conv2dSchedule:
         self._dynamic_shape.set_cl0_bound(sch, cl0, cl0_tiling)
         self._dynamic_shape.res_hw_dynamic_pragma(sch, res, res_pragma_axis)
 
-
     def double_buffer(self, tensor_param):
         """
         Enable pingpong buffer.
@@ -1727,7 +1723,6 @@ class Conv2dSchedule:
         for key, value in pingpong_buffer.items():
             if value == 2 and pingpong_map[key] is not None:
                 self._sch[pingpong_map[key]].double_buffer()
-
 
     def map_insn(self, res, tensor_param, tiling_param, emit_insn_dict):
         """
