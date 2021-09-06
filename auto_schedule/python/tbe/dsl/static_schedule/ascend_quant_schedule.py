@@ -440,7 +440,7 @@ def ascend_quant_schedule(res, input_tensors):
     sch = tvm.create_schedule(res.op)
     tensor_map = {}
     is_fuse_flag = _get_tensor_map(res, tensor_map)
-    if is_fuse_flag:
+    if is_fuse_flag or get_soc_spec(SOC_VERSION) in ("Ascend920","Ascend920A"):
         schedule = QuantSchedule()
         schedule.do_schedule([res], [sch], [])
     else:

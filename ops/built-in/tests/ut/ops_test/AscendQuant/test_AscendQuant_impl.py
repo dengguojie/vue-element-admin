@@ -56,6 +56,17 @@ case7 = {"params": [{"shape": (10,21,40,40,16), "dtype": "float16", "format": "N
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+
+def test_ascend_quant_920(test_arg):
+    from te import platform as cce_conf
+    from impl.ascend_quant import ascend_quant
+    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
+    ascend_quant({"shape": (2,1,1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2,4,4),"ori_format": "ND"},
+                 {"shape": (2,1,1,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (2,4,4),"ori_format": "ND"},
+                 2.0, 0.0, False, "Round")
+    cce_conf.cce_conf.te_set_version(test_arg)
+ut_case.add_cust_test_func(test_func=test_ascend_quant_920)
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
