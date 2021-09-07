@@ -30,7 +30,7 @@ class SoftmaxFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
  private:
   Status UpdateFormat(ge::NodePtr& inNodePtr);
-  bool CheckISUsePattern(int64_t inputH, int64_t inputW, int64_t inputC);
+  bool CheckISUsePattern(vector<int64_t>& dimInfo);
   const string FUSED_OP_TYPE = "TransposeD_SoftmaxV2";
 };
 
