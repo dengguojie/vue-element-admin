@@ -37,5 +37,83 @@
                 "type": "string"
             }
         ]
+    },
+    {
+        "op": "MirrorPad",
+        "case_name": "test_mirror_pad_net_001",
+        "calc_expect_func_file": "test_mirror_pad_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [1, 64, 64, 256],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "int32",
+                "value_range": [[0, 100]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [4,2],
+                "type": "int32",
+                "value": [[0,0],[1,1],[1,1],[0,0]],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [1, 66, 66, 256],
+                "type": "int32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "REFLECT",
+                "type": "string"
+            }
+        ]
+    },
+    {
+        "op": "MirrorPad",
+        "case_name": "test_mirror_pad_net_002",
+        "calc_expect_func_file": "test_mirror_pad_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [1, 256, 256, 64],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "int32",
+                "value_range": [[0, 100]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [4,2],
+                "type": "int32",
+                "value": [[0,0],[2,2],[2,2],[0,0]],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [1, 260, 260, 64],
+                "type": "int32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "SYMMETRIC",
+                "type": "string"
+            }
+        ]
     }
 ]

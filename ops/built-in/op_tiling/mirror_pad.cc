@@ -29,10 +29,12 @@
 #include "error_log.h"
 
 namespace optiling {
-
+// Mode0 support all case divide [0,1,2,3] and [4]
 const int64_t TILING_MODE_0 = 0;
-
+// Mode1 divide [0,1,2] and [3,4]
 const int64_t TILING_MODE_1 = 1;
+// Mode2 support net case better perf
+const int64_t TILING_MODE_2 = 2;
 
 const int64_t MAX_AXIS = 5;
 
@@ -236,6 +238,14 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
   bool padding31_addressrollback =
       (tiling_params.tiling_padding_31 * output_dim_4 < 16) && tiling_params.tiling_padding_31 != 0;
 
+  // network case tiling mode
+  if (output_dim_4 % BLOCK_NUM == 0 && output_dim_4 == tiling_params.tiling_input_dim_4) {
+    tiling_params.tiling_key = TILING_MODE_2;
+    tiling_params.num_per_core = (outer_num_mode_0 + compile_params.core_num - 1) / compile_params.core_num;
+    tiling_params.core_used_num = (outer_num_mode_0 + tiling_params.num_per_core - 1) / tiling_params.num_per_core;
+    tiling_params.num_tail_core = outer_num_mode_0 - (tiling_params.num_per_core * (tiling_params.core_used_num - 1));
+    return true;
+  }
   if (inner_num < BLOCK_NUM || input_dim3_addressrollback || padding31_addressrollback) {
     tiling_params.tiling_key = TILING_MODE_1;
     tiling_params.core_used_num = 1;
