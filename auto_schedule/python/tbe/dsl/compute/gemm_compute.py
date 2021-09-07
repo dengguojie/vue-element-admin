@@ -591,6 +591,29 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
         "1908_114_16_16_64_1908_16_16_float16",
         "1908_114_16_16_64_114_16_16_float16"
     ]
+
+    black_list_910 = {
+        "Ascend910A": [],
+        "Ascend910ProA": [
+            # FusionOp_MatMul_Mul
+            "64_768_16_16_256_768_16_16_float16",
+            "256_768_16_16_64_768_16_16_float16",
+            # FusionOp_MatMul_AddN
+            "256_768_16_16_64_256_16_16_float16",
+            "64_768_16_16_64_64_16_16_float16"
+        ],
+        "Ascend910PremiumA": [
+            # FusionOp_MatMul_Mul
+            "64_768_16_16_256_768_16_16_float16",
+            "256_768_16_16_64_768_16_16_float16",
+            # FusionOp_MatMul_AddN
+            "256_768_16_16_64_256_16_16_float16",
+            "64_768_16_16_64_64_16_16_float16"
+        ]
+    }
+    soc_version = tbe_platform.get_soc_spec("FULL_SOC_VERSION")
+    if soc_version == "Ascend910":
+        soc_version = "Ascend910A"
     shape_a = [str(x.value) for x in tensor_a.shape]
     shape_b = [str(x.value) for x in tensor_b.shape]
     info_list = shape_a + shape_b
@@ -601,6 +624,8 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
     if info_str in black_list_fc and kernel_name.find("fully_connection") != -1:
         use_old_code = True
     if info_str in black_list_1980:
+        use_old_code = True
+    if info_str in black_list_910.get(soc_version, []):
         use_old_code = True
     # ACL_BERTBASE excute fail
     if kernel_name.find("gelu") != -1 and kernel_name.find("batch_matmul") == -1:
