@@ -225,3 +225,227 @@ TEST_F(DeConvlutionTiling, DeConvlution_tiling_fuzz_build_list_input) {
   EXPECT_EQ(runInfo.GetTilingKey(), 0);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
 }
+
+TEST_F(DeConvlutionTiling, DeConvlution_tiling_compile_info_no_block_dim) {
+  using namespace optiling;
+  std::string op_name = "Deconvolution";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "tiling_range": {"10000":[1,4]}, "correct_range_flag": false, "_vars": {"10000": ["batch_n"]}})";
+
+  ge::Graph graph("DeConvlution_tiling_compile_info_no_block_dim");
+
+  auto x_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x").set_attr_index(1);
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto deconvolution = op::Deconvolution(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  deconvolution.update_input_desc_x(desc_x);
+  deconvolution.update_input_desc_filter(desc_filter);
+  deconvolution.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{deconvolution};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("DeConvlution_tiling_compile_info_no_block_dim", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(deconvolution, op_compile_info, runInfo));
+}
+
+TEST_F(DeConvlutionTiling, DeConvlution_tiling_dynamic_n_no_tiling_range) {
+  using namespace optiling;
+  std::string op_name = "Deconvolution";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "block_dim": {"10000": 2}, "correct_range_flag": false, "_vars": {"10000": ["batch_n"]}})";
+
+  ge::Graph graph("DeConvlution_tiling_dynamic_n_no_tiling_range");
+
+  auto x_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x").set_attr_index(1);
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto deconvolution = op::Deconvolution(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  deconvolution.update_input_desc_x(desc_x);
+  deconvolution.update_input_desc_filter(desc_filter);
+  deconvolution.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{deconvolution};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("DeConvlution_tiling_dynamic_n_no_tiling_range", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(deconvolution, op_compile_info, runInfo));
+}
+
+TEST_F(DeConvlutionTiling, DeConvlution_tiling_dynamic_hw_no_cost_range) {
+  using namespace optiling;
+  std::string op_name = "Deconvolution";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
+  
+  ge::Graph graph("DeConvlution_tiling_dynamic_hw_no_cost_range");
+
+  auto x_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x").set_attr_index(1);
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto deconvolution = op::Deconvolution(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  deconvolution.update_input_desc_x(desc_x);
+  deconvolution.update_input_desc_filter(desc_filter);
+  deconvolution.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{deconvolution};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("DeConvlution_tiling_dynamic_hw_no_cost_range", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(deconvolution, op_compile_info, runInfo));
+}
+
+TEST_F(DeConvlutionTiling, DeConvlution_tiling_dynamic_nhw_repo_range_no_contain_shape) {
+  using namespace optiling;
+  std::string op_name = "Deconvolution";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {"10000": [8, 8]}, "repo_range": {"10000": [8, 8, 8, 8, 8, 8]}, "cost_range": {"10001": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2, "10001": 2}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"], "10001": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
+  ge::Graph graph("DeConvlution_tiling_dynamic_nhw_repo_range_no_contain_shape");
+
+  auto x_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x").set_attr_index(1);
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto deconvolution = op::Deconvolution(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  deconvolution.update_input_desc_x(desc_x);
+  deconvolution.update_input_desc_filter(desc_filter);
+  deconvolution.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{deconvolution};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("DeConvlution_tiling_dynamic_nhw_repo_range_no_contain_shape", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(deconvolution, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 2);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
+}
+
+TEST_F(DeConvlutionTiling, DeConvlution_tiling_dynamic_nhw_repo_range_no_contain_shape_1) {
+  using namespace optiling;
+  std::string op_name = "Deconvolution";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {"10000": [8, 8]}, "repo_range": {"10000": []}, "cost_range": {"10001": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2, "10001": 2}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"], "10001": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
+  ge::Graph graph("DeConvlution_tiling_dynamic_nhw_repo_range_no_contain_shape_1");
+
+  auto x_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x").set_attr_index(1);
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto deconvolution = op::Deconvolution(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  deconvolution.update_input_desc_x(desc_x);
+  deconvolution.update_input_desc_filter(desc_filter);
+  deconvolution.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{deconvolution};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("DeConvlution_tiling_dynamic_nhw_repo_range_no_contain_shape_1", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(deconvolution, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 2);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
+}
