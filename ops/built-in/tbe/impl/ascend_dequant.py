@@ -162,6 +162,8 @@ def _matmul_compute(x, x_shape, deq_scale, sqrt_mode, relu_flag, shape_matmul_or
         # nz format
         res_out = tvm.compute(x_shape, lambda *i: res_f16[i], name="dequant_NZ", tag="dequant_NZ",
                               attrs={"format": "FRACTAL_NZ"})
+    if "ori_shape" in x.op.attrs:
+        res_out.op.attrs["ori_shape"] = x.op.attrs["ori_shape"]
     return res_out
 
 

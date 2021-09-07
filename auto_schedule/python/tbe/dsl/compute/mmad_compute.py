@@ -4216,7 +4216,7 @@ class MatMulCompute:
                 temp_tensor_b.shape,
                 lambda *indices: temp_tensor_b(*indices),
                 name="tensor_b_matrix",
-                attrs={"transpose_b": "false"}
+                attrs={"transpose_b": "true"}
             )
         elif self.src_dtype in ["float16", "bfloat16"] or (self.src_dtype == "int8" and self.trans_b):
             b_matrix_shape = [kn_shape, n_shape, block_out, block_reduce]
@@ -4387,6 +4387,8 @@ class MatMulCompute:
             # [(batch), N, K, 16, 16/32] or [(batch), K, N, 16, 16/32]
             self.kn_shape = self.tensor_b.shape[-3].value if self.trans_b else self.tensor_b.shape[-4].value
             self.n_shape = self.tensor_b.shape[-4].value if self.trans_b else self.tensor_b.shape[-3].value
+            origin_shape = self.tensor_b.op.attrs["ori_shape"]
+            self.origin_n_shape = origin_shape[-2] if self.trans_b else origin_shape[-1]
         else:
             # [(batch), K, N] or [(batch), N, K]
             self.kn_shape = self.tensor_b.shape[-1].value if self.trans_b else self.tensor_b.shape[-2].value

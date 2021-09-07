@@ -123,7 +123,7 @@ class FusionType(Enum):
     REDUCE_FUSION = 2
     DEQUANT = 3
     REQUANT = 4
-    TRANSDADA = 5
+    TRANSDATA = 5
 
 
 class GEMM_Schedule:
@@ -2088,7 +2088,7 @@ class GEMM_Schedule:
         elif "requant" in res.op.tag:
             self.gemm_params.fusion_type = FusionType.REQUANT
         elif "Nz_trans_ND" in res.op.attrs:
-            self.gemm_params.fusion_type = FusionType.TRANSDADA
+            self.gemm_params.fusion_type = FusionType.TRANSDATA
 
         for tensor in all_tensor.values():
             if "ND_trans_Nz" in tensor.op.attrs:
@@ -2127,15 +2127,18 @@ class GEMM_Schedule:
         if self.gemm_params.fusion_type != FusionType.DEFAULT_MODE:
             self.gemm_params.TENSOR_MAP["matmul_c_gm"] = all_tensor.get("tensor_c_gm")
             sch[self.gemm_params.TENSOR_MAP["matmul_c_gm"]].compute_inline()
-            if self.gemm_params.fusion_type == FusionType.DEQUANT:
+            if all_tensor.get("dequant") is not None:
                 self.gemm_params.TENSOR_MAP["quant"] = all_tensor.get("dequant")
-            if self.gemm_params.fusion_type == FusionType.REQUANT:
+                self.gemm_params.TENSOR_MAP["deq"] = all_tensor.get("dequant").op.input_tensors[1]
+                sch[all_tensor.get("dequant")].compute_inline()
+            if all_tensor.get("s32_to_s8") is not None:
                 self.gemm_params.TENSOR_MAP["quant"] = all_tensor.get("s32_to_s8")
-                self.gemm_params.TENSOR_MAP["data_transfer"] = all_tensor.get("data_transfer")
-                sch[self.gemm_params.TENSOR_MAP["data_transfer"]].compute_inline()
-            if self.gemm_params.TENSOR_MAP.get("quant") is not None:
-                self.gemm_params.TENSOR_MAP["deq"] = self.gemm_params.TENSOR_MAP["quant"].op.input_tensors[1]
-                sch[self.gemm_params.TENSOR_MAP["quant"]].compute_inline()
+                self.gemm_params.TENSOR_MAP["deq"] = all_tensor.get("s32_to_s8").op.input_tensors[1]
+                sch[all_tensor.get("s32_to_s8")].compute_inline()
+            if all_tensor.get("data_transfer") is not None:
+                sch[all_tensor.get("data_transfer")].compute_inline()
+            if self.gemm_params.fusion_type == FusionType.TRANSDATA:
+                sch[res.op.input_tensors[0]].compute_inline()
 
         self._get_ops_mode()
         _init_map()
@@ -3430,7 +3433,7 @@ class GEMM_Schedule:
                     sch_agent[c_ub_temp].reorder(outer1, outer2, inner1, inner2)
                     sch_agent[c_ub_temp].emit_insn(inner1, "vector_add")
 
-                if self.gemm_params.fusion_type == FusionType.TRANSDADA:
+                if self.gemm_params.fusion_type == FusionType.TRANSDATA:
                     dma_dict = {"layout_transform": "nz2nd"}
                     sch_agent[c_gm].emit_insn(scope_c, "dma_copy", dma_dict)
                 else:
@@ -3457,7 +3460,6 @@ class GEMM_Schedule:
                     sch_agent[b_transpose_zero].emit_insn(
                         sch_agent[b_transpose_zero].op.axis[0], "dma_copy"
                     )
-
 
             def _slove_bank_conflict():
                 """slove bank conflict by storage_align
@@ -3509,7 +3511,6 @@ class GEMM_Schedule:
                 if c_ub_storage_align:
                     sch[c_before_mul_ub].storage_align(c_before_mul_ub.op.axis[1], c_gap_value, 0)
                     sch[alpha_c_ub].storage_align(alpha_c_ub.op.axis[1], c_gap_value, 0)
-
 
             def _check_exceed_ub(a_trans, b_trans):
                 """
@@ -3579,7 +3580,6 @@ class GEMM_Schedule:
                     b_ub_storage_align = True
 
                 return a_ub_storage_align, b_ub_storage_align, c_ub_storage_align
-
 
             def _emit_insn_int8int32():
                 if self.gemm_params.cube_vector_split:
@@ -3682,6 +3682,33 @@ class GEMM_Schedule:
 
                 return tiling
 
+            def _buffer_table_bias_process():
+                fix_pipe_bias = self.gemm_params.TENSOR_MAP["fix_pipe_bias"]
+                bias_l1 = sch.cache_read(fix_pipe_bias, tbe_platform_info.scope_cbuf, [c_l0c])
+                bias_bt = sch.cache_read(bias_l1, "local.BT", [c_l0c])
+                sch_agent.same_attach(bias_bt, b_l0b)
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
+                n1_shape = b_l0b.shape[-3].value
+                if tiling.get("BL1_shape") != [] and bl1_tiling_n * cl0_tiling_n0 < n1_shape:
+                    sch_agent.same_attach(bias_l1, b_l0b)
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
+
+            def _fix_pipe_deq_process():
+                deq = self.gemm_params.TENSOR_MAP.get("deq")
+                deq_ori_shape = list(i.value for i in deq.op.attrs["ori_shape"])
+                deq_dims = reduce(lambda x, y: x * y, deq_ori_shape[:])
+                if deq_dims == 1:
+                    return
+                quant = self.gemm_params.TENSOR_MAP.get("quant")
+                deq_l1 = sch.cache_read(deq, tbe_platform_info.scope_cbuf, [quant])
+                deq_fb = sch.cache_read(deq_l1, "local.FB0", [quant])
+                sch_agent.same_attach(deq_fb, c_l0c)
+                sch[deq_fb].emit_insn(deq_fb.op.axis[0], "dma_copy")
+                n1_shape = b_l0b.shape[-3].value
+                if tiling.get("BL1_shape") != [] and bl1_tiling_n * cl0_tiling_n0 < n1_shape:
+                    sch_agent.same_attach(deq_l1, c_l0c)
+                sch[deq_l1].emit_insn(deq_l1.op.axis[0], "dma_copy")
+
             # -------------------------------------boost_schedule_kit end------#
 
             tiling = self._get_tiling_result_nd(kernel_name)
@@ -3736,6 +3763,10 @@ class GEMM_Schedule:
             _l0b_process()
             _do_l1_ub_process()
             _do_padding_ub_process()
+            if self.gemm_params.TENSOR_MAP.get("fix_pipe_bias") is not None:
+                _buffer_table_bias_process()
+            if self.gemm_params.TENSOR_MAP.get("deq") is not None:
+                _fix_pipe_deq_process()
             _buffer_align()
             _double_buffer()
 
@@ -3879,6 +3910,10 @@ class GEMM_Schedule:
 
             def _fix_pipe_deq_process():
                 deq = self.gemm_params.TENSOR_MAP.get("deq")
+                deq_ori_shape = list(i.value for i in deq.op.attrs["ori_shape"])
+                deq_dims = reduce(lambda x, y: x * y, deq_ori_shape[:])
+                if deq_dims == 1:
+                    return
                 quant = self.gemm_params.TENSOR_MAP.get("quant")
                 deq_l1 = sch.cache_read(deq, tbe_platform_info.scope_cbuf, [quant])
                 deq_fb = sch.cache_read(deq_l1, "local.FB0", [quant])
@@ -3889,7 +3924,6 @@ class GEMM_Schedule:
                 else:
                     sch[deq_l1].compute_at(sch[c_gm], c_slice_axis)
                 sch[deq_l1].emit_insn(deq_l1.op.axis[0], "dma_copy")
-                
 
             def _attach_ub(sch, c_gm, at_axis):
                 """

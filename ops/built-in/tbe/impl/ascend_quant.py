@@ -26,6 +26,16 @@ from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
 
 
+def _is_lhisi_version():
+    """
+    check is Lhisi version
+    """
+    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        return True
+    return False
+
+
 # pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
 def is_support_v220():
     """
@@ -58,7 +68,7 @@ def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_n
 
     para_check.check_shape(shape, param_name="x")
 
-    if tbe_platform.cce_conf.is_lhisi_version():
+    if _is_lhisi_version():
         check_list = ["float16"]
     else:
         check_list = ["float16", "float32"]
