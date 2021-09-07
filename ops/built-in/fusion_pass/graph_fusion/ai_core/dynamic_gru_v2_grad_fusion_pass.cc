@@ -1519,7 +1519,7 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     fusion_reduce = true;
   }
   if (PatternFusionUtil::IsUnknownShape(batch) ||
-      PatternFusionUtil::IsUnknownShape(hidden_dim) ||
+      PatternFusionUtil::IsUnknownShape(hidden_dim) || PatternFusionUtil::IsUnknownShape(t_size) ||
       PatternFusionUtil::IsUnknownShape(input_dim)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DynamicGRUV2GradFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;

@@ -57,6 +57,7 @@ set(_optiling_files
   cube_tiling.cc
   cube_tiling_new.cc
   dynamic_lstm_grad_cell.cc
+  dynamic_gru_cell_grad.cc
   deconvolution.cc
   dynamic_atomic_addr_clean.cc
   dynamic_rnn_v2.cc

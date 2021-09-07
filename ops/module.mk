@@ -421,6 +421,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/lock.cc \
         built-in/op_tiling/flatten.cc \
         built-in/op_tiling/nll_loss_grad.cc \
+        built-in/op_tiling/dynamic_gru_cell_grad.cc \
 
 LOCAL_C_INCLUDES := \
         $(LOCAL_PATH)/built-in/op_proto/util \

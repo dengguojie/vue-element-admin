@@ -1050,6 +1050,50 @@ REG_OP(GRUV2HiddenGradCell)
     .OP_END_FACTORY_REG(GRUV2HiddenGradCell)
 
 /**
+*@brief: DynamicGRUCellGrad calculation.
+*@par Inputs:
+*ten inputs: \n
+*@li dh_pre_t:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li dy:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li dh:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li update:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li reset:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li new:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li hidden_new:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.+
+*@li init_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li t_state:A 1D Tensor. Must be one of the following types: int32. The format must be ND.
+
+*@par Attributes:
+*gate_order:An string identifying the gate order in weight and bias. Default to "zrh". "rzh" is another option.
+
+*@par Outputs:
+*three outputs: \n
+*@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li dgate_h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li dnt_x:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(DynamicGRUCellGrad)
+    .INPUT(dh_pre_t, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(h, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(dh, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(update, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(reset, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(new, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(hidden_new, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(t_state, TensorType({DT_INT32, DT_INT32}))
+    .OUTPUT(dh_prev, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dgate_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dnt_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(gate_order, String, "zrh")
+    .OP_END_FACTORY_REG(DynamicGRUCellGrad)
+
+/**
 * @brief Calculates the reversed outputs of the function "embedding". \n
 
 * @par Inputs:

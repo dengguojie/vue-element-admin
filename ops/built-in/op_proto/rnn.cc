@@ -263,6 +263,53 @@ IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
 INFER_FUNC_REG(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape);
 VERIFY_FUNC_REG(DynamicLSTMGradCell, DynamicLSTMGradCellVerify);
 
+IMPLEMT_VERIFIER(DynamicGRUCellGrad, DynamicGRUCellGradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicGRUCellGrad, DynamicGRUCellGradInferShape) {
+  ge::TensorDesc inputDYTensorDesc = op.GetInputDesc("dy");
+  ge::Shape shapeDY = inputDYTensorDesc.GetShape();
+  DataType dtype = inputDYTensorDesc.GetDataType();
+
+  int64_t dim_num = shapeDY.GetDims().size();
+  int64_t batch_size = 0;
+  int64_t output_dim_size = 0;
+  if(dim_num != 3) {
+    OpsOneInputShapeErrReport(op.GetName(), "The input shape of dy", "not right");
+    OP_LOGE(op.GetName().c_str(), "The input shape of dy is not right, please check!");
+    return GRAPH_FAILED;
+  }
+  batch_size = shapeDY.GetDims().at(1);
+  output_dim_size = shapeDY.GetDims().at(2);
+  
+  TensorDesc outputDhPrevTensorDesc = op.GetOutputDesc("dh_prev");
+  TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate_h");
+  TensorDesc outputDnxXTensorDesc = op.GetOutputDesc("dnt_x");
+
+  vector<int64_t> outputDhPrevHDims = {1, batch_size, output_dim_size};
+  outputDhPrevTensorDesc.SetShape(ge::Shape(outputDhPrevHDims));
+  outputDhPrevTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDgateDims = {1, batch_size, 3 * output_dim_size};
+  outputDgateTensorDesc.SetShape(ge::Shape(outputDgateDims));
+  outputDgateTensorDesc.SetDataType(dtype);
+
+  outputDnxXTensorDesc.SetShape(ge::Shape(outputDhPrevHDims));
+  outputDnxXTensorDesc.SetDataType(dtype);
+
+  CHECK(op.UpdateOutputDesc("dh_prev", outputDhPrevTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc dh_prev failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dgate_h", outputDgateTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc dgate_h failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dnt_x", outputDnxXTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc dnt_x failed."), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(DynamicGRUCellGrad, DynamicGRUCellGradInferShape);
+VERIFY_FUNC_REG(DynamicGRUCellGrad, DynamicGRUCellGradVerify);
+
 IMPLEMT_VERIFIER(DynamicRNNV3, DynamicRNNV3Verify) {
   return GRAPH_SUCCESS;
 }
