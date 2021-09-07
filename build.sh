@@ -551,9 +551,13 @@ parse_changed_files() {
   logging "changed lines:"
   cat $CHANGED_FILES
   logging '-----------------------------------------------'
-
-  related_ut=`python3.7 scripts/parse_changed_files.py $1`
-  logging "related ut "$related_ut
+  
+  if [[ "$UT_MODE" == "TRUE" ]]; then
+    related_ut=`python3.7 scripts/parse_changed_files.py $1`
+    logging "related ut "$related_ut
+  else
+    related=`python3.7 scripts/parse_compile_changed_files.py $1`
+  fi 
 
   if [[ "$UT_MODE" == "TRUE" ]]; then 
       if [[ $related_ut =~ "CPU_UT" ]];then
@@ -601,18 +605,20 @@ compile_mod(){
       mk_dir "${CMAKE_HOST_PATH}"
       cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
       
-      rely_PLUGIN=(ops_all_onnx_plugin ops_all_plugin)
-      rely_PASS=(ops_fusion_pass_aicore ops_fusion_pass_vectorcore)
+      rely_TF=(ops_all_plugin)
+      rely_ONNX=(ops_all_onnx_plugin)
+      rely_PASS=(ops_fusion_pass_aicore ops_fusion_pass_vectorcore optiling)
       rely_TILING=(optiling)
-      rely_PROTO=(opsproto)
-      
-      mods=(PLUGIN PASS TILING PROTO)
+      rely_PROTO=(opsproto ops_all_plugin ops_all_onnx_plugin optiling ops_fusion_pass_aicore ops_fusion_pass_vectorcore)
+      mods=(TF ONNX PASS TILING PROTO)
       for mod in "${mods[@]}"
         do
-          if [[ "$1" =~ "$mod" ]]; then
+          if [[ "$related" =~ "$mod" ]]; then
           eval libs=('"${rely_'${mod}'[@]}"')
           for lib in  ${libs[@]}
             do
+              echo $dotted_line
+	      echo $lib
               cmake --build . --target $lib -- -j ${THREAD_NUM}
             done
           fi
@@ -652,19 +658,13 @@ build_cann() {
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
   
   computer_arch=`uname -m`
-  if [[ "$UT_MODE" == "FALSE" &&  "$computer_arch" =~ "aarch64" ]] && [[ ! "$related_ut" =~ "OTHER_FILE" ]] && [[ ! "$related_ut" =~ "CPU" ]];then
-      compile_mod $related_ut
-      if [ "$UT_TEST_ALL" == "FALSE" -a "$CPU_UT" == "FALSE" \
-            -a "$PASS_UT" == "FALSE" -a "$TILING_UT" == "FALSE" \
-            -a "$PROTO_UT" == "FALSE" -a "$PLUGIN_UT" == "FALSE" \
-            -a "$ONNX_PLUGIN_UT" == "FALSE" ]; then
-        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
-
-        logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-        mk_dir "${CMAKE_DEVICE_PATH}"
-        cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
-        make ${VERBOSE} -j${THREAD_NUM}
-      fi   
+  if [[ "$UT_MODE" == "FALSE"  ]] && [[ ! "$related" =~ "OTHER_FILE" ]] && [[ ! "$related" =~ "CPU" ]];then
+      compile_mod
+      CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
+      logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+      mk_dir "${CMAKE_DEVICE_PATH}"
+      cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
+      make ${VERBOSE} -j${THREAD_NUM}   
    else
       if [[ "$ST_TEST" == "FALSE" ]]; then
         mk_dir "${CMAKE_HOST_PATH}"
@@ -745,5 +745,3 @@ if [[ "$@" == "-h" ]];then
 else
   main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
 fi
-
-

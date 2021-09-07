@@ -17,12 +17,12 @@
 import os
 import sys
 
-CPU_UT = "CPU_UT"
-PASS_UT = "PASS_UT"
-TILING_UT = "TILING_UT"
-PROTO_UT = "PROTO_UT"
-PLUGIN_UT = "PLUGIN_UT"
-ONNX_PLUGIN_UT = "ONNX_PLUGIN_UT"
+CPU = "CPU"
+PASS = "PASS"
+TILING = "TILING"
+PROTO = "PROTO"
+TF_PLUGIN = "TF_PLUGIN"
+ONNX_PLUGIN = "ONNX_PLUGIN"
 OTHER_FILE="OTHER_FILE"
 
 class FileChangeInfo:
@@ -112,7 +112,7 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
                           onnx_plugin_changed_files=onnx_plugin_changed_files, other_changed_files=other_changed_files)
 
 
-def get_change_relate_ut_dir_list(changed_file_info_from_ci):
+def get_change_relate_dir_list(changed_file_info_from_ci):
     file_change_info = get_file_change_info_from_ci(
         changed_file_info_from_ci)
     if not file_change_info:
@@ -125,19 +125,17 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
         relate_ut = set()
         other_file = set()
         if len(file_change_info.aicpu_changed_files) > 0:
-            relate_ut.add(CPU_UT)
+            relate_ut.add(CPU)
         if len(file_change_info.pass_changed_files) > 0:
-            relate_ut.add(PASS_UT)
+            relate_ut.add(PASS)
         if len(file_change_info.tiling_changed_files) > 0:
-            relate_ut.add(TILING_UT)
+            relate_ut.add(TILING)
         if len(file_change_info.proto_changed_files) > 0:
-            relate_ut.add(PROTO_UT)
-            relate_ut.add(PASS_UT)
-            relate_ut.add(PLUGIN_UT)
+            relate_ut.add(PROTO)
         if len(file_change_info.plugin_changed_files) > 0:
-            relate_ut.add(PLUGIN_UT)
+            relate_ut.add(TF_PLUGIN)
         if len(file_change_info.onnx_plugin_changed_files) > 0:
-            relate_ut.add(ONNX_PLUGIN_UT)
+            relate_ut.add(ONNX_PLUGIN)
         
         if len(file_change_info.other_changed_files) > 0:
             other_file.add(OTHER_FILE)
@@ -152,6 +150,6 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
 
 
 if __name__ == '__main__':
-  print(get_change_relate_ut_dir_list(sys.argv[1]))
+  print(get_change_relate_dir_list(sys.argv[1]))
 
 
