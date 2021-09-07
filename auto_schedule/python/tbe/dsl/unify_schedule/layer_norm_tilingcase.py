@@ -227,6 +227,13 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_fo
             break
 
     core_num = get_soc_spec("CORE_NUM")
+    soc_version = get_soc_spec("SOC_VERSION")
+    max_ub_size_normal_fp16 = 10 * 1024
+    max_ub_size_normal_fp32 = 10 * 1024
+    if soc_version in ("Ascend310",):
+        max_ub_size_normal_fp16 = 8 * 1024
+        max_ub_size_normal_fp32 = 8 * 1024
+
     keep_dims = 1
     min_block_size = _get_block_size(
         list(graph_info.input_tensor_set)[0].dtype)
@@ -239,9 +246,9 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_fo
     ub_info = [max_ub_count]
 
     pre_compile_info = get_compile_info()
-    if pre_compile_info and "core_num" not in pre_compile_info:
+    if pre_compile_info and "common_info" not in pre_compile_info:
         info_map = {"common_info": common_info, "pattern_info": pattern_info,
-                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": core_num, "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 10 * 1024, "mode": mode, "input_format": input_format}
+                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "max_ub_size_normal_fp16": max_ub_size_normal_fp16, "max_ub_size_normal_fp32": max_ub_size_normal_fp32, "mode": mode}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
                 add_compile_info(key, info_map.get(key))

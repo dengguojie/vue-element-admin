@@ -46,7 +46,8 @@ from .util import get_dsl_insn
 MAX_NODE_COUNT = 12
 PHONY_INSN = "phony_insn"
 DMA_COPY = "dma_copy"
-MAX_BOUND = 10 * 1024
+# Ascend310 bound value
+MAX_BOUND = 8 * 1024
 
 
 class WorkspaceLayerNormSchedule:
