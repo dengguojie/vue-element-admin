@@ -321,9 +321,8 @@ def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
     """
     # ==================4.2 MindSpore python file================
     PY_MS_HEAD = """from __future__ import absolute_import
-from te import tvm
-from tbe.dsl import auto_schedule
-import te.lang.cce
+from tbe import tvm
+import tbe.dsl as tbe
 from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
@@ -332,7 +331,7 @@ from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
     \"""
     The compute function of the {up_name} implementation.
     \"""
-    res = te.lang.cce.XXX({input_name})
+    res = tbe.XXX({input_name})
     return res
 
 """
@@ -390,14 +389,14 @@ def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
 
     with tvm.target.cce():
         res = {name}_compute({datas_join}, {output})
-        sch = auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 """
     PY_MS_OP_INFO_REGISTER_CONFIG = """
     config = {{"print_ir": False,
               "name": kernel_name,
               "tensor_list": [{datas_join}, res]}}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.build(sch, config)
 """
     PY_MS_PROTO_HEAD = """from mindspore.ops import prim_attr_register, \
 PrimitiveWithInfer

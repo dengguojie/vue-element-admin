@@ -18,10 +18,9 @@ from mindspore.ops import prim_attr_register
 from mindspore.ops import PrimitiveWithInfer
 
 
+# y = x^2
 class Square(PrimitiveWithInfer):
-    """Custom Square definition
-        y = x^2
-     """
+    """CusSquare definition"""
     from square_impl import square_impl
 
     @prim_attr_register
@@ -40,7 +39,7 @@ class Square(PrimitiveWithInfer):
         return data_dtype
 
     def get_bprop(self):
-        def bprop(data, dout):
+        def bprop(data, out, dout):
             gradient = data * 2
             dx = gradient * dout
             return (dx,)

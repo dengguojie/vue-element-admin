@@ -36,10 +36,11 @@ namespace ge {
 * for matrices) . \n
 
 * @par Attributes:
-* @li sorted: An optional bool. Defaults to true.
+* @li sorted: Defaults to true.
 * If true, the resulting "k" elements will be sorted by the values in descending
 * order.
-* @li T: Indicator of indices type . \n
+* @li largest:If true the resulting `k` elements will be sorted by the values in descending order.
+* @li dim:0-D. Number of top elements to look for along the last dimension (along each row for matrices). \n
 
 * @par Outputs:
 * @li values: A Tensor, specifying the sorted data. Has the same type as
@@ -48,7 +49,7 @@ namespace ge {
 
 * @see TopK()
 * @par Third-party framework compatibility
-* @li Compatible with the TensorFlow operator TopKV2.
+* Compatible with the TensorFlow operator TopKV2.
 */
 REG_OP(TopK)
     .INPUT(x, TensorType::RealNumberType())

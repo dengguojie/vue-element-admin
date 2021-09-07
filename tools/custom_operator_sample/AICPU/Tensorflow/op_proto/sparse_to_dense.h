@@ -31,8 +31,12 @@ namespace ge {
 * @li indices: A 0D, 1D, or 2D Tensor of type int32 or int64.
 * @li output_shape: A 1D Tensor of the same type as "sparse_indices". The shape of the dense output tensor.
 * @li values: A 1D Tensor. Values corresponding to each row of "sparse_indices",
-* @li or a scalar value to be used for all sparse indices.
+or a scalar value to be used for all sparse indices.
 * @li default_value: A Tensor of the same type as "sparse_values" . \n
+
+*@par Attributes:
+*validate_indices: If true, indices are checked to make sure they are sorted in
+lexicographic order and that there are no repeats. \n
 
 *@par Outputs:
 *y: A Tensor. Has the same type as "values" . \n

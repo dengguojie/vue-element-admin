@@ -21,7 +21,6 @@
 #include "utils/bcast.h"
 
 namespace aicpu {
-
 class LessCpuKernel : public CpuKernel {
  public:
   LessCpuKernel() = default;
@@ -31,10 +30,20 @@ class LessCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  static uint32_t LessCheckAndBroadCast(CpuKernelContext &ctx, BCalcInfo &calc_info);
+  uint32_t LessParamCheck(CpuKernelContext &ctx);
 
   template <typename T>
-  static uint32_t LessCompute(CpuKernelContext &ctx, BCalcInfo &calc_info);
+  void SpecialCompute(BcastShapeType type, int64_t start, int64_t end,
+                      const T *input1, const T *input2, bool *output);
+
+  template <typename T>
+  uint32_t NoBcastCompute(CpuKernelContext &ctx);
+
+  template <typename T>
+  uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
+
+  template <typename T>
+  uint32_t LessCompute(CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

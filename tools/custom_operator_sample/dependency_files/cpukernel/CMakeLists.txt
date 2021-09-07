@@ -176,6 +176,7 @@ if(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/${AI
         -s
         -Wl,-Bsymbolic
         -Wl,--exclude-libs=libascend_protobuf.a
+        -Wl,--allow-multiple-definition
     )
 endif()
 

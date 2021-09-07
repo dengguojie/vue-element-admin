@@ -32,12 +32,12 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
 
   GeShape x_shape;
   if (WithRankAtLeast(x_desc, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x must be at least 1D.");
+    OP_LOGE(op.GetName().c_str(), "input x must be at least 1D.");
     return GRAPH_FAILED;
   }
 
   if (WithRankAtMost(x_desc, 5, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x must be at most 5D.");
+    OP_LOGE(op.GetName().c_str(), "input x must be at most 5D.");
     return GRAPH_FAILED;
   }
 
@@ -54,7 +54,7 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
 
     std::vector<std::pair<int64_t, int64_t>> range;
     int64_t dims_num = x_shape.GetDimNum();
-    range.emplace_back(std::make_pair(1, input_shape_size));
+    range.emplace_back(std::make_pair(0, input_shape_size));
     range.emplace_back(std::make_pair(dims_num, dims_num));
     y_desc->SetShapeRange(range);
   } else {

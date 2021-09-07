@@ -23,12 +23,27 @@
 #include "util/util.h"
 
 namespace ge {
-static bool TopKInferCommon(Operator &op, int64_t k) {
-  TensorDesc input_desc = op.GetInputDesc("x");
-  TensorDesc output_v_desc = op.GetOutputDesc("values");
-  TensorDesc output_i_desc = op.GetOutputDesc("indices");
+static void TopKGetShapeRange(std::vector<std::pair<int64_t, int64_t>> &shape_range,
+                              const std::vector<int64_t> &dims_in, int64_t k,
+                              uint32_t sorted_axis) {
+  for (size_t i = 0; i < dims_in.size(); i++) {
+    if (i == sorted_axis && k > 0) {
+      shape_range.push_back(pair<int64_t, int64_t>(k, k));
+    } else if (dims_in[i] == UNKNOWN_DIM) {
+      shape_range.push_back(pair<int64_t, int64_t>(1, -1));
+    } else {
+      shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
+    }
+  }
+}
 
-  std::vector<int64_t> dims_in = input_desc.GetShape().GetDims();
+static bool TopKInferCommon(Operator &op, int64_t k) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto output_v_desc = op_info->MutableOutputDesc("values");
+  auto output_i_desc = op_info->MutableOutputDesc("indices");
+
+  std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
   int32_t dim_size = dims_in.size();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
@@ -48,43 +63,35 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
     }
   }
   std::vector<std::pair<int64_t, int64_t>> shape_range;
-  input_desc.GetShapeRange(shape_range);
+  input_desc->GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
-    if (k > 0 && sorted_axis < shape_range.size()) {
+    if (k > 0 && static_cast<int64_t>(sorted_axis) < static_cast<int64_t>(shape_range.size())) {
       shape_range[sorted_axis].first = k;
       shape_range[sorted_axis].second = k;
     }
   } else {
     // input is static shape
-    for (int i = 0; i < dims_in.size(); i++) {
-      if (i == sorted_axis && k > 0) {
-        shape_range.push_back(pair<int64_t, int64_t>(k, k));
-      } else {
-        shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
-      }
-    }
+    TopKGetShapeRange(shape_range, dims_in, k, static_cast<uint32_t>(sorted_axis));
   }
 
   bool unknown_rank = IsUnknownRankShape(dims_in);
   if (unknown_rank) {
-    output_v_desc.SetShape(Shape(UNKNOWN_RANK));
-    output_v_desc.SetOriginShape(Shape(UNKNOWN_RANK));
+    output_v_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_v_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
 
-    output_i_desc.SetShape(Shape(UNKNOWN_RANK));
-    output_i_desc.SetOriginShape(Shape(UNKNOWN_RANK));
+    output_i_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_i_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
   } else {
     dims_in[sorted_axis] = k;
 
-    output_v_desc.SetShape(Shape(dims_in));
-    output_v_desc.SetShapeRange(shape_range);
+    output_v_desc->SetShape(GeShape(dims_in));
+    output_v_desc->SetShapeRange(shape_range);
 
-    output_i_desc.SetShape(Shape(dims_in));
-    output_i_desc.SetShapeRange(shape_range);
+    output_i_desc->SetShape(GeShape(dims_in));
+    output_i_desc->SetShapeRange(shape_range);
   }
-  output_v_desc.SetDataType(input_desc.GetDataType());
-  output_i_desc.SetDataType(DT_INT32);
-  op.UpdateOutputDesc("values", output_v_desc);
-  op.UpdateOutputDesc("indices", output_i_desc);
+  output_v_desc->SetDataType(input_desc->GetDataType());
+  output_i_desc->SetDataType(DT_INT32);
   return true;
 }
 // ----------------TopK Op-------------------

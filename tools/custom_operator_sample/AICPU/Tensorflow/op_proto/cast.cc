@@ -29,31 +29,29 @@ namespace ge {
 // ----------------Cast-------------------
 IMPLEMT_COMMON_INFERFUNC(CastInferShape) {
   // get input desc
-  TensorDesc input_desc = op.GetInputDesc("x");
-  vector<int64_t> input_shape = input_desc.GetShape().GetDims();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  auto output_desc = op_info->MutableOutputDesc("y");
   if (IsUnknown(input_shape)) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    input_desc.GetShapeRange(input_range);
+    input_desc->GetShapeRange(input_range);
     MakeUpShapeRange(input_shape, input_range);
 
-    output_desc.SetShape(Shape(input_shape));
-    output_desc.SetOriginShape(Shape(input_shape));
-    output_desc.SetShapeRange(input_range);
-	op.UpdateOutputDesc("y", output_desc);
+    output_desc->SetShape(GeShape(input_shape));
+    output_desc->SetOriginShape(GeShape(input_shape));
+    output_desc->SetShapeRange(input_range);
   } else {
-    output_desc.SetShape(Shape(input_shape));
-	op.UpdateOutputDesc("y", output_desc);
+    output_desc->SetShape(GeShape(input_shape));
   }
   int type;
   if (op.GetAttr("dst_type", type) == GRAPH_SUCCESS) {
-    output_desc.SetDataType((ge::DataType)type);
-    op.UpdateOutputDesc("y", output_desc);
+    output_desc->SetDataType((ge::DataType)type);
   }
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(Cast, CastInferShape);
-// --------------Cast END-----------------
+// --------------Cast END-----------------// --------------Cast END-----------------
 }  // namespace ge

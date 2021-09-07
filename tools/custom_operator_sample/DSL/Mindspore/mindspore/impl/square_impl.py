@@ -12,20 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Square op"""
-
 from __future__ import absolute_import
-import te.lang.cce
-from te import tvm
+
+import tbe.dsl as tbe
+from tbe import tvm
 from te.platform.fusion_manager import fusion_manager
-from tbe.dsl import auto_schedule
 from tbe.common.utils import shape_refine
+
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
 
-
-# pylint: disable=unused-argument
 @fusion_manager.register("square")
 def square_compute(input_x, output_y):
     """
@@ -46,7 +43,7 @@ def square_compute(input_x, output_y):
     res : tvm.tensor
         the result of square
     """
-    res = te.lang.cce.vmul(input_x, input_x)
+    res = tbe.vmul(input_x, input_x)
     return res
 
 
@@ -91,10 +88,10 @@ def square_impl(input_x, output_y, kernel_name="square_impl"):
 
     with tvm.target.cce():
         res = square_compute(data, output_y)
-        sch = auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.build(sch, config)

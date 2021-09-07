@@ -34,6 +34,10 @@ const char *kCast = "Cast";
 }
 
 namespace aicpu {
+CastCpuKernel::CastCpuKernel() : calls_({}), x_tensor_(nullptr), y_tensor_(nullptr),
+                                 x_data_type_(DT_INT64), y_data_type_(DT_INT64),
+                                 x_data_size_(0), y_data_size_(0) {}
+
 template <typename T, typename S>
 uint32_t CastTask(Tensor *&x_tensor, Tensor *&y_tensor, int64_t &start,
                   int64_t &end) {
@@ -224,58 +228,39 @@ uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   x_data_size_ = x_tensor_->GetDataSize();
   y_data_size_ = y_tensor_->GetDataSize();
-  if (x_data_size_ < 1 || y_data_size_ < 1) {
-    KERNEL_LOG_ERROR("input data size or output size must more than 1",
-                     x_data_size_, y_data_size_);
-    return KERNEL_STATUS_PARAM_INVALID;
+
+  if (x_data_size_ == 0) {
+    KERNEL_LOG_INFO("Input data is empty, input size: [%llu]",
+                     x_data_size_);
+    return KERNEL_STATUS_OK;
   }
-  KERNEL_LOG_INFO("Cast input size: [%lld], output size: [%lld]", x_data_size_,
-                  y_data_size_);
+  KERNEL_LOG_INFO("Cast input size: [%llu], output size: [%llu]",
+                  x_data_size_, y_data_size_);
   x_data_type_ = DataType(x_tensor_->GetDataType());
   y_data_type_ = DataType(y_tensor_->GetDataType());
-  KERNEL_LOG_INFO("Cast input type: [%d], output type: [%d]", x_data_type_,
-                  y_data_type_);
-  int x_type_size = GetSizeByDataType(static_cast<DataType>(x_data_type_));
-  int y_type_size = GetSizeByDataType(static_cast<DataType>(y_data_type_));
+  KERNEL_LOG_INFO("Cast input type: [%s], output type: [%s]",
+                  DTypeStr(x_data_type_).c_str(), DTypeStr(y_data_type_).c_str());
+  int x_type_size = GetSizeByDataType(x_data_type_);
+  int y_type_size = GetSizeByDataType(y_data_type_);
   KERNEL_LOG_INFO("Cast input type size: [%d], output type size: [%d]",
                   x_type_size, y_type_size);
   if (x_type_size <= 0 || y_type_size <= 0) {
-    KERNEL_LOG_ERROR("input type size or output type size should greater than 0");
+    KERNEL_LOG_ERROR("Input type size and output type size should greater than 0, "
+                     "input data type: [%s], input data size: [%d], "
+                     "output data type: [%s], output data size: [%d]",
+                     DTypeStr(x_data_type_).c_str(), x_type_size,
+                     DTypeStr(y_data_type_).c_str(), y_type_size);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  x_data_size_ = x_data_size_ / x_type_size;
-  y_data_size_ = y_data_size_ / y_type_size;
-  KERNEL_LOG_INFO("Cast inputdata length: [%lld], output length: [%lld]",
+  x_data_size_ = x_data_size_ / static_cast<uint64_t>(x_type_size);
+  y_data_size_ = y_data_size_ / static_cast<uint64_t>(y_type_size);
+  KERNEL_LOG_INFO("Cast input data length: [%llu], output data length: [%llu]",
                   x_data_size_, y_data_size_);
   if (x_data_size_ > y_data_size_) {
     x_data_size_ = y_data_size_;
   }
-  
-/*
-Procedure for multi-core concurrent computing:
-1. Call the CpuKernelUtils::GetCPUNum function to obtain the number of AI CPUs (max_core_num).
-2. Calculate the computing data size on each AI CPU (per_unit_size) by dividing the total data size by the number of AI CPUs.
-3. Implement the working process function shard of each compute unit, and compile the computing logic that needs to be
-   concurrently executed in the function.
-4. Call the CpuKernelUtils::ParallelFor function and input parameters such as the CpuKernelContext object (ctx), total
-   data size (data_num), computing data size on each AI CPU (per_unit_size), and working process function shard of each
-   compute unit. Then execute multi-core concurrent computing.
-For example:
-uint32_t min_core_num = 1;
-int64_t max_core_num =
-      std::max(min_core_num, CpuKernelUtils::GetCPUNum(ctx));
-per_unit_size = data_num / max_core_num;
-auto shard = [&](size_t start, size_t end) {
-	for (size_t i = start; i < end; i++) {
-	// Execution process      
-	 ... ...
-	}
-};
-CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, shard);
-*/
-
   uint32_t min_core_num = 1;
-  int64_t max_core_num =
+  uint64_t max_core_num =
       std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
   if (max_core_num > x_data_size_) {
     max_core_num = x_data_size_;
@@ -293,7 +278,7 @@ CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, shard);
       });
   calls_.clear();
   y_data_size_ = y_tensor_->GetDataSize();
-  KERNEL_LOG_INFO("Cast output size: [%lld].", y_data_size_);
+  KERNEL_LOG_INFO("Cast output size: [%llu].", y_data_size_);
   return KERNEL_STATUS_OK;
 }
 REGISTER_CPU_KERNEL(kCast, CastCpuKernel);

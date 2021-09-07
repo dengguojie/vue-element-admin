@@ -15,13 +15,10 @@
 from mindspore.ops import prim_attr_register
 from mindspore.ops import PrimitiveWithInfer
 
-
+# sum = input1 + input2 + const_bias
 class Add3(PrimitiveWithInfer):
-    """Custom add3 definition
-        sum = input1 + input2 + const_bias
-    """
+    """Custom add3 definition"""
 
-    # pylint: disable=unused-argument
     @prim_attr_register
     def __init__(self, const_bias=0.0):
         self.init_prim_io_names(inputs=['input1', 'input2'], outputs=['sum3'])

@@ -160,23 +160,70 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  if (args.out_size_h == 0 || args.out_size_w == 0) {
-    KERNEL_LOG_ERROR("Adaptive_max_pool2d: internal error, output_size H or W can not be zero, now H is [%lld], W is [%lld].",
-                    args.out_size_h, args.out_size_w);
+  // These multiplications do not overflow
+  int64_t output_data_num = args.out_size_h * args.out_size_w;
+  uint64_t output0_data_size = output_data_num * sizeof(SCALAR_T);
+  if (output0_data_size > ctx.Output(kFirstOutputIndex)->GetDataSize()) {
+    KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 0 size must big then [%llu], now size is [%llu].", output0_data_size,
+                     ctx.Output(kFirstOutputIndex)->GetDataSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  int dim_w = 2;
-  int dim_h = 1;
-  // if user input dims is 4d, w and h dim value should add 1
-  if (input_dims == 4) {
-    args.in_size_b = input_shape_ptr->GetDimSize(0);
-    dim_w++;
-    dim_h++;
+  // These multiplications do not overflow
+  uint64_t output1_data_size = output_data_num * sizeof(INDICES_T);
+  if (output1_data_size > ctx.Output(kSecondOutputIndex)->GetDataSize()) {
+    KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 1 size must big then [%llu], now size is [%llu].", output1_data_size,
+                     ctx.Output(kSecondOutputIndex)->GetDataSize());
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  if (args.out_size_h == 0 || args.out_size_w == 0) {
+    KERNEL_LOG_ERROR(
+        "Adaptive_max_pool2d: internal error, output_size H or W can not be zero, now H is [%lld], W is [%lld].",
+        args.out_size_h, args.out_size_w);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  int dim_b = 0;
+  int dim_d = 0;
+  int dim_w = 0;
+  int dim_h = 0;
+  auto input_format = input_shape_ptr->GetFormat();
+  if ((input_format == FORMAT_NCHW)) {
+    if (input_dims == 4) {
+      dim_b = kFormatNCHWIndexN;
+      dim_d = kFormatNCHWIndexC;
+      dim_h = kFormatNCHWIndexH;
+      dim_w = kFormatNCHWIndexW;
+    } else {
+      dim_d = kFormatCHWIndexC;
+      dim_h = kFormatCHWIndexH;
+      dim_w = kFormatCHWIndexW;
+    }
+  } else if (input_format == FORMAT_NHWC) {
+    if (input_dims == 4) {
+      dim_b = kFormatNHWCIndexN;
+      dim_h = kFormatNHWCIndexH;
+      dim_w = kFormatNHWCIndexW;
+      dim_d = kFormatNHWCIndexC;
+    } else {
+      dim_h = kFormatHWCIndexH;
+      dim_w = kFormatHWCIndexW;
+      dim_d = kFormatHWCIndexC;
+    }
+  } else {
+    KERNEL_LOG_ERROR(
+        "Format is not in [FORMAT_NHWC or FORMAT_NCHW],"
+        "current input format is [%d].",
+        input_format);
+    return KERNEL_STATUS_PARAM_INVALID;
   }
 
   // sizes 
-  args.in_size_d = input_shape_ptr->GetDimSize(dim_h - 1);
+  if (input_dims == 4) {
+    args.in_size_b = input_shape_ptr->GetDimSize(dim_b);
+  }
+  args.in_size_d = input_shape_ptr->GetDimSize(dim_d);
   args.in_size_h = input_shape_ptr->GetDimSize(dim_h);
   args.in_size_w = input_shape_ptr->GetDimSize(dim_w);
 
@@ -233,6 +280,7 @@ uint32_t AdaptiveMaxPool2d::Compute(CpuKernelContext& ctx) {
 
   KERNEL_LOG_INFO("AdaptiveMaxPool2d kernel,input[0]:size is [%llu];output_0:size is [%llu]; output_1:size is [%llu].",
                   input_0->GetDataSize(), output_0->GetDataSize(), output_1->GetDataSize());
+
   KERNEL_LOG_INFO("[%s] get attr:output_size [%s].", kAdaptiveMaxPool2d, VectorToString(v_output_size).c_str());
 
   auto data_type = static_cast<DataType>(input_0->GetDataType());

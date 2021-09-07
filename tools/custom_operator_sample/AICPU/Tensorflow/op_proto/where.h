@@ -25,7 +25,7 @@
 #include "graph/operator.h"
 
 namespace ge {
-	/**
+/**
 *@brief Returns locations of nonzero / true values in a tensor. \n
 
 *@par Inputs:

@@ -14,12 +14,11 @@
 # ============================================================================
 
 """CorrectionMul op"""
-
-import te.lang.cce
-from te import tvm
+import tbe.dsl as tbe
+from tbe import tvm
 from te.platform.fusion_manager import fusion_manager
-from tbe.dsl import auto_schedule
 from tbe.common.utils import para_check
+from tbe.common.utils import shape_util
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
@@ -51,14 +50,13 @@ def _correction_mul_tbe():
     return
 
 
-# pylint: disable=unused-argument
 @fusion_manager.register("correction_mul")
 def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mul"):
     """CorrectionMul compute"""
-    shape_x = te.lang.cce.util.shape_to_list(x.shape)
-    factor = te.lang.cce.vdiv(batch_std, running_std)
-    factor_b = te.lang.cce.broadcast(factor, shape_x)
-    res = te.lang.cce.vmul(x, factor_b)
+    shape_x = shape_util.shape_to_list(x.shape)
+    factor = tbe.vdiv(batch_std, running_std)
+    factor_b = tbe.broadcast(factor, shape_x)
+    res = tbe.vmul(x, factor_b)
     return res
 
 
@@ -70,9 +68,8 @@ def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correctio
     para_check.check_kernel_name(kernel_name)
     para_check.check_shape_rule(shape)
     para_check.check_shape_size(shape, SHAPE_SIZE_LIMIT)
-    check_list = ["float16", "float32"]
     inp_dtype = x.get("dtype").lower()
-    if inp_dtype not in check_list:
+    if not inp_dtype in ["float16", "float32"]:
         raise RuntimeError("Dtype of input only support float16, float32")
 
     x_t = tvm.placeholder(shape, name="x", dtype=inp_dtype)
@@ -85,10 +82,10 @@ def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correctio
     res = correction_mul_compute(x_t, batch_std_t, running_std_t, kernel_name)
 
     with tvm.target.cce():
-        sch = auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [x_t, batch_std_t, running_std_t, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.build(sch, config)

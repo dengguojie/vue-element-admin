@@ -18,13 +18,13 @@ class CholeskyTrsm(PrimitiveWithInfer):
 
     Examples:
         >>> input_x = Tensor(np.ones(shape=[256, 256]), mindspore.float32)
-        >>> choleskytrsm = CholeskyTrsm()
-        >>> output = matmul(input_x)
+        >>> cus_choleskytrsm = CholeskyTrsm()
+        >>> output = cus_choleskytrsm(input_x)
     """
 
     @prim_attr_register
     def __init__(self):
-        """Initialize Custom CholeskyTrsm"""
+        """Initialize CusCholeskyTrsm"""
         self.init_prim_io_names(inputs=['x1'], outputs=['y'])
         from cholesky_trsm_impl import cholesky_trsm
 

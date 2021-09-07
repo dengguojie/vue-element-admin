@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Add3 op"""
-
 from __future__ import absolute_import
-import te.lang.cce
-from te import tvm
+import tbe.dsl as tbe
+from tbe import tvm
 from te.platform.fusion_manager import fusion_manager
-from tbe.dsl import auto_schedule
 from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
 
-
 @fusion_manager.register("add3")
 def add3_compute(input1, input2, const_bias):
-    sum2 = te.lang.cce.vadd(input1, input2)
-    sum3 = te.lang.cce.vadds(sum2, tvm.const(const_bias, dtype=input1.dtype))
+    sum2 = tbe.vadd(input1, input2)
+    sum3 = tbe.vadds(sum2, tvm.const(const_bias, dtype=input1.dtype))
     return sum3
 
 
@@ -48,7 +44,6 @@ add3_op_info = TBERegOp("Add3") \
     .get_op_info()
 
 
-# pylint: disable=unused-argument
 @op_info_register(add3_op_info)
 def add3_impl(input1, inptu2, sum1, const_bias, kernel_name="add3_impl"):
     shape = input1.get("shape")
@@ -59,10 +54,10 @@ def add3_impl(input1, inptu2, sum1, const_bias, kernel_name="add3_impl"):
 
     with tvm.target.cce():
         res = add3_compute(input1, input2, const_bias)
-        sch = auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [input1, input2, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.build(sch, config)

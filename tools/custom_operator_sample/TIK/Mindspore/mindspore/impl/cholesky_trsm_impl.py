@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Custom CholeskyTrsm"""
+"""CusCholeskyTrsm"""
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
-from te import tik
-import te.platform.cce_conf as cce_conf
+from tbe import tik
+import tbe.common.platform.platform_info as tbe_platform
 import tbe.common.platform.platform_info_ as platform_info
 
 cholesky_trsm_op_info = TBERegOp("CholeskyTrsm") \
@@ -33,7 +33,7 @@ cholesky_trsm_op_info = TBERegOp("CholeskyTrsm") \
 
 @op_info_register(cholesky_trsm_op_info)
 def cholesky_trsm(input_x, output, kernel_name):
-    """cholesky_trsm"""
+    """cus_cholesky_trsm"""
     input_x_shape = input_x.get("shape")
     output_shape = output.get("shape")
     split_dim = 128
@@ -43,7 +43,7 @@ def cholesky_trsm(input_x, output, kernel_name):
     blocks = int(matrix_dim // split_dim)
     if blocks == 0:
         blocks = 1
-    if cce_conf.get_product_version() == platform_info.VERSION_MINI:
+    if tbe_platform.get_soc_spec("SOC_VERSION") == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
@@ -110,4 +110,3 @@ def cholesky_trsm(input_x, output, kernel_name):
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[input_x], outputs=[res])
     return tik_instance
-

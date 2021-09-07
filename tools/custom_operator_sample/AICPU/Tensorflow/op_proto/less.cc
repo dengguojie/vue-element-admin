@@ -38,16 +38,15 @@ IMPLEMT_COMMON_INFERFUNC(LessInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-  auto vec_y = op.GetInputDesc("y").GetShape().GetDims();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
       return GRAPH_FAILED;
     }
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetDataType(DT_BOOL);
-  op.UpdateOutputDesc("y", y_desc);
+  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
   return GRAPH_SUCCESS;
 }
 

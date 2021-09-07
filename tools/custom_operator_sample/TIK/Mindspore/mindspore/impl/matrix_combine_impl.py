@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""MatrixCombine op"""
-
+"""CusMatrixCombine"""
 from mindspore.ops.op_info_register import op_info_register
 from mindspore.ops.op_info_register import TBERegOp
 from mindspore.ops.op_info_register import DataType
-from te import tik
-import te.platform.cce_conf as cce_conf
+from tbe import tik
+import tbe.common.platform.platform_info as tbe_platform
 import tbe.common.platform.platform_info_ as platform_info
 
 matrix_combine_op_info = TBERegOp("MatrixCombine") \
@@ -36,12 +35,11 @@ matrix_combine_op_info = TBERegOp("MatrixCombine") \
 
 @op_info_register(matrix_combine_op_info)
 def matrix_combine(input_x, output, kernel_name="matrix_combine"):
-    """MatrixCombine"""
+    """CusMatrixCombine"""
     input_x_shape = input_x.get("shape")
     output_shape = output.get("shape")
-    split_dim = 128
 
-    if cce_conf.get_product_version() == platform_info.VERSION_MINI:
+    if tbe_platform.get_soc_spec("SOC_VERSION") == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
@@ -52,34 +50,39 @@ def matrix_combine(input_x, output, kernel_name="matrix_combine"):
     blocks = 32
     matrix_dim = input_x_shape[0] * input_x_shape[1]
     if input_x_shape[0] == 1 and input_x_shape[1] == 64:
-        tiling_dim = 2
-        bs = 1
         with tik_instance.for_range(0, blocks, block_num=blocks) as block_index:
-            input_x_ub = tik_instance.Tensor("float32", (tiling_dim, matrix_dim), name="input_x_ub",
+            input_x_ub = tik_instance.Tensor("float32", (2, matrix_dim), name="input_x_ub",
                                              scope=tik.scope_ubuf)
-            tik_instance.data_move(input_x_ub, input_x[0, block_index * tiling_dim, 0], 0, 1, 16, 0, 0)
-            tik_instance.data_move(res[block_index * tiling_dim, 0], input_x_ub, 0, 1, 16, 0, 0)
+            tik_instance.data_move(input_x_ub, input_x[0, block_index * 2, 0], 0, 1, 16, 0, 0)
+            tik_instance.data_move(res[block_index * 2, 0], input_x_ub, 0, 1, 16, 0, 0)
     else:
         tiling_dim = 4
-        bs = input_x_shape[0]
-        with tik_instance.for_range(0, blocks, block_num=blocks) as block_index:
-            input_x_ub = tik_instance.Tensor("float32", (tiling_dim, matrix_dim), name="input_x_ub",
-                                             scope=tik.scope_ubuf)
-            zero = tik_instance.Scalar("float32")
-            zero.set_as(0.0)
-            with tik_instance.for_range(0, bs) as i:
-                repeat_real = tiling_dim * matrix_dim // 64
-                if repeat_real <= 255:
-                    tik_instance.vector_dup(64, input_x_ub, zero, repeat_real, 1, 8)
-                else:
-                    repeat_1 = 255
-                    repeat_2 = repeat_real - 255
-                    tik_instance.vector_dup(64, input_x_ub, zero, repeat_1, 1, 8)
-                    tik_instance.vector_dup(64, input_x_ub[255 * 64], zero, repeat_2, 1, 8)
-                with tik_instance.for_range(0, tiling_dim) as j:
-                    tik_instance.data_move(input_x_ub[j, split_dim * i], input_x[i, block_index * tiling_dim + j, 0],
-                                           0, 1, 16, 0, 0)
-                tik_instance.data_move(res[i * split_dim + block_index * tiling_dim, 0], input_x_ub, 0, 1,
-                                       tiling_dim * matrix_dim * 4 // 32, 0, 0)
+        input_x_ub = tik_instance.Tensor("float32", (tiling_dim, matrix_dim), name="input_x_ub",
+                                         scope=tik.scope_ubuf)
+        zero = tik_instance.Scalar("float32")
+        zero.set_as(0.0)
+        with tik_instance.for_range(0, blocks, block_num=blocks) as block_index, \
+                tik_instance.for_range(0, input_x_shape[0]) as i:
+            repeat_real = tiling_dim * matrix_dim // 64
+            if repeat_real <= 255:
+                tik_instance.vector_dup(64, input_x_ub, zero, repeat_real, 1, 8)
+            elif repeat_real <= 510:
+                tik_instance.vector_dup(64, input_x_ub, zero, 255, 1, 8)
+                tik_instance.vector_dup(64, input_x_ub[255 * 64], zero, repeat_real - 255, 1, 8)
+            elif repeat_real <= 765:
+                tik_instance.vector_dup(64, input_x_ub, zero, 255, 1, 8)
+                tik_instance.vector_dup(64, input_x_ub[255 * 64], zero, 255, 1, 8)
+                tik_instance.vector_dup(64, input_x_ub[510 * 64], zero, repeat_real - 510, 1, 8)
+            else:
+                tik_instance.vector_dup(64, input_x_ub, zero, 255, 1, 8)
+                tik_instance.vector_dup(64, input_x_ub[255 * 64], zero, 255, 1, 8)
+                tik_instance.vector_dup(64, input_x_ub[510 * 64], zero, 255, 1, 8)
+                tik_instance.vector_dup(64, input_x_ub[765 * 64], zero, repeat_real - 765, 1, 8)
+
+            with tik_instance.for_range(0, tiling_dim) as j:
+                tik_instance.data_move(input_x_ub[j, 128 * i], input_x[i, block_index * tiling_dim + j, 0],
+                                       0, 1, 16, 0, 0)
+            tik_instance.data_move(res[i * 128 + block_index * tiling_dim, 0], input_x_ub, 0, 1,
+                                   tiling_dim * matrix_dim * 4 // 32, 0, 0)
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[input_x], outputs=[res])
     return tik_instance

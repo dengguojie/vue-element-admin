@@ -1,7 +1,6 @@
 from __future__ import absolute_import
-from te import tvm
-from tbe.dsl import auto_schedule
-import te.lang.cce
+from tbe import tvm
+import tbe.dsl as tbe
 from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
@@ -9,7 +8,7 @@ def sum_compute(x, y, z):
     """
     The compute function of the Sum implementation.
     """
-    res = te.lang.cce.XXX(x, y)
+    res = tbe.XXX(x, y)
     return res
 
 
@@ -46,10 +45,10 @@ def sum_impl(x, y, z, kernel_name="sum_impl"):
 
     with tvm.target.cce():
         res = sum_compute(data1, data2, z)
-        sch = auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data1, data2, res]}
 
-    te.lang.cce.cce_build_code(sch, config)
+    tbe.build(sch, config)

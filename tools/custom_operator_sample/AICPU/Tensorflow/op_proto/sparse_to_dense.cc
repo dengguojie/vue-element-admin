@@ -22,12 +22,17 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "graph/utils/op_desc_utils.h"
+#include "./util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(SparseToDense, SparseToDenseInfer) {
   GeShape shape;
-  if (MakeShapeFromShapeTensor(op, "output_shape", shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "MakeShapeFromShapeTensor error.");
+  if (MakeShapeFromShapeTensor(op, "output_shape", shape,
+                               op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString(
+        "failed to call MakeShapeFromShapeTensor function to make shape from "
+        "input[output_shape]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

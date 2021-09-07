@@ -26,7 +26,6 @@ class TopKCpuKernel : public CpuKernel {
 
   uint32_t Compute(CpuKernelContext &ctx) override;
 
- private:
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
@@ -42,7 +41,7 @@ class TopKCpuKernel : public CpuKernel {
    * descending order
    */
   template <typename T>
-  void TopKForNVector(T *input, T *value, int32_t *indices, int n);
+  void TopKForNVector(size_t start, size_t end);
   int32_t k_ = 0;
   bool sorted_ = true;
   bool largest_ = true;
@@ -52,8 +51,9 @@ class TopKCpuKernel : public CpuKernel {
   Tensor *input_tensor_ = nullptr;
   Tensor *output_values_ = nullptr;
   Tensor *output_indices_ = nullptr;
-  int32_t col_ = 0;
-  int32_t row_ = 0;
+  int32_t head_ = 1;
+  int32_t tail_ = 1;
+  int32_t n_ = 1;
 };
 }  // namespace aicpu
 #endif

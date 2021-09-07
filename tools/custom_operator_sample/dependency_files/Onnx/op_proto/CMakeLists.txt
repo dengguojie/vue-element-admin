@@ -1,15 +1,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
 set(CMAKE_CXX_COMPILER g++)
 set(CMAKE_C_COMPILER gcc)
-
 # add source files
 aux_source_directory(. SRCS)
 
-include_directories(${CMAKE_SOURCE_DIR}/log)
-
 if("x${SRCS}" STREQUAL "x")
     add_custom_target(${OP_PROTO_TARGET}
-            COMMAND mkdir -p ${OP_PROTO_TARG  ET_OUT_DIR}
+            COMMAND mkdir -p ${OP_PROTO_TARGET_OUT_DIR}
             COMMAND echo "no source to make lib${OP_PROTO_TARGET}.so")
     return(0)
 endif()

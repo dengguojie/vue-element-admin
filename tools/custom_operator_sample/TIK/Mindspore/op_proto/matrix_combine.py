@@ -21,13 +21,14 @@ class MatrixCombine(PrimitiveWithInfer):
 
     @prim_attr_register
     def __init__(self):
-        """Initialize MatrixCombine"""
+        """Initialize CusMatrixCombine"""
         self.init_prim_io_names(inputs=['x'], outputs=['y'])
         from matrix_combine_impl import matrix_combine
 
     def infer_shape(self, data_shape):
-        dim_a, dim_b, dim_c = data_shape
-        shape = [dim_a * dim_b, dim_a * dim_c]
+        a, b, c = data_shape
+        shape = [a * b, a * c]
+
         return shape
 
     def infer_dtype(self, data_dtype):

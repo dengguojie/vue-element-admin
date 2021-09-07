@@ -54,6 +54,17 @@ bool CompareAscending(const ValueIndex<T> &one, const ValueIndex<T> &another) {
   return one.value < another.value;
 }
 
+template <typename T>
+static void Exchange(T *value, int32_t *indices, int32_t index1,
+                     int32_t index2) {
+  T tmp1 = value[index1];
+  value[index1] = value[index2];
+  value[index2] = tmp1;
+  int32_t tmp2 = indices[index1];
+  indices[index1] = indices[index2];
+  indices[index2] = tmp2;
+}
+
 class TopKMax {
  public:
   /**
@@ -62,19 +73,23 @@ class TopKMax {
    * @param value address of value data
    * @param indices address of indices data
    * @param k number of top elements
+   * @param jump interval of address in an array
    */
   template <typename T>
-  static void GetValueAndSelect(T *input, T *value, int32_t *indices,
-                                int32_t k) {
-    for (int i = 0; i < k; i++) {
-      value[i] = input[i];
-      indices[i] = i;
-      int node_son = i;
+  static void GetValueAndSelect(const T *input, T *value, int32_t *indices,
+                                int32_t k, int32_t jump) {
+    for (int32_t i = 0; i < k; i++) {
+      int32_t addr = i * jump;
+      value[addr] = input[addr];
+      indices[addr] = i;
+      int32_t node_son = i;
       while (node_son != 0) {
-        if ((value[node_son] < value[(node_son - 1) / 2]) ||
-            ((value[node_son] == value[(node_son - 1) / 2]) &&
-             (indices[node_son] > indices[(node_son - 1) / 2]))) {
-          TopKMax::Exchange(value, indices, node_son, (node_son - 1) / 2);
+        int32_t addr_node_son = node_son * jump;
+        int32_t addr_node_father = (node_son - 1) / 2 * jump;
+        if ((value[addr_node_son] < value[addr_node_father]) ||
+            ((value[addr_node_son] == value[addr_node_father]) &&
+             (indices[addr_node_son] > indices[addr_node_father]))) {
+          Exchange(value, indices, addr_node_son, addr_node_father);
           node_son = (node_son - 1) / 2;
         } else {
           break;
@@ -89,15 +104,17 @@ class TopKMax {
    * @param value address of value data
    * @param indices address of indices data
    * @param k number of top elements
-   * @param n the length of one vector
+   * @param n the length of an array
+   * @param jump interval of address in an array
    */
   template <typename T>
-  static void Select(T *input, T *value, int32_t *indices, int32_t k,
-                     int32_t n) {
-    for (int i = k; i < n; i++) {
-      if (input[i] > value[0]) {
+  static void Select(const T *input, T *value, int32_t *indices, int32_t k,
+                     int32_t n, int32_t jump) {
+    for (int32_t i = k; i < n; i++) {
+      int32_t addr = i * jump;
+      if (input[addr] > value[0]) {
         // when input is greater than the minimum heap
-        value[0] = input[i];
+        value[0] = input[addr];
         indices[0] = i;
         int32_t node_father = 0;
         while (node_father * 2 + 1 < k) {
@@ -105,22 +122,22 @@ class TopKMax {
           int32_t node_right = node_father * 2 + 2;
           if (node_right >= k) {
             // when the right son node doesn't exit
-            TopKMax::ExchangeForTypeOne(value, indices, node_father, node_left);
+            ExchangeForTypeOne(value, indices, node_father, node_left, jump);
             break;
-          } else if (value[node_father] < value[node_left]) {
+          } else if (value[node_father * jump] < value[node_left * jump]) {
             // when the father node is less than the left son node
-            if (TopKMax::ExchangeForTypeTwo(value, indices, node_father,
-                                         node_right)) {
+            if (ExchangeForTypeTwo(value, indices, node_father, node_right,
+                                   jump)) {
               break;
             }
-          } else if (value[node_father] > value[node_left]) {
+          } else if (value[node_father * jump] > value[node_left * jump]) {
             // when the father node is greater than the left son node
-            TopKMax::ExchangeForTypeThree(value, indices, node_father, node_left,
-                                       node_right);
+            ExchangeForTypeThree(value, indices, node_father, node_left,
+                                 node_right, jump);
           } else {
             // when the father node is equal to the left son node
-            if (TopKMax::ExchangeForTypeFour(value, indices, node_father,
-                                          node_left, node_right)) {
+            if (ExchangeForTypeFour(value, indices, node_father, node_left,
+                                    node_right, jump)) {
               break;
             }
           }
@@ -137,14 +154,18 @@ class TopKMax {
    * @param indices address of indices data
    * @param node_father index of father node
    * @param node_left index of left son node
+   * @param jump interval of address in an array
    */
   template <typename T>
   static void ExchangeForTypeOne(T *value, int32_t *indices,
-                                 int32_t node_father, int32_t node_left) {
-    if ((value[node_father] > value[node_left]) ||
-        ((value[node_father] == value[node_left]) &&
-         (indices[node_father] < indices[node_left]))) {
-      TopKMax::Exchange(value, indices, node_father, node_left);
+                                 int32_t node_father, int32_t node_left,
+                                 int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_left = node_left * jump;
+    if ((value[addr_node_father] > value[addr_node_left]) ||
+        ((value[addr_node_father] == value[addr_node_left]) &&
+         (indices[addr_node_father] < indices[addr_node_left]))) {
+      Exchange(value, indices, addr_node_father, addr_node_left);
     }
   }
 
@@ -155,16 +176,20 @@ class TopKMax {
    * @param indices address of indices data
    * @param node_father index of father node
    * @param node_right index of right son node
+   * @param jump interval of address in an array
    * @return whether to exit loop
    */
   template <typename T>
   static bool ExchangeForTypeTwo(T *value, int32_t *indices,
-                                 int32_t &node_father, int32_t node_right) {
-    if (value[node_father] < value[node_right]) {
+                                 int32_t &node_father, int32_t node_right,
+                                 int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_right = node_right * jump;
+    if (value[addr_node_father] < value[addr_node_right]) {
       return true;
-    } else if ((value[node_father] > value[node_right]) ||
-               (indices[node_father] < indices[node_right])) {
-      TopKMax::Exchange(value, indices, node_father, node_right);
+    } else if ((value[addr_node_father] > value[addr_node_right]) ||
+               (indices[addr_node_father] < indices[addr_node_right])) {
+      Exchange(value, indices, addr_node_father, addr_node_right);
       node_father = node_right;
       return false;
     } else {
@@ -180,26 +205,30 @@ class TopKMax {
    * @param node_father index of father node
    * @param node_left index of left son node
    * @param node_right index of right son node
+   * @param jump interval of address in an array
    */
   template <typename T>
   static void ExchangeForTypeThree(T *value, int32_t *indices,
                                    int32_t &node_father, int32_t node_left,
-                                   int32_t node_right) {
-    if (value[node_father] <= value[node_right]) {
-      TopKMax::Exchange(value, indices, node_father, node_left);
+                                   int32_t node_right, int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_left = node_left * jump;
+    int32_t addr_node_right = node_right * jump;
+    if (value[addr_node_father] <= value[addr_node_right]) {
+      Exchange(value, indices, addr_node_father, addr_node_left);
       node_father = node_left;
     } else {
-      if (value[node_left] < value[node_right]) {
-        TopKMax::Exchange(value, indices, node_father, node_left);
+      if (value[addr_node_left] < value[addr_node_right]) {
+        Exchange(value, indices, addr_node_father, addr_node_left);
         node_father = node_left;
-      } else if (value[node_left] > value[node_right]) {
-        TopKMax::Exchange(value, indices, node_father, node_right);
+      } else if (value[addr_node_left] > value[addr_node_right]) {
+        Exchange(value, indices, addr_node_father, addr_node_right);
         node_father = node_right;
-      } else if (indices[node_left] < indices[node_right]) {
-        TopKMax::Exchange(value, indices, node_father, node_right);
+      } else if (indices[addr_node_left] < indices[addr_node_right]) {
+        Exchange(value, indices, addr_node_father, addr_node_right);
         node_father = node_right;
       } else {
-        TopKMax::Exchange(value, indices, node_father, node_left);
+        Exchange(value, indices, addr_node_father, addr_node_left);
         node_father = node_left;
       }
     }
@@ -213,45 +242,38 @@ class TopKMax {
    * @param node_father index of father node
    * @param node_left index of left son node
    * @param node_right index of right son node
+   * @param jump interval of address in an array
    * @return whether to exit loop
    */
   template <typename T>
   static bool ExchangeForTypeFour(T *value, int32_t *indices,
                                   int32_t &node_father, int32_t node_left,
-                                  int32_t node_right) {
-    if (value[node_father] > value[node_right]) {
-      TopKMax::Exchange(value, indices, node_father, node_right);
+                                  int32_t node_right, int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_left = node_left * jump;
+    int32_t addr_node_right = node_right * jump;
+    if (value[addr_node_father] > value[addr_node_right]) {
+      Exchange(value, indices, addr_node_father, addr_node_right);
       node_father = node_right;
-    } else if (value[node_father] < value[node_right]) {
-      if (indices[node_father] < indices[node_left]) {
-        TopKMax::Exchange(value, indices, node_father, node_left);
+    } else if (value[addr_node_father] < value[addr_node_right]) {
+      if (indices[addr_node_father] < indices[addr_node_left]) {
+        Exchange(value, indices, addr_node_father, addr_node_left);
         node_father = node_left;
       } else {
         return true;
       }
-    } else if ((indices[node_father] < indices[node_left]) &&
-               (indices[node_left] > indices[node_right])) {
-      TopKMax::Exchange(value, indices, node_father, node_left);
+    } else if ((indices[addr_node_father] < indices[addr_node_left]) &&
+               (indices[addr_node_left] > indices[addr_node_right])) {
+      Exchange(value, indices, addr_node_father, addr_node_left);
       node_father = node_left;
-    } else if ((indices[node_father] < indices[node_right]) &&
-               (indices[node_left] < indices[node_right])) {
-      TopKMax::Exchange(value, indices, node_father, node_right);
+    } else if ((indices[addr_node_father] < indices[addr_node_right]) &&
+               (indices[addr_node_left] < indices[addr_node_right])) {
+      Exchange(value, indices, addr_node_father, addr_node_right);
       node_father = node_right;
     } else {
       return true;
     }
     return false;
-  }
-
-  template <typename T>
-  static void Exchange(T *value, int32_t *indices, int32_t index1,
-                       int32_t index2) {
-    T tmp1 = value[index1];
-    value[index1] = value[index2];
-    value[index2] = tmp1;
-    int32_t tmp2 = indices[index1];
-    indices[index1] = indices[index2];
-    indices[index2] = tmp2;
   }
 };
 
@@ -263,19 +285,23 @@ class TopKMin {
    * @param value address of value data
    * @param indices address of indices data
    * @param k number of top elements
+   * @param jump interval of address in an array
    */
   template <typename T>
-  static void GetValueAndSelect(T *input, T *value, int32_t *indices,
-                                int32_t k) {
-    for (int i = 0; i < k; i++) {
-      value[i] = input[i];
-      indices[i] = i;
-      int node_son = i;
+  static void GetValueAndSelect(const T *input, T *value, int32_t *indices,
+                                int32_t k, int32_t jump) {
+    for (int32_t i = 0; i < k; i++) {
+      int32_t addr = i * jump;
+      value[addr] = input[addr];
+      indices[addr] = i;
+      int32_t node_son = i;
       while (node_son != 0) {
-        if ((value[node_son] > value[(node_son - 1) / 2]) ||
-            ((value[node_son] == value[(node_son - 1) / 2]) &&
-             (indices[node_son] > indices[(node_son - 1) / 2]))) {
-          TopKMin::Exchange(value, indices, node_son, (node_son - 1) / 2);
+        int32_t addr_node_son = node_son * jump;
+        int32_t addr_node_father = (node_son - 1) / 2 * jump;
+        if ((value[addr_node_son] > value[addr_node_father]) ||
+            ((value[addr_node_son] == value[addr_node_father]) &&
+             (indices[addr_node_son] > indices[addr_node_father]))) {
+          Exchange(value, indices, addr_node_son, addr_node_father);
           node_son = (node_son - 1) / 2;
         } else {
           break;
@@ -290,15 +316,17 @@ class TopKMin {
    * @param value address of value data
    * @param indices address of indices data
    * @param k number of top elements
-   * @param n the length of one vector
+   * @param n the length of an array
+   * @param jump interval of address in an array
    */
   template <typename T>
-  static void Select(T *input, T *value, int32_t *indices, int32_t k,
-                     int32_t n) {
-    for (int i = k; i < n; i++) {
-      if (input[i] < value[0]) {
+  static void Select(const T *input, T *value, int32_t *indices, int32_t k,
+                     int32_t n, int32_t jump) {
+    for (int32_t i = k; i < n; i++) {
+      int32_t addr = i * jump;
+      if (input[addr] < value[0]) {
         // when input is greater than the minimum heap
-        value[0] = input[i];
+        value[0] = input[addr];
         indices[0] = i;
         int32_t node_father = 0;
         while (node_father * 2 + 1 < k) {
@@ -306,22 +334,22 @@ class TopKMin {
           int32_t node_right = node_father * 2 + 2;
           if (node_right >= k) {
             // when the right son node doesn't exit
-            TopKMin::ExchangeForTypeOne(value, indices, node_father, node_left);
+            ExchangeForTypeOne(value, indices, node_father, node_left, jump);
             break;
-          } else if (value[node_father] > value[node_left]) {
+          } else if (value[node_father * jump] > value[node_left * jump]) {
             // when the father node is less than the left son node
-            if (TopKMin::ExchangeForTypeTwo(value, indices, node_father,
-                                         node_right)) {
+            if (ExchangeForTypeTwo(value, indices, node_father, node_right,
+                                   jump)) {
               break;
             }
-          } else if (value[node_father] < value[node_left]) {
+          } else if (value[node_father * jump] < value[node_left * jump]) {
             // when the father node is greater than the left son node
-            TopKMin::ExchangeForTypeThree(value, indices, node_father, node_left,
-                                       node_right);
+            ExchangeForTypeThree(value, indices, node_father, node_left,
+                                 node_right, jump);
           } else {
             // when the father node is equal to the left son node
-            if (TopKMin::ExchangeForTypeFour(value, indices, node_father,
-                                          node_left, node_right)) {
+            if (ExchangeForTypeFour(value, indices, node_father, node_left,
+                                    node_right, jump)) {
               break;
             }
           }
@@ -338,38 +366,18 @@ class TopKMin {
    * @param indices address of indices data
    * @param node_father index of father node
    * @param node_left index of left son node
+   * @param jump interval of address in an array
    */
   template <typename T>
   static void ExchangeForTypeOne(T *value, int32_t *indices,
-                                 int32_t node_father, int32_t node_left) {
-    if ((value[node_father] < value[node_left]) ||
-        ((value[node_father] == value[node_left]) &&
-         (indices[node_father] < indices[node_left]))) {
-      TopKMin::Exchange(value, indices, node_father, node_left);
-    }
-  }
-
-  /**
-   * @brief exchange the father node and the child node when the father node is
-   * greater than the left son node
-   * @param value address of value data
-   * @param indices address of indices data
-   * @param node_father index of father node
-   * @param node_right index of right son node
-   * @return whether to exit loop
-   */
-  template <typename T>
-  static bool ExchangeForTypeTwo(T *value, int32_t *indices,
-                                 int32_t &node_father, int32_t node_right) {
-    if (value[node_father] > value[node_right]) {
-      return true;
-    } else if ((value[node_father] < value[node_right]) ||
-               (indices[node_father] < indices[node_right])) {
-      TopKMin::Exchange(value, indices, node_father, node_right);
-      node_father = node_right;
-      return false;
-    } else {
-      return true;
+                                 int32_t node_father, int32_t node_left,
+                                 int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_left = node_left * jump;
+    if ((value[addr_node_father] < value[addr_node_left]) ||
+        ((value[addr_node_father] == value[addr_node_left]) &&
+         (indices[addr_node_father] < indices[addr_node_left]))) {
+      Exchange(value, indices, addr_node_father, addr_node_left);
     }
   }
 
@@ -379,28 +387,60 @@ class TopKMin {
    * @param value address of value data
    * @param indices address of indices data
    * @param node_father index of father node
+   * @param node_right index of right son node
+   * @param jump interval of address in an array
+   * @return whether to exit loop
+   */
+  template <typename T>
+  static bool ExchangeForTypeTwo(T *value, int32_t *indices,
+                                 int32_t &node_father, int32_t node_right,
+                                 int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_right = node_right * jump;
+    if (value[addr_node_father] > value[addr_node_right]) {
+      return true;
+    } else if ((value[addr_node_father] < value[addr_node_right]) ||
+               (indices[addr_node_father] < indices[addr_node_right])) {
+      Exchange(value, indices, addr_node_father, addr_node_right);
+      node_father = node_right;
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * @brief exchange the father node and the child node when the father node is
+   * greater than the left son node
+   * @param value address of value data
+   * @param indices address of indices data
+   * @param node_father index of father node
    * @param node_left index of left son node
    * @param node_right index of right son node
+   * @param jump interval of address in an array
    */
   template <typename T>
   static void ExchangeForTypeThree(T *value, int32_t *indices,
                                    int32_t &node_father, int32_t node_left,
-                                   int32_t node_right) {
-    if (value[node_father] >= value[node_right]) {
-      TopKMin::Exchange(value, indices, node_father, node_left);
+                                   int32_t node_right, int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_left = node_left * jump;
+    int32_t addr_node_right = node_right * jump;
+    if (value[addr_node_father] >= value[addr_node_right]) {
+      Exchange(value, indices, addr_node_father, addr_node_left);
       node_father = node_left;
     } else {
-      if (value[node_left] > value[node_right]) {
-        TopKMin::Exchange(value, indices, node_father, node_left);
+      if (value[addr_node_left] > value[addr_node_right]) {
+        Exchange(value, indices, addr_node_father, addr_node_left);
         node_father = node_left;
-      } else if (value[node_left] < value[node_right]) {
-        TopKMin::Exchange(value, indices, node_father, node_right);
+      } else if (value[addr_node_left] < value[addr_node_right]) {
+        Exchange(value, indices, addr_node_father, addr_node_right);
         node_father = node_right;
-      } else if (indices[node_left] < indices[node_right]) {
-        TopKMin::Exchange(value, indices, node_father, node_right);
+      } else if (indices[addr_node_left] < indices[addr_node_right]) {
+        Exchange(value, indices, addr_node_father, addr_node_right);
         node_father = node_right;
       } else {
-        TopKMin::Exchange(value, indices, node_father, node_left);
+        Exchange(value, indices, addr_node_father, addr_node_left);
         node_father = node_left;
       }
     }
@@ -414,45 +454,38 @@ class TopKMin {
    * @param node_father index of father node
    * @param node_left index of left son node
    * @param node_right index of right son node
+   * @param jump interval of address in an array
    * @return whether to exit loop
    */
   template <typename T>
   static bool ExchangeForTypeFour(T *value, int32_t *indices,
                                   int32_t &node_father, int32_t node_left,
-                                  int32_t node_right) {
-    if (value[node_father] < value[node_right]) {
-      TopKMin::Exchange(value, indices, node_father, node_right);
+                                  int32_t node_right, int32_t jump) {
+    int32_t addr_node_father = node_father * jump;
+    int32_t addr_node_left = node_left * jump;
+    int32_t addr_node_right = node_right * jump;
+    if (value[addr_node_father] < value[addr_node_right]) {
+      Exchange(value, indices, addr_node_father, addr_node_right);
       node_father = node_right;
-    } else if (value[node_father] > value[node_right]) {
-      if (indices[node_father] < indices[node_left]) {
-        TopKMin::Exchange(value, indices, node_father, node_left);
+    } else if (value[addr_node_father] > value[addr_node_right]) {
+      if (indices[addr_node_father] < indices[addr_node_left]) {
+        Exchange(value, indices, addr_node_father, addr_node_left);
         node_father = node_left;
       } else {
         return true;
       }
-    } else if ((indices[node_father] < indices[node_left]) &&
-               (indices[node_left] > indices[node_right])) {
-      TopKMin::Exchange(value, indices, node_father, node_left);
+    } else if ((indices[addr_node_father] < indices[addr_node_left]) &&
+               (indices[addr_node_left] > indices[addr_node_right])) {
+      Exchange(value, indices, addr_node_father, addr_node_left);
       node_father = node_left;
-    } else if ((indices[node_father] < indices[node_right]) &&
-               (indices[node_left] < indices[node_right])) {
-      TopKMin::Exchange(value, indices, node_father, node_right);
+    } else if ((indices[addr_node_father] < indices[addr_node_right]) &&
+               (indices[addr_node_left] < indices[addr_node_right])) {
+      Exchange(value, indices, addr_node_father, addr_node_right);
       node_father = node_right;
     } else {
       return true;
     }
     return false;
-  }
-
-  template <typename T>
-  static void Exchange(T *value, int32_t *indices, int32_t index1,
-                       int32_t index2) {
-    T tmp1 = value[index1];
-    value[index1] = value[index2];
-    value[index2] = tmp1;
-    int32_t tmp2 = indices[index1];
-    indices[index1] = indices[index2];
-    indices[index2] = tmp2;
   }
 };
 
@@ -513,40 +546,12 @@ uint32_t TopKCpuKernel::Compute(CpuKernelContext &ctx) {
 template <typename T>
 uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("TopKCpuKernel::DoCompute start");
-  auto input_data = reinterpret_cast<T *>(input_tensor_->GetData());
-  auto values_data = reinterpret_cast<T *>(output_values_->GetData());
-  auto indices_data = reinterpret_cast<int32_t *>(output_indices_->GetData());
-
-/*
-Procedure for multi-core concurrent computing:
-1. Call the CpuKernelUtils::GetCPUNum function to obtain the number of AI CPUs (max_core_num).
-2. Calculate the computing data size on each AI CPU (per_unit_size) by dividing the total data size by the number of AI CPUs.
-3. Implement the working process function shard of each compute unit, and compile the computing logic that needs to be
-   concurrently executed in the function.
-4. Call the CpuKernelUtils::ParallelFor function and input parameters such as the CpuKernelContext object (ctx), total
-   data size (data_num), computing data size on each AI CPU (per_unit_size), and working process function shard of each
-   compute unit. Then execute multi-core concurrent computing.
-For example:
-uint32_t min_core_num = 1;
-int64_t max_core_num =
-      std::max(min_core_num, CpuKernelUtils::GetCPUNum(ctx));
-per_unit_size = data_num / max_core_num;
-auto shard = [&](size_t start, size_t end) {
-	for (size_t i = start; i < end; i++) {
-	// Execution process      
-	 ... ...
-	}
-};
-CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, shard);
-*/
-
   auto shard_top_k = [&](size_t start, size_t end) {
-    TopKForNVector(
-        input_data + start * col_, values_data + start * k_,
-        indices_data + start * k_ * (input_rank_ - dim_), end - start);
+    TopKForNVector<T>(start, end);
   };
   uint32_t ret = CpuKernelUtils::ParallelFor(
-      ctx, row_, 1, shard_top_k);  // the minimum unit of segmentation is 1
+      ctx, head_ * tail_, 1,
+      shard_top_k);  // the minimum unit of segmentation is 1
   if (ret != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed");
     return KERNEL_STATUS_INNER_ERROR;
@@ -556,48 +561,42 @@ CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, shard);
 }
 
 template <typename T>
-void TopKCpuKernel::TopKForNVector(T *input, T *value, int32_t *indices,
-                                   int n) {
-  std::shared_ptr<TensorShape> input_shape = input_tensor_->GetTensorShape();
-  std::vector<int32_t> shape_end(input_rank_ - dim_);
-  shape_end[input_rank_ - dim_ - 1] = 1;
-  for (int32_t i = input_rank_ - dim_ - 2; i >= 0; i--) {
-    shape_end[i] = shape_end[i + 1] * input_shape->GetDimSize(i + dim_ + 1);
-  }
-  for (int i = 0; i < n; i++) {
+void TopKCpuKernel::TopKForNVector(size_t start, size_t end) {
+  auto input = reinterpret_cast<T *>(input_tensor_->GetData());
+  auto value = reinterpret_cast<T *>(output_values_->GetData());
+  auto indice = reinterpret_cast<int32_t *>(output_indices_->GetData());
+  for (size_t i = start; i < end; i++) {
+    int32_t head = i / tail_;
+    int32_t tail = i % tail_;
     if (largest_) {
-      TopKMax::GetValueAndSelect(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_);
-      TopKMax::Select(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_, col_);
+      TopKMax::GetValueAndSelect(input + head * n_ * tail_ + tail,
+                                 value + head * k_ * tail_ + tail,
+                                 indice + head * k_ * tail_ + tail, k_, tail_);
+      TopKMax::Select(input + head * n_ * tail_ + tail,
+                      value + head * k_ * tail_ + tail,
+                      indice + head * k_ * tail_ + tail, k_, n_, tail_);
     } else {
-      TopKMin::GetValueAndSelect(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_);
-      TopKMin::Select(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_, col_);
+      TopKMin::GetValueAndSelect(input + head * n_ * tail_ + tail,
+                                 value + head * k_ * tail_ + tail,
+                                 indice + head * k_ * tail_ + tail, k_, tail_);
+      TopKMin::Select(input + head * n_ * tail_ + tail,
+                      value + head * k_ * tail_ + tail,
+                      indice + head * k_ * tail_ + tail, k_, n_, tail_);
     }
     if (sorted_) {
       std::vector<ValueIndex<T>> data(k_);
-      for (int j = 0; j < k_; j++) {
-        data[j].value = *(value + i * k_ + j);
-        data[j].index = *(indices + i * k_ * (input_rank_ - dim_) + j);
+      for (int32_t j = 0; j < k_; j++) {
+        data[j].value = *(value + head * k_ * tail_ + tail + j * tail_);
+        data[j].index = *(indice + head * k_ * tail_ + tail + j * tail_);
       }
       if (largest_) {
         std::sort(data.begin(), data.end(), CompareDescending<T>);
       } else {
         std::sort(data.begin(), data.end(), CompareAscending<T>);
       }
-      for (int j = 0; j < k_; j++) {
-        *(value + i * k_ + j) = data[j].value;
-        int32_t index_old = data[j].index;
-        for (size_t m = 0; m < shape_end.size(); m++) {
-          *(indices + (i * k_ + j) * (input_rank_ - dim_) + m) = index_old / shape_end[m];
-          index_old %= shape_end[m];
-        }
-      }
-    } else {
-      for (int j = 0; j < k_; j++) {
-        int32_t index_old = *(indices + i * k_ * (input_rank_ - dim_) + j);
-        for (size_t m = 0; m < shape_end.size(); m++) {
-          *(indices + (i * k_ + j) * (input_rank_ - dim_) + m) = index_old / shape_end[m];
-          index_old %= shape_end[m];
-        }
+      for (int32_t j = 0; j < k_; j++) {
+        *(value + head * k_ * tail_ + tail + j * tail_) = data[j].value;
+        *(indice + head * k_ * tail_ + tail + j * tail_) = data[j].index;
       }
     }
   }
@@ -626,22 +625,18 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
                      KERNEL_STATUS_PARAM_INVALID,
                      "Get Invalid attr[dim] value[%d]", dim_);
 
-  // get col_ and row_
-  col_ = 1;
-  row_ = 1;
-  for (int i = 0; i < input_rank; i++) {
+  // get head_ and tail_ and n_
+  head_ = 1;
+  tail_ = 1;
+  for (int32_t i = 0; i < input_rank; i++) {
     if (i < dim_) {
-      row_ *= input_shape->GetDimSize(i);
+      head_ *= input_shape->GetDimSize(i);
+    } else if (i == dim_) {
+      n_ = input_shape->GetDimSize(i);
     } else {
-      col_ *= input_shape->GetDimSize(i);
+      tail_ *= input_shape->GetDimSize(i);
     }
   }
-  KERNEL_CHECK_FALSE((col_ > 0),
-                     KERNEL_STATUS_PARAM_INVALID,
-                     "Col[%d] must be > 0", col_);
-  KERNEL_CHECK_FALSE((row_ > 0),
-                     KERNEL_STATUS_PARAM_INVALID,
-                     "Row[%d] must be > 0", row_);
 
   // get data_type_
   data_type_ = static_cast<DataType>(input_tensor_->GetDataType());
@@ -657,9 +652,8 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("K[%d] must be greater than 0", k_);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  if (col_ < k_) {
-    KERNEL_LOG_ERROR("Input must have at least %d columns, but got %d", k_,
-                     col_);
+  if (n_ < k_) {
+    KERNEL_LOG_ERROR("Input must have at least %d columns, but got %d", k_, n_);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
