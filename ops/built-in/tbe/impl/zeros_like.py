@@ -26,7 +26,6 @@ from te import tvm
 
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("zeros_like")
 def zeros_like_compute(x, y, kernel_name="zeros_like"):
     """
     Enter a tensor, output a tensor of all zero,
