@@ -91,9 +91,9 @@ void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>
   op_calc_info.Initialize();
   string op_slice_info_str = "";
   op_calc_info.SetAxisSplitMaps(split_maps);
-  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   op_calc_info.SetL1FusionEnable(L1_fusion_type);
   op_calc_info.SetMinTbeL1Space(min_tbe_L1space);
+  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusionNodes) {
     if (fusion_node == nullptr) {
       continue;
