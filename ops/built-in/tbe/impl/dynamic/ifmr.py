@@ -328,21 +328,21 @@ class Reconstruction():
     # dynamic shape
     def _compute_mse(self, index, search_index):
         input_data_each_core = self.tik_instance.Scalar('int32', 'input_data_each_core')
-        move_offset = self.tik_instance.Scalar('int32', 'move_offset')
+        base_offset = self.tik_instance.Scalar('int32', 'move_offset')
         loop_time = self.tik_instance.Scalar('int32', 'loop_time')
         last_num = self.tik_instance.Scalar('int32', 'last_num')
         ub_tensor_size = self.tik_instance.Scalar('int32', 'ub_tensor_size', self.ub_tensor_size)
-
+        move_offset = self.tik_instance.Scalar('int32', 'move_offset')
         with self.tik_instance.if_scope(index == (self.aicore_num - 1)):
             input_data_each_core.set_as(self.data_num_last_core + self.data_num_each_core)
 
-            move_offset.set_as(index * self.data_num_each_core)
+            base_offset.set_as(index * self.data_num_each_core)
 
             loop_time.set_as(input_data_each_core // self.ub_tensor_size)
 
             with self.tik_instance.if_scope(loop_time > 0):
                 with self.tik_instance.for_range(0, loop_time) as loop_index:
-                    move_offset.set_as(move_offset + loop_index * self.ub_tensor_size)
+                    move_offset.set_as(base_offset + loop_index * self.ub_tensor_size)
                     self._mse_compute_each_loop(move_offset, ub_tensor_size, search_index)
 
             move_offset.set_as(index * self.data_num_each_core + loop_time * self.ub_tensor_size)
@@ -353,13 +353,13 @@ class Reconstruction():
                 self._mse_compute_each_loop(move_offset, last_num, search_index)
 
         with self.tik_instance.else_scope():
-            move_offset.set_as(index * self.data_num_each_core)
+            base_offset.set_as(index * self.data_num_each_core)
 
             loop_time.set_as(self.data_num_each_core // self.ub_tensor_size)
 
             with self.tik_instance.if_scope(loop_time > 0):
                 with self.tik_instance.for_range(0, loop_time) as loop_index:
-                    move_offset.set_as(move_offset + loop_index * self.ub_tensor_size)
+                    move_offset.set_as(base_offset + loop_index * self.ub_tensor_size)
                     self._mse_compute_each_loop(move_offset, ub_tensor_size, search_index)
 
             move_offset.set_as(index * self.data_num_each_core + loop_time * self.ub_tensor_size)
