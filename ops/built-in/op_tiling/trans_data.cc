@@ -22,59 +22,47 @@
 #include <vector>
 #include <algorithm>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "trans_data_common.h"
 #include "transpose.h"
 #include "error_log.h"
 #include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
+using namespace ge;
 
-int64_t GetC0Len(std::string& opType) {
-  if (opType == "int8" || opType == "uint8" || opType == "bool") {
+int64_t GetC0SizeWithType(DataType& op_type) {
+  if (op_type == ge::DT_INT8 || op_type == ge::DT_UINT8 || op_type == ge::DT_BOOL) {
     return C0_32;
   }
   return C0_16;
 }
 
-int64_t GetDTypeLen(std::string& opType) {
-  int64_t typeLen = 1;
-  if (opType == "int8" || opType == "uint8") {
-    typeLen = 1;
-  } else if (opType == "float16" || opType == "int16" || opType == "uint16" || opType == "bool") {
-    typeLen = 2;
-  } else if (opType == "float32" || opType == "int32" || opType == "uint32" || opType == "float") {
-    typeLen = 4;
-  } else if (opType == "int64" || opType == "uint64") {
-    typeLen = 8;
-  }
+bool CheckTensorShape(const std::string& op_type, int64_t ub_size, int64_t block_dim, std::vector<int64_t> out_shape) {
+  int32_t out_dims = out_shape.size();
 
-  return typeLen;
-}
-
-bool CheckTensorShape(const std::string& opType, int64_t ubSize, int64_t blockDim, std::vector<int64_t> outShape) {
-  int32_t outDims = outShape.size();
-
-  if (ubSize < 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, ubSize is invalid.");
+  if (ub_size < 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [TransDataTiling] : CheckTensorShape, ub_size is invalid.");
     return false;
   }
 
-  if (blockDim < 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, blockDim is invalid.");
+  if (block_dim < 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [TransDataTiling] : CheckTensorShape, block_dim is invalid.");
     return false;
   }
 
-  if (outDims == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, outShape is invalid.");
+  if (out_dims == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [TransDataTiling] : CheckTensorShape, out_shape is invalid.");
     return false;
   }
 
-  for (int32_t i = 0; i < outDims; i++) {
-    if (outShape[i] <= 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, outShape.shape[i] must be > 0");
+  for (int32_t i = 0; i < out_dims; i++) {
+    if (out_shape[i] <= 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                      "op [TransDataTiling] : CheckTensorShape, out_shape.shape[i] must be > 0");
       return false;
     }
   }
@@ -82,571 +70,556 @@ bool CheckTensorShape(const std::string& opType, int64_t ubSize, int64_t blockDi
   return true;
 }
 
-bool GetCompileParams(const nlohmann::json& opCompileInfoJson, std::string& srcFormat, std::string& dstFormat,
-                      std::string& dType, int64_t& ubSize, int64_t& blockDim, int64_t& inputSize, int64_t& hiddenSize,
-                      int64_t& group, const std::string& opType) {
+bool GetCompileParams(const nlohmann::json& compile_info_json, int64_t& ub_size, int64_t& block_dim,
+                      int64_t& input_size, int64_t& hidden_size, int64_t& group, const std::string& op_type) {
   using namespace nlohmann;
+  auto all_vars = compile_info_json["vars"];
 
-  auto allVars = opCompileInfoJson["vars"];
-  if (allVars.count("srcFormat") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get srcFormat error");
-    return false;
-  }
-  srcFormat = allVars["srcFormat"].get<std::string>();
-
-  if (allVars.count("dstFormat") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get dstFormat error");
-    return false;
-  }
-  dstFormat = allVars["dstFormat"].get<std::string>();
-
-  if (allVars.count("dType") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get dType error");
-    return false;
-  }
-  dType = allVars["dType"].get<std::string>();
-
-  if (allVars.count("ubSize") == 0) {
+  if (all_vars.count("ubSize") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get ubSize error");
     return false;
   }
-  ubSize = allVars["ubSize"].get<std::int64_t>();
+  ub_size = all_vars["ubSize"].get<std::int64_t>();
 
-  if (allVars.count("blockDim") == 0) {
+  if (all_vars.count("blockDim") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get blockDim error");
     return false;
   }
-  blockDim = allVars["blockDim"].get<std::int64_t>();
+  block_dim = all_vars["blockDim"].get<std::int64_t>();
 
-  if (allVars.count("inputSize") == 0) {
+  if (all_vars.count("inputSize") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get inputSize error");
     return false;
   }
-  inputSize = allVars["inputSize"].get<std::int64_t>();
+  input_size = all_vars["inputSize"].get<std::int64_t>();
 
-  if (allVars.count("hiddenSize") == 0) {
+  if (all_vars.count("hiddenSize") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get hiddenSize error");
     return false;
   }
-  hiddenSize = allVars["hiddenSize"].get<std::int64_t>();
+  hidden_size = all_vars["hiddenSize"].get<std::int64_t>();
 
-  if (allVars.count("group") == 0) {
+  if (all_vars.count("group") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get group error");
     return false;
   }
-  group = allVars["group"].get<std::int64_t>();
+  group = all_vars["group"].get<std::int64_t>();
 
-  if (blockDim == 0) {
+  if (block_dim == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "Core count cannot be zero!");
     return false;
   }
 
-  OP_LOGD(opType.c_str(), "GetCompileParams, srcFormat[%s], dstFormat[%s], \
-          dType[%s], ubSize[%d], blockDim[%d], inputSize[%d], hiddenSize[%d], group[%d].",
-          srcFormat.c_str(), dstFormat.c_str(), dType.c_str(), ubSize, blockDim, inputSize, hiddenSize, group);
+  OP_LOGD(op_type.c_str(),
+          "GetCompileParams, \
+          ub_size[%ld], block_dim[%ld], input_size[%ld], hidden_size[%ld], group[%ld].",
+          ub_size, block_dim, input_size, hidden_size, group);
 
   return true;
 }
 
-bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape, std::string& srcFormat,
-                    std::string& dstFormat, std::vector<int64_t>& combAxis, int64_t c0Len, int64_t group,
-                    std::vector<int64_t>& inShapeNew, std::vector<int64_t>& outShapeNew, std::string& realSrcFormat,
-                    std::string& realDstFormat) {
-  int32_t combAxisCnt = combAxis.size();
-  if (combAxisCnt > 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, combAxisCnt > 0");
+bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shape, ge::Format& src_format,
+                    ge::Format& dst_format, std::vector<int64_t>& comb_axis, int64_t shape_c0_len, int64_t group,
+                    std::vector<int64_t>& in_shape_new, std::vector<int64_t>& out_shape_new,
+                    std::string& real_src_format, std::string& real_dst_format) {
+  if (comb_axis.size() > 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, comb_axis.size() > 0");
     return false;
   }
 
-  if ((srcFormat == "NCHW" || srcFormat == "NHWC") && (dstFormat == "NC1HWC0")) {
-    int64_t hwIdx = std::strchr(srcFormat.c_str(), 'H') - srcFormat.c_str();
-    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
-    realDstFormat = "NCHT";
-    if (srcFormat == "NCHW") {
-      realSrcFormat = "NCH";
-      for (size_t i = 0; i < inShape.size() - hwIdx; i++) {
-        inShapeNew.push_back(inShape[i]);
+  if ((src_format == FORMAT_NCHW || src_format == FORMAT_NHWC) && (dst_format == FORMAT_NC1HWC0)) {
+    int64_t hw_idx = GetIdxFromFormat(HW_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    real_dst_format = "NCHT";
+    if (src_format == FORMAT_NCHW) {
+      real_src_format = "NCH";
+      for (size_t i = 0; i < in_shape.size() - hw_idx; i++) {
+        in_shape_new.push_back(in_shape[i]);
       }
-      int64_t lastSize = GetShapeSize(inShape, hwIdx);
-      inShapeNew.push_back(lastSize);
+      int64_t last_size = GetShapeSize(in_shape, hw_idx);
+      in_shape_new.push_back(last_size);
     } else {
-      if (inShape.size() < 1) {
+      if (in_shape.size() < 1) {
         VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, inShape size < 1");
         return false;
       }
-      realSrcFormat = "NHC";
-      for (int64_t i = 0; i < hwIdx; i++) {
-        inShapeNew.push_back(inShape[i]);
+      real_src_format = "NHC";
+      for (int64_t i = 0; i < hw_idx; i++) {
+        in_shape_new.push_back(in_shape[i]);
       }
-      int64_t n = inShape.size() - 1;
+      int64_t n = in_shape.size() - 1;
       int64_t shapeSize = 1;
-      for (int64_t i = hwIdx; i < n; i++) {
-        shapeSize *= inShape[i];
+      for (int64_t i = hw_idx; i < n; i++) {
+        shapeSize *= in_shape[i];
       }
-      inShapeNew.push_back(shapeSize);
-      inShapeNew.push_back(inShape[inShape.size() - 1]);
+      in_shape_new.push_back(shapeSize);
+      in_shape_new.push_back(in_shape[in_shape.size() - 1]);
     }
-    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
-    int64_t axisN = inShape[0];
-    int64_t axisH = inShapeNew[hwIdx];
-    int64_t axisC0 = c0Len;
-    outShapeNew.push_back(axisN);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(axisH);
-    outShapeNew.push_back(axisC0);
+    int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], shape_c0_len);
+    int64_t axis_n = in_shape[0];
+    int64_t axis_h = in_shape_new[hw_idx];
+    int64_t axis_c0 = shape_c0_len;
+    out_shape_new.push_back(axis_n);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(axis_h);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if ((srcFormat == "ND" || srcFormat == "NHWC" || srcFormat == "NCHW") && (dstFormat == "FRACTAL_NZ")) {
-    realSrcFormat = "HNC";
-    realDstFormat = "HCNT";
-    int64_t axisN;
-    int64_t axisH;
-    int64_t axisC;
-    if (inShape.size() == 1) {
-      axisH = 1;
-      axisN = 1;
-      axisC = inShape[0];
-    } else if (inShape.size() == 2) {
-      axisH = 1;
-      axisN = inShape[0];
-      axisC = inShape[1];
+  if ((src_format == FORMAT_ND || src_format == FORMAT_NHWC || src_format == FORMAT_NCHW) &&
+      (dst_format == FORMAT_FRACTAL_NZ)) {
+    real_src_format = "HNC";
+    real_dst_format = "HCNT";
+    int64_t axis_n;
+    int64_t axis_h;
+    int64_t axis_c;
+    if (in_shape.size() == 1) {
+      axis_h = 1;
+      axis_n = 1;
+      axis_c = in_shape[0];
+    } else if (in_shape.size() == 2) {
+      axis_h = 1;
+      axis_n = in_shape[0];
+      axis_c = in_shape[1];
     } else {
       int64_t shapeSize = 1;
-      for (size_t i = 0; i < inShape.size() - 2; i++) {
-        shapeSize *= inShape[i];
+      for (size_t i = 0; i < in_shape.size() - 2; i++) {
+        shapeSize *= in_shape[i];
       }
-      axisH = shapeSize;
-      axisN = inShape[inShape.size() - 2];
-      axisC = inShape[inShape.size() - 1];
+      axis_h = shapeSize;
+      axis_n = in_shape[in_shape.size() - 2];
+      axis_c = in_shape[in_shape.size() - 1];
     }
-    inShapeNew.push_back(axisH);
-    inShapeNew.push_back(axisN);
-    inShapeNew.push_back(axisC);
-    int64_t axisC0 = c0Len;
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNi = NI_16;
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
-    outShapeNew.push_back(axisH);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(axisNo * axisNi);
-    outShapeNew.push_back(axisC0);
+    in_shape_new.push_back(axis_h);
+    in_shape_new.push_back(axis_n);
+    in_shape_new.push_back(axis_c);
+    int64_t axis_c0 = shape_c0_len;
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_ni = NI_16;
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
+    out_shape_new.push_back(axis_h);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(axis_no * axis_ni);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if (srcFormat == "NC1HWC0" && dstFormat == "NCHW") {
-    if (inShape.size() < 5) {
-      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, inShape size < 5");
+  if (src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_NCHW) {
+    if (in_shape.size() < 5) {
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, in_shape size < 5");
       return false;
     }
-    realSrcFormat = "NCHT";
-    realDstFormat = "NCH";
-    inShapeNew.push_back(inShape[0]);
-    inShapeNew.push_back(inShape[1]);
-    inShapeNew.push_back(inShape[2] * inShape[3]);
-    inShapeNew.push_back(inShape[4]);
+    real_src_format = "NCHT";
+    real_dst_format = "NCH";
+    in_shape_new.push_back(in_shape[0]);
+    in_shape_new.push_back(in_shape[1]);
+    in_shape_new.push_back(in_shape[2] * in_shape[3]);
+    in_shape_new.push_back(in_shape[4]);
 
-    int64_t axisC = outShape[1];
-    outShapeNew.push_back(inShape[0]);
-    outShapeNew.push_back(axisC);
-    outShapeNew.push_back(inShape[2] * inShape[3]);
+    int64_t axis_c = out_shape[1];
+    out_shape_new.push_back(in_shape[0]);
+    out_shape_new.push_back(axis_c);
+    out_shape_new.push_back(in_shape[2] * in_shape[3]);
   }
 
-  if (srcFormat == "NCDHW" && dstFormat == "NDC1HWC0") {
-    realSrcFormat = "NCDH";
-    realDstFormat = "NDCHT";
+  if (src_format == FORMAT_NCDHW && dst_format == FORMAT_NDC1HWC0) {
+    real_src_format = "NCDH";
+    real_dst_format = "NDCHT";
 
-    if (inShape.size() != 5) {
+    if (in_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    inShapeNew.push_back(inShape[0]);
-    inShapeNew.push_back(inShape[1]);
-    inShapeNew.push_back(inShape[2]);
-    inShapeNew.push_back(inShape[3] * inShape[4]);
-    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
-    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
-    int64_t axisC0 = c0Len;
-    outShapeNew.push_back(inShape[0]);
-    outShapeNew.push_back(inShape[2]);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(inShape[3] * inShape[4]);
-    outShapeNew.push_back(axisC0);
+    in_shape_new.push_back(in_shape[0]);
+    in_shape_new.push_back(in_shape[1]);
+    in_shape_new.push_back(in_shape[2]);
+    in_shape_new.push_back(in_shape[3] * in_shape[4]);
+    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], shape_c0_len);
+    int64_t axis_c0 = shape_c0_len;
+    out_shape_new.push_back(in_shape[0]);
+    out_shape_new.push_back(in_shape[2]);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(in_shape[3] * in_shape[4]);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if ((srcFormat == "HWCN") && (dstFormat == "FRACTAL_Z" || dstFormat == "FRACTAL_ZN")) {
-    realSrcFormat = "HCN";
-    realDstFormat = "CHNT";
+  if (src_format == FORMAT_HWCN && dst_format == FORMAT_FRACTAL_Z) {
+    real_src_format = "HCN";
+    real_dst_format = "CHNT";
 
-    if (inShape.size() != 4) {
+    if (in_shape.size() != 4) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    if (outShape.size() < 2) {
+    if (out_shape.size() < 2) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The output shape dimension size is not correct!");
       return false;
     }
-    inShapeNew.push_back(inShape[0] * inShape[1]);
-    inShapeNew.push_back(inShape[2]);
-    inShapeNew.push_back(inShape[3]);
+    in_shape_new.push_back(in_shape[0] * in_shape[1]);
+    in_shape_new.push_back(in_shape[2]);
+    in_shape_new.push_back(in_shape[3]);
 
-    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
-    int64_t axisC0 = outShape[outShape.size() - 1];
-    int64_t axisNi = outShape[outShape.size() - 2];
-    int64_t axisC1 = GetCeilDiv(inShape[cIdx], axisC0);
-    int64_t axisNo = GetCeilDiv(inShape[3], axisNi);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(inShape[0] * inShape[1]);
-    outShapeNew.push_back(axisNi * axisNo);
-    outShapeNew.push_back(axisC0);
+    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t axis_c0 = out_shape[out_shape.size() - 1];
+    int64_t axis_ni = out_shape[out_shape.size() - 2];
+    int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], axis_c0);
+    int64_t axis_no = GetCeilDiv(in_shape[3], axis_ni);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(in_shape[0] * in_shape[1]);
+    out_shape_new.push_back(axis_ni * axis_no);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if (srcFormat == "DHWCN" && dstFormat == "FRACTAL_Z_3D") {
-    if (inShape.size() != 5) {
+  if (src_format == FORMAT_DHWCN && dst_format == FORMAT_FRACTAL_Z_3D) {
+    if (in_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    realSrcFormat = "DHCN";
-    realDstFormat = "DCHNT";
-    inShapeNew.push_back(inShape[0]);
-    inShapeNew.push_back(inShape[1] * inShape[2]);
-    inShapeNew.push_back(inShape[3]);
-    inShapeNew.push_back(inShape[4]);
-    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
-    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
-    int64_t axisC0 = c0Len;
-    int64_t axisNi = NI_16;
-    int64_t axisNo = GetCeilDiv(inShape[4], axisNi);
-    outShapeNew.push_back(inShape[0]);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(inShape[1] * inShape[2]);
-    outShapeNew.push_back(axisNo * axisNi);
-    outShapeNew.push_back(axisC0);
+    real_src_format = "DHCN";
+    real_dst_format = "DCHNT";
+    in_shape_new.push_back(in_shape[0]);
+    in_shape_new.push_back(in_shape[1] * in_shape[2]);
+    in_shape_new.push_back(in_shape[3]);
+    in_shape_new.push_back(in_shape[4]);
+    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], shape_c0_len);
+    int64_t axis_c0 = shape_c0_len;
+    int64_t axis_ni = NI_16;
+    int64_t axis_no = GetCeilDiv(in_shape[4], axis_ni);
+    out_shape_new.push_back(in_shape[0]);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(in_shape[1] * in_shape[2]);
+    out_shape_new.push_back(axis_no * axis_ni);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if (srcFormat == "NDHWC" && dstFormat == "FRACTAL_Z_3D") {
-    if (inShape.size() != 5) {
+  if (src_format == FORMAT_NDHWC && dst_format == FORMAT_FRACTAL_Z_3D) {
+    if (in_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    realSrcFormat = "NDHC";
-    realDstFormat = "DCHNT";
-    inShapeNew.push_back(inShape[0]);
-    inShapeNew.push_back(inShape[1]);
-    inShapeNew.push_back(inShape[3] * inShape[2]);
-    inShapeNew.push_back(inShape[4]);
-    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
-    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
-    int64_t axisC0 = c0Len;
-    int64_t axisNi = NI_16;
-    int64_t axisNo = GetCeilDiv(inShape[0], axisNi);
-    outShapeNew.push_back(inShape[1]);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(inShape[3] * inShape[2]);
-    outShapeNew.push_back(axisNo * axisNi);
-    outShapeNew.push_back(axisC0);
+    real_src_format = "NDHC";
+    real_dst_format = "DCHNT";
+    in_shape_new.push_back(in_shape[0]);
+    in_shape_new.push_back(in_shape[1]);
+    in_shape_new.push_back(in_shape[3] * in_shape[2]);
+    in_shape_new.push_back(in_shape[4]);
+    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], shape_c0_len);
+    int64_t axis_c0 = shape_c0_len;
+    int64_t axis_ni = NI_16;
+    int64_t axis_no = GetCeilDiv(in_shape[0], axis_ni);
+    out_shape_new.push_back(in_shape[1]);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(in_shape[3] * in_shape[2]);
+    out_shape_new.push_back(axis_no * axis_ni);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if (srcFormat == "NC1HWC0" && dstFormat == "FRACTAL_Z") {
-    if (inShape.size() != 5) {
+  if (src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_FRACTAL_Z) {
+    if (in_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    realSrcFormat = "NDHC";
-    realDstFormat = "DCHNT";
-    int64_t axisN = inShape[0];
-    int64_t axisC1 = inShape[1];
-    int64_t axisH = inShape[2];
-    int64_t axisW = inShape[3];
-    int64_t axisC0 = inShape[4];
-    int64_t axisD = 1;
-    int64_t axisC = 1;
-    int64_t axisNi = NI_16;
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
-    inShapeNew = {axisN, axisD, axisC1 * axisH * axisW, axisC0};
-    outShapeNew = {axisD, axisC, axisC1 * axisH * axisW, axisNo * axisNi, axisC0};
+    real_src_format = "NDHC";
+    real_dst_format = "DCHNT";
+    int64_t axis_n = in_shape[0];
+    int64_t axis_c1 = in_shape[1];
+    int64_t axis_h = in_shape[2];
+    int64_t axis_w = in_shape[3];
+    int64_t axis_c0 = in_shape[4];
+    int64_t axis_d = 1;
+    int64_t axis_c = 1;
+    int64_t axis_ni = NI_16;
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
+    in_shape_new = {axis_n, axis_d, axis_c1 * axis_h * axis_w, axis_c0};
+    out_shape_new = {axis_d, axis_c, axis_c1 * axis_h * axis_w, axis_no * axis_ni, axis_c0};
   }
 
-  if (srcFormat == "NDHWC" && dstFormat == "NDC1HWC0") {
-    if (inShape.size() != 5) {
+  if (src_format == FORMAT_NDHWC && dst_format == FORMAT_NDC1HWC0) {
+    if (in_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    realSrcFormat = "NDHC";
-    realDstFormat = "NDCHT";
-    inShapeNew.push_back(inShape[0]);
-    inShapeNew.push_back(inShape[1]);
-    inShapeNew.push_back(inShape[3] * inShape[2]);
-    inShapeNew.push_back(inShape[4]);
-    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
-    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
-    int64_t axisC0 = c0Len;
-    outShapeNew.push_back(inShape[0]);
-    outShapeNew.push_back(inShape[1]);
-    outShapeNew.push_back(axisC1);
-    outShapeNew.push_back(inShape[3] * inShape[2]);
-    outShapeNew.push_back(axisC0);
+    real_src_format = "NDHC";
+    real_dst_format = "NDCHT";
+    in_shape_new.push_back(in_shape[0]);
+    in_shape_new.push_back(in_shape[1]);
+    in_shape_new.push_back(in_shape[3] * in_shape[2]);
+    in_shape_new.push_back(in_shape[4]);
+    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], shape_c0_len);
+    int64_t axis_c0 = shape_c0_len;
+    out_shape_new.push_back(in_shape[0]);
+    out_shape_new.push_back(in_shape[1]);
+    out_shape_new.push_back(axis_c1);
+    out_shape_new.push_back(in_shape[3] * in_shape[2]);
+    out_shape_new.push_back(axis_c0);
   }
 
-  if (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW") {
-    if (inShape.size() != 6 || outShape.size() != 5) {
+  if (src_format == FORMAT_NDC1HWC0 && dst_format == FORMAT_NCDHW) {
+    if (in_shape.size() != 6 || out_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
-    realSrcFormat = "NDCHT";
-    realDstFormat = "NCDH";
-    int64_t axisN = outShape[0];
-    int64_t axisC = outShape[1];
-    int64_t axisD = outShape[2];
-    int64_t axisH = outShape[3];
-    int64_t axisW = outShape[4];
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    inShapeNew = {axisN, axisD, axisC1, axisH * axisW, axisC0};
-    outShapeNew = {axisN, axisC, axisD, axisH * axisW};
+    real_src_format = "NDCHT";
+    real_dst_format = "NCDH";
+    int64_t axis_n = out_shape[0];
+    int64_t axis_c = out_shape[1];
+    int64_t axis_d = out_shape[2];
+    int64_t axis_h = out_shape[3];
+    int64_t axis_w = out_shape[4];
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    in_shape_new = {axis_n, axis_d, axis_c1, axis_h * axis_w, axis_c0};
+    out_shape_new = {axis_n, axis_c, axis_d, axis_h * axis_w};
   }
 
-  if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") {
-    if (inShape.size() < 2 || outShape.size() != 5) {
+  if (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_NCDHW) {
+    if (in_shape.size() < 2 || out_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
-    realSrcFormat = "DCHNT";
-    realDstFormat = "NCDH";
-    int64_t axisN = outShape[0];
-    int64_t axisC = outShape[1];
-    int64_t axisD = outShape[2];
-    int64_t axisH = outShape[3];
-    int64_t axisW = outShape[4];
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisNi = inShape[inShape.size() - 2];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
-    inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
-    outShapeNew = {axisN, axisC, axisD, axisH * axisW};
+    real_src_format = "DCHNT";
+    real_dst_format = "NCDH";
+    int64_t axis_n = out_shape[0];
+    int64_t axis_c = out_shape[1];
+    int64_t axis_d = out_shape[2];
+    int64_t axis_h = out_shape[3];
+    int64_t axis_w = out_shape[4];
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_ni = in_shape[in_shape.size() - 2];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
+    in_shape_new = {axis_d, axis_c1, axis_h * axis_w, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_n, axis_c, axis_d, axis_h * axis_w};
   }
 
-  if (srcFormat == "NC1HWC0" && dstFormat == "NHWC") {
-    if (inShape.size() != 5 || outShape.size() != 4) {
-      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size should be 5 and output's should be 4!");
+  if (src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_NHWC) {
+    if (in_shape.size() != 5 || out_shape.size() != 4) {
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data",
+                                      "The input shape dimension size should be 5 and output's should be 4!");
       return false;
     }
-    realSrcFormat = "NCHT";
-    realDstFormat = "NHC";
-    int64_t axisN = inShape[0];
-    int64_t axisC1 = inShape[1];
-    int64_t axisH = inShape[2];
-    int64_t axisW = inShape[3];
-    int64_t axisC0 = inShape[4];
-    int64_t axisC = outShape[outShape.size() - 1];
-    int64_t axisHW = axisH * axisW;
-    inShapeNew = {axisN, axisC1, axisHW, axisC0};
-    outShapeNew = {axisN, axisHW, axisC};
+    real_src_format = "NCHT";
+    real_dst_format = "NHC";
+    int64_t axis_n = in_shape[0];
+    int64_t axis_c1 = in_shape[1];
+    int64_t axis_h = in_shape[2];
+    int64_t axis_w = in_shape[3];
+    int64_t axis_c0 = in_shape[4];
+    int64_t axis_c = out_shape[out_shape.size() - 1];
+    int64_t axis_hW = axis_h * axis_w;
+    in_shape_new = {axis_n, axis_c1, axis_hW, axis_c0};
+    out_shape_new = {axis_n, axis_hW, axis_c};
   }
 
-  if (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC") {
-    if (inShape.size() != 6 || outShape.size() != 5) {
-      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size should be 6 and output's should be 5!");
+  if (src_format == FORMAT_NDC1HWC0 && dst_format == FORMAT_NDHWC) {
+    if (in_shape.size() != 6 || out_shape.size() != 5) {
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data",
+                                      "The input shape dimension size should be 6 and output's should be 5!");
       return false;
     }
-    realSrcFormat = "NCHT";
-    realDstFormat = "NHC";
-    int64_t axisN = inShape[0];
-    int64_t axisD = inShape[1];
-    int64_t axisC1 = inShape[2];
-    int64_t axisH = inShape[3];
-    int64_t axisW = inShape[4];
-    int64_t axisC0 = inShape[5];
-    int64_t axisC = outShape[outShape.size() - 1];
-    int64_t axisHW = axisH * axisW;
-    inShapeNew = {axisN * axisD, axisC1, axisHW, axisC0};
-    outShapeNew = {axisN * axisD, axisHW, axisC};
+    real_src_format = "NCHT";
+    real_dst_format = "NHC";
+    int64_t axis_n = in_shape[0];
+    int64_t axis_d = in_shape[1];
+    int64_t axis_c1 = in_shape[2];
+    int64_t axis_h = in_shape[3];
+    int64_t axis_w = in_shape[4];
+    int64_t axis_c0 = in_shape[5];
+    int64_t axis_c = out_shape[out_shape.size() - 1];
+    int64_t axis_hW = axis_h * axis_w;
+    in_shape_new = {axis_n * axis_d, axis_c1, axis_hW, axis_c0};
+    out_shape_new = {axis_n * axis_d, axis_hW, axis_c};
   }
 
-  if ((srcFormat == "FRACTAL_NZ") && (dstFormat == "ND" || dstFormat == "NCHW" || dstFormat == "NHWC")) {
-    if (outShape.size() == 0) {
+  if ((src_format == FORMAT_FRACTAL_NZ) &&
+      (dst_format == FORMAT_ND || dst_format == FORMAT_NCHW || dst_format == FORMAT_NHWC)) {
+    if (out_shape.size() == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The output shape dimension size cannot be 0!");
       return false;
     }
-    realSrcFormat = "HCNT";
-    realDstFormat = "HNC";
-    int64_t axisN;
-    int64_t axisH;
-    int64_t axisC;
-    if (outShape.size() == 1) {
-      axisH = 1;
-      axisN = 1;
-      axisC = outShape[0];
-    } else if (outShape.size() == 2) {
-      axisH = 1;
-      axisN = outShape[0];
-      axisC = outShape[1];
+    real_src_format = "HCNT";
+    real_dst_format = "HNC";
+    int64_t axis_n;
+    int64_t axis_h;
+    int64_t axis_c;
+    if (out_shape.size() == 1) {
+      axis_h = 1;
+      axis_n = 1;
+      axis_c = out_shape[0];
+    } else if (out_shape.size() == 2) {
+      axis_h = 1;
+      axis_n = out_shape[0];
+      axis_c = out_shape[1];
     } else {
       int64_t shapeSize = 1;
-      for (size_t i = 0; i < outShape.size() - 2; i++) {
-        shapeSize *= outShape[i];
+      for (size_t i = 0; i < out_shape.size() - 2; i++) {
+        shapeSize *= out_shape[i];
       }
-      axisH = shapeSize;
-      axisN = outShape[outShape.size() - 2];
-      axisC = outShape[outShape.size() - 1];
+      axis_h = shapeSize;
+      axis_n = out_shape[out_shape.size() - 2];
+      axis_c = out_shape[out_shape.size() - 1];
     }
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNo = GetCeilDiv(axisN, NI_16);
-    inShapeNew = {axisH, axisC1, axisNo * NI_16, axisC0};
-    outShapeNew = {axisH, axisN, axisC};
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_no = GetCeilDiv(axis_n, NI_16);
+    in_shape_new = {axis_h, axis_c1, axis_no * NI_16, axis_c0};
+    out_shape_new = {axis_h, axis_n, axis_c};
   }
 
-  if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") {
-    if (inShape.size() != 4 || outShape.size() != 5) {
+  if (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_NDHWC) {
+    if (in_shape.size() != 4 || out_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
-    realSrcFormat = "DCHNT";
-    realDstFormat = "NDHC";
-    int64_t axisDC1HW = inShape[0];
-    int64_t axisNo = inShape[1];
-    int64_t axisNi = inShape[2];
-    int64_t axisC0 = inShape[3];
-    int64_t axisN = outShape[0];
-    int64_t axisD = outShape[1];
-    int64_t axisH = outShape[2];
-    int64_t axisW = outShape[3];
-    int64_t axisC = outShape[4];
-    int64_t axisC1 = axisDC1HW / (axisD * axisH * axisW);
+    real_src_format = "DCHNT";
+    real_dst_format = "NDHC";
+    int64_t axis_dc1hw = in_shape[0];
+    int64_t axis_no = in_shape[1];
+    int64_t axis_ni = in_shape[2];
+    int64_t axis_c0 = in_shape[3];
+    int64_t axis_n = out_shape[0];
+    int64_t axis_d = out_shape[1];
+    int64_t axis_h = out_shape[2];
+    int64_t axis_w = out_shape[3];
+    int64_t axis_c = out_shape[4];
+    int64_t axis_c1 = axis_dc1hw / (axis_d * axis_h * axis_w);
 
-    inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
-    outShapeNew = {axisN, axisD, axisH * axisW, axisC};
+    in_shape_new = {axis_d, axis_c1, axis_h * axis_w, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_n, axis_d, axis_h * axis_w, axis_c};
   }
 
-  if (srcFormat == "FRACTAL_NZ" && dstFormat == "NC1HWC0") {
-    if (outShape.size() != 5) {
+  if (src_format == FORMAT_FRACTAL_NZ && dst_format == FORMAT_NC1HWC0) {
+    if (out_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
-    realSrcFormat = "DCHNT";
-    realDstFormat = "NDHC";
+    real_src_format = "DCHNT";
+    real_dst_format = "NDHC";
 
-    int64_t axisD = 1;
-    int64_t axisC = 1;
-    int64_t axisN = outShape[0];
-    int64_t axisC1 = outShape[1];
-    int64_t axisH = outShape[2];
-    int64_t axisW = outShape[3];
-    int64_t axisC0 = outShape[4];
-    int64_t axisNo = GetCeilDiv(axisN, NI_16);
-    int64_t axisNi = NI_16;
+    int64_t axis_d = 1;
+    int64_t axis_c = 1;
+    int64_t axis_n = out_shape[0];
+    int64_t axis_c1 = out_shape[1];
+    int64_t axis_h = out_shape[2];
+    int64_t axis_w = out_shape[3];
+    int64_t axis_c0 = out_shape[4];
+    int64_t axis_no = GetCeilDiv(axis_n, NI_16);
+    int64_t axis_ni = NI_16;
 
-    inShapeNew = {axisD, axisC, axisC1 * axisH * axisW, axisNo * axisNi, axisC0};
-    outShapeNew = {axisN, axisD, axisC1 * axisH * axisW, axisC0};
+    in_shape_new = {axis_d, axis_c, axis_c1 * axis_h * axis_w, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_n, axis_d, axis_c1 * axis_h * axis_w, axis_c0};
   }
 
-  if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "HWCN")) {
-    realSrcFormat = "CHNT";
-    realDstFormat = "HCN";
+  if (src_format == FORMAT_FRACTAL_Z && dst_format == FORMAT_HWCN) {
+    real_src_format = "CHNT";
+    real_dst_format = "HCN";
 
-    if (outShape.size() != 4 || inShape.size() < 2) {
+    if (out_shape.size() != 4 || in_shape.size() < 2) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
 
-    int64_t axisH = outShape[0];
-    int64_t axisW = outShape[1];
-    int64_t axisC = outShape[2];
-    int64_t axisN = outShape[3];
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisNi = inShape[inShape.size() - 2];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+    int64_t axis_h = out_shape[0];
+    int64_t axis_w = out_shape[1];
+    int64_t axis_c = out_shape[2];
+    int64_t axis_n = out_shape[3];
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_ni = in_shape[in_shape.size() - 2];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
 
-    inShapeNew = {axisC1, axisH * axisW, axisNo * axisNi, axisC0};
-    outShapeNew = {axisH * axisW, axisC, axisN};
+    in_shape_new = {axis_c1, axis_h * axis_w, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_h * axis_w, axis_c, axis_n};
   }
 
-  if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "DHWCN") {
-    if (inShape.size() < 2 || outShape.size() != 5) {
+  if (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_DHWCN) {
+    if (in_shape.size() < 2 || out_shape.size() != 5) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
-    realSrcFormat = "DCHNT";
-    realDstFormat = "DHCN";
-    int64_t axisD = outShape[0];
-    int64_t axisH = outShape[1];
-    int64_t axisW = outShape[2];
-    int64_t axisC = outShape[3];
-    int64_t axisN = outShape[4];
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisNi = inShape[inShape.size() - 2];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
-    inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
-    outShapeNew = {axisD, axisH * axisW, axisC, axisN};
+    real_src_format = "DCHNT";
+    real_dst_format = "DHCN";
+    int64_t axis_d = out_shape[0];
+    int64_t axis_h = out_shape[1];
+    int64_t axis_w = out_shape[2];
+    int64_t axis_c = out_shape[3];
+    int64_t axis_n = out_shape[4];
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_ni = in_shape[in_shape.size() - 2];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
+    in_shape_new = {axis_d, axis_c1, axis_h * axis_w, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_d, axis_h * axis_w, axis_c, axis_n};
   }
 
-  if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "NCHW")) {
-    realSrcFormat = "CHNT";
-    realDstFormat = "NCH";
+  if (src_format == FORMAT_FRACTAL_Z && dst_format == FORMAT_NCHW) {
+    real_src_format = "CHNT";
+    real_dst_format = "NCH";
 
-    if (outShape.size() != 4 || inShape.size() < 2) {
+    if (out_shape.size() != 4 || in_shape.size() < 2) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
 
-    int64_t axisN = outShape[0];
-    int64_t axisC = outShape[1];
-    int64_t axisH = outShape[2];
-    int64_t axisW = outShape[3];
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisNi = inShape[inShape.size() - 2];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+    int64_t axis_n = out_shape[0];
+    int64_t axis_c = out_shape[1];
+    int64_t axis_h = out_shape[2];
+    int64_t axis_w = out_shape[3];
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_ni = in_shape[in_shape.size() - 2];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
 
-    inShapeNew = {axisC1, axisH * axisW, axisNo * axisNi, axisC0};
-    outShapeNew = {axisN, axisC, axisH * axisW};
+    in_shape_new = {axis_c1, axis_h * axis_w, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_n, axis_c, axis_h * axis_w};
   }
 
-  if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "ND")) {
-    realSrcFormat = "HCNT";
-    realDstFormat = "HCN";
+  if (src_format == FORMAT_FRACTAL_Z && dst_format == FORMAT_ND) {
+    real_src_format = "HCNT";
+    real_dst_format = "HCN";
 
-    if (inShape.size() < 2) {
+    if (in_shape.size() < 2) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
-    int64_t axisN;
-    int64_t axisH;
-    int64_t axisC;
-    if (outShape.size() == 1) {
-      axisH = 1;
-      axisC = 1;
-      axisN = outShape[0];
-    } else if (outShape.size() == 2) {
-      axisH = 1;
-      axisC = outShape[0];
-      axisN = outShape[1];
+    int64_t axis_n;
+    int64_t axis_h;
+    int64_t axis_c;
+    if (out_shape.size() == 1) {
+      axis_h = 1;
+      axis_c = 1;
+      axis_n = out_shape[0];
+    } else if (out_shape.size() == 2) {
+      axis_h = 1;
+      axis_c = out_shape[0];
+      axis_n = out_shape[1];
     } else {
       int64_t shapeSize = 1;
-      for (size_t i = 0; i < outShape.size() - 2; i++) {
-        shapeSize *= outShape[i];
+      for (size_t i = 0; i < out_shape.size() - 2; i++) {
+        shapeSize *= out_shape[i];
       }
-      axisH = shapeSize;
-      axisC = outShape[outShape.size() - 2];
-      axisN = outShape[outShape.size() - 1];
+      axis_h = shapeSize;
+      axis_c = out_shape[out_shape.size() - 2];
+      axis_n = out_shape[out_shape.size() - 1];
     }
-    int64_t axisC0 = inShape[inShape.size() - 1];
-    int64_t axisNi = inShape[inShape.size() - 2];
-    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
-    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+    int64_t axis_c0 = in_shape[in_shape.size() - 1];
+    int64_t axis_ni = in_shape[in_shape.size() - 2];
+    int64_t axis_c1 = GetCeilDiv(axis_c, axis_c0);
+    int64_t axis_no = GetCeilDiv(axis_n, axis_ni);
 
-    inShapeNew = {axisH, axisC1, axisNo * axisNi, axisC0};
-    outShapeNew = {axisH, axisC, axisN};
+    in_shape_new = {axis_h, axis_c1, axis_no * axis_ni, axis_c0};
+    out_shape_new = {axis_h, axis_c, axis_n};
   }
 
   return true;
 }
 
-int32_t GetMultiCoreAxis(std::vector<int64_t> inShape, int32_t axisPosC, int64_t blockElemCnt, int64_t c0Len,
+int32_t GetMultiCoreAxis(std::vector<int64_t> in_shape, int32_t axisPosC, int64_t block_elem_cnt, int64_t shape_c0_len,
                          int64_t coreNum) {
-  int32_t shapeLen = inShape.size();
-  bool axisCNotLastDim = axisPosC + 1 != shapeLen;
+  int32_t shapeLen = in_shape.size();
+  bool axis_cNotLastDim = axisPosC + 1 != shapeLen;
   std::vector<int32_t> coreLpCnt;
 
   for (int32_t index = 0; index < shapeLen; index++) {
@@ -654,26 +627,26 @@ int32_t GetMultiCoreAxis(std::vector<int64_t> inShape, int32_t axisPosC, int64_t
     int32_t leftLoopCnt;
     int32_t fullCycleLoopCnt;
     if (index + 1 == shapeLen) {
-      if (GetFloorDiv(inShape[index], 8 * blockElemCnt * coreNum) > 0) {
+      if (GetFloorDiv(in_shape[index], 8 * block_elem_cnt * coreNum) > 0) {
         tmpFullCycleLoopCnt = coreNum;
       } else {
         tmpFullCycleLoopCnt = 0;
       }
-      leftLoopCnt = GetCeilDiv(inShape[index], 8 * blockElemCnt) % coreNum;
-    } else if (index == axisPosC && axisCNotLastDim) {
-      if (GetFloorDiv(inShape[index], c0Len * coreNum) > 0) {
+      leftLoopCnt = GetCeilDiv(in_shape[index], 8 * block_elem_cnt) % coreNum;
+    } else if (index == axisPosC && axis_cNotLastDim) {
+      if (GetFloorDiv(in_shape[index], shape_c0_len * coreNum) > 0) {
         tmpFullCycleLoopCnt = coreNum;
       } else {
         tmpFullCycleLoopCnt = 0;
       }
-      leftLoopCnt = GetCeilDiv(inShape[index], c0Len) % coreNum;
+      leftLoopCnt = GetCeilDiv(in_shape[index], shape_c0_len) % coreNum;
     } else {
-      if (GetFloorDiv(inShape[index], coreNum) > 0) {
+      if (GetFloorDiv(in_shape[index], coreNum) > 0) {
         tmpFullCycleLoopCnt = coreNum;
       } else {
         tmpFullCycleLoopCnt = 0;
       }
-      leftLoopCnt = inShape[index] % coreNum;
+      leftLoopCnt = in_shape[index] % coreNum;
     }
 
     if (tmpFullCycleLoopCnt > 0 && leftLoopCnt == 0) {
@@ -687,204 +660,180 @@ int32_t GetMultiCoreAxis(std::vector<int64_t> inShape, int32_t axisPosC, int64_t
   return max_element(coreLpCnt.begin(), coreLpCnt.end()) - coreLpCnt.begin();
 }
 
-bool IsDoWithTransposeFormats(const std::string& srcFormat, const std::string& dstFormat) {
-  const std::vector<std::string> FormatList = {"NCHW", "NHWC", "HWCN", "CHWN"};
-  if (std::find(FormatList.begin(), FormatList.end(), srcFormat) != FormatList.end() &&
-      std::find(FormatList.begin(), FormatList.end(), dstFormat) != FormatList.end() && dstFormat != srcFormat) {
+bool IsDoWithTransposeFormats(const ge::Format& src_format, const ge::Format& dst_format) {
+  const std::vector<ge::Format> FormatList = {FORMAT_NCHW, FORMAT_NHWC, FORMAT_HWCN, FORMAT_CHWN};
+  if (std::find(FormatList.begin(), FormatList.end(), src_format) != FormatList.end() &&
+      std::find(FormatList.begin(), FormatList.end(), dst_format) != FormatList.end() && dst_format != src_format) {
     return true;
   } else {
     return false;
   }
 }
 
-bool IsDoWithPositiveSourceNtc100(const std::string& srcFormat, const std::string& dstFormat) {
-  const std::vector<std::pair<std::string, std::string>> supportSrcDstFormats = {
-    {"NCDHW", "NDC1HWC0"},
-    {"NCHW", "NC1HWC0"},
-    {"HWCN", "FRACTAL_Z"},
-    {"HWCN", "FRACTAL_ZN"},
-    {"DHWCN", "FRACTAL_Z_3D"},
-    {"NCDHW", "FRACTAL_Z_3D"},
-    {"ND", "FRACTAL_Z"},
-    {"ND", "FRACTAL_ZN"},
-    {"NCHW", "FRACTAL_Z"},
-    {"NCHW", "FRACTAL_ZN"}
+bool IsDoWithPositiveSourceNtc100(const ge::Format& src_format, const ge::Format& dst_format) {
+  const std::vector<std::pair<ge::Format, ge::Format>> support_src_dst_formats = {
+      {FORMAT_NCDHW, FORMAT_NDC1HWC0},     {FORMAT_NCHW, FORMAT_NC1HWC0},       {FORMAT_HWCN, FORMAT_FRACTAL_Z},
+      {FORMAT_DHWCN, FORMAT_FRACTAL_Z_3D}, {FORMAT_NCDHW, FORMAT_FRACTAL_Z_3D}, {FORMAT_ND, FORMAT_FRACTAL_Z},
+      {FORMAT_NCHW, FORMAT_FRACTAL_Z},
   };
-  return std::find(supportSrcDstFormats.begin(), supportSrcDstFormats.end(),
-                   std::pair<std::string, std::string>(srcFormat, dstFormat)) != supportSrcDstFormats.end();
+  return std::find(support_src_dst_formats.begin(), support_src_dst_formats.end(),
+                   std::pair<ge::Format, ge::Format>(src_format, dst_format)) != support_src_dst_formats.end();
 }
 
 /*
  * @brief: tiling function of op
- * @param [in] opType: opType of the op
- * @param [in] opParas: inputs/outputs/atts of the op
+ * @param [in] op_type: op_type of the op
+ * @param [in] op_paras: inputs/outputs/atts of the op
  * @param [in] op_info: compile time generated info of the op
- * @param [out] runInfo: result data
+ * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                     OpRunInfo& runInfo) {
-  PROFILING_TILING_INIT(opType.c_str());
-  OP_LOGI(opType.c_str(), "Tiling is running.");
-  if (op_info == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: op_info json error.");
+bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                     utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  OP_LOGI(op_type.c_str(), "Tiling is running.");
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  if (operator_info == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed.");
     return false;
   }
-  if (opParas.inputs.empty() || opParas.inputs.size() < 1 || opParas.inputs[0].tensor.empty()) {
-
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: input shape error.");
+  auto input_desc = operator_info->MutableInputDesc(0);
+  if (input_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed.");
     return false;
   }
-  if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: output shape error.");
+  auto output_desc = operator_info->MutableOutputDesc(0);
+  if (output_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get output_desc failed.");
     return false;
   }
 
-  std::string srcFormat = opParas.inputs[0].tensor[0].format;
-  std::string dstFormat = opParas.outputs[0].tensor[0].format;
-  OP_LOGD(opType, "Input format is [%s], Output format is [%s].",
-          srcFormat.c_str(), dstFormat.c_str());
-  if (IsDoWithTransposeFormats(srcFormat, dstFormat)) {
-    std::vector<int64_t> perm_shape;
-    TeOpParas opParasTranspose;
-    opParasTranspose = opParas;
-    perm_shape.push_back(4);
-    ge::Shape ge_shape(perm_shape);
-    ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT64));
-    int64_t buf[4];
-    std::map<char, std::int64_t> DimIndex;
-    for (size_t i = 0; i < srcFormat.size(); i++) {
-      DimIndex[srcFormat[i]] = i;
-    }
-    for (size_t i = 0; i < dstFormat.size(); i++) {
-      buf[i] = DimIndex[dstFormat[i]];
-    }
-    opParasTranspose.const_inputs["perm"] = std::make_tuple((const unsigned char*)buf, sizeof(buf), const_tensor);
-    bool ret = TransposeTiling(opType, opParasTranspose, op_info, runInfo);
-    return ret;
-  }
-  std::vector<int64_t> inShape = opParas.inputs[0].tensor[0].shape;
-  std::vector<int64_t> outShape = opParas.outputs[0].tensor[0].shape;
-  std::string realSrcFormat;
-  std::string realDstFormat;
-  std::string dType;
-  int64_t ubSize = 0;
-  int64_t blockDim = 0;
-  std::vector<int64_t> inShapeNew;
-  std::vector<int64_t> outShapeNew;
-  std::vector<int64_t> combAxis;
-  int64_t inputSize = 0;
-  int64_t hiddenSize = 0;
-  int64_t group = 1;
-
-  // get the point ts after get info from opParas
+  ge::Format src_format = input_desc->GetFormat();
+  ge::Format dst_format = output_desc->GetFormat();
+  OP_LOGD(op_type, "Input format is [%s], Output format is [%s].", to_string(src_format), to_string(dst_format));
+  std::vector<int64_t> in_shape = input_desc->MutableShape().GetDims();
+  std::vector<int64_t> out_shape = output_desc->MutableShape().GetDims();
+  auto data_type = input_desc->GetDataType();
+  // get the point ts after get info from op_paras
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  bool flag = GetCompileParams(op_info, srcFormat, dstFormat, dType, ubSize, blockDim, inputSize, hiddenSize, group,
-                               opType);
+  std::string real_src_format;
+  std::string real_dst_format;
+  int64_t ub_size = 0;
+  int64_t block_dim = 0;
+  std::vector<int64_t> in_shape_new;
+  std::vector<int64_t> out_shape_new;
+  std::vector<int64_t> comb_axis;
+  in_shape_new.reserve(8);
+  out_shape_new.reserve(8);
+  comb_axis.reserve(8);
+  int64_t input_size = 0;
+  int64_t hidden_size = 0;
+  int64_t group = 1;
+
+  bool flag = GetCompileParams(op_info, ub_size, block_dim, input_size, hidden_size, group, op_type);
   if (!flag) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetCompileParams error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams error.");
     return false;
   }
-
   // get the point ts after get compile info
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  int64_t c0Len = GetC0Len(dType);
-  bool ret = CheckTensorShape(opType, ubSize, blockDim, outShape);
+  int64_t shape_c0_len = GetC0SizeWithType(data_type);
+  bool ret = CheckTensorShape(op_type, ub_size, block_dim, out_shape);
   if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: CheckTensor Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op TransDataTiling: CheckTensor Failed.");
     return ret;
   }
-  int64_t blockElemCnt = BLOCK_BYTE_SIZE / GetDTypeLen(dType);
+  int64_t block_elem_cnt = BLOCK_BYTE_SIZE / GetSizeByDataType(data_type);
 
-  flag = GetRenew2Shape(inShape, outShape, srcFormat, dstFormat, combAxis, c0Len, group, inShapeNew,
-                        outShapeNew, realSrcFormat, realDstFormat);
+  flag = GetRenew2Shape(in_shape, out_shape, src_format, dst_format, comb_axis, shape_c0_len, group, in_shape_new,
+                        out_shape_new, real_src_format, real_dst_format);
   if (!flag) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetRenew2Shape tiling params error");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetRenew2Shape tiling params error");
     return false;
   }
 
-  if (IsDoWithPositiveSourceNtc100(srcFormat, dstFormat)) {
+  if (IsDoWithPositiveSourceNtc100(src_format, dst_format)) {
     TransDataNtc100Param runParams100;
-    flag = TilingPositiveSourceNtc100(inShape, outShape, srcFormat, dstFormat, blockDim,
-                                      blockElemCnt, ubSize, c0Len, dType, runParams100);
+    flag = TilingPositiveSourceNtc100(in_shape, out_shape, src_format, dst_format, block_dim, block_elem_cnt, ub_size,
+                                      shape_c0_len, data_type, runParams100);
     if (!flag) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingPositiveSourceNtc100 tiling params error");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get TilingPositiveSourceNtc100 tiling params error");
       return false;
     }
     PROFILING_TILING_AFTER_CALCU_TILING_REG();
-    SetRunningNtc100Params(runParams100, runInfo);
-    OP_LOGD(opType.c_str(), "start print tiling parameters in ntc 100: %s", runParams100.to_string().c_str());
-  } else if (realSrcFormat[realSrcFormat.length() - 1] == 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
-    if (realSrcFormat[realSrcFormat.length() - 2] == realDstFormat[realDstFormat.length() - 2]) {
-      TransDataMode1010Param runParamsPart1;
-      flag = TillingPositiveMode1010(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
-                                     blockDim, blockElemCnt, ubSize, runParamsPart1);
+    SetRunningNtc100Params(runParams100, run_info);
+    OP_LOGD(op_type.c_str(), "start print tiling parameters in ntc 100: %s", runParams100.to_string().c_str());
+  } else if (real_src_format[real_src_format.length() - 1] == 'C' &&
+             real_dst_format[real_dst_format.length() - 1] == 'T') {
+    if (real_src_format[real_src_format.length() - 2] == real_dst_format[real_dst_format.length() - 2]) {
+      TransDataMode1010Param run_params_part_1;
+      flag = TillingPositiveMode1010(in_shape_new, out_shape_new, real_src_format, real_dst_format, block_dim,
+                                     block_elem_cnt, ub_size, run_params_part_1);
       if (!flag) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TransDataMode101Param tiling params error");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get TransDataMode101Param tiling params error");
         return false;
       }
       PROFILING_TILING_AFTER_CALCU_TILING_REG();
-      SetRunningMode1010Params(runParamsPart1, runInfo);
-      OP_LOGD(opType.c_str(), "start print runParams");
-      PrintTilingMode1010Params(opType, runParamsPart1);
+      SetRunningMode1010Params(run_params_part_1, run_info);
+      OP_LOGD(op_type.c_str(), "start print runParams");
+      PrintTilingMode1010Params(op_type, run_params_part_1);
     } else {
-      TransDataMode1011Param runParamsPart1;
-      flag = TillingPositiveMode1011(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
-                                     blockDim, blockElemCnt, ubSize, runParamsPart1);
+      TransDataMode1011Param run_params_part_1;
+      flag = TillingPositiveMode1011(in_shape_new, out_shape_new, real_src_format, real_dst_format, block_dim,
+                                     block_elem_cnt, ub_size, run_params_part_1);
       if (!flag) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TransDataMode101Param tiling params error");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get TransDataMode101Param tiling params error");
         return false;
       }
       PROFILING_TILING_AFTER_CALCU_TILING_REG();
-      SetRunningMode1011Params(runParamsPart1, runInfo);
-      OP_LOGD(opType.c_str(), "start print runParams");
-      PrintTilingMode1011Params(opType, runParamsPart1);
+      SetRunningMode1011Params(run_params_part_1, run_info);
+      OP_LOGD(op_type.c_str(), "start print runParams");
+      PrintTilingMode1011Params(op_type, run_params_part_1);
     }
 
-  } else if ((srcFormat == "NC1HWC0" && dstFormat == "NHWC") || (srcFormat == "FRACTAL_NZ" && dstFormat == "ND") ||
-             (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") ||
-             (srcFormat == "FRACTAL_NZ" && (dstFormat == "NCHW" || dstFormat == "NHWC" || dstFormat == "NC1HWC0")) ||
-             (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC")) {
-    TransDataTc201Param runParams201;
-    flag = TilingNegativeTc201(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
-                               ubSize, runParams201);
+  } else if ((src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_NHWC) ||
+             (src_format == FORMAT_FRACTAL_NZ && dst_format == FORMAT_ND) ||
+             (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_NDHWC) ||
+             (src_format == FORMAT_FRACTAL_NZ &&
+              (dst_format == FORMAT_NCHW || dst_format == FORMAT_NHWC || dst_format == FORMAT_NC1HWC0)) ||
+             (src_format == FORMAT_NDC1HWC0 && dst_format == FORMAT_NDHWC)) {
+    TransDataTc201Param run_params_201;
+    flag = TilingNegativeTc201(in_shape_new, out_shape_new, real_src_format, real_dst_format, block_dim, block_elem_cnt,
+                               data_type, ub_size, run_params_201);
     if (!flag) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingNegativeTc201 tiling params error");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get TilingNegativeTc201 tiling params error");
       return false;
     }
-    OP_LOGD(opType.c_str(), "***start to put mode 201 tiling parameters");
+    OP_LOGD(op_type.c_str(), "***start to put mode 201 tiling parameters");
     PROFILING_TILING_AFTER_CALCU_TILING_REG();
-    SetRunningTc201Params(runParams201, runInfo);
-    PrintTilingModeTc201Params(opType, runParams201);
-  } else if ((srcFormat == "NC1HWC0" && dstFormat == "NCHW") ||
-             (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") ||
-             (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW") ||
-             ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "HWCN")) ||
-             ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "NCHW")) ||
-             ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "ND")) ||
-             (srcFormat == "FRACTAL_Z_3D" && dstFormat == "DHWCN")) {
-    TransDataNtc200Param runParams200;
-    flag = TilingNegativeNtc200(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
-                                ubSize, runParams200);
+    SetRunningTc201Params(run_params_201, run_info);
+    PrintTilingModeTc201Params(op_type, run_params_201);
+  } else if ((src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_NCHW) ||
+             (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_NCDHW) ||
+             (src_format == FORMAT_NDC1HWC0 && dst_format == FORMAT_NCDHW) ||
+             (src_format == FORMAT_FRACTAL_Z && dst_format == FORMAT_HWCN) ||
+             (src_format == FORMAT_FRACTAL_Z && dst_format == FORMAT_NCHW) ||
+             (src_format == FORMAT_FRACTAL_Z && dst_format == FORMAT_ND) ||
+             (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_DHWCN)) {
+    TransDataNtc200Param run_params_200;
+    flag = TilingNegativeNtc200(in_shape_new, out_shape_new, real_src_format, real_dst_format, block_dim,
+                                block_elem_cnt, data_type, ub_size, run_params_200);
     if (!flag) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingNegativeNtc200 tiling params error");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get TilingNegativeNtc200 tiling params error");
       return false;
     }
     PROFILING_TILING_AFTER_CALCU_TILING_REG();
-    SetRunningNtc200Params(runParams200, runInfo);
-    OP_LOGD(opType.c_str(), "start print tiling parameters in mode 200");
-    PrintTilingModeNtc200Params(opType, runParams200);
+    SetRunningNtc200Params(run_params_200, run_info);
+    OP_LOGD(op_type.c_str(), "start print tiling parameters in mode 200");
+    PrintTilingModeNtc200Params(op_type, run_params_200);
   }
 
   // block_dim, core num used in tik op
-  runInfo.block_dim = blockDim;
-  // workspace, null for tik op
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
+  run_info.SetBlockDim(block_dim);
 
-  OP_LOGI(opType.c_str(), "tiling run success.");
+  OP_LOGI(op_type.c_str(), "tiling run success.");
 
   // get the point ts and calcu the all time cost
   PROFILING_TILING_END();
@@ -892,7 +841,6 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
 }
 
 // register tiling interface of the TransData op
-REGISTER_OP_TILING_FUNC_BUFFERED(TransData, TransDataTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(TransData, TransDataTiling);
 
 }  // namespace optiling
-

@@ -46,7 +46,7 @@ bool GetMcInfoPositive1011(int64_t& axisDstR2ndLpCnt, int64_t& axisDstR2ndLeft, 
                            TransDataMode1011Param& params) {
   int64_t tmpFullLoopCntR2nd;
   tmpFullLoopCntR2nd = GetFloorDiv(axisDstR2ndLpCnt, coreNum) > 0 ? coreNum : 0;
-  
+
   int64_t reminderLoopCntR2nd = axisDstR2ndLpCnt % coreNum;
   if (reminderLoopCntR2nd == 0) {
     tmpFullLoopCntR2nd += coreNum;
@@ -87,7 +87,7 @@ bool GetMcInfoPositive1011(int64_t& axisDstR2ndLpCnt, int64_t& axisDstR2ndLeft, 
     params.lcSrcClLpCnt = axisSrcClLpCnt;
     params.nlcSrcClLeft = axisSrcClLeft;
     params.lcSrcClLeft = axisSrcClLeft;
-  } else if (max_element(loopCntList.begin(), loopCntList.end()) - loopCntList.begin() == 1){
+  } else if (max_element(loopCntList.begin(), loopCntList.end()) - loopCntList.begin() == 1) {
     params.mcOnCl = 1;
     params.usedCoreCnt = GetCeilDiv(axisSrcClLpCnt, GetCeilDiv(axisSrcClLpCnt, coreNum));
     params.nlcSrcClLpCnt = GetCeilDiv(axisSrcClLpCnt, params.usedCoreCnt);
@@ -145,8 +145,8 @@ bool GetCommonParam(int64_t& ubSize, int64_t& blockElemCnt, int64_t& c0Len, int6
 }
 
 bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt,
-                             int64_t& ubSize, TransDataMode1011Param& params) {
+                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& ubSize,
+                             TransDataMode1011Param& params) {
   if ((srcFormat.length() != inShape.size()) || (dstFormat.length() != outShape.size())) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1011 Failed.");
     return false;
@@ -216,8 +216,8 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
   params.srcClLpStepOut = 0;
 
   // parameters for output data
-   reverse(srcFormatLeft.begin(), srcFormatLeft.end());
-   for (size_t i = 0; i < srcFormatLeft.length(); i++) {
+  reverse(srcFormatLeft.begin(), srcFormatLeft.end());
+  for (size_t i = 0; i < srcFormatLeft.length(); i++) {
     char chr = srcFormatLeft[i];
     int32_t srcChrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
     int32_t dstChrPos = std::strchr(dstFormat.c_str(), chr) - dstFormat.c_str();
@@ -232,8 +232,8 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
     }
   }
 
-  ret = GetMcInfoPositive1011(axisDstR2ndLpCnt, axisDstR2ndLeft, cLpCnt, cLeft, axisSrcClLpCnt, axisSrcClLeft,
-                              coreNum, params);
+  ret = GetMcInfoPositive1011(axisDstR2ndLpCnt, axisDstR2ndLeft, cLpCnt, cLeft, axisSrcClLpCnt, axisSrcClLeft, coreNum,
+                              params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1011 Failed.");
     return ret;
@@ -241,45 +241,45 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
   return true;
 }
 
-void SetRunningMode1011Params(const TransDataMode1011Param& runParams, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, runParams.tilingMode);
-  ByteBufferPut(runInfo.tiling_data, runParams.ubOffset);
-  ByteBufferPut(runInfo.tiling_data, runParams.usedCoreCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.mcOnCl);
-  ByteBufferPut(runInfo.tiling_data, runParams.coreStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.coreStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.vncLineSize);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.cLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.cLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.cStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.c0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.cModC0);
-  ByteBufferPut(runInfo.tiling_data, runParams.cLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcDstR2ndLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcDstR2ndLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcSrcClLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcSrcClLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcCLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcCLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcDstR2ndLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcDstR2ndLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcSrcClLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcSrcClLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcCLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcCLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.clOut0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.clOut0SrcRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.clOut0DstAsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.clOut1Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.clOut1SrcRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.clOut1DstAsize);
+void SetRunningMode1011Params(const TransDataMode1011Param& runParams, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(runParams.tilingMode);
+  runInfo.AddTilingData(runParams.ubOffset);
+  runInfo.AddTilingData(runParams.usedCoreCnt);
+  runInfo.AddTilingData(runParams.mcOnCl);
+  runInfo.AddTilingData(runParams.coreStepIn);
+  runInfo.AddTilingData(runParams.coreStepOut);
+  runInfo.AddTilingData(runParams.dstR2ndLpStepIn);
+  runInfo.AddTilingData(runParams.dstR2ndLpStepOut);
+  runInfo.AddTilingData(runParams.dstR2ndStepIn);
+  runInfo.AddTilingData(runParams.dstR2ndLpUnit);
+  runInfo.AddTilingData(runParams.srcClLpStepIn);
+  runInfo.AddTilingData(runParams.vncLineSize);
+  runInfo.AddTilingData(runParams.srcClLpUnit);
+  runInfo.AddTilingData(runParams.srcClLpStepOut);
+  runInfo.AddTilingData(runParams.cLpStepIn);
+  runInfo.AddTilingData(runParams.cLpStepOut);
+  runInfo.AddTilingData(runParams.cStepOut);
+  runInfo.AddTilingData(runParams.c0Size);
+  runInfo.AddTilingData(runParams.cModC0);
+  runInfo.AddTilingData(runParams.cLpUnit);
+  runInfo.AddTilingData(runParams.nlcDstR2ndLpCnt);
+  runInfo.AddTilingData(runParams.nlcDstR2ndLeft);
+  runInfo.AddTilingData(runParams.nlcSrcClLpCnt);
+  runInfo.AddTilingData(runParams.nlcSrcClLeft);
+  runInfo.AddTilingData(runParams.nlcCLpCnt);
+  runInfo.AddTilingData(runParams.nlcCLeft);
+  runInfo.AddTilingData(runParams.lcDstR2ndLpCnt);
+  runInfo.AddTilingData(runParams.lcDstR2ndLeft);
+  runInfo.AddTilingData(runParams.lcSrcClLpCnt);
+  runInfo.AddTilingData(runParams.lcSrcClLeft);
+  runInfo.AddTilingData(runParams.lcCLpCnt);
+  runInfo.AddTilingData(runParams.lcCLeft);
+  runInfo.AddTilingData(runParams.clOut0Size);
+  runInfo.AddTilingData(runParams.clOut0SrcRsize);
+  runInfo.AddTilingData(runParams.clOut0DstAsize);
+  runInfo.AddTilingData(runParams.clOut1Size);
+  runInfo.AddTilingData(runParams.clOut1SrcRsize);
+  runInfo.AddTilingData(runParams.clOut1DstAsize);
 }
 
 void PrintTilingMode1011Params(const std::string& opType, const TransDataMode1011Param& params) {

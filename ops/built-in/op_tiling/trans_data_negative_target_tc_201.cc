@@ -112,7 +112,8 @@ bool GetMcInfoNegative201(int64_t& dstR2ndLpCnt, int64_t& dstR2ndLeft, int64_t& 
     params.lcDstR2ndLpCnt = dstR2ndLpCnt - params.nlcDstR2ndLpCnt * (params.usedCoreCnt - 1);
     params.nlcDstR2ndLeft = 0;
     params.lcDstR2ndLeft = dstR2ndLeft;
-    params.coreStepIn = params.nlcDstR2ndLpCnt * params.dstR2ndLpStepIn;;
+    params.coreStepIn = params.nlcDstR2ndLpCnt * params.dstR2ndLpStepIn;
+    ;
     params.coreStepOut = params.nlcDstR2ndLpCnt * params.dstR2ndLpStepOut;
     params.nlcSrcLeftLpCnt = srcLeftLpCnt;
     params.lcSrcLeftLpCnt = srcLeftLpCnt;
@@ -127,7 +128,7 @@ bool GetMcInfoNegative201(int64_t& dstR2ndLpCnt, int64_t& dstR2ndLeft, int64_t& 
 }
 
 bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                         std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
+                         std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, DataType& dtype,
                          int64_t& ubSize, TransDataTc201Param& params) {
   if (srcFormat.length() < 2 || dstFormat.length() < 2) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeTc201 Failed.");
@@ -197,7 +198,7 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
       tmpSrcClLpUnit = GetFloorDiv(params.ubOffset, NI_16 * params.c0Len);
     }
 
-  } else if (dtype != "int8" && dtype != "uint8") {
+  } else if (dtype != ge::DT_INT8 && dtype != ge::DT_UINT8) {
     if (axisDstCSize * axisDstR2ndSize >= vncColSize / VNC_LINES) {
       params.tilingMode = 2011;
     } else {
@@ -234,7 +235,7 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   int64_t dtypeFactor = 1;
   // to make sure the rep_stride of vor is less than limit
   if (params.tilingMode == 2010) {
-    if (dtype == "float32" || dtype == "int32" || dtype == "uint32") {
+    if (dtype == ge::DT_FLOAT || dtype == ge::DT_INT32 || dtype == ge::DT_UINT32) {
       if (axisDstCSize == params.c0Len and axisSrcLeftSize <= C0_16) {
         // for vor in copy data in
         maxR2ndLpSize = 63;
@@ -250,15 +251,15 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
     if (tmpDstR2ndLpUnit > maxR2ndLpSize) {
       tmpDstR2ndLpUnit = maxR2ndLpSize;
     }
-  } else if (dtype != "int8" && dtype != "uint8") {
+  } else if (dtype != ge::DT_INT8 && dtype != ge::DT_UINT8) {
     tmpDstR2ndLpUnit = vncColSize / (params.srcClLpUnit * c0Len);
   } else {
     tmpDstR2ndLpUnit = vncColSize / 2 / (params.srcClLpUnit * c0Len);
   }
   params.dstR2ndLpUnit = axisDstR2ndSize > tmpDstR2ndLpUnit ? tmpDstR2ndLpUnit : axisDstR2ndSize;
   // to avoid bank conflict
-  if (params.tilingMode == 2010 && params.dstR2ndLpUnit*dtypeFactor % NI_16 == 0 &&
-      (params.dstR2ndLpUnit < params.srcClLpUnit || params.srcClLpUnit*dtypeFactor % NI_16 == 0)) {
+  if (params.tilingMode == 2010 && params.dstR2ndLpUnit * dtypeFactor % NI_16 == 0 &&
+      (params.dstR2ndLpUnit < params.srcClLpUnit || params.srcClLpUnit * dtypeFactor % NI_16 == 0)) {
     params.dstR2ndLpUnit -= 1;
   }
   int64_t dstR2ndLpCnt = GetCeilDiv(axisDstR2ndSize, params.dstR2ndLpUnit);
@@ -311,7 +312,7 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   int64_t tmpSrcLeftLpUnit;
   if (params.tilingMode == 2010) {
     tmpSrcLeftLpUnit = params.ubOffset / (params.srcClLpUnit * params.dstR2ndLpUnit * c0Len);
-  } else if (dtype != "int8" && dtype != "uint8") {
+  } else if (dtype != ge::DT_INT8 && dtype != ge::DT_UINT8) {
     tmpSrcLeftLpUnit = vncColSize / (params.srcClLpUnit * params.dstR2ndLpUnit * c0Len);
   } else {
     tmpSrcLeftLpUnit = vncColSize / 2 / (params.srcClLpUnit * params.dstR2ndLpUnit * c0Len);
@@ -327,7 +328,8 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   params.srcLeftStepOut = GetShapeSize(outShape, dstFormat.find(srcLeftFormat) + 1);
   params.srcLeftLpStepOut = params.srcLeftLpUnit * params.srcLeftStepOut;
 
-  bool ret = GetMcInfoNegative201(dstR2ndLpCnt, dstR2ndLeft, srcClLpCnt, srcClLeft, srcLeftLpCnt, srcLeftLeft, coreNum, params);
+  bool ret = GetMcInfoNegative201(dstR2ndLpCnt, dstR2ndLeft, srcClLpCnt, srcClLeft, srcLeftLpCnt, srcLeftLeft, coreNum,
+                                  params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoNegative201 Failed.");
     return ret;
@@ -335,53 +337,53 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   return true;
 }
 
-void SetRunningTc201Params(const TransDataTc201Param& runParams, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, runParams.tilingMode);
-  ByteBufferPut(runInfo.tiling_data, runParams.ubOffset);
-  ByteBufferPut(runInfo.tiling_data, runParams.mcPos);
-  ByteBufferPut(runInfo.tiling_data, runParams.usedCoreCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcR2ndDstR2ndSame);
-  ByteBufferPut(runInfo.tiling_data, runParams.c0Len);
-  ByteBufferPut(runInfo.tiling_data, runParams.coreStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.coreStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcDstR2ndLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcSrcClLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcSrcLeftLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcDstR2ndLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcSrcClLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcSrcLeftLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcDstR2ndLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcSrcClLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcSrcLeftLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcDstR2ndLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcSrcClLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcSrcLeftLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.allCIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.cModC0);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcLeftLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcLeftStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcLeftStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcLeftLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcLeftLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn0SrcRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn0SrcAsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn1Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn1SrcRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndIn1SrcAsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndDims);
-  ByteBufferPut(runInfo.tiling_data, runParams.vncColSize);
-  ByteBufferPut(runInfo.tiling_data, runParams.allR2ndIn);
+void SetRunningTc201Params(const TransDataTc201Param& runParams, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(runParams.tilingMode);
+  runInfo.AddTilingData(runParams.ubOffset);
+  runInfo.AddTilingData(runParams.mcPos);
+  runInfo.AddTilingData(runParams.usedCoreCnt);
+  runInfo.AddTilingData(runParams.srcR2ndDstR2ndSame);
+  runInfo.AddTilingData(runParams.c0Len);
+  runInfo.AddTilingData(runParams.coreStepIn);
+  runInfo.AddTilingData(runParams.coreStepOut);
+  runInfo.AddTilingData(runParams.nlcDstR2ndLpCnt);
+  runInfo.AddTilingData(runParams.nlcSrcClLpCnt);
+  runInfo.AddTilingData(runParams.nlcSrcLeftLpCnt);
+  runInfo.AddTilingData(runParams.nlcDstR2ndLeft);
+  runInfo.AddTilingData(runParams.nlcSrcClLeft);
+  runInfo.AddTilingData(runParams.nlcSrcLeftLeft);
+  runInfo.AddTilingData(runParams.lcDstR2ndLpCnt);
+  runInfo.AddTilingData(runParams.lcSrcClLpCnt);
+  runInfo.AddTilingData(runParams.lcSrcLeftLpCnt);
+  runInfo.AddTilingData(runParams.lcDstR2ndLeft);
+  runInfo.AddTilingData(runParams.lcSrcClLeft);
+  runInfo.AddTilingData(runParams.lcSrcLeftLeft);
+  runInfo.AddTilingData(runParams.dstR2ndLpUnit);
+  runInfo.AddTilingData(runParams.dstR2ndStepIn);
+  runInfo.AddTilingData(runParams.dstR2ndStepOut);
+  runInfo.AddTilingData(runParams.dstR2ndLpStepIn);
+  runInfo.AddTilingData(runParams.dstR2ndLpStepOut);
+  runInfo.AddTilingData(runParams.srcClLpUnit);
+  runInfo.AddTilingData(runParams.allCIn);
+  runInfo.AddTilingData(runParams.srcClStepIn);
+  runInfo.AddTilingData(runParams.srcClStepOut);
+  runInfo.AddTilingData(runParams.srcClLpStepIn);
+  runInfo.AddTilingData(runParams.srcClLpStepOut);
+  runInfo.AddTilingData(runParams.cModC0);
+  runInfo.AddTilingData(runParams.srcLeftLpUnit);
+  runInfo.AddTilingData(runParams.srcLeftStepIn);
+  runInfo.AddTilingData(runParams.srcLeftStepOut);
+  runInfo.AddTilingData(runParams.srcLeftLpStepIn);
+  runInfo.AddTilingData(runParams.srcLeftLpStepOut);
+  runInfo.AddTilingData(runParams.dstR2ndIn0Size);
+  runInfo.AddTilingData(runParams.dstR2ndIn0SrcRsize);
+  runInfo.AddTilingData(runParams.dstR2ndIn0SrcAsize);
+  runInfo.AddTilingData(runParams.dstR2ndIn1Size);
+  runInfo.AddTilingData(runParams.dstR2ndIn1SrcRsize);
+  runInfo.AddTilingData(runParams.dstR2ndIn1SrcAsize);
+  runInfo.AddTilingData(runParams.dstR2ndDims);
+  runInfo.AddTilingData(runParams.vncColSize);
+  runInfo.AddTilingData(runParams.allR2ndIn);
 }
 
 void PrintTilingModeTc201Params(const std::string& opType, const TransDataTc201Param& params) {

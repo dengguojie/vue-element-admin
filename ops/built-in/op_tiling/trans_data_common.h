@@ -26,11 +26,12 @@
 #include <algorithm>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 
 namespace optiling {
+using namespace ge;
 
 const int64_t BLOCK_BYTE_SIZE = 32;
 const int64_t VNC_LINES = 16;
@@ -41,6 +42,13 @@ const int64_t CUBE_SIZE = 16;
 const int64_t STRIDE_LIMIT_MTE = 65535;
 const vector<int64_t> PAD_IDX_LIST = {0, 1};
 
+const std::map<ge::Format, int64_t> HW_IDX_MAP = {{FORMAT_NCHW, 2}, {FORMAT_NHWC, 1},  {FORMAT_NCDHW, 3},
+                                                  {FORMAT_HWCN, 0}, {FORMAT_DHWCN, 1}, {FORMAT_NDHWC, 2}};
+const std::map<ge::Format, int64_t> C_IDX_MAP = {{FORMAT_NCHW, 1}, {FORMAT_NHWC, 3},  {FORMAT_NCDHW, 1},
+                                                 {FORMAT_HWCN, 2}, {FORMAT_DHWCN, 3}, {FORMAT_NDHWC, 4}};
+
+const std::map<ge::Format, int64_t> N_IDX_MAP = {{FORMAT_NCHW, 0}, {FORMAT_NHWC, 0},  {FORMAT_NCDHW, 0},
+                                                 {FORMAT_HWCN, 3}, {FORMAT_DHWCN, 4}, {FORMAT_NDHWC, 0}};
 struct HeadTilingParam {
   int64_t shapeLoopCnt;
 };
@@ -371,7 +379,6 @@ struct TransDataNtc200Param {
   int64_t crInIdx1SrcAsize;
 };
 
-
 struct TransDataTc201Param {
   int64_t tilingMode;
   int64_t ubOffset;
@@ -428,7 +435,7 @@ struct TransDataMode201Param {
    * mcFlag, usedCoreCnt, coreStepIn, coreStepOut,
    * nlcR2ndLpCnt, nlcC1LpCnt, nlcLeftLpCnt, nlcR2ndLeft, nlcC1Left,
    * lcR2ndLpCnt, lcC1LpCnt, lcLeftLpCnt, lcR2ndLeft, lcC1Left
-  **/
+   **/
   std::vector<int64_t> mcParams;
   int64_t srcR2ndLpUnit;
   int64_t srcR2ndLpStepIn;
@@ -443,7 +450,7 @@ struct TransDataMode201Param {
    * inIdx0Size, inIdx0DstRSize, inIdx0SrcASize, inIdx1Size, inIdx1DstRSize, inIdx1SrcASize, inIdx2Size,
    * inIdx2DstRSize, inIdx2SrcASize, outIdx0Size, outIdx0DstRSize, outIdx0DstASize, outIdx1Size, outIdx1DstRSize,
    * outIdx1DstASize, outIdx2Size, outIdx2DstRSize, outIdx2DstASize
-  **/
+   **/
   std::vector<int64_t> ioOrderParams;
   int64_t src2DstFlag;
 };
@@ -570,6 +577,15 @@ static int64_t GetCeilDiv(int64_t uValue, int64_t dValue) {
   return resValue;
 }
 
+static int64_t GetIdxFromFormat(const std::map<ge::Format, int64_t> format_map, const ge::Format data_format) {
+  auto find_foramt_it = format_map.find(data_format);
+  if (find_foramt_it != format_map.end()) {
+    return find_foramt_it->second;
+  }
+
+  return -1;
+}
+
 static int64_t GetShapeSize(std::vector<int64_t> inShape, int32_t pos) {
   int32_t n = inShape.size();
   int64_t shapeSize = 1;
@@ -583,31 +599,31 @@ static int64_t GetShapeSize(std::vector<int64_t> inShape, int32_t pos) {
 }
 
 bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt,
-                            int64_t& ubSize, TransDataMode1010Param& params);
+                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& ubSize,
+                             TransDataMode1010Param& params);
 
 bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt,
-                            int64_t& ubSize, TransDataMode1011Param& params);
+                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& ubSize,
+                             TransDataMode1011Param& params);
 
 bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
-                            int64_t& ubSize, TransDataNtc200Param& params);
+                          std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, DataType& dtype,
+                          int64_t& ubSize, TransDataNtc200Param& params);
 
 bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
-                            int64_t& ubSize, TransDataTc201Param& params);
+                         std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, DataType& dtype,
+                         int64_t& ubSize, TransDataTc201Param& params);
 
-bool TilingPositiveSourceNtc100(const vector<int64_t>& inShape, const vector<int64_t>& outShape,
-                                      const std::string& srcFormat, const std::string& dstFormat,
-                                      const int64_t& coreNum, const int64_t& blockElemCnt, const int64_t& ubSize,
-                                      const int64_t& c0Len, const std::string& dType, TransDataNtc100Param& params);
+bool TilingPositiveSourceNtc100(const vector<int64_t>& in_shape, const vector<int64_t>& out_shape,
+                                const ge::Format& src_format, const ge::Format& dst_format, const int64_t& core_num,
+                                const int64_t& block_elem_cnt, const int64_t& ub_size, const int64_t& c0Len,
+                                const DataType& dType, TransDataNtc100Param& params);
 
-void SetRunningMode1010Params(const TransDataMode1010Param& runParams, OpRunInfo& runInfo);
-void SetRunningMode1011Params(const TransDataMode1011Param& runParams, OpRunInfo& runInfo);
-void SetRunningNtc200Params(const TransDataNtc200Param& runParams, OpRunInfo& runInfo);
-void SetRunningTc201Params(const TransDataTc201Param& runParams, OpRunInfo& runInfo);
-void SetRunningNtc100Params(const TransDataNtc100Param& runParams, OpRunInfo& runInfo);
+void SetRunningMode1010Params(const TransDataMode1010Param& runParams, utils::OpRunInfo& runInfo);
+void SetRunningMode1011Params(const TransDataMode1011Param& runParams, utils::OpRunInfo& runInfo);
+void SetRunningNtc200Params(const TransDataNtc200Param& runParams, utils::OpRunInfo& runInfo);
+void SetRunningTc201Params(const TransDataTc201Param& runParams, utils::OpRunInfo& runInfo);
+void SetRunningNtc100Params(const TransDataNtc100Param& runParams, utils::OpRunInfo& runInfo);
 
 void PrintTilingMode1010Params(const std::string& opType, const TransDataMode1010Param& params);
 void PrintTilingMode1011Params(const std::string& opType, const TransDataMode1011Param& params);

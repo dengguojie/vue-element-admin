@@ -130,7 +130,8 @@ bool GetMcInfoNegative200(int64_t& dstCrLpCnt, int64_t& dstCrLeft, int64_t& srcC
     params.lcCrLpCnt = dstCrLpCnt - params.nlcCrLpCnt * (params.usedCoreCnt - 1);
     params.nlcCrLeft = 0;
     params.lcCrLeft = dstCrLeft;
-    params.coreStepIn = params.nlcCrLpCnt * params.dstCrLpStepIn;;
+    params.coreStepIn = params.nlcCrLpCnt * params.dstCrLpStepIn;
+    ;
     params.coreStepOut = params.nlcCrLpCnt * params.dstCrLpStepOut;
     params.nlcCLpCnt = srcCLpCnt;
     params.lcCLpCnt = srcCLpCnt;
@@ -145,7 +146,7 @@ bool GetMcInfoNegative200(int64_t& dstCrLpCnt, int64_t& dstCrLeft, int64_t& srcC
 }
 
 bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                          std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
+                          std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, DataType& dtype,
                           int64_t& ubSize, TransDataNtc200Param& params) {
   if (srcFormat.length() < 2 || dstFormat.length() < 1) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeNtc200 Failed.");
@@ -172,11 +173,12 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   // once vnchwconv flow
   int64_t tmpDstCrLpUnit;
   int64_t crGate = 3 * c0Len;
-  if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= crGate)) {
+  if ((dtype == ge::DT_FLOAT16 || ((c0Len == C0_32) && (dtype == ge::DT_INT8 || dtype == ge::DT_UINT8))) &&
+      (axisDstCrSize >= crGate)) {
     tmpDstCrLpUnit = halfUbSize / c0Len / blockElemCnt * blockElemCnt;
   } else {
     // twice vnchwconv flow
-    if (dtype == "int8" || dtype == "uint8") {
+    if (dtype == ge::DT_INT8 || dtype == ge::DT_UINT8) {
       tmpDstCrLpUnit = vncColSize / 2 / c0Len / blockElemCnt * blockElemCnt;
     } else {
       tmpDstCrLpUnit = vncColSize / c0Len / blockElemCnt * blockElemCnt;
@@ -268,7 +270,8 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
     axisDstClSize *= outShape[i];
   }
   int64_t srcCDstCrSize = axisSrcCSize * axisDstCrSize;
-  if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= crGate)) {
+  if ((dtype == ge::DT_FLOAT16 || ((c0Len == C0_32) && (dtype == ge::DT_UINT8 || dtype == ge::DT_UINT8))) &&
+      (axisDstCrSize >= crGate)) {
     params.tilingMode = 2001;
     int64_t tmpDstClLpUnit = halfUbSize / (params.srcCLpUnit * GetCeilFillA(params.dstCrLpUnit, blockElemCnt) * c0Len);
     if (axisDstClSize > tmpDstClLpUnit) {
@@ -356,63 +359,63 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   return true;
 }
 
-void SetRunningNtc200Params(const TransDataNtc200Param& runParams, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, runParams.tilingMode);
-  ByteBufferPut(runInfo.tiling_data, runParams.ubOffset);
-  ByteBufferPut(runInfo.tiling_data, runParams.mcPos);
-  ByteBufferPut(runInfo.tiling_data, runParams.usedCoreCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.c0Len);
-  ByteBufferPut(runInfo.tiling_data, runParams.coreStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.coreStepOut);
+void SetRunningNtc200Params(const TransDataNtc200Param& runParams, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(runParams.tilingMode);
+  runInfo.AddTilingData(runParams.ubOffset);
+  runInfo.AddTilingData(runParams.mcPos);
+  runInfo.AddTilingData(runParams.usedCoreCnt);
+  runInfo.AddTilingData(runParams.c0Len);
+  runInfo.AddTilingData(runParams.coreStepIn);
+  runInfo.AddTilingData(runParams.coreStepOut);
 
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcCrLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcCLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcClLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcCrLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcCLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.nlcClLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcCrLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcCLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcClLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcCrLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcCLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.lcClLeft);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCrLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcCLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClLpUnit);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCrStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCrStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCrLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCrLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCSize);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcCStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcCStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcCLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcCLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.cModC0);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstCrDims);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstClDims);
-  ByteBufferPut(runInfo.tiling_data, runParams.isMcCr);
-  ByteBufferPut(runInfo.tiling_data, runParams.isMcCl);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcR2ndDstR1stSame);
-  ByteBufferPut(runInfo.tiling_data, runParams.leftClCCrSize);
+  runInfo.AddTilingData(runParams.nlcCrLpCnt);
+  runInfo.AddTilingData(runParams.nlcCLpCnt);
+  runInfo.AddTilingData(runParams.nlcClLpCnt);
+  runInfo.AddTilingData(runParams.nlcCrLeft);
+  runInfo.AddTilingData(runParams.nlcCLeft);
+  runInfo.AddTilingData(runParams.nlcClLeft);
+  runInfo.AddTilingData(runParams.lcCrLpCnt);
+  runInfo.AddTilingData(runParams.lcCLpCnt);
+  runInfo.AddTilingData(runParams.lcClLpCnt);
+  runInfo.AddTilingData(runParams.lcCrLeft);
+  runInfo.AddTilingData(runParams.lcCLeft);
+  runInfo.AddTilingData(runParams.lcClLeft);
+  runInfo.AddTilingData(runParams.dstCrLpUnit);
+  runInfo.AddTilingData(runParams.srcCLpUnit);
+  runInfo.AddTilingData(runParams.dstClLpUnit);
+  runInfo.AddTilingData(runParams.dstCrStepIn);
+  runInfo.AddTilingData(runParams.dstCrStepOut);
+  runInfo.AddTilingData(runParams.dstCrLpStepIn);
+  runInfo.AddTilingData(runParams.dstCrLpStepOut);
+  runInfo.AddTilingData(runParams.dstCSize);
+  runInfo.AddTilingData(runParams.srcCStepIn);
+  runInfo.AddTilingData(runParams.srcCStepOut);
+  runInfo.AddTilingData(runParams.srcCLpStepIn);
+  runInfo.AddTilingData(runParams.srcCLpStepOut);
+  runInfo.AddTilingData(runParams.dstClStepIn);
+  runInfo.AddTilingData(runParams.dstClStepOut);
+  runInfo.AddTilingData(runParams.dstClLpStepIn);
+  runInfo.AddTilingData(runParams.dstClLpStepOut);
+  runInfo.AddTilingData(runParams.cModC0);
+  runInfo.AddTilingData(runParams.dstCrDims);
+  runInfo.AddTilingData(runParams.dstClDims);
+  runInfo.AddTilingData(runParams.isMcCr);
+  runInfo.AddTilingData(runParams.isMcCl);
+  runInfo.AddTilingData(runParams.srcR2ndDstR1stSame);
+  runInfo.AddTilingData(runParams.leftClCCrSize);
 
-  ByteBufferPut(runInfo.tiling_data, runParams.clInIdx0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.clInIdx0DstRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.clInIdx0SrcAsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.clInIdx1Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.clInIdx1DstRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.clInIdx1SrcAsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0DstRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0SrcAsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1DstRsize);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1SrcAsize);
+  runInfo.AddTilingData(runParams.clInIdx0Size);
+  runInfo.AddTilingData(runParams.clInIdx0DstRsize);
+  runInfo.AddTilingData(runParams.clInIdx0SrcAsize);
+  runInfo.AddTilingData(runParams.clInIdx1Size);
+  runInfo.AddTilingData(runParams.clInIdx1DstRsize);
+  runInfo.AddTilingData(runParams.clInIdx1SrcAsize);
+  runInfo.AddTilingData(runParams.crInIdx0Size);
+  runInfo.AddTilingData(runParams.crInIdx0DstRsize);
+  runInfo.AddTilingData(runParams.crInIdx0SrcAsize);
+  runInfo.AddTilingData(runParams.crInIdx1Size);
+  runInfo.AddTilingData(runParams.crInIdx1DstRsize);
+  runInfo.AddTilingData(runParams.crInIdx1SrcAsize);
 }
 
 void PrintTilingModeNtc200Params(const std::string& opType, const TransDataNtc200Param& params) {

@@ -24,12 +24,13 @@
 #include <ge_error_codes.h>
 #include <graph/utils/type_utils.h>
 
+namespace optiling {
 using namespace std;
 
 /*
  * @brief: get datatype string from enum
  * @param [in] type: enum datatype
-  * @return string: datatype string
+ * @return string: datatype string
  */
 std::string to_string(const ge::DataType& type) {
   return ge::TypeUtils::DataTypeToSerialString(type);
@@ -38,7 +39,7 @@ std::string to_string(const ge::DataType& type) {
 /*
  * @brief: get format string from enum
  * @param [in] format: enum format
-  * @return string: format string
+ * @return string: format string
  */
 std::string to_string(const ge::Format& format) {
   return ge::TypeUtils::FormatToSerialString(format);
@@ -49,12 +50,12 @@ std::string to_string(const ge::Format& format) {
  * @param [in] paras: ge::Operator
  * @param [in] input_name: constvalue name
  * @param [out] values: vector to store return values.
-  * @return bool: flag of success or not
+ * @return bool: flag of success or not
  */
 bool GetConstValue(const ge::Operator& paras, const string& input_name, std::vector<int64_t>& values) {
   const string& op_type = paras.GetOpType();
   ge::Tensor const_tensor;
-  if(paras.GetInputConstData(input_name, const_tensor) != ge::GRAPH_SUCCESS) {
+  if (paras.GetInputConstData(input_name, const_tensor) != ge::GRAPH_SUCCESS) {
     OP_LOGE(op_type.c_str(), "constvalue [%s] not exists.", input_name.c_str());
     return false;
   }
@@ -67,33 +68,38 @@ bool GetConstValue(const ge::Operator& paras, const string& input_name, std::vec
     return false;
   }
   values.clear();
-  switch(dtype) {
-    case ge::DT_INT64:
-    {
-      size_t count = size/sizeof(int64_t);
-      const int64_t *data_addr = reinterpret_cast<const int64_t*>(data);
-      for(size_t i = 0; i< count; i++) {
+  switch (dtype) {
+    case DT_INT64: {
+      size_t count = size / sizeof(int64_t);
+      const int64_t* data_addr = reinterpret_cast<const int64_t*>(data);
+      for (size_t i = 0; i < count; i++) {
         values.push_back(*data_addr);
         data_addr++;
       }
-    }
-    break;
-    case ge::DT_INT32:
-    {
-      size_t count = size/sizeof(int32_t);
-      const int32_t *data_addr = reinterpret_cast<const int32_t*>(data);
-      for(size_t i = 0; i< count; i++) {
+    } break;
+    case DT_INT32: {
+      size_t count = size / sizeof(int32_t);
+      const int32_t* data_addr = reinterpret_cast<const int32_t*>(data);
+      for (size_t i = 0; i < count; i++) {
         values.push_back(*data_addr);
         data_addr++;
       }
-    }
-    break;
-    default:
-    {
+    } break;
+    default: {
       OP_LOGE(op_type, "GetConstValue of dtype[%s] has not implement.", to_string(dtype).c_str());
       return false;
-    }
-    break;
+    } break;
   }
   return true;
 }
+
+int64_t GetByteLenByString(const std::string& data_type) {
+  auto find_it = STR_TO_DATATYPE.find(data_type);
+  if (find_it != STR_TO_DATATYPE.end()) {
+    return GetSizeByDataType(find_it->second);
+  }
+  OP_LOGW("GetByteLen", "con not get the dtype[%s] in ge::DataType list. will return 0", data_type.c_str());
+  return 0;
+}
+
+}  // namespace optiling
