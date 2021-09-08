@@ -49,19 +49,19 @@ vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxGradExtV2FusionPass pattern begin.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern0 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
-  FUSION_PASS_CHECK(pattern0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern object failed."),
                     return patterns);
 
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
-  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern object failed."),
                     return patterns);
 
   FusionPattern* pattern2 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
-  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern object failed."),
                     return patterns);
 
   FusionPattern* pattern3 = new (std::nothrow) FusionPattern("SoftmaxGradExtV2FusionPass");
-  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern object failed."),
                     return patterns);
 
   /*
@@ -193,29 +193,29 @@ vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
 }
 
 Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass fusion begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass fusion begin.");
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
   ge::NodePtr mul1Node = GetNodeFromMapping(PATTERN_MUL1, mapping);
   ge::NodePtr subNode = GetNodeFromMapping(PATTERN_SUB, mapping);
   ge::NodePtr sumNode = GetNodeFromMapping(PATTERN_SUM, mapping);
   ge::NodePtr mulGradNode = GetNodeFromMapping(PATTERN_MUL_Grad, mapping);
 
-  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul1Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul1Node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul1Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul1Node is null."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mulGradNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulGradNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulGradNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulGradNode is null."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(subNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "subNode is null, fusion failed."),
+  FUSION_PASS_CHECK(subNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "subNode is null."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sumNode is null."),
                     return PARAM_INVALID);
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> newOpdesc = nullptr;
   newOpdesc = std::make_shared<ge::OpDesc>(mul1Node->GetName() + "/" + SOFTMAXGRADEXT, SOFTMAXGRADEXT);
 
-  FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null, fusion failed."),
+  FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null."),
                     return PARAM_INVALID);
 
   for (size_t i = 0; i < 2; i++) {
@@ -225,13 +225,13 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
         (mulNode->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode() == nullptr) ||
         (mulGradNode->GetInDataAnchor(i) == nullptr) || (mulGradNode->GetInDataAnchor(i)->GetPeerOutAnchor() == nullptr) ||
         (mulGradNode->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode() == nullptr)) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot get node from sub or mul.");
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot get node from sub or mul.");
       return NOT_CHANGED;
     }
   }
 
   if ((mul1Node->GetOutDataAnchor(0) == nullptr) || (mul1Node->GetOutDataAnchor(0)->GetOwnerNode() == nullptr)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot get node from mul1Node.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot get node from mul1Node.");
     return NOT_CHANGED;
   }
   // add inputs
@@ -250,7 +250,7 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     }
   }
   if (!(mulInputId == 0 || mulInputId == 1)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for different input0 and input1.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for different input0 and input1.");
     return NOT_CHANGED;
   }
   ge::GeTensorDesc input_tensor0 = mulNode->GetOpDesc()->GetInputDesc(mulInputId);
@@ -276,7 +276,7 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     }
   }
   if (!(gradInputId == 0 || gradInputId == 1)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for different input2.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for different input2.");
     return NOT_CHANGED;
   }
   ge::GeTensorDesc input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(gradInputId);
@@ -296,7 +296,7 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
         for (size_t j = 0; j < dimOut.size(); j++) {
           auto dim = dimOut[j];
           if (PatternFusionUtil::IsUnknownShape(dim)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for unknown shape.");
+            OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }
@@ -315,14 +315,14 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   // copy attr
   vector<int32_t> axis;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(sumNode->GetOpDesc(), AXIS, axis),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get attr axis failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get attr axis failed."), return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(newNode->GetOpDesc(), AXIS, axis),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set attr axis failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set attr axis failed."), return FAILED);
   bool keep_dims;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(sumNode->GetOpDesc(), KEEPDIMS, keep_dims),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get attr keep_dims failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get attr keep_dims failed."), return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(newNode->GetOpDesc(), KEEPDIMS, keep_dims),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set attr keep_dims failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set attr keep_dims failed."), return FAILED);
 
   // connect output edge
   for (auto &inDataAnchor : mulGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
@@ -372,7 +372,7 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node failed."),
                     return FAILED);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass fusion end");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass fusion end.");
   return SUCCESS;
 }
 REGISTER_PASS("SoftmaxGradExtFusionV2", BUILT_IN_GRAPH_PASS, SoftmaxGradExtV2FusionPass);
