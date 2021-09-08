@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021 All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,15 +28,16 @@
 #include <vector>
 
 namespace optiling {
-
 static const size_t MAX_DIM_LEN = 8;
-static const size_t input_num = 2;
+static const size_t INPUT_NUM = 2;
+static const size_t BTYPE_PER_BLOCK = 32;
+static const size_t MAX_COEXIST_NUM = 10;
+static const size_t ND_SHAPE_LEN = 2;
 
 // compile info
 struct CompileInfo {
   int32_t ub_size;
   int32_t core_num;
-  int32_t max_dtype;
 };
 
 // tiling info
@@ -57,12 +57,6 @@ int64_t GetDtypeSize(std::string& dtype) {
   return dtype_size;
 }
 
-void DimValPut(const int32_t dim_val, const int32_t range_l, const int32_t range_r, OpRunInfo& run_info) {
-  if (range_l < range_r) {
-    ByteBufferPut(run_info.tiling_data, dim_val);
-  }
-}
-
 bool WriteTilingData(const std::string& op_type,
                      const nlohmann::json& op_info, const CompileInfo& compile_info,
                      TilingInfo& tiling_info, OpRunInfo& run_info,
@@ -71,7 +65,6 @@ bool WriteTilingData(const std::string& op_type,
                      std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGD("op [%s] tiling ub_size:%lld", op_type.c_str(), compile_info.ub_size);
   GELOGD("op [%s] tiling core_num:%lld", op_type.c_str(), compile_info.core_num);
-  GELOGD("op [%s] tiling max_dtype:%lld", op_type.c_str(), compile_info.max_dtype);
 
   GELOGD("op [%s] tiling key:%lld", op_type.c_str(), tiling_info.key);
   GELOGD("op [%s] tiling ub_factor:%lld", op_type.c_str(), tiling_info.ub_factor);
@@ -101,18 +94,17 @@ bool WriteTilingData(const std::string& op_type,
 }
 
 
-bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shapes,
-                     std::array<int64_t, MAX_DIM_LEN>& output_shape,
-                     const size_t input_num, size_t& dim_len,
+bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
+                     std::array<int64_t, MAX_DIM_LEN>& output_shape, size_t& dim_len,
                      const std::string& op_type, const TeOpParas& op_paras) {
-  for (size_t i = 0; i < input_num; i++) {
+  for (size_t i = 0; i < INPUT_NUM; i++) {
     OP_TILING_CHECK(op_paras.inputs[i].tensor.empty(),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input tensor cannot be empty"), return false);
     // init all dim to 1
     input_shapes[i].fill(1ll);
   }
   output_shape.fill(1ll);
-  for (size_t i = 0; i < input_num; i++) {
+  for (size_t i = 0; i < INPUT_NUM; i++) {
     size_t cur_dim_len = op_paras.inputs[i].tensor[0].shape.size();
     size_t start_index = dim_len - cur_dim_len;
     for (size_t j = 0; j < cur_dim_len; j++) {
@@ -123,7 +115,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shap
   for (size_t i = 0; i < dim_len; i++) {
     int64_t max_output = input_shapes[0][i];
     output_shape[i] = input_shapes[0][i];
-    for (size_t j = 1; j < input_num; j++) {
+    for (size_t j = 1; j < INPUT_NUM; j++) {
       bool verify_broadcast = input_shapes[j][i] != 1 &&
           (input_shapes[j][i] != max_output && max_output != 1);
       if (input_shapes[j][i] > max_output) {
@@ -141,91 +133,8 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shap
 }
 
 
-int32_t GetMaxUbCount(std::string& out_type, CompileInfo& compile_info, int32_t shape_len) {
-  int32_t total_size = compile_info.ub_size;
-  int32_t dtype_size = out_type == "float16" ? 2 : 4;
-  total_size = total_size / dtype_size;
-
-  int32_t total_width = 0;
-  if (out_type == "float32") {
-      total_width = 6;
-  } else {
-      if (shape_len == 4) {
-          total_width = 10;
-      } else {
-          total_width = 12;
-      }
-  }
-  int32_t align_to = 128;
-
-  int32_t max_bound = total_width * align_to;
-  int32_t max_ub_count = total_size / max_bound * align_to;
-
-  return max_ub_count;
-}
-
-
-int32_t GetNpartFactor(int32_t n_h_w, int32_t dtype_size, int32_t block_dim) {
-  int32_t nparts_factor = block_dim;
-  if (n_h_w * dtype_size >= block_dim * 32) {
-      nparts_factor = block_dim;
-  } else {
-      nparts_factor = n_h_w * dtype_size / 32;
-  }
-  // softmax_cross_logits_nd is a special batch size for nd format
-  int32_t softmax_cross_logits_nd = 2105352;
-  // softmax_cross_logits_nhw is a special batch size for nhwc format
-  int32_t softmax_cross_logits_nhw = 11842605;
-  if (block_dim == 30 && nparts_factor != 0) {
-      if (n_h_w == softmax_cross_logits_nd) {
-          while (n_h_w % nparts_factor != 0) {
-              nparts_factor--;
-          }
-      }
-  }
-  if (block_dim == 32 && nparts_factor != 0) {
-      if (n_h_w == softmax_cross_logits_nhw) {
-          while (n_h_w % nparts_factor != 0) {
-              nparts_factor--;
-          }
-      }
-  }
-  return nparts_factor;
-}
-
-
-void GetUbTiling2D(int32_t shape_nhw, int32_t shape_c, int32_t& nparts_factor, int32_t block_tiling_inner_loop,
-                   int32_t min_num_size_one_core, int32_t max_ub_count, int32_t& split_size) {
-  int32_t temp_size = shape_c;
-  int32_t bound_size = max_ub_count;
-  int32_t threshold_size = 128;
-  int32_t one_block_size = 32;
-  int32_t byte_size_fp32 = 4;
-
-  if (shape_c > threshold_size && shape_c * byte_size_fp32 % one_block_size != 0) {
-      if (shape_nhw / nparts_factor >= min_num_size_one_core) {
-          split_size = 1;
-          return;
-      }
-      split_size = 1;
-      nparts_factor = 1;
-      return;
-  }
-  nparts_factor = nparts_factor <= 1 ? 1 : nparts_factor;
-  split_size = 1;
-  for (int i = block_tiling_inner_loop; i > 0; i--) {
-      if (temp_size * i <= bound_size) {
-          split_size = i;
-          while (block_tiling_inner_loop % split_size != 0) {
-              split_size--;
-          }
-          break;
-      }
-  }
-}
-
 void CalNdKey(TilingInfo& tiling_info, bool is_special_pattern,
-              std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shapes) {
+              std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes) {
   int64_t key = 0;
   std::array<int64_t, MAX_DIM_LEN> features_shape = input_shapes[0];
   std::array<int64_t, MAX_DIM_LEN> labels_shape = input_shapes[1];
@@ -251,72 +160,20 @@ void CalNdKey(TilingInfo& tiling_info, bool is_special_pattern,
 
 bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
                 CompileInfo& compile_info, TilingInfo& tiling_info,
-                std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shapes,
+                std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
                 std::string& out_type,
                 std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGI("op [%s]: DoTiling func running", op_type.c_str());
-  const int64_t multi_core_threshold = 1024;
   bool need_multi_core = true;
   int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
   int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
-  int32_t threshold_size = 512;
-  int32_t block_split_inner_size = n_h_w;
   int32_t ub_axis = 0;
-  int32_t ub_factor = 0;
+  int32_t ub_factor = output_shape[0];
   int32_t block_axis = 0;
-  int32_t block_nparts = 0;
+  int32_t block_nparts = 1;
   int32_t dtype_size = GetDtypeSize(out_type);
-  if (n_h_w < multi_core_threshold) {
-    need_multi_core = false;
-  }
-
-  if (need_multi_core) {
-    int32_t shape_len = 2;
-    int32_t max_ub_count = GetMaxUbCount(out_type, compile_info, shape_len);
-    int32_t nparts_factor = GetNpartFactor(n_h_w, dtype_size, compile_info.core_num);
-    nparts_factor = nparts_factor <= 1 ? 1 : nparts_factor;
-
-    int32_t split_factor = 1;
-    int32_t min_num_size_one_core = out_type == "float16" ? 16 : 8;
-    if (n_h_w > c_size) {
-        threshold_size = 512;
-        block_split_inner_size = n_h_w / nparts_factor;
-        while (block_split_inner_size > 0 && block_split_inner_size < min_num_size_one_core) {
-            nparts_factor--;
-            block_split_inner_size = n_h_w / nparts_factor;
-        }
-        nparts_factor = nparts_factor <= 1 ? 1 : nparts_factor;
-        if (block_split_inner_size < min_num_size_one_core) {
-            nparts_factor = 1;
-            block_split_inner_size = n_h_w / nparts_factor;
-        } else {
-            while (block_split_inner_size >= min_num_size_one_core &&
-              block_split_inner_size * c_size * dtype_size < threshold_size &&
-              nparts_factor > 1) {
-                nparts_factor--;
-                if (nparts_factor > 0) {
-                    block_split_inner_size = n_h_w / nparts_factor;
-                }
-              }
-        }
-        nparts_factor = nparts_factor <= 1 ? 1 : nparts_factor;
-    } else {
-        block_split_inner_size = n_h_w / nparts_factor;
-        threshold_size = 8*1024;
-        if (block_split_inner_size * c_size * dtype_size < threshold_size) {
-            nparts_factor = 1;
-            block_split_inner_size = n_h_w / nparts_factor;
-        }
-    }
-    nparts_factor = nparts_factor <= 1 ? 1 : nparts_factor;
-    GetUbTiling2D(n_h_w, c_size, nparts_factor, block_split_inner_size, min_num_size_one_core, max_ub_count, split_factor);
-  }
-  ub_axis = 0;
-  ub_factor = output_shape[0];
-  block_axis = 0;
-  block_nparts = 1;
-  int32_t bound_size = compile_info.ub_size / dtype_size / 10;
-  int32_t num_per_block = 32 / dtype_size;
+  int32_t bound_size = compile_info.ub_size / dtype_size / MAX_COEXIST_NUM;
+  int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
   int32_t c_size_align = (c_size + num_per_block - 1) / num_per_block * num_per_block;
   if (c_size > bound_size) {
       VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
@@ -324,8 +181,8 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   } else if ((c_size * num_per_block < bound_size) &&
              (n_h_w >= num_per_block)) {
       // for open multi-core
-      block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * 32) ?
-                     compile_info.core_num : n_h_w * dtype_size / 32;
+      block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * BTYPE_PER_BLOCK) ?
+                     compile_info.core_num : n_h_w * dtype_size / BTYPE_PER_BLOCK;
       int32_t block_tiling_inner_loop = n_h_w / block_nparts;
       ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
   } else {
@@ -340,6 +197,7 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   tiling_info.ub_axis = ub_axis;
 
   const std::vector<bool>& flag_info = op_info["flag_info"];
+  // is_special_pattern index in flag_info is 3
   bool is_special_pattern = flag_info[3];
   CalNdKey(tiling_info, is_special_pattern, input_shapes);
 
@@ -369,8 +227,6 @@ bool GetPreCompileParams(const std::string& op_type, const nlohmann::json& op_in
   }
   compile_info.ub_size = common_info["ub_size"].get<std::int32_t>();
 
-  compile_info.max_dtype = 4;
-
   GELOGD("op [%s] GetPreCompileParams, core_num[%d].", op_type.c_str(), compile_info.core_num);
   GELOGD("op [%s] GetPreCompileParams, ub_size[%d].", op_type.c_str(), compile_info.ub_size);
   return true;
@@ -390,7 +246,7 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const TeOpP
 
   size_t dim_len = input_features_shape.size() > input_labels_shape.size() ?
                    input_features_shape.size() : input_labels_shape.size();
-  std::array<std::array<int64_t, MAX_DIM_LEN>, 2> input_shapes{};
+  std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM> input_shapes{};
 
   OP_TILING_CHECK((op_info.find("flag_info") == op_info.end()),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [flag_info]"), return false);
@@ -400,16 +256,17 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const TeOpP
   }
   const std::vector<bool>& flag_info = op_info["flag_info"];
   std::array<int64_t, MAX_DIM_LEN> output_shape;
-  bool ret = CompletedShapes(input_shapes, output_shape, input_num, dim_len, op_type, op_paras);
+  bool ret = CompletedShapes(input_shapes, output_shape, dim_len, op_type, op_paras);
   // not use pure template
-  CompileInfo compile_info = {1, 1, 1};
+  CompileInfo compile_info = {1, 1};
   TilingInfo tiling_info = {1, 1, 1, 1, 1};
 
   ret = ret && GetPreCompileParams(op_type, op_info, compile_info);
 
   int64_t key = 110000000;
   tiling_info.key = key;
-  if (dim_len == 2) {
+
+  if (dim_len == ND_SHAPE_LEN) {
     ret = ret && DoNdTiling(op_type, op_info, compile_info, tiling_info, input_shapes, out_type, output_shape);
   }
   ret = ret && WriteTilingData(op_type, op_info, compile_info, tiling_info, run_info,
