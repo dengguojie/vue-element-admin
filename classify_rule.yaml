@@ -1151,8 +1151,6 @@ vector_B:
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_resnet50.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmaxv2.py
-      - ops/built-in/tbe/impl/max_pool_v3.py
-      - ops/built-in/tbe/impl/max_pool_v3_grad.py
       - ops/built-in/tbe/impl/max_pool_with_argmax.py
       - ops/built-in/tbe/impl/max_pool_with_argmax_resnet50.py
       - ops/built-in/tbe/impl/max_pool3d.py
@@ -1195,7 +1193,6 @@ vector_B:
       - ops/built-in/tbe/impl/select_v2.py
       - ops/built-in/tbe/impl/sign.py
       - ops/built-in/tbe/impl/sin.py
-      - ops/built-in/tbe/impl/slice_d.py
       - ops/built-in/tbe/impl/split_d.py
       - ops/built-in/tbe/impl/split_v_d.py
       - ops/built-in/tbe/impl/sqrt_grad.py
