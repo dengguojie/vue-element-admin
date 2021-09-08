@@ -24,6 +24,9 @@ from impl.util.platform_adapter import register_operator
 from impl import constant_util as constant
 from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
 from impl.dynamic.replication_pad_v3 import replication_pad_v3
+from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
 
 # max int64
 MAX_INT64 = 2 ** 64 - 1
@@ -46,8 +49,27 @@ MODE2 = 2
 # compute big last axis
 MODE3 = 3
 # judge how much ub size to fill the tensor
-THRESHHOLD_VALUE = 8192
+THRESHOLD_VALUE = 8192
 BLOCK = 32
+
+def get_op_support_info(x, paddings, constant_values, y, mode='constant',
+                        padding_contiguous=True, kernel_name="pad_v3"):
+    """
+    get_op_support_info
+    """
+    x_format = x.get("format").upper()
+    if x_format == "NC1HWC0":
+        axis_split_matrix = [
+            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]
+        ]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
 # pylint: disable=too-many-arguments,invalid-name
@@ -82,11 +104,16 @@ class PadV3Init(object):
         self.unknown_max_shape = (MAX_INT64,)
         self.tiling_dtype = "int64"
         self.tiling_shape = (TILING_NUMS,)
+        self.supported_dtype = {"float32", "int32"}
 
         self.x_dtype = x.get("dtype")
+        self.scalar_dtype = "int64"
+        if self.x_dtype in self.supported_dtype:
+            self.scalar_dtype = self.x_dtype
+
         self.inner_dtype = "float16"
         self.paddings_dtype = paddings.get('dtype')
-        self.constant_values_dtype = constant_values.get('dtype')
+        self.constant_values = constant_values
         self.y_dtype = y.get('dtype')
         self.kernel_name = kernel_name
         self.input_gm = None
@@ -111,9 +138,10 @@ class PadV3Init(object):
         self.sync_workspace = self.tik_instance.Tensor(
             'int64', (4 * self.core_nums,), tik.scope_gm, 'sync_workspace', is_workspace=True,
             is_atomic_add=True)
-        self.pad_scalar = self.tik_instance.Scalar(dtype=self.constant_values_dtype, name='pad_scalar')
-        self.constant_values_gm = self.tik_instance.Tensor(self.constant_values_dtype, (self.block_num,),
-                                                           name='constant_values_gm', scope=tik.scope_gm)
+        self.pad_scalar = self.tik_instance.Scalar(dtype=self.x_dtype, name='pad_scalar')
+        if self.constant_values:
+            self.constant_values_gm = self.tik_instance.Tensor(self.x_dtype, (self.block_num,),
+                                                               name='constant_values_gm', scope=tik.scope_gm)
         self.mode = mode
         self.padding_contiguous = padding_contiguous
         # tiling scaler init
@@ -168,7 +196,7 @@ class PadV3Init(object):
         """
         get_pad_scalar
         """
-        constant_values_ub = self.tik_instance.Tensor(self.constant_values_dtype, (self.block_num,),
+        constant_values_ub = self.tik_instance.Tensor(self.x_dtype, (self.block_num,),
                                                       name='constant_values_ub', scope=tik.scope_ubuf)
         self.tik_instance.data_move(constant_values_ub, self.constant_values_gm, 0, 1, 1, 0, 0)
         self.pad_scalar.set_as(constant_values_ub[0])
@@ -305,24 +333,20 @@ class PadV3Init(object):
         """
         self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
                                                   name="tiling_gm", scope=tik.scope_gm)
-        for i, input_dict in enumerate(input_dict_list):
-            input_dtype = input_dict.get("dtype") if pad_input_idx != i else self.inner_dtype
-            input_gm = self.tik_instance.Tensor(input_dtype, self.unknown_max_shape,
-                                                name="input_gm_" + str(i), scope=tik.scope_gm)
-            self.input_gm_list.append(input_gm)
-        self.input_gm_list.append(self.constant_values_gm)
+        x_dtype = input_dict_list[0].get("dtype")
+        paddings_dtype = input_dict_list[1].get("dtype")
+        x_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="x", scope=tik.scope_gm)
+        paddings_gm = self.tik_instance.Tensor(paddings_dtype, self.unknown_max_shape,
+                                               name="paddings", scope=tik.scope_gm)
+        self.input_gm_list.append(x_gm)
+        self.input_gm_list.append(paddings_gm)
+        if self.constant_values is not None:
+            self.input_gm_list.append(self.constant_values_gm)
 
-        for i, output_dict in enumerate(output_dict_list):
-            output_dtype = output_dict.get("dtype")
-            if pad_outnput_idx == i:
-                # the pad output must will atomic_add to clear the output_gm to all zero
-                output_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
-                self.input_bytes_size = tbe_platform.get_bit_len(output_dtype) // EIGHT_BIT
-            else:
-                output_gm = self.tik_instance.Tensor(output_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
-            self.output_gm_list.append(output_gm)
+        y_dtype = output_dict_list[0].get("dtype")
+        y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
+        self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // EIGHT_BIT
+        self.output_gm_list.append(y_gm)
 
         self.input_gm = self.input_gm_list[pad_input_idx]
         self.output_gm = self.output_gm_list[pad_outnput_idx]
@@ -358,31 +382,31 @@ class PadV3Init(object):
         total_output_tensor_last_core.set_as(((total_output_tensor % total_output_tensor_each_core - 1) // block + 1)
                                              * block)
         scale = 1
-        if self.x_dtype == "float32":
+        if self.x_dtype == self.scalar_dtype:
             scale = 2
         with self.tik_instance.if_scope(core_index < core_nums):
             with self.tik_instance.new_stmt_scope():
-                fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHHOLD_VALUE,),
+                fill_tensor_ub = self.tik_instance.Tensor(self.x_dtype, (THRESHOLD_VALUE,),
                                                           name='fill_tensor_ub', scope=tik.scope_ubuf)
-                repeat_time = THRESHHOLD_VALUE // self.dump_mask_max_x
+                repeat_time = THRESHOLD_VALUE // self.dump_mask_max_x
                 self.tik_instance.vec_dup(self.dump_mask_max_x // scale, fill_tensor_ub,
                                           self.pad_scalar, repeat_time * scale, 8)
-                if self.x_dtype == "float32":
+                if self.x_dtype == self.scalar_dtype:
                     fill_tensor_ub = fill_tensor_ub.reinterpret_cast_to("float16")
                 with self.tik_instance.if_scope(tik.all(core_index == core_nums - 1,
                                                         (total_output_tensor % total_output_tensor_each_core) > 0)):
-                    with self.tik_instance.if_scope(total_output_tensor_last_core >= THRESHHOLD_VALUE):
+                    with self.tik_instance.if_scope(total_output_tensor_last_core >= THRESHOLD_VALUE):
                         times = self.tik_instance.Scalar(dtype='int32')
                         tail_burst_len = self.tik_instance.Scalar(dtype='int32')
-                        times.set_as(total_output_tensor_last_core // THRESHHOLD_VALUE // scale)
-                        tail_burst_len.set_as(total_output_tensor_last_core % (THRESHHOLD_VALUE * scale) // block)
+                        times.set_as(total_output_tensor_last_core // THRESHOLD_VALUE // scale)
+                        tail_burst_len.set_as(total_output_tensor_last_core % (THRESHOLD_VALUE * scale) // block)
                         with self.tik_instance.for_range(0, times) as i:
-                            offset_gm.set_as(core_index * total_output_tensor_each_core + i * THRESHHOLD_VALUE * scale)
+                            offset_gm.set_as(core_index * total_output_tensor_each_core + i * THRESHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
-                                                        THRESHHOLD_VALUE * scale // block, 0, 0)
+                                                        THRESHOLD_VALUE * scale // block, 0, 0)
                         with self.tik_instance.if_scope(tail_burst_len > 0):
                             offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                              times * THRESHHOLD_VALUE * scale)
+                                             times * THRESHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
                                                         tail_burst_len, 0, 0)
 
@@ -392,19 +416,19 @@ class PadV3Init(object):
                                                     fill_tensor_ub, 0, 1,
                                                     total_output_tensor_last_core // block, 0, 0)
                 with self.tik_instance.else_scope():
-                    with self.tik_instance.if_scope(total_output_tensor_each_core >= THRESHHOLD_VALUE):
+                    with self.tik_instance.if_scope(total_output_tensor_each_core >= THRESHOLD_VALUE):
                         times = self.tik_instance.Scalar(dtype='int32')
                         tail_burst_len = self.tik_instance.Scalar(dtype='int32')
-                        times.set_as(total_output_tensor_each_core // scale // THRESHHOLD_VALUE)
-                        tail_burst_len.set_as(total_output_tensor_each_core % (THRESHHOLD_VALUE * scale) // block)
+                        times.set_as(total_output_tensor_each_core // scale // THRESHOLD_VALUE)
+                        tail_burst_len.set_as(total_output_tensor_each_core % (THRESHOLD_VALUE * scale) // block)
                         with self.tik_instance.for_range(0, times) as i:
                             offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                             i * THRESHHOLD_VALUE * scale)
+                                             i * THRESHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
-                                                        THRESHHOLD_VALUE * scale // block, 0, 0)
+                                                        THRESHOLD_VALUE * scale // block, 0, 0)
                         with self.tik_instance.if_scope(tail_burst_len > 0):
                             offset_gm.set_as(core_index * total_output_tensor_each_core +
-                                             times * THRESHHOLD_VALUE * scale)
+                                             times * THRESHOLD_VALUE * scale)
                             self.tik_instance.data_move(self.output_gm[offset_gm], fill_tensor_ub, 0, 1,
                                                         tail_burst_len, 0, 0)
 
@@ -420,7 +444,10 @@ class PadV3Init(object):
         """
 
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
-            self.get_pad_scalar()
+            if not self.constant_values:
+                self.pad_scalar.set_as(0)
+            else:
+                self.get_pad_scalar()
             self.tiling_args()
             self.core_schedule_args(core_index)
             self.fill_gm_output_tensor(core_index)
@@ -688,14 +715,14 @@ class PadV3Init(object):
         pang_data_ub_tail = self.tik_instance.Tensor(self.inner_dtype, (copy_num,),
                                                      name="pang_data_ub_tail", scope=tik.scope_ubuf)
 
-        if self.x_dtype == "float32":
-            ping_data_ub_one_block = ping_data_ub_one_block.reinterpret_cast_to('float32')
-            pang_data_ub_one_block = pang_data_ub_one_block.reinterpret_cast_to('float32')
+        if self.x_dtype in self.supported_dtype:
+            ping_data_ub_one_block = ping_data_ub_one_block.reinterpret_cast_to(self.x_dtype)
+            pang_data_ub_one_block = pang_data_ub_one_block.reinterpret_cast_to(self.x_dtype)
             self.tik_instance.vector_dup(self.block_num * 4, ping_data_ub_one_block[8:], self.pad_scalar, 2, 1, 8)
             self.tik_instance.vector_dup(self.block_num * 4, pang_data_ub_one_block[8:], self.pad_scalar, 2, 1, 8)
             ping_data_ub_one_block = ping_data_ub_one_block.reinterpret_cast_to('float16')
             pang_data_ub_one_block = pang_data_ub_one_block.reinterpret_cast_to('float16')
-        elif self.x_dtype == "float16":
+        else:
             self.tik_instance.vector_dup(self.block_num * 8, ping_data_ub_one_block[16:], self.pad_scalar, 2, 1, 8)
             self.tik_instance.vector_dup(self.block_num * 8, pang_data_ub_one_block[16:], self.pad_scalar, 2, 1, 8)
 
@@ -930,13 +957,13 @@ class PadV3Init(object):
                                                                        name="origin_output_tail_data_ub_ping",
                                                                        scope=tik.scope_ubuf)
 
-            if self.x_dtype == "float32":
-                vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float32')
+            if self.x_dtype in self.supported_dtype:
+                vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to(self.x_dtype)
                 self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_ping, self.pad_scalar,
                                              max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                 vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float16')
 
-            elif self.x_dtype == "float16":
+            else:
                 self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_ping, self.pad_scalar,
                                              max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
 
@@ -957,12 +984,12 @@ class PadV3Init(object):
                                                                        name="origin_output_tail_data_ub_ping",
                                                                        scope=tik.scope_ubuf)
 
-            if self.x_dtype == "float32":
-                vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float32')
+            if self.x_dtype in self.supported_dtype:
+                vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to(self.x_dtype)
                 self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_pang, self.pad_scalar,
                                              max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                 vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float16')
-            elif self.x_dtype == "float16":
+            else:
                 self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_pang, self.pad_scalar,
                                              max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
 
@@ -1176,12 +1203,12 @@ class PadV3Init(object):
                     self.tik_instance.Tensor(self.inner_dtype, (16 * 16,),
                                              name="origin_output_tail_data_ub_ping", scope=tik.scope_ubuf)
 
-                if self.x_dtype == "float32":
-                    vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float32')
+                if self.x_dtype in self.supported_dtype:
+                    vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to(self.x_dtype)
                     self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_ping, self.pad_scalar,
                                                  max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                     vnchw_output_data_ub_ping = vnchw_output_data_ub_ping.reinterpret_cast_to('float16')
-                elif self.x_dtype == "float16":
+                else:
                     self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_ping, self.pad_scalar,
                                                  max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
 
@@ -1200,12 +1227,12 @@ class PadV3Init(object):
                     self.tik_instance.Tensor(self.inner_dtype, (16 * 16,),
                                              name="origin_output_tail_data_ub_ping", scope=tik.scope_ubuf)
 
-                if self.x_dtype == "float32":
-                    vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float32')
+                if self.x_dtype in self.supported_dtype:
+                    vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to(self.x_dtype)
                     self.tik_instance.vector_dup(self.block_num * 4, vnchw_output_data_ub_pang, self.pad_scalar,
                                                  max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
                     vnchw_output_data_ub_pang = vnchw_output_data_ub_pang.reinterpret_cast_to('float16')
-                elif self.x_dtype == "float16":
+                else:
                     self.tik_instance.vector_dup(self.block_num * 8, vnchw_output_data_ub_pang, self.pad_scalar,
                                                  max_line_in_ub * max_output_size // self.block_num // 8, 1, 8)
 
@@ -1302,19 +1329,20 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
     -------
     None.
     """
-    if mode == 'constant':
-        src_dtype = x.get("dtype").lower()
-        paddings_dtype = paddings.get("dtype").lower()
-
-        supported_dtype = ("float16", "float32")
-        para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
-        para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
-
-        obj = PadV3Init(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
-        obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
-
-        return obj.pad_compute()
-    elif mode == 'reflect':
+    if mode == 'reflect':
         return reflection_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
-    elif mode == 'edge':
+    if mode == 'edge':
         return replication_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
+
+    src_dtype = x.get("dtype").lower()
+    paddings_dtype = paddings.get("dtype").lower()
+
+    supported_dtype = ("float16", "float32", "int32")
+    para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
+    para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
+
+    obj = PadV3Init(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
+    obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
+
+    return obj.pad_compute()
+
