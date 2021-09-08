@@ -20,9 +20,6 @@ from te import tvm
 from te.utils import para_check
 import te.platform as tbe_platform
 
-# log(2), the recalculated part
-NEG_LN_2 = - 0.69314718055994530941723212145818
-
 
 # pylint: disable=too-many-locals,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softplus_v2")
@@ -39,7 +36,7 @@ def softplus_v2_compute(input_features, beta, threshold, kernel_name="softplus_v
     threshold: float
        boundary value, default value is 20.0
     kernel_name : str
-       kernel name, default value is "softplus_v2_grad"
+       kernel name, default value is "softplus_v2"
 
     Returns
     -------
@@ -53,35 +50,21 @@ def softplus_v2_compute(input_features, beta, threshold, kernel_name="softplus_v
 
     beta_const_tensor = tbe.broadcast(tvm.const(beta, dtype="float32"), input_shape)
     one_const_tensor = tbe.broadcast(tvm.const(1.0, dtype="float32"), input_shape)
-    # calculate log(1+exp(beta*x))/beta
-    beta_mul_x = tbe.vmul(input_features, beta_const_tensor)
-    positive_part = tbe.vmaxs(beta_mul_x, tvm.const(0, dtype="float32"))
-    negative_part = tbe.vmins(beta_mul_x, tvm.const(0, dtype="float32"))
-    # calculate negative part softplus
-    neg_to_pos = tbe.vmuls(negative_part, tvm.const(-1, dtype="float32"))
-    exp_neg = tbe.vexp(neg_to_pos)
-    exp_add_one = tbe.vadd(exp_neg, one_const_tensor)
-    log_neg = tbe.vlog(exp_add_one)
-    res_neg = tbe.vadd(log_neg, negative_part)
-    # calculate positive part softplus
-    exp_pos = tbe.vexp(positive_part)
-    add_one = tbe.vadd(exp_pos, one_const_tensor)
-    res_pos = tbe.vlog(add_one)
 
-    log_res = tbe.vadd(res_neg, res_pos)
-    res_tmp = tbe.vadds(log_res, NEG_LN_2)
-    method_one_res = tbe.vdiv(res_tmp, beta_const_tensor)
-
-    # combine two results
     left_cmp = tbe.vmul(input_features, beta_const_tensor)
     is_method_two = tbe.vcmpsel(left_cmp, tvm.const(threshold, dtype="float32"), 'gt', 1.0, 0.0)
     is_method_one = tbe.vsub(one_const_tensor, is_method_two)
+    # Prevent exp overflow caused by large number calculation
+    input_features_select = tbe.vmul(left_cmp, is_method_one)
+    # calculate log(1+exp(beta*x))/beta
+    exp_pos = tbe.vexp(input_features_select)
+    add_one = tbe.vadd(exp_pos, one_const_tensor)
+    res_pos = tbe.vlog(add_one)
+    method_one_res = tbe.vdiv(res_pos, beta_const_tensor)
 
     method_one_get_res = tbe.vmul(method_one_res, is_method_one)
     method_two_get_res = tbe.vmul(input_features, is_method_two)
-
     res_tmp = tbe.vadd(method_one_get_res, method_two_get_res)
-    res_tmp = tbe.vmaxs(res_tmp, tvm.const(0.0, dtype="float32"))
     if input_dtype == "float16":
         res = tbe.cast_to(res_tmp, "float16")
     else:

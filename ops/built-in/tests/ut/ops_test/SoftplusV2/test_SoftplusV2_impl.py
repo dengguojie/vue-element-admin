@@ -32,8 +32,15 @@ case4 = {"params": [{"shape": (32, 2, 4, 1, 6), "dtype": "float32", "format": "N
                      "ori_format": "ND", "param_type": "output"}, 2.0, 40.0],
          "case_name": "softplus_v2_4",
          "expect": "success"}
+case5 = {"params": [{"shape": (12, 2, 4, 3, 1, 6), "dtype": "float16", "format": "ND", "ori_shape": (12, 2, 4, 3, 1, 6),
+                     "ori_format": "ND", "param_type": "input"},
+                    {"shape": (12, 2, 4, 3, 1, 6), "dtype": "float16", "format": "ND", "ori_shape": (12, 2, 4, 3, 1, 6),
+                     "ori_format": "ND", "param_type": "output"}, 5.32152, 18.05113],
+         "case_name": "softplus_v2_5",
+         "expect": "success"}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
