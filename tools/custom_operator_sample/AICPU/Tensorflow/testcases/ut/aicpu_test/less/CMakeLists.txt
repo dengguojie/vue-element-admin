@@ -151,9 +151,9 @@ elseif ("${IMPL}" STREQUAL "TRUE")
     file(GLOB TEST_FILE_CPP ${CMAKE_CURRENT_SOURCE_DIR}/**_impl.cpp)
     file(GLOB TEST_FILE_CC ${CMAKE_CURRENT_SOURCE_DIR}/**_impl.cc)
     set(_cpu_kernels_ut_files
-      ${CANN_ROOT}/ops/built-in/tests/utils/node_def_builder.cpp
       ${CANN_ROOT}/ops/built-in/tests/utils/aicpu_test_utils.cpp
       ${CANN_ROOT}/ops/built-in/tests/utils/aicpu_read_file.cpp
+      ${CANN_ROOT}/ops/built-in/aicpu/context/common/node_def_builder.cpp
       ${TEST_FILE_CPP}
       ${TEST_FILE_CC}
     )

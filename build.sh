@@ -32,7 +32,7 @@ get_target_lib(){
 RELEASE_VERSION="ops_all_caffe_plugin,ops_all_onnx_plugin,ops_all_plugin,ops_fusion_pass_vectorcore,ops_fusion_pass_aicore,\
            copy_veccore_fusion_rules,copy_aicore_fusion_rules,copy_op_proto_inc,opsproto,optiling,tbe_aicore_ops_impl,\
            tbe_ops_json_info,aicpu_ops_json_info,cpu_kernels_static,cpu_kernels_context_static,constant_folding_ops,\
-           repack_tbe,copy_tbe,unzip_tbe,OpTestFrameFiles,MsopgenFiles"
+           repack_tbe,copy_tbe,unzip_tbe,OpTestFrameFiles,MsopgenFiles,aicpu_nodedef_builder"
 UT_VERSION="protoc,secure_c,c_sec,eigen,protobuf_static_build,external_protobuf,nlohmann_json,\
           external_gtest,eigen_headers,ops_all_onnx_plugin_llt,opsplugin_llt,ops_fusion_pass_aicore_llt,\
           opsproto_llt,optiling_llt,generate_ops_cpp_cov,ops_cpp_proto_utest,ops_cpp_op_tiling_utest,\
@@ -387,6 +387,7 @@ usage() {
   echo "    --aicpu_ops_json_info build aicpu_ops_json_info"
   echo "    --cpu_kernels_static build cpu_kernels_static"
   echo "    --cpu_kernels_context_static build cpu_kernels_context_static"
+  echo "    --aicpu_nodedef_builder build aicpu_nodedef_builder"
   echo "    --constant_folding_ops build constant_folding_ops"
   echo "    --repack_tbe build repack_tbe"
   echo "    --copy_tbe build copy_tbe"

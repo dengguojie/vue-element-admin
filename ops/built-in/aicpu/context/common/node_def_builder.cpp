@@ -14,6 +14,10 @@ using namespace std;
 
 namespace aicpu {
 
+std::shared_ptr<NodeDef> NodeDefBuilder::CreateNodeDef() {
+	return CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
+}
+
 NodeDefBuilder::NodeDefBuilder(NodeDef *nodeDef, std::string name, std::string opName) {
 	nodeDef_ = nodeDef;
 	name_ = name;

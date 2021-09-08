@@ -88,6 +88,30 @@ if(BUILD_OPEN_PROJECT)
       PROPERTIES
       OUTPUT_NAME cpu_kernels_context
   )
+
+  add_library(aicpu_nodedef_builder STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/node_def_builder.cpp
+  )
+
+  add_dependencies(aicpu_nodedef_builder cpu_kernels_context_static)
+
+  target_include_directories(aicpu_nodedef_builder PRIVATE
+     ${local_context_inc_path}
+  )
+
+  target_compile_definitions(aicpu_nodedef_builder PRIVATE
+    _FORTIFY_SOURCE=2
+    google=ascend_private
+  )
+
+  target_compile_options(aicpu_nodedef_builder PRIVATE
+    -O2
+    -std=c++11
+    -ftrapv
+    -fstack-protector-all
+    -fPIC
+  )
+
   if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
     if (MINRC)
       set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++)
@@ -102,6 +126,12 @@ if(BUILD_OPEN_PROJECT)
     cann_install(
       TARGET      cpu_kernels_context_static
       FILES       $<TARGET_FILE:cpu_kernels_context_static>
+      DESTINATION "${OPS_AICPU_PATH}"
+    )
+
+    cann_install(
+      TARGET      aicpu_nodedef_builder
+      FILES       $<TARGET_FILE:aicpu_nodedef_builder>
       DESTINATION "${OPS_AICPU_PATH}"
     )
   endif()
@@ -202,6 +232,30 @@ target_link_libraries(cpu_kernels_context_static PRIVATE
     -ldl
     -shared
 )
+
+add_library(aicpu_nodedef_builder STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/node_def_builder.cpp
+)
+
+add_dependencies(aicpu_nodedef_builder cpu_kernels_context_static)
+
+target_include_directories(aicpu_nodedef_builder PRIVATE
+    ${local_context_inc_path}
+)
+
+target_compile_definitions(aicpu_nodedef_builder PRIVATE
+    _FORTIFY_SOURCE=2
+    google=ascend_private
+)
+
+target_compile_options(aicpu_nodedef_builder PRIVATE
+    -O2
+    -std=c++11
+    -ftrapv
+    -fstack-protector-all
+    -fPIC
+)
+
 if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc")
 set(INSTALL_LIBRARY_DIR lib/${PRODUCT})
 else()
@@ -218,7 +272,10 @@ install(TARGETS cpu_kernels_context OPTIONAL
     LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
 )
 
-
+install(TARGETS aicpu_nodedef_builder OPTIONAL
+    EXPORT aicpu_nodedef_builder-targets
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+)
 
 set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
 

@@ -196,7 +196,7 @@ target_link_libraries(cpu_kernels_llt
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_read_file.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_test_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../aicpu/context/common/node_def_builder.cpp
   testcase/SpatialTransformer/src/SpatialTransformer_utest.cpp
   testcase/acos/src/acos_utest.cpp
   testcase/acosh/src/acosh_utest.cpp

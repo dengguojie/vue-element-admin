@@ -28,6 +28,8 @@ class NodeDefBuilder {
 		aicpu::Format format;
   	};
 
+	static std::shared_ptr<NodeDef> CreateNodeDef();
+
 	NodeDefBuilder(NodeDef *nodeDef, std::string name, std::string opName);
 
 	NodeDefBuilder& Input(const InputOutputNode& input);
