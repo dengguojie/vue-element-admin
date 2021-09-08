@@ -46,6 +46,7 @@ install_stest() {
     echo "[INFO] install testcase: ${op_case}"
     if [[ ! -d "${op_case}" ]]; then
       echo "[ERROR] cannot find testcase ${op_case}"
+      exit $STATUS_FAILED
     else
       cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
     fi
