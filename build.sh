@@ -605,7 +605,7 @@ parse_changed_files() {
 compile_mod(){
       mk_dir "${CMAKE_HOST_PATH}"
       cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
-      
+      compiled=FALSE
       rely_TF=(ops_all_plugin)
       rely_ONNX=(ops_all_onnx_plugin)
       rely_PASS=(ops_fusion_pass_aicore ops_fusion_pass_vectorcore optiling)
@@ -618,9 +618,17 @@ compile_mod(){
           eval libs=('"${rely_'${mod}'[@]}"')
           for lib in  ${libs[@]}
             do
-              echo $dotted_line
-	      echo $lib
-              cmake --build . --target $lib -- -j ${THREAD_NUM}
+              lib_compiled=${lib}_compiled
+              compiled=$(eval echo \$$lib_compiled)
+              if [[ "$compiled" =~ "TRUE" ]];then
+                echo $dotted_line
+                echo $lib compiled
+              else
+                cmake --build . --target $lib -- -j ${THREAD_NUM}
+                echo $dotted_line
+                echo $lib
+                eval "${lib}_compiled"=TRUE
+              fi
             done
           fi
           done
