@@ -244,7 +244,7 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                                                    dimNums * dimNums1 * dimNums1 * sizeof(int8_t))),
         assitPtr = nullptr;
         return PARAM_INVALID);
-  } else if (dataType == ge::DT_UINT8) {
+  } else if (dataType == ge::DT_UINT8 || dataType == ge::DT_BOOL) {
     unique_ptr<uint8_t[]> inputAssit(new (std::nothrow) uint8_t[dimNums * dimNums1 * dimNums1]());
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
@@ -269,6 +269,7 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         assitPtr = nullptr;
         return PARAM_INVALID);
   } else {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "input's datatype not found, not changed");
     return NOT_CHANGED;
   }
   // check op support

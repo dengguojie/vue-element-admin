@@ -51,5 +51,56 @@ TEST_F(matrix_diag_fusion_test, matrix_diag_fusion_test_1) {
     EXPECT_EQ(avgPoolMatch, true);
 }
 
+TEST_F(matrix_diag_fusion_test, matrix_diag_fusion_test_2) {
+    ge::Graph graph("matrix_diag_fusion_test_2");
+    auto matrix_diag_input_data = op::Data("matrix_diag_input_data");
+    std::vector<int64_t> dims{128};
+    ge::Shape shape(dims);
+    ge::TensorDesc tensorDesc(shape, ge::FORMAT_NHWC, ge::DT_BOOL);
+    matrix_diag_input_data.update_input_desc_x(tensorDesc);
+    matrix_diag_input_data.update_output_desc_y(tensorDesc);
+    auto matrix_diag_op = op::MatrixDiag("matrix_diag_0");
+    matrix_diag_op.set_input_x(matrix_diag_input_data);
+    auto end_op = op::Square("end_op_0");
+    end_op.set_input_x(matrix_diag_op);
+    std::vector<Operator> inputs{matrix_diag_input_data};
+    std::vector<Operator> outputs{end_op};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("MatrixDiagFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    bool avgPoolMatch = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "MatrixDiagD") {
+            avgPoolMatch = true;
+        }
+    }
+    EXPECT_EQ(avgPoolMatch, true);
+}
 
-
+TEST_F(matrix_diag_fusion_test, matrix_diag_fusion_test_3) {
+    ge::Graph graph("matrix_diag_fusion_test_3");
+    auto matrix_diag_input_data = op::Data("matrix_diag_input_data");
+    std::vector<int64_t> dims{128};
+    ge::Shape shape(dims);
+    ge::TensorDesc tensorDesc(shape, ge::FORMAT_NHWC, ge::DT_INT64);
+    matrix_diag_input_data.update_input_desc_x(tensorDesc);
+    matrix_diag_input_data.update_output_desc_y(tensorDesc);
+    auto matrix_diag_op = op::MatrixDiag("matrix_diag_0");
+    matrix_diag_op.set_input_x(matrix_diag_input_data);
+    auto end_op = op::Square("end_op_0");
+    end_op.set_input_x(matrix_diag_op);
+    std::vector<Operator> inputs{matrix_diag_input_data};
+    std::vector<Operator> outputs{end_op};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("MatrixDiagFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    bool avgPoolMatch = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "MatrixDiagD") {
+            avgPoolMatch = true;
+        }
+    }
+    EXPECT_EQ(avgPoolMatch, false);
+}
