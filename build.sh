@@ -418,6 +418,7 @@ checkopts() {
   CHANGED_FILES=""
   build_mode=FALSE
   cov=FALSE
+  CI_MODE=FALSE
   # Process the options
   while getopts 'xhj:usvg:a-:m-:f:' opt
   do
@@ -434,7 +435,8 @@ checkopts() {
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
       m) MINIRC_AICPU_ONLY=TRUE ;;
-      f) CHANGED_FILES=$OPTARG ;;
+      f) CHANGED_FILES=$OPTARG 
+	 CI_MODE=TRUE ;;
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;
@@ -667,7 +669,7 @@ build_cann() {
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
   
   computer_arch=`uname -m`
-  if [[ "$UT_MODE" == "FALSE"  ]] && [[ ! "$related" =~ "OTHER_FILE" ]] && [[ ! "$related" =~ "CPU" ]];then
+  if [[ "$UT_MODE" == "FALSE"  ]] && [[ "$CI_MODE" == "TRUE"  ]] && [[ ! "$related" =~ "OTHER_FILE" ]] && [[ ! "$related" =~ "CPU" ]];then
       compile_mod
       CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
       logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
