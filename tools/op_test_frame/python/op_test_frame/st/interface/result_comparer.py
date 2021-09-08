@@ -212,7 +212,7 @@ def compare2(result_dir, expect_dir):
     utils.print_info_log(
         'Step:------>>>>>> Start to compare result <<<<<<------ ')
     names = os.listdir(result_dir)
-    result_list = list()
+    result_list = []
     for name in names:
         result_file = os.path.join(result_dir, name)
         expect_name = name.replace("_output_", "_expect_output_")
@@ -358,7 +358,7 @@ def _get_compare_stage_result(result, index, case_name, case_report):
             'Index %s:------>>>>>> Start to compare %s result '
             '<<<<<<------ '
             % (index, case_name))
-        result_list = list()
+        result_list = []
         case_info = case_report.trace_detail.st_case_info
         if not case_info:
             utils.print_warn_log("There is no case info for '%s'."

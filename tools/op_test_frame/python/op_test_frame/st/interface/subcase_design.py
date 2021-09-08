@@ -190,7 +190,7 @@ class SubCaseDesign:
                         'in file %s.' % (json_obj[key], key, tensor,
                                          self.current_json_path))
                     raise utils.OpTestGenException(
-                        utils.ConstVariable.OP_TEST_GEN_INVALID_DATA_ERROR)
+                        ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         if check_type == list:
             value_list = json_obj[key]
         else:

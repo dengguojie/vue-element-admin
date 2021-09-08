@@ -151,7 +151,7 @@ def _tf_utils_write_graph(graph_def, dir_name, new_graph_path):
 
 
 def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
-    nodes_list = list()
+    nodes_list = []
     op_infos = {"op_type": op_type, "layer": node_info.name,
                 "input_dtype": [],
                 "output_dtype": [], "input_shape": [],
@@ -160,16 +160,16 @@ def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
     input_shape = _tensor_shape_list(ops[i]['input_shape'])
     op_infos["input_shape"] = input_shape
     # input_dtype
-    input_dtype = list((_map_tf_input_output_dtype(x.name) for x in
-                   ops[i]['input_dtype']))
-    op_infos["input_dtype"] = input_dtype
+    input_dtype = (_map_tf_input_output_dtype(x.name) for x in
+                   ops[i]['input_dtype'])
+    op_infos["input_dtype"] = list(input_dtype)
     # output_shape
     output_shape = _tensor_shape_list(ops[i]['output_shape'])
     op_infos["output_shape"] = output_shape
     # output_dtype
-    output_dtype = list((_map_tf_input_output_dtype(x.name) for x in
-                    ops[i]['output_dtype']))
-    op_infos["output_dtype"] = output_dtype
+    output_dtype = (_map_tf_input_output_dtype(x.name) for x in
+                    ops[i]['output_dtype'])
+    op_infos["output_dtype"] = list(output_dtype)
 
     # attr
     for attr_key in node_info.attr.keys():
@@ -181,7 +181,7 @@ def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
 
 
 def _get_nodes_list(model_path, ini_op_type):
-    nodes_list = list()
+    nodes_list = []
     graph_def = _tf_utils_load_graph_def(os.path.realpath(model_path))
     all_ops = _tf_utils_get_operators(graph_def)
     ops = []
@@ -228,7 +228,7 @@ class TFModelParse:
             if node.op == "Placeholder" and node.name in new_shape_map \
                     and 'new_shape' in new_shape_map[node.name] \
                     and new_shape_map[node.name]['new_shape']:
-                new_shape = list()
+                new_shape = []
                 for dim in new_shape_map[node.name]['new_shape']:
                     new_shape.append(
                         tensor_shape_pb2.TensorShapeProto.Dim(size=int(dim)))

@@ -241,7 +241,7 @@ class AclOpRunner:
             report_obj.trace_detail.add_stage_result(prof_result)
 
     def _read_result_txt(self):
-        result_txt = os.path.join(self.path, utils.ConstVariable.RUN_OUT, 'result_files',
+        result_txt = os.path.join(self.path, ConstManager.RUN_OUT, 'result_files',
                                   'result.txt')
         if not os.path.exists(result_txt) or \
                 not os.access(result_txt, os.R_OK):
@@ -251,13 +251,34 @@ class AclOpRunner:
 
         txt = utils.read_file(result_txt)
         run_result_list = txt.split('\n')
-        if len(run_result_list) <= utils.ConstVariable.NULL_RESULT_FILE_LINE_NUM:
+        if len(run_result_list) <= ConstManager.NULL_RESULT_FILE_LINE_NUM:
             utils.print_error_log("Only got less than or equal to"
                                   " one line in result.txt, please check "
                                   "%s" % result_txt)
             return []
         run_result_list.pop()
         return run_result_list
+
+    def _get_data_from_csv_summary(self, job_path, run_result_list):
+        csv_file = os.path.join(job_path, ConstManager.SUMMARY_REL_PATH,
+                                ConstManager.OP_SUMMARY_CSV)
+        if not os.path.exists(csv_file) or \
+                not os.access(csv_file, os.R_OK):
+            utils.print_error_log("Failed to get %s. Please check the CSV "
+                                  "summary file." % csv_file)
+            return
+        # start to get op names from report
+        op_name_list = self._prof_get_op_name_from_report(run_result_list)
+        if not op_name_list:
+            utils.print_error_log(
+                "Failed to get the op name from the st report. Please check.")
+            return
+        if op_name_list:
+            utils.print_info_log(
+                "Get op names from report: %s" % ','.join(op_name_list))
+
+        # start to get op time from csv summary files and save in report
+        self._get_op_case_result_and_show_data(csv_file, op_name_list)
 
     def prof_analyze(self, prof_base_path, toolkit_root_path):
         """
@@ -292,23 +313,7 @@ class AclOpRunner:
                            'export', 'summary',
                            '-dir=./']
             self._execute_command(analyze_cmd)
-
-            csv_file = os.path.join(job_path, ConstManager.SUMMARY_REL_PATH, ConstManager.OP_SUMMARY_CSV)
-            if not os.path.exists(csv_file) or \
-                    not os.access(csv_file, os.R_OK):
-                utils.print_error_log("Failed to get %s. Please check the CSV "
-                                      "summary file." % csv_file)
-                return
-            # start to get op names from report
-            op_name_list = self._prof_get_op_name_from_report(run_result_list)
-            if not op_name_list:
-                utils.print_error_log("Failed to get the op name from the st report. Please check.")
-                return
-            if op_name_list:
-                utils.print_info_log("Get op names from report: %s" % ','.join(op_name_list))
-
-            # start to get op time from csv summary files and save in report
-            self._get_op_case_result_and_show_data(csv_file, op_name_list)
+            self._get_data_from_csv_summary(job_path, run_result_list)
         except IOError:
             utils.print_error_log("Operate directory of profiling data failed")
         finally:
@@ -322,15 +327,48 @@ class AclOpRunner:
         self.run()
 
 
+def _get_op_case_info_list(column_line_list, row_list, op_name_list, op_case_info_list):
+    each_case_info_list = []
+    task_id_column_idx = column_line_list.index(
+        ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[
+            ConstManager.TASK_ID_INDEX])
+    op_time_column_idx = column_line_list.index(
+        ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[
+            ConstManager.TASK_DURATION_INDEX])
+    op_name_column_idx = column_line_list.index(
+        ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[
+            ConstManager.OP_NAME_INDEX])
+    task_type_column_idx = column_line_list.index(
+        ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[
+            ConstManager.TASK_TYPE_INDEX])
+    row_list_sorted = sorted(row_list,
+                             key=lambda x: int(x[task_id_column_idx]))
+
+    op_idx = 0
+    for _, row in enumerate(row_list_sorted):
+        if op_idx == len(op_name_list):
+            break
+        if op_name_list[op_idx] in os.path.split(
+                row[op_name_column_idx])[1]:
+            op_time = row[op_time_column_idx]
+            op_type = row[op_name_column_idx]
+            task_type = row[task_type_column_idx]
+            op_idx = op_idx + 1
+            each_case_info_list.extend([op_type, task_type,
+                                        op_time.strip('"')])
+            op_case_info_list.append(each_case_info_list)
+            each_case_info_list = []
+    return op_case_info_list
+
+
 def get_op_case_info_from_csv_file(csv_file, op_name_list):
     """
     get op case info from csv file
     """
-    each_case_info_list = []
     op_case_info_list = []
     with open(csv_file, 'r') as csv_file_obj:
         try:
-            import csv  # pylint: disable=import-outside-toplevel
+            import csv
         except ImportError as import_error:
             utils.print_error_log(
                 "[acl_op_runner] Unable to import the CSV file: %s. Please check."
@@ -348,30 +386,8 @@ def get_op_case_info_from_csv_file(csv_file, op_name_list):
                 utils.print_error_log("%s not found in the column line. Please check."
                                       % each_case_iter)
                 return op_case_info_list
-        task_id_column_idx = column_line_list.index(
-            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.TASK_ID_INDEX])
-        op_time_column_idx = column_line_list.index(
-            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.TASK_DURATION_INDEX])
-        op_name_column_idx = column_line_list.index(
-            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.OP_NAME_INDEX])
-        task_type_column_idx = column_line_list.index(
-            ConstManager.OP_CASE_INFO_IN_CSV_COLUMN_NAME_LIST[ConstManager.TASK_TYPE_INDEX])
-        row_list_sorted = sorted(row_list, key=lambda x: int(x[task_id_column_idx]))
-
-        op_idx = 0
-        for _, row in enumerate(row_list_sorted):
-            if op_idx == len(op_name_list):
-                break
-            if op_name_list[op_idx] in os.path.split(
-                    row[op_name_column_idx])[1]:
-                op_time = row[op_time_column_idx]
-                op_type = row[op_name_column_idx]
-                task_type = row[task_type_column_idx]
-                op_idx = op_idx + 1
-                each_case_info_list.extend([op_type, task_type,
-                                            op_time.strip('"')])
-                op_case_info_list.append(each_case_info_list)
-                each_case_info_list = []
+        op_case_info_list = _get_op_case_info_list(
+            column_line_list, row_list, op_name_list, op_case_info_list)
     return op_case_info_list
 
 

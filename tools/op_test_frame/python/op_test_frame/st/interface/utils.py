@@ -160,13 +160,13 @@ def _print_log(level, msg):
     sys.stdout.flush()
 
 
-def print_error_log(error_msg):
+def print_error_log(error_msg_info):
     """
     print error log
     @param error_msg: the error message
     @return: none
     """
-    _print_log("ERROR", error_msg)
+    _print_log("ERROR", error_msg_info)
 
 
 def print_warn_log(warn_msg):
@@ -396,17 +396,17 @@ def load_json_file(json_path):
 
 def read_file(op_file):
     """
-    read new_str from op_file
-    :param op_file:the file
-    :return:
+    read content_txt from op_file
+    :param op_file:op file
+    :return: None
     """
     try:
-        with open(op_file) as file_object:
-            txt = file_object.read()
-            return txt
-    except IOError as io_error:
+        with open(op_file) as op_file_object:
+            content_txt = op_file_object.read()
+            return content_txt
+    except IOError as io_err:
         print_error_log(
-            'Failed to open file %s. %s' % (op_file, str(io_error)))
+            'Failed to open file %s. %s, please check it.' % (op_file, str(io_err)))
         raise OpTestGenException(ConstManager.OP_TEST_GEN_OPEN_FILE_ERROR)
     finally:
         pass

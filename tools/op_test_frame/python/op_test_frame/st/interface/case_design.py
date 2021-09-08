@@ -72,6 +72,30 @@ class CaseDesign:
             json_file_list.append(json_path)
         self.json_path_list = json_file_list
 
+    def _get_total_case(self, json_obj, json_path, total_case_in_file):
+        if json_obj[ConstManager.CASE_NAME] in self.case_name_to_json_file_map:
+            utils.print_error_log(
+                'The case name "%s" already exists. Please modify or '
+                'remove the redundant case name in file %s.'
+                % (json_obj[ConstManager.CASE_NAME], self.current_json_path))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+        self.case_name_to_json_file_map[
+            json_obj[ConstManager.CASE_NAME]] = json_path
+
+        if json_obj.get(ConstManager.FUZZ_IMPL):
+            subcase_parse = SubCaseDesignFuzz(self.current_json_path,
+                                              json_obj,
+                                              total_case_in_file,
+                                              self.report)
+        else:
+            subcase_parse = SubCaseDesignCross(self.current_json_path,
+                                               json_obj,
+                                               total_case_in_file,
+                                               self.report)
+        total_case_in_file = subcase_parse.subcase_generate()
+        return total_case_in_file
+
     def generate_cases(self):
         """
         Generate test case by json file
@@ -96,26 +120,8 @@ class CaseDesign:
                 if self.case_name_list and \
                         json_obj[ConstManager.CASE_NAME] not in self.case_name_list:
                     continue
-                if json_obj[ConstManager.CASE_NAME] in self.case_name_to_json_file_map:
-                    utils.print_error_log(
-                        'The case name "%s" already exists. Please modify or '
-                        'remove the redundant case name in file %s.'
-                        % (json_obj[ConstManager.CASE_NAME], self.current_json_path))
-                    raise utils.OpTestGenException(
-                        ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-                self.case_name_to_json_file_map[json_obj[ConstManager.CASE_NAME]] = json_path
-
-                if json_obj.get(ConstManager.FUZZ_IMPL):
-                    subcase_parse = SubCaseDesignFuzz(self.current_json_path,
-                                                      json_obj,
-                                                      total_case_in_file,
-                                                      self.report)
-                else:
-                    subcase_parse = SubCaseDesignCross(self.current_json_path,
-                                                       json_obj,
-                                                       total_case_in_file,
-                                                       self.report)
-                total_case_in_file = subcase_parse.subcase_generate()
+                total_case_in_file = self._get_total_case(json_obj, json_path,
+                                                          total_case_in_file)
         return total_case_in_file, compile_flag
 
     def design(self):

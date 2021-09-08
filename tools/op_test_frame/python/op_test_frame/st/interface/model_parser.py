@@ -19,7 +19,7 @@ def _get_framework_type(path):
     cur_dir = os.path.split(os.path.realpath(__file__))[0]
     config_path = os.path.join(cur_dir, ConstManager.FRAMEWORK_CONFIG_PATH)
     framework_dict = utils.load_json_file(config_path)
-    suffix_list = list()
+    suffix_list = []
     for (key, value) in list(framework_dict.items()):
         for item in value:
             suffix_list.append(item)

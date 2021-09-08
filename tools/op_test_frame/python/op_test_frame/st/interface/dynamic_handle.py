@@ -30,10 +30,11 @@ def check_typical_shape_valid(typical_shape, json_path):
 
 
 def _check_dynamic_shape(dim):
+    dynamic_count = 0
     if dim in (ConstManager.SHAPE_DYNAMIC_SCENARIOS_ONE,
                ConstManager.SHAPE_DYNAMIC_SCENARIOS_TWO):
-        return True
-    return False
+        dynamic_count = 1
+    return dynamic_count
 
 
 def check_not_dynamic_shape(shape_list):
@@ -41,15 +42,16 @@ def check_not_dynamic_shape(shape_list):
     check whether dynamic shape, otherwise return False
     """
     if not shape_list:
-        return False
+        return ''
     # check -1 or -2 in shape_list value as a basis, return True.
+    dynamic_shape_count = 0
     for dim in shape_list:
         if isinstance(dim, list):
             for item in dim:
-                return _check_dynamic_shape(item)
+                dynamic_shape_count += _check_dynamic_shape(item)
         if isinstance(dim, int):
-            return _check_dynamic_shape(dim)
-    return False
+            dynamic_shape_count += _check_dynamic_shape(dim)
+    return dynamic_shape_count
 
 
 def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):

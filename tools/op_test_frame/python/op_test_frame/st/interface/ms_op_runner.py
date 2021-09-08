@@ -10,6 +10,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved Â© 2020-201
 import os
 import subprocess
 
+from .const_manager import ConstManager
 from . import utils
 
 

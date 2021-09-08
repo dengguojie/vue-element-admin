@@ -58,6 +58,20 @@ class PytorchConstVaraible:
         13: TensorProto.UINT64
     }
 
+    def get_tmp_shape_file(self):
+        """
+        get tmp shape file
+        :return: tmp_shape_file
+        """
+        return self.TMP_SHAPE_FILE
+
+    def get_onnx_tensor_type(self):
+        """
+        get onnx tensor type
+        :return: onnx_tensor_type
+        """
+        return self.ONNX_TENSOR_DTYPE
+
 
 def get_shape_and_notice(shape, layer_name):
     """
@@ -157,6 +171,19 @@ def _update_tensor_info(name, dtype, shape, all_tensors):
     all_tensors.update({name: tensor_info})
 
 
+def _get_shape_list(tensor_type):
+    shape_list = []
+    for dim in tensor_type.shape.dim:
+        if not str(dim):
+            shape_list.append(-1)
+        if hasattr(dim, 'dim_param') and dim.dim_param != '':
+            shape_list.append(-1)
+            continue
+        if hasattr(dim, 'dim_value') and dim.dim_value != '':
+            shape_list.append(dim.dim_value)
+    return shape_list
+
+
 def _parse_tensor_info(tensors, all_tensors):
     for tensor in tensors:
         if tensor.name in all_tensors.keys():
@@ -171,15 +198,7 @@ def _parse_tensor_info(tensors, all_tensors):
             tensor_shape = []
             _update_tensor_info(tensor.name, elem_type, tensor_shape, all_tensors)
             continue
-        shape_list = []
-        for dim in tensor_type.shape.dim:
-            if not str(dim):
-                shape_list.append(-1)
-            if hasattr(dim, 'dim_param') and dim.dim_param != '':
-                shape_list.append(-1)
-                continue
-            if hasattr(dim, 'dim_value') and dim.dim_value != '':
-                shape_list.append(dim.dim_value)
+        shape_list = _get_shape_list(tensor_type)
         _update_tensor_info(tensor.name, elem_type, shape_list, all_tensors)
     return all_tensors
 
@@ -423,18 +442,20 @@ class PyTorchModelParse:
         return nodes_list
 
 
-def get_shape(args):
+def get_shape(args, op_type):
     """
     get shape
     """
+    _ = op_type
     pt_parser = PyTorchModelParse(args)
     return pt_parser.get_input_shape()
 
 
-def change_shape(args):
+def change_shape(args, op_type):
     """
     change shape
     """
+    _ = op_type
     pt_parser = PyTorchModelParse(args)
     return pt_parser.change_shape()
 

@@ -20,7 +20,6 @@ apply info classes: OpSTCaseReport, OpSTReport
 """
 
 import os
-import stat
 import json
 
 from op_test_frame.common import op_status
@@ -99,8 +98,9 @@ class OpSTReport:
         :param case_name: the test case name
         :return: the OpSTCaseReport object
         """
-        case_reports = list((x for x in self.report_list if x.case_name ==
-                        case_name))
+        case_reports_tuple = (x for x in self.report_list if x.case_name ==
+                              case_name)
+        case_reports = list(case_reports_tuple)
         case_count = len(case_reports)
         if case_count < 1:
             utils.print_warn_log("There is no test case named %s. Please "
@@ -113,9 +113,10 @@ class OpSTReport:
         return case_reports[0]
 
     def _to_json_obj(self):
+        report_tuple = (case_rpt.to_json_obj() for case_rpt in self.report_list)
         return {
             "run_cmd": self.run_cmd,
-            "report_list": list((case_rpt.to_json_obj() for case_rpt in self.report_list))
+            "report_list": list(report_tuple)
         }
 
     def _summary_txt(self):
@@ -182,8 +183,7 @@ run command: %s
                                        ConstManager.DATA_FILE_MODES), 'w') as rpt_fout:
                     rpt_fout.write(json_str)
             else:
-                with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
-                                       ConstManager.DATA_FILE_MODES), 'w') as rpt_file:
+                with open(report_data_path, 'w') as rpt_file:
                     rpt_file.write(json_str)
         except OSError as ex:
             utils.print_error_log(

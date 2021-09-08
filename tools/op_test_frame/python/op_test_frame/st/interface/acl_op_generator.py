@@ -217,7 +217,7 @@ def _get_output_desc(testcase_struct):
 def _replace_dict_list(attr_dic, attr_code_str, attr_index):
     if isinstance(attr_dic.get('value'), list):
         if isinstance(attr_dic.get('value')[0], list):
-            number_list = list()
+            number_list = []
             for num_list in attr_dic.get('value'):
                 number_list.append(len(num_list))
             num_str = str(number_list).replace('[', '{') \
@@ -332,13 +332,12 @@ class AclOpGenerator:
     Class for generating acl op testcode.
     """
 
-    def __init__(self, testcase_list, path_and_device_id, machine_type,
-                 report, compile_flag):
+    def __init__(self, testcase_list, user_setting, report, compile_flag):
         self.testcase_list = testcase_list
-        self.machine_type = machine_type
-        self._check_output_path(path_and_device_id[0], testcase_list)
+        self.machine_type = user_setting[2]
+        self._check_output_path(user_setting[0], testcase_list)
         self.report = report
-        self.device_id = path_and_device_id[1]
+        self.device_id = user_setting[1]
         self.compile_flag = compile_flag
 
     def _check_output_path(self, output_path, testcase_list):
@@ -366,12 +365,12 @@ class AclOpGenerator:
                 testcase_content=testcase_content)
             testcase_cpp_content += testcase_function_content
             # deal with report
-            output_abs_paths = list((
+            output_abs_paths = (
                 os.path.join(self.output_path, 'run', 'out', x + ".bin") for x
-                in output_paths))
+                in output_paths)
             case_report = self.report.get_case_report(testcase_name)
             case_report.trace_detail.st_case_info.planned_output_data_paths = \
-                output_abs_paths
+                list(output_abs_paths)
         output_testcase_cpp_path = self.output_path + \
                                    ConstManager.TESTCASE_CPP_RELATIVE_PATH
         _append_content_to_file(testcase_cpp_content,

@@ -10,12 +10,8 @@ Change History: 2020-07-11 file Created
 """
 
 import os
-import sys
 import json
 import importlib
-from shutil import copytree
-from shutil import copy2
-from shutil import Error
 
 import numpy as np
 
@@ -26,35 +22,33 @@ from op_test_frame.st.template.code_snippet import CodeTemplate
 from op_test_frame.common import op_status
 
 
+def _add_op_info_in_tmp_dict(testcase_struct, tmp_dict, op_key):
+    if op_key in testcase_struct.keys():
+        tmp_dict[op_key] = []
+        for input_desc_input_dic in testcase_struct.get(op_key):
+            op_desc_dict = {'type': input_desc_input_dic.get('type'),
+                            'shape': input_desc_input_dic.get('shape')}
+            tmp_dict.get(op_key).append(op_desc_dict)
+
+
+def _add_attr_info_in_tmp_dict(testcase_struct, tmp_dict, op_key):
+    if op_key in testcase_struct.keys():
+        tmp_dict[op_key] = []
+        for attr_dic in testcase_struct.get(op_key):
+            tmp_dict.get(op_key).append(attr_dic)
+
+
 def _create_ms_op_json_content(testcase_list):
     content = []
     for testcase_struct in testcase_list:
         # init dic with op name
         tmp_dic = {'op': testcase_struct.get('op')}
-
         # process input desc
-        if "input_desc" in testcase_struct.keys():
-            tmp_dic['input_desc'] = []
-            for input_desc_input_dic in testcase_struct.get('input_desc'):
-                input_desc_dic = {'type': input_desc_input_dic.get('type'),
-                                  'shape': input_desc_input_dic.get('shape')}
-                tmp_dic.get('input_desc').append(input_desc_dic)
-
+        _add_op_info_in_tmp_dict(testcase_struct, tmp_dic, ConstManager.INPUT_DESC)
         # process output desc
-        if "output_desc" in testcase_struct.keys():
-            tmp_dic['output_desc'] = []
-            for output_desc_input_dic in testcase_struct.get('output_desc'):
-                output_desc_dic = {
-                    'type': output_desc_input_dic.get('type'),
-                    'shape': output_desc_input_dic.get('shape')}
-                tmp_dic.get('output_desc').append(output_desc_dic)
-
+        _add_op_info_in_tmp_dict(testcase_struct, tmp_dic, ConstManager.OUTPUT_DESC)
         # process attr
-        if "attr" in testcase_struct.keys():
-            tmp_dic['attr'] = []
-            for attr_dic in testcase_struct.get('attr'):
-                tmp_dic.get('attr').append(attr_dic)
-
+        _add_attr_info_in_tmp_dict(testcase_struct, tmp_dic, ConstManager.ATTR)
         # only append non-repetitive json struct
         if tmp_dic not in content:
             content.append(tmp_dic)
@@ -178,9 +172,10 @@ class MsOpGenerator:
 
         # deal with report
         path_name = os.path.split(self.output_path)[1]
-        input_data_abs_paths = list((
+        input_data_abs_paths_tuple = (
             os.path.join(path_name, 'run', 'out', x + ".bin") for x
-            in input_paths))
+            in input_paths)
+        input_data_abs_paths = list(input_data_abs_paths_tuple)
         case_report = self.report.get_case_report(testcase_name)
         case_report.trace_detail.st_case_info.planned_output_data_paths = \
             input_data_abs_paths

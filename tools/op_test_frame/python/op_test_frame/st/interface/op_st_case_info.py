@@ -140,9 +140,10 @@ class OpSTCaseTrace:
         :return: json
         :return:
         """
+        stage_result = (stage_obj.to_json_obj() for stage_obj in self.stage_result)
         return {
             "st_case_info": self.st_case_info.to_json_obj(),
-            "stage_result": list((stage_obj.to_json_obj() for stage_obj in self.stage_result)),
+            "stage_result": list(stage_result),
         }
 
     @staticmethod
@@ -155,6 +156,7 @@ class OpSTCaseTrace:
         if not json_obj:
             return ""
         res = OpSTCaseTrace(OpSTCase.parser_json_obj(json_obj.get("st_case_info")))
-        res.stage_result = list((OpSTStageResult.parser_json_obj(stage_obj) for
-                            stage_obj in json_obj.get("stage_result")))
+        stage_result_tuple = (OpSTStageResult.parser_json_obj(stage_obj) for
+                              stage_obj in json_obj.get("stage_result"))
+        res.stage_result = list(stage_result_tuple)
         return res

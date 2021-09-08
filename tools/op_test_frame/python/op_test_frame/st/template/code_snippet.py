@@ -144,3 +144,17 @@ def {subcase}():
     
     print("running time: %.2f s" %(end-start))
 """
+
+    def get_main_cpp_content(self):
+        """
+        get main cpp content
+        :return: main_cpp_content
+        """
+        return self.MAIN_CPP_CONTENT
+
+    def get_testcase_test_net(self):
+        """
+        get testcase test net
+        :return: testcase_test_net
+        """
+        return self.TESTCASE_TEST_NET

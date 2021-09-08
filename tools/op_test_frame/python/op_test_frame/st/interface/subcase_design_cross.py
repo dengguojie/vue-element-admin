@@ -42,12 +42,10 @@ def combine_ori_field_to_cross(tensor, cross_key_list):
     combine_shape_ori_shape_list = list(
         zip(tensor.get('shape'), tensor.get('ori_shape')))
     # orthonormalize format_ori_format, shape_ori_shape, and other filed: 'type', etc.
-    combine_cross_list = list(
-        (list(x) for x in itertools.product(combine_format_ori_format_list,
-                                            combine_shape_ori_shape_list,
-                                            *cross_list)))
+    combine_cross_tuple = (list(x) for x in itertools.product(
+        combine_format_ori_format_list, combine_shape_ori_shape_list, *cross_list))
     result_cross_list = []
-    for each_cross_list in combine_cross_list:
+    for each_cross_list in list(combine_cross_tuple):
         data_list = _get_data_list(each_cross_list)
         result_cross_list.append(data_list)
     return ori_field_cross_key_list, result_cross_list
@@ -219,7 +217,8 @@ class SubCaseDesignCross(SD.SubCaseDesign):
             else:
                 for key in cross_key_list:
                     cross_list.append(tensor[key])
-                cross_list = list((list(x) for x in itertools.product(*cross_list)))
+                cross_tuple = (list(x) for x in itertools.product(*cross_list))
+                cross_list = list(cross_tuple)
                 case_list = self._get_case_list(tensor, cross_list, cross_key_list)
             total_case_list.append(case_list)
         return total_case_list

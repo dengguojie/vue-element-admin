@@ -88,8 +88,9 @@ class CaseGenerator:
         elif attr_type == 'listStr':
             default_value = list((x.strip() for x in value_list))
         elif attr_type == 'listBool':
-            default_value = list((self._parse_bool_value(x) for x in
-                             value_list))
+            default_value_tuple = (self._parse_bool_value(x) for x in
+                                   value_list)
+            default_value = list(default_value_tuple)
         return default_value
 
     def _get_default_attr_value(self, attr_type, default_value_str, attr_name):
@@ -422,6 +423,24 @@ class CaseGenerator:
                 count_ini_with_type += 1
         return count_ini_with_type
 
+    def _get_op_info_from_head_file(self, op_info_key, input_tensor_type, name):
+        if op_info_key not in self.op_info:
+            self.op_info[op_info_key] = {}
+        if op_info_key:
+            input_tensor_type = input_tensor_type.replace(
+                ConstManager.NEW_LINE_MARK, ConstManager.EMPTY)
+            input_tensor_type = input_tensor_type.replace(
+                ConstManager.SPACE, ConstManager.EMPTY)
+            dtype_list = list(set(input_tensor_type.split(
+                ConstManager.COMMA)))
+            self._check_op_info_list_valid(dtype_list, list(
+                self.WHITE_LISTS.aicpu_ir2ini_type_map.keys()),
+                                           ConstManager.INI_INPUT + '.type')
+            self.op_info[op_info_key]['name'] = name
+            self.op_info[op_info_key][
+                'type'] = input_tensor_type.replace(' ', '')
+            self.op_info[op_info_key]['format'] = ''
+
     def _parse_aicpu_input_output_info(self, line, input_count, output_count):
         for op_key in iter(ConstManager.IN_OUT_OP_KEY_MAP):
             if line.startswith(op_key):
@@ -446,21 +465,7 @@ class CaseGenerator:
                     op_info_key = '%s%s' % (
                         ConstManager.IN_OUT_OP_KEY_MAP.get(op_key), output_count)
                     output_count += 1
-                if op_info_key not in self.op_info:
-                    self.op_info[op_info_key] = {}
-                if op_info_key:
-                    input_tensor_type = input_tensor_type.replace(
-                        ConstManager.NEW_LINE_MARK, ConstManager.EMPTY)
-                    input_tensor_type = input_tensor_type.replace(
-                        ConstManager.SPACE, ConstManager.EMPTY)
-                    dtype_list = list(set(input_tensor_type.split(
-                        ConstManager.COMMA)))
-                    self._check_op_info_list_valid(dtype_list, list(
-                        self.WHITE_LISTS.aicpu_ir2ini_type_map.keys()), ConstManager.INI_INPUT + '.type')
-                    self.op_info[op_info_key]['name'] = name
-                    self.op_info[op_info_key][
-                        'type'] = input_tensor_type.replace(' ', '')
-                    self.op_info[op_info_key]['format'] = ''
+                self._get_op_info_from_head_file(op_info_key, input_tensor_type, name)
         return input_count, output_count
 
     def _get_attr_tensor_type(self, op_key, type_attrs, attr_name):
@@ -667,6 +672,22 @@ class CaseGenerator:
         input_desc.update({'name': input_name})
         base_case.get('input_desc').append(input_desc)
 
+    def _generate_output_desc(self, value, base_case):
+        output_name = value.get('name')
+        output_format = [] if len(value['format']) == 0 else \
+            list(set(value['format'].split(',')))
+        output_dtype = [] if len(value['dtype']) == 0 else \
+            list(set(value['dtype'].split(',')))
+        if self.input_file_path.endswith(".py"):
+            output_desc = {'type': output_dtype,
+                           'shape': []}
+        else:
+            output_desc = {'format': output_format,
+                           'type': output_dtype,
+                           'shape': []}
+        output_desc.update({'name': output_name})
+        base_case.get('output_desc').append(output_desc)
+
     def _generate_aicore_base_case(self):
         if self.input_file_path.endswith(".py"):
             base_case = {'case_name': 'Test_%s_001' % self.op_type.replace('/', '_'),
@@ -681,22 +702,9 @@ class CaseGenerator:
         for (key, value) in list(self.op_info.items()):
             if key.startswith(ConstManager.INI_INPUT):
                 self._generate_input_desc(value, base_case)
-            elif key.startswith(ConstManager.INI_OUTPUT):
-                output_name = value.get('name')
-                output_format = [] if len(value['format']) == 0 else \
-                    list(set(value['format'].split(',')))
-                output_dtype = [] if len(value['dtype']) == 0 else \
-                    list(set(value['dtype'].split(',')))
-                if self.input_file_path.endswith(".py"):
-                    output_desc = {'type': output_dtype,
-                                   'shape': []}
-                else:
-                    output_desc = {'format': output_format,
-                                   'type': output_dtype,
-                                   'shape': []}
-                output_desc.update({'name': output_name})
-                base_case.get('output_desc').append(output_desc)
-            elif key.startswith("attr_"):
+            if key.startswith(ConstManager.INI_OUTPUT):
+                self._generate_output_desc(value, base_case)
+            if key.startswith("attr_"):
                 if 'attr' not in base_case:
                     base_case['attr'] = []
                 base_case.get('attr').append(self._make_attr(key, value))
@@ -728,6 +736,18 @@ class CaseGenerator:
             new_base_case.get('output_desc').append(output_desc)
         return new_base_case
 
+    def _modify_new_base_case_dict(self, node, new_base_case):
+        for (index, shape) in enumerate(node.get('input_shape')):
+            self._check_shape_valid(shape, node.get('layer'))
+            new_base_case['input_desc'][index]['shape'].append(shape)
+        for (index, shape) in enumerate(node['output_shape']):
+            self._check_shape_valid(shape, node.get('layer'))
+            new_base_case['output_desc'][index]['shape'].append(shape)
+        for (index, dtype) in enumerate(node['input_dtype']):
+            new_base_case['input_desc'][index]['type'] = dtype
+        for (index, dtype) in enumerate(node['output_dtype']):
+            new_base_case['output_desc'][index]['type'] = dtype
+
     def _update_aicore_io_from_model(self, base_case, node):
         # The node won't be None and must has the keys like 'layer'...
         # The base_case won't be None and must has the keys like 'input..'
@@ -752,8 +772,8 @@ class CaseGenerator:
                     'outputs(%d) is different from '
                     'that(%d) specified in the .ini file. Ignore if you have '
                     'changed the "Placeholder" shape.'
-                    % (len(node.get('output_shape')),
-                       layer_name,
+                    % (layer_name,
+                       len(node.get('output_shape')),
                        len(base_case.get('output_desc')),))
                 return {}
 
@@ -762,16 +782,7 @@ class CaseGenerator:
                 'op': copy.deepcopy(base_case.get('op')),
                 'input_desc': copy.deepcopy(base_case.get('input_desc')),
                 'output_desc': copy.deepcopy(base_case.get('output_desc'))}
-            for (index, shape) in enumerate(node.get('input_shape')):
-                self._check_shape_valid(shape, node.get('layer'))
-                new_base_case['input_desc'][index]['shape'].append(shape)
-            for (index, shape) in enumerate(node['output_shape']):
-                self._check_shape_valid(shape, node.get('layer'))
-                new_base_case['output_desc'][index]['shape'].append(shape)
-            for (index, dtype) in enumerate(node['input_dtype']):
-                new_base_case['input_desc'][index]['type'] = dtype
-            for (index, dtype) in enumerate(node['output_dtype']):
-                new_base_case['output_desc'][index]['type'] = dtype
+            self._modify_new_base_case_dict(node, new_base_case)
         except KeyError as error:
             utils.print_error_log("Failed to create case. %s" % error)
             raise utils.OpTestGenException(
@@ -860,7 +871,7 @@ class CaseGenerator:
                 "Continue generating the case json file based on the .ini "
                 "file.")
             return [base_case]
-        base_case_list = list()
+        base_case_list = []
         for _, node in enumerate(nodes):
             # update input and output
             if is_aicpu:
