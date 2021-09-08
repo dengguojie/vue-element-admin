@@ -42,6 +42,7 @@ TEST_F(mul_maximum_fusion_test, mul_maximum_fusion_test_1) {
 
     Tensor consttensor1;
     float * dataValue = new float[1];
+    dataValue[0] = 0;
 
     consttensor1.SetTensorDesc(tensorDescScale);
     consttensor1.SetData((uint8_t*)dataValue, 4);
