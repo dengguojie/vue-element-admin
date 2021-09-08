@@ -35,6 +35,7 @@ set(local_kernels_src_files
     kernels/normalized/inplace_top_k_distance.cc
     kernels/normalized/less.cc
     kernels/normalized/logging.cc
+    kernels/normalized/log1p.cc
     kernels/normalized/masked_select.cc
     kernels/normalized/masked_select_grad.cc
     kernels/normalized/mul.cc
