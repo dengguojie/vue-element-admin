@@ -10,6 +10,7 @@ import os
 from .op_file import OPFile
 from .op_tmpl import OPTmpl
 from . import utils
+from .const_manager import ConstManager
 
 
 class OpFileAiCpu(OPFile):
@@ -36,7 +37,7 @@ class OpFileAiCpu(OPFile):
         utils.make_dirs(impl_dir)
         template_path = os.path.join(
             os.path.split(os.path.realpath(__file__))[0],
-            utils.OP_TEMPLATE_AICPU_PATH)
+            ConstManager.OP_TEMPLATE_AICPU_PATH)
         utils.copy_template(template_path, impl_dir, True)
 
     def _generate_impl_cc(self, op_info):
@@ -44,8 +45,8 @@ class OpFileAiCpu(OPFile):
             fix_op_type=op_info.fix_op_type,
             op_type=op_info.op_type,
             op_type_upper=op_info.fix_op_type.upper(),
-            left_braces=utils.LEFT_BRACES,
-            right_braces=utils.RIGHT_BRACES)
+            left_braces=ConstManager.LEFT_BRACES,
+            right_braces=ConstManager.RIGHT_BRACES)
         impl_dir = os.path.join(self.output_path, 'cpukernel', 'impl')
         cc_path = os.path.join(impl_dir, op_info.fix_op_type + '_kernels.cc')
         # create dir and write impl file
@@ -56,8 +57,8 @@ class OpFileAiCpu(OPFile):
         h_str = OPTmpl.AICPU_IMPL_H_STRING.format(
             op_type=op_info.op_type,
             op_type_upper=op_info.fix_op_type.upper(),
-            left_braces=utils.LEFT_BRACES,
-            right_braces=utils.RIGHT_BRACES)
+            left_braces=ConstManager.LEFT_BRACES,
+            right_braces=ConstManager.RIGHT_BRACES)
         impl_dir = os.path.join(self.output_path, 'cpukernel', 'impl')
         h_path = os.path.join(impl_dir, op_info.fix_op_type + '_kernels.h')
         # create dir and write impl file

@@ -10,6 +10,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 from . import utils
 from .op_info_ir_json import JsonIROpInfo
+from .const_manager import ConstManager
 
 
 class JsonMSIROpInfo(JsonIROpInfo):
@@ -19,7 +20,7 @@ class JsonMSIROpInfo(JsonIROpInfo):
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
-        file_type = utils.INPUT_FILE_JSON
+        file_type = ConstManager.INPUT_FILE_JSON
         return utils.CheckFromConfig().trans_ms_io_dtype(ir_type, ir_name,
                                                          file_type)
 

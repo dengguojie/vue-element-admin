@@ -10,6 +10,7 @@ import os
 from .op_file import OPFile
 from .op_tmpl import OPTmpl
 from . import utils
+from .const_manager import ConstManager
 
 
 class OpFileAiCore(OPFile):
@@ -42,7 +43,7 @@ class OpFileAiCore(OPFile):
         utils.make_dirs(tbe_dir)
         template_path = os.path.join(
             os.path.split(os.path.realpath(__file__))[0],
-            utils.OP_TEMPLATE_TBE_PATH)
+            ConstManager.OP_TEMPLATE_TBE_PATH)
         utils.copy_template(template_path, tbe_dir, True)
 
     def _generate_op_params_for_check(self):
@@ -59,7 +60,7 @@ class OpFileAiCore(OPFile):
             attr_type = op_attr[1].strip()
             check_from_config = utils.CheckFromConfig()
             attr_type = check_from_config.trans_check_attr_type(attr_type)
-            if utils.PARAM_TYPE_OPTIONAL in op_attr:
+            if ConstManager.PARAM_TYPE_OPTIONAL in op_attr:
                 opt_attr_for_check = "para_check.OPTION_ATTR_%s, " % attr_type
                 op_params_for_check = "{}{}".format(op_params_for_check, opt_attr_for_check)
             else:
@@ -107,12 +108,12 @@ class OpFileAiCore(OPFile):
                 attr=attr)
         head_str += OPTmpl.PY_TARGET_CCE
         head_str += OPTmpl.PY_BUILD.format(input_data=input_data,
-                                           left_braces=utils.LEFT_BRACES,
-                                           right_braces=utils.RIGHT_BRACES)
+                                           left_braces=ConstManager.LEFT_BRACES,
+                                           right_braces=ConstManager.RIGHT_BRACES)
         # create py_dir
-        py_dir = os.path.join(self.output_path, utils.IMPL_DIR)
+        py_dir = os.path.join(self.output_path, ConstManager.IMPL_DIR)
         py_path = os.path.join(py_dir, self.op_info.fix_op_type +
-                               utils.IMPL_SUFFIX)
+                               ConstManager.IMPL_SUFFIX)
         utils.make_dirs(py_dir)
         utils.write_files(py_path, head_str)
 
@@ -198,7 +199,7 @@ class OpFileAiCore(OPFile):
         elif len(attr) == 3 and attr[2] != "":
             new_str += OPTmpl.INI_ATTR_PARAM_TYPE.format(
                 name=attr[0],
-                paramType=utils.PARAM_TYPE_OPTIONAL
+                paramType=ConstManager.PARAM_TYPE_OPTIONAL
             )
             new_str += OPTmpl.INI_ATTR_DEFAULT_VALUE.format(
                 name=attr[0],
@@ -207,7 +208,7 @@ class OpFileAiCore(OPFile):
         else:
             new_str += OPTmpl.INI_ATTR_PARAM_TYPE.format(
                 name=attr[0],
-                paramType=utils.PARAM_TYPE_REQUIRED
+                paramType=ConstManager.PARAM_TYPE_REQUIRED
             )
         return new_str
 
@@ -215,18 +216,18 @@ class OpFileAiCore(OPFile):
         new_str = ""
         for (index, name) in enumerate(parsed_info):
             ir_types = (x for x in
-                        parsed_info[name][utils.INFO_IR_TYPES_KEY] if
+                        parsed_info[name][ConstManager.INFO_IR_TYPES_KEY] if
                         x != "")
             ini_types = (self._mapping_info_cfg_type(x) for x in ir_types)
             ini_types = (x for x in ini_types if x != "")
             ini_types = ",".join(ini_types)
 
             # pram_type, when generator from tf ir, default param is 'required'
-            param_type = parsed_info[name][utils.INFO_PARAM_TYPE_KEY]
+            param_type = parsed_info[name][ConstManager.INFO_PARAM_TYPE_KEY]
             # format, the default format is 'ND'
-            if utils.INFO_PARAM_FORMAT_KEY in parsed_info[name]:
+            if ConstManager.INFO_PARAM_FORMAT_KEY in parsed_info[name]:
                 op_format = ",".join(
-                    parsed_info[name][utils.INFO_PARAM_FORMAT_KEY])
+                    parsed_info[name][ConstManager.INFO_PARAM_FORMAT_KEY])
             else:
                 op_format = ",".join("ND" for _ in ini_types.split(','))
             new_str += template_string.format(index=index,

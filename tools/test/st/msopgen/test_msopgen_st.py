@@ -3,7 +3,7 @@ import unittest
 import pytest
 from unittest import mock
 import os
-from op_gen.interface import utils
+from op_gen.interface.const_manager import ConstManager
 from op_gen import msopgen
 sys.path.append(os.path.dirname(__file__)+"/../../")
 from util import test_utils
@@ -38,7 +38,7 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(SystemExit) as error:
             with mock.patch('sys.argv', args):
                 msopgen.main()
-        self.assertEqual(error.value.code, utils.MS_OP_GEN_NONE_ERROR)
+        self.assertEqual(error.value.code, ConstManager.MS_OP_GEN_NONE_ERROR)
 
     def test_mi_query_from_ir_excel_success(self):
         test_utils.clear_out_path(OUT_PATH_VALID)
@@ -47,7 +47,7 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(SystemExit) as error:
             with mock.patch('sys.argv', args):
                 msopgen.main()
-        self.assertEqual(error.value.code, utils.MS_OP_GEN_NONE_ERROR)
+        self.assertEqual(error.value.code, ConstManager.MS_OP_GEN_NONE_ERROR)
 
     def test_gen_tf_caffe_onnx_from_ir_json_compare_success(self):
         test_utils.clear_out_path(IR_JSON_OUTPUT)

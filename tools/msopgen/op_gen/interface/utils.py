@@ -11,107 +11,10 @@ import os.path
 import sys
 import time
 import re
-import stat
 import json
 from shutil import copytree
 from shutil import copy2
-
-# error code for user:success
-MS_OP_GEN_NONE_ERROR = 0
-# error code for user: config error
-MS_OP_GEN_CONFIG_UNSUPPORTED_FMK_TYPE_ERROR = 11
-MS_OP_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR = 12
-MS_OP_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR = 13
-MS_OP_GEN_CONFIG_INVALID_COMPUTE_UNIT_ERROR = 14
-MS_OP_GEN_CONFIG_UNSUPPORTED_MODE_ERROR = 15
-MS_OP_GEN_CONFIG_OP_DEFINE_ERROR = 16
-MS_OP_GEN_INVALID_PARAM_ERROR = 17
-MS_OP_GEN_INVALID_SHEET_PARSE_ERROR = 18
-# error code for user: generator error
-MS_OP_GEN_INVALID_PATH_ERROR = 101
-MS_OP_GEN_PARSE_DUMP_FILE_ERROR = 102
-MS_OP_GEN_OPEN_FILE_ERROR = 103
-MS_OP_GEN_CLOSE_FILE_ERROR = 104
-MS_OP_GEN_OPEN_DIR_ERROR = 105
-MS_OP_GEN_INDEX_OUT_OF_BOUNDS_ERROR = 106
-MS_OP_GEN_PARSER_JSON_FILE_ERROR = 107
-MS_OP_GEN_WRITE_FILE_ERROR = 108
-MS_OP_GEN_READ_FILE_ERROR = 109
-MS_OP_GEN_UNKNOWN_CORE_TYPE_ERROR = 110
-MS_OP_GEN_PARSER_EXCEL_FILE_ERROR = 111
-MS_OP_GEN_JSON_DATA_ERROR = 112
-MS_OP_GEN_INVALID_FILE_ERROR = 113
-# error code for user: un know error
-MS_OP_GEN_UNKNOWN_ERROR = 1001
-# call os/sys error:
-MS_OP_GEN_MAKE_DIRS_ERROR = 1002
-MS_OP_GEN_COPY_DIRS_ERROR = 1003
-
-LEFT_BRACES = "{"
-RIGHT_BRACES = "}"
-SUPPORT_PATH_PATTERN = r"^[A-Za-z0-9_\./:()=\\-]+$"
-FMK_MS = ["ms", "mindspore"]
-FMK_LIST = ["tf", "tensorflow", "caffe", "pytorch", "ms", "mindspore", "onnx"]
-PROJ_MS_NAME = "mindspore"
-GEN_MODE_LIST = ['0', '1']
-OP_TEMPLATE_PATH = "../template/op_project_tmpl"
-MS_PROTO_PATH = "op_proto"
-OP_TEMPLATE_MS_OP_PROTO_PATH = "../template/op_project_tmpl/op_proto"
-OP_TEMPLATE_AICPU_PATH = "../template/cpukernel"
-OP_TEMPLATE_TBE_PATH = "../template/tbe"
-SPACE = ' '
-EMPTY = ''
-FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
-FOLDER_MASK = 0o700
-
-WRITE_FLAGS = os.O_WRONLY | os.O_CREAT
-WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
-
-# path
-IMPL_DIR = "tbe/impl/"
-MS_IMPL_DIR = "mindspore/impl"
-IMPL_NAME = "_impl"
-IMPL_SUFFIX = ".py"
-
-# input arguments
-INPUT_ARGUMENT_CMD_GEN = 'gen'
-INPUT_ARGUMENT_CMD_MI = 'mi'
-INPUT_ARGUMENT_CMD_MI_QUERY = 'query'
-
-OP_INFO_WITH_PARAM_TYPE_LEN = 3
-OP_INFO_WITH_FORMAT_LEN = 4
-AICPU_CORE_TYPE_LIST = ['aicpu', 'ai_cpu']
-AICORE_CORE_TYPE_LIST = ['aicore', 'ai_core', 'vectorcore', 'vector_core']
-PARAM_TYPE_DYNAMIC = "dynamic"
-PARAM_TYPE_REQUIRED = "required"
-PARAM_TYPE_OPTIONAL = "optional"
-PARAM_TYPE_MAP_INI = {"1": PARAM_TYPE_REQUIRED, "0": PARAM_TYPE_OPTIONAL}
-INPUT_OUTPUT_PARAM_TYPE = [PARAM_TYPE_DYNAMIC, PARAM_TYPE_REQUIRED,
-                           PARAM_TYPE_OPTIONAL]
-ATTR_PARAM_TYPE = [PARAM_TYPE_REQUIRED, PARAM_TYPE_OPTIONAL]
-
-# input file type
-INPUT_FILE_XLSX = ".xlsx"
-INPUT_FILE_XLS = ".xls"
-INPUT_FILE_TXT = ".txt"
-INPUT_FILE_JSON = ".json"
-INPUT_FILE_EXCEL = (INPUT_FILE_XLSX, INPUT_FILE_XLS)
-MI_VALID_TYPE = (INPUT_FILE_XLSX, INPUT_FILE_XLS, INPUT_FILE_JSON)
-GEN_VALID_TYPE = (INPUT_FILE_XLSX, INPUT_FILE_XLS, INPUT_FILE_TXT,
-                  INPUT_FILE_JSON)
-
-# keys in map
-INFO_IR_TYPES_KEY = "ir_type_list"
-INFO_PARAM_TYPE_KEY = "param_type"
-INFO_PARAM_FORMAT_KEY = "format_list"
-
-# GenModeType
-GEN_PROJECT = '0'
-GEN_OPERATOR = '1'
-
-# CoreType
-AICORE = 0
-AICPU = 1
+from .const_manager import ConstManager
 
 
 class MsOpGenException(Exception):
@@ -173,13 +76,13 @@ def read_json_file(json_path):
                 print_error_log(
                     'Failed to load json file %s. Please modify it. %s'
                     % (json_path, str(ex)))
-                raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+                raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
             finally:
                 pass
     except IOError as io_error:
         print_error_log(
             'Failed to open json file %s. %s' % (json_path, str(io_error)))
-        raise MsOpGenException(MS_OP_GEN_OPEN_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_OPEN_FILE_ERROR)
     finally:
         pass
 
@@ -216,13 +119,13 @@ class CheckFromConfig:
 
         if trans_data is None:
             print_error_log("The Config file is empty or invalid. Please check.")
-            raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+            raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
         trans_data_value = trans_data.get(key)
         if trans_data_value is None:
             print_error_log(
                 "%s in Config file is None or invalid. Please check."
                 % key)
-            raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+            raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
         return trans_data_value
 
     def trans_ms_io_dtype(self, ir_type, ir_name, file_type):
@@ -352,13 +255,13 @@ def check_name_valid(name):
     """
     if name == "":
         print_warn_log("The input name is \"\"")
-        return MS_OP_GEN_INVALID_PARAM_ERROR
-    name_pattern = re.compile(SUPPORT_PATH_PATTERN)
+        return ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR
+    name_pattern = re.compile(ConstManager.SUPPORT_PATH_PATTERN)
     match = name_pattern.match(name)
     if match is None:
         print_warn_log("The op type is invalid %s" % name)
-        return MS_OP_GEN_INVALID_PARAM_ERROR
-    return MS_OP_GEN_NONE_ERROR
+        return ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR
+    return ConstManager.MS_OP_GEN_NONE_ERROR
 
 
 def check_path_valid(path, isdir=False):
@@ -371,7 +274,7 @@ def check_path_valid(path, isdir=False):
     """
     if path == "":
         print_error_log("The path is null. Please check whether the argument is valid.")
-        raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
     path = os.path.realpath(path)
     if isdir and not os.path.exists(path):
         try:
@@ -380,34 +283,34 @@ def check_path_valid(path, isdir=False):
             print_error_log(
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(path, str(ex)))
-            raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+            raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
         finally:
             pass
     if not os.path.exists(path):
         print_error_log('The path {} does not exist. Please check whether '
                         'the path exists.'.format(path))
-        raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
 
     if not os.access(path, os.R_OK):
         print_error_log('You do not have the read permission on the path {} .'
                         'Please check.'.format(path))
-        raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
 
     if isdir and not os.access(path, os.W_OK):
         print_error_log('You do not have the write permission on the path {} .'
                         'Please check.'.format(path))
-        raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
 
     if isdir:
         if not os.path.isdir(path):
             print_error_log('The path {} is not a directory.'
                             ' Please check the path.'.format(path))
-            raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+            raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
     else:
         if not os.path.isfile(path):
             print_error_log('The path {} is not a file.'
                             ' Please check the path.'.format(path))
-            raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
+            raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
 
 
 def copy_template(src, dst, is_skip_exist=False):
@@ -433,7 +336,7 @@ def copy_template(src, dst, is_skip_exist=False):
 
     if errors:
         print_error_log(errors)
-        raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR)
 
 
 def copy_src_to_dst(srcname, dstname, is_skip_exist):
@@ -449,6 +352,7 @@ def copy_src_to_dst(srcname, dstname, is_skip_exist):
         copytree(srcname, dstname)
     else:
         copy2(srcname, dstname)
+    return False
 
 
 def copy_exist_file(dstname, is_skip_exist):
@@ -461,7 +365,8 @@ def copy_exist_file(dstname, is_skip_exist):
         if is_skip_exist:
             return True
         print_error_log("{} is not empty. Please check.".format(dstname))
-        sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
+        sys.exit(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
+    return False
 
 
 def get_content_from_double_quotes(line):
@@ -488,10 +393,10 @@ def make_dirs(op_dir):
     """
     try:
         if not os.path.isdir(op_dir) or not os.path.exists(op_dir):
-            os.makedirs(op_dir, FOLDER_MASK)
+            os.makedirs(op_dir, ConstManager.FOLDER_MASK)
     except OSError as err:
         print_error_log("Unable to make dir: %s." % str(err))
-        raise MsOpGenException(MS_OP_GEN_MAKE_DIRS_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_MAKE_DIRS_ERROR)
     finally:
         pass
 
@@ -509,7 +414,7 @@ def read_file(op_file):
     except IOError as io_error:
         print_error_log(
             'Failed to open file %s. %s' % (op_file, str(io_error)))
-        raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
     finally:
         pass
 
@@ -525,12 +430,12 @@ def write_files(op_file, new_str):
         if os.path.exists(op_file):
             print_warn_log(op_file + " already exists!")
             return
-        with os.fdopen(os.open(op_file, WRITE_FLAGS, WRITE_MODES), 'w') as \
+        with os.fdopen(os.open(op_file, ConstManager.WRITE_FLAGS, ConstManager.WRITE_MODES), 'w') as \
                 fout:
             fout.write(new_str)
     except OSError as err:
         print_error_log("Unable to write file(%s): %s." % op_file % str(err))
-        raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR)
     finally:
         pass
     print_info_log("File %s generated successfully." % op_file)
@@ -544,14 +449,14 @@ def write_json_file(json_path, content):
     :return: the json object
     """
     try:
-        with os.fdopen(os.open(json_path, WRITE_FLAGS,
-                               WRITE_MODES), 'w+') as file_object:
+        with os.fdopen(os.open(json_path, ConstManager.WRITE_FLAGS,
+                               ConstManager.WRITE_MODES), 'w+') as file_object:
             file_object.write(
                 json.dumps(content, sort_keys=False, indent=4))
     except IOError as io_error:
         print_error_log(
             'Failed to generate json file %s. %s' % (json_path, str(io_error)))
-        raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR)
     finally:
         pass
     print_info_log(

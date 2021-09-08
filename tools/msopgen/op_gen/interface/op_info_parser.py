@@ -15,6 +15,7 @@ from .op_info_ir_mindspore import MSIROpInfo
 from .op_info_tf_mindspore import MSTFOpInfo
 from .op_info_ir_json import JsonIROpInfo
 from .op_info_ir_json_mindspore import JsonMSIROpInfo
+from .const_manager import ConstManager
 from . import utils
 
 
@@ -29,18 +30,18 @@ class OpInfoParser:
 
     @staticmethod
     def _create_op_info(argument: ArgParser):
-        if argument.input_path.endswith(utils.INPUT_FILE_EXCEL):
+        if argument.input_path.endswith(ConstManager.INPUT_FILE_EXCEL):
             utils.print_warn_log("Excel cannot be used as inputs in future "
                                  "versions. It is recommended that json "
                                  "files be used as inputs.")
-            if argument.gen_flag and argument.framework in utils.FMK_MS:
+            if argument.gen_flag and argument.framework in ConstManager.FMK_MS:
                 return MSIROpInfo(argument)
             return IROpInfo(argument)
-        if argument.input_path.endswith(utils.INPUT_FILE_JSON):
-            if argument.gen_flag and argument.framework in utils.FMK_MS:
+        if argument.input_path.endswith(ConstManager.INPUT_FILE_JSON):
+            if argument.gen_flag and argument.framework in ConstManager.FMK_MS:
                 return JsonMSIROpInfo(argument)
             return JsonIROpInfo(argument)
-        if argument.gen_flag and argument.framework in utils.FMK_MS:
+        if argument.gen_flag and argument.framework in ConstManager.FMK_MS:
             return MSTFOpInfo(argument)
         return TFOpInfo(argument)
 

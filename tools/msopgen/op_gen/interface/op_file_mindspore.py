@@ -10,6 +10,7 @@ import os
 from .op_file import OPFile
 from .op_tmpl import OPTmpl
 from . import utils
+from .const_manager import ConstManager
 
 
 class OpFileMindSpore(OPFile):
@@ -23,19 +24,19 @@ class OpFileMindSpore(OPFile):
         generate MindSpore project or only generator an MindSpore operator
         according to mode
         """
-        if self.mode == utils.GEN_OPERATOR:
-            if self.fmk_type in utils.FMK_MS:
+        if self.mode == ConstManager.GEN_OPERATOR:
+            if self.fmk_type in ConstManager.FMK_MS:
                 if os.path.isdir(os.path.join(self.output_path,
-                                              utils.PROJ_MS_NAME)):
+                                              ConstManager.PROJ_MS_NAME)):
                     utils.print_info_log("Start to add a new MindSpore "
                                          "operator.")
 
                 if not os.path.isdir(os.path.join(self.output_path,
-                                                  utils.PROJ_MS_NAME)):
+                                                  ConstManager.PROJ_MS_NAME)):
                     utils.print_error_log("The new MindSpore operator cannot be"
                                           " added to another operator project.")
                     raise utils.MsOpGenException(
-                        utils.MS_OP_GEN_INVALID_PARAM_ERROR)
+                        ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
         else:
             utils.print_info_log("Start to generate a new MindSpore project.")
         # generate mindspore operator
@@ -46,21 +47,21 @@ class OpFileMindSpore(OPFile):
         self._generate_op_proto()
 
     def _generate_mindspore_path(self):
-        ms_dir = os.path.join(self.output_path, utils.PROJ_MS_NAME)
+        ms_dir = os.path.join(self.output_path, ConstManager.PROJ_MS_NAME)
         utils.make_dirs(ms_dir)
 
     def _parse_attr_info(self):
         attr_list = []
         for attr_info in self.op_info.parsed_attr_info:
             attr_str = []
-            if len(attr_info) == utils.OP_INFO_WITH_PARAM_TYPE_LEN \
-                    or len(attr_info) == utils.OP_INFO_WITH_FORMAT_LEN:
+            if len(attr_info) == ConstManager.OP_INFO_WITH_PARAM_TYPE_LEN \
+                    or len(attr_info) == ConstManager.OP_INFO_WITH_FORMAT_LEN:
                 attr_name = attr_info[0]
                 attr_type = attr_info[1]
                 attr_type_format = utils.CheckFromConfig().trans_ini_attr_type(
                     attr_type)
                 param_type = "required"
-                if len(attr_info) == utils.OP_INFO_WITH_FORMAT_LEN:
+                if len(attr_info) == ConstManager.OP_INFO_WITH_FORMAT_LEN:
                     param_type = attr_info[3]
                 attr_str = OPTmpl.PY_MS_ATTR_WITHOUT_VALUE_INFO.format(
                     attr_name=attr_name,
@@ -179,10 +180,10 @@ class OpFileMindSpore(OPFile):
         head_str += OPTmpl.PY_MS_OP_INFO_REGISTER_CONFIG.format(datas_join=datas_join)
 
         # create mindspore directory
-        py_dir = os.path.join(self.output_path, utils.MS_IMPL_DIR)
+        py_dir = os.path.join(self.output_path, ConstManager.MS_IMPL_DIR)
         py_path = os.path.join(py_dir, self.op_info.fix_op_type
-                               + utils.IMPL_NAME
-                               + utils.IMPL_SUFFIX)
+                               + ConstManager.IMPL_NAME
+                               + ConstManager.IMPL_SUFFIX)
         utils.make_dirs(py_dir)
         utils.write_files(py_path, head_str)
 
@@ -191,7 +192,7 @@ class OpFileMindSpore(OPFile):
             utils.print_warn_log("The op type is empty. Failed to generate "
                                  "op proto files. Please check.")
             return
-        template_path = os.path.join(self.output_path, utils.MS_PROTO_PATH)
+        template_path = os.path.join(self.output_path, ConstManager.MS_PROTO_PATH)
         utils.make_dirs(template_path)
         self._generate_ms_proto()
 
@@ -217,7 +218,7 @@ class OpFileMindSpore(OPFile):
         # create ms_proto_dir
         ms_proto_dir = os.path.join(self.output_path, "op_proto")
         ms_proto_path = os.path.join(ms_proto_dir, self.op_info.fix_op_type +
-                                     utils.IMPL_SUFFIX)
+                                     ConstManager.IMPL_SUFFIX)
         utils.make_dirs(ms_proto_dir)
         utils.write_files(ms_proto_path, ms_proto_str)
 

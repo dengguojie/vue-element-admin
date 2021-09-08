@@ -14,6 +14,7 @@ import sys
 from . import utils
 from .op_info import OpInfo
 from .arg_parser import ArgParser
+from .const_manager import ConstManager
 
 
 class IrRow:
@@ -52,7 +53,7 @@ class IrRow:
             self.op_format = row[IrRow.IR_TEMPLATE_FORMAT_CLO]
         else:
             utils.print_error_log("The row information is insufficient.")
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
 
     def get_name(self):
         """
@@ -90,7 +91,7 @@ class IROpInfo(OpInfo):
             self._parse_xls_to_info()
             self._check_input_output_info()
         else:
-            if self.mi_cmd == utils.INPUT_ARGUMENT_CMD_MI_QUERY:
+            if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
                 self._parse_xls_to_json()
 
     def _parse_xls_to_info(self):
@@ -102,12 +103,12 @@ class IROpInfo(OpInfo):
         op_name = self._choose_op(op_names)
         if not op_name:
             utils.print_error_log("Failed to obtain the op type.")
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_info = ir_map.get(op_name)
         if not ir_info:
             utils.print_error_log("Failed to obtain the op info for '%s'. Please "
                                   "check the excel." % op_name)
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         self.op_type = op_name
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         for ir_row in ir_info:
@@ -120,10 +121,10 @@ class IROpInfo(OpInfo):
                                           "are not supported. Please check the "
                                           "input or output type.")
                     raise utils.MsOpGenException(
-                        utils.MS_OP_GEN_INVALID_PARAM_ERROR)
+                        ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
                 self.parsed_input_info.update(input_map)
             elif classify == IrRow.DYNAMIC_INPUT_NAME:
-                param_type = utils.PARAM_TYPE_DYNAMIC
+                param_type = ConstManager.PARAM_TYPE_DYNAMIC
                 input_map = self._add_input_output('input', ir_row, param_type)
                 self.parsed_input_info.update(input_map)
             elif classify == IrRow.OUTPUT_NAME:
@@ -132,7 +133,7 @@ class IROpInfo(OpInfo):
                                                     param_type)
                 self.parsed_output_info.update(output_map)
             elif classify == IrRow.DYNAMIC_OUTPUT_NAME:
-                param_type = utils.PARAM_TYPE_DYNAMIC
+                param_type = ConstManager.PARAM_TYPE_DYNAMIC
                 output_map = self._add_input_output('output', ir_row,
                                                     param_type)
                 self.parsed_output_info.update(output_map)
@@ -160,10 +161,10 @@ class IROpInfo(OpInfo):
     def _get_ir_map(self, sheet_data):
         if sheet_data is None:
             utils.print_error_log("Failed to obtain the sheet data.")
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         if not self._check_sheet_data(sheet_data):
             utils.print_error_log("Failed to obtain the sheet format.")
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_map = self._read_sheet_data(sheet_data)
         return ir_map
 
@@ -173,7 +174,7 @@ class IROpInfo(OpInfo):
             utils.print_error_log("No sheet named \"Op\" exists in the IR "
                                   "Excel. Please check!")
             raise utils.MsOpGenException(
-                utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+                ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         sheet_data = ir_template.sheet_by_name(IrRow.IR_DEFAULT_SHEET_NAME)
         return sheet_data
 
@@ -187,7 +188,7 @@ class IROpInfo(OpInfo):
             sys.exit("[ERROR][op_info_ir] Unable to import module: %s." % str(import_error))
         except OSError as err:
             utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
-            raise utils.MsOpGenException(utils.MS_OP_GEN_READ_FILE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
         finally:
             pass
         return ir_template, sheet_names
@@ -242,7 +243,19 @@ class IROpInfo(OpInfo):
         ir_map = {}
         for i in range(IrRow.IR_TEMPLATE_FIRST_ROW, rows):
             row = []
-            ir_map = self._deal_with_row(col_span, sheet_data, i, row, ir_map)
+            row = self._deal_with_row(col_span, sheet_data, i, row, ir_map)
+            ir_map = self._deal_with_ir_map(row, ir_map)
+        return ir_map
+
+    @staticmethod
+    def _deal_with_ir_map(row, ir_map):
+        if row and len(row[0]) > 0:
+            ir_row = IrRow(row)
+            if row[0] in ir_map:
+                ir_map[row[0]].append(ir_row)
+            else:
+                ir_row_list = [ir_row]
+                ir_map[row[0]] = ir_row_list
         return ir_map
 
     @staticmethod
@@ -257,20 +270,13 @@ class IROpInfo(OpInfo):
             if j == 0:
                 # if the op name is invalid , skip the row
                 if utils.check_name_valid(
-                        op_value) == utils.MS_OP_GEN_NONE_ERROR:
+                        op_value) == ConstManager.MS_OP_GEN_NONE_ERROR:
                     row.append(op_value)
                 else:
                     break
             else:
                 row.append(op_value)
-        if row and len(row[0]) > 0:
-            ir_row = IrRow(row)
-            if row[0] in ir_map:
-                ir_map[row[0]].append(ir_row)
-            else:
-                ir_row_list = [ir_row]
-                ir_map[row[0]] = ir_row_list
-        return ir_map
+        return row
 
     def _choose_op(self, op_names):
         if self.choose_op != "":
@@ -281,16 +287,15 @@ class IROpInfo(OpInfo):
                     "Failed to find '%s' in the excel. Please check that the "
                     "value for '-op' is valid."
                     % self.choose_op)
-                sys.exit(utils.MS_OP_GEN_INVALID_PARAM_ERROR)
+                sys.exit(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
             return self._choose_op_name(op_names)
-        elif len(op_names) == 0:
+        if len(op_names) == 0:
             utils.print_error_log("There is no op info to read.")
             return ""
-        else:
-            utils.print_info_log("Start to parse the op: " + op_names[0])
-            return op_names[0]
+        utils.print_info_log("Start to parse the op: " + op_names[0])
+        return op_names[0]
 
     @staticmethod
     def _choose_op_name(op_names):
@@ -337,9 +342,9 @@ class IROpInfo(OpInfo):
             op_format = op_format.split(",")
         utils.print_info_log("One %s is handled: %s" % (prefix, ir_name))
         return {ir_name: {
-            utils.INFO_IR_TYPES_KEY: ir_type_list,
-            utils.INFO_PARAM_TYPE_KEY: param_type,
-            utils.INFO_PARAM_FORMAT_KEY: op_format}}
+            ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
+            ConstManager.INFO_PARAM_TYPE_KEY: param_type,
+            ConstManager.INFO_PARAM_FORMAT_KEY: op_format}}
 
     def _check_input_output_info(self):
         if not self.parsed_input_info:
@@ -361,8 +366,8 @@ class IROpInfo(OpInfo):
         io_map.update(self.parsed_input_info)
         io_map.update(self.parsed_output_info)
         for (name, value) in io_map.items():
-            ir_type_count = len(value[utils.INFO_IR_TYPES_KEY])
-            format_count = len(value[utils.INFO_PARAM_FORMAT_KEY])
+            ir_type_count = len(value[ConstManager.INFO_IR_TYPES_KEY])
+            format_count = len(value[ConstManager.INFO_PARAM_FORMAT_KEY])
             if first_count == 0:
                 first_count = ir_type_count
                 first_name = name
@@ -404,22 +409,22 @@ class IROpInfo(OpInfo):
 
     @staticmethod
     def _mapping_ini_param_type(param_type):
-        if param_type in utils.PARAM_TYPE_MAP_INI:
+        if param_type in ConstManager.PARAM_TYPE_MAP_INI:
             # the return wont't be none
-            return utils.PARAM_TYPE_MAP_INI.get(param_type)
+            return ConstManager.PARAM_TYPE_MAP_INI.get(param_type)
         utils.print_error_log("The '%s' config in the IR Excel is "
                               "invalid." % param_type)
-        sys.exit(utils.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
+        sys.exit(ConstManager.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
-        file_type = utils.INPUT_FILE_XLSX
+        file_type = ConstManager.INPUT_FILE_XLSX
         return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
                                                       file_type)
 
     @staticmethod
     def _mapping_attr_type(attr_type):
-        file_type = utils.INPUT_FILE_XLSX
+        file_type = ConstManager.INPUT_FILE_XLSX
         return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
 
     def get_op_path(self):

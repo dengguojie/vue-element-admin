@@ -12,6 +12,7 @@ from op_gen.interface.arg_parser import ArgParser
 from op_gen.interface.op_file_generator import OpFileGenerator
 from op_gen.interface.op_info_parser import OpInfoParser
 from op_gen.interface import utils
+from op_gen.interface.const_manager import ConstManager
 
 
 def _do_gen_cmd(argument):
@@ -20,7 +21,7 @@ def _do_gen_cmd(argument):
         if not op_file_generator.op_file:
             utils.print_error_log(
                 "AICPU is not supported by MindSpore operators.")
-            raise utils.MsOpGenException(utils.MS_OP_GEN_NONE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_NONE_ERROR)
         op_file_generator.generate()
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
@@ -30,7 +31,7 @@ def _do_gen_cmd(argument):
 
 def _do_mi_cmd(argument):
     try:
-        if argument.mi_cmd == utils.INPUT_ARGUMENT_CMD_MI_QUERY:
+        if argument.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
             OpInfoParser(argument)
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
@@ -55,7 +56,7 @@ def main():
     else:
         _do_mi_cmd(argument)
     utils.print_info_log("Generation completed.")
-    sys.exit(utils.MS_OP_GEN_NONE_ERROR)
+    sys.exit(ConstManager.MS_OP_GEN_NONE_ERROR)
 
 
 if __name__ == "__main__":

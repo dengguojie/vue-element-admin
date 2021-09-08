@@ -11,6 +11,7 @@ from .op_file_aicore import OpFileAiCore
 from .op_file_aicpu import OpFileAiCpu
 from .op_file_mindspore import OpFileMindSpore
 from . import utils
+from .const_manager import ConstManager
 
 
 class OpFileGenerator:
@@ -23,16 +24,16 @@ class OpFileGenerator:
 
     @staticmethod
     def _create_op_file(argument: ArgParser):
-        if argument.framework in utils.FMK_MS:
-            if argument.core_type == utils.AICORE:
+        if argument.framework in ConstManager.FMK_MS:
+            if argument.core_type == ConstManager.AICORE:
                 utils.print_info_log(
                     "Start to generate MindSpore operator files.")
                 return OpFileMindSpore(argument)
 
-            if argument.core_type == utils.AICPU:
+            if argument.core_type == ConstManager.AICPU:
                 return ""
 
-        if argument.core_type == utils.AICORE:
+        if argument.core_type == ConstManager.AICORE:
             utils.print_info_log(
                 "Start to generate AI Core operator files.")
             return OpFileAiCore(argument)

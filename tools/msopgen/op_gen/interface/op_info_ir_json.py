@@ -14,6 +14,7 @@ import sys
 from . import utils
 from .op_info import OpInfo
 from .arg_parser import ArgParser
+from .const_manager import ConstManager
 
 
 class JsonIROpInfo(OpInfo):
@@ -39,7 +40,7 @@ class JsonIROpInfo(OpInfo):
             self._parse_json_to_info()
             self._check_input_output_info()
         else:
-            if self.mi_cmd == utils.INPUT_ARGUMENT_CMD_MI_QUERY:
+            if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
                 self._parse_template_to_json()
 
     def _parse_json_to_info(self):
@@ -89,8 +90,8 @@ class JsonIROpInfo(OpInfo):
         io_map = self.parsed_input_info.copy()
         io_map.update(self.parsed_output_info)
         for (name, value) in io_map.items():
-            ir_type_count = len(value[utils.INFO_IR_TYPES_KEY])
-            format_count = len(value[utils.INFO_PARAM_FORMAT_KEY])
+            ir_type_count = len(value[ConstManager.INFO_IR_TYPES_KEY])
+            format_count = len(value[ConstManager.INFO_PARAM_FORMAT_KEY])
             if first_count == 0:
                 first_count = ir_type_count
                 first_name = name
@@ -129,11 +130,11 @@ class JsonIROpInfo(OpInfo):
         if not isinstance(json_data, (list, dict)):
             utils.print_error_log("Data in %s should be List or Dict."
                                   % self.op_path)
-            raise utils.MsOpGenException(utils.MS_OP_GEN_JSON_DATA_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_JSON_DATA_ERROR)
         if isinstance(json_data, list) and len(json_data) < 1:
             utils.print_error_log("There is an operator definition map in %s. "
                                   "Please check." % self.op_path)
-            raise utils.MsOpGenException(utils.MS_OP_GEN_JSON_DATA_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_JSON_DATA_ERROR)
 
     def _read_json_data(self, json_data):
         ir_map = {}
@@ -145,7 +146,7 @@ class JsonIROpInfo(OpInfo):
             else:
                 op_name = json_map.get("op")
                 if utils.check_name_valid(
-                        op_name) == utils.MS_OP_GEN_NONE_ERROR:
+                        op_name) == ConstManager.MS_OP_GEN_NONE_ERROR:
                     op_map["input_list"] = json_map.get("input_desc")
                     op_map["output_list"] = json_map.get("output_desc")
                     op_map["attr_list"] = json_map.get("attr")
@@ -162,12 +163,12 @@ class JsonIROpInfo(OpInfo):
         op_name = self._choose_op(op_names)
         if not op_name:
             utils.print_error_log("Failed to obtain the op type.")
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_info = ir_map.get(op_name)
         if not ir_info:
             utils.print_error_log("Failed to obtain op info for '%s'. Please "
                                   "check the json." % op_name)
-            sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         self.op_type = op_name
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         return ir_info
@@ -181,7 +182,7 @@ class JsonIROpInfo(OpInfo):
                     "Failed to find '%s' in json. Please check "
                     "that the value for '-op' is valid."
                     % self.choose_op)
-                sys.exit(utils.MS_OP_GEN_INVALID_PARAM_ERROR)
+                sys.exit(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
             utils.print_info_log("There is more than one operator in "
@@ -259,12 +260,12 @@ class JsonIROpInfo(OpInfo):
                                   "file is not supported. Please check the "
                                   "input or output type.")
             raise utils.MsOpGenException(
-                utils.MS_OP_GEN_INVALID_PARAM_ERROR)
+                ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
         return ir_type_list
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
-        file_type = utils.INPUT_FILE_JSON
+        file_type = ConstManager.INPUT_FILE_JSON
         return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
                                                       file_type)
 
@@ -292,8 +293,8 @@ class JsonIROpInfo(OpInfo):
     @staticmethod
     def _init_param_type(input_output_map, input_output_name):
         param_type = input_output_map.get("param_type")
-        if param_type not in utils.INPUT_OUTPUT_PARAM_TYPE:
-            param_type = utils.PARAM_TYPE_REQUIRED
+        if param_type not in ConstManager.INPUT_OUTPUT_PARAM_TYPE:
+            param_type = ConstManager.PARAM_TYPE_REQUIRED
             utils.print_warn_log("The param_type of %s is invalid or None, "
                                  "Assign it the default value \"required\"" %
                                  input_output_name)
@@ -309,18 +310,18 @@ class JsonIROpInfo(OpInfo):
                                      "The last one is to be used!" %
                                      input_output_name)
             self.parsed_input_info.update({input_output_name: {
-                utils.INFO_IR_TYPES_KEY: ir_type_list,
-                utils.INFO_PARAM_TYPE_KEY: param_type,
-                utils.INFO_PARAM_FORMAT_KEY: op_format}})
+                ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
+                ConstManager.INFO_PARAM_TYPE_KEY: param_type,
+                ConstManager.INFO_PARAM_FORMAT_KEY: op_format}})
         else:
             if input_output_name in self.parsed_output_info:
                 utils.print_warn_log("The out name \"%s\" is duplicate.  The "
                                      "last one is to be used!" %
                                      input_output_name)
             self.parsed_output_info.update({input_output_name: {
-                utils.INFO_IR_TYPES_KEY: ir_type_list,
-                utils.INFO_PARAM_TYPE_KEY: param_type,
-                utils.INFO_PARAM_FORMAT_KEY: op_format}})
+                ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
+                ConstManager.INFO_PARAM_TYPE_KEY: param_type,
+                ConstManager.INFO_PARAM_FORMAT_KEY: op_format}})
 
     def _add_attr_from_json(self, attr_list):
         if isinstance(attr_list, list):
@@ -352,8 +353,8 @@ class JsonIROpInfo(OpInfo):
         if isinstance(default_value, bool):
             default_value = self._parse_bool_value_for_json(default_value)
         param_type = attr_map.get("param_type")
-        if param_type not in utils.ATTR_PARAM_TYPE:
-            param_type = utils.PARAM_TYPE_REQUIRED
+        if param_type not in ConstManager.ATTR_PARAM_TYPE:
+            param_type = ConstManager.PARAM_TYPE_REQUIRED
             utils.print_warn_log("The param_type of %s is invalid or None. "
                                  "Assign it the default value \"required\"" %
                                  attr_name)
@@ -363,7 +364,7 @@ class JsonIROpInfo(OpInfo):
 
     @staticmethod
     def _mapping_attr_type(attr_type):
-        file_type = utils.INPUT_FILE_JSON
+        file_type = ConstManager.INPUT_FILE_JSON
         return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
 
     @staticmethod

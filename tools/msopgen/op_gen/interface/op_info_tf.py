@@ -13,6 +13,7 @@ import re
 from . import utils
 from .op_info import OpInfo
 from .arg_parser import ArgParser
+from .const_manager import ConstManager
 
 
 class TFOpInfo(OpInfo):
@@ -52,11 +53,11 @@ class TFOpInfo(OpInfo):
         output_info_lines = []
         attr_info_lines = []
         op_name = ""
-        new_line = txt.replace('\n', utils.EMPTY).replace('\r', utils.EMPTY) \
-            .replace('\t', utils.EMPTY)
-        pattern = re.compile(utils.SPACE)
-        line = pattern.sub(utils.EMPTY, new_line)
-        line = line.replace('\"\"', utils.EMPTY).replace('\\', utils.EMPTY)
+        new_line = txt.replace('\n', ConstManager.EMPTY).replace('\r', ConstManager.EMPTY) \
+            .replace('\t', ConstManager.EMPTY)
+        pattern = re.compile(ConstManager.SPACE)
+        line = pattern.sub(ConstManager.EMPTY, new_line)
+        line = line.replace('\"\"', ConstManager.EMPTY).replace('\\', ConstManager.EMPTY)
         line_point_list = line.split(".")
         for info_str in line_point_list:
             continue_flag, op_name = self._check_info_str(info_str, op_name)
@@ -193,10 +194,10 @@ class TFOpInfo(OpInfo):
         # parse dynamic input/output
         dynamic_type = self._get_dynamic_input_output_type(value)
         if dynamic_type:
-            param_type = utils.PARAM_TYPE_DYNAMIC
+            param_type = ConstManager.PARAM_TYPE_DYNAMIC
             ir_type = dynamic_type
         else:
-            param_type = utils.PARAM_TYPE_REQUIRED
+            param_type = ConstManager.PARAM_TYPE_REQUIRED
             ir_type = value
         # mapping ir type list
         if self.type_attr.get(ir_type) != 0:
@@ -212,16 +213,16 @@ class TFOpInfo(OpInfo):
             ir_type_list, param_type = self._get_ir_type_and_param_type(name, value)
             # update op_info.parsed_input_info
             self.parsed_input_info.update({name: {
-                utils.INFO_IR_TYPES_KEY: ir_type_list,
-                utils.INFO_PARAM_TYPE_KEY: param_type}})
+                ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
+                ConstManager.INFO_PARAM_TYPE_KEY: param_type}})
 
     def _generate_output_info(self):
         for name, value in self.output_info:
             ir_type_list, param_type = self._get_ir_type_and_param_type(name, value)
             # update op_info.parsed_input_info
             self.parsed_output_info.update({name: {
-                utils.INFO_IR_TYPES_KEY: ir_type_list,
-                utils.INFO_PARAM_TYPE_KEY: param_type}})
+                ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
+                ConstManager.INFO_PARAM_TYPE_KEY: param_type}})
 
     def _generate_attr_info(self):
         for name, value in self.attr_info:

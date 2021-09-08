@@ -20,13 +20,14 @@ This file mainly set up for op_gen whl package.
 """
 
 import os
+import stat
 from setuptools import setup
 os.environ['SOURCE_DATE_EPOCH'] = str(int(os.path.getctime(os.path.realpath(__file__))))
 
 __version__ = "0.1"
 
 
-with open("MANIFEST.in", "w") as fo:
+with os.fdopen(os.open("MANIFEST.in", os.O_WRONLY | os.O_CREAT, stat.S_IWUSR | stat.S_IRUSR), "w") as fo:
     fo.write("recursive-include ../op_gen/template *\n"
              "recursive-include ../op_gen/json_template *\n"
              "recursive-include ../op_gen/config *\n")
