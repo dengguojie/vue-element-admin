@@ -1214,7 +1214,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 dst_buffer = self._cache_write_tensors_and_buffer_map.get(tensor_after_tail)
                 dst_shape = tensor_with_tail.shape
                 dim_with_tail = dst_shape[-3]
-                ori_shape = self._input_tensors[1].op.attrs["ori_shape"]
+                ori_shape = self._input_tensors[0].op.attrs["ori_shape"]
                 tail = ori_shape[-1] % 16 - 1
 
                 condition1 = (src_buffer.op.axis[-3].var == (dim_with_tail - 1)).asnode()

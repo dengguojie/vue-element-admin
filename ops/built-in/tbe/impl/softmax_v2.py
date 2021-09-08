@@ -405,7 +405,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     for i in axis:
         if i in (-1, last_dim):
             vcmax_flag = True
-    
+    use_tail_block = False
     ori_shape = input_x.op.attrs["ori_shape"]
     if output_y.get("format") == "FRACTAL_NZ" and len(axis) == 2 and ori_shape[-1].value % 16 != 0:
         input_x = te.lang.cce.vadds(input_x, 0)
@@ -413,6 +413,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             lambda_func = lambda *indice : tvm.const(-65000, input_x.dtype)
             temp = tvm.compute(input_x.shape, lambda_func, name="tail_block_pretreatment")
         input_x = te.lang.cce.vadd(input_x, temp)
+        use_tail_block = True
 
     if dtype == "float32" and vcmax_flag and \
         not tbe_platform.cce_conf.api_check_support(
@@ -444,7 +445,10 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         has_improve_precision = True
     data_expsum = te.lang.cce.sum(data_exp, axis, keepdims=True)
 
-    if tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710", "Ascend920",) and \
+    if use_tail_block:
+        data_expsum = _broadcast_nz(data_expsum, shape)
+        output = te.lang.cce.vdiv(data_exp, data_expsum)
+    elif tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710", "Ascend920",) and \
        output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
         data_expsum = _broadcast_nz(data_expsum, shape)
@@ -452,6 +456,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     else:
         data_expsum = _broadcast_nz(data_expsum, shape)
         output = te.lang.cce.vdiv(data_exp, data_expsum)
+
     if has_improve_precision and dtype == "float16":
         output = te.lang.cce.cast_to(output, "float16")
 
