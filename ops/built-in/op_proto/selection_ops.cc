@@ -4886,7 +4886,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
   }
   OP_LOGD(op.GetName().c_str(), "input stride_list:%s", to_string(slice_params.stride_list).c_str());
   
-  if (shape.GetDims() == UNKNOWN_RANK  || !stride_valid) {
+  if (shape.GetDims() == UNKNOWN_RANK) {
     TensorDesc output_desc = op.GetOutputDesc("y");
     output_desc.SetDataType(input_dtype);
     ge::Shape outputShape = ge::Shape(UNKNOWN_RANK);
@@ -4894,7 +4894,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(output_desc.GetShape()).c_str());
     (void) op.UpdateOutputDesc("y", output_desc);
     return GRAPH_SUCCESS;
-  }else if(begin_len == -1){
+  }else if(begin_len == -1 || !stride_valid){
     TensorDesc output_desc = op.GetOutputDesc("y");
     output_desc.SetDataType(input_dtype);
     ge::Shape outputShape = ge::Shape(std::vector<int64_t>(rank_num,-1));
@@ -4934,6 +4934,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
   }
 
   //process end list and begin list accoring to the axes values start
+  uint64_t axes_mask = 0;
   if(has_axes){
     //pre fill the values to the vector
     std::vector<int64_t> processed_begin(rank_num, 0);
@@ -4956,11 +4957,13 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
         axes_index = 0;
         OP_LOGD(op.GetName().c_str(), "Neg Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
       }
+      axes_mask = (1<<axes_index)|axes_mask;
       processed_end[axes_index] = slice_params.end_list[i];
       processed_begin[axes_index] = slice_params.begin_list[i];
       processed_stride[axes_index] = slice_params.stride_list[i];
     }
     //assign the proceseed value back to slice params
+    axes_mask = ~axes_mask;
     slice_params.begin_list.assign(processed_begin.begin(),processed_begin.end());
     slice_params.end_list.assign(processed_end.begin(),processed_end.end());
     slice_params.stride_list.assign(processed_stride.begin(),processed_stride.end());
@@ -4999,8 +5002,8 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
       slice_params.end_list,
       slice_params.stride_list,
       input_ranges,
-      slice_masks.begin_mask,
-      slice_masks.end_mask,
+      axes_mask,
+      axes_mask,
       slice_masks.ellipsis_mask,
       slice_masks.new_axis_mask,
       slice_masks.shrink_axis_mask,
