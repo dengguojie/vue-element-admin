@@ -282,7 +282,7 @@ class ScatterNd():
         self.updates_ub = self.tik_instance.Tensor(self.updates_dtype, (self.updates_ub_num,),
                                                    name="updates_ub",
                                                    scope=tik.scope_ubuf)
-        self.indices_ub = self.tik_instance.Tensor("int32", (self.indices_ub_num,),
+        self.indices_ub = self.tik_instance.Tensor(self.indices_dtype, (self.indices_ub_num,),
                                                    name="indices_ub",
                                                    scope=tik.scope_ubuf)
         self.zero_ub = self.tik_instance.Tensor(self.updates_dtype, (self.updates_data_each_block,),

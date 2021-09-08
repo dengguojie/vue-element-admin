@@ -28,7 +28,9 @@ from impl import common_util
 
 def check_supported(indices, x, y, shape, kernel_name="scatter_nd_d"):
     """
-    check support dynamiclly
+    when dtype not in ("float", "float32", "float16", "int32"), dynamic shape not support.
+    when indices's last dim not equal 1, dynamic shape not support
+    when update_slice not 32b align, static not support
     """
     x_dtype = x.get('dtype')
     data_size = 4

@@ -194,7 +194,7 @@ class ScatterNdSub():
                                                 name="subs_ub",
                                                 scope=tik.scope_ubuf)
         self.var_ub = self.tik_instance.Tensor(self.var_dtype, (self.subs_ub_num,), name="var_ub", scope=tik.scope_ubuf)
-        self.indices_ub = self.tik_instance.Tensor("int32", (self.indices_ub_num,),
+        self.indices_ub = self.tik_instance.Tensor(self.indice_dtype, (self.indices_ub_num,),
                                                    name="indices_ub",
                                                    scope=tik.scope_ubuf)
         self.var_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
