@@ -495,11 +495,22 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         try:
             __import__(self.op_module_name)
         except ImportError as _:
-            err_msg = "Can't import op module, please check you python path"
-            err_msg += ", op module name: %s" % self.op_module_name
-            err_trace = get_trace_info()
-            err_msg += ", err_trace: %s" % err_trace
-            return None, err_msg
+            # custom op and inner op both have parent dir impl，
+            # so when python_path contains two impl's parent dir,
+            # we need to add either impl dir to python_path
+            for dir_item in sys.path:
+                impl_dir = os.path.join(dir_item, "impl")
+                if os.path.exists(impl_dir):
+                    sys.path.append(impl_dir)
+            self.op_module_name = self.op_module_name.replace("impl.", "")
+            try:
+                __import__(self.op_module_name)
+            except ImportError as _:
+                err_msg = "Can't import op module, please check you python path"
+                err_msg += ", op module name: %s" % self.op_module_name
+                err_trace = get_trace_info()
+                err_msg += ", err_trace: %s" % err_trace
+                return None, err_msg
 
         op_module = sys.modules[self.op_module_name]
         op_func = getattr(op_module, self.op_func_name)
