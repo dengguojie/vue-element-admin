@@ -50,23 +50,22 @@ Status ParseParamsResize(const Message *op_src, Operator &op_dst) {
     return FAILED;
   }
 
-  std::string coordinate_transformation_mode_value;
-  std::string mode_value;
+  std::string coordinate_transformation_mode_value = "half_pixel";
+  std::string mode_value = "nearest";
   for (auto attr : node->attribute()) {
     if (attr.name() == "coordinate_transformation_mode" &&
         attr.type() == ge::onnx::AttributeProto::STRING) {
       coordinate_transformation_mode_value = attr.s();
-      op_dst.SetAttr("coordinate_transformation_mode",
-                     coordinate_transformation_mode_value);
     } else if (attr.name() == "mode" &&
                attr.type() == ge::onnx::AttributeProto::STRING) {
       mode_value = attr.s();
-      op_dst.SetAttr("mode", mode_value);
     }
   }
   int input_size = node->input_size();
   op_dst.SetAttr("input_size", input_size);
-
+  op_dst.SetAttr("coordinate_transformation_mode", coordinate_transformation_mode_value);
+  op_dst.SetAttr("mode", mode_value);
+  
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dst);
   if (op_desc == nullptr){
     ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Get op desc failed.");
