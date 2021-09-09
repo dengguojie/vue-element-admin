@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021 All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,10 @@
 #include "op_tiling.h"
 
 namespace optiling {
-
 // Each core processing data num greater than the size we can get better performance from experience
 const int64_t MINIMUM_DATA_NUM_EACH_CORE = 1024;
 const int64_t VECTOR_PROCESS_BYTES = 256;
+const int64_t OP_INPUTS_SIZE = 2;
 
 static int64_t GetCeilInt(int64_t value1, int64_t value2) { return (int64_t)(value1 + value2 - 1) / value2; }
 
@@ -97,10 +97,10 @@ void PrintRunParams(const SquareSumAllTilingParams& params) {
 
 int32_t CalcReduceSumLoop(int32_t& calc_num, int64_t& data_each_block, int64_t& dtype_bytes_size) {
   int64_t remain_num = calc_num;
-  int64_t align_value = data_each_block * 2;
+  int64_t align_value = data_each_block * OP_INPUTS_SIZE;
   int32_t loop_num = 0;
   while (remain_num > VECTOR_PROCESS_BYTES / dtype_bytes_size) {
-    remain_num = ((remain_num / align_value) * align_value) / 2;
+    remain_num = ((remain_num / align_value) * align_value) / OP_INPUTS_SIZE;
     loop_num++;
     if (remain_num <= VECTOR_PROCESS_BYTES / dtype_bytes_size) break;
   }
@@ -111,7 +111,7 @@ void CalcProcessParams(int64_t& ub_size, int64_t& dtype_bytes_size, int64_t& dat
                        int32_t& data_num_remain_core, SquareSumAllTilingParams& params) {
   int64_t ub_max_num = ub_size / dtype_bytes_size;
   int32_t process_data_num_each_core = params.data_num_each_core;
-  int32_t every_process_data_num = (process_data_num_each_core > (ub_max_num / 2)) ? (ub_max_num / 2) :
+  int32_t every_process_data_num = (process_data_num_each_core > (ub_max_num / OP_INPUTS_SIZE)) ? (ub_max_num / OP_INPUTS_SIZE) :
                                    process_data_num_each_core;
 
   params.process_times_per_core = process_data_num_each_core / every_process_data_num;
@@ -124,7 +124,7 @@ void CalcProcessParams(int64_t& ub_size, int64_t& dtype_bytes_size, int64_t& dat
 
   // tail core
   int32_t process_data_extern_num = process_data_num_each_core + data_num_remain_core;
-  every_process_data_num = (process_data_extern_num > (ub_max_num / 2)) ? (ub_max_num / 2) :
+  every_process_data_num = (process_data_extern_num > (ub_max_num / OP_INPUTS_SIZE)) ? (ub_max_num / OP_INPUTS_SIZE) :
                            process_data_extern_num;
 
   params.process_times_remain_core = process_data_extern_num / every_process_data_num;
@@ -192,7 +192,7 @@ bool CheckTensorShape(const std::vector<int64_t>& input_x_shape, const std::vect
 bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                         OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "op[SquareSumAllTiling] tiling running.");
-  OP_TILING_CHECK(op_paras.inputs.size() != 2,
+  OP_TILING_CHECK(op_paras.inputs.size() != OP_INPUTS_SIZE,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs.size() != 2"), return false);
   OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
@@ -219,6 +219,8 @@ bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, c
     OP_LOGE(op_type.c_str(), "get compile info from nlohmann json failed.");
     return false;
   }
+  OP_TILING_CHECK(data_each_block == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "data_each_block == 0"), return false);
+  OP_TILING_CHECK(dtype_bytes_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_bytes_size == 0"), return false);
 
   int64_t input_x_num;
   if (input_x_shape.size() == 0) {
