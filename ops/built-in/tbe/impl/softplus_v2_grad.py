@@ -60,22 +60,21 @@ def softplus_v2_grad_compute(input_gradients, input_features, beta, threshold):
 
     one_const_tensor = tbe.broadcast(tvm.const(1.0, dtype="float32"), input_features.shape)
     beta_const_tensor = tbe.broadcast(tvm.const(beta, dtype="float32"), input_features.shape)
+
+    left_cmp = tbe.vmul(input_features, beta_const_tensor)
+    method_two_get_res = tbe.vcmpsel(left_cmp, tvm.const(threshold, dtype="float32"), 'gt', 1.0, 0.0)
+    is_method_one = tbe.vsub(one_const_tensor, method_two_get_res)
+    # Prevent exp overflow caused by large number calculation
+    input_features_select = tbe.vmul(left_cmp, is_method_one)
     # calculate exp(beta*x)/ (1 + exp(beta*x))
-    beta_mul_x = tbe.vmul(input_features, beta_const_tensor)
-    exp_res = tbe.vexp(beta_mul_x)
+    exp_res = tbe.vexp(input_features_select)
     exp_add_one_res = tbe.vadd(exp_res, one_const_tensor)
     method_one_res = tbe.vdiv(exp_res, exp_add_one_res)
 
-    # combine method one and two's result
-    left_cmp = tbe.vmul(input_features, beta_const_tensor)
-    is_method_two = tbe.vcmpsel(left_cmp, tvm.const(threshold, dtype="float32"), 'gt', 1.0, 0.0)
-    is_method_one = tbe.vsub(one_const_tensor, is_method_two)
-
     method_one_get_res = tbe.vmul(method_one_res, is_method_one)
-    method_two_get_res = is_method_two
     grad_out = tbe.vadd(method_one_get_res, method_two_get_res)
-
     res_tmp = tbe.vmul(grad_out, input_gradients)
+
     if input_dtype == "float16":
         res = tbe.cast_to(res_tmp, "float16")
     else:
