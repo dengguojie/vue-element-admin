@@ -27,6 +27,7 @@ set(_optiling_files
   avg_poolv2.cc
   avg_pool_1d.cc
   dynamic_rnn.cc
+  dynamic_gru_v2.cc
   avg_pool_grad.cc
   avg_pool3d.cc
   avg_pool3d_grad.cc
