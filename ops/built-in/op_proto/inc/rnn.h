@@ -822,7 +822,7 @@ REG_OP(DynamicGRU)
 *@li weight_hidden:Must be one of the following types: float16. The format must be FRACTAL_Z.
 *@li bias_input:Must be one of the following types: float16, float32. The format must be ND.
 *@li bias_hidden:Must be one of the following types: float16, float32. The format must be ND.
-*@li seq_length:Must be one of the following types: int32. The format must be ND.
+*@li seq_length:Must be one of the following types: float16 in FRACTAL_NZ and int32 in ND.
 *@li init_h:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 
 *@par Attributes:
@@ -852,7 +852,7 @@ REG_OP(DynamicGRUV2)
     .INPUT(weight_hidden, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(bias_input, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(bias_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32, DT_FLOAT16}))
     .OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -880,7 +880,7 @@ REG_OP(DynamicGRUV2)
 *@li x_weight_input:Must be one of the following types: float32. The format must be FRACTAL_NZ.
 *@li weight_hidden:Must be one of the following types: float16. The format must be FRACTAL_Z.
 *@li bias_hidden:Must be one of the following types: float16, float32. The format must be ND.
-*@li seq_length:Must be one of the following types: int32. The format must be ND.
+*@li seq_length:Must be one of the following types: float16 in FRACTAL_NZ and int32 in ND.
 *@li init_h:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 
 *@par Attributes:
@@ -913,7 +913,7 @@ REG_OP(DynamicGRUV2Hidden)
     .INPUT(x_weight_input, TensorType({DT_FLOAT32}))
     .INPUT(weight_hidden, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(bias_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32, DT_FLOAT16}))
     .OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -1181,8 +1181,8 @@ REG_OP(CommonLSTM)
  *
  * @par Inputs:
  * @li seq_length: A 1D Tensor. Must be one of the following types: int32. Record the current length of each batch. [batch_size].
- * @li b: A 1D Tensor. Must be one of the following types: fp16/fp32. Record the hidden_size. [4 * hidden_size].
  * @li x: A 3D Tensor. Must be one of the following types: fp16/fp32. Record the num_step/batch_size/input_size. [num_step, batch_size, input_size].
+ * @li hidden_size: An optional attribute of type int32. pass the hidden_size. \n
  *
  * @par Outputs:
  * seq_mask: A 3D Tensor. Must be one of the following types: fp16/fp32. with the shape of [num_step, batch_size, hidden_size]. And has the same type as "b" \n
@@ -1192,8 +1192,8 @@ REG_OP(CommonLSTM)
  */
 REG_OP(RnnGenMaskV2)
     .INPUT(seq_length, TensorType({DT_INT32}))
-    .INPUT(b, TensorType({{DT_FLOAT16, DT_FLOAT}))
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(hidden_size, Int)
     .OUTPUT(seq_mask, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(RnnGenMaskV2)
 

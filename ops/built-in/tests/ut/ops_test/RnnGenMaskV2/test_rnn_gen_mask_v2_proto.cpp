@@ -21,18 +21,14 @@ TEST_F(RnnGenMaskV2Test, rnn_gen_mask_tsest_1) {
                                                 ge::DT_FLOAT16, ge::FORMAT_ND,
                                                 {32},
                                                 ge::FORMAT_ND, {{32, 32}});
-    auto b = create_desc_shape_range({-1},
-                                         ge::DT_FLOAT16, ge::FORMAT_ND,
-                                         {256},
-                                         ge::FORMAT_ND, {{256, 256}});
     auto x = create_desc_shape_range({-1, 32, -1},
                                                 ge::DT_FLOAT16, ge::FORMAT_ND,
                                                 {2, 32, 64},
                                                 ge::FORMAT_ND, {{2, 2},{32,32},{64,64}});
 
     rnn_gen_mask_op.UpdateInputDesc("seq_length", seq_length);
-    rnn_gen_mask_op.UpdateInputDesc("b", b);
     rnn_gen_mask_op.UpdateInputDesc("x", x);
+    rnn_gen_mask_op.set_attr_hidden_size(64);
 
 
     // infer
@@ -42,7 +38,7 @@ TEST_F(RnnGenMaskV2Test, rnn_gen_mask_tsest_1) {
     auto output_desc = rnn_gen_mask_op.GetOutputDescByName("seq_mask");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 
-    std::vector<int64_t> expected_output_shape = {-1, 32, -1};
+    std::vector<int64_t> expected_output_shape = {-1, 32, 64};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;

@@ -17,7 +17,8 @@
 /*!
 * \file dynamic_gru_v2_seqlength_fusion_pass.h
 * \brief DynamicGRUV2Seq fusion pass
-* \brief seq_length-->RnnGenMask-->DynamicGRUV2
+* \brief static shape, seq_length-->RnnGenMask-->DynamicGRUV2
+* \brief dynamic shape, seq_length-->RnnGenMaskV2-->DynamicGRUV2
 */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DYNAMIC_GRU_V2_SEQLENGTH_FUSION_PASS_H
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DYNAMIC_GRU_V2_SEQLENGTH_FUSION_PASS_H

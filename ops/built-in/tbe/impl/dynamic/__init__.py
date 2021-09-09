@@ -373,3 +373,4 @@ from .hard_swish import hard_swish
 from .strided_slice_v3 import strided_slice_v3
 from .swish_grad import swish_grad
 from .hard_swish_grad import hard_swish_grad
+from .dynamic_gru_v2 import dynamic_gru_v2

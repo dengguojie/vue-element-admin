@@ -13,9 +13,6 @@ namespace optiling{
     int32_t core_used;
     int32_t batch_size;
     int32_t num_step;
-    int32_t hidden_size;
-    int32_t hidden_size_block;
-    int32_t repeat;
     int32_t rounds;
     int32_t batch_num_per_aicore;
     int32_t batch_tail;
@@ -28,9 +25,6 @@ namespace optiling{
     params.core_used = 0;
     params.batch_size = 0;
     params.num_step = 0;
-    params.hidden_size = 0;
-    params.hidden_size_block = 0;
-    params.repeat = 0;
     params.rounds = 0;
     params.batch_num_per_aicore = 0;
     params.batch_tail = 0;
@@ -96,23 +90,17 @@ namespace optiling{
   }
 
   void CalRunningInfo(RnnGenMaskV2TilingParams &tiling_params, int32_t core_num, int32_t block,
-                      std::vector<int64_t> & b_shape, std::vector<int64_t> & x_shape)
+                      std::vector<int64_t> & x_shape)
   {
     OP_LOGD("CalRunningInfo is running");
     int32_t batch_size = x_shape[1];
     int32_t num_step = x_shape[0];
-    int32_t hidden_size  = b_shape[0] / 4;
     int32_t rounds = batch_size * num_step;
-    int32_t hidden_size_block = ((hidden_size - 1) / block + 1) * block;
-    int32_t repeat = hidden_size_block / block;
 
     tiling_params.cal_mode = CalTilingModeV2(x_shape);
     tiling_params.batch_size = batch_size;
     tiling_params.num_step = num_step;
-    tiling_params.hidden_size = hidden_size;
     tiling_params.rounds = rounds;
-    tiling_params.hidden_size_block = hidden_size_block;
-    tiling_params.repeat = repeat;
     CalCoreInfo(tiling_params, core_num, x_shape);
   }
 
@@ -123,9 +111,6 @@ namespace optiling{
     ByteBufferPut(run_info.tiling_data, tiling_params.core_used);
     ByteBufferPut(run_info.tiling_data, tiling_params.batch_size);
     ByteBufferPut(run_info.tiling_data, tiling_params.num_step);
-    ByteBufferPut(run_info.tiling_data, tiling_params.hidden_size);
-    ByteBufferPut(run_info.tiling_data, tiling_params.hidden_size_block);
-    ByteBufferPut(run_info.tiling_data, tiling_params.repeat);
     ByteBufferPut(run_info.tiling_data, tiling_params.rounds);
     ByteBufferPut(run_info.tiling_data, tiling_params.batch_num_per_aicore);
     ByteBufferPut(run_info.tiling_data, tiling_params.batch_tail);
@@ -138,9 +123,6 @@ namespace optiling{
     OP_LOGD("op [RnnGenMaskV2Tiling] : core_used=%d.", tiling_params.core_used);
     OP_LOGD("op [RnnGenMaskV2Tiling] : batch_size=%d.", tiling_params.batch_size);
     OP_LOGD("op [RnnGenMaskV2Tiling] : num_step=%d.", tiling_params.num_step);
-    OP_LOGD("op [RnnGenMaskV2Tiling] : hidden_size=%d.", tiling_params.hidden_size);
-    OP_LOGD("op [RnnGenMaskV2Tiling] : hidden_size_block=%d.", tiling_params.hidden_size_block);
-    OP_LOGD("op [RnnGenMaskV2Tiling] : repeat=%d.", tiling_params.repeat);
     OP_LOGD("op [RnnGenMaskV2Tiling] : rounds=%d.", tiling_params.rounds);
     OP_LOGD("op [RnnGenMaskV2Tiling] : batch_num_per_aicore=%d.", tiling_params.batch_num_per_aicore);
     OP_LOGD("op [RnnGenMaskV2Tiling] : batch_tail=%d.", tiling_params.batch_tail);
@@ -161,14 +143,13 @@ namespace optiling{
 
     RnnGenMaskV2TilingParams tiling_params;
     InitTilingParams(tiling_params);
-    std::vector<int64_t> b_shape = op_paras.inputs[1].tensor[0].shape;
-    std::vector<int64_t> x_shape = op_paras.inputs[2].tensor[0].shape;
-    CalRunningInfo(tiling_params, core_num, block, b_shape, x_shape);
+    std::vector<int64_t> x_shape = op_paras.inputs[1].tensor[0].shape;
+    CalRunningInfo(tiling_params, core_num, block, x_shape);
     SetRunningInfo(tiling_params, run_info);
     PrintTilingParams(tiling_params);
 
     run_info.block_dim = tiling_params.core_used;
-    std::vector<int64_t> workspace;
+    std::vector<int64_t> workspace={81920};
     run_info.workspaces = workspace;
     return true;
   }

@@ -38,6 +38,7 @@ using namespace ge;
 namespace fe {
 static const char *FUSED_NODE = "DynamicGRUV2";
 static const std::string PATTERN_FUSEDNODE = "DynamicGRUV2";
+static const int SEQ_LEN_INDEX = 5;
 
 vector<FusionPattern *> DynamicGRUV2SeqFusionPass::DefinePatterns()
 {
@@ -56,20 +57,21 @@ vector<FusionPattern *> DynamicGRUV2SeqFusionPass::DefinePatterns()
 Status DynamicGRUV2SeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::ComputeGraph &graph,
                                                  vector<ge::NodePtr> &newNodes)
 {
-  int32_t seqLenIndex = 5;
+  int32_t seqLenIndex = SEQ_LEN_INDEX;
+  int32_t xIndex = 0;
   bool rnnGenMaskExist = false;
   ge::NodePtr existRnnNode = nullptr;
   auto outDataAnchor = fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor();
   for (auto nextInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
     ge::NodePtr outputNode = nextInDataAnchor->GetOwnerNode();
-    if (outputNode->GetType() == "RnnGenMask") {
+    if (outputNode->GetType() == "RnnGenMask" || outputNode->GetType() == "RnnGenMaskV2") {
       rnnGenMaskExist = true;
       existRnnNode = outputNode;
       break;
     }
   }
   if (rnnGenMaskExist) {
-    ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0).Clone();
+    ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0);
     fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutDesc);
     // Add Edge
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(existRnnNode->GetOutDataAnchor(0),
@@ -77,31 +79,45 @@ Status DynamicGRUV2SeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comp
         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
     return SUCCESS;
   }
-
   ge::OpDescPtr rnnMaskDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-      (rnnMaskDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/RnnGenMask", "RnnGenMask")),
-      rnnMaskDesc = nullptr; return FAILED);
-  ge::GeTensorDesc inputRnnMaskDesc = fusedNode->GetOpDesc()->GetInputDesc(seqLenIndex).Clone();
+  ge::GeTensorDesc inputRnnMaskDesc = fusedNode->GetOpDesc()->GetInputDesc(seqLenIndex);
   std::vector <int64_t> dimLength = inputRnnMaskDesc.GetShape().GetDims();
   FUSION_PASS_CHECK(dimLength.size() != 1,
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Unexcepted seqlength input shape"), return FAILED);
   int64_t batchSize = dimLength[0];
   int64_t numStep = fusedNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(0);
   int64_t hiddenSize = fusedNode->GetOpDesc()->GetInputDesc(2).GetShape().GetDim(0);
+  int64_t m_size = fusedNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(1);
+
   std::vector <int64_t> maskDims = {numStep, batchSize, hiddenSize};
   ge::GeShape tensorMaskShape(maskDims);
   ge::GeShape tensorMaskOriginShape(maskDims);
   ge::GeTensorDesc tensorOutputMaskDesc = ge::GeTensorDesc(tensorMaskShape, ge::FORMAT_ND, ge::DT_FLOAT16);
   tensorOutputMaskDesc.SetOriginShape(tensorMaskOriginShape);
   tensorOutputMaskDesc.SetOriginFormat(ge::FORMAT_ND);
-  rnnMaskDesc->AddInputDesc("seq_length", inputRnnMaskDesc);
-  rnnMaskDesc->AddOutputDesc("seq_mask", tensorOutputMaskDesc);
-  fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutputMaskDesc);
 
-  // Set Attr
-  ge::AttrUtils::SetInt(rnnMaskDesc, "num_step", numStep);
-  ge::AttrUtils::SetInt(rnnMaskDesc, "hidden_size", hiddenSize);
+  if (PatternFusionUtil::IsUnknownShape(numStep) || PatternFusionUtil::IsUnknownShape(m_size)) {
+    FUSION_PASS_MAKE_SHARED(
+      (rnnMaskDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/RnnGenMaskV2", "RnnGenMaskV2")),
+      rnnMaskDesc = nullptr; return FAILED);
+    rnnMaskDesc->AddInputDesc("seq_length", inputRnnMaskDesc);
+    ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(xIndex);
+    rnnMaskDesc->AddInputDesc("x", inputDesc);
+    rnnMaskDesc->AddOutputDesc("seq_mask", tensorOutputMaskDesc);
+    fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutputMaskDesc);
+    // Set Attr
+    ge::AttrUtils::SetInt(rnnMaskDesc, "hidden_size", hiddenSize);
+  } else {
+    FUSION_PASS_MAKE_SHARED(
+      (rnnMaskDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/RnnGenMask", "RnnGenMask")),
+      rnnMaskDesc = nullptr; return FAILED);
+    rnnMaskDesc->AddInputDesc("seq_length", inputRnnMaskDesc);
+    rnnMaskDesc->AddOutputDesc("seq_mask", tensorOutputMaskDesc);
+    fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutputMaskDesc);
+    // Set Attr
+    ge::AttrUtils::SetInt(rnnMaskDesc, "num_step", numStep);
+    ge::AttrUtils::SetInt(rnnMaskDesc, "hidden_size", hiddenSize);
+  }
 
   //Creat Mask
   ge::NodePtr maskNode = graph.AddNode(rnnMaskDesc);
@@ -127,6 +143,14 @@ Status DynamicGRUV2SeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comp
       SUCCESS != ge::GraphUtils::AddEdge(maskNode->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(seqLenIndex)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
 
+  if (PatternFusionUtil::IsUnknownShape(numStep) || PatternFusionUtil::IsUnknownShape(m_size)) {
+    //Add Edge
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(xIndex)->GetPeerOutAnchor(),
+                                            maskNode->GetInDataAnchor(1)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add x input edge failed"), return FAILED);
+  }
+
   return SUCCESS;
 }
 
@@ -151,6 +175,14 @@ Status DynamicGRUV2SeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   // process seq_length
   bool hasSeqLength = fusedDesc->MutableInputDesc("seq_length") != nullptr;
   if (hasSeqLength) {
+    int32_t seqLenIndex = 5;
+    ge::GeTensorDesc inputMaskDesc = fusedDesc->GetInputDesc(seqLenIndex);
+    std::vector <int64_t> dimLength = inputMaskDesc.GetShape().GetDims();
+
+    FUSION_PASS_CHECK(dimLength.size() == 3,
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "The seqlength is already in the form of seqmask."),
+                      return NOT_CHANGED);
+
     FUSION_PASS_CHECK(SUCCESS != AddRNNMaskNode(fusedNode, graph, newNodes),
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "AddRNNMaskNode return failed"),
                       return FAILED);
