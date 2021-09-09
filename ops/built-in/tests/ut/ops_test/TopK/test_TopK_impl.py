@@ -380,6 +380,7 @@ case_k_multi_core_single_not_aligned_fp16 = {
     "expect": "success"
 }
 
+
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend920A"], case_k_lt_16_fp16)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend920A"], case_k_lt_4096_fp16)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend920A"], case_k_between_4096_and_5120_fp16)
@@ -397,6 +398,8 @@ def test_1981(test_arg):
     te_set_version("Ascend920A", "VectorCore")
     top_k(*(case_k_lt_16_fp16["params"]))
     top_k_d(*(case_k_lt_16_fp16["params"]))
+    top_k_d(*(case_k_lt_4096_fp16["params"]))
+
 
 ut_case.add_cust_test_func(test_func=test_1981)
 

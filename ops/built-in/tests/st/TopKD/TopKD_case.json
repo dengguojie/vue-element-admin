@@ -388,5 +388,78 @@
       }
     ],
     "case_name": "test_dynamic_TopKD_000"
+  },
+  {
+    "op": "TopKD",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          32
+        ],
+        "ori_format": "ND",
+        "name": "input_tensor",
+        "param_name": "input_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          8192
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8192
+        ],
+        "ori_format": "ND",
+        "name": "indices_tensor",
+        "param_name": "indices_tensor",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          8
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8
+        ],
+        "ori_format": "ND",
+        "name": "out_tensor",
+        "param_name": "out_tensor",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          8,
+          8
+        ],
+        "format": "ND",
+        "ori_shape": [
+          8,
+          8
+        ],
+        "ori_format": "ND",
+        "name": "out_indices_tensor",
+        "param_name": "out_indices_tensor",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "k",
+        "type": "int",
+        "value": 8
+      }
+    ],
+    "case_name": "test_TopKD_005"
   }
 ]

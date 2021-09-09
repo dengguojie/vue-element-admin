@@ -866,6 +866,93 @@ def _copy_ubuf_to_gm(tvm_ir, dtype, dst, src, num_rows, cols_padding, k, tail_bl
                               dst_offset=k * (num_rows - 1) + gm_offset,
                               src_offset=cols_padding * (num_rows - 1))
 
+def _copy_ubuf_to_gm_k_less_16(tvm_ir, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
+    """
+    _copy_ubuf_to_gm
+    """
+    if dtype == 'float16':
+        blocklen = 16
+        reg_zero = tvm_ir.allocate(dtype, (1,), name='reg_zero', scope=tbe_platform.scope_reg)
+        reg_zero[0] = tvm.const(0, dtype)
+        zero_length = blocklen - k
+
+        tvm_ir.emit(tvm.call_extern("float16", "set_atomic_write", 2))
+        with tvm_ir.for_range(0, num_rows - 1, name='ub2gmi0') as i:
+            for zero_pad in range(zero_length):
+                tvm_ir.emit(
+                    tvm.call_extern(dtype, "reg_mov",
+                                    src.access_ptr('w', offset=cols_padding * i + k + zero_pad),
+                                    tvm.call_extern(dtype, 'reg', reg_zero[0])))
+            _emit_copy_ubuf_to_gm(tvm_ir,
+                                  dtype,
+                                  dst,
+                                  src,
+                                  1,
+                                  1,
+                                  0,
+                                  0,
+                                  dst_offset=k * i + gm_offset,
+                                  src_offset=cols_padding * i)
+        for i in range(blocklen):
+            tvm_ir.emit(
+                tvm.call_extern(dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
+                                src.access_ptr('r', offset=cols_padding * (num_rows - 1) + i)))
+        for zero_pad in range(zero_length):
+            tvm_ir.emit(
+                tvm.call_extern(dtype, "reg_mov",
+                                tail_block_ub.access_ptr('w', offset=k + zero_pad),
+                                tvm.call_extern(dtype, 'reg', reg_zero[0])))
+        _emit_copy_ubuf_to_gm(tvm_ir,
+                              dtype,
+                              dst,
+                              tail_block_ub,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset,
+                              src_offset=0)
+        tvm_ir.emit(tvm.call_extern("float16", "set_atomic_write", 0))
+
+    elif dtype == 'int32':
+        blocklen = 8
+        with tvm_ir.for_range(0, num_rows - 1, name='ub2gmi0') as i:
+            _emit_copy_ubuf_to_gm(tvm_ir,
+                                  dtype,
+                                  dst,
+                                  src,
+                                  1,
+                                  2,
+                                  0,
+                                  0,
+                                  dst_offset=k * i + gm_offset,
+                                  src_offset=cols_padding * i)
+
+        _emit_copy_ubuf_to_gm(tvm_ir,
+                              dtype,
+                              dst,
+                              src,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset,
+                              src_offset=cols_padding * (num_rows - 1))
+
+        for i in range(blocklen):
+            tvm_ir.emit(
+                tvm.call_extern(dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
+                                src.access_ptr('r', offset=cols_padding * (num_rows - 1) + k - blocklen + i)))
+        _emit_copy_ubuf_to_gm(tvm_ir,
+                              dtype,
+                              dst,
+                              tail_block_ub,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset + k - blocklen,
+                              src_offset=0)
 
 def _merge_two_sorted_region(tvm_ir, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted):
     """
@@ -1042,26 +1129,51 @@ def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_
                        cols_padding)
         _conv_fp162s32(tvm_ir, offset_int32_ub, i * cols_padding, offset_fp16_ub, i * cols_padding, cols_padding)
     _add(tvm_ir, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, rows, cols_padding)
-    _copy_ubuf_to_gm(tvm_ir,
-                     'float16',
-                     data_gm_out,
-                     data_ub,
-                     rows,
-                     cols_padding,
-                     k,
-                     tail_block_ub=data_tail_block_ub,
-                     gm_offset=row_start_in_core * k + core_rows_start * k,
-                     multi_core=multi_core)
-    _copy_ubuf_to_gm(tvm_ir,
-                     'int32',
-                     indices_gm_out,
-                     indices_out_final_ub,
-                     rows,
-                     cols_padding,
-                     k,
-                     tail_block_ub=indices_tail_block_ub,
-                     gm_offset=row_start_in_core * k + core_rows_start * k,
-                     multi_core=multi_core)
+
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610", "Ascend920A"):
+        _copy_ubuf_to_gm_k_less_16(tvm_ir,
+                                   'float16',
+                                   data_gm_out,
+                                   data_ub,
+                                   rows,
+                                   cols_padding,
+                                   k,
+                                   tail_block_ub=data_tail_block_ub,
+                                   gm_offset=row_start_in_core * k + core_rows_start * k,
+                                   multi_core=multi_core)
+
+        _copy_ubuf_to_gm_k_less_16(tvm_ir,
+                                   'int32',
+                                   indices_gm_out,
+                                   indices_out_final_ub,
+                                   rows,
+                                   cols_padding,
+                                   k,
+                                   tail_block_ub=indices_tail_block_ub,
+                                   gm_offset=row_start_in_core * k + core_rows_start * k,
+                                   multi_core=multi_core)
+    else:
+        _copy_ubuf_to_gm(tvm_ir,
+                        'float16',
+                        data_gm_out,
+                        data_ub,
+                        rows,
+                        cols_padding,
+                        k,
+                        tail_block_ub=data_tail_block_ub,
+                        gm_offset=row_start_in_core * k + core_rows_start * k,
+                        multi_core=multi_core)
+        _copy_ubuf_to_gm(tvm_ir,
+                        'int32',
+                        indices_gm_out,
+                        indices_out_final_ub,
+                        rows,
+                        cols_padding,
+                        k,
+                        tail_block_ub=indices_tail_block_ub,
+                        gm_offset=row_start_in_core * k + core_rows_start * k,
+                        multi_core=multi_core)
 
 
 def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
@@ -1208,26 +1320,51 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
     _emit_vector_dup(tvm_ir, 'int32', indices_tail_block_ub, tvm.const(1024, "int32"), 1, mask=8)
     _emit_vmul(tvm_ir, 'int32', indices_out_int32_ub, indices_out_int32_ub, indices_tail_block_ub, cnt=k_padding)
     _add(tvm_ir, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
-    _copy_ubuf_to_gm(tvm_ir,
-                     'float16',
-                     data_gm_out,
-                     region_k_ub,
-                     num_rows=1,
-                     cols_padding=cols_padding,
-                     k=k,
-                     tail_block_ub=data_tail_block_ub,
-                     gm_offset=row_start_in_core * k + core_rows_start * k,
-                     multi_core=multi_core)
-    _copy_ubuf_to_gm(tvm_ir,
-                     'int32',
-                     indices_gm_out,
-                     indices_out_final_ub,
-                     1,
-                     cols_padding,
-                     k,
-                     tail_block_ub=indices_tail_block_ub,
-                     gm_offset=row_start_in_core * k + core_rows_start * k,
-                     multi_core=multi_core)
+
+
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610", "Ascend920A"):
+        _copy_ubuf_to_gm_k_less_16(tvm_ir,
+                                   'float16',
+                                   data_gm_out,
+                                   region_k_ub,
+                                   num_rows=1,
+                                   cols_padding=cols_padding,
+                                   k=k,
+                                   tail_block_ub=data_tail_block_ub,
+                                   gm_offset=row_start_in_core * k + core_rows_start * k,
+                                   multi_core=multi_core)
+        _copy_ubuf_to_gm_k_less_16(tvm_ir,
+                                   'int32',
+                                   indices_gm_out,
+                                   indices_out_final_ub,
+                                   1,
+                                   cols_padding,
+                                   k,
+                                   tail_block_ub=indices_tail_block_ub,
+                                   gm_offset=row_start_in_core * k + core_rows_start * k,
+                                   multi_core=multi_core)
+    else:
+        _copy_ubuf_to_gm(tvm_ir,
+                        'float16',
+                        data_gm_out,
+                        region_k_ub,
+                        num_rows=1,
+                        cols_padding=cols_padding,
+                        k=k,
+                        tail_block_ub=data_tail_block_ub,
+                        gm_offset=row_start_in_core * k + core_rows_start * k,
+                        multi_core=multi_core)
+        _copy_ubuf_to_gm(tvm_ir,
+                        'int32',
+                        indices_gm_out,
+                        indices_out_final_ub,
+                        1,
+                        cols_padding,
+                        k,
+                        tail_block_ub=indices_tail_block_ub,
+                        gm_offset=row_start_in_core * k + core_rows_start * k,
+                        multi_core=multi_core)
 
 
 def _tiling(rows, cols):
@@ -1285,7 +1422,13 @@ def _kernel_ir(ins, outs, k, largest):
         rows = rows * int(shape[i])
     multi_core = True
     rows_cores, turn, batch = _tiling(rows, cols)
-    if k < 16:
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+
+    if k < 16 and soc_version not in ("Ascend710", "Ascend610", "Ascend920A"):
+        rows_cores = [rows]
+        turn = 1
+        multi_core = False
+    elif k < 8:
         rows_cores = [rows]
         turn = 1
         multi_core = False
@@ -1521,10 +1664,18 @@ def check_supported(input_tensor,
     # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
     if sorted is not True:
         return True, ""
-    # When input_size > 32768 and k < 16, the AICPU performance is better than the AICore performance.
+    # When input_size > 32768 and k < 16 and soc version is not ["Ascend710", "Ascend610", "Ascend920A"],
+    # the AICPU performance is better than the AICore performance.
     # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
-    if input_size > 32768 and k > 0 and k < 16:
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if input_size > 32768 and k > 0 and k < 16 and soc_version not in ("Ascend710", "Ascend610", "Ascend920A"):
         reason = "input_size is too big, and k is in (0-16), input_size:%s, k:%s"\
+                  % (input_size, k)
+        return False, reason
+    # When input_size > 32768 and k < 8, the AICPU performance is better than the AICore performance.
+    # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
+    if input_size > 32768 and k > 0 and k < 8:
+        reason = "input_size is too big, and k is in (0-8), input_size:%s, k:%s"\
                   % (input_size, k)
         return False, reason
     return True, ""

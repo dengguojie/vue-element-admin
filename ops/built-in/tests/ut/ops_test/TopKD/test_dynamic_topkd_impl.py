@@ -29,21 +29,36 @@ case1 = {"params": [{"shape": (-1, -1), "dtype": "float16", "ori_shape": (880, 4
          "case_name": "TopkD_1",
          "expect": "success",
          "support_expect": True}
-
+case2 = {"params": [{"shape": (5000, ), "dtype": "float16", "ori_shape": (5000, ), "format": "ND", "ori_format": "ND", "range": ((1, 880),)},
+                    {"shape": (5000,), "dtype": "float16", "format": "ND", "ori_shape": (5000,),"ori_format": "ND", "range": ((8192,8192),)},
+                    {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND", "range": ((1, 880),)},
+                    {"shape": (16,), "dtype": "int32", "format": "ND", "ori_shape": (16,),"ori_format": "ND", "range": ((1, 880),)},
+                    16,True,-1,True],
+         "case_name": "TopkD_2",
+         "expect": "success",
+         "support_expect": True}
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710", "Ascend920A"], case1)
-
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710", "Ascend920A"], case2)
 
 def test_1981(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.top_k import top_k
+    from impl.top_k_d import top_k_d
     te_set_version("Ascend920A", "VectorCore")
     top_k({"shape": (100000, ), "format": "ND", "dtype": "float16", "ori_shape": (100000, ), "ori_format": "ND"},
           {"shape": (100000, ), "format": "ND", "dtype": "float16", "ori_shape": (100000, ), "ori_format": "ND"},
           {"shape": (10, ), "format": "ND", "dtype": "float16", "ori_shape": (10, ), "ori_format": "ND"},
           {"shape": (10, ), "format": "ND", "dtype": "int32", "ori_shape": (10, ), "ori_format": "ND"},
           10, False, -1, True)
-
+    te_set_version(test_arg)
+    te_set_version("Ascend910A", "VectorCore")
+    top_k_d({"shape": (5000, ), "format": "ND", "dtype": "float16", "ori_shape": (5000, ), "ori_format": "ND"},
+          {"shape": (8192, ), "format": "ND", "dtype": "float16", "ori_shape": (8192, ), "ori_format": "ND"},
+          {"shape": (16,), "format": "ND", "dtype": "float16", "ori_shape": (16,), "ori_format": "ND"},
+          {"shape": (16,), "format": "ND", "dtype": "int32", "ori_shape": (16,), "ori_format": "ND"},
+          16, True, -1, True)
+    te_set_version(test_arg)
 ut_case.add_cust_test_func(test_func=test_1981)
 
 if __name__ == '__main__':
