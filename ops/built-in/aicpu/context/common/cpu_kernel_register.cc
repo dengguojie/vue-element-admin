@@ -149,16 +149,16 @@ uint32_t CpuKernelRegister::RunCpuKernelAsync(CpuKernelContext &ctx,
   if (aicpu::SetOpname != nullptr) {
     (void)aicpu::SetOpname(type);
   }
-  AsyncNotifyInfo notify_info;
+  std::shared_ptr<AsyncNotifyInfo> notify_info = std::make_shared<AsyncNotifyInfo>();
   if (aicpu::GetTaskAndStreamId != nullptr) {
-    aicpu::GetTaskAndStreamId(notify_info.taskId, notify_info.streamId);
+    aicpu::GetTaskAndStreamId(notify_info->taskId, notify_info->streamId);
   }
-  (void)aicpu::aicpuGetContext(&notify_info.ctx);
-  notify_info.waitType = wait_type;
-  notify_info.waitId = wait_id;
+  (void)aicpu::aicpuGetContext(&notify_info->ctx);
+  notify_info->waitType = wait_type;
+  notify_info->waitId = wait_id;
 
   auto start = std::chrono::steady_clock::now();
-  auto done = [&](uint32_t status) {
+  auto done = [&, notify_info, kernel, type, cb, start](uint32_t status) {
     auto end = std::chrono::steady_clock::now();
     double dr_us=std::chrono::duration<double,std::micro>(end-start).count();
     KERNEL_LOG_EVENT("RunCpuKernel[%s], run time is [%lf] us.", type.c_str(), dr_us);
@@ -166,12 +166,12 @@ uint32_t CpuKernelRegister::RunCpuKernelAsync(CpuKernelContext &ctx,
       KERNEL_LOG_INFO("RunCpuKernel[%s] success.", type.c_str());
       status = cb();
     }
-    notify_info.retCode = status;
-    void *param = reinterpret_cast<void *>(&notify_info);
+    notify_info->retCode = status;
+    void *param = reinterpret_cast<void *>(notify_info.get());
     KERNEL_LOG_INFO("RunCpuKernelAsync notify event wait, wait_type[%u], "
                     "wait_id[%u], task_id[%u], stream_id[%u], status[%u].",
-                    notify_info.waitType, notify_info.waitId, notify_info.taskId,
-                    notify_info.streamId, notify_info.retCode);
+                    notify_info->waitType, notify_info->waitId, notify_info->taskId,
+                    notify_info->streamId, notify_info->retCode);
     AsyncEventUtil::GetInstance().NotifyWait(param, sizeof(AsyncNotifyInfo));
   };
   return async_kernel->ComputeAsync(ctx, done);

@@ -471,10 +471,11 @@ int32_t CpuKernelCache::RunKernel(void *param) {
   bool async_flag = false;
   uint8_t wait_type = 0;
   uint32_t wait_id = 0;
-  std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type;
-  std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type;
+  std::shared_ptr<ShapeAndTypeState> shape_and_type_state = std::make_shared<ShapeAndTypeState>();
   ret = ParseExtMsg(param_head, has_sess_info, kernel_id, unknown_shape,
-                    async_flag, wait_type, wait_id, input_shape_and_type, output_shape_and_type);
+                    async_flag, wait_type, wait_id,
+                    shape_and_type_state->input_shape_and_type,
+                    shape_and_type_state->output_shape_and_type);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
@@ -485,22 +486,22 @@ int32_t CpuKernelCache::RunKernel(void *param) {
   KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR,
                        "Get cpu kernel context from buff failed.")
 
-  ret = UpdateTensor(io_addrs, unknown_shape, input_shape_and_type,
-                     output_shape_and_type, *ctx);
+  ret = UpdateTensor(io_addrs, unknown_shape, shape_and_type_state->input_shape_and_type,
+                     shape_and_type_state->output_shape_and_type, *ctx);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
 
   if (async_flag) {
-    ret = CpuKernelRegister::Instance().RunCpuKernelAsync(*ctx, wait_type, wait_id, [&](){
-      return UpdateFWKOutputShape(unknown_shape, *ctx, output_shape_and_type);
+    ret = CpuKernelRegister::Instance().RunCpuKernelAsync(*ctx, wait_type, wait_id, [&, ctx, shape_and_type_state](){
+      return UpdateFWKOutputShape(unknown_shape, *ctx, shape_and_type_state->output_shape_and_type);
     });
   } else {
     ret = CpuKernelRegister::Instance().RunCpuKernel(*ctx);
     if (ret != KERNEL_STATUS_OK) {
       return -1;
     }
-    ret = UpdateFWKOutputShape(unknown_shape, *ctx, output_shape_and_type);
+    ret = UpdateFWKOutputShape(unknown_shape, *ctx, shape_and_type_state->output_shape_and_type);
   }
   if (ret != KERNEL_STATUS_OK) {
     return -1;

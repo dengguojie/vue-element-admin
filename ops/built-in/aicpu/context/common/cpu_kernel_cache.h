@@ -34,6 +34,11 @@ struct CpuCacheData {
       : proto(proto), context(context) {}
 };
 
+struct ShapeAndTypeState {
+  std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type;
+  std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type;
+};
+
 class CpuKernelCache : public KernelCache<CpuCacheData> {
  public:
   CpuKernelCache() = default;
