@@ -365,8 +365,9 @@ class TilingSelection:
         cost_tiling_range = {}
         for case in cost_cases:
             cost_seed = self.op.get_costmodel_tiling(case)
-            seed_range = self.op._get_tiling_range(gear_repo_shapes, case)
+            seed_range = self.op._get_gear_tiling_range(gear_repo_shapes, case)
             seed_cnt = next(self.seed_cnt)
+            cost_seed["tiling"]["attach_same_to_static"] = False
             cost_tiling_seeds.append(
                 self.op.assembly_case(case, cost_seed['tiling'], seed_range, seed_cnt))
             cost_tiling_range[seed_cnt] = seed_range
@@ -396,10 +397,11 @@ class TilingSelection:
         for seed in repo_seeds:
             seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
             seed_n_value = seed["B_shape"][1]
-            seed_shape_info = [seed_m_value, seed_k_value, seed_n_value, seed_batch_value]
-            seed_range = self.op._get_tiling_range(gear_repo_shapes, seed_shape_info)
-            gear_repo_shapes = _remove_same_shape(gear_repo_shapes, seed_shape_info)
-            candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
+            seed_shape_info = (seed_m_value, seed_k_value, seed_n_value, seed_batch_value)
+            if seed_shape_info not in gear_repo_shapes:
+                seed_range = self.op._get_gear_tiling_range(gear_repo_shapes, seed_shape_info)
+                seed["tiling"]["attach_same_to_static"] = True
+                candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
 
         for gear_shape in gear_repo_shapes:
             key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
@@ -411,8 +413,17 @@ class TilingSelection:
                 cost_cases.append(gear_shape)
 
             for seed in gear_repo_seeds:
-                seed_range = self.op._get_tiling_range(gear_repo_shapes, gear_shape)
-                candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], gear_shape]
+                if self.op.check_tiling_special_value(seed["tiling"]):
+                    seed_range = self.op.get_tiling_range(seed["tiling"], gear_shape)
+                    seed_gear_range = self.op._get_gear_tiling_range(gear_repo_shapes, gear_shape)
+                    seed_range += seed_gear_range[-2:]
+                    seed["tiling"]["attach_same_to_static"] = True
+                    candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], gear_shape]
+                seed_gear_range = self.op._get_gear_tiling_range(gear_repo_shapes, gear_shape)
+                seed_chaged = copy.deepcopy(seed)
+                seed_chaged = self.op.change_full_load_to_value([seed_chaged])[0]
+                seed_chaged["tiling"]["attach_same_to_static"] = False
+                candidates[next(self.seed_cnt)] = [seed_gear_range, seed_chaged["tiling"], gear_shape]
 
         cost_tiling_seeds, cost_range = self._calc_gear_costmodel_matmul(cost_cases, gear_repo_shapes)
 
@@ -497,6 +508,7 @@ class TilingSelection:
         repo_seeds = self.op.get_repo_tiling()
 
         for seed in repo_seeds:
+            seed["tiling"]["attach_same_to_static"] = False
             seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
             seed_n_value = seed["B_shape"][1]
             seed_shape_info = [seed_m_value, seed_k_value, seed_n_value]
@@ -1052,18 +1064,6 @@ def _cut_line(base_line, cut_line):
     if base_line[1] > cut_line[1]:
         segments.append([cut_line[1] + 1, base_line[1]])
     return segments
-
-
-def _remove_same_shape(gear_repo_shapes, seed_shape):
-    """
-    gear_repo_shapes format:[(m_gear, k_gear, n_gear),...]
-    seed_shape format: [m_value, k_value, n_value]
-    """
-    gear_shape = copy.deepcopy(gear_repo_shapes)
-    if seed_shape in gear_repo_shapes:
-        gear_shape.remove(seed_shape)
-    return gear_shape
-
 
 
 class TilingUtils:

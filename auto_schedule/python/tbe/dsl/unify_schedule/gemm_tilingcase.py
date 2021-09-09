@@ -29,7 +29,7 @@ from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import op_context
 from tbe.common import platform as tbe_platform
 from tbe.common.utils.errormgr import error_manager_cube
-from tbe.dsl.compute.gemm_compute import GEMMComputeParam
+from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
@@ -137,41 +137,13 @@ def set_default_tiling_case(target_area, tiling_op):
     return tiling_case
 
 
-def change_full_load_to_value(tiling_list):
-    """
-    change tiling [] to concrete values
-    """
-    transed_tiling_list = []
-    for seed in tiling_list:
-        seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
-        seed_n_value = seed["B_shape"][1]
-        tiling_value = seed["tiling"]
-        block_batch, block_n, block_m = tiling_value["block_dim"][0:3]
-        loc_n_value, loc_m_value = tiling_value["CL0_matrix"][0:2]
-        k0_value = seed["A_shape"][4]
-        if not tiling_value["AL1_shape"]:
-            k_al1 = seed_k_value * k0_value
-            multi_m_al1 = math.ceil(math.ceil(seed_m_value / loc_m_value) / block_m)
-            tiling_value["AL1_shape"] = [k_al1, multi_m_al1, 1, 1]
-
-        if not tiling_value["BL1_shape"]:
-            k_bl1 = seed_k_value * k0_value
-            multi_n_bl1 = math.ceil(math.ceil(seed_n_value / loc_n_value) / block_n)
-            tiling_value["BL1_shape"] = [k_bl1, multi_n_bl1, 1, 1]
-
-        seed["tiling"] = tiling_value
-        transed_tiling_list.append(seed)
-
-    return transed_tiling_list
-
-
 def _is_fuzzily_build():
     """
     check fuzzily build flag
-    
     """
     context = op_context.get_context()
     return (context.get_build_type() == "fuzzily_build")
+
 
 def _get_kernel_compile_info(tiling_key, compile_info_ori, change_keys, tiling_case):
     """
@@ -540,8 +512,36 @@ class MatmulTiling(CubeTilingOp):
         """
         self.tiling_info["tiling_type"] = None
         tiling_list = get_tiling(self.tiling_info)
-        tiling_list = change_full_load_to_value(tiling_list)
+        tiling_list = self.change_full_load_to_value(tiling_list)
         return tiling_list
+
+    def change_full_load_to_value(self, tiling_list):
+        """
+        change tiling [] to concrete values
+        """
+        transed_tiling_list = []
+        for seed in tiling_list:
+            seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
+            seed_n_value = seed["B_shape"][1]
+            tiling_value = seed["tiling"]
+            block_batch, block_n, block_m = tiling_value["block_dim"][0:3]
+            loc_n_value, loc_m_value = tiling_value["CL0_matrix"][0:2]
+            k0_value = seed["A_shape"][4]
+            if not tiling_value["AL1_shape"]:
+                k_al1 = seed_k_value * k0_value
+                multi_m_al1 = math.ceil(math.ceil(seed_m_value / loc_m_value) / block_m)
+                tiling_value["AL1_shape"] = [k_al1, multi_m_al1, 1, 1]
+
+            if not tiling_value["BL1_shape"]:
+                k_bl1 = seed_k_value * k0_value
+                multi_n_bl1 = math.ceil(math.ceil(seed_n_value / loc_n_value) / block_n)
+                tiling_value["BL1_shape"] = [k_bl1, multi_n_bl1, 1, 1]
+
+            seed["tiling"] = tiling_value
+            transed_tiling_list.append(seed)
+
+        return transed_tiling_list
+
 
     def get_costmodel_tiling(self, shape):
         """
@@ -566,7 +566,7 @@ class MatmulTiling(CubeTilingOp):
         self.b_info[1] = shape[2]
 
         cost_seeds = get_tiling(self.tiling_info)
-        cost_seeds = change_full_load_to_value(cost_seeds)
+        cost_seeds = self.change_full_load_to_value(cost_seeds)
         tiling = cost_seeds[0]
 
         # check whether the tiling is default
@@ -577,7 +577,7 @@ class MatmulTiling(CubeTilingOp):
 
         if _check_defualt_tiling(tiling):
             tiling = self._set_default_tiling()
-
+        tiling["tiling"]["attach_same_to_static"] = False
         return tiling
 
     def get_tiling_range(self, tiling_in, shape_info):
@@ -596,7 +596,7 @@ class MatmulTiling(CubeTilingOp):
         """
 
         tiling = self._preprocess_tiling(tiling_in)
-        m_value, k_value, n_value = shape_info
+        m_value, k_value, n_value = shape_info[0:3]
         block_n, block_m = tiling["block_dim"][1:3]
         # get double buffer value
         is_al1_double = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
@@ -611,12 +611,12 @@ class MatmulTiling(CubeTilingOp):
             nbl1 = tiling["BL1_shape"][1] * tiling["CL0_matrix"][0] * BIT_DIR[self.b_type]
             kbl1 = tiling["BL1_shape"][0]
 
-        def _get_left_l1_size(m_value, n_value, k_value):
+        def _get_left_l1_size(m_value, n_value, mk_value, nk_value):
             """
             get left size of L1
             """
-            al1_size = m_value * k_value * is_al1_double * UNIT_LEN * BIT_DIR[self.a_type] * BIT_RATIO_DICT[self.a_type]
-            bl1_size = n_value * k_value * is_bl1_double * UNIT_LEN * BIT_DIR[self.b_type] * BIT_RATIO_DICT[self.b_type]
+            al1_size = m_value * mk_value * is_al1_double * UNIT_LEN * BIT_DIR[self.a_type] * BIT_RATIO_DICT[self.a_type]
+            bl1_size = n_value * nk_value * is_bl1_double * UNIT_LEN * BIT_DIR[self.b_type] * BIT_RATIO_DICT[self.b_type]
             return (l1_size - al1_size - bl1_size)
 
         def _get_max_m_n_value(left_size, k_value, m_value, n_value):
@@ -634,43 +634,101 @@ class MatmulTiling(CubeTilingOp):
             return m_max, n_max
 
         perf_range = []
-        # caculate no full load scen
-        if tiling["AL1_shape"] and tiling["BL1_shape"]:
+
+        if not tiling["attach_same_to_static"]:
             m_range = [max(1, m_value - M_LEN), m_value + M_LEN]
             k_range = [max(1, k_value - K_LEN), k_value + K_LEN]
             n_range = [max(1, n_value - N_LEN), n_value + N_LEN]
-        elif tiling["AL1_shape"] and not tiling["BL1_shape"]:
+            perf_range = m_range + k_range + n_range
+            return perf_range
+
+        # get full load flag
+        AL1_full_load_flag = True
+        BL1_full_load_flag = True
+        BL1_k_full_load_flag = True
+        AL1_k_full_load_flag = True
+
+        if tiling["AL1_shape"]:
+            AL1_m_full_load_flag = tiling["AL1_shape"][1] * tiling["CL0_matrix"][1] * block_m == m_value
+            AL1_k_full_load_flag = tiling["AL1_shape"][0] == (k_value * BIT_DIR[self.a_type])
+            AL1_full_load_flag = AL1_k_full_load_flag and AL1_m_full_load_flag
+
+        if tiling["BL1_shape"]:
+            BL1_n_full_load_flag = tiling["BL1_shape"][1] * tiling["CL0_matrix"][0] * block_n == n_value
+            BL1_k_full_load_flag = tiling["BL1_shape"][0] == (k_value * BIT_DIR[self.a_type])
+            BL1_full_load_flag = BL1_k_full_load_flag and BL1_n_full_load_flag
+
+        k_l0a = tiling["AL0_matrix"][1]
+
+        if not AL1_full_load_flag and not BL1_full_load_flag:
+            m_range = [max(1, m_value - M_LEN), m_value + M_LEN]
+            k_range = [max(1, k_value - K_LEN), k_value + K_LEN]
+            n_range = [max(1, n_value - N_LEN), n_value + N_LEN]
+            l1size_left = _get_left_l1_size(mal1 // UNIT_LEN, nbl1 // UNIT_LEN, kal1 // UNIT_LEN, kbl1 // UNIT_LEN)
+            k_max = K_LEN
+            if (AL1_k_full_load_flag and not BL1_k_full_load_flag):
+                k_max = l1size_left // (mal1 * is_al1_double * BIT_DIR[self.a_type] * BIT_RATIO_DICT[self.a_type] *\
+                        k_l0a) * k_l0a
+            if (not AL1_k_full_load_flag and BL1_k_full_load_flag):
+                k_max = l1size_left // (nbl1 * is_bl1_double * BIT_DIR[self.b_type] * BIT_RATIO_DICT[self.b_type] *\
+                        k_l0a) * k_l0a
+            if (AL1_k_full_load_flag and BL1_k_full_load_flag):
+                k_max = l1size_left // ((nbl1 * is_bl1_double + mal1 * is_al1_double) * BIT_DIR[self.a_type] *\
+                BIT_RATIO_DICT[self.a_type] * k_l0a) * k_l0a
+            k_max = math.floor(k_max)
+            k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, k_value + k_max)]
+
+        elif BL1_full_load_flag and not AL1_full_load_flag:
             m_range = [max(1, m_value - M_LEN), m_value + M_LEN]
             al1_size = mal1 * kal1 * is_al1_double * BIT_RATIO_DICT[self.a_type]
             n_l0c_value = tiling["CL0_matrix"][0]
             n_split_value = math.ceil(math.ceil(n_value / n_l0c_value) / block_n) * n_l0c_value
-            k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, (l1_size - al1_size) //
-                                                    (is_bl1_double * n_split_value * BIT_RATIO_DICT[self.b_type] *
-                                                     BIT_DIR[self.b_type] * UNIT_LEN))]
-            n_range = [max(1, n_value - N_LEN), (l1_size - al1_size) //
-                       (is_bl1_double * k_range[1] * BIT_RATIO_DICT[self.b_type] *
-                       BIT_DIR[self.b_type] * UNIT_LEN * n_l0c_value) * block_n * n_l0c_value]
-        elif not tiling["AL1_shape"] and tiling["BL1_shape"]:
+            if AL1_k_full_load_flag:
+                m_split_value = mal1 // BIT_DIR[self.a_type]
+                k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, l1_size // ((is_bl1_double * n_split_value +\
+                                                    is_al1_double * m_split_value) * BIT_RATIO_DICT[self.b_type] *\
+                                                     BIT_DIR[self.b_type] * UNIT_LEN * k_l0a) * k_l0a)]
+            else:
+                k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, (l1_size - al1_size) //\
+                                                    (is_bl1_double * n_split_value * BIT_RATIO_DICT[self.b_type] *\
+                                                     BIT_DIR[self.b_type] * UNIT_LEN * k_l0a) * k_l0a)]
+            k_max_align_value = math.ceil(k_range[1] / k_l0a) * k_l0a
+            n_range = [max(1, n_value - N_LEN), min(n_value + N_LEN, (l1_size - al1_size) //
+                       (is_bl1_double * k_max_align_value * BIT_RATIO_DICT[self.b_type] *
+                       BIT_DIR[self.b_type] * UNIT_LEN * n_l0c_value) * block_n * n_l0c_value)]
+        elif AL1_full_load_flag and not BL1_full_load_flag:
             bl1_size = kbl1 * nbl1 * is_bl1_double * BIT_RATIO_DICT[self.b_type]
             n_range = [max(1, n_value - N_LEN), n_value + N_LEN]
             m_l0c_value = tiling["CL0_matrix"][1]
             m_split_value = math.ceil(math.ceil(m_value / m_l0c_value) / block_m) * m_l0c_value
-            k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, (l1_size - bl1_size) //
+            if BL1_k_full_load_flag:
+                n_split_value = nbl1 // BIT_DIR[self.a_type]
+                k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, l1_size // ((is_bl1_double * n_split_value + \
+                                                    is_al1_double * m_split_value) * BIT_RATIO_DICT[self.b_type] *
+                                                     BIT_DIR[self.b_type] * UNIT_LEN * k_l0a) * k_l0a)]
+            else:
+                k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, (l1_size - bl1_size) //
                                                     (is_al1_double * m_split_value * BIT_RATIO_DICT[self.a_type] *
-                                                     BIT_DIR[self.a_type] * UNIT_LEN))]
-            m_range = [max(1, m_value - M_LEN), (l1_size - bl1_size) //
-                       (is_al1_double * k_range[1] * BIT_RATIO_DICT[self.a_type] *
-                       BIT_DIR[self.a_type] * UNIT_LEN * m_l0c_value) * m_l0c_value * block_m]
-        else:
+                                                     BIT_DIR[self.a_type] * UNIT_LEN * k_l0a) * k_l0a)]
+            k_max_align_value = math.ceil(k_range[1] / k_l0a) * k_l0a
+            m_range = [max(1, m_value - M_LEN), min(m_value + M_LEN, (l1_size - bl1_size) //
+                       (is_al1_double * k_max_align_value * BIT_RATIO_DICT[self.a_type] *
+                       BIT_DIR[self.a_type] * UNIT_LEN * m_l0c_value) * m_l0c_value * block_m)]
+        elif AL1_full_load_flag and BL1_full_load_flag:
             actual_m_value = math.ceil(math.ceil(m_value / tiling["CL0_matrix"][1]) / block_m) * tiling["CL0_matrix"][1]
             actual_n_value = math.ceil(math.ceil(n_value / tiling["CL0_matrix"][0]) / block_n) * tiling["CL0_matrix"][0]
-            left_size = _get_left_l1_size(actual_m_value, actual_n_value, k_value + K_LEN)
+            left_size = _get_left_l1_size(actual_m_value, actual_n_value, k_value, k_value)
 
             if left_size >= 0:
-                m_max, n_max = _get_max_m_n_value(left_size, k_value + K_LEN, m_value, n_value)
+                m_max, n_max = _get_max_m_n_value(left_size, k_value, m_value, n_value)
                 m_range = [max(1, m_value - M_LEN), min(m_value + M_LEN, m_max)]
-                k_range = [max(1, k_value - K_LEN), k_value + K_LEN]
                 n_range = [max(1, n_value - N_LEN), min(n_value + N_LEN, n_max)]
+                m_align_value = math.ceil(math.ceil(m_range[1] / tiling["CL0_matrix"][1]) / block_m) * tiling["CL0_matrix"][1]
+                n_align_value = math.ceil(math.ceil(n_range[1] / tiling["CL0_matrix"][0]) / block_n) * tiling["CL0_matrix"][0]
+                k_max = math.floor(l1_size // ((is_al1_double * m_align_value +\
+                                   is_bl1_double * n_align_value) * BIT_RATIO_DICT[self.b_type] *\
+                                   BIT_DIR[self.b_type] * UNIT_LEN * k_l0a) * k_l0a)
+                k_range = [max(1, k_value - K_LEN), min(k_value + K_LEN, k_max)]
             else:
                 m_range = [max(1, m_value - M_LEN), m_value]
                 k_range = [max(1, k_value - K_LEN), k_value]
@@ -769,6 +827,7 @@ class MatmulTiling(CubeTilingOp):
             'CUB_pbuffer': 1,
             'UBG_pbuffer': 1,
         }
+        tiling["attach_same_to_static"] = False
         tiling = {"tiling": tiling, "A_shape": self.a_info,
                     "B_shape": self.b_info, "C_shape": self.c_info}
 
@@ -863,7 +922,31 @@ class MatmulTiling(CubeTilingOp):
         return list(itertools.product(gear_m_list, gear_k_list, gear_n_list, gear_batch_list))
 
 
-    def _get_tiling_range(self, gear_repo_shapes, seed_shape):
+    def check_tiling_special_value(self, tiling):
+        """
+        check tiling K full load or AL1 full load or BL1 full load
+
+        Parameters
+        ----------
+        tiling: tiling value
+
+        Returns
+        -------
+        bool: if any full load, return True else False
+        """
+        if tiling["AL1_shape"] and tiling["BL1_shape"]:
+            if tiling["AL1_shape"][1] != 1 or tiling["BL1_shape"][1] != 1 or \
+               tiling["AL1_shape"][0] == (self.tiling_info["ca1_var_range"][0] * BIT_DIR[self.a_type]) or \
+               tiling["BL1_shape"][0] == (self.tiling_info["ca1_var_range"][0] * BIT_DIR[self.a_type]):
+                tiling["attach_same_to_static"] = True
+                return True
+        if (tiling["AL1_shape"] == []) or (tiling["BL1_shape"] == []):
+            tiling["attach_same_to_static"] = True
+            return True
+        return False
+
+
+    def _get_gear_tiling_range(self, gear_repo_shapes, seed_shape):
         """
         cacaulate gear repository range
 
@@ -875,7 +958,7 @@ class MatmulTiling(CubeTilingOp):
 
         Returns
         -------
-        gear_tiling_range：[m_min, m_max, k_min, k_max, n_min, n_max]
+        gear_tiling_range: [m_min, m_max, k_min, k_max, n_min, n_max]
         """
         cls = self.__class__
 

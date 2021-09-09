@@ -27,7 +27,7 @@ from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
     CceConv2dBackpropInputOp
 from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import \
     CceConv3dBackpropFilterOp
-from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
+from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule
 
 from .constants import Pattern
 

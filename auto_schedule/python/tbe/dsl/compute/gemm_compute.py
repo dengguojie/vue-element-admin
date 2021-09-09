@@ -548,7 +548,7 @@ def gemm(tensor_a, tensor_b, para_dict):
     is_dynamic = in_dynamic()
     cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     is_confusion_transpose = para_dict.get("confusion_transpose", False)
-    use_old_code = cube_vector_split or is_dynamic or is_confusion_transpose
+    use_old_code = cube_vector_split or is_confusion_transpose
     use_old_code = filter_case(use_old_code, tensor_a, tensor_b, kernel_name)
 
     if not use_old_code:
