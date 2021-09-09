@@ -30,7 +30,7 @@ class AContainer(a_lib.ObjWithConst):
     container object
     """
     _instance = None
-
+    
     @classmethod
     def get_instance(cls):
         """
@@ -39,9 +39,9 @@ class AContainer(a_lib.ObjWithConst):
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
-
-    def __init__(self, mode="static"):
-        self._init_tik_module(mode)
+    
+    def __init__(self):
+        self._init_tik_module()
         self._init_const_value()
         self._init_vector_cmds()
 
@@ -87,7 +87,7 @@ class AContainer(a_lib.ObjWithConst):
             return proc_byte // self.const_block_byte
         else:
             raise ValueError("not supported dtype:{}".format(dtype))
-
+    
     def _calc_block_num_tik(self, dtype, proc_num):
         a_check.check_tik_param_dtype(proc_num, ("int32",), self.tik)
         a_check.check_tik_param_low(proc_num, self.tik, self.tinst,
@@ -101,7 +101,7 @@ class AContainer(a_lib.ObjWithConst):
             return proc_byte // self.const_block_byte
         else:
             raise ValueError("not supported dtype:{}".format(dtype))
-
+    
     def calc_blk_align_num(self, dtype, cur_num):
         """
         calculate block number
@@ -114,7 +114,7 @@ class AContainer(a_lib.ObjWithConst):
         else:
             a_check.check_param_type(cur_num, int, "error cur_num type")
             a_check.check_param_low(cur_num, 0, "error cur_num")
-
+        
         elm_byte = self.const_dtype_byte.get(dtype)
         if elm_byte is not None:
             align_unit = self.const_block_byte // elm_byte
@@ -134,7 +134,7 @@ class AContainer(a_lib.ObjWithConst):
         else:
             raise RuntimeError("not supported dtype:{}".format(dtype))
         return c0_num
-
+    
     def get_tensor_type(self):
         """
         get tensor type
@@ -145,7 +145,7 @@ class AContainer(a_lib.ObjWithConst):
             return self.tik.api.tik_tensor.Tensor
         else:
             raise RuntimeError("not supported tik version")
-
+    
     def get_vec_cmd_type(self, cmd_name):
         """
         get type of vector cmd
@@ -154,7 +154,7 @@ class AContainer(a_lib.ObjWithConst):
             return self.const_vec_cmds.get(cmd_name)[1]
         else:
             raise ValueError("not supported cmd_name:{}".format(cmd_name))
-
+    
     def get_vec_cmd_func(self, cmd_name):
         """
         get function of vector cmd
@@ -164,11 +164,8 @@ class AContainer(a_lib.ObjWithConst):
         else:
             raise ValueError("not supported cmd_name:{}".format(cmd_name))
 
-    def _init_tik_module(self, mode="static"):
-        if mode == "dynamic":
-            self.tik = importlib.import_module("tbe.tik")
-        else:
-            self.tik = importlib.import_module("te.tik")
+    def _init_tik_module(self):
+        self.tik = importlib.import_module("te.tik")
         self.plat = importlib.import_module("te.platform")
         self.tinst = self.tik.Tik(self.tik.Dprofile())
 

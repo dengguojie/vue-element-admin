@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
-#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -23,7 +22,7 @@ const int32_t REDUCE_MEAN_COF_FP16 = 2;
 const int32_t NUM_TW = 2;
 const int32_t NUM_THR = 3;
 const string TSCONST = "const";
-const string TSDYNAMIC = "dynamic";
+const string TSSTATIC = "static";
 const int32_t LAST_DIM_RANGE_ONE = 1;
 const int32_t LAST_DIM_RANGE_NUM1 = 64;
 const int32_t LAST_DIM_RANGE_NUM2 = 2000;
@@ -422,8 +421,6 @@ GetBlockTilingData(int32_t block_axis, int32_t block_factor,
       }
       break;
     }
-    // fuse only consecutive axis, so |block_axis - block_axis_1|=1
-    break;
   }
 
   std::vector<int32_t> res = {block_axis, block_factor, block_axis_1,
@@ -740,208 +737,103 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
   }
 }
 
-vector<int32_t> split_shape(const vector<int64_t> shape_split, int32_t dim_split) {
-  // split shape
-  int32_t batch_num = 1;
-  int32_t data_num = 1;
-  for (int32_t i = 0; i < dim_split; i++) {
-    batch_num *= shape_split[i];
-  }
-  for (size_t i = dim_split; i < shape_split.size(); i++) {
-    data_num *= shape_split[i];
-  }
-  vector<int32_t> res = {batch_num, data_num};
-  return res;
-}
-
-void LayerNormTikTiling(vector<int64_t> input_x, int32_t begin_norm_axis,
-                        string gm_type, int32_t ub_max_byte, int32_t core_num,
-                        string tik_mode, OpRunInfo &run_info) {
-  int32_t tiling_mode = 1;
-  vector<int32_t> res = split_shape(input_x, begin_norm_axis);
-  int32_t batch_num = res[0];
-  int32_t data_num = res[1];
-  int32_t block_size = 32;
-  int32_t const_vector_proc_byte = 256;
-  string ub_type = "float32";
-  map<string, int32_t> const_dtype_byte = {
-      {"float16", 2}, {"fp16", 2},
-      {"float32", 4}, {"fp32", 4},
-  };
-  int32_t ub_size;
-
-  if (batch_num <= core_num) {
-    ub_size = ub_max_byte;
-  } else {
-    ub_size = ub_max_byte / 2;
-  }
-
-  // expand tensor:batch_mean_ub, batch_mean_square_ub, batch_variance_ub,
-  // work_tensro_ub
-  int32_t expand_tensor_num = 4;
-  int32_t expand_size = expand_tensor_num * block_size;
-  int32_t ub_size_remain = ub_size - expand_size;
-
-  int32_t ub_data_size = const_dtype_byte[ub_type];
-  int32_t ub_repeat_data_num =
-      const_vector_proc_byte / const_dtype_byte[ub_type];
-  int32_t gm_data_size = const_dtype_byte[gm_type];
-  // count tensor: input_data_ub, input_data_square_ub
-  int32_t count_tensor_num = 2;
-  int32_t each_data_size = count_tensor_num * ub_data_size + ub_data_size / ub_repeat_data_num;
-  if (ub_type != gm_type) {
-    each_data_size += gm_data_size;
-  }
-
-  int32_t data_num_max = ub_size_remain / each_data_size;
-  int32_t align_num = ub_repeat_data_num;
-  int32_t data_num_align = (data_num_max + align_num - 1) / align_num * align_num;
-  int32_t const_vector_proc_max_rpt = 255;
-  data_num_max = const_vector_proc_max_rpt * align_num;
-  int32_t mode_split_n_max_num = min({data_num_align, data_num_max});
-  if (data_num <= mode_split_n_max_num) {
-    tiling_mode = 0;
-  }
-  int32_t each_core_batch_num = (batch_num + core_num - 1) / core_num;
-  int32_t loop_times = (batch_num + each_core_batch_num - 1) / each_core_batch_num;
-  int32_t last_core_batch_num = batch_num - each_core_batch_num * (loop_times - 1);
-
-  // tiling_data
-  int32_t gm_block_num = block_size / ub_data_size;
-  if (ub_type != gm_type) {
-    run_info.workspaces = {(batch_num + gm_block_num) * ub_data_size, (batch_num + gm_block_num) * ub_data_size,
-                           core_num * 8};
-  }
-  if (tik_mode == TSCONST) {
-    run_info.block_dim = loop_times;
-  } else {
-    run_info.block_dim = core_num;
-  }
-
-  ByteBufferPut(run_info.tiling_data, (int32_t)tiling_mode);
-  ByteBufferPut(run_info.tiling_data, (int32_t)batch_num);
-  ByteBufferPut(run_info.tiling_data, (int32_t)data_num);
-  ByteBufferPut(run_info.tiling_data, (int32_t)loop_times);
-  ByteBufferPut(run_info.tiling_data, (int32_t)each_core_batch_num);
-  ByteBufferPut(run_info.tiling_data, (int32_t)last_core_batch_num);
-  float reduce_mean_cof = 1.0 / data_num;
-  ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
-}
-
 bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
                      const nlohmann::json &op_info, OpRunInfo &run_info) {
   OP_LOGI(op_type.c_str(), "LayerNormTiling running.");
   std::vector<int64_t> input_x = op_paras.inputs[0].tensor[0].shape;
   const std::string input_dtype = op_paras.inputs[0].tensor[0].dtype;
+
+  std::vector<int64_t> input_gama = op_paras.inputs[1].tensor[0].shape;
+  std::vector<int64_t> input_beta = op_paras.inputs[2].tensor[0].shape;
+  std::vector<int32_t> reduce_axis =
+      op_info["reduce_axis"].get<std::vector<int32_t>>();
   int32_t core_num = op_info["core_num"].get<int32_t>();
-  string input_format = op_info["input_format"].get<string>();
-  int32_t begin_norm_axis = op_info["begin_norm_axis"].get<int32_t>();
-  int32_t begin_params_axis = op_info["begin_params_axis"].get<int32_t>();
-  int32_t len_input_x = input_x.size();
-  if (begin_norm_axis < 0) {
-    begin_norm_axis += len_input_x;
-  }
-  if (begin_params_axis < 0) {
-    begin_params_axis += len_input_x;
-  }
-
-  bool if_tik_support = op_info["is_tik_support"].get<bool>();
-  if (if_tik_support) {
-    OP_LOGI(op_type.c_str(), "LayerNormTikTiling running.");
-    string tik_mode;
-    auto tik_iter_num = op_info.find("tik_mode");
-    if (tik_iter_num != op_info.end()) {
-      tik_mode = op_info["tik_mode"].get<string>();
-    } else {
-      tik_mode = TSDYNAMIC;
-    }
-    int32_t ub_max_byte = op_info["ub_max_byte"].get<int32_t>();
-    LayerNormTikTiling(input_x, begin_norm_axis, input_dtype, ub_max_byte, core_num, tik_mode, run_info);
-    return true;
+  std::string input_format = op_info["input_format"].get<std::string>();
+  string mode;
+  auto iter_num = op_info.find("mode");
+  if (iter_num != op_info.end()) {
+    mode = op_info["mode"].get<string>();
   } else {
-    OP_LOGI(op_type.c_str(), "LayerNormDslTiling running.");
-    string mode;
-    auto iter_num = op_info.find("mode");
-    if (iter_num != op_info.end()) {
-      mode = op_info["mode"].get<string>();
-    } else {
-      mode = TSDYNAMIC;
-    }
-    std::vector<int32_t> reduce_axis = op_info["reduce_axis"].get<std::vector<int32_t>>();
-
-    int32_t max_ub_size;
-    int32_t block = 1;
-    if (input_dtype == "float32" || input_dtype == "fp32") {
-      max_ub_size = op_info["max_ub_size_normal_fp32"].get<int32_t>();
-      block = 8;
-    } else {
-      max_ub_size = op_info["max_ub_size_normal_fp16"].get<int32_t>();
-      block = 16;
-    }
-
-    int32_t workspace_sub1 = 2;
-    bool is_support_vexp = op_info["is_support_vexp"].get<bool>();
-    if (is_support_vexp || (input_dtype == "float32")) {
-      workspace_sub1 = 4;
-    }
-
-    for (uint32_t i = 0; i < input_x.size(); i++) {
-      workspace_sub1 *= input_x[i];
-      ByteBufferPut(run_info.tiling_data, (int32_t)input_x[i]);
-      OP_LOGD(op_type.c_str(), "input_x shape:%d.", input_x[i]);
-    }
-
-    std::vector<int64_t> workspaces = {workspace_sub1};
-    TilingParams tilingparams;
-    CompileInfo compileinfo;
-    bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, input_x, run_info);
-
-    if (!compileflag) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
-    }
-
-    // update last dim align block
-    std::vector<int64_t> old_input_x = input_x;
-    if ((input_x[input_x.size() - 1] != LAST_DIM_RANGE_ONE) && (input_x.size() > 1)) {
-      input_x[input_x.size() - 1] = (input_x[input_x.size() - 1] + block - 1) / block * block;
-    }
-
-    GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size, compileinfo, input_dtype, input_format);
-
-    // tiling_key
-    int32_t tiling_key = CalcTilingKey(compileinfo, old_input_x, tilingparams, reduce_axis);
-
-    run_info.workspaces = workspaces;
-    run_info.block_dim = tilingparams.block_dim;
-    run_info.tiling_key = tiling_key;
-
-    if (mode == TSCONST) {
-      ByteBufferPut(run_info.tiling_data,
-                    (int32_t)tilingparams.block_tiling_axis);
-      ByteBufferPut(run_info.tiling_data,
-                    (int32_t)tilingparams.block_tiling_axis_1);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_tiling_axis);
-      ByteBufferPut(run_info.tiling_data,
-                    (int32_t)tilingparams.ub_tiling_axis_reduce);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
-      if (compileinfo.is_normal) {
-        ByteBufferPut(run_info.tiling_data, (int32_t)1);
-      } else {
-        ByteBufferPut(run_info.tiling_data, (int32_t)0);
-      }
-    } else {
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
-    }
-
-    return true;
+    mode = TSSTATIC;
   }
+
+  int32_t max_ub_size;
+  int32_t block = 1;
+  if (input_dtype == "float32" || input_dtype == "fp32") {
+    max_ub_size = op_info["max_ub_size_normal_fp32"].get<int32_t>();
+    block = 8;
+  } else {
+    max_ub_size = op_info["max_ub_size_normal_fp16"].get<int32_t>();
+    block = 16;
+  }
+
+  int32_t workspace_sub1 = 2;
+  bool is_support_vexp = op_info["is_support_vexp"].get<bool>();
+  if (is_support_vexp || (input_dtype == "float32")) {
+    workspace_sub1 = 4;
+  }
+
+  for (uint32_t i = 0; i < input_x.size(); i++) {
+    workspace_sub1 *= input_x[i];
+    ByteBufferPut(run_info.tiling_data, (int32_t)input_x[i]);
+    OP_LOGD(op_type.c_str(), "input_x shape:%d.", input_x[i]);
+  }
+
+  std::vector<int64_t> workspaces = {workspace_sub1};
+  TilingParams tilingparams;
+  CompileInfo compileinfo;
+  bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis,
+                                    input_x, run_info);
+
+  if (!compileflag) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
+  }
+
+  // update last dim align block
+  std::vector<int64_t> old_input_x = input_x;
+  if ((input_x[input_x.size() - 1] != LAST_DIM_RANGE_ONE) &&
+      (input_x.size() > 1)) {
+    input_x[input_x.size() - 1] =
+        (input_x[input_x.size() - 1] + block - 1) / block * block;
+  }
+
+  GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size,
+                compileinfo, input_dtype, input_format);
+
+  // tiling_key
+  int32_t tiling_key =
+      CalcTilingKey(compileinfo, old_input_x, tilingparams, reduce_axis);
+
+  run_info.workspaces = workspaces;
+  run_info.block_dim = tilingparams.block_dim;
+  run_info.tiling_key = tiling_key;
+
+  if (mode == TSCONST) {
+    ByteBufferPut(run_info.tiling_data,
+                  (int32_t)tilingparams.block_tiling_axis);
+    ByteBufferPut(run_info.tiling_data,
+                  (int32_t)tilingparams.block_tiling_axis_1);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_tiling_axis);
+    ByteBufferPut(run_info.tiling_data,
+                  (int32_t)tilingparams.ub_tiling_axis_reduce);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+    if (compileinfo.is_normal) {
+      ByteBufferPut(run_info.tiling_data, (int32_t)1);
+    } else {
+      ByteBufferPut(run_info.tiling_data, (int32_t)0);
+    }
+  } else {
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+  }
+
   OP_LOGI(op_type.c_str(), "LayerNormTiling end.");
+  return true;
 }
 
 // register tiling interface of LayerNorm op.
