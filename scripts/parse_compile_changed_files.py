@@ -78,31 +78,24 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
 
 
         base_path = os.path.join("ops", "built-in")
-        ut_path = os.path.join("ops", "built-in", "tests", "ut")
         for line in lines:
             line = line.strip()
             if line.endswith(".py"):
                 continue
+            if line.startswith(os.path.join(base_path, "tests")):
+                continue
             if line.startswith(os.path.join(base_path, "aicpu")) or line.startswith(
-                    os.path.join(ut_path, "aicpu_test")) or line.startswith(
                     os.path.join(base_path, "tests", "utils")):
                 aicpu_changed_files.append(line)
-            elif line.startswith(os.path.join(base_path, "fusion_pass")) or line.startswith(
-                    os.path.join(ut_path, "graph_fusion")):
+            elif line.startswith(os.path.join(base_path, "fusion_pass")):
                 pass_changed_files.append(line)
-            elif line.startswith(os.path.join(base_path, "op_proto")) or line.startswith(
-                    os.path.join(ut_path, "ops_test")):
+            elif line.startswith(os.path.join(base_path, "op_proto")):
                 proto_changed_files.append(line)
-            elif line.startswith(os.path.join(base_path, "op_tiling")) or line.startswith(
-                    os.path.join(ut_path, "op_tiling_test")):
+            elif line.startswith(os.path.join(base_path, "op_tiling")):
                 tiling_changed_files.append(lines)
-            elif line.startswith(os.path.join(base_path, "framework", "tf_plugin")) or line.startswith(
-                    os.path.join(ut_path, "plugin_test", "tensorflow")) or line.startswith(
-                os.path.join(ut_path, "plugin_test", "common")):
+            elif line.startswith(os.path.join(base_path, "framework", "tf_plugin")) :
                 plugin_changed_files.append(line)
-            elif line.startswith(os.path.join(base_path, "framework", "onnx_plugin")) or line.startswith(
-                    os.path.join(ut_path, "plugin_test", "onnx")) or line.startswith(
-                os.path.join(ut_path, "plugin_test", "common")):
+            elif line.startswith(os.path.join(base_path, "framework", "onnx_plugin")):
                 onnx_plugin_changed_files.append(line)
             else:
                 other_changed_files.append(line)
