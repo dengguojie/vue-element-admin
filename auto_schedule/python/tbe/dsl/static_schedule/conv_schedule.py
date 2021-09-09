@@ -4293,6 +4293,23 @@ class CceConvOp:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], c_slice_axis)
                 else:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], bido)
+        
+        def _handle_reluv2_buffer_align():
+            """
+            conv + reluv2 fusion mask tensor buffer align for static shape
+            """
+            res_mask_u8 = ConvParam.tensor_map.get("res_mask_u8")
+            valid = ConvParam.conv_reluv2_flag                                               \
+                    and not self._dynamic_flag                                               \
+                    and isinstance(res_mask_u8, tvm.tensor.Tensor)                           \
+                    and len(res_mask_u8.op.input_tensors) > 0                                \
+                    and isinstance(res_mask_u8.op.input_tensors[0], tvm.tensor.Tensor)       \
+                    and "elewise_binary_cmp" in sch[res_mask_u8.op.input_tensors[0]].op.tag  \
+                    and "bit" in sch[res_mask_u8.op.input_tensors[0]].op.tag
+            if valid:
+                mask_tensor = res_mask_u8.op.input_tensors[0]
+                sch[mask_tensor].storage_align(sch[mask_tensor].op.axis[1], 32, 0)
+        
         def _handle_var_range():
             """
             set var_range for dynamic ops
@@ -5560,6 +5577,7 @@ class CceConvOp:
         _pragma_for_convbn()
         _handle_bias_align_init_compute_at()
         _handle_bias_compute_at()
+        _handle_reluv2_buffer_align()
 
         self._flag_dict["addrelu_flag"] = False
         if set_biasrelu_optim_flag():
