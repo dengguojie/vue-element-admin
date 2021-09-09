@@ -295,7 +295,10 @@ C0 = 16
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 # maximum dma_copy stride
 MAX_STRIDE = 65535
-
+# maximum data_move nburst
+MAX_NBURST = 4095
+# fixed_used_ub referred to 9 fixed small tensors
+FIXED_USED_UB = 512 * 4 + 256 * 4 + 1024
 
 
 
@@ -443,10 +446,8 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
             temp_size = ((kernel_h - stride_h), fmap_w, C0)
         else:
             temp_size = (1, 16, C0)
-        # fixed_used_ub referred to 5 fixed small tensors.
-        fixed_used_ub = 512 * 3 + 256 * 2
         total_used_ub = _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) + _cal_shape_ele(
-            temp_size) * fp32_data_size + fixed_used_ub
+            temp_size) * fp32_data_size + FIXED_USED_UB
         remain_hi = (fmap_h - (ho - 1) * stride_h - pad_top) - max(kernel_h, stride_h)
         if remain_hi > 0:
             total_used_ub += _cal_shape_ele((remain_hi, fmap_w * C0)) * fp16_data_size
@@ -674,10 +675,10 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
             each_process_hi = (each_process_ho - 1) * stride_h + kernel_h
         else:
             each_process_hi = each_process_ho * stride_h
-        col2img_ub_shape = (each_process_hi, fmap_w, C0)
+        col2img_ub_shape = (each_process_hi, wi_temp, C0)
         cut_ho_nums = ho // each_process_ho
         last_valid_hi = hi_temp - (cut_ho_nums * each_process_ho * stride_h - pad_top)
-        extra_ub = 512 * 3 + 256
+        extra_ub = FIXED_USED_UB
         temp_process_hi = kernel_h
         if last_valid_hi > temp_process_hi:
             remain_hi = last_valid_hi - temp_process_hi
@@ -702,7 +703,7 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
     elif _cal_shape_ele(col_ub_shape) * fp16_data_size > SIZE_L1:
         atomic_flag = True
     if _cal_shape_ele(col_ub_shape) * (fp16_data_size + fp32_data_size) + _cal_shape_ele(
-            (fmap_w, C0)) * fp16_data_size > SIZE_UB:
+            (fmap_w, C0)) * fp16_data_size + FIXED_USED_UB > SIZE_UB:
         atomic_flag = True
     return atomic_flag
 
@@ -995,24 +996,27 @@ class MaxpoolGrad:
             src1_offset = 0
             src2_offset = 0
             if stride_cofig[3] > 255 or stride_cofig[4] > 255 or stride_cofig[5] > 255:
+                dst_offset_stride = BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3]
+                src1_offset_stride = BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) // 8) * stride_cofig[4]
+                src2_offset_stride = BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) // 8) * stride_cofig[5]
                 if repeat_max_loop > 0:
-                    with self.tik_instance.for_range(0, 255, thread_num=1):
-                        self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                    with self.tik_instance.for_range(0, 255, thread_num=1) as loop_idx:
+                        self.tik_instance.vadd(mask, dst[dst_offset + dst_offset_stride * loop_idx],
+                                               src1[src1_offset + src1_offset_stride * loop_idx],
+                                               src2[src2_offset + src2_offset_stride * loop_idx], 1,
                                                stride_cofig[0], stride_cofig[1], stride_cofig[2], 8, 8, 8)
-                        dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3]
-                        src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
-                                                      8) * stride_cofig[4]
-                        src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
-                                                      8) * stride_cofig[5]
+                    dst_offset += dst_offset_stride * 255
+                    src1_offset += src1_offset_stride * 255
+                    src2_offset += src2_offset_stride * 255
                 if remain_max_loop > 0:
-                    with self.tik_instance.for_range(0, remain_max_loop, thread_num=1):
-                        self.tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                    with self.tik_instance.for_range(0, remain_max_loop, thread_num=1) as loop_idx:
+                        self.tik_instance.vadd(mask, dst[dst_offset + dst_offset_stride * loop_idx],
+                                               src1[src1_offset + src1_offset_stride * loop_idx],
+                                               src2[src2_offset + src2_offset_stride * loop_idx], 1,
                                                stride_cofig[0], stride_cofig[1], stride_cofig[2], 8, 8, 8)
-                        dst_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8) * stride_cofig[3]
-                        src1_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src1.dtype.lower()) //
-                                                      8) * stride_cofig[4]
-                        src2_offset += BLOCK_SIZE // (tbe_platform.get_bit_len(src2.dtype.lower()) //
-                                                      8) * stride_cofig[5]
+                    dst_offset += dst_offset_stride * remain_max_loop
+                    src1_offset += src1_offset_stride * remain_max_loop
+                    src2_offset += src2_offset_stride * remain_max_loop
                 if remain_ele > 0:
                     self.tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
                                            stride_cofig[0], stride_cofig[1], stride_cofig[2], 8, 8, 8)
@@ -1609,10 +1613,17 @@ class MaxpoolGrad:
                                                        scope=tik.scope_ubuf)
             self._vector_dup(col2img_fp16_ub, 0, col2img_fp16_ub.shape, self.scalar_zero_fp16, "float16")
             pad_top_offset = pad_top * wi * C0
-            with self.tik_instance.for_range(0, hi) as re_times:
-                self.tik_instance.data_move(self.res_gm[self.offset_gm + re_times * self.wi * C0],
-                                            col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, self.wi * C0 // 16,
-                                            pad_left + pad_right, 0)
+            if offset_gm_block is None:
+                with self.tik_instance.for_range(0, hi) as re_times:
+                    self.tik_instance.data_move(self.res_gm[self.offset_gm + re_times * self.wi * C0],
+                                                col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, self.wi * C0 // 16,
+                                                pad_left + pad_right, 0)
+            else:
+                with self.tik_instance.for_range(0, mov_len_hi) as re_times:
+                    self.tik_instance.data_move(self.res_gm[offset_gm_block + re_times * self.wi * C0],
+                                                col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, self.wi * C0 // 16,
+                                                pad_left + pad_right, 0)
+
             with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
                 self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
                 with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
@@ -1637,7 +1648,6 @@ class MaxpoolGrad:
                                                                     scope=tik.scope_ubuf)
                         self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
                         col_index = index_h * wi * C0 + index_w * C0
-                        col_index_ori = wi * C0 * self.stride_h * ho_idx
                         mask_index = self.wo * C0 * ho_idx
                         self._vector_op("vadd",
                                         col2img_fp32_ub[col_index:],
@@ -1660,20 +1670,22 @@ class MaxpoolGrad:
                                                            name="col2img_fp16_ub",
                                                            scope=tik.scope_ubuf)
                 self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
-                self.tik_instance.data_move(self.res_gm[self.offset_gm + col_index_ori], col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
-                                            self.kh, self.wi * C0 // 16, pad_left + pad_right, 0)
-            if offset_gm_block is not None:
-                with self.tik_instance.if_scope(start_threshold > pad_top):
-                    self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                                col2img_fp16_ub[start_threshold * wi * C0 + pad_left * C0], 0,
-                                                each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
 
-                with self.tik_instance.else_scope():
-                    self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                                col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
-                                                each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+                col_index_ori = self.wi * C0 * self.stride_h * ho_idx
+                if offset_gm_block is None:
+                    self.tik_instance.data_move(self.res_gm[self.offset_gm + col_index_ori],
+                                                col2img_fp16_ub[pad_top_offset + pad_left * C0],
+                                                0, self.kh, self.wi * C0 // 16, pad_left + pad_right, 0)
+                else:
+                    with self.tik_instance.if_scope(start_threshold > pad_top):
+                        self.tik_instance.data_move(self.res_gm[offset_gm_block + col_index_ori],
+                                                    col2img_fp16_ub[start_threshold * wi * C0 + pad_left * C0], 0,
+                                                    self.kh, self.wi * C0 // 16, pad_left + pad_right, 0)
 
-
+                    with self.tik_instance.else_scope():
+                        self.tik_instance.data_move(self.res_gm[offset_gm_block + col_index_ori],
+                                                    col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
+                                                    self.kh, self.wi * C0 // 16, pad_left + pad_right, 0)
 
         else:
             with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
@@ -1761,16 +1773,22 @@ class MaxpoolGrad:
         # 3072 is fixed used ub space，2 means 2 tensor(ori_input_col_ub and grad_sel_ub)
         ub_for_main_tensor = (SIZE_UB - 3072) // 2
         max_hw = ub_for_main_tensor // (16 * C0 * fp16_data_size)
+        remain_h = self.tik_instance.Scalar(dtype='int64', name='remain_h', init_value=0)
+        remain_w = self.tik_instance.Scalar(dtype='int64', name='remain_w', init_value=0)
         if wi > max_hw:
             h_num = hi
             each_h = 1
             w_num = _ceil_div(wi, max_hw)
             each_w = max_hw
+            if each_w * w_num > wi:
+                remain_w.set_as(wi - each_w * (w_num - 1))
         elif hi * wi > max_hw:
             each_h = max_hw // wi
             h_num = _ceil_div(hi, each_h)
             w_num = 1
             each_w = wi
+            if each_h * h_num > hi:
+                remain_h.set_as(hi - each_h * (h_num - 1))
         else:
             h_num = 1
             each_h = hi
@@ -1806,8 +1824,15 @@ class MaxpoolGrad:
                                 loop_ub_offset = (index_hi * each_w + index_wi) * C0
                                 grad_sel_ub = self._vsel_grad_col_global(mask_ub, grad_ub, grad_sel_ub, loop_ub_offset)
                 loop_gm_offset = index_ho * each_h * wi * C0 + index_wo * each_w * C0
-                self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub, 0, 1,
-                                            each_h * each_w, 0, 0)
+                with self.tik_instance.if_scope(tik.all(remain_w != 0, index_wo == w_num - 1)):
+                    self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub, 0, 1,
+                                                each_h * remain_w, 0, 0)
+                with self.tik_instance.if_scope(tik.all(remain_h != 0, index_ho == h_num - 1)):
+                    self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub, 0, 1,
+                                                remain_h * each_w, 0, 0)
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub, 0, 1,
+                                                each_h * each_w, 0, 0)
 
     # pylint: disable=too-many-statements
     def _tilling_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
@@ -1986,6 +2011,9 @@ class MaxpoolGrad:
         # one times the number of (each_process_hi, self.wi, C0) can be storaged on L1
         n_each_process_hi_block = (SIZE_L1 // 2 - _cal_shape_ele(
             (each_process_hi, self.wi, C0))) // (each_process_ho * self.stride_h * self.wi * C0) + 1
+        if each_process_hi + (n_each_process_hi_block - 1) * each_process_ho * self.stride_h > MAX_NBURST:
+            n_each_process_hi_block = _ceil_div((MAX_NBURST - each_process_hi), (each_process_ho * self.stride_h))
+
         # times of process all (each_process_hi, self.wi, C0) blocks
         n_hi_block = cut_ho_nums // n_each_process_hi_block
         # remains of (each_process_hi, self.wi, C0) blocks
@@ -2051,6 +2079,15 @@ class MaxpoolGrad:
 
             cut_ho_nums_index = n_hi_block_index * n_each_process_hi_block + n_each_process_hi_block_index
             if self.tile_h_to_block:
+                with self.tik_instance.if_scope(remain_ho_nums == 0):
+                    with self.tik_instance.if_scope(cut_ho_nums_index == cut_ho_nums - 1):
+                        end_h.set_as((n_hi_block * n_each_process_hi_block + n_each_process_hi_block_index) *
+                                     each_process_ho * self.stride_h + (each_process_ho - 1) * self.stride_h + self.kh)
+                with self.tik_instance.else_scope():
+                    with self.tik_instance.if_scope(cut_ho_nums_index == cut_ho_nums):
+                        end_h.set_as((n_hi_block * n_each_process_hi_block + n_each_process_hi_block_index) *
+                                     each_process_ho * self.stride_h + (each_process_ho - 1) * self.stride_h + self.kh)
+
                 remained_hi = self._move_func_block(cut_ho_nums_index, cut_ho_nums, start_h, end_h, each_process_ho,
                                                     each_process_hi_block, col2img_fp32_ub, temp_tensor_ub, remained_hi,
                                                     remain, (pad_left, pad_right, start_threshold, pad_bottom))
@@ -2366,6 +2403,9 @@ class MaxpoolGrad:
                     self.tik_instance.scalar_max(cut_wo_offset, cut_wo_offset, 0)
                     cut_wo_burst = (each_process_wi - actual_pad_left - actual_pad_right) * C0 // 16
                     src_stride = self.wi - (each_process_wi - actual_pad_left - actual_pad_right)
+                    if self.stride_w >= self.kw:
+                        with self.tik_instance.if_scope(tik.all(remain_wo_nums == 0, actual_pad_right != 0)):
+                            cut_wo_offset.set_as(self.wi - cut_wo_burst)
                     self.tik_instance.data_move(
                         ori_input_l1[0], self.ori_input_gm[(
                             (n_index * self.c1 + c1_index) * self.hi + start_hi_index + hi_min_l1 - pad_top) * self.wi *
@@ -2413,6 +2453,9 @@ class MaxpoolGrad:
                 wo_offset = self.tik_instance.Scalar(dtype='int64', name='wo_offset')
                 if exceeding_l1_memory:
                     wo_offset.set_as(-actual_pad_left)
+                    if self.stride_w >= self.kw:
+                        with self.tik_instance.if_scope(tik.all(remain_wo_nums == 0, actual_pad_right != 0)):
+                            wo_offset.set_as(each_process_wi - ((each_process_wo - 1) * self.stride_w + self.kw))
                 else:
                     wo_offset.set_as(each_process_wo * cut_wo_nums_index * self.stride_w - pad_left)
 
@@ -2689,6 +2732,12 @@ class MaxpoolGrad:
                                             self.kw - pad_left - self.wi)
                     self.tik_instance.scalar_max(actual_pad_right, actual_pad_right, 0)
                     cut_wo_offset.set_as(each_process_wo * cut_wo_nums * self.stride_w - pad_left)
+                    wo_offset.set_as(-actual_pad_left)
+                    with self.tik_instance.if_scope(actual_pad_right != 0):
+                        remain_wi = self.wi - (each_process_wo * cut_wo_nums * self.stride_w - pad_left)
+                        l1_w = each_process_remain_wi - actual_pad_left - actual_pad_right
+                        cut_wo_offset.set_as(self.wi - l1_w)
+                        wo_offset.set_as(l1_w - remain_wi)
                     self.tik_instance.scalar_max(cut_wo_offset, cut_wo_offset, 0)
                     cut_wo_burst = (each_process_remain_wi - actual_pad_left - actual_pad_right) * C0 // 16
                     src_stride = self.wi - (each_process_remain_wi - actual_pad_left - actual_pad_right)
@@ -2697,8 +2746,6 @@ class MaxpoolGrad:
                             (n_index * self.c1 + c1_index) * self.hi + start_hi_index + hi_min_l1 - pad_top) * self.wi *
                                                            C0 + cut_wo_offset * C0], 0, mov_len_h_l1, cut_wo_burst,
                         src_stride, 0)
-
-                    wo_offset.set_as(-actual_pad_left)
                 else:
                     wo_offset.set_as(each_process_wo * cut_wo_nums * self.stride_w - pad_left)
 

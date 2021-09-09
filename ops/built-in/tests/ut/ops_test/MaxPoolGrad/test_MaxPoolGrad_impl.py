@@ -147,6 +147,8 @@ def do_case(ori_shape0,
                                           "float16", "float16",
                                           shape0, ori_shape0, shape1, ori_shape1,
                                           ksize, strides, pads, data_format)
+    from te.platform.cce_conf import te_set_version
+    te_set_version("Ascend910A")
 
     ut_case.add_case(["Ascend910A", "Ascend610"], params)
 
@@ -1211,6 +1213,46 @@ strides = [1, 1, 1, 1]
 paddings = "SAME"
 data_format = "NCHW"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_125")
+
+ori_shape0 = [91, 7, 925, 80]
+ori_shape1 = [91, 4, 29, 80]
+ksize = [1, 4, 49, 1]
+strides = [1, 2, 33, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_126")
+
+ori_shape0 = [3, 903, 423, 48]
+ori_shape1 = [3, 91, 13, 48]
+ksize = [1, 45, 5, 1]
+strides = [1, 10, 35, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_127")
+
+ori_shape0 = [34, 8443, 4, 48]
+ori_shape1 = [34, 334, 1, 48]
+ksize = [1, 112, 2, 1]
+strides = [1, 25, 31, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_128")
+
+ori_shape0 = [2, 355, 355, 64]
+ori_shape1 = [2, 353, 118, 64]
+ksize = [1, 3, 3, 1]
+strides = [1, 1, 3, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_129")
+
+ori_shape0 = [1, 107, 240, 496]
+ori_shape1 = [1, 3, 5, 496]
+ksize = [1, 1, 105, 1]
+strides = [1, 47, 49, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_130")
 # if __name__ == '__main__':
 #     ut_case.run("Ascend910")
 #     exit(0)
