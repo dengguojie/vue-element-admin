@@ -19,6 +19,7 @@ provides the function of generating the tiling key for tik optimization
 """
 
 import hashlib
+from tbe.common.utils import log
 
 
 def _sort_unique_key_params(params):
@@ -26,7 +27,7 @@ def _sort_unique_key_params(params):
     sort_unique_key_params
     """
     if not isinstance(params, dict):
-        raise RuntimeError("params must be dict, but get %s" % params)
+        raise RuntimeError("The get_op_compile_unique_key api param must be nest dict, but get %s" % params)
 
     sort_params_keys = list(params.keys())
     sort_params_keys.sort()
@@ -39,10 +40,7 @@ def _sort_unique_key_params(params):
     return new_params
 
 
-def _clear_unique_key_params(params):
-    """
-    Delete unnecessary keys
-    """
+def _get_new_param(param):
     allow_key = [
         "index",
         "dtype",
@@ -59,16 +57,42 @@ def _clear_unique_key_params(params):
         "l1_workspace_size",
         "addr_type"]
 
-    if params:
-        new_params = []
-        for param in params:
-            new_param = {}
-            for k in param:
-                if k.lower() in allow_key:
-                    new_param[k] = param.get(k)
-            new_param = _sort_unique_key_params(new_param)
+    if isinstance(param, dict):
+        new_param = {}
+        for k in param:
+            if isinstance(k, str) and k.lower() in allow_key:
+                new_param[k] = param.get(k)
+        new_param = _sort_unique_key_params(new_param)
+        return new_param
+    else:
+        log.error("The get_op_compile_unique_key api param inputs or outputs must be"
+                  " (dict, dict,...) or (dict, (dict, ...))")
+        return []
+
+
+def _clear_unique_key_params(name, params):
+    """
+    Delete unnecessary keys
+    """
+    if not params:
+        log.warn("The get_op_compile_unique_key api param %s is empty.", name)
+        return []
+
+    new_params = []
+    for param in params:
+        if isinstance(param, dict):
+            new_param = _get_new_param(param)
             new_params.append(new_param)
-        return new_params
+        elif isinstance(param, (list, tuple)):
+            new_param = []
+            for param_i in param:
+                new_param_i = _get_new_param(param_i)
+                new_param.append(new_param_i)
+            new_params.append(new_param)
+        else:
+            log.error("The get_op_compile_unique_key api %s, must be (dict, dict,...) or (dict, (dict, ...))", name)
+            return []
+    return new_params
 
 
 def _check_unique_key_params(name, params):
@@ -90,12 +114,11 @@ def get_op_compile_unique_key(op_type, inputs, outputs, attrs, extra_params):
 
     _check_unique_key_params("inputs", inputs)
     _check_unique_key_params("outputs", outputs)
-    _check_unique_key_params("extra_params", extra_params)
 
     op_compile_params = {}
 
-    op_inputs = _clear_unique_key_params(inputs)
-    op_outputs = _clear_unique_key_params(outputs)
+    op_inputs = _clear_unique_key_params("inputs", inputs)
+    op_outputs = _clear_unique_key_params("outputs", outputs)
 
     if op_inputs:
         op_compile_params["inputs"] = op_inputs
@@ -111,10 +134,12 @@ def get_op_compile_unique_key(op_type, inputs, outputs, attrs, extra_params):
         op_compile_params["attrs"] = new_attrs
 
     if extra_params:
+        _check_unique_key_params("extra_params", extra_params)
         extra_params.sort()
         op_compile_params["extra_params"] = extra_params
 
     op_compile_params = str(op_compile_params)
+    log.debug("kb_query_key_params_str: %s", op_compile_params)
     op_compile_params_sha = hashlib.sha256(op_compile_params.encode("utf-8")).hexdigest()
 
     return "%s_%s" % (op_type, op_compile_params_sha)
