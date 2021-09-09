@@ -622,36 +622,11 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
     if (bias["shape"][0] + 15) // 16 != weight["shape"][1]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "w, b shape is wrong, please check!")
 
-    # seq_length
-    if seq_length is not None: 
-        if seq_length.get("dtype").lower() == "int32":
-            if (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
-                error_manager_vector.raise_err_check_params_rules("DynamicRNN",
-                                                          "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
-                                                          "seq_length.shape[0]", output_h["shape"][2])
-        else:
-            if seq_length["shape"] != output_h["shape"]:
-                error_manager_vector.raise_err_check_params_rules("DynamicRNN: seq_length.shape != output_h.shape")
-
     # check init
     if (init_h is None and init_c is not None) or (
             init_h is not None and init_c is None):
         error_manager_vector.raise_err_specific_reson("DynamicRNN",
                                                       "init_h, init_c should appear together, please check!")
-
-    # check init state should support one time
-    if init_h is not None:
-        if init_h["shape"][0] != 1:
-            error_manager_vector.raise_err_specific_reson("DynamicRNN", "init_h only support 1 time, please check!")
-
-        if init_h["shape"][1] != output_h["shape"][1] or init_h["shape"][2] != \
-                output_h["shape"][2]:
-            error_manager_vector.raise_err_specific_reson("DynamicRNN",
-                                                          "init_h, output_h shape is different, please check!")
-
-        if not operator.eq(init_h["shape"], init_c["shape"]):
-            error_manager_vector.raise_err_specific_reson("DynamicRNN",
-                                                          "init_c, init_h shape is different, please check!")
 
     # check output
     if not operator.eq(output_h["shape"], output_c["shape"]):
