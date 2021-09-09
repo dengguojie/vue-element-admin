@@ -1,3 +1,17 @@
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021 All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <nlohmann/json.hpp>
 #include <string>
 #include <algorithm>
@@ -41,19 +55,18 @@ bool InTopKDTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   }
   int32_t col = input_shape[input_dims - 1];
   int32_t need_core = 0;
-  if (row <= 32) {
+  int32_t core_num = 32;
+  if (row <= core_num) {
     need_core = 1;
-  }
-  else {
-    const auto& all_vars = op_compile_info_json["vars"];
-    int32_t mini_cloud_core_nums = all_vars["mini_cloud_core_nums"].get<std::int32_t>();
-    int32_t num = (row + 31) / 32;
-    if (num <= mini_cloud_core_nums) {
-      need_core = num;
-    }
-    else {
-      need_core = mini_cloud_core_nums;
-    }
+    } else {
+      const auto& all_vars = op_compile_info_json["vars"];
+      int32_t mini_cloud_core_nums = all_vars["mini_cloud_core_nums"].get<std::int32_t>();
+      int32_t num = (row + core_num - 1) / core_num;
+      if (num <= mini_cloud_core_nums) {
+        need_core = num;
+        } else {
+          need_core = mini_cloud_core_nums;
+      }
   }
   InTopKTilingParams params{row, col, need_core};
   InTopKWriteTilingParams(params, run_info);
