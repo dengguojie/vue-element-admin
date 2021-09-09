@@ -124,7 +124,7 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     FUSION_PASS_CHECK(packBaseDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packBaseDesc is null, fusion failed."), 
               return PARAM_INVALID);
 
-    for (size_t c = 0; c < 63; c++) {
+    for (size_t c = 0; c < max_inputs; c++) {
         ge::GeTensorDesc fusedDesc2 = fusedNode->GetOpDesc()->GetInputDesc(c);
         FUSION_PASS_CHECK(packBaseDesc->AddInputDesc(c, fusedDesc2) != SUCCESS,
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add packBaseDesc failed."), return FAILED);
@@ -209,6 +209,7 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
         ge::GeShape x_shape(dimVector);
         PackOutputTensor_1.SetShape(x_shape);
+        PackOutputTensor_1.SetOriginShape(x_shape);
         packDesc->UpdateOutputDesc(0, PackOutputTensor_1);
 
         ge::GeTensorDesc PackInputTensor_1 = concatBaseDesc->GetInputDesc(i);
@@ -267,6 +268,7 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         dimVector.erase(std::begin(dimVector) + axis + 1);
         ge::GeShape x_shape(dimVector);
         PackOutputTensor_2.SetShape(x_shape);
+        PackOutputTensor_2.SetOriginShape(x_shape);
         LastPackDesc->UpdateOutputDesc(0, PackOutputTensor_2);
         concatBaseDesc->UpdateInputDesc(i, PackOutputTensor_2);
 
