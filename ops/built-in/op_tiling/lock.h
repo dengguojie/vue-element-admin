@@ -26,7 +26,6 @@
 #include <condition_variable>
 
 namespace optiling {
-
 class RWLock {
 public:
     RWLock() : _status(0), _waiting_readers(0), _waiting_writers(0) {}
@@ -52,6 +51,5 @@ private:
     std::condition_variable _read_cv;
     std::condition_variable _write_cv;
 };
-
 } // namespace optiling
 #endif // CANN_OPS_BUILT_IN_LOCK_H_

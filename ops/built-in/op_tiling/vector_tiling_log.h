@@ -24,7 +24,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 #define V_OP_TILING_CHECK(cond, log_func, return_expr)   \
   do {                                                   \
     if (!(cond)) {                                       \
@@ -39,7 +38,6 @@ namespace optiling {
 #define V_CHECK_GE(x, y, log_func, return_expr) V_OP_TILING_CHECK(((x) >= (y)), log_func, return_expr)
 #define V_CHECK_LT(x, y, log_func, return_expr) V_OP_TILING_CHECK(((x) < (y)), log_func, return_expr)
 #define V_CHECK_LE(x, y, log_func, return_expr) V_OP_TILING_CHECK(((x) <= (y)), log_func, return_expr)
-
 } // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_LOG_H_

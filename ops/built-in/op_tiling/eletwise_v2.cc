@@ -30,7 +30,6 @@
 
 namespace optiling {
 namespace utils {
-
 namespace {
 static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
     {1, 32767},
@@ -42,19 +41,25 @@ static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
 
 const int64_t GetElementByType(const ge::DataType& dtype) {
   // element nums in one block, default, fp16, int16, uin16
+  const int64_t element_in_block_float = 8;
+  const int64_t element_in_block_bool = 32;
+  const int64_t element_in_block_double = 4;
+  const int64_t element_in_block_bit = 256;
+  const int64_t one_bit_dtype_value = 100;
   int64_t element_in_block = 16;
+
   if (dtype == ge::DataType::DT_FLOAT || dtype == ge::DataType::DT_INT32 || dtype == ge::DataType::DT_UINT32) {
     // element nums in one block by b32
-    element_in_block = 8;
+    element_in_block = element_in_block_float;
   } else if (dtype == ge::DataType::DT_INT8 || dtype == ge::DataType::DT_UINT8 || dtype == ge::DataType::DT_BOOL) {
     // element nums in one block by b8
-    element_in_block = 32;
+    element_in_block = element_in_block_bool;
   } else if (dtype == ge::DataType::DT_INT64 || dtype == ge::DataType::DT_UINT64) {
     // element nums in one block by b64
-    element_in_block = 4;
-  }else if (dtype == 100) {
+    element_in_block = element_in_block_double;
+  }else if (dtype == one_bit_dtype_value) {
     // element nums in one block by uint1
-    element_in_block = 256;
+    element_in_block = element_in_block_bit;
   }
   return element_in_block;
 }
@@ -67,9 +72,9 @@ bool Eletwise::Init() {
   if (!only_const_tiling) {
     const size_t special_pattern_index = 3;
     V_CHECK_GT(flag_info.size(), special_pattern_index,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type,"flag info has no _use_special_pattern"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info has no _use_special_pattern"),
                return false);
-    use_special_pattern = flag_info[3];
+    use_special_pattern = flag_info[special_pattern_index];
   }
   return true;
 }
@@ -101,8 +106,10 @@ bool Eletwise::CalcTiling() {
                return false);
     core_num = base_info[0];
     max_dtype = base_info[1];
-    max_available_ub = base_info[2];
-    max_available_ub_db = base_info[3];
+    const size_t max_available_ub_index = 2;
+    const size_t max_available_ub_db_index = 3;
+    max_available_ub = base_info[max_available_ub_index];
+    max_available_ub_db = base_info[max_available_ub_db_index];
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
@@ -143,7 +150,7 @@ bool Eletwise::DoUbTiling() {
     bool outs_uint1 = op_info.at("_outs_uint1");
     int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     V_CHECK_GT(limit, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit error, it is [%ld]",limit),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit error, it is [%ld]", limit),
                return false);
     int64_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
     int64_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
@@ -158,13 +165,14 @@ bool Eletwise::DoUbTiling() {
 
 void Eletwise::CalcKey() {
   // special pattern: COMMON
-  key = 210000000;
+  const int64_t common_pattern_key = 210000000;
+  key = common_pattern_key;
   if (!use_special_pattern) {
     key = 0;
   }
-  int64_t doubleBufferKey = 10000;
+  const int64_t double_buffer_key = 10000;
   if (need_double_buffer) {
-    key += doubleBufferKey;
+    key += double_buffer_key;
   }
 }
 
@@ -204,21 +212,24 @@ bool Eletwise::WriteTilingData(utils::OpRunInfo& run_info) const {
   }
   try {
     const auto& all_vars = op_info.at("_elewise_vars").at(str_key);
+    const int64_t dim_index_div_value = 100;
+    const int64_t block_tiling_bound = 20000;
+    const int64_t ub_tiling_bound = 30000;
     for (const auto& var : all_vars) {
-      if (var >= 30000) {
+      if (var >= ub_tiling_bound) {
         V_CHECK_GE(ub_axis, 0,
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut ub"),
                    return false);
         run_info.AddTilingData(static_cast<int32_t>(ub_factor));
-      } else if (var >= 20000) {
+      } else if (var >= block_tiling_bound) {
         V_CHECK_GE(block_axis, 0,
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut block"),
                    return false);
         run_info.AddTilingData(static_cast<int32_t>(block_factor));
       } else {
         int64_t var_value = var;
-        var_value /= 100;
-        size_t dim_index = var_value % 100;
+        var_value /= dim_index_div_value;
+        size_t dim_index = var_value % dim_index_div_value;
         V_CHECK_LT(dim_index, output_shape.size(),
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim_index out of range output_shape index"),
                    return false);
@@ -270,14 +281,16 @@ bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_
         input_shapes[i].fill(1LL);
         if (ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum() >
             dim_len) {
-            dim_len = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum();
+            dim_len = ge::OpDescUtils::GetOpDescFromOperator(
+              op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum();
         }
     }
     V_CHECK_LE(dim_len, B_MAX_DIM_LEN,
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 16 dims are not supported"),
                return false);
     for (size_t i = 0; i < input_num; i++) {
-        const ge::GeShape& shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape();
+        const ge::GeShape& shape = ge::OpDescUtils::GetOpDescFromOperator(
+          op_paras)->MutableInputDesc(i)->MutableShape();
         size_t cur_dim_len = shape.GetDimNum();
         size_t start_index = dim_len - cur_dim_len;
         for (size_t j = 0; j < cur_dim_len; j++) {
@@ -298,15 +311,19 @@ bool GetType(const std::string& op_type, const ge::Operator& op_paras, ge::DataT
                       return false);
     out_type = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->GetDataType();
     int64_t type_size = GetElementByType(out_type);
-    max_output_shape_size = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->MutableShape().GetDimNum();
+    max_output_shape_size = ge::OpDescUtils::GetOpDescFromOperator(
+      op_paras)->MutableOutputDesc(0)->MutableShape().GetDimNum();
     for (size_t i = 1; i < op_paras.GetOutputsSize(); i++) {
-        int64_t cur_type_size = GetElementByType(ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType());
+        int64_t cur_type_size = GetElementByType(ge::OpDescUtils::GetOpDescFromOperator(
+          op_paras)->MutableOutputDesc(i)->GetDataType());
         if (cur_type_size > type_size) {
             out_type = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType();
             type_size = cur_type_size;
         }
-        if (ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->MutableShape().GetDimNum() > max_output_shape_size) {
-            max_output_shape_size = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->MutableShape().GetDimNum();
+        if (ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(
+          i)->MutableShape().GetDimNum() > max_output_shape_size) {
+            max_output_shape_size = ge::OpDescUtils::GetOpDescFromOperator(
+              op_paras)->MutableOutputDesc(i)->MutableShape().GetDimNum();
         }
     }
     return true;
@@ -324,7 +341,8 @@ bool CheckInputs(const std::string& op_type,
                               (input_shapes[j][i] != max_output && max_output != 1);
       V_OP_TILING_CHECK((!verify_broadcast),
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shapes [%s] cannot broadcast to shape [%s]",
-                                                        std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str()),
+                                                        std::to_string(input_shapes[j][i]).c_str(), std::to_string(
+                                                          max_output).c_str()),
                         return false);
       if (input_shapes[j][i] != max_output) {
         is_pure_elementwise = false;
@@ -374,7 +392,8 @@ bool CalcConstKey(const std::string& op_type, const int64_t input_num,
   size_t key_index = 0;
   bool ret = true;
   if (is_support_broadcast) {
-    bool verify_input = input_num == 2;
+    const int64_t min_broacast_num = 2;
+    bool verify_input = input_num == min_broacast_num;
     V_OP_TILING_CHECK(verify_input,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const unfold only support 2 dims"),
                       return false);
@@ -393,9 +412,11 @@ bool CalcConstKey(const std::string& op_type, const int64_t input_num,
                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_block_dims index out of range"),
                  return false);
       block_dims = const_block_dims[key_index].get<int64_t>();
-      key = 100000000 + key_index;
+      const int64_t const_base_key = 100000000;
+      key = const_base_key + key_index;
     } catch (const std::exception &e) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_const_block_dims] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                      "get compile_info[_const_block_dims] error. Error message: %s", e.what());
       return false;
     }
   }
@@ -405,7 +426,8 @@ bool CalcConstKey(const std::string& op_type, const int64_t input_num,
 bool IsEmptyTensor(const std::string& op_type, const ge::Operator& op_paras) {
   bool has_zero = false;
   for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
-    int64_t output_size = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->MutableShape().GetShapeSize();
+    int64_t output_size = ge::OpDescUtils::GetOpDescFromOperator(
+      op_paras)->MutableOutputDesc(i)->MutableShape().GetShapeSize();
     if (output_size == 0) {
       has_zero = true;
     } else {
@@ -425,7 +447,6 @@ bool WriteConstTiling(const std::string& op_type, const nlohmann::json& op_info,
   run_info.SetTilingKey(static_cast<uint32_t>(key));
   return true;
 }
-
 }  // namespace utils
 
 bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
@@ -437,11 +458,11 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   bool ret = utils::GetType(op_type, op_paras, in_type, out_type, max_output_shape_size);
   size_t dim_len = 0;
   int64_t input_num = op_paras.GetInputsSize();
-  ret = ret&& utils::CompletedShapes(input_shapes, dim_len, input_num, op_type, op_paras);
+  ret = ret && utils::CompletedShapes(input_shapes, dim_len, input_num, op_type, op_paras);
   bool is_empty_tensor = utils::IsEmptyTensor(op_type, op_paras);
   bool is_multi_output = op_paras.GetOutputsSize() > 1;
   bool is_pure_elementwise = true;
-  ret = ret&& utils::CheckInputs(op_type, input_shapes, dim_len, input_num, is_pure_elementwise);
+  ret = ret && utils::CheckInputs(op_type, input_shapes, dim_len, input_num, is_pure_elementwise);
   if (!ret) {
       return ret;
   }
@@ -455,10 +476,13 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   bool is_const = false;
   bool is_support_broadcast = true;
   bool use_special_pattern = true;
-  if (flag_info.size() > 3) {
+  const int64_t flag_info_threshold = 3;
+  const int64_t support_broadcast_index = 2;
+  const int64_t use_special_pattern_index = 3;
+  if (flag_info.size() > flag_info_threshold) {
     is_const = flag_info[1];
-    is_support_broadcast = flag_info[2];
-    use_special_pattern = flag_info[3];
+    is_support_broadcast = flag_info[support_broadcast_index];
+    use_special_pattern = flag_info[use_special_pattern_index];
   }
   if (is_const) {
     int64_t key{0};
@@ -481,5 +505,4 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   }
   return ret;
 }
-
 }  // namespace optiling

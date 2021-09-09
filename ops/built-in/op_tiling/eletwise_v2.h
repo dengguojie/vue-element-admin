@@ -31,7 +31,6 @@
 
 namespace optiling {
 namespace utils {
-
 class Eletwise {
  public:
   static const int64_t ELEWISE_REPEATE_NUMS = 128;
@@ -83,7 +82,6 @@ class Eletwise {
   bool need_multi_core{true};
   bool need_double_buffer{false};
 };
-
 }  // namespace utils
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_ELETWISE_H_

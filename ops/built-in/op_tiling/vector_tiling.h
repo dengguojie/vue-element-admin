@@ -81,7 +81,6 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
     return opfunc(para.op_type, para, parsed_object_ptr, rinfo);                                                  \
 }                                                                                                                 \
 REGISTER_OP_TILING(optype, g_##optype##_TilingEntry)
-
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_H_

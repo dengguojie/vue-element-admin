@@ -28,7 +28,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 /*
  * @brief: tiling function of ops
  * @param [in] op_type: opType of ops
@@ -66,5 +65,4 @@ bool AutoTiling(const std::string& op_type, const ge::Operator& op_paras, const 
 
 // register autoTiling
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(AutoTiling, AutoTiling);
-
 }  // namespace optiling
