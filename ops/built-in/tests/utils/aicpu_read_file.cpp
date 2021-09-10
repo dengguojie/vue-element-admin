@@ -163,8 +163,8 @@ std::string GetComplexImag(std::string tmp) {
                                                       : tmp.rfind(tmp_connector);
   std::size_t tmp_right_find = tmp.find(tmp_right);
   tmp_imag = tmp_right_find == std::string::npos
-                 ? tmp.substr(tmp_connector_rfind + 1)
-                 : tmp.substr(tmp_connector_rfind + 1, tmp_right_find - tmp_connector_rfind - 1);
+                 ? tmp.substr(tmp_connector_rfind)
+                 : tmp.substr(tmp_connector_rfind, tmp_right_find - tmp_connector_rfind - 1);
   return tmp_imag;
 }
 
