@@ -77,7 +77,7 @@ vector<BufferFusionPattern *> DepthwiseConvElemwiseFusionPass::DefinePatterns() 
    *                       input
    */
   pattern2
-      ->AddOpDesc(kPatternDepthwiseConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      ->AddOpDesc(kPatternDepthwiseConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternElemwise1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({kPatternElemwise1})
@@ -96,7 +96,7 @@ vector<BufferFusionPattern *> DepthwiseConvElemwiseFusionPass::DefinePatterns() 
    *                       input   bais
    */
   pattern3
-      ->AddOpDesc(kPatternDepthwiseConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      ->AddOpDesc(kPatternDepthwiseConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternElemwise1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -160,6 +160,7 @@ Status DepthwiseConvElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping
   vector<ge::NodePtr> elem2_node = GetMatchedNodesByDescName(kPatternElemwise2, mapping);
   vector<ge::NodePtr> elem1_node = GetMatchedNodesByDescName(kPatternElemwise1, mapping);
   vector<ge::NodePtr> elem_node = GetMatchedNodesByDescName(kPatternElemwise, mapping);
+  vector<ge::NodePtr> depthwise_node = GetMatchedNodesByDescName(kPatternDepthwiseConv, mapping);
   if (!elem_node.empty()) {
     if (elem_node[0]->GetType() != "LeakyRelu" && elem_node[0]->GetType() != "Relu6") {
       OP_LOGD(kFusedOpType.c_str(),
@@ -197,6 +198,16 @@ Status DepthwiseConvElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping
       return SUCCESS;
     }
     OP_LOGD(kFusedOpType.c_str(), "DepthwiseConvSigmoidMul + mul ub fusion!");
+  }
+  if (!depthwise_node.empty()) {
+    if (depthwise_node[0]->GetType() != "DepthwiseConv2D") {
+      OP_LOGD(kFusedOpType.c_str(),
+              "The optype of node[%s] should be DepthwiseConv2D,"
+          "but actually is [%s], no need to do fusion.",
+          depthwise_node[0]->GetName().c_str(), depthwise_node[0]->GetType().c_str());
+        return SUCCESS;
+    }
+    OP_LOGD(kFusedOpType.c_str(), "Elemwise + DepthwiseConv ub fusion!");
   }
   fusion_nodes = GetMatchedNodes(mapping);
   OP_LOGD(kFusedOpType.c_str(), "End of DepthwiseConvElemwise ub fusion pass!");

@@ -293,9 +293,41 @@ def test_depthwiseconv2d_split_info_split_bias(test_arg):
 print("adding conv2d test_depthwiseconv2d_split_info_split_bias testcase")
 ut_case.add_cust_test_func(test_func=test_depthwiseconv2d_split_info_split_bias)
 
+def test_leakyrelu_depthwise_fusion(test_arg):
+    from impl.leaky_relu import leaky_relu_compute
+    from impl.depthwise_conv2d import depthwise_compute
+    from tbe import tvm
+    case=((1, 64, 56, 56), (3, 3, 1, 64), None, (1, 64, 56, 56), 1, 1, (1, 1, 1, 1), "NCHW", 0, "float16", "success")
+    res = _gen_trans_data_case(case)
+    x = res["params"][0]
+    weights = res["params"][1]
+    filter_fracz = ((weights['ori_shape'][0] * weights['ori_shape'][1] * weights['ori_shape'][3] + 15)//16,(weights['ori_shape'][2] + 15)//16, 16, 16)
+    del x['ori_shape']
+    del x['ori_format']
+    del weights['shape']
+    weights['format'] = "FRACTAL_Z"
+    weights['current_shape'] = filter_fracz
+    fmap = tvm.placeholder(x['shape'], dtype = x['dtype'], name = 'fmap', attrs = x)
+    filter_w = tvm.placeholder(filter_fracz, dtype = weights['dtype'], name = 'filter_w', attrs = weights)
+    bias = None
+    offset_w = res["params"][3]
+    outputs = res["params"][4]
+    strides = res["params"][5]
+    dilations = res["params"][6]
+    pads = res["params"][7]
+    data_format = res["params"][8]
+    offset_x = res["params"][9]
+    kernel_name = res["case_name"]
+    groups = 1 
+    leaky_relu_res = leaky_relu_compute(fmap, None)
+    leaky_relu_res.op.attrs['current_shape'] = x['shape']
+    _ = depthwise_compute(leaky_relu_res, filter_w, bias, offset_w, outputs, strides, dilations, pads, data_format, offset_x, kernel_name)
+print("adding conv2d test_leakyrelu_depthwise_fusion testcase")
+ut_case.add_cust_test_func(test_func=test_leakyrelu_depthwise_fusion)
+
 if __name__ == '__main__':
-    # ut_case.run("Ascend910")
-    ut_case.run()
+    ut_case.run("Ascend910")
+    # ut_case.run()
     # test depthwise_conv2d other apis
     ut_case.add_cust_test_func(test_func=_test_other_api)
     exit(0)

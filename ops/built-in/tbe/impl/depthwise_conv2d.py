@@ -83,10 +83,16 @@ def depthwise_compute(fmap,
     -------
     None
     """
-    filter_c_dict = {"HWCN": filter.op.attrs['ori_shape'][3].value,
-                     "NCHW": filter.op.attrs['ori_shape'][0].value,
-                     "NHWC": filter.op.attrs['ori_shape'][0].value}
-    groups = filter_c_dict.get(filter.op.attrs['ori_format'].value)
+    shape_type = 'ori_shape'
+    format_type = 'ori_format'
+    if 'ori_shape' not in fmap.op.attrs:
+        shape_type = 'current_shape'
+        format_type = 'format'
+    fmap_c_dict = {"HWCN": fmap.op.attrs[shape_type][2].value,
+                   "NCHW": fmap.op.attrs[shape_type][1].value,
+                   "NHWC": fmap.op.attrs[shape_type][3].value,
+                   "NC1HWC0": fmap.op.attrs[shape_type][1].value * fmap.op.attrs[shape_type][-1].value}
+    groups = fmap_c_dict.get(fmap.op.attrs[format_type].value)
     out = conv2d_compute(fmap, filter, bias, offset_w, out, strides, pads,
                          dilations, groups=groups, data_format=data_format,
                          offset_x=offset_x, kernel_name=kernel_name)
