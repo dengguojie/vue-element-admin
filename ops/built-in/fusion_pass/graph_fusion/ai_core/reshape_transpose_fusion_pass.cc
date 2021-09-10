@@ -167,7 +167,7 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   vector<int64_t> reshapeDimInfo = reshapeDesc->GetInputDesc(0).GetOriginShape().GetDims();
   if (reshapeDimInfo.size() == 1) {
     if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[0])) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
     if (reshapeDimInfo[0] % 16 != 0) {
