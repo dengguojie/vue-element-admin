@@ -24,6 +24,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "tbe_fusion_pass_util.h"
+#include "external/graph/operator_factory.h"
 
 using namespace ge;
 namespace fe {
@@ -85,7 +86,7 @@ bool ConstToAttrStridedSliceV2Pass::AutoRemoveInput(ge::ComputeGraph &graph,
         FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(const_peer_control_anchor, const_node_1->GetInControlAnchor()) != SUCCESS,
                           OP_LOGE(FUSEDNODE.c_str(), "Remove out control edge failed."), return FAILED);
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(const_peer_control_anchor, p_node->GetInControlAnchor()) != SUCCESS,
-                          OP_LOGE(FUSEDNODE.c_str(), "Faile to add input control edge for fusion node: %s.", 
+                          OP_LOGE(FUSEDNODE.c_str(), "Faile to add input control edge for fusion node: %s.",
                                   p_node->GetName().c_str()),
                           return FAILED);
       }
@@ -399,6 +400,42 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
       OP_LOGE(FUSEDNODE.c_str(), "fused_node's OpDesc is null, fusion failed."),
       return PARAM_INVALID);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
+
+  // get fuzz build attr
+  bool is_dynamic_shape = false;
+  vector<int64_t> dims = fuse_desc->GetOutputDesc("y").GetShape().GetDims();
+  if (dims == UNKNOWN_RANK) {
+    is_dynamic_shape = true;
+  } else {
+    for (int64_t ele : dims) {
+      if (ele == UNKNOWN_DIM) {
+        is_dynamic_shape = true;
+        break;
+      }
+    }
+  }
+  if (is_dynamic_shape) {
+    OP_LOGD(FUSEDNODE.c_str(), "is dynamic shape.");
+    std::vector<string> need_del_attr = {"begin", "end", "strides", "begin_mask", "end_mask",
+                                         "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
+    for (size_t i = 0; i < need_del_attr.size(); i++) {
+      fuse_desc->DelAttr(need_del_attr[i]);
+    }
+    fuse_desc->SetType("StridedSliceV3");
+
+    auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", "StridedSliceV3");
+    if (realFusedOp.IsEmpty()) {
+        OP_LOGE(FUSEDNODE.c_str(), "Create op [StridedSliceV3] failed.");
+        return FAILED;
+    }
+    auto realFusedOpDescPtr = ge::OpDescUtils::GetOpDescFromOperator(realFusedOp);
+    realFusedOp.BreakConnect();
+    fuse_desc->AddInferFunc(realFusedOpDescPtr->GetInferFunc());
+    return SUCCESS;
+  } else {
+    OP_LOGD(FUSEDNODE.c_str(), "is not dynamic shape.");
+  }
+
   bool need_to_reverse = true;
   std::vector<int64_t> new_axes;
   FUSION_PASS_CHECK(GetReverseState(op, fused_node, fuse_desc, new_axes,
@@ -421,9 +458,8 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
                   fuse_desc->GetInputNameByIndex(index).c_str()),
           return GRAPH_FAILED);
     }
-    std::vector<string> need_del_attr = {
-        "begin",    "end",           "strides",       "begin_mask",
-        "end_mask", "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
+    std::vector<string> need_del_attr = {"begin", "end", "strides", "begin_mask", "end_mask",
+                                         "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
     for (size_t i = 0; i < need_del_attr.size(); i++) {
       fuse_desc->DelAttr(need_del_attr[i]);
     }
