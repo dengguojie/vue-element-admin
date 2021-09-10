@@ -3408,7 +3408,7 @@ REG_OP(TensorRedirect)
 * y: A mutable Tensor. Has the same type as input_data. \n
 
 * @par Third-party framework compatibility
-* Compatible with the Pytorch operator Addcdiv.
+* Compatible with the Pytorch operator Addcdiv(version-1.5.0).
 */
 REG_OP(Addcdiv)
     .INPUT(input_data, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT64}))
@@ -3437,11 +3437,11 @@ REG_OP(Addcdiv)
 * Compatible with the Pytorch operator Addcmul.
 */
 REG_OP(Addcmul)
-    .INPUT(input_data, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64 }))
-    .INPUT(x1, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64 }))
-    .INPUT(x2, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64 }))
-    .INPUT(value, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64 }))
-    .OUTPUT(y, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64 }))
+    .INPUT(input_data, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64}))
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64}))
+    .INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8, DT_DOUBLE, DT_INT64}))
     .OP_END_FACTORY_REG(Addcmul)
 
 /**

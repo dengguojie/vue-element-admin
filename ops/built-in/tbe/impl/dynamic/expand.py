@@ -25,9 +25,6 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
-
-NUM_ONE = 1
-
  
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator_compute("Expand", op_mode="dynamic", support_fusion=True)
@@ -53,6 +50,10 @@ def expand_compute(x, shape):
     dtype = x.dtype
 
     output_tensor = tbe.broadcast(x, shape_max, dtype)
+    
+    # func: to avoid null compute process
+    if shape_max == shape_in:
+        output_tensor = tbe.vadds(output_tensor, 0)
 
     return output_tensor
 
@@ -112,6 +113,19 @@ def expand(x, shape, y, kernel_name="expand"):
     else:
         shape["shape"] = [-1] * dims_value
         shape["range"] = [(1, None)] * dims_value
+    
+    if len(x['range']) == 0:
+        # x's range should not be empty when x is static.
+        x['range'] = [(val, val) for val in x['shape']]
+    else:
+        x_range = []
+        # x's range should not include zero.
+        for range_val in x['range']:
+            if range_val[0] == 0:
+                x_range.append((1, range_val[1]))
+            else:
+                x_range.append(range_val)
+        x['range'] = x_range
 
     extra_params = {"disable_optimization":True}
     ins = classify([shape, x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
