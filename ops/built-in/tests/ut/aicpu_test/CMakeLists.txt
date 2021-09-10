@@ -98,6 +98,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/elugrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
@@ -233,6 +234,7 @@ set(_cpu_kernels_ut_files
   testcase/diag/src/diag_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
   testcase/edit_distance/src/edit_distance_kernel_utest.cpp
+  testcase/elugrad/src/elugrad_utest.cpp
   testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp

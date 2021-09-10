@@ -22,6 +22,7 @@ set(local_kernels_src_files
     kernels/normalized/diag.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
+    kernels/normalized/elugrad.cc
     kernels/normalized/embedding_lookup.cc
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
