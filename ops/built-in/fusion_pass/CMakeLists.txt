@@ -79,6 +79,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_clipByValue_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.cc
