@@ -47,8 +47,8 @@ def test_lru_1981(test_arg):
     lru_cache_v2(*(case2["params"]))
     cce_conf.cce_conf.te_set_version(test_arg)
 
-ut_case.add_case(["Ascend710",], err1)
-ut_case.add_case(["Ascend710",], err2)
+ut_case.add_case(["Ascend710","Ascend910A"], err1)
+ut_case.add_case(["Ascend710","Ascend910A"], err2)
 ut_case.add_cust_test_func(test_func=test_lru_1981)
 
 if __name__ == '__main__':
