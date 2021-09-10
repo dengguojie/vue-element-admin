@@ -91,6 +91,26 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
             return FAILED;
           }
         }
+        if (mode_def->GetName().find("LayerNorm/batchnorm/Rsqrt") != std::string::npos &&
+        mode_def->GetOpType() == "Rsqrt") {
+          OP_LOGI(kOpType, "LayerNorm/batchnorm/Rsqrt is found, name is %s", mode_def->GetName().c_str());
+          std::vector<std::string> outputs_sqrt;
+          mode_def->GetAttr("_origin_graph_node_outputs", outputs_sqrt);
+          bool found_grad_mul = false;
+          for (size_t i = 0; i < outputs_sqrt.size(); i++) {
+            std::string output_name = outputs_sqrt.at(i);
+            std::string split_name = output_name.substr(1);
+            OP_LOGI(kOpType, "split name is %s", split_name.c_str());
+            if (split_name.find("mul_grad/Mul_1") != std::string::npos) {
+              found_grad_mul = true;
+              break;
+            }
+          }
+          if (not found_grad_mul) {
+            OP_LOGI(kOpType, " not find mul_grad/Mul_1");
+            return FAILED;
+          }
+        }
     }
     // tf2.x can not do scope fusion
     if (scope->Name().find("batchnorm/mul") != std::string::npos) {
