@@ -112,7 +112,7 @@ TEST_F(dynamic_gru_v2_grad_fusion_test, dynamic_gru_v2_grad_fusion_test_1) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr computeGraphPtr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicGRUV2GradFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicGRUV2GradAFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
 
   bool findGRUV2HiddenGradCell = false;
   for (auto node: computeGraphPtr->GetAllNodes()) {
@@ -215,7 +215,7 @@ TEST_F(dynamic_gru_v2_grad_fusion_test, dynamic_gru_v2_grad_fusion_test_2) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr computeGraphPtr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicGRUV2GradFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicGRUV2GradAFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
 
   bool findGRUV2HiddenGradCell = false;
   for (auto node: computeGraphPtr->GetAllNodes()) {

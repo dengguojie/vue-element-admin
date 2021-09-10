@@ -1526,8 +1526,14 @@ Status DynamicGRUV2GradDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   this->GetNodeInfo(gruV2GradNode);
 
   if (PatternFusionUtil::IsUnknownShape(hidden_dim) || PatternFusionUtil::IsUnknownShape(input_dim)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
+    OP_LOGI(FUSED_OP_TYPE.c_str(),
             "DynamicGRUV2GradDFusionPass for hidden_dim/input_dim cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+  if (!PatternFusionUtil::IsUnknownShape(inputTensorDescH.GetShape().GetDim(0)) &&
+      !PatternFusionUtil::IsUnknownShape(inputTensorDescH.GetShape().GetDim(1))) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(),
+            "DynamicGRUV2GradDFusionPass for t_size/batch_size cannot be applied for static shape.");
     return NOT_CHANGED;
   }
 

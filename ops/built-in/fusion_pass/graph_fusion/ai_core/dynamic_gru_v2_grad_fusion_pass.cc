@@ -42,7 +42,7 @@ static map<std::string, int> HIDDENGRAD_OUTPUT_INDEX = {{"dh_prev", 0}, {"dgate_
 
 vector<FusionPattern*> DynamicGRUV2GradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicGRUV2GradFusionPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicGRUV2GradAFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -1638,5 +1638,5 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   return SUCCESS;
 }
 
-REGISTER_PASS("DynamicGRUV2GradFusionPass", BUILT_IN_GRAPH_PASS, DynamicGRUV2GradFusionPass);
+REGISTER_PASS("DynamicGRUV2GradAFusionPass", BUILT_IN_GRAPH_PASS, DynamicGRUV2GradFusionPass);
 }  // namespace fe
