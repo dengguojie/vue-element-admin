@@ -23,17 +23,19 @@ TILING = "TILING"
 PROTO = "PROTO"
 TF_PLUGIN = "TF_PLUGIN"
 ONNX_PLUGIN = "ONNX_PLUGIN"
+CAFFE_PLUGIN = "CAFFE_PLUGIN"
 OTHER_FILE="OTHER_FILE"
 
 class FileChangeInfo:
     def __init__(self, proto_changed_files=[], tiling_changed_files=[], pass_changed_files=[], aicpu_changed_files=[],
-                 plugin_changed_files=[], onnx_plugin_changed_files=[], other_changed_files=[]):
+                 plugin_changed_files=[], onnx_plugin_changed_files=[], caffe_plugin_changed_files=[], other_changed_files=[]):
         self.proto_changed_files = proto_changed_files
         self.tiling_changed_files = tiling_changed_files
         self.pass_changed_files = pass_changed_files
         self.aicpu_changed_files = aicpu_changed_files
         self.plugin_changed_files = plugin_changed_files
         self.onnx_plugin_changed_files = onnx_plugin_changed_files
+        self.caffe_plugin_changed_files = caffe_plugin_changed_files
         self.other_changed_files = other_changed_files
 
     def print_change_info(self):
@@ -51,6 +53,8 @@ class FileChangeInfo:
         print("plugin changed files: \n%s" % "\n".join(self.plugin_changed_files))
         print("-------------------------------------------------------------------------\n")
         print("onnx plugin changed files: \n%s" % "\n".join(self.onnx_plugin_changed_files))
+        print("-------------------------------------------------------------------------\n")
+        print("caffe plugin changed files: \n%s" % "\n".join(self.caffe_plugin_changed_files))
         print("-------------------------------------------------------------------------\n")
         print("other changed files: \n%s" % "\n".join(self.other_changed_files))
         print("=========================================================================\n")
@@ -74,18 +78,22 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
         aicpu_changed_files = []
         plugin_changed_files = []
         onnx_plugin_changed_files = []
+        caffe_plugin_changed_files = []
         other_changed_files = []
 
-
         base_path = os.path.join("ops", "built-in")
+        not_compile_file = ["OWNERS", "NOTICE", "LICENSE", "README.md", "classify_rule.yaml"]
+
         for line in lines:
             line = line.strip()
             if line.endswith(".py"):
                 continue
             if line.startswith(os.path.join(base_path, "tests")):
                 continue
-            if line.startswith(os.path.join(base_path, "aicpu")) or line.startswith(
-                    os.path.join(base_path, "tests", "utils")):
+            if line in not_compile_file:
+                continue
+
+            if line.startswith(os.path.join(base_path, "aicpu")):
                 aicpu_changed_files.append(line)
             elif line.startswith(os.path.join(base_path, "fusion_pass")):
                 pass_changed_files.append(line)
@@ -97,12 +105,15 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
                 plugin_changed_files.append(line)
             elif line.startswith(os.path.join(base_path, "framework", "onnx_plugin")):
                 onnx_plugin_changed_files.append(line)
+            elif line.startswith(os.path.join(base_path, "framework", "caffe_plugin")):
+                caffe_plugin_changed_files.append(line)
             else:
                 other_changed_files.append(line)
     return FileChangeInfo(proto_changed_files=proto_changed_files, tiling_changed_files=tiling_changed_files,
                           pass_changed_files=pass_changed_files, aicpu_changed_files=aicpu_changed_files,
                           plugin_changed_files=plugin_changed_files,
-                          onnx_plugin_changed_files=onnx_plugin_changed_files, other_changed_files=other_changed_files)
+                          onnx_plugin_changed_files=onnx_plugin_changed_files, caffe_plugin_changed_files=caffe_plugin_changed_files,
+                          other_changed_files=other_changed_files)
 
 
 def get_change_relate_dir_list(changed_file_info_from_ci):
@@ -129,6 +140,8 @@ def get_change_relate_dir_list(changed_file_info_from_ci):
             relate_ut.add(TF_PLUGIN)
         if len(file_change_info.onnx_plugin_changed_files) > 0:
             relate_ut.add(ONNX_PLUGIN)
+        if len(file_change_info.caffe_plugin_changed_files) > 0:
+            relate_ut.add(CAFFE_PLUGIN)
         
         if len(file_change_info.other_changed_files) > 0:
             other_file.add(OTHER_FILE)

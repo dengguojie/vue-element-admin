@@ -609,11 +609,12 @@ compile_mod(){
       cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
       compiled=FALSE
       rely_TF=(ops_all_plugin)
+      rely_CAFFE=(ops_all_caffe_plugin)
       rely_ONNX=(ops_all_onnx_plugin)
       rely_PASS=(ops_fusion_pass_aicore ops_fusion_pass_vectorcore optiling)
       rely_TILING=(optiling)
       rely_PROTO=(opsproto ops_all_plugin ops_all_onnx_plugin optiling ops_fusion_pass_aicore ops_fusion_pass_vectorcore)
-      mods=(TF ONNX PASS TILING PROTO)
+      mods=(TF CAFFE ONNX PASS TILING PROTO)
       for mod in "${mods[@]}"
         do
           if [[ "$related" =~ "$mod" ]]; then
