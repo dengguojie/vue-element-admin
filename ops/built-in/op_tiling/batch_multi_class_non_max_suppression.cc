@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file  batch_multi_class_non_max_suppression.cc 
+ * \file  batch_multi_class_non_max_suppression.cc
  * \brief
  */
 #include <string>
@@ -77,7 +77,7 @@ namespace optiling {
     }
     return tiling_mode;
   }
-    
+
   static void CalCoreInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params,
                           int32_t & core_num, std::vector<int64_t> & scores_shape) {
     OP_LOGD("CalCoreInfo is running");
@@ -164,4 +164,3 @@ namespace optiling {
   }
   REGISTER_OP_TILING_FUNC_BUFFERED(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppressionTiling);
 } // namespace optiling.
-

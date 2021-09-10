@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -113,7 +128,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
                 split_size = i - 1;
                 split_size = get_nearest_factor(input_shape[split_axis], split_size);
                 break;
-            } 
+            }
         }
     } else {
         split_size = block_tiling_inner_loop;
@@ -197,7 +212,7 @@ bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_
 
 bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                         OpRunInfo& run_info) {
-    
+
     std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
     std::vector<int64_t> output_shape = op_paras.outputs[0].tensor[0].shape;
 
@@ -227,12 +242,12 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
 
     if (c1 >= core_num) {
         block_tiling_axis = 1;
-    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) && 
+    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) &&
                 outer_loop >= core_num &&
                 input_shape[ub_tiling_axis] % core_num == 0) {
         inner_loop = input_shape[ub_tiling_axis] / core_num;
         block_tiling_axis = 2;
-    } else if (ub_tiling_axis == 2 && 
+    } else if (ub_tiling_axis == 2 &&
                input_shape[ub_tiling_axis] >= half_core_num &&
                input_shape[ub_tiling_axis] % half_core_num == 0 &&
                input_shape[0] < core_num) {

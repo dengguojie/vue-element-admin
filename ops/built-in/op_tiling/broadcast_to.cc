@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,8 +67,8 @@ bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, co
 
   // align shape for shape and input shapes
   uint64_t len_diff = shape_value.size() - x_runtime_shape.size();
-  OP_TILING_CHECK((len_diff < 0), 
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+  OP_TILING_CHECK((len_diff < 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                                   "length of shape should not be less than input_x's dimension"),
                   return false);
   int64_t const_value_front =

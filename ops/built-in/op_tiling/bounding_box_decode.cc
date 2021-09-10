@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -256,7 +256,7 @@ bool CheckParam(const std::string& opType, TilingInfo& param) {
  * @param: [out] runInfo: result data
  * @return bool: success or not
 */
-bool BoundingBoxDecodeTiling(const string& op_type, const TeOpParas& op_paras, 
+bool BoundingBoxDecodeTiling(const string& op_type, const TeOpParas& op_paras,
                              const nlohmann::json& op_info, OpRunInfo& run_info) {
     OP_LOGD(op_type.c_str(), "BoundingBoxDecodeTiling running.");
 
