@@ -178,13 +178,11 @@ run command: %s
             file_util.makedirs(report_data_dir, mode=ConstManager.DATA_DIR_MODES)
         json_str = json.dumps(json_obj, indent=4)
         try:
-            if not os.path.exists(report_data_path):
-                with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
-                                       ConstManager.DATA_FILE_MODES), 'w') as rpt_fout:
-                    rpt_fout.write(json_str)
-            else:
-                with open(report_data_path, 'w') as rpt_file:
-                    rpt_file.write(json_str)
+            if os.path.exists(report_data_path):
+                os.remove(report_data_path)
+            with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
+                                   ConstManager.DATA_FILE_MODES), 'w') as rpt_fout:
+                rpt_fout.write(json_str)
         except OSError as ex:
             utils.print_error_log(
                 'Failed to create {}. Please check the path permission or '

@@ -86,7 +86,8 @@ class CaseGenerator:
         elif attr_type == 'listFloat':
             default_value = list(map(float, value_list))
         elif attr_type == 'listStr':
-            default_value = list((x.strip() for x in value_list))
+            default_value_tuple = (x.strip() for x in value_list)
+            default_value = list(default_value_tuple)
         elif attr_type == 'listBool':
             default_value_tuple = (self._parse_bool_value(x) for x in
                                    value_list)
@@ -315,6 +316,13 @@ class CaseGenerator:
 
     @staticmethod
     def check_required_key(op_info, op_info_key, missing_keys):
+        """
+        Function:check required key
+        op_info: operator information
+        op_info_key: key in operator st json
+        missing_keys: keys missed in operator st json
+        return: None
+        """
         for required_key in ConstManager.REQUIRED_OP_INFO_KEYS:
             if required_key not in op_info:
                 missing_keys.append(required_key)

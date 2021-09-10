@@ -209,6 +209,9 @@ class TFModelParse:
     the class for parse tf model.
     """
 
+    TMP_SHAPE_FILE = 'tmp_shape.json'
+    TMP_GA_PATH_FILE = 'tmp_ga_path.json'
+
     def __init__(self, args):
         if hasattr(args, 'input_file'):
             self.input_file = args.input_file
@@ -366,10 +369,9 @@ class TFModelParse:
         interface for IDE , get "Placeholder" shape from tf model
         generate the json file with the shape store in
         """
-        tmp_shape_file = 'tmp_shape.json'
         self._check_get_shape_argument_valid()
         shape_map = self._get_shape_fn(self.model_path)
-        json_path = os.path.join(self.output_path, tmp_shape_file)
+        json_path = os.path.join(self.output_path, self.TMP_SHAPE_FILE)
         utils.write_json_file(json_path, shape_map)
 
     def _check_get_nodes_argument_valid(self, op_type):
@@ -397,13 +399,12 @@ class TFModelParse:
         interface for IDE , change "Placeholder" shape from tf model
         generate the json file with the new model path store in
         """
-        tmp_ga_path_file = 'tmp_ga_path.json'
         self._check_change_shape_argument_valid()
         new_shape_map = utils.load_json_file(self.input_file)
         _, new_model_path = self._change_shape_fn(self.model_path,
                                                   new_shape_map)
         json_path = os.path.realpath(os.path.join(self.output_path,
-                                                  tmp_ga_path_file))
+                                                  self.TMP_GA_PATH_FILE))
         utils.write_json_file(json_path, {'new_model_path': new_model_path})
 
 

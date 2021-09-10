@@ -280,6 +280,26 @@ class AclOpRunner:
         # start to get op time from csv summary files and save in report
         self._get_op_case_result_and_show_data(csv_file, op_name_list)
 
+    @staticmethod
+    def _get_job_path(prof_base_path):
+        scan = utils.ScanFile(prof_base_path, prefix="JOB")
+        scan_dirs = scan.scan_subdirs()
+        if not scan_dirs:
+            utils.print_error_log("Profiling job directory"
+                                  " is not found, skip according analysis")
+            return ''
+        if len(scan_dirs) > 1:
+            utils.print_error_log(
+                "Multiple profiling job directories are found, "
+                "please clear the prof directory"
+                " and retry: %s" % ','.join(scan_dirs))
+            return ''
+        job_path = os.path.join(prof_base_path, scan_dirs[0])
+        os.chdir(job_path)
+        utils.print_info_log(
+            "Start to analyze profiling data in %s" % job_path)
+        return job_path
+
     def prof_analyze(self, prof_base_path, toolkit_root_path):
         """
         do profiling analysis.
@@ -288,21 +308,9 @@ class AclOpRunner:
         :return:
         """
         try:
-            scan = utils.ScanFile(prof_base_path, prefix="JOB")
-            scan_dirs = scan.scan_subdirs()
-            if not scan_dirs:
-                utils.print_error_log("Profiling job directory"
-                                      " is not found, skip according analysis")
+            job_path = self._get_job_path(prof_base_path)
+            if not job_path:
                 return
-            if len(scan_dirs) > 1:
-                utils.print_error_log("Multiple profiling job directories are found, "
-                                      "please clear the prof directory"
-                                      " and retry: %s" % ','.join(scan_dirs))
-                return
-            job_path = os.path.join(prof_base_path, scan_dirs[0])
-            os.chdir(job_path)
-            utils.print_info_log("Start to analyze profiling data in %s" % job_path)
-
             # start to read result.txt and get op execute times
             run_result_list = self._read_result_txt()
             if not run_result_list:
@@ -352,9 +360,8 @@ def _get_op_case_info_list(column_line_list, row_list, op_name_list, op_case_inf
                 row[op_name_column_idx])[1]:
             op_time = row[op_time_column_idx]
             op_type = row[op_name_column_idx]
-            task_type = row[task_type_column_idx]
             op_idx = op_idx + 1
-            each_case_info_list.extend([op_type, task_type,
+            each_case_info_list.extend([op_type,  row[task_type_column_idx],
                                         op_time.strip('"')])
             op_case_info_list.append(each_case_info_list)
             each_case_info_list = []
@@ -392,6 +399,9 @@ def get_op_case_info_from_csv_file(csv_file, op_name_list):
 
 
 def display_op_case_info(op_case_info_list):
+    """
+    display_op_case_info
+    """
     utils.print_info_log(
         '---------------------------------------------------')
     utils.print_info_log(

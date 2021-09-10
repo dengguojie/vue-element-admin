@@ -13,6 +13,9 @@ import stat
 
 
 class ConstManager:
+    """
+    class ConstManager
+    """
     # error code for user:success
     OP_TEST_GEN_NONE_ERROR = 0
     # error code for user: config error

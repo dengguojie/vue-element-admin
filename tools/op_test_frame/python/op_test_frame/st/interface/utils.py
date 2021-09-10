@@ -237,11 +237,17 @@ def check_path_valid(path, isdir=False):
 
 
 def check_output_path(output_path, testcase_list, machine_type):
+    """
+    Function Description: check output path
+    Parameter:
+    output_path: output path
+    testcase_list: testcase list
+    machine_type: machine type
+    Return: output path
+    """
     formalized_path = os.path.realpath(output_path)
     check_path_valid(formalized_path, True)
-    if machine_type:
-        output_path = output_path
-    else:
+    if not machine_type:
         op_name_path = os.path.join(output_path, testcase_list[0].get('op'))
         if not os.path.exists(op_name_path):
             try:
@@ -253,9 +259,8 @@ def check_output_path(output_path, testcase_list, machine_type):
             finally:
                 pass
         else:
-            print_error_log("Specified output path already has %s "
-                                  "directory, please delete or move it and "
-                                  "retry." % testcase_list[0]['op'])
+            print_error_log("Specified output path already has %s directory, "
+                            "please delete or move it and retry." % testcase_list[0]['op'])
         output_path = op_name_path
     return output_path
 

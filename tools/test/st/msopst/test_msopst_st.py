@@ -606,6 +606,46 @@ class TestUtilsMethods(unittest.TestCase):
             op_case_info_list.append(each_case_info_list)
         acl_op_runner.display_op_case_info(op_case_info_list)
 
+    def test_prof_analyze(self):
+        out_path = "./st/msopst/golden/base_case/input"
+        lines = "1  Test_AddN_001_case_001  [pass] \n " \
+                "2  Test_AddN_001_case_002  [pass] \n " \
+                "3  Test_AddN_001_case_003  [pass] \n"
+        toolkit_root_path = "toolkit_root_path"
+        report = OpSTReport()
+        runner = AclOpRunner('/home', 'ddd', report)
+        with mock.patch(
+                'op_test_frame.st.interface.utils.ScanFile.scan_subdirs',
+                return_value=['result.txt']):
+            with mock.patch(
+                    'op_test_frame.st.interface.utils.read_file',
+                    return_value=lines):
+                with mock.patch('os.path.join', return_value=out_path), \
+                     mock.patch('os.path.exists', return_value=True), \
+                     mock.patch('os.access', return_value=True), \
+                     mock.patch('os.chdir'):
+                    with mock.patch(
+                            'op_test_frame.st.interface.acl_op_runner'
+                            '.AclOpRunner._execute_command'):
+                        runner.prof_analyze(os.path.join(
+                            out_path, ConstManager.PROF), toolkit_root_path)
+
+    def test_st_report_save(self):
+        """
+        test_st_report_save
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        report = OpSTReport()
+        report_data_path = os.path.join(ST_OUTPUT, 'st_report.json')
+        with mock.patch(
+                'op_test_frame.st.interface.st_report.OpSTReport._to_json_obj',
+                return_value=[{}]):
+            report.save(report_data_path)
+        with mock.patch(
+                'op_test_frame.st.interface.st_report.OpSTReport._to_json_obj',
+                return_value=[{}]):
+            report.save(report_data_path)
+
     # --------------ori_format/ori_shape/device_id--------------------
     def test_gen_ori_format_or_shape_src_code(self):
         """
