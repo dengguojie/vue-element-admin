@@ -948,9 +948,7 @@ class BaseBroadcastSchedule:
                     attrs = {"storage_bound":[tensor_bound]}
                     param[1] = VECTOR_BROADCAST
                 else:
-                    src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
-                                              tvm.expr.Call.PureIntrinsic, None, 0)
-                    attrs = {"src_shape":src_shape, "storage_bound":[tensor_bound],
+                    attrs = {"storage_bound":[tensor_bound],
                                  "dynamic_fuse":False,
                                  "dynamic_split":False}
                     if enable_dynamic_optimize(tensor_i):
