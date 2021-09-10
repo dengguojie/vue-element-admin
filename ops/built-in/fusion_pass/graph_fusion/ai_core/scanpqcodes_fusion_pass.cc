@@ -46,6 +46,7 @@ static const std::string OP_TYPE_SCAN_PQ_CODES = "ScanPQCodes";
 static const std::string OP_TYPE_TOPK_PQ_DISTANCE = "TopKPQDistance";
 static const std::string ATTR_OP_SPECIFIED_ENGINE_NAME = "_specified_engine_name";
 static const std::string ATTR_OP_SPECIFIED_KERNEL_LIB_NAME = "_specified_kernel_lib_name";
+static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
 static const uint32_t SCANPQ_INPUT_SIZE = 5;
@@ -120,6 +121,7 @@ Status ScanPQCodesFusionPass::SplitScanPQCodesNode(ge::ComputeGraph& graph, ge::
   ge::AttrUtils::SetStr(scanPQCodesDescVec, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "VectorEngine");
   ge::AttrUtils::SetInt(scanPQCodesDescVec, ATTR_SPLIT_COUNT, (int64_t)2);
   ge::AttrUtils::SetInt(scanPQCodesDescVec, ATTR_SPLIT_INDEX, (int64_t)1);
+  ge::AttrUtils::SetStr(scanPQCodesDescVec, ATTR_NAME_STREAM_LABEL, "VectorEngine");
 
   scanPQCodesNodeVectorCore = graph.AddNode(scanPQCodesDescVec);
   FUSION_PASS_CHECK(scanPQCodesNodeVectorCore == nullptr,
