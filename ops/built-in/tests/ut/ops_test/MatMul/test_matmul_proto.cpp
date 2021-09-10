@@ -189,6 +189,26 @@ TEST_F(matmul_infer_test, static_normal) {
   Check(op, {2, 5}, {});
 }
 
+TEST_F(matmul_infer_test, static_normal_2) {
+  auto op = CreateMatMulOp(OP_TUPLE{{2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           OP_TUPLE{{4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {2, 1}, {});
+}
+
+TEST_F(matmul_infer_test, static_normal_3) {
+  auto op = CreateMatMulOp(OP_TUPLE{{4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           OP_TUPLE{{4, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {1, 5}, {});
+}
+
 TEST_F(matmul_infer_test, dynamic_normal) {
   auto op = CreateMatMulOp(OP_TUPLE{{-1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {{1, 3}, {2, 5}}},
                            OP_TUPLE{{-1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {{1, 7}, {2, 9}}},
