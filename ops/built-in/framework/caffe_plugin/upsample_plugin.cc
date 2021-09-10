@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ Status ParseParams_Upsample(const Message* op_origin, ge::Operator& op_dest) {
   }
 
   const caffe::UpsampleParameter& param = layer->upsample_param();
-  if (param.has_scale() && !param.has_stride() && !param.has_stride_h() && !param.has_stride_h()) {
+  if (param.has_scale() && !param.has_stride() && !param.has_stride_h()) {
     OP_LOGW("Upsample", "scale means each pixel's scale factor, stride means upsample's shape magnification");
   }
   if (param.has_scale()) {
