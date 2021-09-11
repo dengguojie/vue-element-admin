@@ -64,9 +64,10 @@ def generate_ins(reduce_axis_size, dim_len):
 def generate_patterns(reduce_axis_size):
     """
     generate last nlast axis reduce pattern.
-    such as: one reduce axis: (a, r), (a, r, a)
-             three reduce axis: (a, r, a, r, a, r), (a, r, a, r, a, r, a)
-             'a mean common axis, r means reduce axis'
+    such as:
+    one reduce axis: (a, r), (a, r, a)
+    three reduce axis: (a, r, a, r, a, r), (a, r, a, r, a, r, a)
+    'a mean common axis, r means reduce axis'
     :param reduce_axis_size:
     :return:
     """

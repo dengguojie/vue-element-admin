@@ -37,7 +37,10 @@ from .constants import INSN_MAPPING
 from .constants import ReducePattern
 from .constants import Pattern
 from .reduce_atomic_schedule import ReduceAtomicSchedule
-from .reduce_tilingcase import ReduceTilingCase, Dim, R, A
+from .reduce_tilingcase import Dim
+from .reduce_tilingcase import R
+from .reduce_tilingcase import A
+from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
 from .util import get_dsl_insn
 from .util import get_reduce_axis_indexes

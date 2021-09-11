@@ -32,6 +32,19 @@ namespace utils {
 const int32_t SMALL_SHAPE_THRESHOLD = 1024;
 const int32_t FUSED_NON_REDUCE_AXIS = 0;
 const int32_t FUSED_REDUCE_AXIS = 1;
+const int32_t BASE_2 = 2;
+const int32_t BASE_4 = 4;
+const int32_t BASE_10 = 10;
+const int32_t EIGHTY_PERCENT = 0.8;
+const int32_t MAX_INTEGER = 2147483647;
+const int32_t EMPTY_SCHEDULE_UB_TILING_FACTOR_128 = 128;
+const int32_t ARRAY_INDEX_0 = 0;
+const int32_t ARRAY_INDEX_1 = 1;
+const int32_t ARRAY_INDEX_2 = 2;
+const int32_t ARRAY_INDEX_3 = 3;
+const int32_t ARRAY_INDEX_4 = 4;
+const int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
+
 
 struct TilingInfoReduce {
   int32_t block_dim{-1};
@@ -42,11 +55,11 @@ struct TilingInfoReduce {
 };
 
 struct ReorderInfoReduce {
-  std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(10, 0)};
+  std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
   std::vector<int32_t> fused_block_tiling_axis;
   // pos after reorder : pos before reorder
   //    vector.idx     :      vector[idx]
-  std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(10, 0)};
+  std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 };
 
 struct CompileInfoReduce {
@@ -144,15 +157,15 @@ class Reduce {
   int64_t zero_tiling_key{0};
 
   std::vector<int64_t> input_shape_ori;
-  std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
-  std::vector<int64_t> input_shape{std::vector<int64_t>(10, 0)};
-  std::vector<int32_t> reduce_axis{std::vector<int32_t>(10, 0)};
-  std::vector<int64_t> output_shape{std::vector<int64_t>(10, 0)};
+  std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int64_t> input_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int32_t> reduce_axis{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int64_t> output_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 
   // assistant
-  std::vector<int64_t> normalize_shape{std::vector<int64_t>(10, 0)};
-  std::vector<int32_t> normalize_axis{std::vector<int32_t>(10, 0)};
-  std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
+  std::vector<int64_t> normalize_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int32_t> normalize_axis{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int32_t> reduce_flag{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 
   bool is_last_axis_reduce{false};
   int64_t total_output_count{-1};

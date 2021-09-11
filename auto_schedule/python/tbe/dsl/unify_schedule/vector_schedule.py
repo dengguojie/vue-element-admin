@@ -585,8 +585,8 @@ class VectorSchedule(VectorScheduleBase, ABC):
                    target_scope: str,
                    consumers: Iterable[Tensor]) -> Placeholder:
         """
-         do  placeholder  for cache read
-         """
+        do  placeholder  for cache read
+        """
         consumers = tuple(consumers)
         my_data_flow_control = self._data_flow_control.setdefault(source_tensor, {target_scope: {consumers, }})
         my_data_flow_control[target_scope].add(tuple(consumers))
@@ -727,12 +727,12 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def fuse(self,
              source_tensor: Tensor,
              fuse_axis_list: List[Union[int, Placeholder]]) -> Placeholder:
-        tiling_index = self.add_tiling(source_tensor,
-                                       tiling_mode=VectorSchedule.TilingInfo.TilingMode.FUSE,
-                                       fuse_axis_list=fuse_axis_list)
         """
         fuse axis
         """
+        tiling_index = self.add_tiling(source_tensor,
+                                       tiling_mode=VectorSchedule.TilingInfo.TilingMode.FUSE,
+                                       fuse_axis_list=fuse_axis_list)
         return VectorSchedule.Placeholder(VectorSchedule.Placeholder.PlaceholderType.FUSE_RESULT, tiling_index)
 
     def pragma(self,

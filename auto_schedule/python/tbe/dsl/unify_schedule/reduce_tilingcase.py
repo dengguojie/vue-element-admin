@@ -29,7 +29,8 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
-from tbe.common.platform import ASCEND_910, ASCEND_920A
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import op_tiling
@@ -46,7 +47,8 @@ from .constants import CompileInfo
 from .constants import Pattern
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import ReducePattern
-from .constants import AtomicSupportMap910, AtomicSupportMap920A
+from .constants import AtomicSupportMap910
+from .constants import AtomicSupportMap920A
 from .computation import Computation
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes

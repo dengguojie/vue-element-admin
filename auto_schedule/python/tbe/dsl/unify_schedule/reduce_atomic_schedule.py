@@ -21,7 +21,9 @@ import copy
 from tbe import tvm
 from tvm.tensor import Tensor
 
-from tbe.common.platform import ASCEND_920A, SOC_VERSION, scope_ubuf
+from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import scope_ubuf
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -32,15 +34,24 @@ from .constants import INSN_MAPPING
 from .util import get_dsl_insn
 from .util import is_reduce_tensor
 
-from .reduce_tilingcase import ReduceTilingCase, Dim, R, A
+from .reduce_tilingcase import Dim
+from .reduce_tilingcase import R
+from .reduce_tilingcase import A
+from .reduce_tilingcase import ReduceTilingCase
 from .vector_info import ComputeGraphInfo
 
 CONST = "const"
 BLOCK_SIZE_BYTE = 32
 
 
-class _VectorSchedule(object):
+class _VectorSchedule:
+    """
+    class for Vector Schedule
+    """
     class ComputeAlignInfo:
+        """
+        class for Compute Align Info
+        """
         def __init__(self, tensor=None, pad=None, factor=None):
             self.tensor = tensor
             self.pad = pad
