@@ -1802,10 +1802,15 @@ bool BroadCastTwoinOneout(const Operator& op, std::vector<int64_t>& shape_x, std
       range_y_new.insert(range_y_new.begin(), {1, 1});
     }
   }
-
+  for (size_t i = 0; i < dim_x.size(); i++) {
+    if (dim_x[i] == -2 || dim_y[i] == -2) {
+      dim_out.push_back(-2);
+      return true;
+    }
+  }
   // set out dims
   for (size_t i = 0; i < dim_x.size(); i++) {
-    if ((dim_x[i] != dim_y[i]) && (dim_x[i] != 1) && (dim_y[i] != 1)) {
+    if ((dim_x[i] != dim_y[i]) && ((dim_x[i] != 1 && dim_x[i] != -1) && (dim_y[i] != 1 && dim_y[i] != -1))) {
       string msg = ConcatString("The dimensions does not match the broadcast rule(", dim_x[i], ", ", dim_y[i], ")");
       std::string err_msg = OtherErrMsg(msg);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
