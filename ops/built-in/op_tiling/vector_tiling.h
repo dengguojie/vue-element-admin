@@ -28,6 +28,29 @@
 #include "vector_tiling_log.h"
 
 namespace optiling {
+
+class OpInfo {
+public:
+  explicit OpInfo(const std::vector<std::vector<int64_t>>& _op_input_shapes,
+                  const ge::DataType& _op_in_type) :
+                  op_input_shapes (_op_input_shapes),
+                  op_in_type (_op_in_type) {
+  }
+  ~OpInfo() = default;
+
+  const std::vector<std::vector<int64_t>>& GetInputShape() const {
+    return op_input_shapes;
+  }
+
+  const ge::DataType& GetInType() const {
+    return op_in_type;
+  }
+
+private:
+  const std::vector<std::vector<int64_t>>& op_input_shapes;
+  const ge::DataType& op_in_type;
+};
+
 /*
  * @brief: tiling function of reduce operator
  * @param [in] op_type: op_type of the reduce operator
@@ -52,6 +75,8 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
                     OpRunInfo& run_info);
 bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                     utils::OpRunInfo& run_info);
+bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                    utils::OpRunInfo& run_info, const OpInfo& opInfo);
 /*
  * @brief: tiling function of norm operator
  * @param [in] op_type: op_type of the norm operator

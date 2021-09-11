@@ -74,7 +74,7 @@ class Broadcast {
   static constexpr float MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS = 1.5;
 
  public:
-  explicit Broadcast(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _op_info,
+  explicit Broadcast(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _compile_info,
                      const std::vector<bool>& _flag_info,
                      const ge::DataType _in_type,
                      const ge::DataType _out_type,
@@ -85,7 +85,7 @@ class Broadcast {
                      std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& _input_shapes)
       : op_type(_op_type),
         op_paras(_op_paras),
-        op_info(_op_info),
+        compile_info(_compile_info),
         flag_info(_flag_info),
         in_type(_in_type),
         out_type(_out_type),
@@ -131,7 +131,7 @@ class Broadcast {
  private:
   const std::string& op_type;
   const ge::Operator& op_paras;
-  const nlohmann::json& op_info;
+  const nlohmann::json& compile_info;
   const std::vector<bool>& flag_info;
   const ge::DataType in_type;
   const ge::DataType out_type;
