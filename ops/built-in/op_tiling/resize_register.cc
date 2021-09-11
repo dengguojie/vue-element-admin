@@ -80,6 +80,12 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
   }
   // get compile data end
 
+  // get auto turn params
+  if (GetResizeClassTuneParams(op_info, compile_params)) {
+    OP_LOGI(compile_params.op_type, "Get auto tune params success.");
+  }
+  // get auto turn params end
+
   // get tiling data begin
   ResizeClassTilingParams tiling_params;
   // init tiling data

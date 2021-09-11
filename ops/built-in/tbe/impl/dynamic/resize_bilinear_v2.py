@@ -22,11 +22,16 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
+from impl.auto_tune.resize_bilinear_v2 import tune_space_resize_bilinear_v2 as tune_space
+from impl.auto_tune.resize_bilinear_v2 import tune_param_check_supported_resize_bilinear_v2 \
+                                       as tune_param_check_supported
+from tbe.common.register import register_tune_space
+from tbe.common.register import register_tune_param_check_supported
 
 # max uint16
-MAX_UINT16 = 2**16 - 1
+MAX_UINT16 = 2 ** 16 - 1
 # max int64
-MAX_INT64 = 2**63 - 1
+MAX_INT64 = 2 ** 63 - 1
 # ting param num
 TILING_ARG_NUM = 16
 # reserved ub size
@@ -2523,3 +2528,64 @@ def resize_bilinear_v2(images,
     obj = ResizeBilinearV2(images, size, y, align_corners, half_pixel_centers, kernel_name)
 
     return obj.resize_bilinear_v2_operator()
+
+
+@register_tune_space("ResizeBilinearV2")
+def tune_space_resize_bilinear_v2(images, size, y, align_corners=False, half_pixel_centers=False,
+                                  kernel_name="resize_bilinear_v2"):
+    """
+    get tune_param
+    Parameters
+    ----------
+    images: dict
+        the dict of input, include shape of input_tensor which layout
+        only support 5HD and dtype supports 'float16', 'float32'
+    size: dict
+        the dict of input, the height and width of output tensor
+        only support 5HD and dtype supports 'float16', 'float32'
+    y: dict
+        the dict of output, include shape of input_tensor which layout
+        only support 5HD and dtype supports 'float16', 'float32'
+    align_corners: bool
+        whether align_corners
+    half_pixel_centers: bool
+        whether half_pixel_centers
+    kernel_name: str
+        cce kernel name, default value is `resize_bilinear_v2`
+
+    Returns
+    -------
+    tune_param: param lists of auto tune
+    """
+    return tune_space(images, size, y, align_corners, half_pixel_centers, kernel_name)
+
+
+@register_tune_param_check_supported("ResizeBilinearV2")
+def tune_param_check_supported_resize_bilinear_v2(images, size, y, align_corners=False, half_pixel_centers=False,
+                                                  kernel_name="resize_bilinear_v2", tune_param=None):
+    """
+    check tune_param
+    Parameters
+    ----------
+    images: dict
+        the dict of input, include shape of input_tensor which layout
+        only support 5HD and dtype supports 'float16', 'float32'
+    size: dict
+        the dict of input, the height and width of output tensor
+        only support 5HD and dtype supports 'float16', 'float32'
+    y: dict
+        the dict of output, include shape of input_tensor which layout
+        only support 5HD and dtype supports 'float16', 'float32'
+    align_corners: bool
+        whether align_corners
+    half_pixel_centers: bool
+        whether half_pixel_centers
+    kernel_name: str
+        cce kernel name, default value is `resize_bilinear_v2`
+    tune_param: param list of auto tune
+
+    Returns
+    -------
+    check result of tune_param
+    """
+    return tune_param_check_supported(images, size, y, align_corners, half_pixel_centers, kernel_name, tune_param)

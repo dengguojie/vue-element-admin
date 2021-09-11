@@ -118,6 +118,25 @@ static void GetTilingForNCProc(const ResizeClassCompileParams& compile_params, R
 }
 
 bool GetResizeBilinearV2Tiling(const ResizeClassCompileParams& compile_params, ResizeClassTilingParams& tiling_params) {
+  if (compile_params.tuneParams.tiling_key == 999999) {
+    OP_LOGI(compile_params.op_type, "Start setting tiling params by tune params.");
+    GetTilingForNoBilinear(compile_params, tiling_params);
+    return true;
+  }
+  if ((compile_params.tuneParams.tiling_key == 100110 || compile_params.tuneParams.tiling_key == 100000) &&
+      compile_params.tuneParams.cut_batch_c1_num * compile_params.tuneParams.cut_height_num *
+              compile_params.tuneParams.cut_width_num <=
+          compile_params.core_num) {
+    OP_LOGI(compile_params.op_type, "Start setting tiling params by tune params.");
+    tiling_params.tiling_key = compile_params.tuneParams.tiling_key;
+    tiling_params.input_batch = tiling_params.input_batch * tiling_params.input_c1;
+    tiling_params.input_c1 = 1;
+    tiling_params.cut_batch_c1_num = compile_params.tuneParams.cut_batch_c1_num;
+    tiling_params.cut_height_num = compile_params.tuneParams.cut_height_num;
+    tiling_params.cut_width_num = compile_params.tuneParams.cut_width_num;
+    return true;
+  }
+  OP_LOGI(compile_params.op_type, "Start calculating tiling parameters.");
   bool is_resize_with_no_bilinear = (tiling_params.input_height == tiling_params.output_height &&
                                      tiling_params.input_width == tiling_params.output_width) ||
                                     (tiling_params.input_height == 1 && tiling_params.input_width == 1);

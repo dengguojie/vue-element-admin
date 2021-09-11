@@ -49,6 +49,49 @@ bool GetResizeClassCompileParams(const nlohmann::json& compile_info, ResizeClass
   return true;
 }
 
+bool GetResizeClassTuneParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params) {
+  using namespace nlohmann;
+  OP_LOGD(compile_params.op_type, "Entering GetResizeClassTuneParams.");
+  if (compile_info.count(INNERTUNEPARAM) == 0) {
+    OP_LOGD(compile_params.op_type, "GetResizeClassTuneParams do not contain %s in json.", INNERTUNEPARAM);
+    return false;
+  }
+  auto tuneParamOut = compile_info[INNERTUNEPARAM];
+  if (tuneParamOut.count(TUNEPARAM) == 0) {
+    OP_LOGD(compile_params.op_type, "%s is not in %s.", TUNEPARAM, INNERTUNEPARAM);
+    return false;
+  }
+  auto tuneParam = tuneParamOut[TUNEPARAM];
+  if (tuneParam.count("tiling_key") == 0) {
+    OP_LOGD(compile_params.op_type, "tiling_key is not in %s.", TUNEPARAM);
+    return false;
+  }
+  compile_params.tuneParams.tiling_key = tuneParam["tiling_key"].get<std::int64_t>();
+  OP_LOGD(compile_params.op_type, "tiling_key of tune param: %lld", compile_params.tuneParams.tiling_key);
+  if (compile_params.tuneParams.tiling_key == 100110 || compile_params.tuneParams.tiling_key == 100000) {
+    if (tuneParam.count("cut_batch_c1_num") == 0) {
+      OP_LOGD(compile_params.op_type, "cut_batch_c1_num is not in %s.", TUNEPARAM);
+      return false;
+    }
+    compile_params.tuneParams.cut_batch_c1_num = tuneParam["cut_batch_c1_num"].get<std::int64_t>();
+    OP_LOGD(compile_params.op_type, "cut_batch_c1_num of tune param: %lld", compile_params.tuneParams.cut_batch_c1_num);
+    if (tuneParam.count("cut_height_num") == 0) {
+      OP_LOGD(compile_params.op_type, "cut_height_num is not in %s.", TUNEPARAM);
+      return false;
+    }
+    compile_params.tuneParams.cut_height_num = tuneParam["cut_height_num"].get<std::int64_t>();
+    OP_LOGD(compile_params.op_type, "cut_height_num of tune param: %lld", compile_params.tuneParams.cut_height_num);
+    if (tuneParam.count("cut_width_num") == 0) {
+      OP_LOGD(compile_params.op_type, "cut_width_num is not in %s.", TUNEPARAM);
+      return false;
+    }
+    compile_params.tuneParams.cut_width_num = tuneParam["cut_width_num"].get<std::int64_t>();
+    OP_LOGD(compile_params.op_type, "cut_width_num of tune param: %lld", compile_params.tuneParams.cut_width_num);
+  }
+
+  return true;
+}
+
 void SetTilingParams(const ResizeClassTilingParams& tiling_params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, tiling_params.tiling_key);
   ByteBufferPut(run_info.tiling_data, tiling_params.input_batch);

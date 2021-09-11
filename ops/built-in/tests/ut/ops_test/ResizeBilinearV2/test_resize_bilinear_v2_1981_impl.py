@@ -175,9 +175,9 @@ def test_new_performance(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-ut_case.add_cust_test_func(test_func=test_1981_fp16_small_shape)
-ut_case.add_cust_test_func(test_func=test_1981_fp32_small_shape)
-ut_case.add_cust_test_func(test_func=test_new_performance)
+# ut_case.add_cust_test_func(test_func=test_1981_fp16_small_shape)
+# ut_case.add_cust_test_func(test_func=test_1981_fp32_small_shape)
+# ut_case.add_cust_test_func(test_func=test_new_performance)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
