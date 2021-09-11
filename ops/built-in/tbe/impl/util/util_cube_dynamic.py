@@ -833,6 +833,9 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
             self.check_input_dict(self.y, "y", True)
             dx_range = self.y.get("range")
             dy_shape_nchw = self.get_input_nchw(dy_shape, self.data_format)
+            for idx, dim_value in enumerate(dx_shape_nchw):
+                if dim_value == DYNAMIC_FLAG:
+                    dy_shape_nchw[idx] = DYNAMIC_FLAG
             dx_shape_nchw, dx_range_nchw = self.get_input_nchw(dx_shape, self.data_format, dx_range)
             self.check_support_valid(dy_shape_nchw, filter_shape_nchw)
             self.check_dynamic_channel_scene(

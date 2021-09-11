@@ -2450,7 +2450,7 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   } else if (x_c % w_c != 0) {
-    OP_LOGE(op_name.GetString(), "fmap_channel % filter_channel != 0");
+    OP_LOGE(op_name.GetString(), "fmap_channel %% filter_channel != 0");
     map<string, string> err_map;
     err_map["op_name"] = op_name.GetString();
     err_map["description"] = "fmap_channel % filter_channel != 0";
@@ -2991,7 +2991,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     is_input_size_const = true;
     CHECK_SIZE(input_sizes.empty() || (input_sizes.size() != 4), return GRAPH_FAILED, "input_size is invalid");
     OP_LOGD(op_name.GetString(), "get input_size success.");
-  } else if (std::find(dy_sizes.begin(), dy_sizes.end(), -1) != dy_sizes.end()) {
+  } else if (IsUnKnownShape(dy_sizes)) {
     // when static op or dynamic op phase_running, is_dynamic == False
     reset_range(op, "out_backprop");
     is_dynamic = true;
@@ -3001,14 +3001,17 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   int32_t fw_position;
   int64_t filter_h;
   int64_t filter_w;
-  if (is_dynamic || (!is_input_size_const && unknown_rank)) {
+  if (!is_input_size_const) {
     // get shape for output from input_size
     std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
-      op.SetAttr("pads", {0, 0, 0, 0});
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
+      if (pad_str == "SAME") {
+        op.SetAttr("pads", {-1, -1, -1, -1});
+      } else if (pad_str == "VALID") {
+        op.SetAttr("pads", {0, 0, 0, 0});
+      }
     }
+
     std::vector<std::pair<int64_t, int64_t>> dy_range;
     x_desc->GetShapeRange(dy_range);
     std::vector<std::pair<int64_t, int64_t>> dx_range;
@@ -3032,11 +3035,16 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
 
   // set shape of output desc, input_size should match the format of y
   if (input_sizes.size() == 4) {
-    std::vector<int64_t> y_shape;
-    y_shape.push_back(input_sizes[0]);
-    y_shape.push_back(input_sizes[1]);
-    y_shape.push_back(input_sizes[2]);
-    y_shape.push_back(input_sizes[3]);
+    std::vector<int64_t> y_shape = input_sizes;
+    if (!is_input_size_const && !IsUnKnownShape(dy_sizes) && !IsUnKnownShape(input_sizes)) {
+      OP_LOGI(op_name.GetString(), "input_sizes is Data but all tensors have no -1, so force to set HW in y to -1.");
+      CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return GRAPH_FAILED);
+      std::string dx_format_str(format2str[input_format]);
+      auto h_pos = dx_format_str.find("H");  // format checked, no need to check with npos
+      auto w_pos = dx_format_str.find("W");  // format checked, no need to check with npos
+      y_shape[h_pos] = -1;
+      y_shape[w_pos] = -1;
+    }
     y_desc->SetShape(GeShape(y_shape));
   }
 
@@ -3068,8 +3076,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     dilation_h = static_cast<int64_t>(dilation_h);
     dilation_w = static_cast<int64_t>(dilation_w);
     vector<int64_t> attr_param = {stride_h, stride_w, dilation_h, dilation_w};
-    if (!unknown_rank && !IsUnKnownShape(dy_sizes) && !check_conv2d_backprop_input_pads(op, dy_sizes, dy_format,
-                                            filter_sizes, filter_format,dx_shape, input_format, attr_param)) {
+    if (!unknown_rank && !check_conv2d_backprop_input_pads(op, dy_sizes, dy_format, filter_sizes, filter_format,
+                                                           dx_shape, input_format, attr_param)) {
       return GRAPH_FAILED;
     }
   }
