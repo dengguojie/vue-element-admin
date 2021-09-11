@@ -41,12 +41,26 @@ static const string EINSUM = "Einsum";
 static const string RESHAPE = "Reshape";
 static const string TRANSPOSE = "TransposeD";
 static const string MATMUL = "MatMulV2";
-static const string BATCHMATMUL = "BatchMatMul";
+static const string BATCHMATMUL = "BatchMatMulV2";
 
 /*
     einsum -> reshape + matmul + reshape
     einsum -> transpose + batchmatmul + transpose
 */
+
+void EquationNormalization(string& equation) {
+  map<char, char> normalize_map;
+  size_t indice = 0;
+  for (auto &dim_shape : equation) {
+    if (isalpha(dim_shape)) {
+      if (normalize_map.find(dim_shape) == normalize_map.end()) {
+        normalize_map[dim_shape] = 'a' + indice;
+        indice++;
+      }
+      dim_shape = normalize_map[dim_shape];
+    }
+  }
+}
 
 static void AssistIntHelp(const vector<int64_t>& const_vec, int32_t* output) {
   for (size_t i = 0; i < const_vec.size(); ++i) {
@@ -82,7 +96,6 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Input node of einsum node size is [%lu], which not equal to 2.",
                             node->GetInDataNodes().size()),
                     return NOT_CHANGED);
-
   // get input
   GeTensorDesc x0_desc = op_desc->GetInputDesc(0);
   GeShape x0_shape = x0_desc.GetShape();
@@ -98,6 +111,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get attr equation failed.");
     return NOT_CHANGED;
   }
+  EquationNormalization(equation);
 
   // common vars
   std::vector<int64_t> tmp_dims;
@@ -284,7 +298,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "BTNH,BFNH->BNFT") {  // 002 transpose+transpose+batchmatmul(swap input)
+  } else if (equation == "abcd,aecd->aceb") {  // 002 transpose+transpose+batchmatmul(swap input)
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
     // add input and output desc
@@ -379,7 +393,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "BNFT,BTNH->BFNH") {  // 003:transpose+batchmatmul+transpose
+  } else if (equation == "abcd,adbe->acbe") {  // 003:transpose+batchmatmul+transpose
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
     // add input and output desc
@@ -634,7 +648,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abd,cd->abc") {  // 006:reshape+matmul+reshape-->batchmatmul
+  } else if (equation == "abc,dc->abd") {  // 006:reshape+matmul+reshape-->batchmatmul
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 2),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and two."), return NOT_CHANGED);
     // add input and output desc
@@ -684,7 +698,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abd,abc->cd") {  // 007:reshape+reshape+matmul(swap input)
+  } else if (equation == "abc,abd->dc") {  // 007:reshape+reshape+matmul(swap input)
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
     // init const
@@ -791,7 +805,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abe,cde->abcd") {  // 008:reshape+reshape+matmul+reshape
+  } else if (equation == "abc,dec->abde") {  // 008:reshape+reshape+matmul+reshape
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
     // init const
@@ -928,7 +942,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abe,abcd->cde") {  // 009:reshape+reshape+matmul+reshape(swap input)
+  } else if (equation == "abc,abde->dec") {  // 009:reshape+reshape+matmul+reshape(swap input)
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and four."), return NOT_CHANGED);
     // init const
@@ -1064,7 +1078,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "BFNH,BTNH->BNFT") {  // 010:transpose+batchmatmul+transpose
+  } else if (equation == "abcd,aecd->acbe") {  // 010:transpose+batchmatmul+transpose
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."),
                       return NOT_CHANGED);  // add input and output desc
@@ -1159,7 +1173,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "BFNH,BNFT->BTNH") {  // 011:transpose+batchmatmul+transpose(swap input)
+  } else if (equation == "abcd,acbe->aecd") {  // 011:transpose+batchmatmul+transpose(swap input)
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
     // add input and output desc
@@ -1254,7 +1268,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abde,cde->abc") {  // 012:reshape+reshape+matmul+reshape-->reshape+batchmatmul
+  } else if (equation == "abcd,ecd->abe") {  // 012:reshape+reshape+matmul+reshape-->reshape+batchmatmul
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
@@ -1363,7 +1377,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abde,abc->cde") {  // 013:reshape+reshape+matmul+reshape(swap input)
+  } else if (equation == "abcd,abe->ecd") {  // 013:reshape+reshape+matmul+reshape(swap input)
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
@@ -1499,7 +1513,7 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "BNFT,BFNH->BTNH") {  // 014: transpose+batchmatmul+transpose
+  } else if (equation == "abcd,acbe->adbe") {  // 014: transpose+batchmatmul+transpose
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
     // add input and output desc
