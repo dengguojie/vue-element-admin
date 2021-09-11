@@ -312,5 +312,5 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     config = {
         "name": kernel_name,
         "tensor_list": [data_x, bias, res],
-        "forbid_inplace_due_to_pipe_conflict":True}
+        "forbid_inplace_due_to_pipe_conflict": True}
     tbe.cce_build_code(sch, config)

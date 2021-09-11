@@ -98,6 +98,8 @@ set_st_env() {
   export DDK_PATH=$install_path
   export NPU_HOST_LIB=$install_path/acllib/lib64/stub
   export LD_LIBRARY_PATH=$install_path/acllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+  #slog
+  export ASCEND_SLOG_RPINT_TO_STDOUT=1
 }
 
 run_st() {
