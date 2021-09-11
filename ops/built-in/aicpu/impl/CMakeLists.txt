@@ -35,6 +35,7 @@ set(local_kernels_src_files
     kernels/normalized/index_to_addr.cc
     kernels/normalized/inplace_top_k_distance.cc
     kernels/normalized/less.cc
+    kernels/normalized/log_matrix_determinant.cc
     kernels/normalized/logging.cc
     kernels/normalized/log1p.cc
     kernels/normalized/masked_select.cc

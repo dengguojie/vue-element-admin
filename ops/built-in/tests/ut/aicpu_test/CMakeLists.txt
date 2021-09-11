@@ -110,6 +110,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/index_to_addr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/inplace_top_k_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/log_matrix_determinant.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/log1p.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
@@ -247,6 +248,7 @@ set(_cpu_kernels_ut_files
   testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
   testcase/less/src/less_utest.cpp
+  testcase/log_matrix_determinant/src/log_matrix_determinant_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/log1p/src/log1p_utest.cpp
   testcase/masked_select/src/masked_select_utest.cpp
