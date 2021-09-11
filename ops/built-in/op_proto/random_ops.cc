@@ -663,4 +663,21 @@ IMPLEMT_COMMON_INFERFUNC(UniformInferShape) {
 
 COMMON_INFER_FUNC_REG(Uniform, UniformInferShape);
 //-----------------------Uniform END---------------------
+
+// ------------------ContinuationIndicator Start-------------------------------
+IMPLEMT_COMMON_INFERFUNC(ContinuationIndicatorInferShape) {
+  int64_t time_step;
+  (void)op.GetAttr("time_step", time_step);
+  int64_t batch_size;
+  (void)op.GetAttr("batch_size", batch_size);
+  vector<int64_t> dims = {time_step, batch_size};
+  ge::Shape shape(dims);
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(shape);
+  output_desc.SetDataType(ge::DT_FLOAT);
+  op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ContinuationIndicator, ContinuationIndicatorInferShape);
+// ------------------ContinuationIndicator End-------------------------------
 }  // namespace ge
