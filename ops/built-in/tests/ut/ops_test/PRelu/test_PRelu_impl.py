@@ -17,14 +17,55 @@ def gen_prelu_case(shape, weight_shape, case_name, dtype="float32"):
             "format_expect": [],
             "support_expect": True}
 
-def gen_prelu_6HD_case(shape, weight_shape, case_name, dtype="float32"):
+def gen_prelu_6HD_case(shape, weight_shape, ori_shape, ori_weight_shape, case_name, dtype="float32"):
     return {"params": [{"shape": shape, "dtype": dtype, "format": "NDC1HWC0",
-                        "ori_shape": shape, "ori_format": "NDC1HWC0"},
+                        "ori_shape": ori_shape, "ori_format": "NDHWC"},
                        {"shape": weight_shape, "dtype": dtype,
-                        "format": "NDC1HWC0", "ori_shape": weight_shape,
-                        "ori_format": "NDC1HWC0"},
+                        "format": "NDC1HWC0", "ori_shape": ori_weight_shape,
+                        "ori_format": "NDHWC"},
                        {"shape": shape, "dtype": dtype, "format": "NDC1HWC0",
                         "ori_shape": shape, "ori_format": "NDC1HWC0"}],
+            "case_name": case_name,
+            "expect": "success",
+            "format_expect": [],
+            "support_expect": True}
+
+
+def gen_prelu_5HD_case(shape, weight_shape, ori_shape, ori_weight_shape, case_name, dtype="float32"):
+    return {"params": [{"shape": shape, "dtype": dtype, "format": "NC1HWC0",
+                        "ori_shape": ori_shape, "ori_format": "NHWC"},
+                       {"shape": weight_shape, "dtype": dtype,
+                        "format": "NC1HWC0", "ori_shape": ori_weight_shape,
+                        "ori_format": "NHWC"},
+                       {"shape": shape, "dtype": dtype, "format": "NC1HWC0",
+                        "ori_shape": shape, "ori_format": "NHWC"}],
+            "case_name": case_name,
+            "expect": "success",
+            "format_expect": [],
+            "support_expect": True}
+
+
+def gen_prelu_4D_case(shape, weight_shape, case_name, dtype="float32"):
+    return {"params": [{"shape": shape, "dtype": dtype, "format": "NHWC",
+                        "ori_shape": shape, "ori_format": "NHWC"},
+                       {"shape": weight_shape, "dtype": dtype,
+                        "format": "NHWC", "ori_shape": weight_shape,
+                        "ori_format": "NHWC"},
+                       {"shape": shape, "dtype": dtype, "format": "NHWC",
+                        "ori_shape": shape, "ori_format": "NHWC"}],
+            "case_name": case_name,
+            "expect": "success",
+            "format_expect": [],
+            "support_expect": True}
+
+def gen_prelu_nz_case(shape, weight_shape, ori_shape, ori_weight_shape, case_name, dtype="float32"):
+    return {"params": [{"shape": shape, "dtype": dtype, "format": "FRACTAL_NZ",
+                        "ori_shape": ori_shape, "ori_format": "ND"},
+                       {"shape": weight_shape, "dtype": dtype,
+                        "format": "FRACTAL_NZ", "ori_shape": ori_weight_shape,
+                        "ori_format": "ND"},
+                       {"shape": shape, "dtype": dtype, "format": "FRACTAL_NZ",
+                        "ori_shape": shape, "ori_format": "ND"}],
             "case_name": case_name,
             "expect": "success",
             "format_expect": [],
@@ -39,8 +80,17 @@ ut_case.add_case(platform, gen_prelu_case((32, 2, 4, 16), (1,), "prelu_3"))
 ut_case.add_case(platform, gen_prelu_case((32, 2, 4, 16), (1, ), "prelu_4"))
 ut_case.add_case(platform, gen_prelu_case((1, 2), (1, ), "prelu_5"))
 
-ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), "prelu_6"))
-ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (1, ), "prelu_7"))
+ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), "prelu_6"))
+ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), (1, ), "prelu_7"))
+ut_case.add_case(platform, gen_prelu_case((32, 2, 4, 16), (1, 2, 4, 16), "prelu_8"))
+ut_case.add_case(platform, gen_prelu_case((32, 2, 4), (32, 1, 1), "prelu_9"))
+ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16),(10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 1, 16), "prelu_10"))
+ut_case.add_case(platform, gen_prelu_5HD_case((3, 2, 4, 5, 16),(3, 2, 4, 5, 16), (3, 4, 5, 19), (2, 1, 5, 19 ), "prelu_11"))
+ut_case.add_case(platform, gen_prelu_5HD_case((3, 2, 4, 5, 16), (2, 4, 5, 16), (3, 4, 5, 19), (2, 1, 5, 19), "prelu_12"))
+ut_case.add_case(platform, gen_prelu_5HD_case((3, 2, 4, 5, 16), (2, 1, 1, 16), (3, 4, 5, 19), (2, 1, 5, 19), "prelu_13"))
+ut_case.add_case(platform, gen_prelu_4D_case((32, 1, 4, 16), (1, 16), "prelu_14"))
+ut_case.add_case(platform, gen_prelu_nz_case((6, 1, 1, 16, 16), (1, 1, 1, 16, 16), (6, 19, 20), (1, 19, 20),  "prelu_15"))
+ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (512, 1, 16), (10, 1, 512, 1, 512, 16), (512, 1, 16),  "prelu_16"))
 
 def calc_expect_func(input_x, weight, output_y):
     data = input_x["value"]
