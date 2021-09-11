@@ -555,7 +555,6 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
 }
 Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   // get the NodePtr of LSTM
-  return SUCCESS;
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -629,6 +628,10 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     biasIndex = 3;
     wxIndex = 2;
     whIndex = 4;
+  }
+
+  if (!has_static) {
+    return SUCCESS;
   }
   ge::GeTensorDesc outTensorDesc = fusedDesc->GetOutputDesc(0);
   int32_t outputDim = outTensorDesc.GetShape().GetDim(2);
