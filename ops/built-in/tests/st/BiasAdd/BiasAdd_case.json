@@ -1,0 +1,53 @@
+[
+  {
+      "case_name": "Test_BiasAdd_001",
+      "op": "BiasAdd",
+      "input_desc": [
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1,1],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "x"
+          },
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "bias"
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1, 1],
+              "name": "y"
+          }
+      ],
+      "attr": [
+          {
+              "name": "data_format",
+              "type": "string",
+              "value": "NHWC"
+          }
+      ]
+  }
+]
