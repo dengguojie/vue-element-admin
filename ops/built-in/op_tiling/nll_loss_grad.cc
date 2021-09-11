@@ -21,12 +21,14 @@
 #include <map>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 using namespace ge;
@@ -402,49 +404,49 @@ static bool GetCompileParams(const nlohmann::json& op_compile_info_json, std::st
   return true;
 }
 
-bool SetRunningInfo(const TilingParam& tiling_param, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, tiling_param.c_dim);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.n_dim);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.invalid_target);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.ignore_idx);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.output_gm_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.x_gm_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.y_grad_gm_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.target_gm_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.data_total_weight_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.weight_gm_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.big_weight);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.core_num);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.max_line);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.lower_line);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.loop_time);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.fake_core);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.redundant_line);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.max_total_num);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.lower_total_num);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.dup_ub_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.target_ub_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.weight_ub_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.total_weight_ub_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.refactor_weight_ub_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.weight_burst);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.target_burst);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.lower_target_burst);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.max_vmul_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.lower_vmul_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.last_target_burst);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.last_vmul_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.core_dup_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.last_dup_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.max_out_burst);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.last_out_burst);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.y_grad_ub_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.tiling_key);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.align_repeat_size);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.move_out_time);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.single_max_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.tail_repeat);
-  ByteBufferPut(runInfo.tiling_data, tiling_param.offet);
+bool SetRunningInfo(const TilingParam& tiling_param, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(tiling_param.c_dim);
+  runInfo.AddTilingData(tiling_param.n_dim);
+  runInfo.AddTilingData(tiling_param.invalid_target);
+  runInfo.AddTilingData(tiling_param.ignore_idx);
+  runInfo.AddTilingData(tiling_param.output_gm_size);
+  runInfo.AddTilingData(tiling_param.x_gm_size);
+  runInfo.AddTilingData(tiling_param.y_grad_gm_size);
+  runInfo.AddTilingData(tiling_param.target_gm_size);
+  runInfo.AddTilingData(tiling_param.data_total_weight_size);
+  runInfo.AddTilingData(tiling_param.weight_gm_size);
+  runInfo.AddTilingData(tiling_param.big_weight);
+  runInfo.AddTilingData(tiling_param.core_num);
+  runInfo.AddTilingData(tiling_param.max_line);
+  runInfo.AddTilingData(tiling_param.lower_line);
+  runInfo.AddTilingData(tiling_param.loop_time);
+  runInfo.AddTilingData(tiling_param.fake_core);
+  runInfo.AddTilingData(tiling_param.redundant_line);
+  runInfo.AddTilingData(tiling_param.max_total_num);
+  runInfo.AddTilingData(tiling_param.lower_total_num);
+  runInfo.AddTilingData(tiling_param.dup_ub_size);
+  runInfo.AddTilingData(tiling_param.target_ub_size);
+  runInfo.AddTilingData(tiling_param.weight_ub_size);
+  runInfo.AddTilingData(tiling_param.total_weight_ub_size);
+  runInfo.AddTilingData(tiling_param.refactor_weight_ub_size);
+  runInfo.AddTilingData(tiling_param.weight_burst);
+  runInfo.AddTilingData(tiling_param.target_burst);
+  runInfo.AddTilingData(tiling_param.lower_target_burst);
+  runInfo.AddTilingData(tiling_param.max_vmul_repeat);
+  runInfo.AddTilingData(tiling_param.lower_vmul_repeat);
+  runInfo.AddTilingData(tiling_param.last_target_burst);
+  runInfo.AddTilingData(tiling_param.last_vmul_repeat);
+  runInfo.AddTilingData(tiling_param.core_dup_repeat);
+  runInfo.AddTilingData(tiling_param.last_dup_repeat);
+  runInfo.AddTilingData(tiling_param.max_out_burst);
+  runInfo.AddTilingData(tiling_param.last_out_burst);
+  runInfo.AddTilingData(tiling_param.y_grad_ub_size);
+  runInfo.AddTilingData(tiling_param.tiling_key);
+  runInfo.AddTilingData(tiling_param.align_repeat_size);
+  runInfo.AddTilingData(tiling_param.move_out_time);
+  runInfo.AddTilingData(tiling_param.single_max_repeat);
+  runInfo.AddTilingData(tiling_param.tail_repeat);
+  runInfo.AddTilingData(tiling_param.offet);
 
   return true;
 }
@@ -457,16 +459,47 @@ bool SetRunningInfo(const TilingParam& tiling_param, OpRunInfo& runInfo) {
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool NLLLossGradTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                       OpRunInfo& runInfo) {
+bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& op_info,
+                       utils::OpRunInfo& runInfo) {
   OP_LOGD(opType, "NLLLossGradTiling running.");
+  PROFILING_TILING_INIT(opType.c_str());
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(opParas);
+  if (operator_info == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "get op_info failed.");
+    return false;
+  }
 
-  std::vector<int64_t> x_shape = opParas.inputs[0].tensor[0].shape;
-  std::vector<int64_t> y_grad_shape = opParas.inputs[1].tensor[0].shape;
-  std::vector<int64_t> target_shape = opParas.inputs[2].tensor[0].shape;
-  std::vector<int64_t> weight_shape = opParas.inputs[3].tensor[0].shape;
-  std::vector<int64_t> total_weight_shape = opParas.inputs[4].tensor[0].shape;
-  std::vector<int64_t> out_shape = opParas.outputs[0].tensor[0].shape;
+  auto input_x_desc = operator_info->MutableInputDesc(0);
+  auto input_y_grad_desc = operator_info->MutableInputDesc(1);
+  auto input_target_desc = operator_info->MutableInputDesc(2);
+  auto input_weight_desc = operator_info->MutableInputDesc(3);
+  auto input_total_weight_desc = operator_info->MutableInputDesc(4);
+  auto out_desc = operator_info->MutableOutputDesc(0);
+
+  if (input_x_desc == nullptr || input_y_grad_desc == nullptr || input_target_desc == nullptr ||
+      input_weight_desc == nullptr || input_total_weight_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed.");
+    return false;
+  }
+
+  if (out_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "get out_desc failed.");
+    return false;
+  }
+
+  std::vector<int64_t> x_shape = input_x_desc->MutableShape().GetDims();
+  std::vector<int64_t> y_grad_shape = input_y_grad_desc->MutableShape().GetDims();
+  std::vector<int64_t> target_shape = input_target_desc->MutableShape().GetDims();
+  std::vector<int64_t> weight_shape = input_weight_desc->MutableShape().GetDims();
+  std::vector<int64_t> total_weight_shape = input_total_weight_desc->MutableShape().GetDims();
+  std::vector<int64_t> out_shape = out_desc->MutableShape().GetDims();
+
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  if (x_shape.empty() || y_grad_shape.empty() || target_shape.empty() || weight_shape.empty() ||
+      total_weight_shape.empty()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get input shape failed.");
+    return false;
+  }
 
   OP_LOGD(
       opType,
@@ -489,21 +522,16 @@ bool NLLLossGradTiling(const std::string& opType, const TeOpParas& opParas, cons
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: GetCompileParams error.");
     return false;
   }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   // check params
-  if (x_shape.empty() || y_grad_shape.empty() || target_shape.empty() || weight_shape.empty() ||
-      total_weight_shape.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get input shape failed.");
-    return false;
-  }
-
   OP_LOGD(opType, "to check params.");
   if (!CheckParams(opType, x_shape, y_grad_shape, target_shape, weight_shape, total_weight_shape, reduction)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: CheckParams error.");
     return false;
   }
 
-  // One dim, converted to two dims processing; for example：x=(N,)->x=(1,N);target=(N,)->target=(1,)
+  // One dim, converted to two dims processing; for example:x=(N,)->x=(1,N);target=(N,)->target=(1,)
   if (x_shape.size() == 1) {
     x_shape.insert(x_shape.begin(), 1);
     target_shape[0] = 1;
@@ -516,25 +544,24 @@ bool NLLLossGradTiling(const std::string& opType, const TeOpParas& opParas, cons
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: GetTilingParam error.");
     return false;
   }
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   OP_LOGD(opType, "encode TilingParam.");
   if (!SetRunningInfo(tiling_param, runInfo)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: SetRunningInfo error.");
     return false;
   }
-  OP_LOGD(opType, "TilingParam:%s.", to_string(runInfo.tiling_data).c_str());
+  OP_LOGD(opType, "TilingParam:%s.", to_string(runInfo.GetAllTilingData()).c_str());
 
   // block_dim
-  runInfo.block_dim = tiling_param.core_num;
+  runInfo.SetBlockDim(tiling_param.core_num);
 
-  // workspace, null for tik op
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
+  PROFILING_TILING_END();
   OP_LOGD(opType, "tiling run success.");
 
   return true;
 }
 
 // register tiling interface of the NLLLossGrad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(NLLLossGrad, NLLLossGradTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(NLLLossGrad, NLLLossGradTiling);
 }  // namespace optiling

@@ -24,6 +24,8 @@
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "math_ops.h"
+#include "array_ops.h"
 
 class NLLLossTiling : public testing::Test {
  protected:
@@ -49,1110 +51,837 @@ static std::string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-TEST_F(NLLLossTiling, NLLLoss_tiling1) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
+using namespace ge;
+#include "test_common.h"
+/*
+.INPUT(x, TensorType({DT_FLOAT}))
+    .INPUT(target, TensorType({DT_INT32}))
+    .INPUT(weight, TensorType({DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT}))
+    .OUTPUT(total_weight, TensorType({DT_FLOAT}))
+    .ATTR(reduction, String, "mean")
+    .ATTR(ignore_index, Int, -100)
+*/
 
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+TEST_F(NLLLossTiling, NLLLoss_tiling1) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {16, 32};
   std::vector<int64_t> input_target_shape = {16,};
   std::vector<int64_t> input_weight_shape = {32,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 16 16 32 1 0 1 1 0 1 59392 1856 32 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling2) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {16, 32};
   std::vector<int64_t> input_target_shape = {16,};
   std::vector<int64_t> input_weight_shape = {32,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 2 16 32 8 0 8 8 0 8 59392 1856 32 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling3) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {1, 3991};
   std::vector<int64_t> input_target_shape = {1,};
   std::vector<int64_t> input_weight_shape = {3991,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 1 1 3991 0 0 0 1 0 1 59872 16 3992 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling4) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {220, 3991};
   std::vector<int64_t> input_target_shape = {220,};
   std::vector<int64_t> input_weight_shape = {3991,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 28 220 3991 8 1 0 4 0 4 59872 16 3992 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling5) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {220, 3991};
   std::vector<int64_t> input_target_shape = {220,};
   std::vector<int64_t> input_weight_shape = {3991,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 32 220 3991 7 0 7 3 0 3 59872 16 3992 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling6) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {7, 39};
   std::vector<int64_t> input_target_shape = {7,};
   std::vector<int64_t> input_weight_shape = {39,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 1 7 39 0 0 0 7 0 7 60296 1552 40 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling7) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 3991};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {3991,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 32 2000 3991 63 4 3 47 3 2 59872 16 3992 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling8) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "1 32 2000 15003 63 21 0 47 15 2 45016 8 15008 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling9) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"REDUCTION\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling10) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"CORE\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling11) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling12) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 100, 15003};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling13) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {2000, 100};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling14) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {2000,};
   std::vector<int64_t> input_weight_shape = {1199,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling15) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {2000, 15003};
   std::vector<int64_t> input_target_shape = {1100,};
   std::vector<int64_t> input_weight_shape = {15003,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
-
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
-
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling16) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
-
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NLLLoss");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  TeOpTensorArg tensorInputArgX, tensorInputArgTarget, tensorInputArgWeight;
-  TeOpTensorArg tensorOutputArgTotalWeight, tensorOutputArgY;
-  TeOpParas opParas;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::NLLLoss("NLLLoss");
   std::vector<int64_t> input_x_shape = {220, 200000};
   std::vector<int64_t> input_target_shape = {220,};
   std::vector<int64_t> input_weight_shape = {200000,};
   std::vector<int64_t> output_total_weight_shape = {1,};
   std::vector<int64_t> output_y_shape = {1,};
-  std::string dtype = "float32";
-  std::string dtype_target = "int32";
-
-  TeOpTensor tensorInputX;
-  tensorInputX.shape = input_x_shape;
-  tensorInputX.dtype = dtype;
-
-  TeOpTensor tensorInputTarget;
-  tensorInputTarget.shape = input_target_shape;
-  tensorInputTarget.dtype = dtype_target;
-
-  TeOpTensor tensorInputWeight;
-  tensorInputWeight.shape = input_weight_shape;
-  tensorInputWeight.dtype = dtype;
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
 
 
-  tensorInputArgX.tensor.push_back(tensorInputX);
-  tensorInputArgX.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgX);
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
 
-  tensorInputArgTarget.tensor.push_back(tensorInputTarget);
-  tensorInputArgTarget.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgTarget);
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
 
-  tensorInputArgWeight.tensor.push_back(tensorInputWeight);
-  tensorInputArgWeight.arg_type = TA_SINGLE;
-  opParas.inputs.push_back(tensorInputArgWeight);
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
 
-  TeOpTensor tensorOutputY;
-  tensorOutputY.shape = output_y_shape;
-  tensorOutputY.dtype = dtype;
-  tensorOutputArgY.tensor.push_back(tensorOutputY);
-  tensorOutputArgY.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgY);
-  
-  TeOpTensor tensorOutputTotalWeight;
-  tensorOutputTotalWeight.shape = output_total_weight_shape;
-  tensorOutputTotalWeight.dtype = dtype;
-  tensorOutputArgTotalWeight.tensor.push_back(tensorOutputTotalWeight);
-  tensorOutputArgTotalWeight.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputArgTotalWeight);
-  
-  opParas.op_type = "NLLLoss";
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
+
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
+
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = this->test_info_->name();
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
 
-  OpRunInfo runInfo;
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  std::cout << "new case NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
+  std::cout << "new case NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
-      to_string(runInfo.tiling_data),
+      to_string(runInfo.GetAllTilingData()),
       "2 32 220 200000 7 0 7 3 0 3 8 21669 8 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }

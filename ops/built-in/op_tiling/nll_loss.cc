@@ -21,10 +21,12 @@
 #include <string>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 
@@ -83,21 +85,9 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compi
   return true;
 }
 
-bool CheckTensorShape(const std::string& op_type, const TeOpParas& op_paras) {
-  if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
-      op_paras.inputs[2].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input shape error.");
-    return false;
-  }
+bool CheckTensorShape(const std::string& op_type, const vector<int64_t>& x_shape,
+                      const vector<int64_t>& target_shape, const vector<int64_t>& weight_shape) {
 
-  if (op_paras.outputs.empty() || op_paras.outputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: output shape error.");
-    return false;
-  }
-
-  std::vector<int64_t> x_shape = op_paras.inputs[0].tensor[0].shape;
-  std::vector<int64_t> target_shape = op_paras.inputs[1].tensor[0].shape;
-  std::vector<int64_t> weight_shape = op_paras.inputs[2].tensor[0].shape;
   int64_t x_dims = x_shape.size();
 
   if (x_dims <= 0 || x_dims > 2) {
@@ -296,9 +286,15 @@ int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& 
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                   OpRunInfo& run_info) {
+bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                   utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "NLLLossTiling start running.");
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  if (operator_info == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed.");
+    return false;
+  }
 
   // get compile info
   int64_t bytes = 4;
@@ -324,17 +320,32 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   int64_t min_aligned = 1;
   bool is_left_data = true;
 
+  auto input_x_desc = operator_info->MutableInputDesc(0);
+  auto input_target_desc = operator_info->MutableInputDesc(1);
+  auto input_weight_desc = operator_info->MutableInputDesc(2);
+
+  if (input_x_desc == nullptr || input_target_desc == nullptr || input_weight_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed.");
+    return false;
+  }
+
+  std::vector<int64_t> x_shape = input_x_desc->MutableShape().GetDims();
+  std::vector<int64_t> target_shape = input_target_desc->MutableShape().GetDims();
+  std::vector<int64_t> weight_shape = input_weight_desc->MutableShape().GetDims();
+
   if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams error.");
     return false;
   }
 
-  if (!CheckTensorShape(op_type, op_paras)) {
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
+  if (!CheckTensorShape(op_type, x_shape, target_shape, weight_shape)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: CheckTensorShape error.");
     return false;
   }
 
-  std::vector<int64_t> x_shape = op_paras.inputs[0].tensor[0].shape;
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   // input x is 1D
   if (x_shape.size() == 1) {
@@ -374,34 +385,33 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   OP_LOGD(op_type.c_str(), "NLLLossTiling: x_size=%lld, target_size=%lld, weight_size=%lld",
           x_size, target_size, weight_size);
 
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
   // set tiling data
-  ByteBufferPut(run_info.tiling_data, tiling_mode);
-  ByteBufferPut(run_info.tiling_data, need_core_num);
-  ByteBufferPut(run_info.tiling_data, n_size);
-  ByteBufferPut(run_info.tiling_data, c_size);
-  ByteBufferPut(run_info.tiling_data, per_core_size);
-  ByteBufferPut(run_info.tiling_data, per_core_loop_cnt);
-  ByteBufferPut(run_info.tiling_data, per_core_left_size);
-  ByteBufferPut(run_info.tiling_data, last_core_size);
-  ByteBufferPut(run_info.tiling_data, last_core_loop_cnt);
-  ByteBufferPut(run_info.tiling_data, last_core_left_size);
-  ByteBufferPut(run_info.tiling_data, x_size);
-  ByteBufferPut(run_info.tiling_data, target_size);
-  ByteBufferPut(run_info.tiling_data, weight_size);
+  run_info.AddTilingData(tiling_mode);
+  run_info.AddTilingData(need_core_num);
+  run_info.AddTilingData(n_size);
+  run_info.AddTilingData(c_size);
+  run_info.AddTilingData(per_core_size);
+  run_info.AddTilingData(per_core_loop_cnt);
+  run_info.AddTilingData(per_core_left_size);
+  run_info.AddTilingData(last_core_size);
+  run_info.AddTilingData(last_core_loop_cnt);
+  run_info.AddTilingData(last_core_left_size);
+  run_info.AddTilingData(x_size);
+  run_info.AddTilingData(target_size);
+  run_info.AddTilingData(weight_size);
 
   // block_dim, core num used in tik op
-  run_info.block_dim = need_core_num;
-
   // workspace, null for tik op
-  std::vector<int64_t> workspace;
-  run_info.workspaces = workspace;
+  run_info.SetBlockDim(need_core_num);
 
+  PROFILING_TILING_END();
   OP_LOGD(op_type.c_str(), "NLLLossTiling run success.");
 
   return true;
 }
 
 // register tiling inferface of the Nllloss op
-REGISTER_OP_TILING_FUNC_BUFFERED(NLLLoss, NLLLossTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(NLLLoss, NLLLossTiling);
 
 }  // namespace optiling
