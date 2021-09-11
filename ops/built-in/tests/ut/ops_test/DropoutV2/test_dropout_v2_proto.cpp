@@ -20,6 +20,7 @@ TEST_F(DropoutV2Test, dropout_v2_test_case_1) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
     dropout_v2_op.UpdateInputDesc("x", tensorDesc);
 
     tensorDesc.SetDataType(ge::DT_FLOAT);

@@ -68,6 +68,7 @@ TEST_F(HcomGatherAllToAllVTest, hcom_gather_all_to_all_v_infershape_test_const) 
   {
     ge::Tensor constTensor;
     ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_UINT64);
+    constDesc.SetOriginShape(ge::Shape());
     constDesc.SetSize(4 * sizeof(int64_t));
     constTensor.SetTensorDesc(constDesc);
     int64_t constData[4] = {1, 1, 2, 1};
@@ -79,12 +80,14 @@ TEST_F(HcomGatherAllToAllVTest, hcom_gather_all_to_all_v_infershape_test_const) 
     std::vector<int64_t> dims;
     dims.push_back(4);
     desc.SetShape(ge::Shape(dims));
+    desc.SetOriginShape(ge::Shape(dims));
     op.UpdateInputDesc("addrinfo", desc);
   }
 
   {
     ge::Tensor constTensor;
     ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+    constDesc.SetOriginShape(ge::Shape());
     constDesc.SetSize(2 * sizeof(int64_t));
     constTensor.SetTensorDesc(constDesc);
     int64_t constData[2] = {1, 1};
@@ -99,6 +102,7 @@ TEST_F(HcomGatherAllToAllVTest, hcom_gather_all_to_all_v_infershape_test_const) 
   {
     ge::Tensor constTensor;
     ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+    constDesc.SetOriginShape(ge::Shape());
     constDesc.SetSize(2 * sizeof(int64_t));
     constTensor.SetTensorDesc(constDesc);
     int64_t constData[2] = {0, 1};
@@ -113,6 +117,7 @@ TEST_F(HcomGatherAllToAllVTest, hcom_gather_all_to_all_v_infershape_test_const) 
   {
     ge::Tensor constTensor;
     ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+    constDesc.SetOriginShape(ge::Shape());
     constDesc.SetSize(2 * sizeof(int64_t));
     constTensor.SetTensorDesc(constDesc);
     int64_t constData[2] = {0, 1};

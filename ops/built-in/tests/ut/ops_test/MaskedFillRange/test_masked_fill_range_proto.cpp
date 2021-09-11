@@ -20,21 +20,25 @@ TEST_F(MaskedFillRangeTest, masked_fill_range_test_case_1) {
     ge::Shape shape_x({2, 3, 4});
     tensor_x.SetDataType(ge::DT_FLOAT16);
     tensor_x.SetShape(shape_x);
+    tensor_x.SetOriginShape(shape_x);
 
     ge::TensorDesc tensor_start;
     ge::Shape shape_start({1, 2});
     tensor_start.SetDataType(ge::DT_INT32);
     tensor_start.SetShape(shape_start);
+    tensor_start.SetOriginShape(shape_start);
 
     ge::TensorDesc tensor_end;
     ge::Shape shape_end({1, 2});
     tensor_end.SetDataType(ge::DT_INT32);
     tensor_end.SetShape(shape_end);
+    tensor_end.SetOriginShape(shape_end);
 
     ge::TensorDesc tensor_value;
     ge::Shape shape_value({1});
     tensor_value.SetDataType(ge::DT_FLOAT16);
     tensor_value.SetShape(shape_value);
+    tensor_value.SetOriginShape(shape_value);
 
     masked_fill_range_op.SetAttr("axis", 0);
 

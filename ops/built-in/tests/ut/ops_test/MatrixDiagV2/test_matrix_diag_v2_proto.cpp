@@ -185,6 +185,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_num_failed) {
   op.UpdateInputDesc("diagonal", tensor_desc1);
 
   ge::TensorDesc const_desc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc.SetOriginShape(ge::Shape({3}));
   int32_t const_value[3] = {7, 6, 5};
   auto const_op = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc, (uint8_t *)const_value, 3 * sizeof(int32_t)));
@@ -214,6 +215,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_val_failed) {
   op.UpdateInputDesc("diagonal", tensor_desc1);
 
   ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc.SetOriginShape(ge::Shape({2}));
   int32_t const_value[2] = {7, 6};
   auto const_op = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
@@ -243,6 +245,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_val_failed2) {
   op.UpdateInputDesc("diagonal", tensor_desc1);
 
   ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc.SetOriginShape(ge::Shape({2}));
   int32_t const_value[2] = {6, 7};
   auto const_op = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
@@ -399,6 +402,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_val_success) {
                                              ge::FORMAT_ND, {{}});
 
   ge::TensorDesc const_desc0(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc0.SetOriginShape(ge::Shape({2}));
   int32_t const_value0[2] = {2, 7};
   auto const_op0 = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc0, (uint8_t *)const_value0, 2 * sizeof(int32_t)));
@@ -406,6 +410,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_val_success) {
   op.UpdateInputDesc("diagonal", const_desc0);
 
   ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc.SetOriginShape(ge::Shape({2}));
   int32_t const_value[2] = {0, 0};
   auto const_op = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
@@ -413,6 +418,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_val_success) {
   op.UpdateInputDesc("k", const_desc);
 
   ge::TensorDesc const_desc1(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc1.SetOriginShape(ge::Shape());
   int32_t const_value1[1] = {2};
   auto const_op1 = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc1, (uint8_t *)const_value1, 1 * sizeof(int32_t)));
@@ -420,6 +426,7 @@ TEST_F(MatrixDiagV2, matrix_diag_v2_infer_shape_k_val_success) {
   op.UpdateInputDesc("num_rows", const_desc1);
 
   ge::TensorDesc const_desc2(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc2.SetOriginShape(ge::Shape());
   int32_t const_value2[1] = {2};
   auto const_op2 = ge::op::Constant().set_attr_value(
   ge::Tensor(const_desc2, (uint8_t *)const_value2, 1 * sizeof(int32_t)));

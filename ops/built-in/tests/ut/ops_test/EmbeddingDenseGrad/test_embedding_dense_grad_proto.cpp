@@ -39,10 +39,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_1) {
     ge::Shape grad_shape({20, 30, 32});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({20, 30});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);
@@ -65,10 +67,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_2) {
     ge::Shape grad_shape({20, 300, 64});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({20, 300});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);
@@ -91,10 +95,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_3) {
     ge::Shape grad_shape({7, 7, 7, 7, 1024});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({7, 7, 7, 7});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);
@@ -117,10 +123,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_4) {
     ge::Shape grad_shape({3, 3, 32});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({3, 3});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);
@@ -143,10 +151,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_5) {
     ge::Shape grad_shape({-1, -1, -1});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({2, 2});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);
@@ -169,10 +179,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_6) {
     ge::Shape grad_shape({-1, -1, -1, -1, -1});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({-1, -1, -1, -1});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);
@@ -195,10 +207,12 @@ TEST_F(EmbeddingDenseGradTest, embedding_dense_grad_test_case_7) {
     ge::Shape grad_shape({-1, -1, 256});
     grad.SetDataType(ge::DT_FLOAT);
     grad.SetShape(grad_shape);
+    grad.SetOriginShape(grad_shape);
 	ge::TensorDesc indices;
     ge::Shape indices_shape({-1, -1});
     indices.SetDataType(ge::DT_INT32);
     indices.SetShape(indices_shape);
+    indices.SetOriginShape(indices_shape);
 
     embedding_dense_grad_op.UpdateInputDesc("grad", grad);
 	embedding_dense_grad_op.UpdateInputDesc("indices", indices);

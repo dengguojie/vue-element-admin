@@ -39,6 +39,7 @@ TEST_F(SoftMarginLossGradTest, soft_margin_loss_grad_test_case_1) {
     ge::Shape shape({100});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     soft_margin_loss_grad_op.UpdateInputDesc("predict", tensor_desc);
     soft_margin_loss_grad_op.UpdateInputDesc("label", tensor_desc);
@@ -59,6 +60,7 @@ TEST_F(SoftMarginLossGradTest, soft_margin_loss_grad_test_case_2) {
     ge::Shape shape({10, 20});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     soft_margin_loss_grad_op.UpdateInputDesc("predict", tensor_desc);
     soft_margin_loss_grad_op.UpdateInputDesc("label", tensor_desc);
@@ -79,6 +81,7 @@ TEST_F(SoftMarginLossGradTest, soft_margin_loss_grad_test_case_3) {
     ge::Shape shape({10, 20, 30});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     soft_margin_loss_grad_op.UpdateInputDesc("predict", tensor_desc);
     soft_margin_loss_grad_op.UpdateInputDesc("label", tensor_desc);
@@ -102,8 +105,10 @@ TEST_F(SoftMarginLossGradTest, soft_margin_loss_grad_test_case_4) {
 
     predict_desc.SetDataType(ge::DT_FLOAT16);
     predict_desc.SetShape(predcit_shape);
+    predict_desc.SetOriginShape(predcit_shape);
     label_desc.SetDataType(ge::DT_FLOAT16);
     label_desc.SetShape(label_shape);
+    label_desc.SetOriginShape(label_shape);
 
     soft_margin_loss_grad_op.UpdateInputDesc("predict", predict_desc);
     soft_margin_loss_grad_op.UpdateInputDesc("label", label_desc);

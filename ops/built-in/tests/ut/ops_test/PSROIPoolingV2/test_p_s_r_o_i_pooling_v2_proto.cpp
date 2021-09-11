@@ -21,12 +21,14 @@ TEST_F(PSROIPoolingV2ProtoTest, p_s_r_o_i_pooling_v2_test_case_1) {
     ge::Shape x_shape({2, 16*7*7, 7, 7});
     tensor_x_desc.SetDataType(ge::DT_FLOAT16);
     tensor_x_desc.SetShape(x_shape);
+    tensor_x_desc.SetOriginShape(x_shape);
     op.UpdateInputDesc("x", tensor_x_desc);
 
     ge::TensorDesc tensor_rois;
     ge::Shape roi_shape({2, 5, 16});
     tensor_rois.SetDataType(ge::DT_FLOAT16);
     tensor_rois.SetShape(roi_shape);
+    tensor_rois.SetOriginShape(roi_shape);
     op.UpdateInputDesc("rois", tensor_rois);
 
     op.SetAttr("output_dim", 16);
@@ -49,12 +51,14 @@ TEST_F(PSROIPoolingV2ProtoTest, p_s_r_o_i_pooling_v2_test_case_2) {
     ge::Shape shape({2, 2*7*7, 7, 7});
     tensor_x_desc.SetDataType(ge::DT_FLOAT);
     tensor_x_desc.SetShape(shape);
+    tensor_x_desc.SetOriginShape(shape);
     op.UpdateInputDesc("x", tensor_x_desc);
 
     ge::TensorDesc tensor_rois;
     ge::Shape roi_shape({2, 5, 16});
     tensor_rois.SetDataType(ge::DT_FLOAT);
     tensor_rois.SetShape(roi_shape);
+    tensor_rois.SetOriginShape(roi_shape);
     op.UpdateInputDesc("rois", tensor_rois);
 
     op.SetAttr("output_dim", 2);

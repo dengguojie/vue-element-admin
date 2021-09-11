@@ -24,6 +24,7 @@ TEST_F(LogSpaceDTest, log_space_d_test_case_1) {
     ge::Shape shape({2});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     log_space_d_op.UpdateInputDesc("assist", tensorDesc);
 
@@ -46,6 +47,7 @@ TEST_F(LogSpaceDTest, log_space_d_test_case_2) {
     ge::Shape shape({2});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     log_space_d_op.UpdateInputDesc("assist", tensorDesc);
 

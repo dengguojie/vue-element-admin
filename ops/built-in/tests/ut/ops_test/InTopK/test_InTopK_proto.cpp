@@ -22,11 +22,13 @@ TEST_F(InTopKTest, in_top_k_test_case_1) {
   ge::Shape shape1({16, 24});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({16, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -49,11 +51,13 @@ TEST_F(InTopKTest, in_top_k_test_case_2) {
   ge::Shape shape1({52, 1050});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({52, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -76,11 +80,13 @@ TEST_F(InTopKTest, in_top_k_test_case_3) {
   ge::Shape shape1({-1, 234});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({-1, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -103,11 +109,13 @@ TEST_F(InTopKTest, in_top_k_test_case_4) {
   ge::Shape shape1({38, 23344});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({38, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -130,11 +138,13 @@ TEST_F(InTopKTest, in_top_k_test_case_5) {
   ge::Shape shape1({38, 24});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({38, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -223,11 +233,13 @@ TEST_F(InTopKTest, in_top_k_test_case_9) {
   ge::Shape shape1({-2, });
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({-1, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -245,11 +257,13 @@ TEST_F(InTopKTest, in_top_k_test_case_10) {
   ge::Shape shape1({958, 9857});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({958, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -272,11 +286,13 @@ TEST_F(InTopKTest, in_top_k_test_case_11) {
   ge::Shape shape1({1312, 4});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({1312, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);
@@ -299,11 +315,13 @@ TEST_F(InTopKTest, in_top_k_test_case_12) {
   ge::Shape shape1({795, 35208});
   tensorDesc1.SetDataType(ge::DT_FLOAT);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   ge::TensorDesc tensorDesc2;
   ge::Shape shape2({795, });
   tensorDesc2.SetDataType(ge::DT_INT32);
   tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
   op.UpdateInputDesc("x1", tensorDesc1);
   op.UpdateInputDesc("x2", tensorDesc2);

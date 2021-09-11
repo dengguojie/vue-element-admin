@@ -17,7 +17,7 @@ protected:
 
 TEST_F(MaxPool3DTest, kernel_eq_stride_same_ndhwc) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {2,2,2};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -47,7 +47,7 @@ TEST_F(MaxPool3DTest, kernel_eq_stride_same_ndhwc) {
 
 TEST_F(MaxPool3DTest, kernel_eq_stride_valid_ndhwc) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {2,2,2};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -77,7 +77,7 @@ TEST_F(MaxPool3DTest, kernel_eq_stride_valid_ndhwc) {
 
 TEST_F(MaxPool3DTest, kernel_gt_stride_same_ndhwc) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {1,1,1};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -107,7 +107,7 @@ TEST_F(MaxPool3DTest, kernel_gt_stride_same_ndhwc) {
 
 TEST_F(MaxPool3DTest, kernel_gt_stride_valid_ndhwc) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {1,1,1};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -137,7 +137,7 @@ TEST_F(MaxPool3DTest, kernel_gt_stride_valid_ndhwc) {
 
 TEST_F(MaxPool3DTest, kernel_lt_stride_same_ndhwc) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 6, 6, 6, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -167,7 +167,7 @@ TEST_F(MaxPool3DTest, kernel_lt_stride_same_ndhwc) {
 
 TEST_F(MaxPool3DTest, kernel_lt_stride_same_ncdhw) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 16, 6, 6, 6}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 16, 6, 6, 6}, ge::FORMAT_NCDHW));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -200,7 +200,7 @@ TEST_F(MaxPool3DTest, kernel_lt_stride_same_ncdhw) {
 
 TEST_F(MaxPool3DTest, kernel_lt_stride_valid_ncdhw) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 16, 6, 6, 6}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({1, 6, 1, 6, 6, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {1, 16, 6, 6, 6}, ge::FORMAT_NCDHW));
     std::vector<int64_t> ksize = {2,2,2};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {0,0,0,0,0,0};
@@ -233,7 +233,7 @@ TEST_F(MaxPool3DTest, kernel_lt_stride_valid_ncdhw) {
 
 TEST_F(MaxPool3DTest, kernel_lt_stride_calculated_ncdhw) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 16, 19, 19, 19}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 16, 19, 19, 19}, ge::FORMAT_NCDHW));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {2,2,2,2,2,2};
@@ -266,7 +266,7 @@ TEST_F(MaxPool3DTest, kernel_lt_stride_calculated_ncdhw) {
 
 TEST_F(MaxPool3DTest, kernel_lt_stride_calculated_ndhwc_ceil_mode_1) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {2,2,2,2,2,2};
@@ -296,7 +296,7 @@ TEST_F(MaxPool3DTest, kernel_lt_stride_calculated_ndhwc_ceil_mode_1) {
 
 TEST_F(MaxPool3DTest, kernel_lt_stride_calculated_ndhwc_ceil_mode_0) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {1,1,1,1,1,1};
@@ -326,7 +326,7 @@ TEST_F(MaxPool3DTest, kernel_lt_stride_calculated_ndhwc_ceil_mode_0) {
 
 TEST_F(MaxPool3DTest, pads_absent) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {2,2,2,2,2,2};
@@ -345,7 +345,7 @@ TEST_F(MaxPool3DTest, pads_absent) {
 
 TEST_F(MaxPool3DTest, ceil_mode_invalid) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {2,2,2,2,2,2};
@@ -365,7 +365,7 @@ TEST_F(MaxPool3DTest, ceil_mode_invalid) {
 
 TEST_F(MaxPool3DTest, padding_absent) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {2, 19, 19, 19, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {2,2,2,2,2,2};
@@ -384,7 +384,7 @@ TEST_F(MaxPool3DTest, padding_absent) {
 
 TEST_F(MaxPool3DTest, x_dims_invalid) {
     ge::op::MaxPool3D op;
-    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {19, 19, 19, 16}, ge::FORMAT_NDHWC));
     std::vector<int64_t> ksize = {5,5,5};
     std::vector<int64_t> strides = {3,3,3};
     std::vector<int64_t> pads = {2,2,2,2,2,2};

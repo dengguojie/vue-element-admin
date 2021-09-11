@@ -21,7 +21,7 @@ TEST_F(CosineSimilarityTest, cosine_similarity_test_case_1) {
      ge::Shape shape({2, 3, 4});
      tensor_desc.SetDataType(ge::DT_FLOAT);
      tensor_desc.SetShape(shape);
-
+     tensor_desc.SetOriginShape(shape);
      cosine_similarity_op.UpdateInputDesc("input_x1", tensor_desc);
      cosine_similarity_op.UpdateInputDesc("input_x2", tensor_desc);
 

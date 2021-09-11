@@ -194,6 +194,7 @@ TEST_F(MatrixSetDiagV2, matrix_set_diag_v2_infer_shape_check_diagonal_rank_faile
   op.UpdateInputDesc("diagonal", tensor_desc2);
 
   ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc.SetOriginShape(ge::Shape({2}));
   int32_t const_value[2] = {1, 2};
   auto const_op = ge::op::Constant().set_attr_value(
     ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));

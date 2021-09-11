@@ -134,9 +134,11 @@ TEST_F(RaggedGather, RaggedGather_infer_shape_6) {
   op.UpdateDynamicInputDesc("params_nested_splits", 1, tensor_desc);
   op.SetAttr("Tsplits", ge::DT_INT32);
   ge::TensorDesc tensor_desc_values(ge::Shape({4}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_values.SetOriginShape(ge::Shape({4}));
   op.UpdateInputDesc("params_dense_values", tensor_desc_values);
 
   ge::TensorDesc tensor_desc_indices(ge::Shape({4,2}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_indices.SetOriginShape(ge::Shape({4,2}));
   op.UpdateInputDesc("indices", tensor_desc_indices);
   op.SetAttr("PARAMS_RAGGED_RANK", 0);
   op.SetAttr("OUTPUT_RAGGED_RANK", 1);

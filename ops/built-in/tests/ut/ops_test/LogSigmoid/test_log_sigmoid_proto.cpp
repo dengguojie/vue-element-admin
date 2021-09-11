@@ -41,6 +41,7 @@ TEST_F(LogSigmoidTest, log_sigmoid_test_case_1) {
     ge::Shape shape({2, 3, 4});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     // [TODO] update op input here
     log_sigmoid_op.UpdateInputDesc("x", tensor_desc);
@@ -63,6 +64,7 @@ TEST_F(LogSigmoidTest, log_sigmoid_test_case_2) {
     ge::Shape shape({12, 3, 4, 6});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     // [TODO] update op input here
     log_sigmoid_op.UpdateInputDesc("x", tensor_desc);
@@ -85,6 +87,7 @@ TEST_F(LogSigmoidTest, log_sigmoid_test_case_3) {
     ge::Shape shape({2, 3, 4, 1, 2, 1});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     // [TODO] update op input here
     log_sigmoid_op.UpdateInputDesc("x", tensor_desc);
@@ -107,6 +110,7 @@ TEST_F(LogSigmoidTest, log_sigmoid_test_case_4) {
     ge::Shape shape({10});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     // [TODO] update op input here
     log_sigmoid_op.UpdateInputDesc("x", tensor_desc);

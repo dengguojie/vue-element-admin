@@ -21,12 +21,14 @@ TEST_F(GatherElementsTest, gather_elements_test_1) {
     ge::Shape shape1({2, 2});
     tensor_desc1.SetDataType(ge::DT_FLOAT16);
     tensor_desc1.SetShape(shape1);
+    tensor_desc1.SetOriginShape(shape1);
     op.UpdateInputDesc("x", tensor_desc1);
 
     ge::TensorDesc tensor_desc2;
     ge::Shape shape2({2, 2});
     tensor_desc2.SetDataType(ge::DT_INT64);
     tensor_desc2.SetShape(shape2);
+    tensor_desc2.SetOriginShape(shape2);
     op.UpdateInputDesc("index", tensor_desc2);
 
     int attr_value = 1;

@@ -27,8 +27,10 @@ TEST_F(zeta_infer_test, zeta_infer_test_1) {
   ge::op::Zeta op;
   // set input info
   ge::TensorDesc tensor_desc_x(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_x.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("x", tensor_desc_x);
   ge::TensorDesc tensor_desc_q(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_q.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("q", tensor_desc_q);
   auto ret = op.InferShapeAndType();
 

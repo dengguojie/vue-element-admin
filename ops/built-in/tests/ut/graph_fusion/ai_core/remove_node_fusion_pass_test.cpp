@@ -35,6 +35,7 @@ TEST_F(remove_node_fusion_pass_test, remove_node_fusion_pass_test_1) {
   std::vector<int64_t> dims{1, 0};
   ge::Shape shape(dims);
   ge::TensorDesc tensorDesc(shape);
+  tensorDesc.SetOriginShape(shape);
   input_data.update_input_desc_x(tensorDesc);
   input_data.update_output_desc_y(tensorDesc);
 
@@ -42,6 +43,7 @@ TEST_F(remove_node_fusion_pass_test, remove_node_fusion_pass_test_1) {
   std::vector<int64_t> dims_indices{1, 0};
   ge::Shape shape_indices(dims_indices);
   ge::TensorDesc tensorDescIndices(shape);
+  tensorDescIndices.SetOriginShape(shape);
   input_data_indices.update_input_desc_x(tensorDescIndices);
   input_data_indices.update_output_desc_y(tensorDescIndices);
 

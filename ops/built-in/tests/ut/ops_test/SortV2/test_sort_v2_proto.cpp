@@ -20,6 +20,7 @@ TEST_F(SortV2Test, Sort_test_0){
   ge::Shape shape({10, 10, 20});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
   
   op.UpdateInputDesc("x",tensorDesc);
   
@@ -39,6 +40,7 @@ TEST_F(SortV2Test, Sort_test_1){
   ge::Shape shape({10, 200});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
   
   op.UpdateInputDesc("x",tensorDesc);
   
@@ -58,6 +60,7 @@ TEST_F(SortV2Test, Sort_test_2){
   ge::Shape shape({2000});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
   
   op.UpdateInputDesc("x",tensorDesc);
   

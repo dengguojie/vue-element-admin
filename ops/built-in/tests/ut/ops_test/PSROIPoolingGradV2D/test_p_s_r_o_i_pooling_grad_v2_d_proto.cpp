@@ -21,11 +21,13 @@ TEST_F(PSROIPoolingGradV2DProtoTest, p_s_r_o_i_pooling_grad_v2_d_test_case_1) {
     ge::Shape x_shape({512, 22, 7, 7});
     tensor_x.SetDataType(ge::DT_FLOAT);
     tensor_x.SetShape(x_shape);
+    tensor_x.SetOriginShape(x_shape);
 
     ge::TensorDesc tensor_rois;
     ge::Shape roi_shape({4, 5, 128});
     tensor_rois.SetDataType(ge::DT_FLOAT);
     tensor_rois.SetShape(roi_shape);
+    tensor_rois.SetOriginShape(roi_shape);
 
     op.SetAttr("output_dim", 22);
     op.SetAttr("group_size", 7);
@@ -54,11 +56,13 @@ TEST_F(PSROIPoolingGradV2DProtoTest, p_s_r_o_i_pooling_grad_v2_d_test_case_2) {
     ge::Shape x_shape({512, 22, 7, 7});
     tensor_x.SetDataType(ge::DT_FLOAT16);
     tensor_x.SetShape(x_shape);
+    tensor_x.SetOriginShape(x_shape);
 
     ge::TensorDesc tensor_rois;
     ge::Shape roi_shape({4, 5, 128});
     tensor_rois.SetDataType(ge::DT_FLOAT16);
     tensor_rois.SetShape(roi_shape);
+    tensor_rois.SetOriginShape(roi_shape);
 
     op.SetAttr("output_dim", 22);
     op.SetAttr("group_size", 7);

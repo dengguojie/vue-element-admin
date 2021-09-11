@@ -45,16 +45,19 @@ TEST_F(masked_scatter, masked_scatter_infershape_test_1){
     ge::Shape x_shape({X, Y});
     tensor_desc_x.SetDataType(ge::DT_FLOAT);
     tensor_desc_x.SetShape(x_shape);
+    tensor_desc_x.SetOriginShape(x_shape);
     
     ge::TensorDesc tensor_desc_mask;
     ge::Shape mask_shape({Y});
     tensor_desc_mask.SetDataType(ge::DT_BOOL);
     tensor_desc_mask.SetShape(mask_shape);
+    tensor_desc_mask.SetOriginShape(mask_shape);
 
     ge::TensorDesc tensor_desc_updates;
     ge::Shape updates_shape({X, Y});
     tensor_desc_updates.SetDataType(ge::DT_FLOAT);
     tensor_desc_updates.SetShape(updates_shape);
+    tensor_desc_updates.SetOriginShape(updates_shape);
     
     op.UpdateInputDesc("x", tensor_desc_x);
     op.UpdateInputDesc("mask", tensor_desc_mask);
@@ -78,16 +81,19 @@ TEST_F(masked_scatter, masked_scatter_infershape_test_2){
     ge::Shape x_shape({X, Y});
     tensor_desc_x.SetDataType(ge::DT_FLOAT);
     tensor_desc_x.SetShape(x_shape);
+    tensor_desc_x.SetOriginShape(x_shape);
     
     ge::TensorDesc tensor_desc_mask;
     ge::Shape mask_shape({X, Y});
     tensor_desc_mask.SetDataType(ge::DT_BOOL);
     tensor_desc_mask.SetShape(mask_shape);
+    tensor_desc_mask.SetOriginShape(mask_shape);
 
     ge::TensorDesc tensor_desc_updates;
     ge::Shape updates_shape({X, Y});
     tensor_desc_updates.SetDataType(ge::DT_FLOAT);
     tensor_desc_updates.SetShape(updates_shape);
+    tensor_desc_updates.SetOriginShape(updates_shape);
     
     op.UpdateInputDesc("x", tensor_desc_x);
     op.UpdateInputDesc("mask", tensor_desc_mask);

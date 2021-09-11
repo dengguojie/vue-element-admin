@@ -21,6 +21,7 @@ TEST_F(ResizeDTest, resize_d_test_case_1) {
     ge::Shape shape({1, 1, 2, 2});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
 
     resize_d_op.UpdateInputDesc("x", tensorDesc);
@@ -49,6 +50,7 @@ TEST_F(ResizeDTest, resize_d_test_case_2) {
     ge::Shape shape({4, 1, 1, 2});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
 
     resize_d_op.UpdateInputDesc("x", tensorDesc);

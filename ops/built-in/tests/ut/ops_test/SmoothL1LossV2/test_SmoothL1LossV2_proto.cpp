@@ -60,6 +60,7 @@ TEST_F(smooth_l1_loss_v2, smooth_l1_loss_v2_infershape_test_2) {
   ge::Shape shape({10, 200});
   tensorDesc.SetDataType(ge::DT_FLOAT);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
   
   op.UpdateInputDesc("predict",tensorDesc);
   op.UpdateInputDesc("label",tensorDesc);

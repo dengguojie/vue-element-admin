@@ -21,7 +21,7 @@ TEST_F(CrossTest, cross_test_case_1) {
     ge::Shape shape({16, 3, 64});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
-
+    tensorDesc.SetOriginShape(shape);
     cross_op.UpdateInputDesc("x1", tensorDesc);
     cross_op.UpdateInputDesc("x2", tensorDesc);
 
@@ -40,7 +40,7 @@ TEST_F(CrossTest, cross_test_case_2) {
     ge::Shape shape({4, 3});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
-
+    tensorDesc.SetOriginShape(shape);
     int dim_value = 1;
     cross_op.SetAttr("dim", dim_value);
     cross_op.UpdateInputDesc("x1", tensorDesc);
@@ -61,7 +61,7 @@ TEST_F(CrossTest, cross_test_case_3) {
     ge::Shape shape({2, 3, 3});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
-
+    tensorDesc.SetOriginShape(shape);
     int dim_value = 1;
     cross_op.SetAttr("dim", dim_value);
     cross_op.UpdateInputDesc("x1", tensorDesc);

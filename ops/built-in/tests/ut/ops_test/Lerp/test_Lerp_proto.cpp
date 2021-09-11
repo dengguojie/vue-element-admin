@@ -39,15 +39,18 @@ TEST_F(LerpTest, lerp_test_case_1) {
     ge::Shape shape({2, 1, 2});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({1, 1, 2});
     tensorDesc2.SetDataType(ge::DT_FLOAT16);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
 
     ge::TensorDesc tensorDesc3;
     tensorDesc3.SetDataType(ge::DT_FLOAT16);
     tensorDesc3.SetShape(shape);
+    tensorDesc3.SetOriginShape(shape);
 
     lerp_op.UpdateInputDesc("start", tensorDesc);
     lerp_op.UpdateInputDesc("end", tensorDesc2);

@@ -93,7 +93,7 @@ TEST_F(accumulatenv2, accumulatenv2_static_same_shape_fp16) {
   ge::Shape shape({2, 100, 4});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
-   
+  tensor_desc.SetOriginShape(shape);
 
   op.create_dynamic_input_x(2);
   op.UpdateDynamicInputDesc("x", 0, tensor_desc);
@@ -115,7 +115,7 @@ TEST_F(accumulatenv2, accumulatenv2_static_diff_shape_fp16) {
   ge::Shape shape2({100, 4});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
-   
+  tensor_desc.SetOriginShape(shape); 
 
   op.create_dynamic_input_x(2);
   op.UpdateDynamicInputDesc("x", 0, tensor_desc);
@@ -138,7 +138,7 @@ TEST_F(accumulatenv2, accumulatenv2_static_diff_shape_int8) {
   ge::Shape shape2({1});
   tensor_desc.SetDataType(ge::DT_INT8);
   tensor_desc.SetShape(shape);
-   
+  tensor_desc.SetOriginShape(shape); 
 
   op.create_dynamic_input_x(2);
   op.UpdateDynamicInputDesc("x", 0, tensor_desc);

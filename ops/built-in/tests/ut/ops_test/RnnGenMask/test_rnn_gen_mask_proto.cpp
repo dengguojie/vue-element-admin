@@ -20,6 +20,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_1) {
     ge::Shape x_shape({3});
     tensor_x_desc.SetDataType(ge::DT_INT32);
     tensor_x_desc.SetShape(x_shape);
+    tensor_x_desc.SetOriginShape(x_shape);
     // update attr
     rnn_gen_mask_op.SetAttr("num_step", 2);
     rnn_gen_mask_op.SetAttr("hidden_size", 4);
@@ -41,6 +42,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_2) {
     ge::Shape x_shape({4});
     tensor_x_desc.SetDataType(ge::DT_INT32);
     tensor_x_desc.SetShape(x_shape);
+    tensor_x_desc.SetOriginShape(x_shape);
     // update attr
     rnn_gen_mask_op.SetAttr("num_step", 12);
     rnn_gen_mask_op.SetAttr("hidden_size", 4);
@@ -62,6 +64,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_3) {
     ge::Shape x_shape({4});
     tensor_x_desc.SetDataType(ge::DT_INT32);
     tensor_x_desc.SetShape(x_shape);
+    tensor_x_desc.SetOriginShape(x_shape);
     // update attr
     rnn_gen_mask_op.SetAttr("num_step", 12);
     rnn_gen_mask_op.SetAttr("hidden_size", 34);
@@ -83,6 +86,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_4) {
     ge::Shape x_shape({4});
     tensor_x_desc.SetDataType(ge::DT_INT32);
     tensor_x_desc.SetShape(x_shape);
+    tensor_x_desc.SetOriginShape(x_shape);
     // update attr
     rnn_gen_mask_op.SetAttr("num_step", 12);
     rnn_gen_mask_op.SetAttr("hidden_size", 16);

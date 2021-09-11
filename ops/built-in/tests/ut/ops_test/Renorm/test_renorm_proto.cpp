@@ -20,6 +20,7 @@ TEST_F(RenormTest, renorm_test_case_1) {
     ge::Shape shape({3, 3});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
     float p_value = 2.0;
     renorm_op.SetAttr("p", p_value);
     int dim_value = 0;
@@ -44,6 +45,7 @@ TEST_F(RenormTest, renorm_test_case_2) {
     ge::Shape shape({3, 3, 3});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
     float p_value = 2.0;
     renorm_op.SetAttr("p", p_value);
     int dim_value = 0;
@@ -68,6 +70,7 @@ TEST_F(RenormTest, renorm_test_case_3) {
     ge::Shape shape({3, 3, 3});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
     float p_value = 1.0;
     renorm_op.SetAttr("p", p_value);
     int dim_value = 0;

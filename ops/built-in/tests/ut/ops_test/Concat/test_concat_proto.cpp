@@ -1235,16 +1235,16 @@ TEST_F(ConcatD, concatd_data_slice_infer3) {
   std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 2}, {3, 3}, {100, 200}, {4, 8}, {16, 16}};
   auto format = ge::FORMAT_NC1HWC0;
   auto ori_format = ge::FORMAT_NCHW;
-  auto x0 =create_desc_shape_range({2, 3, 100, 4, 16}, ge::DT_FLOAT16, format, {2, 48, 100, 4}, ori_format, shape_range);
-  auto x1 =create_desc_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 48, 100, 5}, ori_format, shape_range);
-  auto x2 =create_desc_shape_range({2, 3, 100, 6, 16}, ge::DT_FLOAT16, format, {2, 48, 100, 6}, ori_format, shape_range);
+  auto x0 =create_desc_shape_and_origin_shape_range({2, 3, 100, 4, 16}, ge::DT_FLOAT16, format, {2, 48, 100, 4}, ori_format, shape_range);
+  auto x1 =create_desc_shape_and_origin_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 48, 100, 5}, ori_format, shape_range);
+  auto x2 =create_desc_shape_and_origin_shape_range({2, 3, 100, 6, 16}, ge::DT_FLOAT16, format, {2, 48, 100, 6}, ori_format, shape_range);
   op.create_dynamic_input_x(3);
   op.UpdateDynamicInputDesc("x", 0, x0);
   op.UpdateDynamicInputDesc("x", 1, x1);
   op.UpdateDynamicInputDesc("x", 2, x2);
   op.SetAttr("N", 3);
   op.SetAttr("concat_dim", -1);
-  auto y = create_desc_shape_range({2, 3, 100, 15, 16}, ge::DT_FLOAT16, format, {2, 100, 15, 48}, ori_format, shape_range);
+  auto y = create_desc_shape_and_origin_shape_range({2, 3, 100, 15, 16}, ge::DT_FLOAT16, format, {2, 100, 15, 48}, ori_format, shape_range);
   op.UpdateOutputDesc("y", x0);
 
   std::vector<std::vector<int64_t>> y_data_slice = {{0, 2}, {0, 3}, {50, 100}, {0, 15}, {0, 16}};
@@ -1276,16 +1276,16 @@ TEST_F(ConcatD, concatd_data_slice_infer4) {
   std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 2}, {3, 3}, {100, 200}, {4, 8}, {16, 16}};
   auto format = ge::FORMAT_NC1HWC0;
   auto ori_format = ge::FORMAT_NHWC;
-  auto x0 =create_desc_shape_range({2, 3, 100, 4, 16}, ge::DT_FLOAT16, format, {2, 100, 4, 48}, ori_format, shape_range);
-  auto x1 =create_desc_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
-  auto x2 =create_desc_shape_range({2, 3, 100, 6, 16}, ge::DT_FLOAT16, format, {2, 100, 6, 48}, ori_format, shape_range);
+  auto x0 =create_desc_shape_and_origin_shape_range({2, 3, 100, 4, 16}, ge::DT_FLOAT16, format, {2, 100, 4, 48}, ori_format, shape_range);
+  auto x1 =create_desc_shape_and_origin_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
+  auto x2 =create_desc_shape_and_origin_shape_range({2, 3, 100, 6, 16}, ge::DT_FLOAT16, format, {2, 100, 6, 48}, ori_format, shape_range);
   op.create_dynamic_input_x(3);
   op.UpdateDynamicInputDesc("x", 0, x0);
   op.UpdateDynamicInputDesc("x", 1, x1);
   op.UpdateDynamicInputDesc("x", 2, x2);
   op.SetAttr("N", 3);
   op.SetAttr("concat_dim", -2);
-  auto y = create_desc_shape_range({2, 3, 100, 15, 16}, ge::DT_FLOAT16, format, {2, 100, 15, 48}, ori_format, shape_range);
+  auto y = create_desc_shape_and_origin_shape_range({2, 3, 100, 15, 16}, ge::DT_FLOAT16, format, {2, 100, 15, 48}, ori_format, shape_range);
   op.UpdateOutputDesc("y", x0);
 
   std::vector<std::vector<int64_t>> y_data_slice = {{0, 2}, {0, 3}, {50, 100}, {0, 15}, {0, 16}};
@@ -1317,16 +1317,16 @@ TEST_F(ConcatD, concatd_data_slice_infer5) {
   std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 2}, {3, 3}, {100, 200}, {4, 8}, {16, 16}};
   auto format = ge::FORMAT_NC1HWC0;
   auto ori_format = ge::FORMAT_NHWC;
-  auto x0 =create_desc_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
-  auto x1 =create_desc_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
-  auto x2 =create_desc_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
+  auto x0 =create_desc_shape_and_origin_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
+  auto x1 =create_desc_shape_and_origin_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
+  auto x2 =create_desc_shape_and_origin_shape_range({2, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 100, 5, 48}, ori_format, shape_range);
   op.create_dynamic_input_x(3);
   op.UpdateDynamicInputDesc("x", 0, x0);
   op.UpdateDynamicInputDesc("x", 1, x1);
   op.UpdateDynamicInputDesc("x", 2, x2);
   op.SetAttr("N", 3);
   op.SetAttr("concat_dim", -1);
-  auto y = create_desc_shape_range({2, 9, 100, 15, 16}, ge::DT_FLOAT16, format, {2, 100, 15, 144}, ori_format, shape_range);
+  auto y = create_desc_shape_and_origin_shape_range({2, 9, 100, 15, 16}, ge::DT_FLOAT16, format, {2, 100, 15, 144}, ori_format, shape_range);
   op.UpdateOutputDesc("y", y);
 
   std::vector<std::vector<int64_t>> y_data_slice = {{0, 2}, {0, 9}, {50, 100}, {0, 5}, {0, 16}};

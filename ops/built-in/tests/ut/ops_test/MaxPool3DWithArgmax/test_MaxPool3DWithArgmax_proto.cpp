@@ -22,6 +22,7 @@ TEST_F(MaxPool3DWithArgmaxTest, max_pool3d_with_argmax_test_case_0) {
   ge::Shape shape1({1, 10, 1, 6, 6, 16});
   tensorDesc1.SetDataType(ge::DT_FLOAT16);
   tensorDesc1.SetShape(shape1);
+  tensorDesc1.SetOriginShape(shape1);
 
   op.UpdateInputDesc("x", tensorDesc1);
   

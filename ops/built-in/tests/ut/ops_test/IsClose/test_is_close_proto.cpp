@@ -22,6 +22,7 @@ TEST_F(IsCloseTest, is_close_test_case_1) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     // update op input here
     is_close_op.UpdateInputDesc("x1", tensorDesc);
@@ -47,8 +48,10 @@ TEST_F(IsCloseTest, is_close_test_case_2) {
     ge::Shape Yshape({32,32});
     XtensorDesc.SetDataType(ge::DT_FLOAT16);
     XtensorDesc.SetShape(Xshape);
+    XtensorDesc.SetOriginShape(Xshape);
     YtensorDesc.SetDataType(ge::DT_FLOAT16);
     YtensorDesc.SetShape(Yshape);
+    YtensorDesc.SetOriginShape(Yshape);
 
     // update op input here
     is_close_op.UpdateInputDesc("x1", XtensorDesc);

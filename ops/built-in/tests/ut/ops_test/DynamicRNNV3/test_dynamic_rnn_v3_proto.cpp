@@ -24,21 +24,25 @@ TEST_F(DynamicRNNV3Test, dynamic_rnn_v3_test_case_1) {
     ge::Shape xShape({t, batch, inputSize});
     XDesc.SetDataType(ge::DT_FLOAT16);
     XDesc.SetShape(xShape);
+    XDesc.SetOriginShape(xShape);
 
     ge::TensorDesc WDesc;
     ge::Shape wShape({inputSize+outputSize, 4*outputSize});
     WDesc.SetDataType(ge::DT_FLOAT16);
     WDesc.SetShape(wShape);
+    WDesc.SetOriginShape(wShape);
 
     ge::TensorDesc BDesc;
     ge::Shape bShape({4*outputSize});
     BDesc.SetDataType(ge::DT_FLOAT16);
     BDesc.SetShape(bShape);
+    BDesc.SetOriginShape(bShape);
 
     ge::TensorDesc PDesc;
     ge::Shape pShape({outputSize, stateSize});
     PDesc.SetDataType(ge::DT_FLOAT16);
     PDesc.SetShape(pShape);
+    PDesc.SetOriginShape(pShape);
 
     rnn_op.UpdateInputDesc("x", XDesc);
     rnn_op.UpdateInputDesc("w", WDesc);

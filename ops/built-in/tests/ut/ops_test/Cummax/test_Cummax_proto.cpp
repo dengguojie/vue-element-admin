@@ -41,6 +41,7 @@ TEST_F(CummaxTest, cummax_test_case_1) {
     ge::Shape shape1({32});
     tensor_desc.SetDataType(ge::DT_INT64);
     tensor_desc.SetShape(shape1);
+    tensor_desc.SetOriginShape(shape1);
     cummax_op.UpdateInputDesc("x", tensor_desc);
 
     auto ret = cummax_op.InferShapeAndType();

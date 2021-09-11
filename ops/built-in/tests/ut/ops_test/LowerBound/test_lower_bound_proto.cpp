@@ -40,6 +40,7 @@ TEST_F(LowerBoundTest, lower_bound_infershape_test) {
   ge::Shape shape({2, 2});
   tensorDesc.SetDataType(ge::DT_FLOAT);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
   op.UpdateInputDesc("sorted_x", tensorDesc);
   op.UpdateInputDesc("values", tensorDesc);
   auto ret = op.InferShapeAndType();

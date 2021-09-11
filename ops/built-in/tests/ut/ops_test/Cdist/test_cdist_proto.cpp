@@ -20,6 +20,7 @@ TEST_F(CdistTest, cdist_test_case_1) {
     ge::Shape shape({2, 3, 4, 5});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     cdist_op.UpdateInputDesc("x1", tensor_desc);
     cdist_op.UpdateInputDesc("x2", tensor_desc);

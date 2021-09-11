@@ -40,24 +40,28 @@ TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_2) {
     ge::Shape x_shape({t, batch, input_size});
     x_desc.SetDataType(ge::DT_FLOAT16);
     x_desc.SetShape(x_shape);
+    x_desc.SetOriginShape(x_shape);
     op.UpdateInputDesc("x", x_desc);
 
     ge::TensorDesc w_input_desc;
     ge::Shape w_input_shape({input_size, 3 * hidden_size});
     w_input_desc.SetDataType(ge::DT_FLOAT16);
     w_input_desc.SetShape(w_input_shape);
+    w_input_desc.SetOriginShape(w_input_shape);
     op.UpdateInputDesc("weight_input", w_input_desc);
 
     ge::TensorDesc w_hidden_desc;
     ge::Shape w_hidden_shape({hidden_size, 3 * hidden_size});
     w_hidden_desc.SetDataType(ge::DT_FLOAT16);
     w_hidden_desc.SetShape(w_hidden_shape);
+    w_hidden_desc.SetOriginShape(w_hidden_shape);
     op.UpdateInputDesc("weight_hidden", w_hidden_desc);
 
     ge::TensorDesc b_input_desc;
     ge::Shape b_input_shape({3 * hidden_size,});
     b_input_desc.SetDataType(ge::DT_FLOAT16);
     b_input_desc.SetShape(b_input_shape);
+    b_input_desc.SetOriginShape(b_input_shape);
     op.UpdateInputDesc("bias_input", b_input_desc);
 
     auto ret = op.InferShapeAndType();
@@ -82,18 +86,21 @@ TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_3) {
     ge::Shape x_shape({t, batch, input_size});
     x_desc.SetDataType(ge::DT_FLOAT16);
     x_desc.SetShape(x_shape);
+    x_desc.SetOriginShape(x_shape);
     op.UpdateInputDesc("x", x_desc);
 
     ge::TensorDesc w_input_desc;
     ge::Shape w_input_shape({input_size, 3 * hidden_size});
     w_input_desc.SetDataType(ge::DT_FLOAT16);
     w_input_desc.SetShape(w_input_shape);
+    w_input_desc.SetOriginShape(w_input_shape);
     op.UpdateInputDesc("weight_input", w_input_desc);
 
     ge::TensorDesc w_hidden_desc;
     ge::Shape w_hidden_shape({hidden_size, 3 * hidden_size});
     w_hidden_desc.SetDataType(ge::DT_FLOAT16);
     w_hidden_desc.SetShape(w_hidden_shape);
+    w_hidden_desc.SetOriginShape(w_hidden_shape);
     op.UpdateInputDesc("weight_hidden", w_hidden_desc);
 
     auto ret = op.InferShapeAndType();
@@ -118,18 +125,21 @@ TEST_F(DynamicGruV2Test, dynamic_gru_v2_test_case_4) {
     ge::Shape x_shape({t, batch, input_size});
     x_desc.SetDataType(ge::DT_FLOAT16);
     x_desc.SetShape(x_shape);
+    x_desc.SetOriginShape(x_shape);
     op.UpdateInputDesc("x", x_desc);
 
     ge::TensorDesc w_input_desc;
     ge::Shape w_input_shape({input_size, 3 * hidden_size});
     w_input_desc.SetDataType(ge::DT_FLOAT16);
     w_input_desc.SetShape(w_input_shape);
+    w_input_desc.SetOriginShape(w_input_shape);
     op.UpdateInputDesc("weight_input", w_input_desc);
 
     ge::TensorDesc w_hidden_desc;
     ge::Shape w_hidden_shape({hidden_size, 3 * hidden_size});
     w_hidden_desc.SetDataType(ge::DT_FLOAT16);
     w_hidden_desc.SetShape(w_hidden_shape);
+    w_hidden_desc.SetOriginShape(w_hidden_shape);
     op.UpdateInputDesc("weight_hidden", w_hidden_desc);
 
     auto ret = op.InferShapeAndType();

@@ -41,6 +41,7 @@ TEST_F(ReduceStdTest, reduce_std_test_case_1) {
     ge::Shape shape1({3, 4, 5});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape1);
+    tensor_desc.SetOriginShape(shape1);
     reduce_std_op.UpdateInputDesc("x", tensor_desc);
     std::vector<int64_t> dim = {1};
     reduce_std_op.SetAttr("dim", dim);

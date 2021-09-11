@@ -509,9 +509,9 @@ TEST_F(MatMulV2Test, split_test3) {
 
 TEST_F(MatMulV2Test, MatMulV2InferShapeTest) {
   ge::op::MatMulV2 op;
-  op.UpdateInputDesc("x1", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{32, 64}, ge::FORMAT_ND));
-  op.UpdateInputDesc("x2", create_desc_with_ori({4, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{64, 64}, ge::FORMAT_ND));
-  op.UpdateInputDesc("y", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{32, 64}, ge::FORMAT_ND));
+  op.UpdateInputDesc("x1", create_desc_with_original_shape({4, 2, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{32, 64}, ge::FORMAT_ND));
+  op.UpdateInputDesc("x2", create_desc_with_original_shape({4, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{64, 64}, ge::FORMAT_ND));
+  op.UpdateInputDesc("y", create_desc_with_original_shape({4, 2, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{32, 64}, ge::FORMAT_ND));
   op.SetAttr("transpose_x1", false);
   op.SetAttr("transpose_x2", false);
   auto ret = op.InferShapeAndType();

@@ -22,6 +22,7 @@ TEST_F(NMSWithMaskTest, nms_with_mask_test_case_1) {
     ge::Shape box_scores_shape({16, 5});
     tensordesc_box_scores.SetDataType(ge::DT_FLOAT16);
     tensordesc_box_scores.SetShape(box_scores_shape);
+    tensordesc_box_scores.SetOriginShape(box_scores_shape);
 
     op.UpdateInputDesc("box_scores", tensordesc_box_scores);
     float iou_threshold = 0.7;
@@ -50,6 +51,7 @@ TEST_F(NMSWithMaskTest, nms_with_mask_test_case_2) {
     ge::Shape box_scores_shape({720, 5});
     tensordesc_box_scores.SetDataType(ge::DT_FLOAT16);
     tensordesc_box_scores.SetShape(box_scores_shape);
+    tensordesc_box_scores.SetOriginShape(box_scores_shape);
 
     op.UpdateInputDesc("box_scores", tensordesc_box_scores);
     float iou_threshold = 0.7;

@@ -39,6 +39,7 @@ TEST_F(HardSigmoidGradTest, hard_sigmoid_grad_test_case_1) {
      ge::Shape shape({100});
      tensor_desc.SetDataType(ge::DT_FLOAT16);
      tensor_desc.SetShape(shape);
+     tensor_desc.SetOriginShape(shape);
 
      hard_sigmoid_grad_op.UpdateInputDesc("grads", tensor_desc);
      hard_sigmoid_grad_op.UpdateInputDesc("input_x", tensor_desc);

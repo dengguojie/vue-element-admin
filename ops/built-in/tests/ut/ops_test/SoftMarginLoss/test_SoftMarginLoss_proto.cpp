@@ -41,12 +41,14 @@ TEST_F(SoftMarginLossTest, soft_margin_loss_test_case_1) {
     ge::Shape shape1({2});
     tensor_desc1.SetDataType(ge::DT_FLOAT16);
     tensor_desc1.SetShape(shape1);
+    tensor_desc1.SetOriginShape(shape1);
     op.UpdateInputDesc("input_x", tensor_desc1);
 
     ge::TensorDesc tensor_desc2;
     ge::Shape shape2({2});
     tensor_desc2.SetDataType(ge::DT_FLOAT16);
     tensor_desc2.SetShape(shape2);
+    tensor_desc2.SetOriginShape(shape2);
     op.UpdateInputDesc("input_y", tensor_desc2);
 
     std::string attr_value = "none";

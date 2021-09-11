@@ -106,6 +106,7 @@ TEST_F(dropOutGenMaskV3, dropOutGenMaskV3_infershape_prob_rank_err_1){
   auto probDesc = op.GetInputDesc("prob");
   probDesc.SetDataType(ge::DT_FLOAT);
   probDesc.SetShape(ge::Shape({1}));
+  probDesc.SetOriginShape(ge::Shape({1}));
   op.UpdateInputDesc("prob", probDesc);
   
 

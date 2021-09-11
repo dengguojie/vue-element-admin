@@ -21,6 +21,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_1) {
   ge::Shape shape({-2});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
+  tensor_desc.SetOriginShape(shape);
   op.UpdateInputDesc("x", tensor_desc);
 
   op.SetAttr("transpose", false);
@@ -41,6 +42,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_2) {
   ge::Shape shape({2, 2});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
+  tensor_desc.SetOriginShape(shape);
   op.UpdateInputDesc("x", tensor_desc);
 
   op.SetAttr("transpose", false);
@@ -61,6 +63,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_3) {
   ge::Shape shape({2, -1});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
+  tensor_desc.SetOriginShape(shape);
   op.UpdateInputDesc("x", tensor_desc);
 
   op.SetAttr("transpose", false);
@@ -81,6 +84,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_4) {
   ge::Shape shape({2, 2});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
+  tensor_desc.SetOriginShape(shape);
   op.UpdateInputDesc("x", tensor_desc);
 
   op.SetAttr("transpose", true);
@@ -101,6 +105,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_5) {
   ge::Shape shape({2, -1});
   tensor_desc.SetDataType(ge::DT_FLOAT16);
   tensor_desc.SetShape(shape);
+  tensor_desc.SetOriginShape(shape);
   op.UpdateInputDesc("x", tensor_desc);
 
   op.SetAttr("transpose", true);

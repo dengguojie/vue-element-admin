@@ -41,6 +41,7 @@ TEST_F(SoftShrinkGradTest, soft_shrink_grad_test_case_1) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT16);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     soft_shrink_grad_op.UpdateInputDesc("input_x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
@@ -65,12 +66,14 @@ TEST_F(SoftShrinkGradTest, soft_shrink_grad_test_case_2) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT16);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     soft_shrink_grad_op.UpdateInputDesc("input_x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({3, 3, 4});
     tensorDesc2.SetDataType(ge::DT_FLOAT16);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     soft_shrink_grad_op.UpdateInputDesc("input_grad", tensorDesc2);
 
     auto ret = soft_shrink_grad_op.InferShapeAndType();

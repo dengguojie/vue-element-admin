@@ -21,12 +21,14 @@ TEST_F(MaskedScaleTest, masked_scale_test_case_1) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT16);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     masked_scale_op.UpdateInputDesc("x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({2, 3, 4});
     tensorDesc2.SetDataType(ge::DT_FLOAT16);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     masked_scale_op.UpdateInputDesc("mask", tensorDesc2);
 	
     masked_scale_op.SetAttr("value", 0.5f);
@@ -46,12 +48,14 @@ TEST_F(MaskedScaleTest, masked_scale_test_case_2) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     masked_scale_op.UpdateInputDesc("x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({2, 3, 4});
     tensorDesc2.SetDataType(ge::DT_FLOAT16);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     masked_scale_op.UpdateInputDesc("mask", tensorDesc2);
 	
     masked_scale_op.SetAttr("value", 0.5f);
@@ -71,12 +75,14 @@ TEST_F(MaskedScaleTest, masked_scale_test_case_3) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     masked_scale_op.UpdateInputDesc("x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({2, 3, 4});
     tensorDesc2.SetDataType(ge::DT_FLOAT);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     masked_scale_op.UpdateInputDesc("mask", tensorDesc2);
 	
     masked_scale_op.SetAttr("value", 0.5f);
@@ -96,12 +102,14 @@ TEST_F(MaskedScaleTest, masked_scale_test_case_4) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     masked_scale_op.UpdateInputDesc("x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({2, 3, 4});
     tensorDesc2.SetDataType(ge::DT_INT8);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     masked_scale_op.UpdateInputDesc("mask", tensorDesc2);
 	
     masked_scale_op.SetAttr("value", 0.5f);
@@ -121,12 +129,14 @@ TEST_F(MaskedScaleTest, masked_scale_test_case_5) {
     ge::Shape shape1({2, 3, 4});
     tensorDesc1.SetDataType(ge::DT_FLOAT);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     masked_scale_op.UpdateInputDesc("x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({3, 4});
     tensorDesc2.SetDataType(ge::DT_INT8);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     masked_scale_op.UpdateInputDesc("mask", tensorDesc2);
 	
     masked_scale_op.SetAttr("value", 0.5f);

@@ -26,10 +26,13 @@ TEST_F(CdistGradTest, cdist_grad_test_case_1) {
 
     input1_desc.SetDataType(ge::DT_FLOAT16);
     input1_desc.SetShape(input1_shape);
+    input1_desc.SetOriginShape(input1_shape);
     input2_desc.SetDataType(ge::DT_FLOAT16);
     input2_desc.SetShape(input2_shape);
+    input2_desc.SetOriginShape(input2_shape);
     grad_desc.SetDataType(ge::DT_FLOAT16);
     grad_desc.SetShape(grad_shape);
+    grad_desc.SetOriginShape(grad_shape);
 
     cdist_grad_op.UpdateInputDesc("x1", input1_desc);
     cdist_grad_op.UpdateInputDesc("x2", input2_desc);
