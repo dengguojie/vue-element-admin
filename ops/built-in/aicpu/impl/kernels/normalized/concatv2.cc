@@ -117,6 +117,8 @@ uint32_t ConcatV2CpuKernel::Compute(CpuKernelContext &ctx) {
       return DoCompute<uint32_t>(ctx);
     case DT_UINT64:
       return DoCompute<uint64_t>(ctx);
+    case DT_BOOL:
+      return DoCompute<bool>(ctx);
     default:
       KERNEL_LOG_ERROR("unsupport datatype[%d]", data_type_);
       return KERNEL_STATUS_PARAM_INVALID;
