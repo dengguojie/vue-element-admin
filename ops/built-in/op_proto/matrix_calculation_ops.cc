@@ -3210,6 +3210,8 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
 
 INFER_FUNC_REG(MatrixSetDiagV2, MatrixSetDiagV2InferShape);
 
+INFER_FUNC_REG(MatrixSetDiagV3, MatrixSetDiagV2InferShape); //和MatrixSetDiagV2InferShape完全一致
+
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
