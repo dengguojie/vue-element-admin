@@ -95,7 +95,7 @@ def _ceil_and_divide(dividend, factor, divisor=16):
     do division and round up to an integer
     """
     if factor == 0 or divisor == 0:
-        error_manager_vector.raise_err_specific_reason("trans_data", "Division by zero")
+        error_manager_vector.raise_err_specific_reson("trans_data", "Division by zero")
     return (dividend + factor - 1) // factor if factor == divisor else \
         ((dividend + factor - 1) // factor * factor) // divisor
 
@@ -387,10 +387,10 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
         dst_shape = (dst_n, dst_h*dst_w, dst_c)
 
         if dst_n != src_n:
-            error_manager_vector.raise_err_specific_user("batch should not be changed when trans NC1HWC0 to NHWC!")
+            error_manager_vector.raise_err_specific_reson("trans_data", "batch should not be changed when trans NC1HWC0 to NHWC!")
 
         if dst_h*dst_w != src_hw:
-            error_manager_vector.raise_err_specific_user("Ho*Wo should not be changed when trans NC1HWC0 to NHWC!")
+            error_manager_vector.raise_err_specific_reson("trans_data", "Ho*Wo should not be changed when trans NC1HWC0 to NHWC!")
 
         dst_tensor = tvm.compute(
             dst_shape,
@@ -483,6 +483,6 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             tag="FZ_trans_NHWC"
         )
     else:
-        raise RuntimeError("not support this kind of format transfer !")
+        error_manager_vector.raise_err_specific_reson("trans_data", "not support this kind of format transfer !")
 
     return dst_tensor

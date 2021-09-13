@@ -2,8 +2,11 @@
 # -*- coding: UTF-8 -*-
 from __future__ import absolute_import
 from op_test_frame.ut import OpUT
+from te import tvm
+from impl.trans_data import trans_data_compute
 
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
+
 
 def test_conv2d_v220(test_arg):
 
@@ -791,5 +794,23 @@ def test_conv2d_v220(test_arg):
         run_testcase(v220_aipp_case)
 
 
+def _test_5hd_trans_nhwc_format_err1(test_arg):
+    try:
+        out = tvm.placeholder((1, 1, 49, 16), name="fmap_5hd", dtype="float16")
+        out = trans_data_compute(out, {"shape": (2, 7, 7, 16)}, "NC1HWC0", "NHWC")
+    except RuntimeError as e:
+        print(e)
+
+
+def _test_5hd_trans_nhwc_format_err2(test_arg):
+    try:
+        out = tvm.placeholder((1, 1, 49, 16), name="fmap_5hd", dtype="float16")
+        out = trans_data_compute(out, {"shape": (1, 7, 8, 16)}, "NC1HWC0", "NHWC")
+    except RuntimeError as e:
+        print(e)
+
+
 print("adding Conv2D v220 ut testcases")
 # ut_case.add_cust_test_func(test_func=test_conv2d_v220)
+ut_case.add_cust_test_func("Ascend910A", test_func=_test_5hd_trans_nhwc_format_err1)
+ut_case.add_cust_test_func("Ascend910A", test_func=_test_5hd_trans_nhwc_format_err2)
