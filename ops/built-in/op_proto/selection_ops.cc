@@ -607,15 +607,15 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     dimsIn.emplace_back(UNKNOWN_DIM);
     y_output->SetShape(GeShape(dimsIn));
     y_output->SetOriginShape(GeShape(dimsIn));
-    y_output->SetShapeRange({std::make_pair(0, -1)});
-    DataType start_dtype = start_desc->GetDataType();
-    DataType limit_dtype = limit_desc->GetDataType();
-    DataType delta_dtype = delta_desc->GetDataType();
-    if (start_dtype == ge::DT_INT32 && limit_dtype == ge::DT_INT32 && delta_dtype == ge::DT_INT32) {
+    y_output->SetShapeRange({std::make_pair(1, -1)});
+    DataType start_datatype = start_desc->GetDataType();
+    DataType limit_datatype = limit_desc->GetDataType();
+    DataType delta_datatype = delta_desc->GetDataType();
+    if (start_datatype == ge::DT_INT32 && limit_datatype == ge::DT_INT32 && delta_datatype == ge::DT_INT32) {
       y_output->SetDataType(ge::DT_INT32);
-    } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
+    } else if (start_datatype == ge::DT_INT64 && limit_datatype == ge::DT_INT64 && delta_datatype == ge::DT_INT64) {
       y_output->SetDataType(ge::DT_INT64);
-    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+    } else if (start_datatype == ge::DT_DOUBLE && limit_datatype == ge::DT_DOUBLE && delta_datatype == ge::DT_DOUBLE) {
       y_output->SetDataType(ge::DT_DOUBLE);
     } else {
       y_output->SetDataType(ge::DT_FLOAT);
@@ -637,7 +637,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
 
       y_output->SetShape(GeShape({UNKNOWN_DIM}));
       y_output->SetOriginShape(GeShape({UNKNOWN_DIM}));
-      y_output->SetShapeRange({std::make_pair(0, -1)});
+      y_output->SetShapeRange({std::make_pair(1, -1)});
 
       return GRAPH_SUCCESS;
     }
