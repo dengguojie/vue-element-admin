@@ -48,7 +48,6 @@ Status ParseDilation2DBackpropFilter(const Message* op_src, ge::Operator& op) {
   out_backprop_tensor.SetOriginFormat(ge::FORMAT_NHWC);
   out_backprop_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret_out_backprop = op.UpdateInputDesc("out_backprop", out_backprop_tensor);
-
   if (ret_out_backprop != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update out_backprop format failed.");
     return FAILED;

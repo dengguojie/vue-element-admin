@@ -19,6 +19,7 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import shape_util
 from impl.util.util_common import write_code
+from impl.util.platform_adapter import error_manager_vector
 from .transpose_d import _do_storage_align
 from .transpose_d import _tilling_axis_not_last
 
@@ -1252,6 +1253,12 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
 
     shape_a = list(shape_a)
     shape_b = list(shape_b)
+
+    batch_length_a = len(shape_a) - 2
+    batch_length_b = len(shape_b) - 2
+    if shape_a[0:batch_length_a] != shape_b[0:batch_length_b]:
+        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
+                                                           "the batch_dims not equal")
 
     if trans_flag:
         shape_a_temp = shape_a[:]

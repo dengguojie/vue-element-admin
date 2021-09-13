@@ -648,40 +648,6 @@ TEST_F(Conv3DProtoTest, conv3d_infer_data_slice_cut_cout){
     EXPECT_EQ(expect_w_data_slice, w_data_slice);
 }
 
-// fuzzy compile
-TEST_F(Conv3DProtoTest, conv3d_fuzzy_compile)
-{
-    ge::op::Conv3D op;
-
-    op.SetAttr("_fuzz_build", true);
-
-    op.UpdateInputDesc("x", create_desc_with_ori(
-      {2, 8, 8, 8, 320}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
-      {2, 8, 8, 8, 320}, ge::FORMAT_NDHWC));
-    op.UpdateInputDesc("filter", create_desc_with_ori(
-      {320, 2, 2, 2, 320}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
-      {320, 2, 2, 2, 320}, ge::FORMAT_NDHWC));
-    op.UpdateOutputDesc("y", create_desc_with_ori(
-      {2, 4, 4, 4, 320}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
-      {2, 4, 4, 4, 320}, ge::FORMAT_NDHWC));
-    op.SetAttr("strides", {1, 2, 2, 2, 1});
-    op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
-
-    auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-    auto x_desc = op.GetInputDesc("x");
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    x_desc.GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{2, 3}, {8, 15}, {8, 15}, {8, 15}, {320, 320}};
-
-    EXPECT_EQ((input_range == expect_input_range), true);
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
 TEST_F(Conv3DProtoTest, conv3d_dynamic_cut_info_d){
     ge::op::Conv3D op;
     op.UpdateInputDesc("x", create_desc_with_ori(

@@ -22,6 +22,7 @@ import math
 
 from impl.util import util_common
 from impl.util import util_conv3d
+from impl.util import util_cube_dynamic
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_util
@@ -78,6 +79,7 @@ DYNAMIC_FLAG = -1
 RANGE_DIM_LEN = 2
 L1FUSION_INPUT_CTR = 2
 DYNAMIC_RANK_FLAG = [-2]
+_OP_TYPE = "conv3d"
 
 def get_op_support_info(fmap,
                         weight,
@@ -976,26 +978,6 @@ def _conv3d_compute(fmap,
     return {"op_placeholder": [data, weight], "op_res": [conv_res]}
 
 
-def _generate_unkown_shape(obj_shape, obj_format):
-    if obj_format == "NDC1HWC0":
-        idx_tup = (0, 1, 3, 4)
-    else:
-        idx_n = obj_format.find('N')
-        idx_d = obj_format.find('D')
-        idx_h = obj_format.find('H')
-        idx_w = obj_format.find('W')
-        idx_tup = (idx_n, idx_d, idx_h, idx_w)
-    obj_shape = list(obj_shape)
-    for idx in idx_tup:
-        obj_shape[idx] = DYNAMIC_FLAG
-    return tuple(obj_shape)
-
-
-def _generalize_input_keep_rank(param_dict):
-    param_dict["ori_shape"] = _generate_unkown_shape(param_dict["ori_shape"], param_dict["ori_format"])
-    param_dict["shape"] = _generate_unkown_shape(param_dict["shape"], param_dict["format"])
-
-
 @register_param_generalization("Conv3D")
 def conv3d_generalization(fmap,
                           weight,
@@ -1060,11 +1042,12 @@ def conv3d_generalization(fmap,
     """
     result = []
     if generalize_config["mode"] == "keep_rank":
-        _generalize_input_keep_rank(fmap)
-        _generalize_input_keep_rank(output)
+        fmap = util_cube_dynamic.gen_conv_shape_range(fmap, _OP_TYPE)
+        util_conv3d.generalize_input_keep_rank(fmap)
+        util_conv3d.generalize_input_keep_rank(output)
     else:
-        error_manager_cube.raise_err_one_para("E2306",
-                                              "Conv3D",
+        error_manager_cube.raise_err_one_para("E62306",
+                                              _OP_TYPE,
                                               "Invalid generalize mode, currently only support keep_rank")
     result.append([fmap,
                    weight,

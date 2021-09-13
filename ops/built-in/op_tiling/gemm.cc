@@ -32,6 +32,10 @@
 #include "op_log.h"
 #include "op_tiling.h"
 #include "../op_proto/util/error_util.h"
+#include "graph/ge_tensor.h"
+#include "graph/op_desc.h"
+#include "graph/utils/op_desc_utils.h"
+#include "../op_proto/util/axis_util.h"
 using namespace std;
 using json = nlohmann::json;
 using utils = ge::TypeUtils;
@@ -55,74 +59,80 @@ const int64_t kBlockReduce = 16;
 const int64_t kBlockReduceS8 = 32;
 const int64_t kBlockOut = 16;
 
+struct BatchmatmulParas {
+  int64_t m;
+  int64_t k;
+  int64_t n;
+  int64_t batch;
+};
 
 namespace optiling {
 
-bool GetGEMMBatch(const string &op_type, const vector<int64_t> &shape_a, const vector<int64_t> &shape_b,
-                  int64_t *batch) {
-  if (shape_a.size() < 3 && shape_b.size() < 3) {
-    *batch = 1;
+bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::GeShape& shape_b, BatchmatmulParas &params) {
+  int32_t num_dima = shape_a.GetDimNum();
+  int32_t num_dimb = shape_b.GetDimNum();
+  if (num_dima < 3 && num_dimb < 3) {
+    params.batch = 1;
     return true;
   }
 
-  const auto &shape_short = shape_a.size() <= shape_b.size() ? shape_a : shape_b;
-  const auto &shape_long = shape_a.size() > shape_b.size() ? shape_a : shape_b;
-  vector<int64_t> shape_broadcast(shape_long);
+  const ge::GeShape& shape_short = num_dima < num_dimb ? shape_a : shape_b;
+  const ge::GeShape& shape_long = num_dima < num_dimb ? shape_b : shape_a;
+  ge::GeShape shape_broadcast(shape_long);
+  int32_t num_dim = shape_long.GetDimNum();
+  int32_t offset = num_dim - shape_short.GetDimNum();
 
-  for (int i = shape_broadcast.size() - 3; i >= static_cast<int>(shape_broadcast.size() - shape_short.size()); --i) {
-    if (shape_short[i] != shape_long[i] && shape_short[i] != 1 && shape_long[i] != 1) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "Tensor a and b do not meet the broadcast rule");
-      return false;
-    }
-    shape_broadcast[i] = max(shape_short[i], shape_long[i]);
+  for (int i = num_dim - 3; i >= offset; --i) {
+    int64_t short_value = shape_short.GetDim(i - offset);
+    int64_t long_value = shape_long.GetDim(i);
+    CHECK((short_value != long_value && short_value != 1 && long_value != 1),
+          CUBE_INNER_ERR_REPORT(op_type.c_str(), "Tensor a and b do not meet the broadcast rule"), return false);
+
+    shape_broadcast.SetDim(i, max(short_value, long_value));
   }
 
-  *batch = std::accumulate(shape_broadcast.begin(), shape_broadcast.end() - 2, 1, std::multiplies<double>());
+  int64_t batch_value = 1;
+  for (int i = 0; i < num_dim - 2; ++i) {
+    batch_value *= shape_broadcast.GetDim(i);
+  }
+  params.batch = batch_value;
   return true;
 }
 
-bool CalcGEMMMknb(const string &op_type, const json &compile_info,
-                  const ge::TensorDesc &tensor_a, const ge::TensorDesc &tensor_b,
-                  int64_t *m, int64_t *k, int64_t *n, int64_t *batch) {
-    int32_t block_reduce = kBlockReduce, block_in = kBlockIn, block_out = kBlockOut;
-    if (tensor_a.GetDataType() == ge::DT_INT8 || tensor_a.GetDataType() == ge::DT_UINT8) {
-      block_reduce = kBlockReduceS8;
-    }
+bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType dtype, const ge::GeShape& ori_shape_a,
+                  const ge::GeShape& ori_shape_b, BatchmatmulParas &params) {
+  int32_t block_reduce = kBlockReduce, block_in = kBlockIn, block_out = kBlockOut;
+  if (dtype == ge::DT_INT8 || dtype == ge::DT_UINT8) {
+    block_reduce = kBlockReduceS8;
+  }
 
-    int32_t idx_m_of_a = -2;
-    int32_t idx_k_of_a = -1;
-    int32_t idx_k_of_b = -2;
-    int32_t idx_n_of_b = -1;
+  int32_t num_dima = ori_shape_a.GetDimNum();
+  int32_t num_dimb = ori_shape_b.GetDimNum();
+  int32_t idx_m_of_a = num_dima - 2;
+  int32_t idx_k_of_a = num_dima - 1;
+  int32_t idx_k_of_b = num_dimb - 2;
+  int32_t idx_n_of_b = num_dimb - 1;
 
-    auto trans_a = compile_info["attrs"]["transpose_a"].get<bool>();
-    auto trans_b = compile_info["attrs"]["transpose_b"].get<bool>();
-    if (trans_a) {
-      idx_m_of_a = -1;
-      idx_k_of_a = -2;
-    }
-    if (trans_b) {
-      idx_k_of_b = -1;
-      idx_n_of_b = -2;
-    }
+  auto& repo_attr = compile_info["attrs"];
+  auto trans_a = repo_attr["transpose_a"];
+  auto trans_b = repo_attr["transpose_b"];
+  if (trans_a) {
+    idx_m_of_a = num_dima - 1;
+    idx_k_of_a = num_dima - 2;
+  }
+  if (trans_b) {
+    idx_k_of_b = num_dimb - 1;
+    idx_n_of_b = num_dimb - 2;
+  }
 
-    auto tansor_a_ori_shape = tensor_a.GetOriginShape().GetDims();
-    auto tansor_b_ori_shape = tensor_b.GetOriginShape().GetDims();
+  CHECK((ori_shape_a.GetDim(idx_k_of_a) != ori_shape_b.GetDim(idx_k_of_b)),
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "The k-axis of a and b tensors must be the same"), return false);
 
-    idx_m_of_a += tansor_a_ori_shape.size();
-    idx_k_of_a += tansor_a_ori_shape.size();
-    idx_k_of_b += tansor_b_ori_shape.size();
-    idx_n_of_b += tansor_b_ori_shape.size();
+  params.m = std::ceil(static_cast<double>(ori_shape_a.GetDim(idx_m_of_a)) / block_in);
+  params.k = std::ceil(static_cast<double>(ori_shape_a.GetDim(idx_k_of_a)) / block_reduce);
+  params.n = std::ceil(static_cast<double>(ori_shape_b.GetDim(idx_n_of_b)) / block_out);
 
-    if (tansor_a_ori_shape[idx_k_of_a] != tansor_b_ori_shape[idx_k_of_b]) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "The k-axis of a and b tensors must be the same");
-      return false;
-    }
-    
-    *m = std::ceil(static_cast<double>(tansor_a_ori_shape[idx_m_of_a]) / block_in);
-    *k = std::ceil(static_cast<double>(tansor_a_ori_shape[idx_k_of_a]) / block_reduce);
-    *n = std::ceil(static_cast<double>(tansor_b_ori_shape[idx_n_of_b]) / block_out);
-
-    return GetGEMMBatch(op_type, tansor_a_ori_shape, tansor_b_ori_shape, batch);
+  return GetGEMMBatch(op_type, ori_shape_a, ori_shape_b, params);
 }
 
 string StringTeOperator(const ge::TensorDesc &tensor) {
@@ -166,58 +176,82 @@ string DebugInfoGEMM(const ge::Operator &op_paras, const json &compile_info) {
   return oss.str();
 }
 
-std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_paras, const json &compile_info,
-                             utils::OpRunInfo& run_info) {
+std::string CheckTilingInRepo(const std::string &op_type, const json &compile_info, BatchmatmulParas params,
+                               bool isBatchMatmulMode) {
   string tiling_id("-1");
-  auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
-  if (dynamic_mode != "dynamic_mkn" && dynamic_mode != "dynamic_mknb") {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb");
-    return tiling_id;
-  }
-  if (op_paras.GetInputsSize() < 2) {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_paras is null");
-    return tiling_id;
-  }
-  auto tensor_a = op_paras.GetInputDesc(0);
-  auto tensor_b = op_paras.GetInputDesc(1);
-  int64_t m, k, n, batch;
-  if (!CalcGEMMMknb(op_type, compile_info, tensor_a, tensor_b, &m, &k, &n, &batch)) {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch");
-    return tiling_id;
-  }
-
   int64_t min_distance = LLONG_MAX;
-  // check tiling of repository
-  for (auto &element : compile_info["repo_seeds"].items()) {
-    auto seed_mkn = element.value().get<std::vector<int64_t>>();
-    auto &range = compile_info["repo_range"][element.key()];
+  auto &repo_seed = compile_info["repo_seeds"];
+  auto &repo_range = compile_info["repo_range"];
+  auto element_seed = repo_seed.begin();
+  auto element_range = repo_range.begin();
+  while (element_seed != repo_seed.end() && element_range != repo_range.end()) {
+    CHECK((element_seed.key() != element_range.key()),
+          CUBE_INNER_ERR_REPORT(op_type.c_str(), "repo_seed is inconsistent with repo_range"), return tiling_id);
 
-    auto in_range = range[kIdxMLow] <= m && m <= range[kIdxMHigh] &&
-                    range[kIdxKLow] <= k && k <= range[kIdxKHigh] &&
-                    range[kIdxNLow] <= n && n <= range[kIdxNHigh];
+    auto& seed = element_seed.value();
+    auto& range = element_range.value();
+
+    auto in_range = range[kIdxMLow] <= params.m && params.m <= range[kIdxMHigh] &&
+                    range[kIdxKLow] <= params.k && params.k <= range[kIdxKHigh] &&
+                    range[kIdxNLow] <= params.n && params.n <= range[kIdxNHigh];
+    BatchmatmulParas seed_params;
+    seed_params.m = seed[kIdxM];
+    seed_params.k = seed[kIdxK];
+    seed_params.n = seed[kIdxN];
     if (in_range) {
-      int64_t dist = (m - seed_mkn[kIdxM]) * (m - seed_mkn[kIdxM]) +
-                     (k - seed_mkn[kIdxK]) * (k - seed_mkn[kIdxK]) +
-                     (n - seed_mkn[kIdxN]) * (n - seed_mkn[kIdxN]);
-      if (dynamic_mode == "dynamic_mknb") {
-        dist += (batch - seed_mkn[kIdxBatch]) * (batch - seed_mkn[kIdxBatch]);
+      int64_t dist = (params.m - seed_params.m) * (params.m - seed_params.m) +
+                     (params.k - seed_params.k) * (params.k - seed_params.k) +
+                     (params.n - seed_params.n) * (params.n - seed_params.n);
+      if (isBatchMatmulMode) {
+        seed_params.batch = seed[kIdxBatch];
+        dist += (params.batch - seed_params.batch) * (params.batch - seed_params.batch);
       }
       if (dist < min_distance) {
         min_distance = dist;
-        tiling_id = element.key();
+        tiling_id = element_seed.key();
       }
     }
+    ++element_seed;
+    ++element_range;
   }
+
+  return tiling_id;
+}
+std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_paras, const json &compile_info,
+                             utils::OpRunInfo& run_info) {
+  string tiling_id("-1");
+  const auto &dynamic_mode = compile_info["dynamic_mode"];
+  bool isBatchMatmulMode = dynamic_mode == "dynamic_mknb";
+  CHECK((dynamic_mode != "dynamic_mkn" && !isBatchMatmulMode),
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb"),
+        return tiling_id);
+
+  CHECK((op_paras.GetInputsSize() < 2), CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_paras is null"), return tiling_id);
+
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_desc is nullptr"), return tiling_id);
+
+  ge::ConstGeTensorDescPtr tensor_a = op_desc->GetInputDescPtr(0);
+  ge::ConstGeTensorDescPtr tensor_b = op_desc->GetInputDescPtr(1);
+  const ge::GeShape& ori_shape_a = tensor_a->GetOriginShape();
+  const ge::GeShape& ori_shape_b = tensor_b->GetOriginShape();
+  ge::DataType dtype = tensor_a->GetDataType();
+  BatchmatmulParas params;
+  CHECK((!CalcGEMMMknb(op_type, compile_info, dtype, ori_shape_a, ori_shape_b, params)),
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch"), return tiling_id);
+
+  // check tiling of repository
+  tiling_id = CheckTilingInRepo(op_type, compile_info, params, isBatchMatmulMode);
 
   // check tiling of costmodel
   if (tiling_id == "-1") {
     for (auto &element : compile_info["cost_range"].items()) {
-      auto range = element.value().get<std::vector<int64_t>>();
-      auto in_range = range[kIdxMLow] <= m && m <= range[kIdxMHigh] &&
-                      range[kIdxKLow] <= k && k <= range[kIdxKHigh] &&
-                      range[kIdxNLow] <= n && n <= range[kIdxNHigh];
-      if (dynamic_mode == "dynamic_mknb") {
-        in_range = in_range && range[kIdxBLow] <= batch && batch <= range[kIdxBHigh];
+      const auto &range = element.value();
+      auto in_range = range[kIdxMLow] <= params.m && params.m <= range[kIdxMHigh] &&
+                      range[kIdxKLow] <= params.k && params.k <= range[kIdxKHigh] &&
+                      range[kIdxNLow] <= params.n && params.n <= range[kIdxNHigh];
+      if (isBatchMatmulMode) {
+        in_range = in_range && range[kIdxBLow] <= params.batch && params.batch <= range[kIdxBHigh];
       }
       if (in_range) {
         tiling_id = element.key();
@@ -232,11 +266,11 @@ std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_
   if (tiling_id != "-1") {
     run_info.SetBlockDim(static_cast<int32_t>(compile_info["block_dim"][tiling_id]));
     run_info.SetTilingKey(stoi(tiling_id));
-    run_info.AddTilingData(static_cast<int32_t>(m));
-    run_info.AddTilingData(static_cast<int32_t>(k));
-    run_info.AddTilingData(static_cast<int32_t>(n));
-    if (dynamic_mode == "dynamic_mknb") {
-      run_info.AddTilingData(static_cast<int32_t>(batch));
+    run_info.AddTilingData(static_cast<int32_t>(params.m));
+    run_info.AddTilingData(static_cast<int32_t>(params.k));
+    run_info.AddTilingData(static_cast<int32_t>(params.n));
+    if (isBatchMatmulMode) {
+      run_info.AddTilingData(static_cast<int32_t>(params.batch));
     }
   }
   return tiling_id;

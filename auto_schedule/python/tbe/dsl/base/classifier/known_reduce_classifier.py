@@ -28,6 +28,9 @@ ZERO = "zero"
 
 
 class KnownReduceClassifier:
+    """
+    classifier for known reduce
+    """
 
     def __init__(self, ins: list, keepdims: bool):
         self.ins = ins

@@ -192,8 +192,44 @@ case9 = {
     "format_expect": [],
     "support_expect": True
 }
-
-
+case10 = {
+    "params": [{
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (4, 16, 480, 640),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NCHW",
+        "ori_shape": (34, 31, 51, 16),
+        "ori_format": "NCHW"
+    }, (-10, 1067), True, False],
+    "case_name": "resize_nearest_neighbor_v2_d_10",
+    "expect": "failed",
+    "format_expect": [],
+    "support_expect": True
+}
+case11 = {
+    "params": [{
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NHWC",
+        "ori_shape": (4, 16, 480, 640),
+        "ori_format": "NHW"
+    }, {
+        "shape": (34, 2, 51, 16),
+        "dtype": "float16",
+        "format": "NCHW",
+        "ori_shape": (34, 31, 51, 16),
+        "ori_format": "NCHW"
+    }, (-10, 1067), True, False],
+    "case_name": "resize_nearest_neighbor_v2_d_11",
+    "expect": "failed",
+    "format_expect": [],
+    "support_expect": True
+}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -204,6 +240,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
 
 if __name__ == '__main__':
     ut_case.run()

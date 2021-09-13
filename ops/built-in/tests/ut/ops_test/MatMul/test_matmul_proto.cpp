@@ -42,6 +42,7 @@ TEST_F(matmul_infer_test, matmul_infer_test_1) {
   ge::Graph graph("matmul_infer_test_1");
   auto shape_x1 = vector<int64_t>({-1, -1});
   TensorDesc desc_data_x1(ge::Shape(shape_x1), FORMAT_NCHW, DT_FLOAT16);
+  desc_data_x1.SetOriginShape(ge::Shape(shape_x1));
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.push_back(std::pair<int64_t, int64_t>{1, -1});
   x1_range.push_back(std::pair<int64_t, int64_t>{1, -1});
@@ -53,6 +54,7 @@ TEST_F(matmul_infer_test, matmul_infer_test_1) {
 
   auto shape_x2 = vector<int64_t>({-1, -1});
   TensorDesc desc_data_x2(ge::Shape(shape_x2), FORMAT_NCHW, DT_FLOAT16);
+  desc_data_x2.SetOriginShape(ge::Shape(shape_x2));
   std::vector<std::pair<int64_t, int64_t>> x2_range;
   x2_range.push_back(std::pair<int64_t, int64_t>{1, -1});
   x2_range.push_back(std::pair<int64_t, int64_t>{1, -1});
@@ -187,6 +189,26 @@ TEST_F(matmul_infer_test, static_normal) {
   Operate(op);
 
   Check(op, {2, 5}, {});
+}
+
+TEST_F(matmul_infer_test, static_normal_2) {
+  auto op = CreateMatMulOp(OP_TUPLE{{2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           OP_TUPLE{{4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {2, 1}, {});
+}
+
+TEST_F(matmul_infer_test, static_normal_3) {
+  auto op = CreateMatMulOp(OP_TUPLE{{4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           OP_TUPLE{{4, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
+                           false, false);
+
+  Operate(op);
+
+  Check(op, {1, 5}, {});
 }
 
 TEST_F(matmul_infer_test, dynamic_normal) {

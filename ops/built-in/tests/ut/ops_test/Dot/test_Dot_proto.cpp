@@ -41,12 +41,14 @@ TEST_F(DotTest, dot_test_case_1) {
     ge::Shape shape1({2});
     tensorDesc1.SetDataType(ge::DT_FLOAT16);
     tensorDesc1.SetShape(shape1);
+    tensorDesc1.SetOriginShape(shape1);
     dot_op.UpdateInputDesc("input_x", tensorDesc1);
 
     ge::TensorDesc tensorDesc2;
     ge::Shape shape2({2});
     tensorDesc2.SetDataType(ge::DT_FLOAT16);
     tensorDesc2.SetShape(shape2);
+    tensorDesc2.SetOriginShape(shape2);
     dot_op.UpdateInputDesc("input_y", tensorDesc2);
 
     auto ret = dot_op.InferShapeAndType();

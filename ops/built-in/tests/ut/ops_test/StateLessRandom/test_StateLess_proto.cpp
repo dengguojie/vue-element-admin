@@ -127,14 +127,18 @@ TEST_F(stateless_infer_test, stateless_random_uniform_int_infer_test_1) {
   //ge::TensorDesc tensor_desc_shape(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
   //op.UpdateInputDesc("shape", tensor_desc_shape);
   ge::TensorDesc tensor_desc_seed(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT64);
+  tensor_desc_seed.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("seed", tensor_desc_seed);
   ge::TensorDesc tensor_desc_minval(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_minval.SetOriginShape(ge::Shape());
   op.UpdateInputDesc("minval", tensor_desc_minval);
   ge::TensorDesc tensor_desc_maxval(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_maxval.SetOriginShape(ge::Shape());
   op.UpdateInputDesc("maxval", tensor_desc_maxval);
 
   ge::Tensor constTensor;
   ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  constDesc.SetOriginShape(ge::Shape({1}));
   constDesc.SetSize(1 * sizeof(int32_t));
   constTensor.SetTensorDesc(constDesc);
   int32_t constData[1] = {3};

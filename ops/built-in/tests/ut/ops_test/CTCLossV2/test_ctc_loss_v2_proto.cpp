@@ -28,20 +28,24 @@ TEST_F(CTCLossV2ProtoTest, ctc_loss_v2_infer_shape_test_1) {
     ge::Shape xShape({T, N, C});
     log_probs_desc.SetDataType(ge::DT_FLOAT);
     log_probs_desc.SetShape(xShape);
+    log_probs_desc.SetOriginShape(xShape);
     
     ge::TensorDesc targets_desc;
     ge::Shape YShape({N, S});
     targets_desc.SetDataType(ge::DT_INT32);
     targets_desc.SetShape(YShape);
+    targets_desc.SetOriginShape(YShape);
     
     ge::TensorDesc input_lengths_desc;
     ge::Shape ZShape({N});
     input_lengths_desc.SetDataType(ge::DT_INT32);
     input_lengths_desc.SetShape(ZShape);
+    input_lengths_desc.SetOriginShape(ZShape);
 
     ge::TensorDesc target_lengths_desc;
     target_lengths_desc.SetDataType(ge::DT_INT32);
     target_lengths_desc.SetShape(ZShape);
+    target_lengths_desc.SetOriginShape(ZShape);
 
     rnn_op.UpdateInputDesc("log_probs", log_probs_desc);
     rnn_op.UpdateInputDesc("targets", targets_desc);
@@ -75,20 +79,24 @@ TEST_F(CTCLossV2ProtoTest, ctc_loss_v2_infer_shape_test_2) {
     ge::Shape xShape({T, N, C});
     log_probs_desc.SetDataType(ge::DT_FLOAT);
     log_probs_desc.SetShape(xShape);
+    log_probs_desc.SetOriginShape(xShape);
     
     ge::TensorDesc targets_desc;
     ge::Shape YShape({N, S});
     targets_desc.SetDataType(ge::DT_INT32);
     targets_desc.SetShape(YShape);
+    targets_desc.SetOriginShape(YShape);
     
     ge::TensorDesc input_lengths_desc;
     ge::Shape ZShape({N});
     input_lengths_desc.SetDataType(ge::DT_INT32);
     input_lengths_desc.SetShape(ZShape);
+    input_lengths_desc.SetOriginShape(ZShape);
 
     ge::TensorDesc target_lengths_desc;
     target_lengths_desc.SetDataType(ge::DT_INT32);
     target_lengths_desc.SetShape(ZShape);
+    target_lengths_desc.SetOriginShape(ZShape);
 
     rnn_op.UpdateInputDesc("log_probs", log_probs_desc);
     rnn_op.UpdateInputDesc("targets", targets_desc);
@@ -123,20 +131,24 @@ TEST_F(CTCLossV2ProtoTest, ctc_loss_v2_infer_shape_test_3) {
     ge::Shape xShape({T, N, C});
     log_probs_desc.SetDataType(ge::DT_FLOAT);
     log_probs_desc.SetShape(xShape);
+    log_probs_desc.SetOriginShape(xShape);
     
     ge::TensorDesc targets_desc;
     ge::Shape YShape({N, S});
     targets_desc.SetDataType(ge::DT_INT32);
     targets_desc.SetShape(YShape);
+    targets_desc.SetOriginShape(YShape);
     
     ge::TensorDesc input_lengths_desc;
     ge::Shape ZShape({N});
     input_lengths_desc.SetDataType(ge::DT_INT32);
     input_lengths_desc.SetShape(ZShape);
+    input_lengths_desc.SetOriginShape(ZShape);
 
     ge::TensorDesc target_lengths_desc;
     target_lengths_desc.SetDataType(ge::DT_INT32);
     target_lengths_desc.SetShape(ZShape);
+    target_lengths_desc.SetOriginShape(ZShape);
 
     rnn_op.UpdateInputDesc("log_probs", log_probs_desc);
     rnn_op.UpdateInputDesc("targets", targets_desc);

@@ -84,6 +84,7 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   std::string mul_name = mul_node->GetName();
   if (string::npos != mul_name.find("adam") || string::npos != mul_name.find("lamb") ||
       string::npos == mul_name.find("bert")) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "fusedmuladd fusion pass only used in bert network.");
     return NOT_CHANGED;
   }
 
@@ -175,6 +176,9 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.", add_desc->GetName().c_str()),
                     return FAILED);
+
+  std::map<string, uint32_t> input_name_id = {{"x1", 0}, {"x2", 1}, {"x3", 2}};
+  mul_node->GetOpDesc()->UpdateInputName(input_name_id);
 
   // Record fusion nodes
   fusionNodes.push_back(mul_node);

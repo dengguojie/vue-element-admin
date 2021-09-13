@@ -1,4 +1,4 @@
-/* Copyright (c) Huawei Technologies Co., Ltd. 2021 All rights reserved.
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,13 +58,13 @@ bool InTopKDTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   int32_t core_num = 32;
   if (row <= core_num) {
     need_core = 1;
-    } else {
+  } else {
       const auto& all_vars = op_compile_info_json["vars"];
       int32_t mini_cloud_core_nums = all_vars["mini_cloud_core_nums"].get<std::int32_t>();
       int32_t num = (row + core_num - 1) / core_num;
       if (num <= mini_cloud_core_nums) {
         need_core = num;
-        } else {
+      } else {
           need_core = mini_cloud_core_nums;
       }
   }

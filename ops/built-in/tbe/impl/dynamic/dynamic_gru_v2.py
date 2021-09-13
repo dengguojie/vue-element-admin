@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 gru v2
 """
-# pylint: disable=too-many-lines
 import operator
 import math
 import enum
@@ -209,7 +208,6 @@ def ceil_value(value, factor):
     return (value + factor - 1) // factor
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
                  init_h, y, output_h, update, reset, new, hidden_new):
     """
@@ -244,7 +242,6 @@ def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
         _check_equal_bias_dtype(hidden_new, "hidden_new")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new):
     """
@@ -280,7 +277,6 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_le
                                                           "(bias_hidden.shape[0] + 15) // 16 == weight_hidden.shape[1]",
                                                           "bias_hidden.shape[0]", bias_hidden["shape"][0])
 
-
     # check output
     if not operator.eq(output_h["shape"], y["shape"]):
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2", "y.shape == output_h.shape",
@@ -303,8 +299,7 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_le
                                                           "hidden_new.shape", str(hidden_new["shape"]))
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
-def check_gru_v2_attr(op_name, direction, cell_depth, keep_prob,
+def _check_gru_v2_attr(op_name, direction, cell_depth, keep_prob,
                       cell_clip, num_proj, time_major, activation, gate_order, reset_after):
     """
     check attribute
@@ -356,6 +351,7 @@ class ReuseType(enum.Enum):
     REUSE_ALL = 2
     REUSE_AFTERCUT = 3
 
+
 @register_operator("DynamicGRUV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT,
@@ -366,8 +362,6 @@ class ReuseType(enum.Enum):
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length, init_h,
                    y, output_h, update, reset, new, hidden_new,
                    direction="UNIDIRECTIONAL", cell_depth=1, keep_prob=1.0,
@@ -397,8 +391,8 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
                  init_h, y, output_h, update, reset, new, hidden_new)
     _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new)
-    check_gru_v2_attr("DynamicGRUV2", direction, cell_depth, keep_prob,
-                      cell_clip, num_proj, time_major, activation, gate_order, reset_after)
+    _check_gru_v2_attr("DynamicGRUV2", direction, cell_depth, keep_prob,
+                       cell_clip, num_proj, time_major, activation, gate_order, reset_after)
 
     shape_x_input = x.get("shape")
     shape_w_input = weight_input.get("shape")
@@ -466,7 +460,6 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
                       kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index)
 
 
-# pylint: disable=invalid-name,too-many-statements
 def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type,
               is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index):
     """
@@ -626,11 +619,7 @@ def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, i
                     output_list,
                     [is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output, is_sync,
                      reuse_type, is_dynamic])
-    
-    # tiling_key_value_list = []
-    # for idx in rl_idx_list_first:
-    #     tiling_key_value_list.append(idx)
-    
+
     if is_dynamic:
         from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
 
@@ -656,7 +645,6 @@ def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, i
                               build_output_list)
 
 
-# pylint: disable=too-many-statements,unused-variable,unnecessary-lambda
 def _dynamic_gru_v2_inner(input_list, custom_list):
     """
     inner part of tik loop
@@ -1043,19 +1031,6 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         output_list.append(r_t_gm)
         output_list.append(n_t_gm)
         output_list.append(hn_t_gm)
-
-    # for RL tuning
-    # output_list, sch_list, index_list, tune_shape_list = rl_bank.tik_dsl_bank_proc(output_list, sync_tensor=sync, dynamic=True)
-    # if sch_list is not None:
-    #     if is_dynamic:
-    #         for i in range(len(sch_list)):
-    #             sch_list[i].set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[i][1], input_x.shape[2] > 0))
-    #     tbe_context.get_context.add_compile_info("vars", {"tune_shape_list": tune_shape_list})
-    #     return output_list, sch_list, index_list
-
-    # output_list, sch_rl = rl_bank.tik_dsl_bank_proc(output_list, sync_tensor=sync)
-    # if sch_rl is not None:
-        # return output_list, sch_rl
 
     bank_manager.update_bank_hit_info(True)
     # schedule

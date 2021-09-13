@@ -71,7 +71,8 @@ class ScatterNdUpdate():
         self.indices_dtype = indices.get("dtype").lower()
         self.updates_dtype = updates.get("dtype").lower()
         self.out_dtype = var_out.get("dtype").lower()
-
+        if self.out_dtype == "bool":
+            self.out_dtype = "int8"
         self.check_input_params()
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)

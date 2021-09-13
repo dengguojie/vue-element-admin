@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,9 +86,9 @@ bool Broadcast::Init() {
     compileInfo.is_unknown_rank = flag_info[5];
     compileInfo.has_all_unknown = flag_info[6];
   }
-  if (op_info.contains("_soc_version")) {
+  if (compile_info.contains("_soc_version")) {
     try {
-      std::string soc_version = op_info.at("_soc_version");
+      std::string soc_version = compile_info.at("_soc_version");
       is_milan_soc = soc_version == MILAN;
     } catch (const std::exception &e) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_soc_version] error. Error message: %s", e.what());
@@ -328,7 +328,7 @@ bool Broadcast::GenerateOutputShape() {
   if (only_const_tiling) {
     output_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->MutableShape().GetDims();
     try {
-      const auto& b_axis = op_info.at("_broadcast_axis");
+      const auto& b_axis = compile_info.at("_broadcast_axis");
       for (size_t i = 0; i < b_axis.size(); i++) {
         broadcast_axis[i] = b_axis[i];
         fusion_index.push_back({i});
@@ -342,10 +342,10 @@ bool Broadcast::GenerateOutputShape() {
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile shape and runtime shape not same"),
                       return false);
     if (is_milan_soc) {
-      if (!op_info.contains("_fusion_index")) {
+      if (!compile_info.contains("_fusion_index")) {
         original_dim_len = dim_len;
       } else {
-        original_dim_len = op_info.at("_fusion_index").size();
+        original_dim_len = compile_info.at("_fusion_index").size();
       }
     }
     if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
@@ -392,7 +392,7 @@ bool Broadcast::CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vect
   int64_t cur_core;
   int64_t max_ub;
   try {
-    const auto& base_info = op_info.at("_base_info").at(ALL_UNKNOWN_PATTERN);
+    const auto& base_info = compile_info.at("_base_info").at(ALL_UNKNOWN_PATTERN);
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
@@ -517,7 +517,7 @@ bool Broadcast::TryMatchAllUnknown() {
 
 bool Broadcast::RefineShapesForBroadcast() {
   size_t fusion_len = 0;
-  if (!op_info.contains("_fusion_index")) {
+  if (!compile_info.contains("_fusion_index")) {
     fusion_index = {};
     fusion_len = compileInfo.is_unknown_rank ? MAX_UNKNOWN_RANK : dim_len;
     for (size_t i = 0; i < fusion_len; i++) {
@@ -525,7 +525,7 @@ bool Broadcast::RefineShapesForBroadcast() {
     }
   } else {
     try {
-      fusion_index = op_info.at("_fusion_index").get<std::vector<std::vector<size_t>>>();
+      fusion_index = compile_info.at("_fusion_index").get<std::vector<std::vector<size_t>>>();
     } catch (const std::exception &e) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_fusion_index] error. Error message: %s", e.what());
       return false;
@@ -578,7 +578,7 @@ bool Broadcast::CalcTiling() {
   }
   std::string pattern_key = keys;
   try {
-    const auto& base_info = op_info.at("_base_info").at(pattern_key);
+    const auto& base_info = compile_info.at("_base_info").at(pattern_key);
     // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db"]
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
@@ -661,7 +661,7 @@ bool Broadcast::DoBlockTiling() {
     }
   }
   if (output_shape.size() == 1) {
-    bool outs_uint1 = op_info.at("_outs_uint1");
+    bool outs_uint1 = compile_info.at("_outs_uint1");
     int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     output_shape[0] = block_factor;
@@ -895,7 +895,7 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
     if (ub_axis == shape_len && ub_factor != output_shape[shape_len]) {
       int64_t ele_in_block = BGetElementByType(out_type);
       if (output_shape.size() == 1) {
-        bool outs_uint1 = op_info.at("_outs_uint1");
+        bool outs_uint1 = compile_info.at("_outs_uint1");
         ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
       }
       int64_t last_factor = ub_factor;
@@ -1017,7 +1017,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
   }
   std::string str_key = keys + key_len + 1;
   try {
-    const auto& all_vars = op_info.at("_elewise_vars").at(str_key);
+    const auto& all_vars = compile_info.at("_elewise_vars").at(str_key);
     for (const auto& var : all_vars) {
       if (var >= 30000) {
         V_CHECK_GE(ub_axis, 0,

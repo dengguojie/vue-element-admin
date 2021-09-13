@@ -1,0 +1,45 @@
+[
+    {
+      "op": "Sqrt",
+      "input_desc": [
+        {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "ori_shape": [
+            2,
+            10,
+            5
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "name": "x1"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+              -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "typical_shape": [
+            2,
+            10,
+            5
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "name": "y",
+          "type": "float"
+        }
+      ],
+      "case_name": "test_dynamic_sqrt_000"
+    }
+]

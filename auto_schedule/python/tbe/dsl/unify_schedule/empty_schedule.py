@@ -62,3 +62,4 @@ class EmptySchedule(VectorSchedule):
 
     def _calc_compute_align(self):
         pass
+

@@ -1387,6 +1387,13 @@ REGISTER_CUSTOM_OP("MatrixSetDiagV2")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register MatrixSetDiagV3 op to GE
+REGISTER_CUSTOM_OP("MatrixSetDiagV3")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("MatrixSetDiagV3")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register MatrixDiagV2 op to GE
 REGISTER_CUSTOM_OP("MatrixDiagV2")
     .FrameworkType(TENSORFLOW)

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,4 +56,3 @@ bool ConcatOffsetTiling(const std::string& op_type,
 // register tiling interface of the ConcatOffset op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ConcatOffset, ConcatOffsetTiling);
 }  // namespace optiling
-

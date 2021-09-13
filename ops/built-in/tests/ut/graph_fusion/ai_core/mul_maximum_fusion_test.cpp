@@ -31,6 +31,7 @@ TEST_F(mul_maximum_fusion_test, mul_maximum_fusion_test_1) {
     std::vector<int64_t> dims_x{3, 32};
     ge::Shape shape_x(dims_x);
     ge::TensorDesc tensorDescMul(shape_x, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+    tensorDescMul.SetOriginShape(shape_x);
     input_x.update_input_desc_x(tensorDescMul);
     input_x.update_output_desc_y(tensorDescMul);
 
@@ -39,6 +40,7 @@ TEST_F(mul_maximum_fusion_test, mul_maximum_fusion_test_1) {
     std::vector<int64_t> dims_scale ={};
     ge::Shape shape_scale(dims_scale);
     ge::TensorDesc tensorDescScale(shape_scale, FORMAT_NHWC,  ge::DT_FLOAT16);
+    tensorDescScale.SetOriginShape(shape_scale);
 
     Tensor consttensor1;
     float * dataValue = new float[1];

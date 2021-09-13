@@ -166,8 +166,11 @@ BatchMatMulV2 CreateBatchMatMulV2Op(OP_TUPLE a, OP_TUPLE b, OP_TUPLE bias,
 }
 
 void Operate(BatchMatMulV2 &op, bool expected_result) {
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
 
+  // check result
+  auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
   if (expected_result == PASS) {
     EXPECT_EQ(ret, GRAPH_SUCCESS);
   } else {

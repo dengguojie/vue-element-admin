@@ -40,6 +40,7 @@ TEST_F(LogSigmoidGradTest, log_sigmoid_grad_test_case_1) {
     ge::Shape shape({2, 3, 4});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     log_sigmoid_grad_op.UpdateInputDesc("grads", tensor_desc);
     log_sigmoid_grad_op.UpdateInputDesc("features", tensor_desc);
@@ -59,6 +60,7 @@ TEST_F(LogSigmoidGradTest, log_sigmoid_grad_test_case_2) {
     ge::Shape shape({12, 23, 34, 5});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     log_sigmoid_grad_op.UpdateInputDesc("grads", tensor_desc);
     log_sigmoid_grad_op.UpdateInputDesc("features", tensor_desc);
@@ -78,6 +80,7 @@ TEST_F(LogSigmoidGradTest, log_sigmoid_grad_test_case_3) {
     ge::Shape shape({2, 3, 4, 5, 1, 5, 9});
     tensor_desc.SetDataType(ge::DT_FLOAT16);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     log_sigmoid_grad_op.UpdateInputDesc("grads", tensor_desc);
     log_sigmoid_grad_op.UpdateInputDesc("features", tensor_desc);
@@ -97,6 +100,7 @@ TEST_F(LogSigmoidGradTest, log_sigmoid_grad_test_case_4) {
     ge::Shape shape({11});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
 
     log_sigmoid_grad_op.UpdateInputDesc("grads", tensor_desc);
     log_sigmoid_grad_op.UpdateInputDesc("features", tensor_desc);

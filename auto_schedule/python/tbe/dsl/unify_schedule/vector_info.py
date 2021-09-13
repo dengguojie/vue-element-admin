@@ -30,19 +30,9 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
-from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base import operation
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
-
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import FAKE_NODE_TAG
-from .util import equals_one
-from .util import expr_equal
-from .util import get_reduce_all_axes
-from .util import get_reduce_axes
-from .util import is_placeholder
-from .util import shape_to_list
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
@@ -54,6 +44,14 @@ from tbe.common.platform import SD3403
 from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
+from .constants import DTYPE_BYTE_MAPPING
+from .constants import FAKE_NODE_TAG
+from .util import equals_one
+from .util import expr_equal
+from .util import get_reduce_all_axes
+from .util import get_reduce_axes
+from .util import is_placeholder
+from .util import shape_to_list
 
 ASCEND_SHISI = "smallhisi"
 
@@ -68,11 +66,11 @@ REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC = {
     ASCEND_SHISI: ("float16",),
 }
 
+
 class ComputeGraphInfo:
     """
     Operator Compute Graph Info collector and container
     """
-
     def __init__(self, output_tensors: Iterable[Tensor]):
         """
         Initialize containers and try to collect info

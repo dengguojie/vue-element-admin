@@ -41,9 +41,9 @@ class Eletwise {
  public:
   explicit Eletwise(const std::string& _op_type,
                     std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& _input_shapes,
-                    const nlohmann::json& _op_info, const ge::DataType _in_type,
+                    const nlohmann::json& _compile_info, const ge::DataType _in_type,
                     const ge::DataType _out_type, const std::vector<bool>& _flag_info)
-      : op_type(_op_type), input_shapes(_input_shapes), op_info(_op_info),
+      : op_type(_op_type), input_shapes(_input_shapes), compile_info(_compile_info),
       in_type(_in_type), out_type(_out_type), flag_info(_flag_info) {
   }
   ~Eletwise() {
@@ -62,7 +62,7 @@ class Eletwise {
  private:
   const std::string& op_type;
   std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes;
-  const nlohmann::json& op_info;
+  const nlohmann::json& compile_info;
   const ge::DataType in_type;
   const ge::DataType out_type;
   const std::vector<bool>& flag_info;

@@ -29,6 +29,7 @@ TEST_F(grid_unnormal, grid_unnormal_test1) {
 
     ge::Tensor assist_tensor;
     ge::TensorDesc assist_desc(ge::Shape(test_shape), grid_format, grid_type);
+    assist_desc.SetOriginShape(ge::Shape(test_shape));
     assist_tensor.SetTensorDesc(assist_desc);
     assist_tensor.SetData((uint8_t*)data, size * sizeof(uint16_t));
     auto assist_const_node = ge::op::Constant().set_attr_value(assist_tensor);
@@ -61,6 +62,7 @@ TEST_F(grid_unnormal, grid_unnormal_test2) {
 
     ge::Tensor assist_tensor;
     ge::TensorDesc assist_desc(ge::Shape(test_shape), grid_format, grid_type);
+    assist_desc.SetOriginShape(ge::Shape(test_shape));
     assist_tensor.SetTensorDesc(assist_desc);
     assist_tensor.SetData((uint8_t*)data, size * sizeof(float));
     auto assist_const_node = ge::op::Constant().set_attr_value(assist_tensor);

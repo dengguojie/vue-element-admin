@@ -266,6 +266,7 @@ TEST_F(barrier_infer_test, barrier_close_infer_test_3) {
   ge::op::BarrierClose op;
   // set input info
   ge::TensorDesc tensor_desc_handle(ge::Shape({2}), ge::FORMAT_ND, ge::DT_STRING_REF);
+  tensor_desc_handle.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("handle", tensor_desc_handle);
   auto ret = op.InferShapeAndType();
 
@@ -302,6 +303,7 @@ TEST_F(barrier_infer_test, barrier_ready_size_infer_test_3) {
   ge::op::BarrierReadySize op;
   // set input info
   ge::TensorDesc tensor_desc_handle(ge::Shape({2}), ge::FORMAT_ND, ge::DT_STRING_REF);
+    tensor_desc_handle.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("handle", tensor_desc_handle);
   auto ret = op.InferShapeAndType();
 
@@ -314,6 +316,7 @@ TEST_F(barrier_infer_test, barrier_incomplete_size_infer_test_1) {
   ge::op::BarrierIncompleteSize op;
   // set input info
   ge::TensorDesc tensor_desc_handle(ge::Shape({2}), ge::FORMAT_ND, ge::DT_STRING_REF);
+    tensor_desc_handle.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("handle", tensor_desc_handle);
   auto ret = op.InferShapeAndType();
 

@@ -52,6 +52,7 @@ TEST_F(ResizeGradDTest, resize_grad_d_test_case_2) {
     ge::Shape shape({1, 1, 1, 2});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
     resize_grad_d_op.UpdateInputDesc("grads", tensorDesc);
     //set attr
     std::vector<int> list_shape_value = {1, 1, 1};

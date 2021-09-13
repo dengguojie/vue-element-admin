@@ -41,6 +41,10 @@ const int64_t width_ALIGN_FLAG = 1000;
 const int64_t WIDTH_ALIGN_FLAG = 100;
 const int64_t BIG_TO_SMALL_FLAG = 10;
 
+// auto tune interface parameter name
+const char INNERTUNEPARAM[] = "_tune_param";
+const char TUNEPARAM[] = "tune_param";
+
 struct ResizeClassTilingParams {
   int64_t tiling_key;
   int64_t input_batch;
@@ -57,11 +61,19 @@ struct ResizeClassTilingParams {
   int64_t cut_width_num;
 };
 
+struct TuneParams {
+  int64_t tiling_key = 0;
+  int64_t cut_batch_c1_num = 0;
+  int64_t cut_height_num = 0;
+  int64_t cut_width_num = 0;
+};
+
 struct ResizeClassCompileParams {
   int64_t core_num;
   int64_t max_w_len;
   int64_t align_corners;
   int64_t half_pixel_centers;
+  TuneParams tuneParams;
   std::string op_type;
 };
 
@@ -72,6 +84,14 @@ struct ResizeClassCompileParams {
  * @param [out] compile_params: set the compile_params from compile_info json
  */
 bool GetResizeClassCompileParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params);
+
+/*
+ * @brief: set the tuneParams of compile_params
+ * @param [in] compile_info: the compile json info
+ * @param [in] compile_params: the compile info struct
+ * @param [out] compile_params: set the tuneParams from compile_info json
+ */
+bool GetResizeClassTuneParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params);
 
 /*
  * @brief: print the tiling info and compile info

@@ -17,6 +17,7 @@ class SelfAdjointEig : public testing::Test {
 TEST_F(SelfAdjointEig, SelfAdjointEig_infer_shape_0) {
   ge::op::SelfAdjointEig op;
   ge::TensorDesc tensor_x_handle(ge::Shape({2,2,2}), ge::FORMAT_ND, ge::DT_FLOAT);
+  tensor_x_handle.SetOriginShape(ge::Shape({2,2,2}));
   op.UpdateInputDesc("x", tensor_x_handle);
   op.SetAttr("compute_v", true);
   auto eigen_value_desc = op.GetOutputDesc("eigen_value");

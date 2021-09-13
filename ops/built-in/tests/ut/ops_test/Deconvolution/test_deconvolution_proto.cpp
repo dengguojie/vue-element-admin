@@ -455,62 +455,6 @@ TEST_F(DeconvProtoTest, deconvSplicDataTest3) {
     EXPECT_EQ(new_pads_expect, new_pads);
 }
 
-// Fuzzy Compile
-TEST_F(DeconvProtoTest, deconvBaseFuzzyCompileTest) {
-    ge::op::Deconvolution deconv;
-    deconv.SetAttr("_fuzz_build", true);
-    deconv.UpdateInputDesc("x", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
-    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
-    deconv.UpdateOutputDesc("y", create_desc_with_ori({1, 16, 4, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 4, 4}, ge::FORMAT_NCHW));
-    deconv.SetAttr("strides", {1, 1});
-    deconv.SetAttr("pads", {0, 0, 0, 0});
-    deconv.SetAttr("dilations", {1, 1, 1, 1});
-    deconv.SetAttr("data_format","NCHW");
-    auto status = deconv.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-    auto ret = deconv.InferShapeAndType();
-    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
-    ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 1}, {16, 16}, {4, 15}, {4, 15}};
-    EXPECT_EQ((input_range == expect_input_range), true);
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
-// fuzz compile with partial static shape
-TEST_F(DeconvProtoTest, deconvBaseFuzzyCompilePartialStaticTest) {
-    ge::op::Deconvolution deconv;
-    deconv.SetAttr("_fuzz_build", true);
-    deconv.UpdateInputDesc("x", create_desc_shape_range({-1, 16, 4, 4},
-                                                        ge::DT_FLOAT16,
-                                                        ge::FORMAT_NCHW,
-                                                        {-1, 16, 4, 4},
-                                                        ge::FORMAT_NCHW,
-                                                        {{1, 5}, {16, 16}, {4, 4}, {4, 4}}));
-    deconv.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 1, 1}, ge::FORMAT_NCHW));
-    deconv.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, 4, 4},
-                                                        ge::DT_FLOAT16,
-                                                        ge::FORMAT_NCHW,
-                                                        {-1, 16, 4, 4},
-                                                        ge::FORMAT_NCHW,
-                                                        {{1, 5}, {16, 16}, {4, 4}, {4, 4}})); 
-    deconv.SetAttr("strides", {1, 1});
-    deconv.SetAttr("pads", {0, 0, 0, 0});
-    deconv.SetAttr("dilations", {1, 1, 1, 1});
-    deconv.SetAttr("data_format","NCHW");
-    auto status = deconv.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-    auto ret = deconv.InferShapeAndType();
-    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
-    ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 5}, {16, 16}, {4, 15}, {4, 15}};
-    EXPECT_EQ((input_range == expect_input_range), true);
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
 // stride can not less than zero
 TEST_F(DeconvProtoTest, deconvDataSliceTest2) {
     ge::op::Deconvolution deconv;

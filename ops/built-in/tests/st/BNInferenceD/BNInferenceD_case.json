@@ -1,0 +1,98 @@
+[
+    {
+      "op": "BNInferenceD",
+      "input_desc": [
+        {
+          "shape": [
+            2,
+            10,
+            5,
+            1
+          ],
+          "ori_shape": [
+            2,
+            10,
+            5,
+            1
+          ],
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "name": "x"
+        },
+        {
+          "shape": [
+              10
+            ],
+            "ori_shape": [
+              10
+            ],
+            "format": "NCHW",
+            "ori_format": "NCHW",
+            "type": "float",
+            "value_range": [[0, 1]],
+            "data_distribute": "uniform",
+            "name": "mean"
+        },
+        {
+            "shape": [
+                10
+              ],
+              "ori_shape": [
+                10
+              ],
+              "format": "NCHW",
+              "ori_format": "NCHW",
+              "type": "float",
+              "value_range": [[0, 1]],
+              "data_distribute": "uniform",
+              "name": "variance"
+          }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+              -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "typical_shape": [
+            2,
+            10,
+            5,
+            1
+          ],
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "name": "y",
+          "type": "float"
+        }
+      ],
+      "attr": [
+        {
+          "name": "momentum",
+          "type": "float",
+          "value": 0.9
+        },
+        {
+            "name": "epsilon",
+            "type": "float",
+            "value": 1e-5
+        },
+        {
+            "name": "use_global_stats",
+            "type": "bool",
+            "value": true
+        },
+        {
+            "name": "mode",
+            "type": "int",
+            "value": 1
+        }
+      ],
+      "case_name": "test_dynamic_bninferenced_000"
+    }
+]

@@ -1,0 +1,496 @@
+[
+    {
+        "case_name": "Test_Betainc_float_512B",
+		"op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[1,8,8,8],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[1,8,8,8],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[1,8,8,8],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,8,8,8]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_1K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[2,8,8,8],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[2,8,8,8],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[2,8,8,8],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,8,8,8]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_4K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,8],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,8],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,8],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,8]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_8K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,16],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,16],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,16],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,16]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_16K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,32],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,32],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,32],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,32]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_32K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,64],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,64],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,64],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,64]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_64K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,128],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,128],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,128],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,128]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_128K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,256],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,256],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,256],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,256]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_256K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,512],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,512],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,512],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,512]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_512K",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[8,8,8,1024],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [8,8,8,1024]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_1M",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,8,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,8,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,8,1024],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [16,8,8,1024]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_2M",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,16,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,16,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,16,1024],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [16,8,16,1024]
+            }       
+        ]
+    },
+	{
+        "case_name": "Test_Betainc_float_8M",
+        "op":"Betainc",
+        "input_desc": [
+            {
+                "name":"a",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,32,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+            {
+                "name":"b",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,32,1024],
+				"value_range":[0, 5.0],
+				"data_distribute":["uniform"]
+            },
+			{
+                "name":"x",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape":[16,8,32,1024],
+				"value_range":[0, 1],
+				"data_distribute":["uniform"]
+            }
+        ],
+        "output_desc": [
+            {
+                "name":"z",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [16,8,32,1024]
+            }       
+        ]
+    }  
+]

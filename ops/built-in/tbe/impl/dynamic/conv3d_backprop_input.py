@@ -16,6 +16,8 @@
 conv3d_backprop_input
 """
 from impl.util import util_common
+from impl.util import util_conv3d
+from impl.util import util_cube_dynamic
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import operation
@@ -24,7 +26,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from impl.util.util_cube_dynamic import Conv3dBackpropParaProcess
 from tbe.common.register import register_param_generalization
 
 
@@ -89,6 +90,7 @@ _DIM_MAP = {"N": [0, 0], "D": [1, 1], "H": [2, 3], "W": [3, 4]}
 
 _DYNAMIC_DIM_VAL = -1
 _DYNAMIC_RANK_FLAG = [-2]
+_OP_TYPE = "conv3d_backprop_input"
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
     if attr_value < attr_min or attr_value > attr_max:
@@ -746,25 +748,6 @@ def _get_pad_mode(pads):
     return pad_mode
 
 
-def _generate_unkown_shape(obj_shape, obj_format):
-    if obj_format == "NDC1HWC0":
-        idx_tup = (0, 1, 3, 4)
-    else:
-        idx_n = obj_format.find('N')
-        idx_d = obj_format.find('D')
-        idx_h = obj_format.find('H')
-        idx_w = obj_format.find('W')
-        idx_tup = (idx_n, idx_d, idx_h, idx_w)
-    obj_shape = list(obj_shape)
-    for idx in idx_tup:
-        obj_shape[idx] = _DYNAMIC_DIM_VAL
-    return tuple(obj_shape)
-
-def _generalize_input_keep_rank(param_dict):
-    param_dict["ori_shape"] = _generate_unkown_shape(param_dict["ori_shape"], param_dict["ori_format"])
-    param_dict["shape"] = _generate_unkown_shape(param_dict["shape"], param_dict["format"])
-
-
 @register_param_generalization("Conv3DBackpropInput")
 def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R0913,R0914
                                          out_backprop, y, strides,
@@ -816,11 +799,10 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
     """
     result = []
     if generalize_config["mode"] == "keep_rank":
-        _generalize_input_keep_rank(out_backprop)
-        _generalize_input_keep_rank(y)
+        out_backprop = util_cube_dynamic.gen_conv_shape_range(out_backprop, _OP_TYPE)
     else:
         error_manager_cube.raise_err_one_para("E62306",
-                                              "Conv3DBackpropInput",
+                                              _OP_TYPE,
                                               "Invalid generalize mode, currently only support keep_rank")
     # get dx_range depends on dy_range
     para_dict = {
@@ -834,27 +816,14 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
                         "y": y,
                         "input_size": input_size}
     }
-    conv3d_backprop = Conv3dBackpropParaProcess(para_dict, _get_pad_mode(pads))
-    dy_range = out_backprop["range"] # NDC1HWC0
-    dy_ori_shape = out_backprop["ori_shape"]
-    dy_ori_format = out_backprop["ori_format"]
-    dy_range_ori_format = [1, 1, 1, 1, 1]
-    dy_range_ori_format[dy_ori_format.find('N')] = dy_range[0]
-    dy_range_ori_format[dy_ori_format.find('D')] = dy_range[1]
-    dy_range_ori_format[dy_ori_format.find('H')] = dy_range[3]
-    dy_range_ori_format[dy_ori_format.find('W')] = dy_range[4]
-    dy_range_ori_format[dy_ori_format.find('C')] = [dy_ori_shape[dy_ori_format.find('C')],
-                                                    dy_ori_shape[dy_ori_format.find('C')]]
-    dx_range_ndhw = conv3d_backprop.get_dx_range(dy_range_ori_format)
-    _, _, y_c1, _, _, y_c0 = y["shape"] # NDC1HWC0
-    y["range"] = [
-        dx_range_ndhw[0],
-        dx_range_ndhw[1],
-        [y_c1, y_c1],
-        dx_range_ndhw[2],
-        dx_range_ndhw[3],
-        [y_c0, y_c0]
-    ]
+    conv3d_backprop = util_cube_dynamic.Conv3dBackpropParaProcess(para_dict, _get_pad_mode(pads))
+    dy_ori_range = out_backprop["ori_range"]
+    dx_ori_range = conv3d_backprop.get_dx_ori_range(dy_ori_range)
+    input_size["const_value_range"] = dx_ori_range
+    y["ori_range"] = dx_ori_range
+    util_conv3d.generalize_input_keep_rank(out_backprop)
+    util_conv3d.generalize_input_keep_rank(y)
+    input_size["const_value"] = None
     result.append([input_size, filter, out_backprop, y, strides, pads, dilations, groups, data_format, kernel_name])
     return result
 

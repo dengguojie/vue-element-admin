@@ -24,6 +24,9 @@ AXIS = "axis"
 
 
 class MixedReduceClassifier:
+    """
+    classifier for mixed reduce
+    """
 
     def __init__(self, ins, keepdims, _known_axis):
         # not support const, zero
@@ -135,10 +138,16 @@ class MixedReduceClassifier:
                                                                 self.reduce_axes)
 
     def infer_range(self):
+        """
+        infer range for reduce case
+        """
         self.range_before_reduce = util.generate_range(self.shape_before_reduce)
         self.range_after_reduce = util.generate_range(self.shape_after_reduce)
 
     def update_ins(self):
+        """
+        update ins by shape info and range info
+        """
         for _item in self.ins:
             _mode = _item.get("rel_pos_to_reduce")
             if _mode == AXIS:
@@ -186,6 +195,9 @@ class MixedReduceClassifier:
         return out_ins
 
     def classify(self):
+        """
+        do classify
+        """
         from tbe.common.buildcfg import get_current_build_config
         if get_current_build_config("enable_op_prebuild"):
             return [helper.ins_of_prebuild(self.ins, self.reduce_axes)]

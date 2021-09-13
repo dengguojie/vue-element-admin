@@ -20,6 +20,7 @@ TEST_F(SlogdetTest, slogdet_test_case_1) {
     ge::Shape shape({3,3});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
     op.UpdateInputDesc("x", tensor_desc);
 
     auto ret = op.InferShapeAndType();
@@ -41,6 +42,7 @@ TEST_F(SlogdetTest, slogdet_test_case_2) {
     ge::Shape shape({2,-1,2,3,3});
     tensor_desc.SetDataType(ge::DT_FLOAT);
     tensor_desc.SetShape(shape);
+    tensor_desc.SetOriginShape(shape);
     op.UpdateInputDesc("x", tensor_desc);
 
     auto ret = op.InferShapeAndType();

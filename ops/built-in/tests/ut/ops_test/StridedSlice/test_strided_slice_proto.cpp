@@ -72,11 +72,13 @@ class strided_slice : public testing::Test {
       auto descBegin = op.GetInputDesc("begin");
       descBegin.SetDataType(begin_dtype);
       descBegin.SetShape(ge::Shape({static_cast<int64_t>(begin.size())}));
+      descBegin.SetOriginShape(ge::Shape({static_cast<int64_t>(begin.size())}));
       op.UpdateInputDesc("begin", descBegin);
     } else {
       auto descBegin = op.GetInputDesc("begin");
       descBegin.SetDataType(begin_dtype);
       descBegin.SetShape(ge::Shape({-1}));
+      descBegin.SetOriginShape(ge::Shape({-1}));
       op.UpdateInputDesc("begin", descBegin);
     }
 
@@ -92,11 +94,13 @@ class strided_slice : public testing::Test {
       auto descEnd = op.GetInputDesc("end");
       descEnd.SetDataType(begin_dtype);
       descEnd.SetShape(ge::Shape({static_cast<int64_t>(end.size())}));
+      descEnd.SetOriginShape(ge::Shape({static_cast<int64_t>(end.size())}));
       op.UpdateInputDesc("end", descEnd);
     } else {
       auto descEnd = op.GetInputDesc("end");
       descEnd.SetDataType(begin_dtype);
       descEnd.SetShape(ge::Shape({-1}));
+      descEnd.SetOriginShape(ge::Shape({-1}));
       op.UpdateInputDesc("end", descEnd);
     }
 
@@ -111,12 +115,14 @@ class strided_slice : public testing::Test {
       op.set_input_strides(input_size);
       auto descStride = op.GetInputDesc("strides");
       descStride.SetDataType(begin_dtype);
-      descStride.SetShape(ge::Shape({static_cast<int64_t>(strides.size())}));;
+      descStride.SetShape(ge::Shape({static_cast<int64_t>(strides.size())}));
+      descStride.SetOriginShape(ge::Shape({static_cast<int64_t>(strides.size())}));
       op.UpdateInputDesc("strides", descStride);
     } else {
       auto descStride = op.GetInputDesc("strides");
       descStride.SetDataType(begin_dtype);
-      descStride.SetShape(ge::Shape({-1}));;
+      descStride.SetShape(ge::Shape({-1}));
+      descStride.SetOriginShape(ge::Shape({-1}));
       op.UpdateInputDesc("strides", descStride);
     }
 

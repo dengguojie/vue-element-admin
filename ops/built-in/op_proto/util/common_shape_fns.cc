@@ -441,29 +441,21 @@ graphStatus MergeShapeAndRange(const ShapeAndRange &shared_shape_and_range,
   auto actual_shared_range = shared_shape_and_range.shape_range_;
   auto actual_value_range = value_shape_and_range.shape_range_;
   if (shared_shape_and_range.shape_.GetDimNum() != shared_shape_and_range.shape_range_.size()) {
-    if (!ShapeFullDefined(shared_shape_and_range.shape_)) {
-      std::string err_msg = ConcatString("the dim num[", shared_shape_and_range.shape_.GetDimNum(),
-        "] of shared shape is not same as that[", shared_shape_and_range.shape_range_.size(),
-        "] of shared shape range.");
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
-      return GRAPH_FAILED;
-    } else {
-      actual_shared_range.clear();
-      for (auto dim : shared_shape_and_range.shape_.GetDims()) {
+    actual_shared_range.clear();
+    for (auto dim : shared_shape_and_range.shape_.GetDims()) {
+      if (dim == ge::UNKNOWN_DIM) {
+        actual_shared_range.push_back({1, -1});
+      } else {
         actual_shared_range.push_back({dim, dim});
       }
     }
   }
   if (value_shape_and_range.shape_.GetDimNum() != value_shape_and_range.shape_range_.size()) {
-    if (!ShapeFullDefined(value_shape_and_range.shape_)) {
-      std::string err_msg = ConcatString("the dim num[", value_shape_and_range.shape_.GetDimNum(),
-        "] of value shape is not same as that[", value_shape_and_range.shape_range_.size(),
-        "] of value shape range.");
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
-      return GRAPH_FAILED;
-    } else {
-      actual_value_range.clear();
-      for (auto dim : value_shape_and_range.shape_.GetDims()) {
+    actual_value_range.clear();
+    for (auto dim : value_shape_and_range.shape_.GetDims()) {
+      if (dim == ge::UNKNOWN_DIM) {
+        actual_value_range.push_back({1, -1});
+      } else {
         actual_value_range.push_back({dim, dim});
       }
     }

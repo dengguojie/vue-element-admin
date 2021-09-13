@@ -49,8 +49,11 @@ BatchMatMul CreateBatchMatMulOp(OP_TUPLE a, OP_TUPLE b,
 }
 
 void Operate(BatchMatMul &op, bool expected_result = PASS) {
-  auto ret = op.InferShapeAndType();
+  auto verify_ret = op.VerifyAllAttr(true);
+  auto infer_ret = op.InferShapeAndType();
 
+  // check result
+  auto ret = (verify_ret == GRAPH_FAILED || infer_ret == GRAPH_FAILED) ? GRAPH_FAILED : GRAPH_SUCCESS;
   if (expected_result == PASS){
     EXPECT_EQ(ret, GRAPH_SUCCESS);
   } else {
@@ -69,6 +72,7 @@ void Check(BatchMatMul &op, vector<int64_t> expected_shape, vector<pair<int64_t,
   EXPECT_EQ(range, expected_range);
 }
 
+// b tensor has no batch
 TEST(BatchMatMulInferTest, StaticNormal1) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
                                 OP_TUPLE{{4, 5}, DT_FLOAT16, FORMAT_ND, {}},
@@ -79,9 +83,10 @@ TEST(BatchMatMulInferTest, StaticNormal1) {
   Check(op, {3, 2, 5}, {});
 }
 
+// num_dima<num_dimb, batch_a=batch_b
 TEST(BatchMatMulInferTest, StaticNormal2) {
-  auto op = CreateBatchMatMulOp(OP_TUPLE{{2, 3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
-                                OP_TUPLE{{4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{2, 3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
                                 false, false);
 
   Operate(op);
@@ -89,6 +94,7 @@ TEST(BatchMatMulInferTest, StaticNormal2) {
   Check(op, {2, 3, 2, 5}, {});
 }
 
+// num_dima>num_dimb, batch_b=1
 TEST(BatchMatMulInferTest, StaticNormal3) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{2, 3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
                                 OP_TUPLE{{1, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
@@ -99,6 +105,7 @@ TEST(BatchMatMulInferTest, StaticNormal3) {
   Check(op, {2, 3, 2, 5}, {});
 }
 
+// num_dima>num_dimb, batch_a=batch_b
 TEST(BatchMatMulInferTest, StaticNormal4) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{2, 3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
                                 OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
@@ -109,6 +116,107 @@ TEST(BatchMatMulInferTest, StaticNormal4) {
   Check(op, {2, 3, 2, 5}, {});
 }
 
+// num_dima=num_dimb, batch_a=1
+TEST(BatchMatMulInferTest, StaticNormal5) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{1, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {3, 2, 5}, {});
+}
+
+// num_dima<num_dimb, batch_a=batch_b
+TEST(BatchMatMulInferTest, DynamicNormal1) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{2, 3, 4, -1}, DT_FLOAT16, FORMAT_ND, {{2, 2}, {3, 3}, {4, 4}, {3, 6}}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {2, 3, 2, -1}, {{2, 2}, {3, 3}, {2, 2}, {3, 6}});
+}
+
+// num_dima>num_dimb, batch_b=1
+TEST(BatchMatMulInferTest, DynamicNormal2) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{2, 3, 2, -1}, DT_FLOAT16, FORMAT_ND, {{2, 2}, {3, 3}, {2, 2}, {1, 3}}},
+                                OP_TUPLE{{1, -1, 5}, DT_FLOAT16, FORMAT_ND, {{1, 1}, {2, 4}, {5, 5}}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {2, 3, 2, 5}, {});
+}
+
+// num_dima>num_dimb, batch_a=batch_b
+TEST(BatchMatMulInferTest, DynamicNormal3) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{2, 3, -1, 4}, DT_FLOAT16, FORMAT_ND, {{2, 2}, {3, 3}, {1, 3}, {4, 4}}},
+                                OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {2, 3, -1, 5}, {{2, 2}, {3, 3}, {1, 3}, {5, 5}});
+
+}
+
+// num_dima=num_dimb, batch_a=-1
+TEST(BatchMatMulInferTest, DynamicNormal4) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-1, 2, 4}, DT_FLOAT16, FORMAT_ND, {{1, 3}, {2, 2}, {4, 4}}},
+                                OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {3, 2, 5}, {});
+}
+
+// num_dima=num_dimb, batch_b=-1
+TEST(BatchMatMulInferTest, DynamicNormal5) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{1, 3}, {4, 4}, {5, 5}}},                                
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {3, 2, 5}, {});
+}
+
+// num_dima=num_dimb, batch_b=-1, batch_a=-1, rang_a.first=1, range_b.first=1
+TEST(BatchMatMulInferTest, DynamicNormal6) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-1, 2, 4}, DT_FLOAT16, FORMAT_ND, {{1, 6}, {2, 2}, {4, 4}}},
+                                OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{1, 3}, {4, 4}, {5, 5}}},                                
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {-1, 2, 5}, {{1, 6}, {2, 2}, {5, 5}});
+}
+
+// num_dima=num_dimb, batch_b=-1, batch_a=-1, rang_a.first>1, range_b.first>1
+TEST(BatchMatMulInferTest, DynamicNormal7) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-1, 2, 4}, DT_FLOAT16, FORMAT_ND, {{2, 6}, {2, 2}, {4, 4}}},
+                                OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{3, 5}, {4, 4}, {5, 5}}},                                
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {-1, 2, 5}, {{3, 5}, {2, 2}, {5, 5}});
+}
+
+// num_dima=num_dimb, -2
+TEST(BatchMatMulInferTest, DynamicNormal8) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {-2}, {});
+}
+
+// k_a!=k_b
 TEST(BatchMatMulInferTest, supportcheckerror1) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
                                 OP_TUPLE{{3, 6, 5}, DT_FLOAT16, FORMAT_ND, {}},
@@ -117,6 +225,7 @@ TEST(BatchMatMulInferTest, supportcheckerror1) {
   Operate(op, FAILED);
 }
 
+// k_b=-1, k_a not in range_b
 TEST(BatchMatMulInferTest, supportcheckerror2) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
                                 OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
@@ -125,6 +234,7 @@ TEST(BatchMatMulInferTest, supportcheckerror2) {
   Operate(op, FAILED);
 }
 
+// k_a=-1, k_b not in range_a
 TEST(BatchMatMulInferTest, supportcheckerror3) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
                                 OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
@@ -133,9 +243,46 @@ TEST(BatchMatMulInferTest, supportcheckerror3) {
   Operate(op, FAILED);
 }
 
+// k_b=-1 k_a=-1, range_a and range_b has no intersection
 TEST(BatchMatMulInferTest, supportcheckerror4) {
-  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, -1}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
                                 OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{3, 4}}},
+                                false, false);
+
+  Operate(op, FAILED);
+}
+
+// num_dima=num_dimb, batch_b=-1, batch_a=-1, rang_a.first>1, range_b.first>1
+TEST(BatchMatMulInferTest, supportcheckerror5) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-1, 2, 4}, DT_FLOAT16, FORMAT_ND, {{4, 6}}},
+                                OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{2, 3}}},                                
+                                false, false);
+
+  Operate(op, FAILED);
+}
+
+// k_b=-1, batch_a>1, batch_b>1, batch_a!=batch_b
+TEST(BatchMatMulInferTest, supportcheckerror6) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{4, -1, 5}, DT_FLOAT16, FORMAT_ND, {{2, 7}}},
+                                false, false);
+
+  Operate(op, FAILED);
+}
+
+// num_dima=num_dimb, batch_a=-1, batch_b not in range_a
+TEST(BatchMatMulInferTest, supportcheckerror7) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-1, 2, 4}, DT_FLOAT16, FORMAT_ND, {{1, 3}}},
+                                OP_TUPLE{{5, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op, FAILED);
+}
+
+// num_dima=num_dimb, batch_b=-1, batch_a not in range_b
+TEST(BatchMatMulInferTest, supportcheckerror8) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{4, 6}}},                                
                                 false, false);
 
   Operate(op, FAILED);

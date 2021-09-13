@@ -19,6 +19,7 @@ TEST_F(MultilabelMarginLossTest, multilabel_margin_loss_test_case_1) {
   ge::Shape shape({2, 4});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
   // update op input
   multilabel_margin_loss_op.UpdateInputDesc("x", tensorDesc);
@@ -42,6 +43,7 @@ TEST_F(MultilabelMarginLossTest, multilabel_margin_loss_test_case_2) {
   ge::Shape shape({1, 4});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
   // update op input
   multilabel_margin_loss_op.UpdateInputDesc("x", tensorDesc);
@@ -65,6 +67,7 @@ TEST_F(MultilabelMarginLossTest, multilabel_margin_loss_test_case_3) {
   ge::Shape shape({1, 1});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
   // update op input
   multilabel_margin_loss_op.UpdateInputDesc("x", tensorDesc);
@@ -88,6 +91,7 @@ TEST_F(MultilabelMarginLossTest, multilabel_margin_loss_test_case_4) {
   ge::Shape shape({1});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
   // update op input
   multilabel_margin_loss_op.UpdateInputDesc("x", tensorDesc);
@@ -111,6 +115,7 @@ TEST_F(MultilabelMarginLossTest, multilabel_margin_loss_test_case_5) {
   ge::Shape shape({1000});
   tensorDesc.SetDataType(ge::DT_FLOAT16);
   tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
   // update op input
   multilabel_margin_loss_op.UpdateInputDesc("x", tensorDesc);

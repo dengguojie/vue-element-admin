@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas,
   int32_t hDim = 2;
   int32_t wDim = 3;
 
-  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 || 
+  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 ||
       opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0) {
     return false;
   }

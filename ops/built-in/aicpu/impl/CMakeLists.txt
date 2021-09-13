@@ -9,6 +9,7 @@ set(local_kernels_src_files
     kernels/normalized/asinh.cc
     kernels/normalized/atan.cc
     kernels/normalized/atanh.cc
+    kernels/normalized/betainc.cc
     kernels/normalized/cache_swap_table.cc
     kernels/normalized/calc_buckets_limit_and_offset.cc
     kernels/normalized/candidate_sampler.cc
@@ -22,6 +23,7 @@ set(local_kernels_src_files
     kernels/normalized/diag.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
+    kernels/normalized/elugrad.cc
     kernels/normalized/embedding_lookup.cc
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
@@ -34,6 +36,7 @@ set(local_kernels_src_files
     kernels/normalized/index_to_addr.cc
     kernels/normalized/inplace_top_k_distance.cc
     kernels/normalized/less.cc
+    kernels/normalized/log_matrix_determinant.cc
     kernels/normalized/logging.cc
     kernels/normalized/log1p.cc
     kernels/normalized/masked_select.cc
@@ -52,6 +55,7 @@ set(local_kernels_src_files
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
     kernels/normalized/slice_write.cc
+    kernels/normalized/softmaxv2.cc
     kernels/normalized/sparse_to_dense.cc
     kernels/normalized/spatial_transformer.cc
     kernels/normalized/split_v.cc

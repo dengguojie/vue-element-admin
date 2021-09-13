@@ -79,6 +79,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_clipByValue_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.cc
@@ -329,7 +330,9 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/dynamic_gru_v2_seqlength_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_transdatarnn_fusion_pass.cc
   graph_fusion/ai_core/batchnorm3d_fusion_pass.cc
+  graph_fusion/ai_core/force_fp16_cast.cc
   graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
+  graph_fusion/ai_core/continuation_indicator_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

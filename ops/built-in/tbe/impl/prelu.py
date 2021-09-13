@@ -59,6 +59,11 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
         format_weight = ["ND", "ND", "ND", "ND"]
         dtype_base_out = ["float16", "float", "float16", "float"]
 
+    if len(x_shape) >= 2 and len(weight_shape) >= 2 and \
+            x_shape[-1] == weight_shape[-1] and x_shape[-2] == weight_shape[-2]:
+        dtype_base_out = dtype_base_out + dtype_base
+        format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
+        format_weight = format_weight + ["FRACTAL_NZ"] * len(dtype_base)
     if len(x_shape) == 2 and len(weight_shape) == 1:
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
@@ -126,22 +131,27 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     output tensor
     """
     shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_weight = shape_util.shape_to_list(weight_input.shape)
     if input_x.dtype == "float16":
         scalar_zero = tvm.const(0, dtype="float16")
     else:
         scalar_zero = tvm.const(0, dtype="float32")
-    val_max = tbe.vmaxs(input_x, scalar_zero)
-    val_min = tbe.vmins(input_x, scalar_zero)
-    if "format" in input_x.op.attrs:
+    if "format" in input_x.op.attrs and "format" in weight_input.op.attrs:
         format_x = input_x.op.attrs["format"].value
-        shape_weight = shape_util.shape_to_list(weight_input.shape)
-        if format_x == "FRACTAL_NZ":
+        format_weight = weight_input.op.attrs["format"].value
+        if format_x == "FRACTAL_NZ" and format_weight != "FRACTAL_NZ":
             target_shape = [1] * len(shape_x)
             if sum(shape_weight) != 1:
                 target_shape[0] = shape_x[0]
                 target_shape[-1] = shape_x[-1]
             weight_input = reshape(weight_input, target_shape)
-    weight_input = tbe.broadcast(weight_input, shape_x)
+    if list(shape_x) != list(shape_weight):
+        shape_list = shape_util.broadcast_shapes(shape_x, shape_weight, param_name_input1="input_x",
+                                                 param_name_input2="weight_input")
+        input_x = tbe.broadcast(input_x, shape_list[2], input_x.dtype)
+        weight_input = tbe.broadcast(weight_input, shape_list[2], input_x.dtype)
+    val_max = tbe.vmaxs(input_x, scalar_zero)
+    val_min = tbe.vmins(input_x, scalar_zero)
     val_prod = tbe.vmul(val_min, weight_input)
     res = tbe.vadd(val_max, val_prod)
     res.op.attrs["weight_input"] = weight_input
@@ -196,11 +206,9 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
             if weight_dim == 1 and weight_shape[0] == 1:
                 weight_shape_new = [1] * 5
             else:
-                detail = "weight_dim only support two values: 1 or 5," \
-                         " when feature_dim is 5(NC1HWC0) and weight_dim is not equal to 5, both weight_shape[0] " \
-                         "and weight_dim must be 1, while weight_shape[0] is {0}, weight_dim is {1}".format(
-                    weight_shape[0], weight_dim)
-                error_manager_vector.raise_err_input_shape_invalid('prelu', 'input_A', detail)
+                shape_list = shape_util.broadcast_shapes(shape, weight_shape, param_name_input1="input_x",
+                                                         param_name_input2="input_A")
+                shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
         else:
             weight_shape_new = list(weight_shape)
     elif input_format == "NDC1HWC0":
@@ -208,26 +216,27 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
             if weight_dim == 1 and weight_shape[0] == 1:
                 weight_shape_new = [1] * 6
             else:
-                detail = "weight_dim only support two values: 1 or 6," \
-                         " when feature_dim is 6(NDC1HWC0) and weight_dim is not equal to 6, both weight_shape[0] " \
-                         "and weight_dim must be 1, while weight_shape[0] is {0}, weight_dim is {1}".format(
-                    weight_shape[0], weight_dim)
-                error_manager_vector.raise_err_input_shape_invalid('prelu', 'input_A', detail)
+                shape_list = shape_util.broadcast_shapes(shape, weight_shape, param_name_input1="input_x",
+                                                         param_name_input2="input_A")
+                shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
         else:
             weight_shape_new = list(weight_shape)
     elif input_format == "FRACTAL_NZ":
         if weight_dim == 1 and weight_shape[0] == 1:
             weight_shape_new = [1] * feature_dim
-        else:
+        elif weight_dim == 1:
             weight_shape_new = [1] * feature_dim
             weight_shape_new[0] = shape[0]
             weight_shape_new[-1] = shape[-1]
+        else:
+            shape_list = shape_util.broadcast_shapes(shape, weight_shape, param_name_input1="input_x",
+                                                     param_name_input2="input_A")
+            shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
     elif input_format == "NHWC" and feature_dim == 4:
         if (weight_dim == 1 and weight_shape[0] != shape[-1] and weight_shape[0] != 1) or (weight_dim not in (1, 3)):
-            detail = "channel dim of input_x and input_A must be matched, and weight_dim must be 1, " \
-                     "while channel dim of input_A is {0}, channel dim of input_x is {1}, " \
-                     "weight_dim is {2}".format(weight_shape[0], shape[-1], weight_dim)
-            error_manager_vector.raise_err_two_input_shape_invalid('prelu', 'input_x', 'input_A', detail)
+            shape_list = shape_util.broadcast_shapes(shape, weight_shape, param_name_input1="input_x",
+                                                     param_name_input2="input_A")
+            shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
         elif weight_dim == 1:
             weight_shape_new = [1] * feature_dim
             weight_shape_new[3] = weight_shape[0]
@@ -236,17 +245,17 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
             weight_shape_new.insert(0, 1)
     elif feature_dim == 1:
         if weight_shape[0] != 1 or weight_dim != 1:
-            detail = "when feature_dim is 1, both weight_shape[0] and weight_dim must be 1, " \
-                     "while weight_shape[0] is {0}, weight_dim is {1}".format(weight_shape[0], weight_dim)
-            error_manager_vector.raise_err_input_shape_invalid('prelu', 'input_A', detail)
-        weight_shape_new = [1]
+            shape_list = shape_util.broadcast_shapes(shape, weight_shape, param_name_input1="input_x",
+                                                     param_name_input2="input_A")
+            shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
+        else:
+            weight_shape_new = [1]
     # input_x:DIM = 2,3,4,5,6,7...
     else:
         if (weight_shape[0] != shape[1] and weight_shape[0] != 1) or (weight_dim not in (1, feature_dim - 1)):
-            detail = "channel dim of input_x and input_A must be matched, and weight_dim must be 1, " \
-                     "while channel dim of input_A is {0}, channel dim of input_x is {1}," \
-                     " weight_dim is {2}".format(weight_shape[0], shape[1], weight_dim)
-            error_manager_vector.raise_err_two_input_shape_invalid('prelu', 'input_x', 'input_A', detail)
+            shape_list = shape_util.broadcast_shapes(shape, weight_shape, param_name_input1="input_x",
+                                                     param_name_input2="input_A")
+            shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
         elif weight_dim == 1:
             weight_shape_new = [1] * feature_dim
             weight_shape_new[1] = weight_shape[0]
@@ -263,17 +272,13 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
             shape_new, name="data_input", dtype=input_dtype)
         weight_input = tvm.placeholder(
             weight_shape_new, name="weight_input", dtype=input_dtype)
-        weight_input1 = tbe.broadcast(
-            weight_input, shape_new, output_dtype=input_dtype)
     else:
         data_input = tvm.placeholder(
             shape, name="data_input", dtype=input_dtype)
         weight_input = tvm.placeholder(
             weight_shape_new, name="weight_input", dtype=input_dtype)
-        weight_input1 = tbe.broadcast(
-            weight_input, shape, output_dtype=input_dtype)
 
-    res = prelu_compute(data_input, weight_input1, output_y, kernel_name)
+    res = prelu_compute(data_input, weight_input, output_y, kernel_name)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

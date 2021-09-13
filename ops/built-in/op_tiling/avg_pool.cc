@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -120,7 +120,7 @@ static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num)
   param.one_core_ele = (total_ele + core_num - 1) / core_num;
   param.act_core_num = total_ele / param.one_core_ele;
   if (total_ele % param.one_core_ele != 0) {
-    param.act_core_num++; 
+    param.act_core_num++;
   }
   param.last_core_ele = total_ele - (param.act_core_num - 1) * param.one_core_ele;
 }
@@ -164,7 +164,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.one_core_loop_num = param.output_h / param.h_factor;
     param.one_core_loop_left = param.output_h % param.h_factor;
     param.last_core_loop_num = param.one_core_loop_num;
-    param.last_core_loop_left = param.one_core_loop_left;    
+    param.last_core_loop_left = param.one_core_loop_left;
   } else {
     param.tiling_mode = 3;
     param.w_factor = (one_fourth_ub_ele / input_shape[4] / ksize_h - ksize_w) / strides_w + 1;
@@ -189,7 +189,7 @@ static bool GetCompileInfo (const nlohmann::json& op_info, const string& name, T
 }
 
 bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                         utils::OpRunInfo& run_info) 
+                         utils::OpRunInfo& run_info)
 {
   OP_LOGI(op_type.c_str(), "AvgPoolTilingVector running.");
   if (op_paras.GetInputsSize() == 0 || op_paras.GetInputDesc(0).GetShape().GetDimNum() == 0) {
@@ -198,7 +198,7 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   ge::Format input_format = op_paras.GetInputDesc(0).GetFormat();
   OP_TILING_CHECK(
     input_format != ge::FORMAT_NC1HWC0,
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s", 
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s",
                                     ge::TypeUtils::FormatToSerialString(input_format).c_str()),
     return false);
   vector<int64_t> input_shape = op_paras.GetInputDesc(0).GetShape().GetDims();
@@ -282,7 +282,7 @@ bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, c
 }
 // register tiling interface of the avgpool
 bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
-                  utils::OpRunInfo& runInfo) 
+                  utils::OpRunInfo& runInfo)
 {
   if(opCompileInfo.empty()) {
     GELOGD("op compile info is empty");

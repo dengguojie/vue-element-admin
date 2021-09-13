@@ -40,6 +40,7 @@ TEST_F(SoftShrinkTest, soft_shrink_test_case_1) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     soft_shrink_op.UpdateInputDesc("input_x", tensorDesc);
 

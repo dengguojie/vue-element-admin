@@ -24,7 +24,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ClipBoxesParams(const std::vector<const google::protobuf::Message*> insideNodes, ge::Operator& op) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
   return SUCCESS;

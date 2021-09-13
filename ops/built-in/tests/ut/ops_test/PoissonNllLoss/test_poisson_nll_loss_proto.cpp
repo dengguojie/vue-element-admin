@@ -58,6 +58,7 @@ TEST_F(PoissonNllLossTest, poisson_nll_loss_test_case_2) {
     ge::Shape shape({1,2,3});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     poisson_nll_loss_op.SetAttr("reduction","none");
     poisson_nll_loss_op.UpdateInputDesc("input_x", tensorDesc);

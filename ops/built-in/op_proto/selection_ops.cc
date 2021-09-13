@@ -607,15 +607,15 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     dimsIn.emplace_back(UNKNOWN_DIM);
     y_output->SetShape(GeShape(dimsIn));
     y_output->SetOriginShape(GeShape(dimsIn));
-    y_output->SetShapeRange({std::make_pair(0, -1)});
-    DataType start_dtype = start_desc->GetDataType();
-    DataType limit_dtype = limit_desc->GetDataType();
-    DataType delta_dtype = delta_desc->GetDataType();
-    if (start_dtype == ge::DT_INT32 && limit_dtype == ge::DT_INT32 && delta_dtype == ge::DT_INT32) {
+    y_output->SetShapeRange({std::make_pair(1, -1)});
+    DataType start_datatype = start_desc->GetDataType();
+    DataType limit_datatype = limit_desc->GetDataType();
+    DataType delta_datatype = delta_desc->GetDataType();
+    if (start_datatype == ge::DT_INT32 && limit_datatype == ge::DT_INT32 && delta_datatype == ge::DT_INT32) {
       y_output->SetDataType(ge::DT_INT32);
-    } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
+    } else if (start_datatype == ge::DT_INT64 && limit_datatype == ge::DT_INT64 && delta_datatype == ge::DT_INT64) {
       y_output->SetDataType(ge::DT_INT64);
-    } else if (start_dtype == ge::DT_DOUBLE && limit_dtype == ge::DT_DOUBLE && delta_dtype == ge::DT_DOUBLE) {
+    } else if (start_datatype == ge::DT_DOUBLE && limit_datatype == ge::DT_DOUBLE && delta_datatype == ge::DT_DOUBLE) {
       y_output->SetDataType(ge::DT_DOUBLE);
     } else {
       y_output->SetDataType(ge::DT_FLOAT);
@@ -637,7 +637,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
 
       y_output->SetShape(GeShape({UNKNOWN_DIM}));
       y_output->SetOriginShape(GeShape({UNKNOWN_DIM}));
-      y_output->SetShapeRange({std::make_pair(0, -1)});
+      y_output->SetShapeRange({std::make_pair(1, -1)});
 
       return GRAPH_SUCCESS;
     }
@@ -1802,10 +1802,15 @@ bool BroadCastTwoinOneout(const Operator& op, std::vector<int64_t>& shape_x, std
       range_y_new.insert(range_y_new.begin(), {1, 1});
     }
   }
-
+  for (size_t i = 0; i < dim_x.size(); i++) {
+    if (dim_x[i] == -2 || dim_y[i] == -2) {
+      dim_out.push_back(-2);
+      return true;
+    }
+  }
   // set out dims
   for (size_t i = 0; i < dim_x.size(); i++) {
-    if ((dim_x[i] != dim_y[i]) && (dim_x[i] != 1) && (dim_y[i] != 1)) {
+    if ((dim_x[i] != dim_y[i]) && ((dim_x[i] != 1 && dim_x[i] != -1) && (dim_y[i] != 1 && dim_y[i] != -1))) {
       string msg = ConcatString("The dimensions does not match the broadcast rule(", dim_x[i], ", ", dim_y[i], ")");
       std::string err_msg = OtherErrMsg(msg);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -3928,16 +3933,14 @@ static graphStatus GetStridedSliceInferConstData(const ge::Operator& op, struct 
   bool all_const = true;
   for (auto& item: const_values) {
     // avoid null input error when call GetInputConstData
-    if (slice_desc->MutableInputDesc(item.first) != nullptr) {
-      if (op.GetInputConstData(item.first, const_tensor) != GRAPH_SUCCESS) {
-        OP_LOGI(op.GetName().c_str(), "[%s] is not constant.", item.first.c_str());
-        all_const = false;
-        continue;
-      }
-
+    if (slice_desc->MutableInputDesc(item.first) != nullptr && \
+        op.GetInputConstData(item.first, const_tensor) == GRAPH_SUCCESS) {
       item.second.clear();
       auto dtype = op.GetInputDesc(item.first).GetDataType();
       GetConstValue(op, const_tensor, dtype, item.second);
+    } else {
+      OP_LOGI(op.GetName().c_str(), "[%s] is not constant.", item.first.c_str());
+      all_const = false;
     }
   }
 

@@ -35,7 +35,7 @@ MODE1 = 1
 MAX_MASK = 128
 # the block size
 BLOCK_SIZE = 32
-WORK_SIZE = 30000
+WORK_SIZE = 150000
 TOTAL = 6
 PER1 = 1
 PER2 = 2
@@ -612,7 +612,7 @@ class ReplicationPadV3GradInit(object):
 
                 with self.tik_instance.for_range(self.padding_index_2, TRANS_MIN_BLKS) as i:
                     self.tik_instance.data_move(block_ub,
-                                                self.work_space[i * align_input_dim_3 +
+                                                self.work_space[core_index * WORK_SIZE + i * align_input_dim_3 +
                                                                 self.tiling_input_dim_3 - TRANS_MIN_BLKS],
                                                 0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
                     self.tik_instance.data_move(pang_ub_1[(i - self.padding_index_2) * TRANS_MIN_BLKS],
@@ -628,7 +628,8 @@ class ReplicationPadV3GradInit(object):
 
                 with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_3) as i:
                     self.tik_instance.data_move(block_ub,
-                                                self.work_space[(TRANS_MIN_BLKS + i) * align_input_dim_3 +
+                                                self.work_space[core_index * WORK_SIZE + (TRANS_MIN_BLKS + i)
+                                                                * align_input_dim_3 +
                                                                 self.tiling_input_dim_3 - TRANS_MIN_BLKS],
                                                 0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
                     self.tik_instance.data_move(pang_ub_1[(i + self.tiling_output_dim_2 - TRANS_MIN_BLKS +

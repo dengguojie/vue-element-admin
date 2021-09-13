@@ -20,6 +20,7 @@ TEST_F(ErfinvTest, erfinv_test_case_1) {
     ge::Shape shape({10, 8, 6});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     erfinv_op.UpdateInputDesc("input_x", tensorDesc);
 

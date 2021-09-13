@@ -32,7 +32,6 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-
 static const char* const nms_v2 = "NonMaxSuppressionV2";
 static const char* const nms_v3 = "NonMaxSuppressionV3";
 static const char* const scoreConstKey = "map/while/MultiClassNonMaxSuppression/FilterGreaterThan/Greater";
@@ -79,7 +78,6 @@ Status ParseIntValueFromConstNms(const vector<const NodeDef*>& inputConstNodes, 
 Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::protobuf::Message*> insideNodes,
                                               ge::Operator& op) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
-
   if (opDesc == nullptr) {
     OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
     return FAILED;

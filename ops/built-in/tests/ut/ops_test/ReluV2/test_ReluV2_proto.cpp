@@ -37,10 +37,10 @@ class relu_v2 : public testing::Test {
 TEST_F(relu_v2, relu_v2_infer_shape_01) {
   ge::op::ReluV2 op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 2}, {1, 1}, {1, 10}, {1, 11}, {1,16}};
-  auto tensor_desc = create_desc_shape_range({-1, -1, -1, -1, 16},
-                                             ge::DT_FLOAT16, ge::FORMAT_NHWC,
-                                             {2, 10, 11, 16},
-                                             ge::FORMAT_NHWC, shape_range);
+  auto tensor_desc = create_desc_shape_and_origin_shape_range({-1, -1, -1, -1, 16},
+                                                              ge::DT_FLOAT16, ge::FORMAT_NHWC,
+                                                              {2, 10, 11, 16},
+                                                              ge::FORMAT_NHWC, shape_range);
 
   op.UpdateInputDesc("x", tensor_desc);
   auto ret = op.InferShapeAndType();
@@ -48,17 +48,11 @@ TEST_F(relu_v2, relu_v2_infer_shape_01) {
   auto output_desc = op.GetOutputDesc("y");
   auto mask_desc = op.GetOutputDesc("mask");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape = {-1, -1, -1, -1, 16};
+  std::vector<int64_t> expected_output_shape = {2, 10, 11, 16};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {
-    {1, 2},
-    {1, 1},
-    {1, 10},
-    {1, 11},
-    {1, 16}
-  };
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {};
   EXPECT_EQ(output_shape_range, expected_shape_range);
   std::vector<int64_t> expected_mask_shape = {2, 1, 10, 11, 2};
   EXPECT_EQ(mask_desc.GetShape().GetDims(), expected_mask_shape);

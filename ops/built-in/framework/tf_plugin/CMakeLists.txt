@@ -311,6 +311,7 @@ set(_tf_plugins
   queue_size_plugin.cc
   random_shuffle_queue_plugin.cc
   random_uniform_plugin.cc
+  random_gamma_plugin.cc
   range_plugin.cc
   real_div_plugin.cc
   reciprocal_grad_plugin.cc

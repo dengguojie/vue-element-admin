@@ -21,6 +21,7 @@ TEST_F(PdistTest, pdist_test_case_1){
     ge::Shape shape({10, 100});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
     op.UpdateInputDesc("x", tensorDesc);
 
     auto ret = op.InferShapeAndType();

@@ -602,8 +602,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                 format_x[0] != "C", format_x[1] != "C"],
                                [shape_y[format_y.index(format_y[0])], shape_y[format_y.index(format_y[1])],
                                 format_y[0] != "C", format_y[1] != "C"])) or
-                               (list(shape_x) == list(shape_y) and -1 not in shape_x) or
-                               (common_flag["half_16_div_flg"] and (x_cdim == y_cdim or x_cdim == 16 or y_cdim == 16))),
+                               (list(shape_x) == list(shape_y) and -1 not in shape_x)),
                    "FRACTAL_Z": x_flag["4d"] and y_flag["4d"] and format_x == format_y and (
                            (x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0
                             and util_common.is_support_fractal_z_inputs(list_input)
@@ -651,25 +650,6 @@ def op_select_format(x, y, output, kernel_name="mul"):
         unknownshape_format_list = ["ND"] * len(format_list)
         param_list = _gen_para(dtype_total, format_list, format_list, format_list, unknownshape_format_list, shape_x, shape_y)
 
-    # NZ+ND,ND+ND,5HD+5HD,FZ+FZ,ND+NZ
-    elif len(shape_x) >= 2 and len(shape_y) >= 2 and (
-            (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or
-            (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))):
-
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * len(format_list)
-        format_list = format_list * len_format_list
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * 1
-        format_list0 = format_list + format_nz * len_format_list
-        format_list1 = format_list + format_nd * len_format_list
-        unknownshape_format_list = ["ND"] * len(dtype_total)
-        if _can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y):
-            param_list = _gen_para(dtype_total, format_list0, format_list1, format_list0,
-                                                unknownshape_format_list, shape_x, shape_y)
-        else:
-            param_list = _gen_para(dtype_total, format_list1, format_list0, format_list1,
-                                                unknownshape_format_list, shape_x, shape_y)
     # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
     elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
 

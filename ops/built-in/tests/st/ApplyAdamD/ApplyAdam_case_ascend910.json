@@ -1,0 +1,133 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "ApplyAdam",
+        "case_name": "test_apply_adam_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "m"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "v"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "beta1_power"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "beta2_power"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "lr"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "beta1"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "beta2"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "epsilon"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "grad"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_locking",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "use_nesterov",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]

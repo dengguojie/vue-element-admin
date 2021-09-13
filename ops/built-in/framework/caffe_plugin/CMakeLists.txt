@@ -90,6 +90,7 @@ if(NOT ENABLE_TEST)
     while_plugin.cc
     yolo_plugin.cc
     correlation_plugin.cc
+    caffe_continuation_indicator_plugin.cc
   )
 
   add_library(ops_all_caffe_plugin SHARED

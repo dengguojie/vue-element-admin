@@ -20,6 +20,7 @@ TEST_F(SoftmaxGradTest, softmax_grad_tsest_1) {
     ge::Shape x_shape({16, 16});
     tensor_x_desc.SetDataType(ge::DT_FLOAT16);
     tensor_x_desc.SetShape(x_shape);
+    tensor_x_desc.SetOriginShape(x_shape);
     tensor_x_desc.SetFormat(ge::FORMAT_ND);
     // update attr
     softmax_grad_op.SetAttr("axes", {-1});

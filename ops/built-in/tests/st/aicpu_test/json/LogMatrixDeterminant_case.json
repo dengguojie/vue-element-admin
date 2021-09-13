@@ -1,0 +1,244 @@
+[
+  {
+    "case_name": "Test_LogMatrixDeterminant_float",
+    "op": "LogMatrixDeterminant",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float"
+        ],
+        "shape": [
+          10,
+          5,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -100,
+            100
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float"
+        ],
+        "shape": [
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float"
+        ],
+        "shape": [
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "Test_LogMatrixDeterminant_double",
+    "op": "LogMatrixDeterminant",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "double"
+        ],
+        "shape": [
+          [
+            1,
+            8,
+            8
+          ],
+          [
+            2,
+            8,
+            8
+          ],
+          [
+            2,
+            16,
+            16
+          ],
+          [
+            1,
+            32,
+            32
+          ],
+          [
+            2,
+            32,
+            32
+          ],
+          [
+            4,
+            32,
+            32
+          ],
+          [
+            8,
+            32,
+            32
+          ],
+          [
+            16,
+            32,
+            32
+          ],
+          [
+            32,
+            32,
+            32
+          ],
+          [
+            64,
+            32,
+            32
+          ],
+          [
+            128,
+            32,
+            32
+          ],
+          [
+            256,
+            32,
+            32
+          ],
+          [
+            1024,
+            32,
+            32
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -10,
+            10
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "double"
+        ],
+        "shape": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            16
+          ],
+          [
+            32
+          ],
+          [
+            64
+          ],
+          [
+            128
+          ],
+          [
+            256
+          ],
+          [
+            1024
+          ]
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "double"
+        ],
+        "shape": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            16
+          ],
+          [
+            32
+          ],
+          [
+            64
+          ],
+          [
+            128
+          ],
+          [
+            256
+          ],
+          [
+            1024
+          ]
+        ]
+      }
+    ]
+  }
+]

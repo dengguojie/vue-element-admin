@@ -243,7 +243,7 @@ class IROpInfo(OpInfo):
         ir_map = {}
         for i in range(IrRow.IR_TEMPLATE_FIRST_ROW, rows):
             row = []
-            row = self._deal_with_row(col_span, sheet_data, i, row, ir_map)
+            row = self._deal_with_row(col_span, sheet_data, i, row)
             ir_map = self._deal_with_ir_map(row, ir_map)
         return ir_map
 
@@ -259,7 +259,7 @@ class IROpInfo(OpInfo):
         return ir_map
 
     @staticmethod
-    def _deal_with_row(col_span, sheet_data, row_item, row, ir_map):
+    def _deal_with_row(col_span, sheet_data, row_item, row):
         for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
             # if the block is merged block, fetch value from col span
             if col_span.get((row_item, j)):

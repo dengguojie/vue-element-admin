@@ -24,18 +24,21 @@ TEST_F(MaxPoolGradWithArgmaxV1ProtoTest, max_pool_grad_with_argmax_v1_test_case_
     ge::Shape shape_x({32, 640, 20, 20});
     x.SetDataType(ge::DT_FLOAT16);
     x.SetShape(shape_x);
+    x.SetOriginShape(shape_x);
     op.UpdateInputDesc("x", x);
 
     ge::TensorDesc grad;
     ge::Shape shape_grad({32, 640, 20, 20});
     grad.SetDataType(ge::DT_FLOAT16);
     grad.SetShape(shape_grad);
+    grad.SetOriginShape(shape_grad);
     op.UpdateInputDesc("grad", grad);
 
     ge::TensorDesc argmax;
     ge::Shape shape_argmax({32, 640, 169, 26});
     argmax.SetDataType(ge::DT_UINT16);
     argmax.SetShape(shape_argmax);
+    argmax.SetOriginShape(shape_argmax);
     op.UpdateInputDesc("argmax", argmax);
 
     op.SetAttr("ksize", (1, 13, 13, 1));

@@ -26,8 +26,10 @@ TEST_F(space_to_batch_infer_test, space_to_batch_infer_test_1) {
   ge::op::SpaceToBatch op;
   // set input info
   ge::TensorDesc tensor_desc_x(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_x.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("x", tensor_desc_x);
   ge::TensorDesc tensor_desc_paddings(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_paddings.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("paddings", tensor_desc_paddings);
   op.SetAttr("block_size", 9);
   auto ret = op.InferShapeAndType();
@@ -41,8 +43,10 @@ TEST_F(space_to_batch_infer_test, space_to_batch_infer_test_2) {
   ge::op::SpaceToBatch op;
   // set input info
   ge::TensorDesc tensor_desc_x(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_x.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("x", tensor_desc_x);
   ge::TensorDesc tensor_desc_paddings(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_paddings.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("paddings", tensor_desc_paddings);
   auto ret = op.InferShapeAndType();
 
@@ -55,8 +59,10 @@ TEST_F(space_to_batch_infer_test, space_to_batch_infer_test_3) {
   ge::op::SpaceToBatch op;
   // set input info
   ge::TensorDesc tensor_desc_x(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_x.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("x", tensor_desc_x);
   ge::TensorDesc tensor_desc_paddings(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_paddings.SetOriginShape(ge::Shape({1, 5}));
   op.UpdateInputDesc("paddings", tensor_desc_paddings);
   op.SetAttr("block_size", 9);
   auto ret = op.InferShapeAndType();

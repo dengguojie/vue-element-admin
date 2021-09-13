@@ -1,0 +1,44 @@
+[
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_Expand_000"
+  }
+]

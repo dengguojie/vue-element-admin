@@ -1,0 +1,178 @@
+[
+    {
+        "op": "PadV3Grad",
+        "case_name": "test_PadV3Grad_000",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 32, 32],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [8],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 0, 0, 0, 1, 1, 1, 1],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [2, 2, 30, 30],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "reflect",
+                "type": "string"
+            },
+			{
+                "name": "padding_contiguous",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "PadV3Grad",
+        "case_name": "test_PadV3Grad_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [4, 4, 256, 256],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [8],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 0, 0, 0, 1, 1, 1, 1],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [4, 4, 254, 254],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "reflect",
+                "type": "string"
+            },
+			{
+                "name": "padding_contiguous",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "PadV3Grad",
+        "case_name": "test_PadV3Grad_002",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 32, 32],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [8],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 0, 0, 0, 1, 1, 1, 1],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [2, 2, 30, 30],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "edge",
+                "type": "string"
+            },
+		    {
+                "name": "padding_contiguous",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "PadV3Grad",
+        "case_name": "test_PadV3Grad_003",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [4, 4, 256, 256],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [8],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 0, 0, 0, 1, 1, 1, 1],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [4, 4, 254, 254],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "edge",
+                "type": "string"
+            },
+			{
+                "name": "padding_contiguous",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    }
+]

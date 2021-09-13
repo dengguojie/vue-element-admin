@@ -255,6 +255,7 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, KnownShapeInferShape) {
   EXPECT_NE(node, nullptr);
 
   ge::GeTensorDesc ge_tensor(ge::GeShape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  ge_tensor.SetOriginShape(ge::GeShape({2}));
   node->GetOpDesc()->UpdateInputDesc("shape", ge_tensor);
   ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
 

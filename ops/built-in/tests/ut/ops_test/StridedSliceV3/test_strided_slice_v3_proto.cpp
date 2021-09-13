@@ -68,11 +68,13 @@ class strided_slice_v3 : public testing::Test {
       auto descBegin = op.GetInputDesc("begin");
       descBegin.SetDataType(begin_dtype);
       descBegin.SetShape(ge::Shape({static_cast<int64_t>(begin.size())}));
+      descBegin.SetOriginShape(ge::Shape({static_cast<int64_t>(begin.size())}));
       op.UpdateInputDesc("begin", descBegin);
     } else {
       auto descBegin = op.GetInputDesc("begin");
       descBegin.SetDataType(begin_dtype);
       descBegin.SetShape(ge::Shape({-1}));
+      descBegin.SetOriginShape(ge::Shape({-1}));
       op.UpdateInputDesc("begin", descBegin);
     }
 
@@ -80,6 +82,7 @@ class strided_slice_v3 : public testing::Test {
       ge::Tensor constTensorEnd;
       ge::TensorDesc constDescEnd(ge::Shape({static_cast<int64_t>(end.size())}), ge::FORMAT_ND, begin_dtype);
       constDescEnd.SetShape(ge::Shape({static_cast<int64_t>(end.size())}));
+      constDescEnd.SetOriginShape(ge::Shape({static_cast<int64_t>(end.size())}));
       constDescEnd.SetSize(end.size() * sizeof(T));
       constTensorEnd.SetTensorDesc(constDescEnd);
       constTensorEnd.SetData((uint8_t*)end.data(), end.size() * sizeof(T));
@@ -88,11 +91,13 @@ class strided_slice_v3 : public testing::Test {
       auto descEnd = op.GetInputDesc("end");
       descEnd.SetDataType(begin_dtype);
       descEnd.SetShape(ge::Shape({static_cast<int64_t>(end.size())}));
+      descEnd.SetOriginShape(ge::Shape({static_cast<int64_t>(end.size())}));
       op.UpdateInputDesc("end", descEnd);
     } else {
       auto descEnd = op.GetInputDesc("end");
       descEnd.SetDataType(begin_dtype);
       descEnd.SetShape(ge::Shape({-1}));
+      descEnd.SetOriginShape(ge::Shape({-1}));
       op.UpdateInputDesc("end", descEnd);
     }
 
@@ -100,6 +105,7 @@ class strided_slice_v3 : public testing::Test {
       ge::Tensor constTensorStride;
       ge::TensorDesc constDescStride(ge::Shape({static_cast<int64_t>(strides.size())}), ge::FORMAT_ND, begin_dtype);
       constDescStride.SetShape(ge::Shape({static_cast<int64_t>(strides.size())}));
+      constDescStride.SetOriginShape(ge::Shape({static_cast<int64_t>(strides.size())}));
       constDescStride.SetSize(strides.size() * sizeof(T));
       constTensorStride.SetTensorDesc(constDescStride);
       constTensorStride.SetData((uint8_t*)strides.data(), strides.size() * sizeof(T));
@@ -108,11 +114,13 @@ class strided_slice_v3 : public testing::Test {
       auto descStride = op.GetInputDesc("strides");
       descStride.SetDataType(begin_dtype);
       descStride.SetShape(ge::Shape({static_cast<int64_t>(strides.size())}));;
+      descStride.SetOriginShape(ge::Shape({static_cast<int64_t>(strides.size())}));
       op.UpdateInputDesc("strides", descStride);
     } else {
       auto descStride = op.GetInputDesc("strides");
       descStride.SetDataType(begin_dtype);
       descStride.SetShape(ge::Shape({-1}));;
+      descStride.SetOriginShape(ge::Shape({-1}));;
       op.UpdateInputDesc("strides", descStride);
     }
 
@@ -120,6 +128,7 @@ class strided_slice_v3 : public testing::Test {
       ge::Tensor constTensorAxes;
       ge::TensorDesc constDescAxes(ge::Shape({static_cast<int64_t>(axes.size())}), ge::FORMAT_ND, begin_dtype);
       constDescAxes.SetShape(ge::Shape({static_cast<int64_t>(axes.size())}));
+      constDescAxes.SetOriginShape(ge::Shape({static_cast<int64_t>(axes.size())}));
       constDescAxes.SetSize(axes.size() * sizeof(T));
       constTensorAxes.SetTensorDesc(constDescAxes);
       constTensorAxes.SetData((uint8_t*)axes.data(), axes.size() * sizeof(T));
@@ -128,11 +137,13 @@ class strided_slice_v3 : public testing::Test {
       auto descAxes = op.GetInputDesc("axes");
       descAxes.SetDataType(begin_dtype);
       descAxes.SetShape(ge::Shape({static_cast<int64_t>(axes.size())}));;
+      descAxes.SetOriginShape(ge::Shape({static_cast<int64_t>(axes.size())}));
       op.UpdateInputDesc("axes", descAxes);
     } else {
       auto descAxes = op.GetInputDesc("axes");
       descAxes.SetDataType(begin_dtype);
       descAxes.SetShape(ge::Shape({-1}));;
+      descAxes.SetOriginShape(ge::Shape({-1}));
       op.UpdateInputDesc("axes", descAxes);
     }
     auto ret = op.InferShapeAndType();
@@ -174,11 +185,13 @@ class strided_slice_v3 : public testing::Test {
       auto descBegin = op.GetInputDesc("begin");
       descBegin.SetDataType(begin_dtype);
       descBegin.SetShape(ge::Shape({static_cast<int64_t>(begin.size())}));
+      descBegin.SetOriginShape(ge::Shape({static_cast<int64_t>(begin.size())}));
       op.UpdateInputDesc("begin", descBegin);
     } else {
       auto descBegin = op.GetInputDesc("begin");
       descBegin.SetDataType(begin_dtype);
       descBegin.SetShape(ge::Shape({0}));
+      descBegin.SetOriginShape(ge::Shape({0}));
       op.UpdateInputDesc("begin", descBegin);
     }
 
@@ -186,6 +199,7 @@ class strided_slice_v3 : public testing::Test {
       ge::Tensor constTensorEnd;
       ge::TensorDesc constDescEnd(ge::Shape({static_cast<int64_t>(end.size())}), ge::FORMAT_ND, begin_dtype);
       constDescEnd.SetShape(ge::Shape({static_cast<int64_t>(end.size())}));
+      constDescEnd.SetOriginShape(ge::Shape({static_cast<int64_t>(end.size())}));
       constDescEnd.SetSize(end.size() * sizeof(T));
       constTensorEnd.SetTensorDesc(constDescEnd);
       constTensorEnd.SetData((uint8_t*)end.data(), end.size() * sizeof(T));
@@ -194,11 +208,13 @@ class strided_slice_v3 : public testing::Test {
       auto descEnd = op.GetInputDesc("end");
       descEnd.SetDataType(begin_dtype);
       descEnd.SetShape(ge::Shape({static_cast<int64_t>(end.size())}));
+      descEnd.SetOriginShape(ge::Shape({static_cast<int64_t>(end.size())}));
       op.UpdateInputDesc("end", descEnd);
     } else {
       auto descEnd = op.GetInputDesc("end");
       descEnd.SetDataType(begin_dtype);
       descEnd.SetShape(ge::Shape({0}));
+      descEnd.SetOriginShape(ge::Shape({0}));
       op.UpdateInputDesc("end", descEnd);
     }
 
@@ -206,6 +222,7 @@ class strided_slice_v3 : public testing::Test {
       ge::Tensor constTensorStride;
       ge::TensorDesc constDescStride(ge::Shape({static_cast<int64_t>(strides.size())}), ge::FORMAT_ND, begin_dtype);
       constDescStride.SetShape(ge::Shape({static_cast<int64_t>(strides.size())}));
+      constDescStride.SetOriginShape(ge::Shape({static_cast<int64_t>(strides.size())}));
       constDescStride.SetSize(strides.size() * sizeof(T));
       constTensorStride.SetTensorDesc(constDescStride);
       constTensorStride.SetData((uint8_t*)strides.data(), strides.size() * sizeof(T));
@@ -214,11 +231,13 @@ class strided_slice_v3 : public testing::Test {
       auto descStride = op.GetInputDesc("strides");
       descStride.SetDataType(begin_dtype);
       descStride.SetShape(ge::Shape({static_cast<int64_t>(strides.size())}));;
+      descStride.SetOriginShape(ge::Shape({static_cast<int64_t>(strides.size())}));
       op.UpdateInputDesc("strides", descStride);
     } else {
       auto descStride = op.GetInputDesc("strides");
       descStride.SetDataType(begin_dtype);
       descStride.SetShape(ge::Shape({0}));;
+      descStride.SetOriginShape(ge::Shape({0}));
       op.UpdateInputDesc("strides", descStride);
     }
 
@@ -226,6 +245,7 @@ class strided_slice_v3 : public testing::Test {
       ge::Tensor constTensorAxes;
       ge::TensorDesc constDescAxes(ge::Shape({static_cast<int64_t>(axes.size())}), ge::FORMAT_ND, begin_dtype);
       constDescAxes.SetShape(ge::Shape({static_cast<int64_t>(axes.size())}));
+      constDescAxes.SetOriginShape(ge::Shape({static_cast<int64_t>(axes.size())}));
       constDescAxes.SetSize(axes.size() * sizeof(T));
       constTensorAxes.SetTensorDesc(constDescAxes);
       constTensorAxes.SetData((uint8_t*)axes.data(), axes.size() * sizeof(T));
@@ -234,11 +254,13 @@ class strided_slice_v3 : public testing::Test {
       auto descAxes = op.GetInputDesc("axes");
       descAxes.SetDataType(begin_dtype);
       descAxes.SetShape(ge::Shape({static_cast<int64_t>(axes.size())}));;
+      descAxes.SetOriginShape(ge::Shape({static_cast<int64_t>(axes.size())}));
       op.UpdateInputDesc("axes", descAxes);
     } else {
       auto descAxes = op.GetInputDesc("axes");
       descAxes.SetDataType(begin_dtype);
       descAxes.SetShape(ge::Shape({0}));;
+      descAxes.SetOriginShape(ge::Shape({0}));
       op.UpdateInputDesc("axes", descAxes);
     }
     auto ret = op.InferShapeAndType();

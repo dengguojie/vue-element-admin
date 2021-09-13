@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021 All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,8 +111,8 @@ void CalcProcessParams(int64_t& ub_size, int64_t& dtype_bytes_size, int64_t& dat
                        int32_t& data_num_remain_core, SquareSumAllTilingParams& params) {
   int64_t ub_max_num = ub_size / dtype_bytes_size;
   int32_t process_data_num_each_core = params.data_num_each_core;
-  int32_t every_process_data_num = (process_data_num_each_core > (ub_max_num / OP_INPUTS_SIZE)) ? (ub_max_num / OP_INPUTS_SIZE) :
-                                   process_data_num_each_core;
+  int32_t every_process_data_num = (process_data_num_each_core > (ub_max_num / OP_INPUTS_SIZE)) ?
+                                   (ub_max_num / OP_INPUTS_SIZE) : process_data_num_each_core;
 
   params.process_times_per_core = process_data_num_each_core / every_process_data_num;
   params.every_process_data_num_per_core = every_process_data_num;
@@ -137,8 +137,8 @@ void CalcProcessParams(int64_t& ub_size, int64_t& dtype_bytes_size, int64_t& dat
   params.burst_len_tail_remain_core = GetCeilInt(params.tail_num_remain_core, data_each_block);
 }
 
-static bool GetSquareSumAllCompileParams(const nlohmann::json& op_info, int64_t& ub_size, int64_t& core_num,
-                                         int64_t& data_each_block, int64_t& dtype_bytes_size) {
+static bool GetSquareSumAllCompileParams(const std::string& op_type, const nlohmann::json& op_info, int64_t& ub_size,
+                                         int64_t& core_num, int64_t& data_each_block, int64_t& dtype_bytes_size) {
   using namespace nlohmann;
   auto all_vars = op_info["vars"];
 
@@ -147,24 +147,29 @@ static bool GetSquareSumAllCompileParams(const nlohmann::json& op_info, int64_t&
     return false;
   }
   ub_size = all_vars["ub_size"].get<std::int64_t>();
+  OP_TILING_CHECK(ub_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size == 0"), return false);
 
   if (all_vars.count("core_num") == 0) {
     OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get core_num error");
     return false;
   }
   core_num = all_vars["core_num"].get<std::int64_t>();
+  OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num == 0"), return false);
 
   if (all_vars.count("data_each_block") == 0) {
     OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get data_each_block error");
     return false;
   }
   data_each_block = all_vars["data_each_block"].get<std::int64_t>();
+  OP_TILING_CHECK(data_each_block == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "data_each_block == 0"), return false);
 
   if (all_vars.count("dtype_bytes_size") == 0) {
     OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get dtype_bytes_size error");
     return false;
   }
   dtype_bytes_size = all_vars["dtype_bytes_size"].get<std::int64_t>();
+  OP_TILING_CHECK(dtype_bytes_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_bytes_size == 0"),
+                  return false);
 
   return true;
 }
@@ -215,12 +220,10 @@ bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, c
   int64_t device_core_num = 0;
   int64_t data_each_block = 0;
   int64_t dtype_bytes_size = 0;
-  if (!GetSquareSumAllCompileParams(op_info, ub_size, device_core_num, data_each_block, dtype_bytes_size)) {
+  if (!GetSquareSumAllCompileParams(op_type, op_info, ub_size, device_core_num, data_each_block, dtype_bytes_size)) {
     OP_LOGE(op_type.c_str(), "get compile info from nlohmann json failed.");
     return false;
   }
-  OP_TILING_CHECK(data_each_block == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "data_each_block == 0"), return false);
-  OP_TILING_CHECK(dtype_bytes_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_bytes_size == 0"), return false);
 
   int64_t input_x_num;
   if (input_x_shape.size() == 0) {

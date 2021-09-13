@@ -85,6 +85,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/asinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atanh.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/betainc.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/calc_buckets_limit_and_offset.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
@@ -98,6 +99,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/elugrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
@@ -109,6 +111,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/index_to_addr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/inplace_top_k_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/log_matrix_determinant.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/log1p.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
@@ -127,6 +130,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/slice_write.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/softmaxv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/spatial_transformer.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
@@ -209,8 +213,9 @@ set(_cpu_kernels_ut_files
   testcase/atan/src/atan_utest.cpp
   testcase/atanh/src/atanh_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
-  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
+  testcase/betainc/src/betainc_utest.cpp
   testcase/calc_buckets_limit_and_offset/src/calc_buckets_limit_and_offset_utest.cpp
+  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
   testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
   testcase/case_condition/src/case_condition_utest.cpp
   testcase/cast/src/cast_utest.cpp
@@ -233,6 +238,7 @@ set(_cpu_kernels_ut_files
   testcase/diag/src/diag_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
   testcase/edit_distance/src/edit_distance_kernel_utest.cpp
+  testcase/elugrad/src/elugrad_utest.cpp
   testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
@@ -245,6 +251,7 @@ set(_cpu_kernels_ut_files
   testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
   testcase/less/src/less_utest.cpp
+  testcase/log_matrix_determinant/src/log_matrix_determinant_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/log1p/src/log1p_utest.cpp
   testcase/masked_select/src/masked_select_utest.cpp
@@ -266,6 +273,7 @@ set(_cpu_kernels_ut_files
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/slice_write/src/slice_write_utest.cpp
+  testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp

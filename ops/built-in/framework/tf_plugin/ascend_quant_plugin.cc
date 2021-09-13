@@ -29,7 +29,6 @@
 using domi::tensorflow::NodeDef;
 
 namespace domi {
-
 Status AutoMappingFnQuant(const google::protobuf::Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   const NodeDef* node_def = reinterpret_cast<const NodeDef*>(op_src);

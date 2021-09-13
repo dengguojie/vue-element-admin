@@ -19,6 +19,7 @@ TEST_F(RollTest, roll_test_case_1) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     roll_op.UpdateInputDesc("x", tensorDesc);
     roll_op.SetAttr("dims", {});
@@ -39,6 +40,7 @@ TEST_F(RollTest, roll_test_case_2) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_FLOAT);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     roll_op.UpdateInputDesc("x", tensorDesc);
     roll_op.SetAttr("dims", {});
@@ -59,6 +61,7 @@ TEST_F(RollTest, roll_test_case_3) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_INT32);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     roll_op.UpdateInputDesc("x", tensorDesc);
     roll_op.SetAttr("dims", {});
@@ -79,6 +82,7 @@ TEST_F(RollTest, roll_test_case_4) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_UINT32);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     roll_op.UpdateInputDesc("x", tensorDesc);
     roll_op.SetAttr("dims", {});
@@ -99,6 +103,7 @@ TEST_F(RollTest, roll_test_case_5) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_INT8);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     roll_op.UpdateInputDesc("x", tensorDesc);
     roll_op.SetAttr("dims", {});
@@ -119,6 +124,7 @@ TEST_F(RollTest, roll_test_case_6) {
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_UINT8);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     roll_op.UpdateInputDesc("x", tensorDesc);
     roll_op.SetAttr("dims", {});

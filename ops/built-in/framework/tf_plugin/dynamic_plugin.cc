@@ -422,5 +422,4 @@ REGISTER_CUSTOM_OP("CTCBeamSearchDecoder")
     .OriginOpType("CTCBeamSearchDecoder")
     .ParseParamsByOperatorFn(MappingFnCTCBeamSearchDecoder)
     .ImplyType(ImplyType::AI_CPU);
-
 }  // namespace domi

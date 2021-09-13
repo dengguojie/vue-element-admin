@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,10 +64,10 @@ struct CompileInfo {
 
 class BNReduce {
 public:
-  explicit BNReduce(const std::string& _op_type, const TeOpParas& _op_paras, 
+  explicit BNReduce(const std::string& _op_type, const TeOpParas& _op_paras,
                     const nlohmann::json& _op_info, OpRunInfo& _run_info)
                     : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), run_info(_run_info),
-                    is_customised(false), is_fuse_hn(false), saved_customised_ub_axis(0), 
+                    is_customised(false), is_fuse_hn(false), saved_customised_ub_axis(0),
                     saved_customised_ub_factor(0) {
   }
 

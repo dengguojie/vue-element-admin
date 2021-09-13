@@ -17,8 +17,8 @@
       {
         "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [4,1,20,13],
-        "ori_shape": [4,1,20,13],
+        "shape": [4,4,20,13],
+        "ori_shape": [4,4,20,13],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -68,7 +68,7 @@
       },
       {
         "name": "groups",
-        "value": 4,
+        "value": 1,
         "type": "int"
       },
       {
@@ -95,8 +95,8 @@
       {
         "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [4,1,20,13],
-        "ori_shape": [4,1,20,13],
+        "shape": [4,4,20,13],
+        "ori_shape": [4,4,20,13],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -146,7 +146,7 @@
       },
       {
         "name": "groups",
-        "value": 4,
+        "value": 1,
         "type": "int"
       },
       {
@@ -173,8 +173,8 @@
       {
         "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [4,1,20,13],
-        "ori_shape": [4,1,20,13],
+        "shape": [4,4,20,13],
+        "ori_shape": [4,4,20,13],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -224,7 +224,7 @@
       },
       {
         "name": "groups",
-        "value": 4,
+        "value": 1,
         "type": "int"
       },
       {

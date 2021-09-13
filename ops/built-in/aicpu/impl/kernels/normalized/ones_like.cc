@@ -76,6 +76,9 @@ uint32_t OnesLikeCpuKernel::Compute(CpuKernelContext &ctx) {
       case DT_UINT16:
         RangeOnesLike(start, end, static_cast<uint16_t *>(output_data));
         break;
+      case DT_BOOL:
+        RangeOnesLike(start, end, static_cast<bool *>(output_data));
+        break;
       default:
         KERNEL_LOG_ERROR("Unsupported input data type[%s]",
                          DTypeStr(input_type).c_str());

@@ -32,6 +32,9 @@
 
 namespace optiling {
 
+static const int WORKSPACE_SIZE = 4096;
+static const int BLOCK_SIZE = 4096;
+
 struct DynamicGruV2Param {
   int32_t sequenceLength;
   int32_t dynamicgruBatch;
@@ -40,7 +43,7 @@ struct DynamicGruV2Param {
 
 bool CheckInputShape(const std::string& opType, std::vector<int64_t> xShape) {
   int32_t xDims = xShape.size();
-  GELOGD("op [DynamicGruV2Tiling] : xDims=%d", xDims);
+  OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] : xDims=%d", xDims);
 
   if (xShape[0] <= 0) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the first dim of x must be greater than 0");
@@ -70,9 +73,9 @@ void SetRunningParams(const DynamicGruV2Param& runParams, OpRunInfo& runInfo) {
  * @return void: void
  */
 void PrintTilingParams(const std::string& op_type, const DynamicGruV2Param& params) {
-  GELOGD("op [%s] : params.sequenceLength=%d", op_type.c_str(), params.sequenceLength);
-  GELOGD("op [%s] : params.dynamicgruBatch=%d", op_type.c_str(), params.dynamicgruBatch);
-  GELOGD("op [%s] : params.chequeIndex=%d", op_type.c_str(), params.chequeIndex);
+  OP_LOGD(op_type.c_str(), "params.sequenceLength=%d", params.sequenceLength);
+  OP_LOGD(op_type.c_str(), "params.dynamicgruBatch=%d", params.dynamicgruBatch);
+  OP_LOGD(op_type.c_str(), "params.chequeIndex=%d", params.chequeIndex);
 }
 
 /*
@@ -85,13 +88,13 @@ void PrintTilingParams(const std::string& op_type, const DynamicGruV2Param& para
  */
 bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
                     OpRunInfo& runInfo) {
-  GELOGI("op[%s] tiling running.", opType.c_str());
+  OP_LOGI(opType.c_str(), "op tiling running.");
   if (op_info == nullptr) {
     OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: op_info json error.");
     return false;
   }
 
-  if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
+  if (opParas.inputs.size() < 3 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
     OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: input shape error.");
     return false;
@@ -116,9 +119,9 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   // default index
   int32_t chequeIndex = 0;
   runInfo.tiling_key = chequeIndex;
-  GELOGD("op [DynamicGruV2Tiling] : sequenceLength=%d.", sequenceLength);
-  GELOGD("op [DynamicGruV2Tiling] : dynamicgruBatch=%d.", dynamicgruBatch);
-  GELOGD("op [DynamicGruV2Tiling] : chequeIndex=%d.", chequeIndex);
+  OP_LOGD(opType.c_str(), "sequenceLength=%d.", sequenceLength);
+  OP_LOGD(opType.c_str(), "dynamicgruBatch=%d.", dynamicgruBatch);
+  OP_LOGD(opType.c_str(), "chequeIndex=%d.", chequeIndex);
   runParams.sequenceLength = sequenceLength;
   runParams.dynamicgruBatch = dynamicgruBatch;
   runParams.chequeIndex = chequeIndex;
@@ -129,12 +132,12 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
 
   // block_dim, core num used in tik op
   // todo sync while dead
-  runInfo.block_dim = 32;
+  runInfo.block_dim = BLOCK_SIZE;
   // workspace, null for tik op
-  std::vector<int64_t> workspace={4096};
+  std::vector<int64_t> workspace={WORKSPACE_SIZE};
   runInfo.workspaces = workspace;
 
-  GELOGI("op[%s] tiling run success.", opType.c_str());
+  OP_LOGI(opType.c_str(), "tiling run success.");
 
   return true;
 }

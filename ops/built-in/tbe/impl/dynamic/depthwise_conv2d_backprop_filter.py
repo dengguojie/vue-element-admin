@@ -25,6 +25,8 @@ from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import CubeParaProcess
+from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
+from impl.util.util_cube_dynamic import gen_conv_shape_range
 
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
@@ -79,6 +81,8 @@ PAD_MIN = 0
 C0_SIZE = 16
 ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
+
+OP_TYPE = "depthwise_conv2d_backprop_filter"
 
 
 def _ceil(x_1, x_2):
@@ -465,11 +469,6 @@ def _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pa
     filter_h_dilation = (dedw_nchw[DIM_H_NCHW] - 1) * dilation_h + 1
     filter_w_dilation = (dedw_nchw[DIM_W_NCHW] - 1) * dilation_w + 1
     al1_min_byte = C0_SIZE * C0_SIZE * 2
-    if DYNAMIC_FLAG in pads:
-        pad_h = _align(x_nchw[DIM_H_NCHW], stride_h) - stride_h + filter_h_dilation - x_nchw[DIM_H_NCHW]
-        pad_h = max(pad_h, 0)
-        pad_up = pad_h // 2
-        pad_down = pad_h - pad_up
     h_index = input_fm.get("ori_format").find("H")
     x_h_range = input_fm.get("ori_range")[h_index]      
     w_index = input_fm.get("ori_format").find("W")
@@ -483,11 +482,8 @@ def _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pa
     if not is_conv1d_situation:
         kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
         kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
-        if DYNAMIC_FLAG in pads:
-            max_dedy_devided_sixteen = _ceil(kl1_min_devided_sixteen, stride_w)
-        else:
-            max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + \
-                                        pad_right - filter_w_dilation) // stride_w + 1
+        max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + \
+                                    pad_right - filter_w_dilation) // stride_w + 1
         range_unchange = (dedy_nchw[DIM_H_NCHW] != 1 and x_w_range[1] <= kl1_min) or \
                          (dedy_nchw[DIM_H_NCHW] == 1 and x_w_range[1] <= kl1_min_devided_sixteen)
         if range_unchange:
@@ -508,7 +504,7 @@ def _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pa
             x_w_range_high = min(x_w_range_high, x_w_range[1])
             x_w_range = (x_w_range_low, x_w_range_high)
         else:
-            error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+            error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                        "Input is too large, the minimum tiling may exceed L1_Buffer")
     return x_h_range, x_w_range
 
@@ -522,7 +518,7 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
                                                     dilations=(1, 1, 1, 1),
                                                     pads=(0, 0, 0, 0),
                                                     data_format='NHWC',
-                                                    kernel_name="depthwise_conv2d_backprop_filter",
+                                                    kernel_name=OP_TYPE,
                                                     generalize_config=None):
     """
     depthwise_conv2d_backprop_filter generalization
@@ -549,7 +545,7 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
         generalize_config = {"mode": "keep_rank"}
     support_mode = ["keep_rank"]
     if generalize_config["mode"] not in support_mode:
-        error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+        error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                    "invalid generalize mode {}, only support {}".format(
                                                        str(generalize_config["mode"]), str(support_mode)))
     result = []
@@ -557,7 +553,7 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
         # unknow_rank x ori_shape is [-2], others' shape length is 4
         unknow_rank = len(input_fm["ori_shape"]) == 1 and input_fm["ori_shape"][0] == -2
         if unknow_rank:
-            error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+            error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                        "not support unknow_rank under mode {}".format(
                                                            generalize_config["mode"]))
         have_range = {"input_fm": input_fm, "out_backprop": out_backprop}
@@ -565,34 +561,27 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
         for name, tensor in have_range.items():
             # modify tesnors have range
             if tensor.get("ori_format") not in support_format:
-                error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+                error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                            "invalid {} ori_format {}, only support {}".format(
                                                                name, str(tensor.get("ori_format")),
                                                                str(support_format)))
             # only change shape NHW dim to -1, range is already set at infershape
             valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
-                error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+                error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                            "invalid {} ori_shape {}, only support {}d".format(
                                                                name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
-            if not valid:
-                error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
-                                                           "invalid {} ori_shape {}, only support {}d".format(
-                                                               name, str(tensor.get("shape")), str(SHAPE_LEN)))
+            tensor = gen_conv_shape_range(tensor, OP_TYPE)
             if name == "input_fm":
+                tensor = correct_conv2d_backprop_range_start(tensor, filter_grad, dilations, pads, data_format)
                 x_h_range, x_w_range = _calc_max_fmap_w(input_fm, out_backprop, filter_grad, strides, dilations, pads, data_format)
                 if x_w_range[0] < FMAP_HW_MAX:
                     tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], x_h_range,
                                            x_w_range) if tensor.get("ori_format") == "NCHW" else (
                     tensor["ori_range"][0],
                     x_h_range, x_w_range, tensor["ori_range"][3])
-                    # default format is NC1HWC0
-                    tensor["range"] = (tensor["range"][0], tensor["range"][1], x_h_range,
-                                       x_w_range, tensor["range"][4])
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
         result.append([input_fm, filter_size, out_backprop, filter_grad, strides, dilations, pads,
                        data_format, kernel_name])
     return result

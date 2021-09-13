@@ -24,18 +24,21 @@ TEST_F(DynamicGruTest, dynamic_gru_test_case_1) {
   ge::Shape xShape({t, batch, inputSize});
   xDesc.SetDataType(ge::DT_FLOAT16);
   xDesc.SetShape(xShape);
+  xDesc.SetOriginShape(xShape);
   dynamic_gru_op.UpdateInputDesc("x", xDesc);
 
   ge::TensorDesc wDesc;
   ge::Shape wShape({inputSize + outputSize, 2 * outputSize});
   wDesc.SetDataType(ge::DT_FLOAT16);
   wDesc.SetShape(wShape);
+  wDesc.SetOriginShape(wShape);
   dynamic_gru_op.UpdateInputDesc("w", wDesc);
 
   ge::TensorDesc cwDesc;
   ge::Shape cwShape({inputSize + outputSize, outputSize});
   cwDesc.SetDataType(ge::DT_FLOAT16);
   cwDesc.SetShape(cwShape);
+  cwDesc.SetOriginShape(cwShape);
   dynamic_gru_op.UpdateInputDesc("cw", cwDesc);
 
   ge::TensorDesc bDesc;
@@ -88,6 +91,7 @@ TEST_F(DynamicGruTest, dynamic_gru_test_case_2) {
   });
   bDesc.SetDataType(ge::DT_FLOAT);
   bDesc.SetShape(bShape);
+  bDesc.SetOriginShape(bShape);
   dynamic_gru_op.UpdateInputDesc("b", bDesc);
 
   auto ret = dynamic_gru_op.InferShapeAndType();
@@ -105,18 +109,21 @@ TEST_F(DynamicGruTest, dynamic_gru_test_case_3) {
   ge::Shape xShape({t, batch, inputSize});
   xDesc.SetDataType(ge::DT_FLOAT);
   xDesc.SetShape(xShape);
+  xDesc.SetOriginShape(xShape);
   dynamic_gru_op.UpdateInputDesc("x", xDesc);
 
   ge::TensorDesc wDesc;
   ge::Shape wShape({inputSize + outputSize, 2 * outputSize});
   wDesc.SetDataType(ge::DT_FLOAT);
   wDesc.SetShape(wShape);
+  wDesc.SetOriginShape(wShape);
   dynamic_gru_op.UpdateInputDesc("w", wDesc);
 
   ge::TensorDesc cwDesc;
   ge::Shape cwShape({inputSize + outputSize, outputSize});
   cwDesc.SetDataType(ge::DT_FLOAT);
   cwDesc.SetShape(cwShape);
+  cwDesc.SetOriginShape(cwShape);
   dynamic_gru_op.UpdateInputDesc("r", cwDesc);
 
   ge::TensorDesc bDesc;
@@ -125,6 +132,7 @@ TEST_F(DynamicGruTest, dynamic_gru_test_case_3) {
   });
   bDesc.SetDataType(ge::DT_FLOAT);
   bDesc.SetShape(bShape);
+  bDesc.SetOriginShape(bShape);
   dynamic_gru_op.UpdateInputDesc("y", bDesc);
   dynamic_gru_op.UpdateInputDesc("y_h", bDesc);
   auto ret = dynamic_gru_op.InferShapeAndType();

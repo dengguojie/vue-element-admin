@@ -191,9 +191,10 @@ TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_k_vaue_failed3) {
   op.UpdateInputDesc("input", tensor_desc0);
 
   ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  const_desc.SetOriginShape(ge::Shape({2}));
   int32_t const_value[2] = {1, 6};
   auto const_op = ge::op::Constant().set_attr_value(
-    ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
+  ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
 
   op.set_input_k(const_op);
   op.UpdateInputDesc("k", const_desc);

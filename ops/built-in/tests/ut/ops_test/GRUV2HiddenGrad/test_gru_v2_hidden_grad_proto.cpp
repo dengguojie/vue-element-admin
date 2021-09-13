@@ -24,54 +24,66 @@ TEST_F(GruV2HiddenGradTest, gru_v2_hidden_grad_test_case_1) {
     ge::Shape shape_x({t, batch, input_dim});
     tensorDesc_x.SetDataType(ge::DT_FLOAT16);
     tensorDesc_x.SetShape(shape_x);
+    tensorDesc_x.SetOriginShape(shape_x);
 
     ge::TensorDesc tensorDesc_weight_ih;
     ge::Shape shape_weight_ih({input_dim, output_dim*3});
     tensorDesc_weight_ih.SetDataType(ge::DT_FLOAT16);
     tensorDesc_weight_ih.SetShape(shape_weight_ih);
+    tensorDesc_weight_ih.SetOriginShape(shape_weight_ih);
 
     ge::TensorDesc tensorDesc_weight_hh;
     ge::Shape shape_weight_hh({output_dim, output_dim*3});
     tensorDesc_weight_hh.SetDataType(ge::DT_FLOAT16);
     tensorDesc_weight_hh.SetShape(shape_weight_hh);
+    tensorDesc_weight_hh.SetOriginShape(shape_weight_hh);
 
     ge::TensorDesc tensorDesc_init_h;
     ge::Shape shape_init_h({batch, output_dim});
     tensorDesc_init_h.SetDataType(ge::DT_FLOAT16);
     tensorDesc_init_h.SetShape(shape_init_h);
+    tensorDesc_init_h.SetOriginShape(shape_init_h);
 
     ge::Shape shape_h({t, batch, output_dim});
     ge::TensorDesc tensorDesc_h;
     tensorDesc_h.SetDataType(ge::DT_FLOAT16);
     tensorDesc_h.SetShape(shape_h);
+    tensorDesc_h.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_y;
     tensorDesc_y.SetDataType(ge::DT_FLOAT16);
     tensorDesc_y.SetShape(shape_h);
+    tensorDesc_y.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_dy;
     tensorDesc_dy.SetDataType(ge::DT_FLOAT16);
     tensorDesc_dy.SetShape(shape_h);
+    tensorDesc_dy.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_dh;
     tensorDesc_dh.SetDataType(ge::DT_FLOAT16);
     tensorDesc_dh.SetShape(shape_h);
+    tensorDesc_dh.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_update;
     tensorDesc_update.SetDataType(ge::DT_FLOAT16);
     tensorDesc_update.SetShape(shape_h);
+    tensorDesc_update.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_reset;
     tensorDesc_reset.SetDataType(ge::DT_FLOAT16);
     tensorDesc_reset.SetShape(shape_h);
+    tensorDesc_reset.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_new;
     tensorDesc_new.SetDataType(ge::DT_FLOAT16);
     tensorDesc_new.SetShape(shape_h);
+    tensorDesc_new.SetOriginShape(shape_h);
 
     ge::TensorDesc tensorDesc_hidden_new;
     tensorDesc_hidden_new.SetDataType(ge::DT_FLOAT16);
     tensorDesc_hidden_new.SetShape(shape_h);
+    tensorDesc_hidden_new.SetOriginShape(shape_h);
 
     gruGradOp.UpdateInputDesc("x", tensorDesc_x);
     gruGradOp.UpdateInputDesc("weight_input", tensorDesc_weight_ih);

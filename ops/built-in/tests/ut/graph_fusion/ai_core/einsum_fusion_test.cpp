@@ -111,7 +111,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_2) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
     if (node->GetType() == "TransposeD") {
@@ -154,7 +154,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_3) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
     if (node->GetType() == "TransposeD") {
@@ -197,7 +197,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_4) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
   }
@@ -237,7 +237,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_5) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
   }
@@ -277,7 +277,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_6) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
   }
@@ -446,7 +446,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_10) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
     if (node->GetType() == "TransposeD") {
@@ -489,7 +489,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_11) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
     if (node->GetType() == "TransposeD") {
@@ -532,7 +532,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_12) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
     if (node->GetType() == "TransposeD") {
@@ -618,7 +618,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_14) {
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "BatchMatMul") {
+    if (node->GetType() == "BatchMatMulV2") {
       findOp = true;
     }
     if (node->GetType() == "TransposeD") {

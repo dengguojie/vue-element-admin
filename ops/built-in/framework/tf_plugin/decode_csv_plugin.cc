@@ -23,7 +23,6 @@
 #include "graph/operator.h"
 
 namespace domi {
-
 Status DecodeCSVMappingFn(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("record_defaults", "OUT_TYPE");
@@ -38,5 +37,4 @@ REGISTER_CUSTOM_OP("DecodeCSV")
     .OriginOpType("DecodeCSV")
     .ParseParamsFn(DecodeCSVMappingFn)
     .ImplyType(ImplyType::AI_CPU);
-
 }  // namespace domi

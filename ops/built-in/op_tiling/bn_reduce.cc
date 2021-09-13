@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -270,7 +270,7 @@ bool BNReduce::GetCompileInfo() {
   compileInfo.reduce_block_size = info[3];
   compileInfo.atomic =  (bool)info[4];
   compileInfo.customised =  (bool)info[5];
-  
+
   block_size = compileInfo.reduce_block_size;
 
   if (compileInfo.max_ub_count <= 0 || compileInfo.core_num <= 0 || compileInfo.reduce_block_size <= 0) {
@@ -279,7 +279,7 @@ bool BNReduce::GetCompileInfo() {
                                     compileInfo.max_ub_count, compileInfo.core_num, compileInfo.reduce_block_size);
     return false;
   }
-  
+
   OP_LOGD(op_type, "max_ub_count = %lld, core_num = %d, atomic = %d, is_customised = %d ",
           compileInfo.max_ub_count, compileInfo.core_num,
           compileInfo.atomic, compileInfo.customised);
@@ -924,9 +924,9 @@ bool BNReduce::DoTiling() {
 
   ret = ret && GetCompileInfo();
 
-  ret = ret && DoCustomisedTiling();        //  try customised tiling first 
+  ret = ret && DoCustomisedTiling();        //  try customised tiling first
   if (!ret) {
-    ret = DoGeneralTiling();                // if customised tiling failed, than do atomic tiling next 
+    ret = DoGeneralTiling();                // if customised tiling failed, than do atomic tiling next
   }
 
   if (!ret) {

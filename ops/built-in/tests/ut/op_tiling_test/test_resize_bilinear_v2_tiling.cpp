@@ -150,3 +150,172 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_3) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "999999 16000000 1 1 1 1 1 32 1 1 ");
 }
+
+TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_4) {
+  using namespace optiling;
+  std::string op_name = "ResizeBilinearV2";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      R"({"vars": {"max_w_len": 1305, "core_num": 32, "align_corners": 0, "half_pixel_centers": 0,
+          "strides_h": 1, "strides_w": 1, "padding": 0},
+          "_tune_param": {"tune_param": {"tiling_key": 999999}}})";
+
+  std::vector<int64_t> input{16, 1, 1000, 1000, 16};
+  std::vector<int64_t> output{16, 1, 1000, 1000, 16};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "1234564";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "999999 16000000 1 1 1 1 1 32 1 1 ");
+}
+
+TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_5) {
+  using namespace optiling;
+  std::string op_name = "ResizeBilinearV2";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      R"({"vars": {"max_w_len": 1305, "core_num": 32, "align_corners": 0, "half_pixel_centers": 0,
+          "strides_h": 1, "strides_w": 1, "padding": 0},
+          "_tune_param": {"tune_param": {"tiling_key": 100110,
+                                         "cut_batch_c1_num": 2,
+                                         "cut_height_num": 16,
+                                         "cut_width_num": 1}}})";
+
+  std::vector<int64_t> input{16, 1, 1000, 1000, 16};
+  std::vector<int64_t> output{16, 1, 999, 999, 16};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "1234565";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "100110 16 1 1000 1000 999 999 2 16 1 ");
+}
+
+TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_6) {
+  using namespace optiling;
+  std::string op_name = "ResizeBilinearV2";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      R"({"vars": {"max_w_len": 1305, "core_num": 32, "align_corners": 0, "half_pixel_centers": 0,
+          "strides_h": 1, "strides_w": 1, "padding": 0},
+          "_tune_param": {"tune_param": {"tiling_key": 100000,
+                                         "cut_batch_c1_num": 3,
+                                         "cut_height_num": 2,
+                                         "cut_width_num": 5}}})";
+
+  std::vector<int64_t> input{16, 256, 7, 7, 16};
+  std::vector<int64_t> output{16, 256, 33, 33, 16};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "1234566";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "100000 4096 1 7 7 33 33 3 2 5 ");
+}
+
+TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_7) {
+  using namespace optiling;
+  std::string op_name = "ResizeBilinearV2";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      R"({"vars": {"max_w_len": 1305, "core_num": 32, "align_corners": 0, "half_pixel_centers": 0,
+          "strides_h": 1, "strides_w": 1, "padding": 0},
+          "_tune_param": {"tune_param": {"tiling_key": 888888,
+                                         "cut_batch_c1_num": 3,
+                                         "cut_height_num": 2,
+                                         "cut_width_num": 5}}})";
+
+  std::vector<int64_t> input{16, 256, 7, 7, 16};
+  std::vector<int64_t> output{16, 256, 33, 33, 16};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "1234567";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "100110 4096 1 7 7 33 33 4 7 1 ");
+}

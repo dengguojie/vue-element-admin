@@ -17,14 +17,17 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
-from impl.util.util_cube_dynamic import set_default_para
+from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_w_range_max
+from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
+from impl.util.util_cube_dynamic import set_default_para
 
 H_DIM = 2
 W_DIM = 3
 ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
 L1FUSION_INPUT_CTR = 2
+OP_TYPE = "conv2d_transpose"
 
 
 def get_op_support_info(input_size, x, filter, bias, offset_w, y, strides,
@@ -101,7 +104,7 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
                                     x, filter, bias, offset_w, y, strides,
                                     pads, dilations=(1, 1, 1, 1),
                                     groups=1, data_format="NHWC", output_padding=(0, 0, 0, 0), offset_x=0,
-                                    kernel_name="conv2d_transpose",
+                                    kernel_name=OP_TYPE,
                                     generalize_config={"mode": "keep_rank"}):
     """
     conv2d transpose generalization
@@ -126,43 +129,40 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
     """
     support_mode = ["keep_rank"]
     if generalize_config["mode"] not in support_mode:
-        err_man.raise_err_specific_user("conv2d_transpose", "invalid generalize mode {}, only support {}".format(
+        err_man.raise_err_specific_user(OP_TYPE, "invalid generalize mode {}, only support {}".format(
             str(generalize_config["mode"]), str(support_mode)))
     result = []
     if generalize_config["mode"] == "keep_rank":  # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
         unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
         if unknow_rank:
-            err_man.raise_err_specific_user("conv2d_transpose", "not support unknow_rank under mode {}".format(
+            err_man.raise_err_specific_user(OP_TYPE, "not support unknow_rank under mode {}".format(
                 generalize_config["mode"]))
         have_range = {"inputs": x, "outputs": y}
         support_format = ["NCHW", "NHWC"]
         for name, tensor in have_range.items():
             if tensor.get("ori_format") not in support_format:
-                err_man.raise_err_specific_user("conv2d_transpose",
+                err_man.raise_err_specific_user(OP_TYPE,
                                                 "invalid {} ori_format {}, only support {}".format(
                                                     name, str(tensor.get("ori_format")), str(support_format)))
             # only change shape NHW dim to -1, range is already set at infershape
             valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
-                err_man.raise_err_specific_user("conv2d_transpose",
+                err_man.raise_err_specific_user(OP_TYPE,
                                                 "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
-            if not valid:
-                err_man.raise_err_specific_user("conv2d_transpose",
-                                                "invalid {} ori_shape {}, only support {}d".format(
-                                                    name, str(tensor.get("shape")), str(SHAPE_LEN)))
+        x = gen_conv_shape_range(x, OP_TYPE)
+        x = modify_dy_w_range_max_opti(x, filter, strides, data_format, OP_TYPE)
         # if over l1 size then modify w range
         dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(y,
                                                              filter,
                                                              x,
                                                              strides,
                                                              data_format,
-                                                             "conv2d_transpose")
+                                                             OP_TYPE)
 
         # modify dy_range
-        dy_range = x.get("range")
+        dy_range = x.get("ori_range")
         ori_data_format = x.get("ori_format")
         ori_paras = {
             "input_size": input_size, "x": x, "filters": filter, "bias": None, "offset_w": None,
@@ -181,22 +181,19 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
         else:
             dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if x["ori_shape"][x.get("ori_format").find("W")] > dy_range_nchw[3][1]:
-            err_man.raise_err_specific_user("conv2d_transpose",
+            err_man.raise_err_specific_user(OP_TYPE,
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
                                                 str(x.get("shape")), dy_range_nchw[3][1]))
         _, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
-        x["range"] = list(x["range"])
         x["ori_range"] = list(x["ori_range"])
-        x["range"][x.get("format").find("H") - 1] = new_dy_range[2]
         x["ori_range"][x.get("ori_format").find("H")] = new_dy_range[2]
-        x["range"][x.get("format").find("W") - 1] = new_dy_range[3]
         x["ori_range"][x.get("ori_format").find("W")] = new_dy_range[3]
 
         for name, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
+        input_size["const_value"] = None
         result.append(
             [input_size, x, filter, bias, offset_w, y, strides, pads, dilations, groups, data_format, output_padding,
              offset_x, kernel_name])

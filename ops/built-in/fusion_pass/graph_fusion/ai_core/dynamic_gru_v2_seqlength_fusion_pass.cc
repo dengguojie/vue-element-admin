@@ -175,7 +175,7 @@ Status DynamicGRUV2SeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   // process seq_length
   bool hasSeqLength = fusedDesc->MutableInputDesc("seq_length") != nullptr;
   if (hasSeqLength) {
-    int32_t seqLenIndex = 5;
+    int32_t seqLenIndex = SEQ_LEN_INDEX;
     ge::GeTensorDesc inputMaskDesc = fusedDesc->GetInputDesc(seqLenIndex);
     std::vector <int64_t> dimLength = inputMaskDesc.GetShape().GetDims();
 

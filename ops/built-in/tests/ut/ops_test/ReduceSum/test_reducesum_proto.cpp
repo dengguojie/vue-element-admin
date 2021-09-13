@@ -399,7 +399,9 @@ TEST_F(ReduceSum, reducesum_infer_shape_013) {
   ge::Shape shape_x(dims_x);
   ge::Shape shape_axes(dims_axes);
   ge::TensorDesc tensorDescX(shape_x, ge::FORMAT_ND, ge::DT_FLOAT);
+  tensorDescX.SetOriginShape(shape_x);
   ge::TensorDesc tensorDescAxes(shape_axes, ge::FORMAT_ND, ge::DT_INT32);
+  tensorDescAxes.SetOriginShape(shape_axes);
 
   op.UpdateInputDesc("x", tensorDescX);
   op.UpdateInputDesc("axes", tensorDescAxes);
@@ -419,7 +421,9 @@ TEST_F(ReduceSum, reducesum_infer_shape_014) {
   ge::Shape shape_x(dims_x);
   ge::Shape shape_axes(dims_axes);
   ge::TensorDesc tensorDescX(shape_x, ge::FORMAT_ND, ge::DT_FLOAT);
+  tensorDescX.SetOriginShape(shape_x);
   ge::TensorDesc tensorDescAxes(shape_axes, ge::FORMAT_ND, ge::DT_INT32);
+  tensorDescAxes.SetOriginShape(shape_axes);
 
   op.UpdateInputDesc("x", tensorDescX);
   op.UpdateInputDesc("axes", tensorDescAxes);

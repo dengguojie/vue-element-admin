@@ -19,11 +19,13 @@ TEST_F(HardShrinkGradTest, hard_shrink_grad_test_case_1) {
     ge::Shape input_grad_shape({100, 100});
     input_grad.SetDataType(ge::DT_FLOAT16);
     input_grad.SetShape(input_grad_shape);
+    input_grad.SetOriginShape(input_grad_shape);
 
     ge::TensorDesc input_x;
     ge::Shape input_x_shape({100,100});
     input_x.SetDataType(ge::DT_FLOAT16);
     input_x.SetShape(input_x_shape);
+    input_x.SetOriginShape(input_x_shape);
 
     hard_shrink_grad_op.UpdateInputDesc("gradients", input_grad);
     hard_shrink_grad_op.UpdateInputDesc("features", input_x);

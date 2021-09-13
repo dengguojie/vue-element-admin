@@ -30,6 +30,9 @@ TEST_F(QuantizeTest, quantize_test_case_1) {
     tensor_point.SetDataType(ge::DT_UINT8);
     tensor_point.SetShape(shape2);
 
+    tensor_input.SetOriginShape(shape2);
+    tensor_point.SetOriginShape(shape2);
+
     quantize_op.UpdateInputDesc("x", tensor_input);
     quantize_op.UpdateInputDesc("scales", tensor_scale);
     quantize_op.UpdateInputDesc("zero_points", tensor_point);
@@ -61,6 +64,9 @@ TEST_F(QuantizeTest, quantize_test_case_2) {
     tensor_point.SetDataType(ge::DT_UINT8);
     tensor_point.SetShape(shape2);
 
+    tensor_input.SetOriginShape(shape2);
+    tensor_point.SetOriginShape(shape2);
+
     quantize_op.UpdateInputDesc("x", tensor_input);
     quantize_op.UpdateInputDesc("scales", tensor_scale);
     quantize_op.UpdateInputDesc("zero_points", tensor_point);
@@ -91,6 +97,9 @@ TEST_F(QuantizeTest, quantize_test_case_3) {
     ge::TensorDesc tensor_point;
     tensor_point.SetDataType(ge::DT_UINT8);
     tensor_point.SetShape(shape2);
+
+    tensor_input.SetOriginShape(shape2);
+    tensor_point.SetOriginShape(shape2);
 
     quantize_op.UpdateInputDesc("x", tensor_input);
     quantize_op.UpdateInputDesc("scales", tensor_scale);

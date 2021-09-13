@@ -139,6 +139,7 @@ if(BUILD_OPEN_PROJECT)
 else()
 set(local_context_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu_proto
     ${TOP_DIR}/inc

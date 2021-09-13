@@ -25,27 +25,31 @@ TEST_F(basic_lstm_cell, basic_lstm_cell_case) {
     ge::Shape xShape({batch, inputSize});
     XDesc.SetDataType(ge::DT_FLOAT16);
     XDesc.SetShape(xShape);
+    XDesc.SetOriginShape(xShape);
 
     ge::TensorDesc HDesc;
     ge::Shape hShape({batch, outputSize});
     HDesc.SetDataType(ge::DT_FLOAT16);
     HDesc.SetShape(hShape);
+    HDesc.SetOriginShape(hShape);
 
     ge::TensorDesc CDesc;
     ge::Shape cShape({batch, outputSize});
     CDesc.SetDataType(ge::DT_FLOAT16);
     CDesc.SetShape(cShape);
+    CDesc.SetOriginShape(cShape);
 
     ge::TensorDesc WDesc;
     ge::Shape wShape({inputSize+outputSize, 4*outputSize});
     WDesc.SetDataType(ge::DT_FLOAT16);
     WDesc.SetShape(wShape);
+    WDesc.SetOriginShape(wShape);
 
     ge::TensorDesc BDesc;
     ge::Shape bShape({4*outputSize});
     BDesc.SetDataType(ge::DT_FLOAT16);
     BDesc.SetShape(bShape);
-
+    BDesc.SetOriginShape(bShape);
     op.UpdateInputDesc("x", XDesc);
     op.UpdateInputDesc("h", HDesc);
     op.UpdateInputDesc("c", CDesc);

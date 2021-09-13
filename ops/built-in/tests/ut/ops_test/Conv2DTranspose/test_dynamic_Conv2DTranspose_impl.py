@@ -187,9 +187,7 @@ def test_conv2d_transpose_fuzz_build_generalization_general(test_arg):
             'ori_shape': (16, 33, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -223,9 +221,7 @@ def test_conv2d_transpose_fuzz_build_generalization_range_max_fixed(test_arg):
             'ori_shape': (50, 2, 26, 2888),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
-            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (1, 2, 10, 10),
             'ori_format': 'NCHW',
@@ -259,9 +255,7 @@ def test_conv2d_transpose_fuzz_build_support_mode_error(test_arg):
             'ori_shape': (16, 33, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -295,9 +289,7 @@ def test_conv2d_transpose_fuzz_build_neg_two(test_arg):
             'ori_shape': (-2,),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -331,9 +323,7 @@ def test_conv2d_transpose_fuzz_build_ori_format_error(test_arg):
             'ori_shape': (16, 33, 14, 12),
             'ori_format': 'ND',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -367,9 +357,7 @@ def test_conv2d_transpose_fuzz_build_ori_shape_len_error(test_arg):
             'ori_shape': (16, 33, 14),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -387,42 +375,6 @@ def test_conv2d_transpose_fuzz_build_ori_shape_len_error(test_arg):
         conv2d_transpose_generalization(*input_list)
     except RuntimeError:
         print("ori_shape len error")
-
-
-def test_conv2d_transpose_fuzz_build_shape_len_error(test_arg):
-    from impl.dynamic.conv2d_transpose import conv2d_transpose_generalization
-    input_list = [
-        {
-            'shape': (4,),
-            'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-        }, {
-            'shape': (16, 3, 14, 12),
-            'ori_shape': (16, 33, 14, 12),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
-        }, {
-            'ori_shape': (33, 3, 3, 5),
-            'ori_format': 'NCHW',
-            'format': 'FRACTAL_Z',
-            'dtype': 'float16'
-        }, None, None, {
-            'shape': (16, 1, 16, 16, 16),
-            'ori_shape': (16, 3, 16, 16),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', (0, 0, 0, 0), 0,
-        'test_conv2d_transpose_fuzz_build_shape_len_error']
-    try:
-        conv2d_transpose_generalization(*input_list)
-    except RuntimeError:
-        print("shape len error")
 
 
 def test_get_op_support_info_dynamic_conv2dtranspose_0(test_arg):
@@ -467,7 +419,6 @@ ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_support_mo
 ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_neg_two)
 ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_ori_format_error)
 ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_ori_shape_len_error)
-ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_shape_len_error)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_conv2dtranspose_0)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_conv2dtranspose_1)
 

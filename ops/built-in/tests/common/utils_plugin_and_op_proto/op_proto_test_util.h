@@ -41,5 +41,24 @@ ge::TensorDesc create_desc_shape_range(
     const std::vector<int64_t>& ori_shape_dims,
     ge::Format ori_format,
     std::vector<std::pair<int64_t,int64_t>> shape_range);
-
+ge::TensorDesc create_desc_with_original_shape(std::initializer_list<int64_t> shape_dims,
+                                               ge::DataType dt,
+                                               ge::Format format,
+                                               std::initializer_list<int64_t> ori_shape_dims,
+                                               ge::Format ori_format);
+ge::TensorDesc create_desc_shape_and_origin_shape_range(
+    std::initializer_list<int64_t> shape_dims,
+    ge::DataType dt,
+    ge::Format format,
+    std::initializer_list<int64_t> ori_shape_dims,
+    ge::Format ori_format,
+    std::vector<std::pair<int64_t,int64_t>> shape_range);
+    
+ge::TensorDesc create_desc_shape_and_origin_shape_range(
+    const std::vector<int64_t>& shape_dims,
+    ge::DataType dt,
+    ge::Format format,
+    const std::vector<int64_t>& ori_shape_dims,
+    ge::Format ori_format,
+    std::vector<std::pair<int64_t,int64_t>> shape_range);
 #endif //OP_IR_TEST__OP_TEST_UTIL_H_

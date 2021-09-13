@@ -81,6 +81,34 @@ class TEST_NON_MAX_SUPPRESSION_V3_UT : public testing::Test {};
     EXPECT_EQ(check_ret, KERNEL_STATUS_OK);                                    \
   }
 
+#define ADD_NULL_CASE(base_type, aicpu_type)                              \
+  TEST_F(TEST_NON_MAX_SUPPRESSION_V3_UT, TestNonMaxSuppressionV3_null) {  \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, DT_INT32,      \
+                                   aicpu_type, aicpu_type, DT_UINT64};    \
+    vector<vector<int64_t>> shapes = {{5, 4}, {5}, {1}, {1}, {1}, {-1}};  \
+    base_type boxes[] = {                                                 \
+        (base_type)24.664701, (base_type)92.11955,  (base_type)6.000731,  \
+        (base_type)50.0787,   (base_type)83.716705, (base_type)3.6205719, \
+        (base_type)9.723194,  (base_type)46.209377, (base_type)77.11508,  \
+        (base_type)74.02599,  (base_type)78.719894, (base_type)31.890612, \
+        (base_type)16.0346,   (base_type)21.073357, (base_type)31.530176, \
+        (base_type)54.47457,  (base_type)45.646084, (base_type)26.065968, \
+        (base_type)30.528221, (base_type)97.30633};                       \
+    vector<base_type> scores = {(base_type)0, (base_type)0, (base_type)0, \
+                                (base_type)0, (base_type)0};              \
+    int32_t max_output_size = 100;                                        \
+    base_type iou_threshold(0.001);                                       \
+    base_type score_threshold(0.2);                                       \
+    vector<void *> datas = {(void *)boxes,                                \
+                            (void *)scores.data(),                        \
+                            (void *)&max_output_size,                     \
+                            (void *)&iou_threshold,                       \
+                            (void *)&score_threshold,                     \
+                            (void *)result_summary};                      \
+    CREATE_NODEDEF(shapes, data_types, datas);                            \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                         \
+  }
+
 #define ADD_MEMCOPY_CASE(base_type, aicpu_type)                         \
   TEST_F(TEST_NON_MAX_SUPPRESSION_V3_UT,                                \
          TestNonMaxSuppressionV3_memcopy##aicpu_type) {                 \
@@ -116,31 +144,31 @@ class TEST_NON_MAX_SUPPRESSION_V3_UT : public testing::Test {};
     free(shape_buffer);                                                 \
   }
 
-#define ADD_MEMCOPY_NULL_CASE(base_type, aicpu_type)                         \
-  TEST_F(TEST_NON_MAX_SUPPRESSION_V3_UT,                                \
-         TestNonMaxSuppressionV3_memcopy_null) {                 \
-    vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_UINT64,     \
-                                   DT_UINT64};                          \
-    vector<vector<int64_t>> shapes = {{2}, {2}, {2}, {2}};              \
-    uint64_t release_flag[2] = {1, 1};                                  \
-    uint64_t data_size[2] = {result_summary[1], result_summary[3]};     \
-    uint64_t src_pt[2] = {0, 0};        \
-    uint64_t raw_shape_size = result_summary[1];                        \
-    uint64_t raw_data_size = result_summary[3];                         \
-    void *data_buffer = malloc(raw_data_size);                          \
-    void *shape_buffer = malloc(raw_shape_size);                        \
-    uint64_t dst_ptr[2] = {reinterpret_cast<uint64_t>(shape_buffer),    \
-                           reinterpret_cast<uint64_t>(data_buffer)};    \
-    vector<void *> datas = {(void *)release_flag, (void *)data_size,    \
-                            (void *)src_pt, (void *)dst_ptr};           \
-    CREATE_NODEDEF_MEMCOPY(shapes, data_types, datas);                  \
-    RUN_KERNEL(memcpy_node_def, HOST, KERNEL_STATUS_INNER_ERROR);                \
-    free(data_buffer);                                                  \
-    free(shape_buffer);                                                 \
+#define ADD_MEMCOPY_NULL_CASE(base_type, aicpu_type)                 \
+  TEST_F(TEST_NON_MAX_SUPPRESSION_V3_UT,                             \
+         TestNonMaxSuppressionV3_memcopy_null) {                     \
+    vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_UINT64,  \
+                                   DT_UINT64};                       \
+    vector<vector<int64_t>> shapes = {{2}, {2}, {2}, {2}};           \
+    uint64_t release_flag[2] = {1, 1};                               \
+    uint64_t data_size[2] = {result_summary[1], result_summary[3]};  \
+    uint64_t src_pt[2] = {result_summary[0], result_summary[2]};     \
+    uint64_t raw_shape_size = result_summary[1];                     \
+    uint64_t raw_data_size = result_summary[3];                      \
+    void *data_buffer = nullptr;                                     \
+    void *shape_buffer = malloc(raw_shape_size);                     \
+    uint64_t dst_ptr[2] = {reinterpret_cast<uint64_t>(shape_buffer), \
+                           reinterpret_cast<uint64_t>(data_buffer)}; \
+    vector<void *> datas = {(void *)release_flag, (void *)data_size, \
+                            (void *)src_pt, (void *)dst_ptr};        \
+    CREATE_NODEDEF_MEMCOPY(shapes, data_types, datas);               \
+    RUN_KERNEL(memcpy_node_def, HOST, KERNEL_STATUS_OK);             \
+    free(shape_buffer);                                              \
   }
 
 ADD_CASE(Eigen::half, DT_FLOAT16)
 ADD_MEMCOPY_CASE(Eigen::half, DT_FLOAT16)
 ADD_CASE(float, DT_FLOAT)
 ADD_MEMCOPY_CASE(float, DT_FLOAT)
+ADD_NULL_CASE(float, DT_FLOAT)
 ADD_MEMCOPY_NULL_CASE(float, DT_FLOAT)

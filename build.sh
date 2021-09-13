@@ -435,8 +435,7 @@ checkopts() {
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
       m) MINIRC_AICPU_ONLY=TRUE ;;
-      f) CHANGED_FILES=$OPTARG 
-	 CI_MODE=TRUE ;;
+      f) CHANGED_FILES=$OPTARG ;;
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;

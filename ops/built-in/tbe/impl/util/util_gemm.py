@@ -22,7 +22,6 @@ RANGE_MAX = 2147483647 # 2**31-1
 BATCH_GEAR = [0, 1, 3, 7, 15, 31, RANGE_MAX]
 SHAPE_GEAR_MATMUL_ND = [0, 16*3, 16*7, 16*15, 16*31, 16*63, 16*127, 16*191, 16*255,
                         16*511, 16*767, 16*1023, RANGE_MAX] # for fp16
-SHAPE_GEAR_MATMUL_NZ = [0, 3, 7, 15, 31, 63, 127, 191, 255, 511, 767, 1023, RANGE_MAX]
 DYNAMIC_DIM_VAL = -1
 
 
@@ -42,7 +41,7 @@ def cal_gemm_shape_range(shape, ori_format):
             if shape[i] > RANGE_MAX:
                 error_manager_cube.raise_err_one_para(
                     "E62306", "",
-                    "Invalid generalize range, shape of tensor exceed 2147483647")
+                    "Invalid generalize range, shape of tensor exceed 0xFFFFFFFF")
             shape_range.append(_get_shape_gear(shape[i], BATCH_GEAR))
 
         # process m/k/n dim and bias
@@ -50,34 +49,12 @@ def cal_gemm_shape_range(shape, ori_format):
             if shape[i] > RANGE_MAX:
                 error_manager_cube.raise_err_one_para(
                     "E62306", "",
-                    "Invalid generalize range, shape of tensor exceed 2147483647")
+                    "Invalid generalize range, shape of tensor exceed 0xFFFFFFFF")
             shape_range.append(_get_shape_gear(shape[i], SHAPE_GEAR_MATMUL_ND))
-    elif ori_format in ("FRACTAL_NZ", "FRACTAL_Z"):
-        # shape like (batch1, ..., batchn, m1, k1, C0, C0)
-        # process batch dim
-        for i in range(0, shape_len - 4):
-            if shape[i] > RANGE_MAX:
-                error_manager_cube.raise_err_one_para(
-                    "E62306", "",
-                    "Invalid generalize range, shape of tensor exceed 2147483647")
-            shape_range.append(_get_shape_gear(shape[i], BATCH_GEAR))
-
-        # process m1/k1/n1 dim
-        for i in range(-4, -2):
-            if shape[i] > RANGE_MAX:
-                error_manager_cube.raise_err_one_para(
-                    "E62306", "",
-                    "Invalid generalize range, shape of tensor exceed 2147483647")
-            shape_range.append(_get_shape_gear(shape[i], SHAPE_GEAR_MATMUL_NZ))
-
-        # process n0/m0/k0 dim
-        const_dim1 = shape[-1]
-        const_dim2 = shape[-2]
-        shape_range.extend([(const_dim2, const_dim2), (const_dim1, const_dim1)])
     else:
         error_manager_cube.raise_err_one_para(
                     "E62306", "",
-                    "Invalid Matmul/BacthMatmul format, only support FRACTAL_NZ or FRACTAL_Z")
+                    "Invalid Matmul/BacthMatmul ori_format, only support ND in fuzzy compile")
 
     return tuple(shape_range)
 
@@ -85,10 +62,5 @@ def _generate_unknown_shape_gemm(shape):
     return [DYNAMIC_DIM_VAL for i in shape]
 
 def generalize_input_keep_rank_gemm(input_dict) :
-    if input_dict["ori_format"] in ("NHWC", "ND"):
+    if input_dict.get("ori_format") in ("ND"):
         input_dict["ori_shape"] = _generate_unknown_shape_gemm(input_dict["ori_shape"])
-    elif input_dict["ori_format"] in ("FRACTAL_NZ", "FRACTAL_Z"):
-        x_old_1, x_old_2 = input_dict["ori_shape"][-1], input_dict["ori_shape"][-2]
-        input_dict["ori_shape"] = _generate_unknown_shape_gemm(input_dict["ori_shape"])
-        input_dict["ori_shape"][-1] = x_old_1
-        input_dict["ori_shape"][-2] = x_old_2

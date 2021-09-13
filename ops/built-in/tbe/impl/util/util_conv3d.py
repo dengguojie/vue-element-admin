@@ -16,8 +16,10 @@
 util_conv3d
 """
 from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import error_manager_cube
 
 BIAS_LENGTH = 1
+DYNAMIC_DIM_VAL = -1
 
 def transform_shape_with_exception(src_format, to_format, ori_shape,
                                    format_white_list, attr_name):
@@ -86,3 +88,16 @@ def check_bias(bias, res_dtype):
         }
         raise RuntimeError(dict_args,
                             error_manager_util.get_error_message(dict_args))
+
+
+def generalize_input_keep_rank(param_dict):
+    ori_shape, ori_format = param_dict["ori_shape"], param_dict["ori_format"]
+    idx_n = ori_format.find('N')
+    idx_d = ori_format.find('D')
+    idx_h = ori_format.find('H')
+    idx_w = ori_format.find('W')
+    idx_tup = (idx_n, idx_d, idx_h, idx_w)
+    ori_shape = list(ori_shape)
+    for idx in idx_tup:
+        ori_shape[idx] = DYNAMIC_DIM_VAL
+    param_dict["ori_shape"] = tuple(ori_shape)

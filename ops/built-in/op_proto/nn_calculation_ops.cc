@@ -113,8 +113,6 @@ namespace {
   const int64_t kDynamicRangeUpperBound = 4096;
   const char* const kForceInfershapeWhenRunning = "_force_infershape_when_running";
   const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
-  const std::vector<int64_t> BATCH_GEAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
-  const std::vector<int64_t> SHAPE_GEAR = {0, 3, 7, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4095, 4096};
   const std::vector<int64_t> DYNAMIC_DIM_ALL = {-2};
 }
 
@@ -439,7 +437,7 @@ static bool GetPadDepthwiseConv2D(ge::Operator& op, int64_t inH, int64_t inW, in
 IMPLEMT_VERIFIER(DepthwiseConv2D, DepthwiseConv2DVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto xTensor = op.GetInputDesc(0);
   auto wTensor = op.GetInputDesc(1);
 
@@ -457,13 +455,13 @@ IMPLEMT_VERIFIER(DepthwiseConv2D, DepthwiseConv2DVerify) {
     return GRAPH_FAILED;
   }
 
-  CHECK_OP_FUNC(wShape.size() != 4, return GRAPH_FAILED, 
+  CHECK_OP_FUNC(wShape.size() != 4, return GRAPH_FAILED,
                 "input filter shape should be 4d. input filter shape size is %d", (int)wShape.size());
 
   auto xDtype = xTensor.GetDataType();
   auto wDtype = wTensor.GetDataType();
 
-  CHECK_OP_FUNC(xDtype != wDtype, return GRAPH_FAILED, 
+  CHECK_OP_FUNC(xDtype != wDtype, return GRAPH_FAILED,
                 "input x dtype(%d) is differ from filter dtype(%d).", (int)xDtype, (int)wDtype);
 
   std::vector<int64_t> dilation;
@@ -472,7 +470,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2D, DepthwiseConv2DVerify) {
   std::vector<int64_t> stride;
   stride = GetAttrValue(op, "strides");
   CHECK_OP_FUNC(!CheckListEmpty(string(op_name.GetString()), stride, "strides"), return GRAPH_FAILED, "Get stride failed!");
-  CHECK_OP_FUNC(stride.size() != 4, return GRAPH_FAILED, 
+  CHECK_OP_FUNC(stride.size() != 4, return GRAPH_FAILED,
                 "stride dim(%d) must be 4!", (int)stride.size());
 
   std::vector<int64_t> pads;
@@ -533,7 +531,7 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
                                 std::vector<std::pair<int64_t, int64_t>>& input_range) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_shape = x_tensor->MutableShape().GetDims();
   // only support 4D shape
   auto x_format = x_tensor->GetFormat();
@@ -591,7 +589,7 @@ bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
                              int32_t kh_dilate, int32_t kw_dilate) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_shape = x_tensor->MutableShape().GetDims();
   // only support 4D shape
   auto x_format = x_tensor->GetFormat();
@@ -641,12 +639,12 @@ static bool modify_dy_w_max(ge::Operator& op, const std::vector<int64_t>& dy_siz
                             std::vector<std::pair<int64_t, int64_t>>& dx_range) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::string dy_format_str = format2str[dy_format];
   int32_t w_input_position = dy_format_str.find("W");
   CHECK_POSITION(w_input_position);
   int64_t w_max = kDynamicRangeUpperBound / (stride_h * stride_w);
-  CHECK_INFO(w_max < dy_sizes[w_input_position], return false, 
+  CHECK_INFO(w_max < dy_sizes[w_input_position], return false,
             "w of dedy is too large for opti scheme, w can't larger than %lld, actual is %lld", w_max, dy_sizes[w_input_position]);
   if (w_max < dx_range[w_input_position].second) {
     OP_LOGW(op_name.GetString(),
@@ -660,7 +658,7 @@ static bool modify_dy_w_max(ge::Operator& op, const std::vector<int64_t>& dy_siz
 static bool reset_range(ge::Operator& op, const std::string& tensor_name) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
   auto tensor_desc = op_desc->MutableInputDesc(tensor_name);
@@ -734,7 +732,7 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
                                             ge::TensorDesc& y_tensor) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_shape = x_tensor.GetShape().GetDims();
   auto x_format = x_tensor.GetFormat();
 
@@ -1257,7 +1255,7 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
                                                       bool& unknown_rank, const std::vector<int64_t>& attr_params) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   if (dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(),
       "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
@@ -1272,7 +1270,7 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
     }
     x_desc->SetShapeRange(dy_range);
   }
-  
+
   CHECK_KEY_IN_MAP(format2str, dx_format, "dx_format", return false);
   std::string dx_format_str = format2str[dx_format];
   int32_t h_input_position = dx_format_str.find("H");
@@ -1289,7 +1287,7 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
   int64_t filter_w = filter_sizes[w_filter_position];
   int64_t filter_c = filter_sizes[c_filter_position];
 
-  if (!dx_range.empty() && dx_range.size() == kConv2dDimSizeLimit && !unknown_rank) {   
+  if (!dx_range.empty() && dx_range.size() == kConv2dDimSizeLimit && !unknown_rank) {
     if (dx_range[c_input_position].first == -1 ||
         dx_range[c_input_position].first != dx_range[c_input_position].second) {
       int64_t cin = groups * filter_c;
@@ -1386,7 +1384,7 @@ static bool check_conv2d_backprop_input_pads(ge::Operator& op,
                                             const std::vector<int64_t>& attr_params) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::string pad_str;
   if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
     return true;
@@ -1448,7 +1446,7 @@ static void reset_conv2d_backprop_input_out_shape(ge::Operator& op, const std::v
                                                   Format input_format) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return);
-  
+
   CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return);
   std::string dx_format_str = format2str[input_format];
   int32_t h_input_position = dx_format_str.find("H");
@@ -1479,7 +1477,7 @@ static void reset_conv2d_backprop_input_out_shape(ge::Operator& op, const std::v
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   TensorDesc tensordesc_input = op.GetInputDescByName("out_backprop");
   auto input_grad_shape = tensordesc_input.GetShape().GetDims();
   Tensor input_size_tensor;
@@ -1529,7 +1527,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter DepthwiseConv2DBackpropInput inferfunction!");
   int64_t groups = 0;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -1674,7 +1672,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
       reset_conv2d_backprop_input_out_shape(op, dy_sizes, dy_format, input_sizes, input_format);
     }
   }
-  
+
   if (!is_dynamic && is_input_size_const) {
     // NC1HWC0(NCHW)
     in_h = input_sizes[h_position];
@@ -1696,33 +1694,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     groups = tensorDescW.GetOriginShape().GetDim(fn_position);
   }
   op.SetAttr("groups", groups);
-
-  // fuzz_build switch
-  bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
-  // fuzz build allow shape dim -1 with range
-  if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> x_range;
-    if (!GenConv2dShapeRange(op, x_desc, x_range)) {
-        return GRAPH_FAILED;
-    }
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
-    }
-    // when opti, max_range should be modified
-    if ((filter_h == 1) && (filter_w == 1)) {
-        if (!modify_dy_w_max(op, dy_sizes, dy_format, stride_h, stride_w, x_range)) {
-            return GRAPH_FAILED;
-        }
-    }
-    // only need to set input fuzz build range
-    graphStatus ret = x_desc->SetShapeRange(x_range);
-    CHECK_INFO(ret != GRAPH_SUCCESS, return GRAPH_FAILED, "set input range failed");
-  }
   OP_LOGI(op_name.GetString(), "Leaving DepthwiseConv2dBackpropInput inferfunction!");
 
   return GRAPH_SUCCESS;
@@ -1738,7 +1709,7 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerify
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
   if (!CheckListEmpty(string(op_name.GetString()), filter_size, "filter_size")) {
@@ -1791,7 +1762,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDV
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
 
@@ -1894,7 +1865,7 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDVe
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   Tensor filter_size_tensor;
   std::vector<int64_t> filter_size;
 
@@ -1930,7 +1901,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVer
     return GRAPH_FAILED;
   }
 
-  CHECK_OP_FUNC(op.GetInputDesc(0).GetDataType() != op.GetInputDesc(2).GetDataType(), return GRAPH_FAILED, 
+  CHECK_OP_FUNC(op.GetInputDesc(0).GetDataType() != op.GetInputDesc(2).GetDataType(), return GRAPH_FAILED,
                 "The type of input and out_backprop must be same!");
   return GRAPH_SUCCESS;
 }
@@ -1939,7 +1910,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVer
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter DepthwiseConv2DBackpropFilter inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -2100,36 +2071,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
       OP_LOGD(op_name.GetString(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
     }
   }
-  // fuzz_build switch
-  bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
-  // fuzz build allow shape dim -1 with range
-  if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> x_range;
-    if (!GenConv2dShapeRange(op, input_desc, x_range)){
-      return GRAPH_FAILED;
-    }
-    std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
-    if (!GenConv2dShapeRange(op, out_backprop_desc, out_backprop_range)){
-      return GRAPH_FAILED;
-    }
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
-    }
-    int32_t kh_dilate = dilation_h * (filter_h - 1) + 1;
-    int32_t kw_dilate = dilation_w * (filter_w - 1) + 1;
-    // left range should ensure output >= 1
-    if (!CorrectConv2DRangeStart(op, input_desc, x_range, kh_dilate, kw_dilate)){
-      return GRAPH_FAILED;
-    }
-    // only need to set input fuzz build range
-    input_desc->SetShapeRange(x_range);
-    out_backprop_desc->SetShapeRange(out_backprop_range);
-  }
   OP_LOGD(op_name.GetString(), "Leaving DepthwiseConv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -2221,7 +2162,7 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
                                 int32_t& dilation_w) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   const int32_t DIM_SIZE_LIMIT = 4;
   std::string dataFormat = "";
   int32_t hPosition = 0;
@@ -2309,7 +2250,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
                                         std::vector<T2>& filterSizes, Format filterFormat) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   OP_LOGI(op_name.GetString(), "SetPadListByPaddingConv2dbp begin.");
   CHECK_FORMAT_V2(inputFormat);
   CHECK_FORMAT_V2(filterFormat);
@@ -2413,7 +2354,7 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
                               std::vector<T2>& filter_sizes, Format filter_format) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   OP_LOGI(op_name.GetString(), "Setgroups begin.");
 
   CHECK_FORMAT(input_format);
@@ -2450,7 +2391,7 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   } else if (x_c % w_c != 0) {
-    OP_LOGE(op_name.GetString(), "fmap_channel % filter_channel != 0");
+    OP_LOGE(op_name.GetString(), "fmap_channel %% filter_channel != 0");
     map<string, string> err_map;
     err_map["op_name"] = op_name.GetString();
     err_map["description"] = "fmap_channel % filter_channel != 0";
@@ -2482,7 +2423,7 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
 static graphStatus VerifyConvPadding(ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   std::string pad;
   if (GRAPH_SUCCESS == op.GetAttr("padding", pad)) {
     if (pad.compare("SAME") != 0 && pad.compare("VALID") != 0) {
@@ -2505,7 +2446,7 @@ static graphStatus VerifyConvPadding(ge::Operator& op) {
 static graphStatus VerifyConv2dbpPads(ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   std::vector<int> pads;
   if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
     if (pads.size() < 4) {
@@ -2547,7 +2488,7 @@ static graphStatus VerifyConv2dbpPads(ge::Operator& op) {
 static graphStatus VerifyConv2dbpInputCommon(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto filter_desc = op.GetInputDescByName("filter");
   auto out_backprop_desc = op.GetInputDescByName("out_backprop");
 
@@ -2671,7 +2612,7 @@ static void InferHWConv2DbpInput(int32_t kernel, int32_t dilation, int32_t strid
 IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DBackpropInput InferDataSlice.");
   if (GRAPH_SUCCESS != VerifyConv2dbpInputCommon(op)) {
      return GRAPH_FAILED;
@@ -2849,7 +2790,7 @@ static bool get_attrs_conv2d_backprop_input(ge::Operator& op, Format refer, int3
                                             int32_t& strw, int32_t& dilh, int32_t& dilw) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::vector<int32_t> stride_list;
   if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
     OP_LOGE(op_name.GetString(), "get strides list failed.");
@@ -2933,7 +2874,7 @@ static bool get_attrs_conv2d_backprop_input(ge::Operator& op, Format refer, int3
 IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropInput inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -2991,7 +2932,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     is_input_size_const = true;
     CHECK_SIZE(input_sizes.empty() || (input_sizes.size() != 4), return GRAPH_FAILED, "input_size is invalid");
     OP_LOGD(op_name.GetString(), "get input_size success.");
-  } else if (std::find(dy_sizes.begin(), dy_sizes.end(), -1) != dy_sizes.end()) {
+  } else if (IsUnKnownShape(dy_sizes)) {
     // when static op or dynamic op phase_running, is_dynamic == False
     reset_range(op, "out_backprop");
     is_dynamic = true;
@@ -3001,14 +2942,17 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   int32_t fw_position;
   int64_t filter_h;
   int64_t filter_w;
-  if (is_dynamic || (!is_input_size_const && unknown_rank)) {
+  if (!is_input_size_const) {
     // get shape for output from input_size
     std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
-      op.SetAttr("pads", {0, 0, 0, 0});
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
+      if (pad_str == "SAME") {
+        op.SetAttr("pads", {-1, -1, -1, -1});
+      } else if (pad_str == "VALID") {
+        op.SetAttr("pads", {0, 0, 0, 0});
+      }
     }
+
     std::vector<std::pair<int64_t, int64_t>> dy_range;
     x_desc->GetShapeRange(dy_range);
     std::vector<std::pair<int64_t, int64_t>> dx_range;
@@ -3032,11 +2976,16 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
 
   // set shape of output desc, input_size should match the format of y
   if (input_sizes.size() == 4) {
-    std::vector<int64_t> y_shape;
-    y_shape.push_back(input_sizes[0]);
-    y_shape.push_back(input_sizes[1]);
-    y_shape.push_back(input_sizes[2]);
-    y_shape.push_back(input_sizes[3]);
+    std::vector<int64_t> y_shape = input_sizes;
+    if (!is_input_size_const && !IsUnKnownShape(dy_sizes) && !IsUnKnownShape(input_sizes)) {
+      OP_LOGI(op_name.GetString(), "input_sizes is Data but all tensors have no -1, so force to set HW in y to -1.");
+      CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return GRAPH_FAILED);
+      std::string dx_format_str(format2str[input_format]);
+      auto h_pos = dx_format_str.find("H");  // format checked, no need to check with npos
+      auto w_pos = dx_format_str.find("W");  // format checked, no need to check with npos
+      y_shape[h_pos] = -1;
+      y_shape[w_pos] = -1;
+    }
     y_desc->SetShape(GeShape(y_shape));
   }
 
@@ -3068,48 +3017,9 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     dilation_h = static_cast<int64_t>(dilation_h);
     dilation_w = static_cast<int64_t>(dilation_w);
     vector<int64_t> attr_param = {stride_h, stride_w, dilation_h, dilation_w};
-    if (!unknown_rank && !IsUnKnownShape(dy_sizes) && !check_conv2d_backprop_input_pads(op, dy_sizes, dy_format,
-                                            filter_sizes, filter_format,dx_shape, input_format, attr_param)) {
+    if (!unknown_rank && !check_conv2d_backprop_input_pads(op, dy_sizes, dy_format, filter_sizes, filter_format,
+                                                           dx_shape, input_format, attr_param)) {
       return GRAPH_FAILED;
-    }
-  }
-  // fuzz_build switch
-  bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
-
-  // fuzz build allow shape dim -1 with range
-  if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    if (!GenConv2dShapeRange(op, x_desc, input_range)){
-        return GRAPH_FAILED;
-    }
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
-    }
-
-    CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return GRAPH_FAILED);
-    filterFormatStr = format2str[filter_format];
-    fh_position = filterFormatStr.find("H");
-    fw_position = filterFormatStr.find("W");
-    filter_h = filter_sizes[fh_position];
-    filter_w = filter_sizes[fw_position];
-    // when opti, max_range should be modified
-    if ((filter_h == 1) && (filter_w == 1)) {
-        int64_t strideh = static_cast<int64_t>(stride_h);
-        int64_t stridew = static_cast<int64_t>(stride_w);
-        if (!modify_dy_w_max(op, dy_sizes, dy_format, strideh, stridew, input_range)) {
-            return GRAPH_FAILED;
-        }
-    }
-    // only need to set input fuzz build range
-    graphStatus ret = x_desc->SetShapeRange(input_range);
-    if (ret != GRAPH_SUCCESS) {
-        OP_LOGE(op_name.GetString(), "set input range failed");
-        return GRAPH_FAILED;
     }
   }
   OP_LOGI(op_name.GetString(), "Leaving Conv2DBackpropInput inferfunction!");
@@ -3119,7 +3029,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
 IMPLEMT_VERIFIER(Conv2DBackpropInput, Conv2DBackpropInputVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropInput verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv2dbpInputCommon(op)) {
     return GRAPH_FAILED;
@@ -3151,7 +3061,7 @@ VERIFY_FUNC_REG(Conv2DBackpropInput, Conv2DBackpropInputVerify);
 IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DBackpropInput InferDataSlice.");
 
   // get dedy shape, stride and dilation
@@ -3353,7 +3263,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
 IMPLEMT_INFERFUNC(Conv2DBackpropInputD, Conv2DBackpropInputDInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropInputD inferfunction!");
   const int32_t DIM_SIZE_LIMIT = 4;
 
@@ -3446,7 +3356,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInputD, Conv2DBackpropInputDInfer) {
 IMPLEMT_VERIFIER(Conv2DBackpropInputD, Conv2DBackpropInputDVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropInputD verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv2dbpInputCommon(op)) {
     return GRAPH_FAILED;
@@ -3467,7 +3377,7 @@ VERIFY_FUNC_REG(Conv2DBackpropInputD, Conv2DBackpropInputDVerify);
 bool InferConv2DBackpropFilter(ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto y_tensor = op.GetOutputDescByName("y");
   auto filter_format = y_tensor.GetOriginFormat();
   CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return false);
@@ -3527,7 +3437,7 @@ bool InferConv2DBackpropFilter(ge::Operator& op) {
 static graphStatus VerifyConv2dbpFilterCommon(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto x_desc = op.GetInputDescByName("x");
   auto out_backprop_desc = op.GetInputDescByName("out_backprop");
   auto x_dtype = x_desc.GetDataType();
@@ -3630,7 +3540,7 @@ static graphStatus VerifyConv2dbpFilterCommon(const ge::Operator& op) {
 IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilter inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -3775,41 +3685,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       OP_LOGD(op_name.GetString(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
     }
   }
-
-  // fuzz_build switch
-  bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
-  // fuzz build allow shape dim -1 with range
-  if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> x_range;
-    if (!GenConv2dShapeRange(op, x_desc, x_range)){
-      return GRAPH_FAILED;
-    }
-    std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
-    if (!GenConv2dShapeRange(op, dy_desc, out_backprop_range)){
-      return GRAPH_FAILED;
-    }
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
-    }
-    std::vector<int64_t> filter_sizes = y_desc->MutableShape().GetDims();
-    int32_t filter_h = static_cast<int32_t>(filter_sizes[filter_h_position]);
-    int32_t filter_w = static_cast<int32_t>(filter_sizes[filter_w_position]);
-    int32_t kh_dilate = dilation_h * (filter_h - 1) + 1;
-    int32_t kw_dilate = dilation_w * (filter_w - 1) + 1;
-    // left range should ensure output >= 1
-    if (!CorrectConv2DRangeStart(op, x_desc, x_range, kh_dilate, kw_dilate)) {
-      return GRAPH_FAILED;
-    }
-    // only need to set input fuzz build range
-    x_desc->SetShapeRange(x_range);
-    dy_desc->SetShapeRange(out_backprop_range);
-  }
-
   OP_LOGI(op_name.GetString(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -3817,7 +3692,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
 IMPLEMT_VERIFIER(Conv2DBackpropFilter, Conv2DBackpropFilterVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilter verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv2dbpFilterCommon(op)) {
     return GRAPH_FAILED;
@@ -3842,7 +3717,7 @@ IMPLEMT_VERIFIER(Conv2DBackpropFilter, Conv2DBackpropFilterVerify) {
 IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropFilter, Conv2DBackpropFilterInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DBackpropFilter InferDataSlice.");
   if (!InferConv2DBackpropFilter(op)) {
     return GRAPH_FAILED;
@@ -3858,7 +3733,7 @@ INFER_DATA_SLICE_FUNC_REG(Conv2DBackpropFilter, Conv2DBackpropFilterInferDataSli
 IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilterD inferfunction!");
   const int32_t DIM_SIZE_LIMIT = 4;
 
@@ -3945,7 +3820,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
 IMPLEMT_VERIFIER(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilterD verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv2dbpFilterCommon(op)) {
     return GRAPH_FAILED;
@@ -3961,7 +3836,7 @@ IMPLEMT_VERIFIER(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify) {
 IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropFilterD, Conv2DBackpropFilterDInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DBackpropFilterD InferDataSlice.");
   if (!InferConv2DBackpropFilter(op)) {
     return GRAPH_FAILED;
@@ -3993,7 +3868,7 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
                          int32_t dilh, int32_t dilw, int32_t& padt, int32_t& padb, int32_t& padl, int32_t& padr) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::string pad_str;
   std::vector<int32_t> pad_list;
   if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str.compare("EXPLICIT") != 0) {
@@ -4170,7 +4045,7 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
 static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh, int32_t& strw, int32_t& dilh, int32_t& dilw) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
@@ -4276,7 +4151,7 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
                                    ge::GeTensorDescPtr& y_tensor) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_shape = x_tensor->MutableShape().GetDims();
   auto x_format = x_tensor->GetFormat();
 
@@ -4358,7 +4233,7 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
 IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DInfer.");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -4655,7 +4530,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DVerify.");
   auto x_tensor = op.GetInputDescByName("x");
   auto w_tensor = op.GetInputDescByName("filter");
@@ -4762,7 +4637,7 @@ static void InferHWConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t st
 IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2D InferDataSlice");
   // get input h/w, filter h/w, pad_h,pad_w, stride_h, stride_w, dilation_h,dilation_w
   auto x_tensor = op.GetInputDescByName("x");
@@ -4915,7 +4790,7 @@ VERIFY_FUNC_REG(Conv2D, Conv2DVerify);
 IMPLEMT_INFERFUNC(Conv2DCompress, Conv2DCompressInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DCompressInfer.");
   auto xTensor = op.get_input_desc_x();
   auto wTensor = op.get_input_desc_filter_compress();
@@ -5054,7 +4929,7 @@ IMPLEMT_INFERFUNC(Conv2DCompress, Conv2DCompressInfer) {
 IMPLEMT_VERIFIER(Conv2DCompress, Conv2DCompressVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DCompressVerify.");
   auto xTensor = op.get_input_desc_x();
   auto wTensor = op.get_input_desc_filter_compress();
@@ -5258,7 +5133,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
                               int32_t& padt, int32_t& padb, int32_t& padl, int32_t& padr) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
@@ -5402,7 +5277,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
 IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer){
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter DeformableConv2DInfer");
   auto x_tensor = op.GetInputDescByName("x");
   auto w_tensor = op.GetInputDescByName("filter");
@@ -5685,7 +5560,7 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer){
 IMPLEMT_VERIFIER(DeformableConv2D, DeformableConv2DVerify){
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter DeformableConv2DVerify.");
   auto x_tensor = op.GetInputDescByName("x");
   auto w_tensor = op.GetInputDescByName("filter");
@@ -5799,7 +5674,7 @@ VERIFY_FUNC_REG(DeformableConv2D, DeformableConv2DVerify);
 static bool GetAttrsDeconv(ge::Operator& op, Format refer, int32_t& strh, int32_t& strw, int32_t& dilh, int32_t& dilw) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
@@ -5867,7 +5742,7 @@ static bool GetAttrsDeconv(ge::Operator& op, Format refer, int32_t& strh, int32_
 IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Deconvolution InferDataSlice.");
 
   auto x_tensor = op.get_input_desc_x();
@@ -6008,7 +5883,7 @@ static void set_deconvolution_out_shape_range(size_t idx,
 IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter DeconvolutionInfer.");
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(opDesc, "op desc", return GRAPH_FAILED);
@@ -6200,29 +6075,6 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   } else {
     yTensor->SetDataType(xDtype);
   }
-  // fuzz_build switch
-  bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
-  // fuzz build allow shape dim -1 with range
-  if ((!unknownRank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> x_range;
-    if (!GenConv2dShapeRange(op, xTensor, x_range)){
-      return GRAPH_FAILED;
-    }
-    // when opti, max_range should be modified
-    int64_t stride_h = static_cast<int64_t>(strh);
-    int64_t stride_w = static_cast<int64_t>(strw);
-    if ((kh == 1) && (kw == 1)) {
-        if (!modify_dy_w_max(op, xShape, xFormat, stride_h, stride_w, x_range)) {
-            return GRAPH_FAILED;
-        }
-    }
-    // only need to set input fuzz build range
-    xTensor->SetShapeRange(x_range);
-  }
-
   OP_LOGD(op_name.GetString(), "Leave DeconvolutionInfer.");
   return GRAPH_SUCCESS;
 }
@@ -6230,7 +6082,7 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
 IMPLEMT_VERIFIER(Deconvolution, DeconvolutionVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter DeconvolutionVerify.");
   auto x_tensor = op.get_input_desc_x();
   auto w_tensor = op.get_input_desc_filter();
@@ -6326,7 +6178,7 @@ static bool CheckVectorAnyNegative(const std::vector<T1>& list)
 static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& dilation_list) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   //check dilations shape
   if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
     dilation_list.clear();
@@ -6357,7 +6209,7 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
                          int32_t& padb, int32_t& padl, int32_t& padr) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::string pad_str;
   std::vector<int32_t> pad_list;
   if (GRAPH_SUCCESS == op.GetAttr("_padding", pad_list)) {
@@ -6449,7 +6301,7 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer,  int32_t& strd,
                            int32_t& dilh, int32_t& dilw) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::vector<int32_t> stride_list;
   if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "get strides list failed.");
@@ -6574,7 +6426,7 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
                                    TensorDesc& y_tensor) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_tensor = op.get_input_desc_x();
   auto x_shape = x_tensor.GetShape().GetDims();
   bool unknown_shape = IsUnKnownShape(x_shape);
@@ -6700,7 +6552,7 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
 static bool NormalizeConv3dShape(const op::Conv3D& op, vector<int64_t>& x_shape_new, vector<int64_t>& w_shape_new) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_tensor = op.get_input_desc_x();
   auto x_format = x_tensor.GetFormat();
   auto x_shape = x_tensor.GetShape().GetDims();
@@ -6816,97 +6668,11 @@ static bool NormalizeConv3dShape(const op::Conv3D& op, vector<int64_t>& x_shape_
   return true;
 }
 
-static void GetShapeGear(int64_t dim_val,
-                         const std::vector<int64_t> &shape_gear,
-                         std::pair<int64_t, int64_t> &range)
-{
-  size_t pos = 1;
-  while (pos < shape_gear.size() && shape_gear[pos] < dim_val) {
-    pos++;
-  }
-  range = std::make_pair(shape_gear[pos - 1] + 1, shape_gear[pos]);
-}
-
-static int32_t CalcShapeGear(const GeTensorDescPtr& obj_desc,
-                             const std::vector<size_t> &dim_ops,
-                             std::vector<std::pair<int64_t, int64_t>> &single_point_range)
-{
-  std::vector<int64_t> obj_sizes = obj_desc->MutableShape().GetDims();
-
-  for (size_t i = 0; i < dim_ops.size(); i++) {
-    if (obj_sizes[dim_ops[i]] > MAX_RANGE) {
-      return -1;
-    }
-    if (i == 0) { // deal with dim N
-      GetShapeGear(obj_sizes[dim_ops[i]], BATCH_GEAR, single_point_range[dim_ops[i]]);
-    } else if (i == 1) { // deal with dim C
-      single_point_range[dim_ops[i]] = std::make_pair(obj_sizes[dim_ops[i]], obj_sizes[dim_ops[i]]);
-    } else {
-      GetShapeGear(obj_sizes[dim_ops[i]], SHAPE_GEAR, single_point_range[dim_ops[i]]);
-    }
-  }
-
-  return 0;
-}
-
-static int32_t CalcShapeRange(const GeTensorDescPtr& obj_desc,
-                              std::vector<std::pair<int64_t, int64_t>> &single_point_range)
-{
-  Format obj_format = obj_desc->GetFormat();
-  CHECK_KEY_IN_MAP(format2str, obj_format, "obj_format", return -1);
-  std::string obj_format_str = format2str[obj_format];
-  size_t n_pos = obj_format_str.find("N");
-  size_t c_pos = obj_format_str.find("C");
-  size_t d_pos = obj_format_str.find("D");
-  size_t h_pos = obj_format_str.find("H");
-  size_t w_pos = obj_format_str.find("W");
-  std::vector<size_t> dim_ops;
-  dim_ops.push_back(n_pos);
-  dim_ops.push_back(c_pos);
-  dim_ops.push_back(d_pos);
-  dim_ops.push_back(h_pos);
-  dim_ops.push_back(w_pos);
-
-  return CalcShapeGear(obj_desc, dim_ops, single_point_range);
-}
-
-bool DealWithFuzzyCompile(ge::Operator& op)
-{
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK_PTR_NULL(op_desc, "op desc", return false);
-  AscendString op_type;
-  CHECK(op.GetOpType(op_type) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_type"), return false);
-  if (string(op_type.GetString()) == "Conv3D") {
-    auto x_desc = op_desc->MutableInputDesc("x");
-    CHECK_PTR_NULL(x_desc, "tensor x desc", return false);
-    std::vector<int64_t> x_sizes = x_desc->MutableShape().GetDims();
-    std::vector<std::pair<int64_t, int64_t>> single_point_range_x(x_sizes.size());
-    int32_t calc_range_x = CalcShapeRange(x_desc, single_point_range_x);
-    CHECK_OP_FUNC(calc_range_x < 0, return false, "shape of x is too large.");
-    CHECK_OP_FUNC(ge::GRAPH_SUCCESS != x_desc->SetShapeRange(single_point_range_x), return false,
-                  "do set x shape range failed.");
-  } else if (string(op_type.GetString()) == "Conv3DBackpropInput") {
-    auto dy_desc = op_desc->MutableInputDesc("out_backprop");
-    CHECK_PTR_NULL(dy_desc, "tensor dedy desc", return false);
-    std::vector<int64_t> dy_sizes = dy_desc->MutableShape().GetDims();
-
-    std::vector<std::pair<int64_t, int64_t>> single_point_range_out_backprop(dy_sizes.size());
-    int32_t calc_range_out_backprop = CalcShapeRange(dy_desc, single_point_range_out_backprop);
-    CHECK_OP_FUNC(calc_range_out_backprop < 0, return false, "shape of out_backprop is too large.");
-    CHECK_OP_FUNC(ge::GRAPH_SUCCESS != dy_desc->SetShapeRange(single_point_range_out_backprop), return false,
-                  "do set out_backprop shape range failed.");
-  }
-
-  return true;
-}
 
 IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DInfer.");
 
   auto x_tensor = op.get_input_desc_x();
@@ -7033,15 +6799,6 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
 
   CHECK_OP_FUNC(GRAPH_SUCCESS != op.update_output_desc_y(y_tensor), return GRAPH_FAILED, "update output desc failed.");
 
-  // fuzzy compile
-  bool is_static_shape = !unknown_rank &&
-                         !IsUnknownRankShape(w_tensor.GetShape().GetDims()) &&
-                         !IsUnknownRankShape(y_tensor.GetShape().GetDims());
-  bool fuzzy_flag = false;
-  CHECK_OP_FUNC(ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzy_flag) && fuzzy_flag && is_static_shape &&
-                !DealWithFuzzyCompile(op), return GRAPH_FAILED, "do fuzzy compile failed.");
-  OP_LOGI(op_name.GetString(), "is_static_shape : %d, fuzzy_flag : %d", is_static_shape, fuzzy_flag);
-
   OP_LOGD(op_name.GetString(), "Leave Conv3DInfer.");
   return GRAPH_SUCCESS;
 }
@@ -7075,7 +6832,7 @@ static void InferHWConv3d(int32_t kernel,
 static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<int64_t>>& data_slice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   // check data_slice attr
   if (data_slice.size() != kConv3dDataSlice) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "y_data_slice's size should be 6.");
@@ -7111,7 +6868,7 @@ static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<i
 IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DInferSliceData.");
 
   auto x_format = op.get_input_desc_x().GetFormat();
@@ -7256,7 +7013,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
 IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DVerify.");
   auto x_tensor = op.GetInputDescByName("x");
   auto w_tensor = op.GetInputDescByName("filter");
@@ -7345,7 +7102,7 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
                                         const std::vector<T2>& filter_sizes, Format filter_format) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   if (filter_sizes.size() < kConv3dInputSizeLimit || input_sizes.size() < kConv3dInputSizeLimit) {
     OP_LOGE(op_name.GetString(), "filter_sizes or inputSizes is illegal");
     map<std::string, std::string> err_map;
@@ -7497,7 +7254,7 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
 static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto filter_desc = op.GetInputDescByName("filter");
   auto filter_dtype = filter_desc.GetDataType();
   auto out_backprop_desc = op.GetInputDescByName("out_backprop");
@@ -7581,7 +7338,7 @@ static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
 static graphStatus VerifyConv3dbpPads(const ge::Operator& op, bool is_dynamic = false) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   std::vector<int> pads;
   if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
     if (pads.size() < kConv3dLengthPadsLimit) {
@@ -7654,7 +7411,7 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
                                           std::vector<std::pair<int64_t, int64_t>>& dx_range) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
   auto filter_desc = op_desc->MutableInputDesc("filter");
@@ -7890,7 +7647,7 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
                                             std::vector<int64_t>& input_sizes) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   bool unknown_rank = IsUnknownRankShape(dy_desc->MutableShape().GetDims());
   std::vector<std::pair<int64_t, int64_t>> dy_range;
   dy_desc->GetShapeRange(dy_range);
@@ -7960,7 +7717,7 @@ static void InferHWConv3dBackpropInput(int32_t kernel,
 IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropInput inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -8025,16 +7782,6 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   auto out_backprop_dtype = op.GetInputDescByName("out_backprop").GetDataType();
   y_desc->SetDataType(out_backprop_dtype);
 
-  // fuzzy compile
-  bool is_static_shape = !IsUnknownRankShape(input_sizes) &&
-                         !IsUnknownRankShape(op.GetInputDescByName("filter").GetShape().GetDims()) &&
-                         !IsUnknownRankShape(dy_sizes) &&
-                         !IsUnknownRankShape(op.GetOutputDescByName("y").GetShape().GetDims());
-  bool fuzzy_flag = false;
-  CHECK_OP_FUNC(ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzy_flag) && fuzzy_flag && is_static_shape &&
-                !DealWithFuzzyCompile(op), return GRAPH_FAILED, "do fuzzy compile failed.");
-  OP_LOGI(op_name.GetString(), "is_static_shape : %d, fuzzy_flag : %d", is_static_shape, fuzzy_flag);
-
   OP_LOGI(op_name.GetString(), "Leaving Conv3DBackpropInput inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -8042,7 +7789,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
 IMPLEMT_VERIFIER(Conv3DBackpropInput, Conv3DBackpropInputVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropInput verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv3dbpInputCommon(op)) {
     return GRAPH_FAILED;
@@ -8068,7 +7815,7 @@ VERIFY_FUNC_REG(Conv3DBackpropInput, Conv3DBackpropInputVerify);
 IMPLEMT_INFERFUNC(Conv3DBackpropInputD, Conv3DBackpropInputDInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropInputD inferfunction!");
   // get shape for output from input_size
   std::vector<int32_t> input_sizes;
@@ -8133,7 +7880,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInputD, Conv3DBackpropInputDInfer) {
 IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DBackpropInputDInfereDataSlice.");
 
   auto x_format = op.get_input_desc_out_backprop().GetFormat();
@@ -8267,7 +8014,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSli
 IMPLEMT_VERIFIER(Conv3DBackpropInputD, Conv3DBackpropInputDVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropInputD verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv3dbpInputCommon(op)) {
     return GRAPH_FAILED;
@@ -8288,7 +8035,7 @@ VERIFY_FUNC_REG(Conv3DBackpropInputD, Conv3DBackpropInputDVerify);
 static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto x_desc = op.GetInputDescByName("x");
   auto out_backprop_desc = op.GetInputDescByName("out_backprop");
 
@@ -8368,7 +8115,7 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropFilter Infer Function!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -8479,7 +8226,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
 static graphStatus VerifyConv3dbpFilterPads(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   std::vector<int> pads;
   if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
     if (pads.size() < kConv3dLengthPadsLimit) {
@@ -8522,7 +8269,7 @@ static graphStatus VerifyConv3dbpFilterPads(const ge::Operator& op) {
 IMPLEMT_VERIFIER(Conv3DBackpropFilter, Conv3DBackpropFilterVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropFilter verify function!");
   if (GRAPH_SUCCESS != VerifyConv3dbpFilterCommon(op)) {
     return GRAPH_FAILED;
@@ -8544,7 +8291,7 @@ VERIFY_FUNC_REG(Conv3DBackpropFilter, Conv3DBackpropFilterVerify);
 IMPLEMT_INFERFUNC(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropFilterD inferfunction!");
 
   // get shape for output from filter_size
@@ -8599,7 +8346,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfer) {
   Format x_format = op.GetInputDescByName("x").GetFormat();
   Format filter_format = y_desc.GetFormat();
   // update pads list by padding[SAME,VALID]
-  CHECK_OP_FUNC(!SetPadListByPaddingConv3dbp(op, x_sizes, x_format, filter_sizes, filter_format), return GRAPH_FAILED, 
+  CHECK_OP_FUNC(!SetPadListByPaddingConv3dbp(op, x_sizes, x_format, filter_sizes, filter_format), return GRAPH_FAILED,
                 "update pads list by padding failed.");
 
   OP_LOGI(op_name.GetString(), "Leaving Conv3DBackpropFilterD inferfunction!");
@@ -8609,7 +8356,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfer) {
 IMPLEMT_VERIFIER(Conv3DBackpropFilterD, Conv3DBackpropFilterDVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DBackpropFilterD verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv3dbpFilterCommon(op)) {
     return GRAPH_FAILED;
@@ -8625,7 +8372,7 @@ IMPLEMT_VERIFIER(Conv3DBackpropFilterD, Conv3DBackpropFilterDVerify) {
 IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfereDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DBackpropFilterDInfereDataSlice.");
 
   auto y_tensor = op.GetOutputDescByName("y");
@@ -8704,7 +8451,7 @@ static bool SetInputsizeListConv3dtranspose(ge::Operator& op, const std::vector<
                                             const std::vector<T3>& input_sizes, Format input_format) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(filter_format);
   CHECK_FORMAT(input_format);
@@ -8925,7 +8672,7 @@ static bool GetAttrsConv3DTranspose(ge::Operator& op, Format refer,  int32_t& st
                                     int32_t& dilh, int32_t& dilw) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   std::vector<int32_t> stride_list;
   CHECK_OP_FUNC(GRAPH_SUCCESS != op.GetAttr("strides", stride_list), return false, "get strides list failed.");
   auto s_size = stride_list.size();
@@ -8984,7 +8731,7 @@ static bool GetAttrsConv3DTranspose(ge::Operator& op, Format refer,  int32_t& st
 static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto filter_desc = op.GetInputDescByName("filter");
   auto filter_dtype = filter_desc.GetDataType();
   auto x_desc = op.GetInputDescByName("x");
@@ -9092,7 +8839,7 @@ static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
 graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto x_format = op.GetInputDescByName("x").GetOriginFormat();
   int32_t strd = 0;
   int32_t strh = 0;
@@ -9244,7 +8991,7 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
 IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(), "Enter Conv3DTranspose inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -9322,7 +9069,7 @@ IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
 IMPLEMT_VERIFIER(Conv3DTranspose, Conv3DTransposeVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   if (VerifyConv3dTransposeInput(op) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
@@ -9338,7 +9085,7 @@ IMPLEMT_VERIFIER(Conv3DTranspose, Conv3DTransposeVerify) {
 IMPLEMT_INFER_DATA_SLICE(Conv3DTranspose, Conv3DTransposeInfereDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DTransposeInfereDataSlice.");
   graphStatus ret = InferConv3dTransposeDataSlice(op);
   return ret;
@@ -9351,7 +9098,7 @@ VERIFY_FUNC_REG(Conv3DTranspose, Conv3DTransposeVerify);
 IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   // get shape for output from input_size
   std::vector<int32_t> input_sizes;
   if (op.GetAttr("input_size", input_sizes) != GRAPH_SUCCESS) {
@@ -9443,7 +9190,7 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
 IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv3DTransposeDInfereDataSlice.");
   graphStatus ret = InferConv3dTransposeDataSlice(op);
   return ret;
@@ -9472,7 +9219,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
                                             const std::vector<T3>& input_sizes, Format input_format, bool& isRun) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   // the shape of input_size may be 4
   const int32_t INPUT_SIZE_LIMIT = 4;
   const int32_t PADS_SIZE_LIMIT = 4;
@@ -9692,7 +9439,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
 static graphStatus VerifyConv2DTransposeInput(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto filter_desc = op.GetInputDescByName("filter");
   auto x_desc = op.GetInputDescByName("x");
 
@@ -9820,7 +9567,7 @@ static graphStatus VerifyConv2DTransposeInput(const ge::Operator& op) {
 bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  
+
   auto x_tensor = op.GetInputDescByName("x");
   auto w_tensor = op.GetInputDescByName("filter");
   auto y_tensor = op.GetOutputDescByName("y");
@@ -9990,7 +9737,7 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
 IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGI(op_name.GetString(),"Enter Conv2DTranspose inferfunction!");
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(opDesc, "op desc", return GRAPH_FAILED);
@@ -10124,42 +9871,6 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   }
   std::vector<std::pair<int64_t, int64_t>> yRange;
   yDesc->GetShapeRange(yRange);
-
-  // fuzz_build switch
-  bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
-  // fuzz build allow shape dim -1 with range
-  if ((!unknownRank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // generate range
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    if (!GenConv2dShapeRange(op, xDesc, input_range)) {
-        return GRAPH_FAILED;
-    }
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
-    }
-    CHECK_KEY_IN_MAP(format2str, filterFormat, "filterFormat", return GRAPH_FAILED);
-    filterFormatStr = format2str[filterFormat];
-    fh_position = filterFormatStr.find("H");
-    fw_position = filterFormatStr.find("W");
-    filter_h = filterSizes[fh_position];
-    filter_w = filterSizes[fw_position];
-    // when opti, max_range should be modified
-    if ((filter_h == 1) && (filter_w == 1)) {
-        int64_t strideh = static_cast<int64_t>(strideH);
-        int64_t stridew = static_cast<int64_t>(strideW);
-        if (!modify_dy_w_max(op, dySizes, xFormat, strideh, stridew, input_range)) {
-            return GRAPH_FAILED;
-        }
-    }
-    // only need to set input fuzz build range
-    graphStatus ret = xDesc->SetShapeRange(input_range);
-    CHECK_INFO(ret != GRAPH_SUCCESS, return GRAPH_FAILED, "set input range failed");
-  }
-
   OP_LOGD(op_name.GetString(), "Leave Conv2DTransposeInfer.");
   return GRAPH_SUCCESS;
 }
@@ -10167,7 +9878,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
 IMPLEMT_VERIFIER(Conv2DTranspose, Conv2DTransposeVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   if (VerifyConv2DTransposeInput(op) != GRAPH_SUCCESS) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "Leaving Conv2DTranspose verifyfunction!");
     return GRAPH_FAILED;
@@ -10184,7 +9895,7 @@ IMPLEMT_VERIFIER(Conv2DTranspose, Conv2DTransposeVerify) {
 IMPLEMT_INFER_DATA_SLICE(Conv2DTranspose, Conv2DTransposeInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DTranspose InferDataSlice.");
   if (!InferConv2DTransposeDataSlice(op)) {
     return GRAPH_FAILED;
@@ -10211,7 +9922,7 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
                             const std::vector<T2>& filter_sizes, Format filter_format) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return);
-  
+
   OP_LOGD(op_name.GetString(), "Enter ProcessOnnxAttr, process auto_pad and output_shape.");
 
   std::string auto_pad;
@@ -10347,7 +10058,7 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
 IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DTransposeD InferShape.");
   const int32_t DIM_SIZE_LIMIT = 4;
 
@@ -10468,7 +10179,7 @@ IMPLEMT_VERIFIER(Conv2DTransposeD, Conv2DTransposeDVerify) {
 IMPLEMT_INFER_DATA_SLICE(Conv2DTransposeD, Conv2DTransposeDInferDataSlice) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   OP_LOGD(op_name.GetString(), "Enter Conv2DTransposeD InferDataSlice.");
   // process ONNX attr
   auto x_tensor = op.GetInputDescByName("x");
@@ -10493,7 +10204,7 @@ VERIFY_FUNC_REG(Conv2DTransposeD, Conv2DTransposeDVerify);
 static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto x_desc = op.GetInputDescByName("x");
   auto x_shape = x_desc.GetShape().GetDims();
   if (x_shape.size() != kDeformDimSizeLimit) {
@@ -10626,7 +10337,7 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
 IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto x_desc = op.GetInputDescByName("x");
   auto offsets_desc = op.GetInputDescByName("offsets");
   auto y_desc = op.GetOutputDescByName("y");
@@ -10756,7 +10467,7 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     conv_out_w = (x_w + pad_l + pad_r - dil_ksize_w) / stride_w + 1;
   }
 
-  CHECK_OP_FUNC(conv_out_h != offsets_h || conv_out_w != offsets_w, return GRAPH_FAILED, 
+  CHECK_OP_FUNC(conv_out_h != offsets_h || conv_out_w != offsets_w, return GRAPH_FAILED,
                 "Input_offsets h/w should be same as h/w after convolution, offsets: [h:%d, w:%d], conv_out: [h:%d, w:%d].",
                 offsets_h, offsets_w, conv_out_h, conv_out_w);
 
@@ -10809,7 +10520,7 @@ VERIFY_FUNC_REG(DeformableOffsets, DeformableOffsetsVerify);
 IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto x_desc = op.GetInputDescByName("x");
   auto offsets_desc = op.GetInputDescByName("offsets");
   auto grad_x_desc = op.GetOutputDescByName("grad_x");
@@ -10869,7 +10580,7 @@ IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
 IMPLEMT_VERIFIER(DeformableOffsetsGrad, DeformableOffsetsGradVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  
+
   auto grad_desc = op.GetInputDescByName("grad");
   auto x_desc = op.GetInputDescByName("x");
   auto offsets_desc = op.GetInputDescByName("offsets");
@@ -10915,7 +10626,7 @@ IMPLEMT_VERIFIER(Dilation, DilationVerify)
 {
     AscendString op_name;
     CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-    
+
     auto x_desc = op.GetInputDescByName("x");
     auto x_shape = x_desc.GetShape().GetDims();
     std::vector<int64_t> dilations;

@@ -40,9 +40,11 @@ TEST_F(EluGradV2Test, elu_grad_v2_test_case_1) {
     ge::Shape shape({100,100});
     input_desc1.SetDataType(ge::DT_FLOAT16);
     input_desc1.SetShape(shape);
+    input_desc1.SetOriginShape(shape);
     ge::TensorDesc input_desc2;
     input_desc2.SetDataType(ge::DT_FLOAT16);
     input_desc2.SetShape(shape);
+    input_desc2.SetOriginShape(shape);
 
     elu_grad_v2_op.UpdateInputDesc("grads", input_desc1);
     elu_grad_v2_op.UpdateInputDesc("activations", input_desc2);
