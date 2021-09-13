@@ -130,6 +130,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/slice_write.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/softmaxv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/spatial_transformer.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
@@ -272,6 +273,7 @@ set(_cpu_kernels_ut_files
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/slice_write/src/slice_write_utest.cpp
+  testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp
