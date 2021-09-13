@@ -1,0 +1,98 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "ApplyAddSign",
+        "case_name": "test_apply_add_sign_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "m"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "lr"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "alpha"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "sign_decay"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "beta"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "grad"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_locking",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]

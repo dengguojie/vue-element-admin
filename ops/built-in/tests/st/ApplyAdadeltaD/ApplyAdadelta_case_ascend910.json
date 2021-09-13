@@ -1,0 +1,98 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "ApplyAdadelta",
+        "case_name": "test_apply_ada_delta_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "accum"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "accum_update"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "lr"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "rho"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "epsilon"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "grad"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_locking",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]

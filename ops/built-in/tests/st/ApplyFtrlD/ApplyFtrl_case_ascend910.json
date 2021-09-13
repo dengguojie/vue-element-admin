@@ -1,0 +1,108 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "ApplyFtrl",
+        "case_name": "test_apply_ftrl_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "accum"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "linear"
+            },
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "grad"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "lr"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "l1"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "l2"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "typical_shape": [1],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "lr_power"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [16, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "value_range": [[0 ,1]],
+                "data_distribute": "uniform",
+                "name": "var"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_locking",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]
