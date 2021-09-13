@@ -320,7 +320,7 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_su
   EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_failed){
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_success2){
   std::vector<std::string> marks = {std::string("TensorArray011")};
   std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
 
@@ -353,7 +353,7 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_shared_shape_num_not_equal_fa
   inferCtxPtr2->SetMarks(marks);
   op_tensor_array_write2.SetInferenceContext(inferCtxPtr2);
   auto ret2 = op_tensor_array_write2.InferShapeAndType();
-  EXPECT_EQ(ret2, ge::GRAPH_FAILED);
+  EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_success){
@@ -392,7 +392,7 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_suc
   EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_failed){
+TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_success2){
   std::vector<std::string> marks = {std::string("TensorArray012")};
   std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
 
@@ -425,7 +425,7 @@ TEST_F(tensorArrayRead, tensorArrayRead_infershape_value_shape_num_not_equal_fai
   inferCtxPtr2->SetMarks(marks);
   op_tensor_array_write2.SetInferenceContext(inferCtxPtr2);
   auto ret2 = op_tensor_array_write2.InferShapeAndType();
-  EXPECT_EQ(ret2, ge::GRAPH_FAILED);
+  EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(tensorArrayRead, tensorArrayRead_infershape_shape_empty_failed){
