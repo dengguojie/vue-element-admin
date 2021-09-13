@@ -32,7 +32,6 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-
 static const char* const nms = "NonMaxSuppressionV2";
 static const char* const greater = "Greater";
 static const char* const minimum = "Minimum";
@@ -67,7 +66,6 @@ Status ParseIntValueFromConst(const vector<const NodeDef*>& v_input_const, const
 
 Status FastrcnnPredictionsParams(const std::vector<const google::protobuf::Message*> insideNodes, ge::Operator& op) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
-
   if (opDesc == nullptr) {
     OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
     return FAILED;

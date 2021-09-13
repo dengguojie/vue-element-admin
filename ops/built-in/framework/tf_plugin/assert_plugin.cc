@@ -21,7 +21,6 @@
 #include "register/register.h"
 
 namespace domi {
-
 Status AutoMappingFnAssert(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("input_data", "T");

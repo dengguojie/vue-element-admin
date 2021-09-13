@@ -27,7 +27,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 const int kInputX = 0;
 const int kInputFilter = 1;
 const size_t kPaddingSize = 8;

@@ -21,7 +21,6 @@
 #include "register/register.h"
 
 namespace domi {
-
 REGISTER_CUSTOM_OP("BNInfer")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("BNInfer")
