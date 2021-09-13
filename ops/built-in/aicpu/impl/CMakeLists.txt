@@ -9,6 +9,7 @@ set(local_kernels_src_files
     kernels/normalized/asinh.cc
     kernels/normalized/atan.cc
     kernels/normalized/atanh.cc
+    kernels/normalized/betainc.cc
     kernels/normalized/cache_swap_table.cc
     kernels/normalized/calc_buckets_limit_and_offset.cc
     kernels/normalized/candidate_sampler.cc

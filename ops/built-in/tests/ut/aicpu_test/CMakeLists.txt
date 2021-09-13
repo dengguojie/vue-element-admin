@@ -85,6 +85,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/asinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atanh.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/betainc.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/calc_buckets_limit_and_offset.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/candidate_sampler.cc
@@ -211,8 +212,9 @@ set(_cpu_kernels_ut_files
   testcase/atan/src/atan_utest.cpp
   testcase/atanh/src/atanh_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
-  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
+  testcase/betainc/src/betainc_utest.cpp
   testcase/calc_buckets_limit_and_offset/src/calc_buckets_limit_and_offset_utest.cpp
+  testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
   testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
   testcase/case_condition/src/case_condition_utest.cpp
   testcase/cast/src/cast_utest.cpp
