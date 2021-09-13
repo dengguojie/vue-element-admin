@@ -501,33 +501,3 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest19) {
     auto status = op_desc->InferDataSlice();
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
-
-//padding is SAME in fuzz compile
-TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest21) {
-    ge::op::Conv2DBackpropInput op;
-    op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10, 10},
-        ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10, 10}, ge::FORMAT_NCHW));
-    op.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3},
-        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
-    op.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 3, 3},
-        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
-    auto input_size_shape = ge::Shape({4});
-    ge::TensorDesc desc_input_size(input_size_shape, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
-    ge::Tensor input_size_tensor(desc_input_size);
-    uint8_t input_size_len = input_size_shape.GetShapeSize() * sizeof(int64_t);
-    int64_t data[] = {64, 64, 12, 12};
-    input_size_tensor.SetData(reinterpret_cast<uint8_t*>(data), input_size_len);
-    auto input_size = ge::op::Const("input_size").set_attr_value(input_size_tensor);
-    op.set_input_input_size(input_size);
-    op.SetAttr("_fuzz_build", true);
-    op.SetAttr("strides", {1, 1, 1, 1});
-    op.SetAttr("pads", {0, 0, 0, 0});
-    op.SetAttr("padding", "SAME");
-    op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
-    op.SetAttr("data_format","NCHW");
-    op.SetAttr("offset_x", 0);
-
-    auto status = op.InferShapeAndType();
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-}

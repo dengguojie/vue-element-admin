@@ -1,0 +1,130 @@
+[
+    {"compile_flag": 1},
+    {
+      "op": "MatMul",
+      "case_name": "test_MatMul_ND_False_Fuzzy",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [
+            16,
+            16
+          ],
+          "type": "float16",
+          "value_range": [
+            [
+              -1,
+              1
+            ]
+          ],
+          "data_distribute": "uniform",
+          "name": "x1"
+        },
+        {
+          "format": "ND",
+          "shape": [
+            16,
+            16
+          ],
+          "type": "float16",
+          "value_range": [
+            [
+              -1,
+              1
+            ]
+          ],
+          "data_distribute": "uniform",
+          "name": "x2"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "shape": [
+            16,
+            16
+          ],
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "name": "transpose_x1",
+          "value": false,
+          "type": "bool"
+        },
+        {
+          "name": "transpose_x2",
+          "value": false,
+          "type": "bool"
+        },
+        {
+          "name": "offset_x",
+          "value": 0,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "op": "MatMul",
+      "case_name": "test_MatMul_ND_True_Fuzzy",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [
+            3,
+            1
+          ],
+          "type": "float16",
+          "value_range": [
+            [
+              -1,
+              1
+            ]
+          ],
+          "data_distribute": "uniform",
+          "name": "x1"
+        },
+        {
+          "format": "ND",
+          "shape": [
+            1,
+            4
+          ],
+          "type": "float16",
+          "value_range": [
+            [
+              -1,
+              1
+            ]
+          ],
+          "data_distribute": "uniform",
+          "name": "x2"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "shape": [
+            3,
+            4
+          ],
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "name": "transpose_x1",
+          "value": false,
+          "type": "bool"
+        },
+        {
+          "name": "transpose_x2",
+          "value": false,
+          "type": "bool"
+        }
+      ]
+    }
+  ]

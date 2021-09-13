@@ -54,6 +54,11 @@ DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input", "dep
 _K_MIN_RANGE = 1
 _K_MAX_RANGE = 4096
 _K_DIM_SIZE = 5
+MAX_N_FUZZ_BUILD = 2**31 - 1
+GRADE_N = (0, 1, 3, 7, 15, 31, MAX_N_FUZZ_BUILD)
+GRADE_H = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
+GRADE_W = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
+GRADE_D = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
 
 
 def _get_idx_shape_from_format(obj_format, obj_shape):
@@ -163,8 +168,86 @@ def modify_w_range_max(fmap, filter, dedy, strides, data_format, op_type):
             return dedy_h_max, w_max, is_single_point
 
     err_man.raise_err_specific_user(op_type,
-                                    "w of dedy is too large, only support not larger than {}, "
-                                    "actually is {}".format(str(w_max), str(dedy_w)))
+                                    "Input shape is too large, the minimum tiling may exceed L1_Buffer")
+
+
+def modify_dy_w_range_max_opti(dedy, filter, strides, data_format, op_type):
+    filter_shape = filter.get("ori_shape")
+    filter_format = filter.get("ori_format")
+    _, _, pos_filter_h, pos_filter_w = pos_from_format(filter_format)
+    if filter_shape[pos_filter_h] != 1 or filter_shape[pos_filter_w] != 1:
+        return dedy
+    dedy_format = dedy.get("ori_format")
+    dedy_shape = dedy.get("ori_shape")
+    dedy_range = dedy.get("ori_range")
+    _, _, _, pos_w = pos_from_format(dedy_format)
+    _, _, pos_attr_h, pos_attr_w = pos_from_format(data_format)
+    w_max = _K_MAX_RANGE // (strides[pos_attr_h] * strides[pos_attr_w])
+    if dedy_shape[pos_w] > DYNAMIC_FLAG and w_max < dedy_shape[pos_w]:
+        err_man.raise_err_specific_user(op_type,
+                                        "w of dedy is too large for opti scheme ,w can't larger than {}"
+                                        "actually is {}"
+                                        .format(str(w_max), str(dedy_shape[pos_w])))
+    if w_max < dedy_range[pos_w][1]:
+        warnings.warn("w_range_max of dedy is too large for opti scheme"
+                      "w_range_max will be modified to {}, actually is {}"
+                      .format(str(dedy_range[pos_w][1]), str(w_max)))
+        dedy_range[pos_w][1] = w_max
+    return dedy
+
+
+def correct_conv2d_backprop_range_start(input, filter, dilations, pads, data_format):
+    input_range = input.get("ori_range")
+    input_format = input.get("ori_format")
+    filter_shape = filter.get("ori_shape")
+    filter_format = filter.get("ori_format") 
+    _, _, pos_h, pos_w = pos_from_format(input_format)
+    _, _, pos_filter_h, pos_filter_w = pos_from_format(filter_format)
+    _, _, pos_attr_h, pos_attr_w = pos_from_format(data_format)
+    kh_dilation = dilations[pos_attr_h] * (filter_shape[pos_filter_h] - 1) + 1
+    kw_dilation = dilations[pos_attr_w] * (filter_shape[pos_filter_w] - 1) + 1
+    low_h = kh_dilation - pads[0] - pads[1]
+    low_w = kw_dilation - pads[2] - pads[3]
+    input_range[pos_h][0] = input_range[pos_h][0] if input_range[pos_h][0] > low_h else low_h
+    input_range[pos_w][0] = input_range[pos_w][0] if input_range[pos_w][0] > low_w else low_w
+    return input
+
+
+def get_single_range(grade, shape_value, op_type):
+    if shape_value > grade[-1]:
+        err_man.raise_err_specific_user(op_type,
+                                        "input value {} is out of the range of {}"\
+                                        .format(str(shape_value), str(grade[-1])))
+    if shape_value <= 0:
+        err_man.raise_err_specific_user(op_type,
+                                        "ori_shape should be greater than 0, which is {}".format(shape_value))
+    if shape_value == grade[-1]:
+        return [grade[-2] + 1, grade[-1]]
+    low, high = 1, 1
+    for point in grade:
+        if shape_value > point:
+            low = point + 1
+        if shape_value <= point:
+            high = point
+            break
+    return [low, high]
+
+
+def gen_conv_shape_range(input, op_type):
+    input_shape = input.get("ori_shape")
+    input_format = input.get("ori_format") 
+    pos_n, _, pos_h, pos_w = pos_from_format(input_format)
+    # deal 3d
+    pos_d = input_format.find("D") if len(input_format) == 5 else None
+    input_range = [(input_shape[i], input_shape[i]) for i in range(len(input_shape))]
+    grade_map = {pos_n: GRADE_N, pos_h: GRADE_H, pos_w: GRADE_W, pos_d: GRADE_D}
+    for key, value in grade_map.items():
+        if key is not None:
+            new_range = get_single_range(value, input_shape[key], op_type)
+            input_range[key] = new_range
+    input["ori_range"] = input_range
+    return input
+
 
 class CubeParaProcess:
     """
@@ -1059,7 +1142,7 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
             dx_w_lower = dx_w_upper
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
-        return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
+        return [dy_range[N_DIM], (w_shape[C_DIM], w_shape[C_DIM]),
                 (dx_h_lower, dx_h_upper), (dx_w_lower,  dx_w_upper)], correct_range_flag, new_dy_range
 
     def infer_shape_and_range(self):
@@ -1252,7 +1335,7 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
             dx_w_lower = dx_w_upper
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
-        return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
+        return [dy_range[N_DIM], (w_shape[C_DIM], w_shape[C_DIM]),
                 (dx_h_lower, dx_h_upper), (dx_w_lower,  dx_w_upper)], correct_range_flag, new_dy_range
 
     def infer_shape_and_range(self):
@@ -1430,34 +1513,31 @@ class Conv3dBackpropParaProcess():
         self.y = para_dict.get("ori_tensors").get("y")
         self.input_size = para_dict.get("ori_tensors").get("input_size")
 
-    def _set_conv3dx_dim_range(self, dx_pos, dy_pos, attr_param, dx_range, dy_range):
+    def _set_conv3dx_dim_range(self, dx_pos, dy_pos, attr_param, dx_ori_range, dy_ori_range):
         stride, kernel, pad = attr_param[0], attr_param[1], attr_param[2]
-        low, high = dy_range[dy_pos][0], dy_range[dy_pos][1]
+        low, high = dy_ori_range[dy_pos][0], dy_ori_range[dy_pos][1]
         if self.pad_mode == "VAR":
-            dx_range[dx_pos][0] = stride * (low - 1) + 1
-            dx_range[dx_pos][1] = stride * high
+            range_low = stride * (low - 1) + 1
+            range_high = stride * high
         else:
-            dx_range[dx_pos][0] = stride * (low - 1) + kernel - pad
-            dx_range[dx_pos][1] = stride * (high - 1) + kernel - pad + stride - 1
-        dx_range[dx_pos][0] = max(dx_range[dx_pos][0], _K_MIN_RANGE)
-        if high == -1:
-            dx_range[dx_pos][1] = high
-        else:
-            dx_range[dx_pos][1] = min(dx_range[dx_pos][1], _K_MAX_RANGE)
+            range_low = stride * (low - 1) + kernel - pad
+            range_high = stride * (high - 1) + kernel - pad + stride - 1
+        dx_ori_range[dx_pos] = (max(range_low, _K_MIN_RANGE), min(range_high, _K_MAX_RANGE))
 
-    def get_dx_range(self, dy_range):
+    def get_dx_ori_range(self, dy_ori_range):
         """
-        get dx_range according to dy_range
+        get dx_ori_range according to dy_ori_range
         """
         _, shape_filter_ndhwc = _get_idx_shape_from_format(self.filter["ori_format"],
                                                            self.filter["ori_shape"])
-        _, shape_y_ndhwc = _get_idx_shape_from_format(self.y["ori_format"],
+        idx_y_ndhwc, shape_y_ndhwc = _get_idx_shape_from_format(self.y["ori_format"],
                                                       self.y["ori_shape"])
         idx_out_backprop_ndhwc, shape_out_backprop_ndhwc = _get_idx_shape_from_format(self.out_backprop["ori_format"],
                                                                                       self.out_backprop["ori_shape"])
-        _, filter_d, filter_h, filter_w, _ = shape_filter_ndhwc
+        _, filter_d, filter_h, filter_w, filter_c = shape_filter_ndhwc
         _, dx_d, dx_h, dx_w, _ = shape_y_ndhwc
         idx_out_backprop_n, idx_out_backprop_d, idx_out_backprop_h, idx_out_backprop_w, _ = idx_out_backprop_ndhwc
+        idx_y_n, idx_y_d, idx_y_h, idx_y_w, idx_y_c = idx_y_ndhwc
         stride_d, stride_h, stride_w = \
             self.strides[1], self.strides[2], self.strides[3]
         dilations_d, dilations_h, dilations_w = \
@@ -1467,23 +1547,16 @@ class Conv3dBackpropParaProcess():
         kdext = (filter_d - 1) * dilations_d + 1
         khext = (filter_h - 1) * dilations_h + 1
         kwext = (filter_w - 1) * dilations_w + 1
-        dy_n = shape_out_backprop_ndhwc[idx_out_backprop_n]
 
-        dx_range_ndhw = [1, 1, 1, 1]
-        dx_range_ndhw[0] = [dy_n, dy_n]
-        dx_range_ndhw[1] = [dx_d, dx_d]
-        dx_range_ndhw[2] = [dx_h, dx_h]
-        dx_range_ndhw[3] = [dx_w, dx_w]
+        dx_ori_range = [(1, 1) for i in range(5)]
 
-        if len(dy_range) == _K_DIM_SIZE:
-            dx_range_ndhw[0] = dy_range[idx_out_backprop_n]
-            if dx_d == -1:
-                attr_param_d = [stride_d, kdext, pad_front + pad_back]
-                self._set_conv3dx_dim_range(1, idx_out_backprop_d, attr_param_d, dx_range_ndhw, dy_range)
-            if dx_h == -1:
-                attr_param_h = [stride_h, khext, pad_up + pad_down]
-                self._set_conv3dx_dim_range(2, idx_out_backprop_h, attr_param_h, dx_range_ndhw, dy_range)
-            if dx_w == -1:
-                attr_param_w = [stride_w, kwext, pad_left + pad_right]
-                self._set_conv3dx_dim_range(3, idx_out_backprop_w, attr_param_w, dx_range_ndhw, dy_range)
-        return dx_range_ndhw
+        if len(dy_ori_range) == _K_DIM_SIZE:
+            dx_ori_range[idx_y_n] = dy_ori_range[idx_out_backprop_n]
+            attr_param_d = [stride_d, kdext, pad_front + pad_back]
+            self._set_conv3dx_dim_range(idx_y_d, idx_out_backprop_d, attr_param_d, dx_ori_range, dy_ori_range)
+            attr_param_h = [stride_h, khext, pad_up + pad_down]
+            self._set_conv3dx_dim_range(idx_y_h, idx_out_backprop_h, attr_param_h, dx_ori_range, dy_ori_range)
+            attr_param_w = [stride_w, kwext, pad_left + pad_right]
+            self._set_conv3dx_dim_range(idx_y_w, idx_out_backprop_w, attr_param_w, dx_ori_range, dy_ori_range)
+            dx_ori_range[idx_y_c] = (filter_c * self.groups, filter_c * self.groups)
+        return dx_ori_range

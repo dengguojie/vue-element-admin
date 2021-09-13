@@ -8,6 +8,7 @@ conv2d_backprop_input
 
 from __future__ import absolute_import
 
+from impl.util.util_conv2d import transform_shape_with_format
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
@@ -17,14 +18,19 @@ from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import DepthwiseConv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
-from impl.util.util_cube_dynamic import set_default_para
+from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_w_range_max
+from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
+from impl.util.util_cube_dynamic import set_default_para
 
 NONETYPE = type(None)
 H_DIM = 2
 W_DIM = 3
 ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
+OP_TYPE = "depthwise_conv2d_backprop_input"
+DATA_FORMAT_WHITE_LIST = ["NCHW", "NHWC"]
+TAR_FORMAT = "NCHW"
 
 
 @tbe_register.register_param_generalization("DepthwiseConv2DBackpropInput")
@@ -56,35 +62,30 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
     """
     support_mode = ["keep_rank"]
     if generalize_config["mode"] not in support_mode:
-        err_man.raise_err_specific_user("depthwise_conv2d_backprop_input",
-                                        "invalid generalize mode {}, only support {}".format(
+        err_man.raise_err_specific_user(OP_TYPE, "invalid generalize mode {}, only support {}".format(
                                             str(generalize_config["mode"]), str(support_mode)))
     result = []
     if generalize_config["mode"] == "keep_rank":  # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
         unknow_rank = len(out_backprop["ori_shape"]) == 1 and out_backprop["ori_shape"][0] == -2
         if unknow_rank:
-            err_man.raise_err_specific_user("depthwise_conv2d_backprop_input",
-                                            "not support unknow_rank under mode {}".format(
+            err_man.raise_err_specific_user(OP_TYPE, "not support unknow_rank under mode {}".format(
                                                 generalize_config["mode"]))
         have_range = {"inputs": out_backprop, "outputs": input_grad}
         support_format = ["NCHW", "NHWC"]
         for name, tensor in have_range.items():
             if tensor.get("ori_format") not in support_format:
-                err_man.raise_err_specific_user("depthwise_conv2d_backprop_input",
-                                                "invalid {} ori_format {}, only support {}".format(
+                err_man.raise_err_specific_user(OP_TYPE, "invalid {} ori_format {}, only support {}".format(
                                                     name, str(tensor.get("ori_format")), str(support_format)))
             # only change shape NHW dim to -1, range is already set at infershape
             valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
-                err_man.raise_err_specific_user("depthwise_conv2d_backprop_input",
-                                                "invalid {} ori_shape {}, only support {}d".format(
+                err_man.raise_err_specific_user(OP_TYPE, "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
-            if not valid:
-                err_man.raise_err_specific_user("depthwise_conv2d_backprop_input",
-                                                "invalid {} ori_shape {}, only support {}d".format(
-                                                    name, str(tensor.get("shape")), str(SHAPE_LEN)))
+        if "const_value" not in input_size:
+            err_man.raise_err_specific_user(OP_TYPE, "invalid input_size tensor, need keyword:const_value.")
+        out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE)
+        out_backprop = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format, OP_TYPE)
         # if over l1 size then modify w range
         dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(
             input_grad,
@@ -95,7 +96,7 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
             "depthwise_conv2d_backprop_input")
 
         # get dx_range depends on dy_range
-        dy_range = out_backprop.get("range")
+        dy_range = out_backprop.get("ori_range")
         ori_data_format = out_backprop.get("ori_format")
         ori_paras = {
             "input_size": input_size, "x": out_backprop, "filters": filter, "bias": None, "offset_w": None,
@@ -118,21 +119,19 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
                                                 str(out_backprop.get("shape")), dy_range_nchw[3][1]))
         dx_range_nchw, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
-        input_grad["range"] = [dx_range_nchw[0], [input_grad["shape"][1], input_grad["shape"][1]], dx_range_nchw[2],
-                               dx_range_nchw[3],
-                               [input_grad["shape"][4], input_grad["shape"][4]]]
-        out_backprop["range"] = list(out_backprop["range"])
+        input_size_nchw = transform_shape_with_format(input_size['ori_format'], TAR_FORMAT, input_size["const_value"],
+                                                      DATA_FORMAT_WHITE_LIST)
+        dx_range_nchw[1] = [input_size_nchw[1], input_size_nchw[1]]
         out_backprop["ori_range"] = list(out_backprop["ori_range"])
-        out_backprop["range"][out_backprop.get("format").find("H") - 1] = new_dy_range[2]
         out_backprop["ori_range"][out_backprop.get("ori_format").find("H")] = new_dy_range[2]
-        out_backprop["range"][out_backprop.get("format").find("W") - 1] = new_dy_range[3]
         out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = new_dy_range[3]
+        input_size["const_value"] = None
+        input_size["const_value_range"] = transform_shape_with_format(TAR_FORMAT, data_format,
+                                                                      dx_range_nchw, DATA_FORMAT_WHITE_LIST)
         for name, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
-
+                if tensor.get("ori_format") == TAR_FORMAT else [-1, -1, -1, tensor["ori_shape"][3]]
         result.append([input_size, filter, out_backprop, input_grad, strides, dilations, pads,
                        data_format, kernel_name])
     return result

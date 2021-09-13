@@ -185,9 +185,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general(test
             'ori_shape': (16, 3, 16, 16),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (1, 1), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (3, 3), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (4,),
             'ori_shape': (4,),
@@ -199,9 +197,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general(test
             'ori_shape': (16, 33, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -222,9 +218,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fi
             'ori_shape': (50, 2, 35, 2896),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(32, 64), (1, 1), (32, 64), (1024, 4096), (16, 16)],
-            'ori_range': [(32, 64), (2, 2), (32, 64), (1024, 4096)]
+            'dtype': 'float16'
         }, {
             'shape': (4,),
             'ori_shape': (4,),
@@ -236,9 +230,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fi
             'ori_shape': (50, 2, 26, 2888),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
-            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (2, 1, 10, 10),
             'ori_format': 'NCHW',
@@ -258,9 +250,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg)
             'ori_shape': (1, 8, 3051, 1),
             'ori_format': 'NHWC',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(1, 1), (1, 1), (4, 15), (1024, 4096), (16, 16)],
-            'ori_range': [(1, 1), (4, 15), (1024, 4096), (1, 1)]
+            'dtype': 'float16'
         }, {
             'shape': (4,),
             'ori_shape': (4,),
@@ -272,9 +262,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg)
             'ori_shape': (1, 1, 3040, 1),
             'ori_format': 'NHWC',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(1, 1), (1, 1), (1, 3), (1024, 4096), (16, 16)],
-            'ori_range': [(1, 1), (1, 3), (1024, 4096), (1, 1)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (8, 12, 1, 1),
             'ori_format': 'HWCN',
@@ -294,9 +282,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_ma
             'ori_shape': (6, 2, 2857, 1),
             'ori_format': 'NHWC',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(4, 7), (1, 1), (2, 3), (1024, 4096), (16, 16)],
-            'ori_range': [(4, 7), (2, 3), (1024, 4096), (1, 1)]
+            'dtype': 'float16'
         }, {
             'shape': (4,),
             'ori_shape': (4,),
@@ -308,15 +294,13 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_ma
             'ori_shape': (6, 1, 2857, 1),
             'ori_format': 'NHWC',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(4, 7), (1, 1), (1, 3), (1024, 4096), (16, 16)],
-            'ori_range': [(4, 7), (1, 3), (1024, 4096), (1, 1)]
+            'dtype': 'float16'
         }, {
             'ori_shape': (11, 1, 1, 1),
             'ori_format': 'HWCN',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
-        },  (1, 1, 2, 1), (1, 1, 1, 1), (-1, -1, -1, -1), 'NCHW',
+        },  (1, 1, 2, 1), (1, 1, 1, 1), (4, 5, 0, 0), 'NCHW',
         'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 

@@ -115,22 +115,6 @@ for case in matmul_case_succ:
 
 ut_case.add_cust_test_func(test_func=test_matmul_generalization)
 
-def test_matmul_generalization_nz(test_arg):
-    from impl.dynamic.mat_mul import matmul_generalization
-    input_x1_dynamic = {"ori_shape": (1, 1, 16, 16), "shape": (1, 1, 16, 16),
-                        "range": ((1, 3), (1, 3), (16, 16), (16, 16)),
-                        "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "FRACTAL_NZ"}
-    input_x2_dynamic = {"ori_shape": (1, 1, 16, 16), "shape": (1, 1, 16, 16),
-                        "range": ((1, 3), (1, 3), (16, 16), (16, 16)),
-                        "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "FRACTAL_NZ"}
-    output_dynamic = {"ori_shape": (1, 1, 16, 16), "shape": (1, 1, 16, 16),
-                      "range": ((1, 3), (1, 3), (16, 16), (16, 16)),
-                      "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "FRACTAL_NZ"}
-    matmul_generalization(input_x1_dynamic, input_x2_dynamic, None, {}, output_dynamic,
-                          trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul_generalization_nz",
-                          generalize_config={"mode": "keep_rank"})
-
-ut_case.add_cust_test_func(test_func=test_matmul_generalization_nz)
 
 if __name__ == "__main__":
     with op_context.OpContext("dynamic"):

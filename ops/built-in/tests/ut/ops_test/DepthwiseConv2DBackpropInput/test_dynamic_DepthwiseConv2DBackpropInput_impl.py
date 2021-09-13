@@ -163,9 +163,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general(test_
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (16, 3, 16, 16)
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -176,9 +177,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general(test_
             'ori_shape': (16, 3, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -199,9 +198,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fix
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (50, 2, 35, 2896)
         }, {
             'ori_shape': (2, 1, 10, 10),
             'ori_format': 'NCHW',
@@ -212,9 +212,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fix
             'ori_shape': (50, 2, 26, 2888),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
-            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+            'dtype': 'float16'
         }, {
             'shape': (50, 1, 35, 2896, 16),
             'ori_shape': (50, 2, 35, 2896),
@@ -235,9 +233,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_f
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (3, 1, 3, 3276)
         }, {
             'ori_shape': (1, 1, 16, 10),
             'ori_format': 'NCHW',
@@ -248,9 +247,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_f
             'ori_shape': (3, 1, 1, 3276),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(1, 3), (1, 1), (1, 3), (1024, 4096), (16, 16)],
-            'ori_range': [(1, 3), (1, 1), (1, 3), (1024, 4096)]
+            'dtype': 'float16'
         }, {
             'shape': (3, 1, 3, 3276, 16),
             'ori_shape': (3, 1, 3, 3276),
@@ -271,9 +268,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error(test_arg)
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (16, 3, 16, 16)
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -284,9 +282,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error(test_arg)
             'ori_shape': (16, 3, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -307,9 +303,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two(test_arg)
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (16, 3, 16, 16)
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -320,9 +317,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two(test_arg)
             'ori_shape': (-2,),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -343,9 +338,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error(test_arg):
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (16, 3, 16, 16)
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -356,9 +352,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error(test_arg):
             'ori_shape': (16, 3, 14, 12),
             'ori_format': 'ND',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -379,9 +373,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error(test_arg):
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (16, 3, 16, 16)
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -392,9 +387,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error(test_arg):
             'ori_shape': (16, 3, 14),
             'ori_format': 'ND',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -415,9 +408,10 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_shape_error(test_arg):
         {
             'shape': (4,),
             'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (16, 3, 16, 16)
         }, {
             'ori_shape': (3, 1, 3, 5),
             'ori_format': 'NCHW',
@@ -428,9 +422,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_shape_error(test_arg):
             'ori_shape': (16, 3, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16',
-            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
-            'ori_range': [(16, 32), (3, 33), (8, 16), (8, 16)]
+            'dtype': 'float16'
         }, {
             'shape': (16, 1, 16, 16, 16),
             'ori_shape': (16, 3, 16, 16),
@@ -444,74 +436,6 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_shape_error(test_arg):
     except RuntimeError:
         print("not support shape")
 
-def test_depthwise_conv2d_backprop_input_fuzz_build_tilingcase(test_arg):
-    import json
-    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input
-    from tbe.common.context import get_context
-    from tbe.common.context import op_context
-    with op_context.OpContext("dynamic"):
-        get_context().set_build_type("fuzzily_build")
-        get_context().add_addition("max_kernel_id", -1)
-        missing_info = [{
-                            "inputs": [{
-                                "index": 0,
-                                "tensor": [{
-                                    "range": [
-                                        [1, 1],
-                                        [5, 5],
-                                        [4, 15],
-                                        [641, 767]
-                                    ],
-                                    "shape": [-1, 5, -1, -1]
-                                }]
-                            }]
-                        }, {
-                            "inputs": [{
-                                "index": 0,
-                                "tensor": [{
-                                    "range": [
-                                        [1, 1],
-                                        [5, 5],
-                                        [5, 15],
-                                        [512, 640]
-                                    ],
-                                    "shape": [-1, 5, -1, -1]
-                                }]
-                            }]
-                        }]
-        get_context().add_addition("missing_support_info", json.dumps(missing_info))
-        input_list = [
-            {
-                'shape': (4,),
-                'ori_shape': (4,),
-                'ori_format': 'ND',
-                'format': 'ND',
-                'dtype': 'int32',
-                'range': ()
-            }, {
-                'shape': (5, 1, 6, 14),
-                'ori_shape': (5, 1, 6, 14),
-                'ori_format': 'NCHW',
-                'format': 'NCHW',
-                'dtype': 'float16'
-            }, {
-                'shape': (-1, 1, -1, -1, 16),
-                'ori_shape': (-1, 5, -1, -1),
-                'ori_format': 'NCHW',
-                'format': 'NC1HWC0',
-                'dtype': 'float16',
-                'range': ((1, 1), (1, 1), (4, 15), (512, 767), (16, 16))
-            }, {
-                'shape': (-1, 1, -1, -1, 16),
-                'ori_shape': (-1, 5, -1, -1),
-                'ori_format': 'NCHW',
-                'format': 'NC1HWC0',
-                'dtype': 'float16',
-                'range': ((1, 1), (1, 1), (18, 65), (1036, 1547), (16, 16))
-            }, (1, 1, 4, 2), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW', 'test_conv2d_fuzz_build_tilingcase']
-        depthwise_conv2d_backprop_input(*input_list)
-
-ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_tilingcase)
 ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_support_mode_error)
 ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two)
 ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error)
