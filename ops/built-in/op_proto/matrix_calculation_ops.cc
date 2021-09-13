@@ -1502,10 +1502,10 @@ bool InferBatchMatmulInputNZ(const Operator &op,
                              vector<vector<int64_t>> &output,
                              bool trans_a, bool trans_b,
                              size_t x1_dims, size_t x2_dims) {
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
-  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
-  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc(0);
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc(1);
   vector<vector<int64_t>> x1_data_slice(x1_dims);
   vector<vector<int64_t>> x2_data_slice(x2_dims);
   size_t y_dims = output.size();
@@ -1565,9 +1565,9 @@ bool InferBatchMatmulInputND(const Operator &op,
                              vector<vector<int64_t>> &output,
                              bool trans_a, bool trans_b,
                              size_t x1_dims, size_t x2_dims) {
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
-  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc(0);
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc(1);
   vector<vector<int64_t>> x1_data_slice(x1_dims);
   vector<vector<int64_t>> x2_data_slice(x2_dims);
   size_t y_dims = output.size();
@@ -1621,30 +1621,36 @@ bool InferBatchMatmulInputND(const Operator &op,
 }
 
 bool InferBatchMatmul(const Operator &op) {
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return false);
+  ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc(0);
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
   bool trans_a = false;
-  bool trans_b = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x1", trans_a)) {
+  if (!AttrUtils::GetBool(op_desc, "adj_x1", trans_a)) {
     OpsGetAttrErrReport(opName.GetString(), "transposeA");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transposeA failed!",
             opName.GetString());
     return false;
   }
-  if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x2", trans_b)) {
+
+  bool trans_b = false;
+  if (!AttrUtils::GetBool(op_desc, "adj_x2", trans_b)) {
     OpsGetAttrErrReport(opName.GetString(), "transposeB");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transposeB failed!",
             opName.GetString());
     return false;
   }
 
-  Format x1_format = op.GetInputDescByName("x1").GetFormat();
-  Format x2_format = op.GetInputDescByName("x2").GetFormat();
-  size_t x1_dims = op.GetInputDescByName("x1").GetShape().GetDimNum();
-  size_t x2_dims = op.GetInputDescByName("x2").GetShape().GetDimNum();
+  ge::ConstGeTensorDescPtr tensordesc_x1 = op_desc->GetInputDescPtr(0);
+  ge::ConstGeTensorDescPtr tensordesc_x2 = op_desc->GetInputDescPtr(1);
+  Format x1_format = tensordesc_x1->GetFormat();
+  Format x2_format = tensordesc_x2->GetFormat();
+  const GeShape& shape_x1 = tensordesc_x1->GetShape();
+  const GeShape& shape_x2 = tensordesc_x2->GetShape();
+  size_t x1_dims = shape_x1.GetDimNum();
+  size_t x2_dims = shape_x2.GetDimNum();
   if (x1_format == FORMAT_FRACTAL_NZ) {
     trans_a = !trans_a;
   }
@@ -2019,8 +2025,11 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_out = op_desc->MutableOutputDesc(0);
+  CHECK_PTR_NULL(tensordesc_out, "tensor out desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_x1 = op_desc->MutableInputDesc(0);
+  CHECK_PTR_NULL(tensordesc_x1, "tensor x1 desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_x2 = op_desc->MutableInputDesc(1);
+  CHECK_PTR_NULL(tensordesc_x2, "tensor x2 desc", return GRAPH_FAILED);
   ge::DataType dtype = tensordesc_x1->GetDataType();
 
   GeShape shape_x1(tensordesc_x1->MutableShape());
@@ -2121,8 +2130,11 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_out = op_desc->MutableOutputDesc(0);
+  CHECK_PTR_NULL(tensordesc_out, "tensor out desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_x1 = op_desc->MutableInputDesc(0);
+  CHECK_PTR_NULL(tensordesc_x1, "tensor x1 desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_x2 = op_desc->MutableInputDesc(1);
+  CHECK_PTR_NULL(tensordesc_x2, "tensor x2 desc", return GRAPH_FAILED);
   ge::DataType dtype = tensordesc_x1->GetDataType();
 
   GeShape shape_x1(tensordesc_x1->MutableShape());
@@ -2197,13 +2209,14 @@ IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   OP_LOGD(opName.GetString(), "[BatchMatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
 
-  auto tensordesc_input = op_desc->MutableInputDesc("x1");
+  ge::GeTensorDescPtr tensordesc_input = op_desc->MutableInputDesc(0);
   tensordesc_input->SetOriginFormat(FORMAT_ND);
   tensordesc_input->SetFormat(FORMAT_ND);
 
-  auto tensordesc_input_2 = op_desc->MutableInputDesc("x2");
+  ge::GeTensorDescPtr tensordesc_input_2 = op_desc->MutableInputDesc(1);
   tensordesc_input_2->SetOriginFormat(FORMAT_ND);
   tensordesc_input_2->SetFormat(FORMAT_ND);
 
