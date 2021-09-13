@@ -3933,16 +3933,14 @@ static graphStatus GetStridedSliceInferConstData(const ge::Operator& op, struct 
   bool all_const = true;
   for (auto& item: const_values) {
     // avoid null input error when call GetInputConstData
-    if (slice_desc->MutableInputDesc(item.first) != nullptr) {
-      if (op.GetInputConstData(item.first, const_tensor) != GRAPH_SUCCESS) {
-        OP_LOGI(op.GetName().c_str(), "[%s] is not constant.", item.first.c_str());
-        all_const = false;
-        continue;
-      }
-
+    if (slice_desc->MutableInputDesc(item.first) != nullptr && \
+        op.GetInputConstData(item.first, const_tensor) == GRAPH_SUCCESS) {
       item.second.clear();
       auto dtype = op.GetInputDesc(item.first).GetDataType();
       GetConstValue(op, const_tensor, dtype, item.second);
+    } else {
+      OP_LOGI(op.GetName().c_str(), "[%s] is not constant.", item.first.c_str());
+      all_const = false;
     }
   }
 
