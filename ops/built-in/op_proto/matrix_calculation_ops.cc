@@ -1365,8 +1365,8 @@ bool InferMatmulInputNZ(const Operator &op,
                         bool trans_a, bool trans_b) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
-  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
-  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc(0);
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc(1);
   vector<vector<int64_t>> x1_data_slice = {{}, {}, {}, {}};
   vector<vector<int64_t>> x2_data_slice = {{}, {}, {}, {}};
   AscendString opName;
@@ -1382,7 +1382,7 @@ bool InferMatmulInputNZ(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
           return false;
         }
-        OP_LOGI(opName.GetString(), "infer input in N success");
+        OP_LOGD(opName.GetString(), "infer input in N success");
         return true;
       } else if (i == 1) {
         if (!trans_a) {
@@ -1393,15 +1393,15 @@ bool InferMatmulInputNZ(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
         }
-        OP_LOGI(opName.GetString(), "infer input in M success");
+        OP_LOGD(opName.GetString(), "infer input in M success");
         return true;
       } else {
-        OP_LOGI(opName.GetString(), "cannot support cut in block_n and block_m");
+        OP_LOGD(opName.GetString(), "cannot support cut in block_n and block_m");
         return false;
       }
     }
   }
-  OP_LOGI(opName.GetString(), "no data slice, not need infer input");
+  OP_LOGD(opName.GetString(), "no data slice, not need infer input");
   return false;
 }
 
@@ -1409,8 +1409,9 @@ bool InferMatmulInputND(const Operator &op,
                         vector<vector<int64_t>> &output,
                         bool trans_a, bool trans_b) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
-  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  CHECK_PTR_NULL(op_desc, "op desc", return false);
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc(0);
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc(1);
   vector<vector<int64_t>> x1_data_slice = {{}, {}};
   vector<vector<int64_t>> x2_data_slice = {{}, {}};
   AscendString opName;
@@ -1426,7 +1427,7 @@ bool InferMatmulInputND(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
         }
-        OP_LOGI(opName.GetString(), "infer input in M success");
+        OP_LOGD(opName.GetString(), "infer input in M success");
         return true;
       } else if (i == 1) {
         if (!trans_b) {
@@ -1437,40 +1438,41 @@ bool InferMatmulInputND(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
           return false;
         }
-        OP_LOGI(opName.GetString(), "infer input in N success");
+        OP_LOGD(opName.GetString(), "infer input in N success");
         return true;
       }
     }
   }
-  OP_LOGI(opName.GetString(), "no data slice, not need infer input");
+  OP_LOGD(opName.GetString(), "no data slice, not need infer input");
   return false;
 }
 
 bool InferMatmul(const Operator &op) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
-  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc(0);
   CHECK_PTR_NULL(tensor_desc_y, "tensor y desc", return false);
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
   bool trans_a = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
+  if (!AttrUtils::GetBool(op_desc, "transpose_x1", trans_a)) {
     OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transpose_x1 failed!",
             opName.GetString());
     return false;
   }
   bool trans_b = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", trans_b)) {
+  if (!AttrUtils::GetBool(op_desc, "transpose_x2", trans_b)) {
     OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transpose_x2 failed!",
             opName.GetString());
     return false;
   }
 
-  Format x1_format = op.GetInputDescByName("x1").GetFormat();
-  Format x2_format = op.GetInputDescByName("x2").GetFormat();
+  const Format& x1_format = op_desc->GetInputDescPtr(0)->GetFormat();
+  const Format& x2_format = op_desc->GetInputDescPtr(1)->GetFormat();
+
   if (x1_format == FORMAT_FRACTAL_NZ) {
     trans_a = !trans_a;
   }
@@ -1489,13 +1491,12 @@ bool InferMatmul(const Operator &op) {
     if(!InferMatmulInputNZ(op, y_data_slice, trans_a, trans_b)) {
       return false;
     }
-    return true;
   } else {
     if(!InferMatmulInputND(op, y_data_slice, trans_a, trans_b)) {
       return false;
     }
-    return true;
   }
+  return true;
 }
 
 bool InferBatchMatmulInputNZ(const Operator &op,
