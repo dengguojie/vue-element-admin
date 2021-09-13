@@ -577,6 +577,9 @@ static graphStatus PadV3GradInferShapeAndType(ge::Operator& op, std::vector<int6
   std::vector<std::pair<int64_t, int64_t>> output_range;
   for (size_t dim = 0; dim < input_shape.size(); dim++) {
     auto range_min = input_range[dim].first - paddings[dim * 2] - paddings[dim * 2 + 1];
+    if (range_min < 1) {
+      range_min = 1;
+    }
     auto range_max = input_range[dim].second == -1 ?
                      -1 : input_range[dim].second - paddings[dim * 2] - paddings[dim * 2 + 1];
     output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));

@@ -202,6 +202,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   int64_t not_last_core_numel = 0;
   int64_t last_core_numel = 0;
   int64_t split = 160;
+  int64_t low_split = 48;
+  int64_t high_split = 960;
   auto nc_total = input_shape[0] * input_shape[1];
   auto wh_output_total = output_third * output_fourth;
   core_used = get_core_num(input_shape, compile_params.core_num, wh_output_total);
@@ -209,6 +211,12 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   last_core_numel = nc_total - (core_used - 1) * not_last_core_numel;
   if (output_third > split && output_fourth > split) {
     tiling_key = 1;
+  }
+  else if (output_third > high_split && output_fourth > low_split) {
+	tiling_key = 1;
+  }
+  else if (output_third > low_split && output_fourth > high_split) {
+	tiling_key = 1;
   }
   else {
     tiling_key = 0;
@@ -230,7 +238,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   tiling_params.not_last_core_num = not_last_core_numel;
   tiling_params.last_core_num = last_core_numel;
   return true;
-  }
+}
 
 bool PadV3GradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
                OpRunInfo& run_info) {
@@ -275,7 +283,7 @@ bool PadV3GradTiling(const std::string& op_type, const TeOpParas& op_paras, cons
 
   run_info.block_dim = compile_params.core_num;
   std::vector<int64_t> workspace;
-  int64_t work_space_size = 960000;
+  int64_t work_space_size = 9600000;
   workspace.push_back(work_space_size);
   run_info.workspaces = workspace;
 
