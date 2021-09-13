@@ -99,7 +99,6 @@ uint32_t MemCpyCpuKernel::Compute(CpuKernelContext &ctx) {
             "[MemCopy]: index: [%d], data_size_value: [%llu], input_ptr: [%p] "
             "output_ptr: [%p]",
             i, data_size_value[i], input_ptr, output_ptr);
-        task_flag.store(false);
         continue;
       }
 

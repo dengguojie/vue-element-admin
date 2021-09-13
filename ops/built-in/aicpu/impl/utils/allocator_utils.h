@@ -28,7 +28,7 @@ class AICPU_VISIBILITY CpuKernelAllocatorUtils {
  public:
   static uint32_t UpdateOutputDataTensor(const std::vector<int64_t> &dims,
                                          DataType type, void *data_ptr,
-                                         uint64_t input_data_size,
+                                         int64_t input_data_size,
                                          Tensor *&outputResultTensor);
   static uint32_t CheckOutputDataPtr(const uint64_t data_ptr);
   static uint32_t DeleteOutputDataPtr(const uint64_t data_ptr);
