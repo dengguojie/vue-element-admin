@@ -304,7 +304,7 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddT0MatmulNode(ge::NodePtr hiddenGradN
   // set x1 shape range
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.insert(x1_range.begin(), std::make_pair(hidden_dim * 3, hidden_dim * 3));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
   x1_range.insert(x1_range.begin(), std::make_pair(1, 1));
 
   std::vector<std::pair<int64_t, int64_t>> x2_range;
@@ -357,7 +357,7 @@ vector<ge::NodePtr> DynamicGRUV2GradDFusionPass::AddTLoopNode(map<std::string, g
                                              dynamicGRUGradNode, graph, newNodes, failStatus);
 
   // build list const
-  vector<int64_t> listValue = {0, 1};
+  vector<int64_t> listValue = {0,};
   ge::OpDescPtr uniqueInput = CreateListConstDesc("uniqueInput", listValue);
   ge::NodePtr listConst = AddNewNode(graph, uniqueInput, newNodes, failStatus);
 
@@ -603,8 +603,8 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddHSplitNode(ge::NodePtr dynamicGRUGra
   //
   ge::GeTensorDesc inputTensorDescH = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]).Clone();
   std::vector<std::pair<int64_t, int64_t>> x1_range;
-  x1_range.push_back(std::make_pair(1, 1000));
-  x1_range.push_back(std::make_pair(1, 1000));
+  x1_range.push_back(std::make_pair(1, -1));
+  x1_range.push_back(std::make_pair(1, -1));
   x1_range.push_back(std::make_pair(hidden_dim, hidden_dim));
   inputTensorDescH.SetShapeRange(x1_range);
   sliceDesc->AddInputDesc("x", inputTensorDescH);
@@ -696,13 +696,13 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicGRU
   // set x1 shape range
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.insert(x1_range.begin(), std::make_pair(hidden_dim, hidden_dim));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
 
   std::vector<std::pair<int64_t, int64_t>> x2_range;
   x2_range.insert(x2_range.begin(), std::make_pair(hidden_dim * 3, hidden_dim * 3));
-  x2_range.insert(x2_range.begin(), std::make_pair(1, 10000));
-  x2_range.insert(x2_range.begin(), std::make_pair(1, 10000));
+  x2_range.insert(x2_range.begin(), std::make_pair(1, -1));
+  x2_range.insert(x2_range.begin(), std::make_pair(1, -1));
 
   vector<int64_t> inputx1Dims = {-1, batch, hidden_dim};
   AddInputNodeDesc(matmulDesc, "x1", inputx1Dims, ge::FORMAT_ND, inputx1Dims, ge::FORMAT_ND, inputHType, x1_range);
@@ -741,8 +741,8 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddDgateHSplitNode(ge::NodePtr dynamicG
   // add input
   ge::GeTensorDesc sliceInputDesc = whileNode->GetOpDesc()->GetOutputDesc(12).Clone();
   std::vector<std::pair<int64_t, int64_t>> x1_range;
-  x1_range.push_back(std::make_pair(1, 1000));
-  x1_range.push_back(std::make_pair(1, 1000));
+  x1_range.push_back(std::make_pair(1, -1));
+  x1_range.push_back(std::make_pair(1, -1));
   x1_range.push_back(std::make_pair(hidden_dim * 3, hidden_dim * 3));
   sliceInputDesc.SetShapeRange(x1_range);
   sliceDesc->AddInputDesc("x", sliceInputDesc);
@@ -796,17 +796,17 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::BuildUnique(std::string name, vector<ge
                           failStatus = true; return nullptr);
 
   // input
-  vector<int64_t> placeholder_unique_shape = {2};
+  vector<int64_t> placeholder_unique_shape = {1};
   GeTensorDesc placeholder_unique_desc(GeShape(placeholder_unique_shape), FORMAT_ND, DT_INT32);
+  placeholder_unique_desc.SetOriginShape(GeShape(placeholder_unique_shape));
   uniqueDesc->AddInputDesc("x", placeholder_unique_desc);
 
   // output
   vector<int64_t> output_unique_shape = {-1};
   GeTensorDesc output_unique_desc(GeShape(output_unique_shape), FORMAT_ND, DT_INT32);
-  GeTensorDesc idx_unique_desc(GeShape({2}), FORMAT_ND, DT_INT32);
+  GeTensorDesc idx_unique_desc(GeShape({1}), FORMAT_ND, DT_INT32);
   uniqueDesc->AddOutputDesc("y", output_unique_desc);
   uniqueDesc->AddOutputDesc("idx", idx_unique_desc);
-
   ge::AttrUtils::SetDataType(uniqueDesc, "out_idx", DT_INT32);
 
   // create node
@@ -889,8 +889,8 @@ Status DynamicGRUV2GradDFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicGRUGradN
   ge::GeTensorDesc dgateXDesc = dgateXConcatNode->GetOpDesc()->GetOutputDesc(0).Clone();
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.insert(x1_range.begin(), std::make_pair(hidden_dim * 3, hidden_dim * 3));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 1000));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 1000));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
   dgateXDesc.SetOriginShapeRange(x1_range);
   dgateXDesc.SetShapeRange(x1_range);
 
@@ -949,15 +949,15 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddDwxMatmulNode(ge::NodePtr dynamicGRU
   // set shape range {t, batch, input_dim}
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.insert(x1_range.begin(), std::make_pair(input_dim, input_dim));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
   xtDesc.SetOriginShapeRange(x1_range);
   xtDesc.SetShapeRange(x1_range);
   // set shape range  {t, batch, hiddden_dim *3}
   std::vector<std::pair<int64_t, int64_t>> x2_range;
   x2_range.insert(x2_range.begin(), std::make_pair(hidden_dim * 3, hidden_dim * 3));
-  x2_range.insert(x2_range.begin(), std::make_pair(1, 10000));
-  x2_range.insert(x2_range.begin(), std::make_pair(1, 10000));
+  x2_range.insert(x2_range.begin(), std::make_pair(1, -1));
+  x2_range.insert(x2_range.begin(), std::make_pair(1, -1));
   dgateXDesc.SetOriginShapeRange(x2_range);
   dgateXDesc.SetShapeRange(x2_range);
 
@@ -1412,7 +1412,7 @@ ge::OpDescPtr DynamicGRUV2GradDFusionPass::AddBodyMatmulNode(const string& nodeN
 
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.insert(x1_range.begin(), std::make_pair(hidden_dim * 3, hidden_dim * 3));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
   x1_range.insert(x1_range.begin(), std::make_pair(1, 1));
   inputDesc.SetShapeRange(x1_range);
 
@@ -1491,7 +1491,7 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddInputReshapeNode(ge::NodePtr dynamic
   // shape range
   std::vector<std::pair<int64_t, int64_t>> x1_range;
   x1_range.insert(x1_range.begin(), std::make_pair(hidden_dim, hidden_dim));
-  x1_range.insert(x1_range.begin(), std::make_pair(1, 10000));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
   inputDesc.SetShapeRange(x1_range);
   inputDesc.SetOriginShapeRange(x1_range);
 

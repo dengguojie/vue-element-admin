@@ -1,0 +1,135 @@
+[
+  {
+    "op": "DynamicGRUCellGrad",
+    "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-1, 16],
+         "typical_shape": [16, 16],
+         "shape_range": [[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "dh_pre_t"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, -1, 16],
+         "typical_shape": [1, 16, 16],
+         "shape_range": [[1, 600],[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "h"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, -1, 16],
+         "typical_shape": [1, 16, 16],
+         "shape_range": [[1, 600],[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "dy"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, 16],
+         "typical_shape": [16, 16],
+         "shape_range": [[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "dh"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, -1, 16],
+         "typical_shape": [1, 16, 16],
+         "shape_range": [[1, 600],[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "update"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, -1, 16],
+         "typical_shape": [1, 16, 16],
+         "shape_range": [[1, 600],[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "reset"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, -1, 16],
+         "typical_shape": [1, 16, 16],
+         "shape_range": [[1, 600],[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "new"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, -1, 16],
+         "typical_shape": [1, 16, 16],
+         "shape_range": [[1, 600],[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "hidden_new"
+       },
+       {
+         "format": "ND",
+         "shape": [-1, 16],
+         "typical_shape": [16, 16],
+         "shape_range": [[1, 600]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "init_h"
+       },
+       {
+         "format": "ND",
+         "shape": [1],
+         "typical_shape": [1],
+         "shape_range": [[1]],
+         "type": "int32",
+         "value_range": [[1, 1]],
+         "data_distribute" : "uniform",
+         "name": "t_state"
+       }
+    ],
+    "output_desc": [
+      {
+         "format": "ND",
+         "shape": [16, 16],
+         "type": "float16",
+         "name": "dw_input"
+      },
+	  {
+         "format": "ND",
+         "shape": [1, 16, 48],
+         "type": "float16",
+         "name": "dw_hidden"
+      },
+	  {
+         "format": "ND",
+         "shape": [1, 16, 16],
+         "type": "float16",
+         "name": "db_input"
+      }
+    ],
+    "attr": [
+	 {
+	 "value": "zrh",
+	 "type": "string",
+	 "name": "gate_order"
+	 }
+	],
+    "case_name": "test_DynamicGRUCellGrad_000"
+  }
+]
