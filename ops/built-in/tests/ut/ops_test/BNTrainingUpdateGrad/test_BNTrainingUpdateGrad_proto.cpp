@@ -39,17 +39,6 @@ TEST_F(BNTrainingUpdateGrad, bn_training_update_grad_test_1) {
 
   op.UpdateInputDesc("grads", create_desc({2,4,6,6,16}, ge::DT_FLOAT));
   op.UpdateInputDesc("x", create_desc({2,4,6,6,16}, ge::DT_FLOAT));
-  op.UpdateInputDesc("batch_variance", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
-TEST_F(BNTrainingUpdateGrad, bn_training_update_grad_test_2) {
-  ge::op::BNTrainingUpdateGrad op;
-
-  op.UpdateInputDesc("grads", create_desc({2,4,6,6,16}, ge::DT_FLOAT));
-  op.UpdateInputDesc("x", create_desc({2,4,6,6,16}, ge::DT_FLOAT));
   op.UpdateInputDesc("batch_mean", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
   op.UpdateInputDesc("batch_variance", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
 

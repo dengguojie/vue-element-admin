@@ -171,13 +171,11 @@ void ConvSliceInfoCalBase::QuantAndRequantSplitInfoDel(vector<AxisSplitMap> &spl
     return;
 }
 
-// stridewrite node need to del weight input cout axis and fmap input h/w axis
+// stridewrite node need to del weight input cout axis
 void ConvSliceInfoCalBase::StrideWriteSplitInfoDel(vector<AxisSplitMap> &split_maps)
 {
     OP_LOGD("begin stride write split info del");
     ConvDelSplitInfoByInputIdxAndAxis(split_maps, CONV_SECOND_INPUT_IDX, OUTPUT_COUT_AXIS);
-    ConvDelSplitInfoByInputIdxAndAxis(split_maps, CONV_FIRST_INPUT_IDX, INPUT_H_AXIS);
-    ConvDelSplitInfoByInputIdxAndAxis(split_maps, CONV_FIRST_INPUT_IDX, INPUT_W_AXIS);
     OP_LOGD("end stride write split info del");
     return;
 }
