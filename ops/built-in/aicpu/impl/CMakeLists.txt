@@ -55,6 +55,7 @@ set(local_kernels_src_files
     kernels/normalized/round.cc
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
+    kernels/normalized/sign.cc
     kernels/normalized/slice_write.cc
     kernels/normalized/softmaxv2.cc
     kernels/normalized/sparse_to_dense.cc
