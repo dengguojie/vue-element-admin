@@ -1736,7 +1736,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                 attrs={'width_out': in_tensor0.op.attrs["width_out"]})
         return c_add_vector
 
-    def remove_pad(res, conv_shape):
+    def remove_pad(res, conv_shape, invalid_data_rm_flag=False):
         """
         remove pad
         Parameters
@@ -1749,11 +1749,18 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         -------
         res_remove_pad tensor
         """
-        with tvm.tag_scope('conv_vector_remove_pad'):
-            res_tensor = tvm.compute(conv_shape,
-                                     lambda batch, cout1, howo, cout0:
-                                     res(batch, cout1, howo, cout0),
-                                     name=get_name_with_suffix_num('remove_pad_cc'))
+        if invalid_data_rm_flag:
+            with tvm.tag_scope('conv_vector_remove_pad'):
+                res_tensor = tvm.compute(res.shape,
+                                         lambda batch, cout1, howo, cout0:
+                                         res(batch, cout1, howo, cout0),
+                                         name=get_name_with_suffix_num('invalid_conv2d_rmpad'))
+        else:
+            with tvm.tag_scope('conv_vector_remove_pad'):
+                res_tensor = tvm.compute(conv_shape,
+                                        lambda batch, cout1, howo, cout0:
+                                        res(batch, cout1, howo, cout0),
+                                        name=get_name_with_suffix_num('remove_pad_cc'))
         return res_tensor
 
     def remove_pad_quant_dsl(res, conv_shape, invalid_data_rm_flag, params_dict=None):
@@ -2547,7 +2554,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             res_c = bias_add(res_c, bias_tensor)
         return res_c
 
-    res_remove_pad = remove_pad(res, conv_shape)
+    res_remove_pad = remove_pad(res, conv_shape, invalid_data_rm_flag)
 
     if lxfusion_enable_flag:
         tensor_list[-1] = res_remove_pad

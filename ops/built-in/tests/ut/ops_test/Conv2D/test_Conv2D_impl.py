@@ -6,6 +6,7 @@ from op_test_frame.ut import OpUT
 import conv2D_ut_testcase as tc
 from impl.conv2d import conv2d_compute
 from impl.conv2d import get_op_support_info
+from tbe.dsl.compute.conv_compute import conv
 
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
@@ -361,6 +362,42 @@ def test_conv2d_split_info_split_bias(test_arg):
     get_op_support_info(*input_list)
 print("adding conv2d test_conv2d_split_info_split_bias testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_split_info_split_bias)
+
+def test_invalid_data_rm_1(test_arg):
+    inputs = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8",
+                             attrs={"ori_shape": (1, 32, 8, 8), "format": "NCHW", "ori_fomat": "NCHW"})
+    weights = tvm.placeholder((4, 2, 16, 32), name="weight", dtype="int8",
+                              attrs={"ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "NCHW"})
+    para_dict = {'pad_h': [0, 0], 'pad_w': [0, 0], 'stride_h': 2, 'stride_w': 2, 'dilate_h': 1, 'dilate_w': 1,
+                 'offset_x': 0, 'filter_h': 3, 'filter_w': 3, 'bias_tensor': None, 'offset_w_tensor': None,
+                 'fusion_para': {'fmap_l1_addr_flag': -1, 'fmap_l1_valid_size': -1, 'slice_offset': []},
+                 'kernel_name': 'te_fused_op_conv2d_trans_data_27b023e523088153_7d02bbc69c3cd8f9_0', 'group': 1,
+                 'enlarge': 1, 'c1_opt': 1, 'cout1_opt': 1, 'group_opt': 1, 'a_shape': [100, 1, 15, 33, 16],
+                 'weight_fracz_shape': [9, 1, 16, 16], 'weight_ori_shape_nchw': [1, 16, 3, 3],
+                 'multi_conv2d_fusion_flag': False}
+    optim_dict = {'c0_optim_flg': False, 'use_v200_c04_flg': False, 'v220_c04_mode': 'disabled',
+                  'invalid_data_rm': True}
+    res = conv(inputs, weights, para_dict, optim_dict, dsl_flag=False)
+print("adding conv2d test_invalid_data_rm_1 testcase")
+ut_case.add_cust_test_func(test_func=test_invalid_data_rm_1)  
+
+def test_invalid_data_rm_2(test_arg):
+    inputs = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8",
+                             attrs={"ori_shape": (1, 32, 8, 8), "format": "NCHW", "ori_fomat": "NCHW"})
+    weights = tvm.placeholder((4, 2, 16, 32), name="weight", dtype="int8",
+                              attrs={"ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "NCHW"})
+    para_dict = {'pad_h': [0, 0], 'pad_w': [0, 0], 'stride_h': 2, 'stride_w': 2, 'dilate_h': 1, 'dilate_w': 1,
+                 'offset_x': 0, 'filter_h': 3, 'filter_w': 3, 'bias_tensor': None, 'offset_w_tensor': None,
+                 'fusion_para': {'fmap_l1_addr_flag': -1, 'fmap_l1_valid_size': -1, 'slice_offset': []},
+                 'kernel_name': 'te_fused_op_conv2d_trans_data_27b023e523088153_7d02bbc69c3cd8f9_0', 'group': 1,
+                 'enlarge': 1, 'c1_opt': 1, 'cout1_opt': 1, 'group_opt': 1, 'a_shape': [100, 1, 15, 33, 16],
+                 'weight_fracz_shape': [9, 1, 16, 16], 'weight_ori_shape_nchw': [1, 16, 3, 3],
+                 'multi_conv2d_fusion_flag': False}
+    optim_dict = {'c0_optim_flg': False, 'use_v200_c04_flg': False, 'v220_c04_mode': 'disabled',
+                  'invalid_data_rm': False}
+    res = conv(inputs, weights, para_dict, optim_dict, dsl_flag=False)
+print("adding conv2d test_invalid_data_rm_2 testcase")
+ut_case.add_cust_test_func(test_func=test_invalid_data_rm_2)  
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])

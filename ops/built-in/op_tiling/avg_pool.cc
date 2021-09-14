@@ -28,6 +28,9 @@
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
+#include "graph/node.h"
+#include "graph/op_desc.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 /*
@@ -125,7 +128,7 @@ static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num)
   param.last_core_ele = total_ele - (param.act_core_num - 1) * param.one_core_ele;
 }
 
-static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape, int32_t ub_ele, int32_t core_num,
+static void CalTilingParam(TilingParam& param, const GeShape &input_shape, int32_t ub_ele, int32_t core_num,
                           int32_t ksize_h, int32_t ksize_w, int32_t strides_h, int32_t strides_w, int32_t padding)
 {
   if (padding == 0) {
@@ -148,26 +151,32 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.pad_r = 0;
   }
 
+  int64_t input_shape_n = input_shape.GetDim(0);
+  int64_t input_shape_c1 = input_shape.GetDim(1);
+  int64_t input_shape_h = input_shape.GetDim(2);
+  int64_t input_shape_w = input_shape.GetDim(3);
+  int64_t input_shape_c0 = input_shape.GetDim(4);
+
   int32_t one_fourth_ub_ele = ub_ele / 4;
-  int32_t total_ele = input_shape[0] * input_shape[1];
+  int32_t total_ele = input_shape_n * input_shape_c1;
   CalCoreNum(param, total_ele, core_num);
-  if (param.pad_h * param.pad_w * input_shape[4] <= one_fourth_ub_ele) {
+  if (param.pad_h * param.pad_w * input_shape_c0 <= one_fourth_ub_ele) {
     param.tiling_mode = 1;
-    param.c_factor = one_fourth_ub_ele / (param.pad_h * param.pad_w * input_shape[4]);
+    param.c_factor = one_fourth_ub_ele / (param.pad_h * param.pad_w * input_shape_c0);
     param.one_core_loop_num = param.one_core_ele / param.c_factor;
     param.one_core_loop_left = param.one_core_ele % param.c_factor;
     param.last_core_loop_num = param.last_core_ele / param.c_factor;
     param.last_core_loop_left = param.last_core_ele % param.c_factor;
-  } else if (ksize_h * param.pad_w * input_shape[4] <= one_fourth_ub_ele) {
+  } else if (ksize_h * param.pad_w * input_shape_c0 <= one_fourth_ub_ele) {
     param.tiling_mode = 2;
-    param.h_factor = (one_fourth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
+    param.h_factor = (one_fourth_ub_ele / (param.pad_w * input_shape_c0) - ksize_h) / strides_h + 1;
     param.one_core_loop_num = param.output_h / param.h_factor;
     param.one_core_loop_left = param.output_h % param.h_factor;
     param.last_core_loop_num = param.one_core_loop_num;
     param.last_core_loop_left = param.one_core_loop_left;
   } else {
     param.tiling_mode = 3;
-    param.w_factor = (one_fourth_ub_ele / input_shape[4] / ksize_h - ksize_w) / strides_w + 1;
+    param.w_factor = (one_fourth_ub_ele / input_shape_c0 / ksize_h - ksize_w) / strides_w + 1;
     param.one_core_loop_num = param.output_w / param.w_factor;
     param.one_core_loop_left = param.output_w % param.w_factor;
     param.last_core_loop_num = param.one_core_loop_num;
@@ -192,18 +201,26 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
                          utils::OpRunInfo& run_info)
 {
   OP_LOGI(op_type.c_str(), "AvgPoolTilingVector running.");
-  if (op_paras.GetInputsSize() == 0 || op_paras.GetInputDesc(0).GetShape().GetDimNum() == 0) {
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
+  if (input_desc == nullptr) {
     return false;
   }
-  ge::Format input_format = op_paras.GetInputDesc(0).GetFormat();
+  const GeShape &input_shape = input_desc->GetShape();
+  ge::Format input_format = input_desc->GetFormat();
   OP_TILING_CHECK(
     input_format != ge::FORMAT_NC1HWC0,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s",
                                     ge::TypeUtils::FormatToSerialString(input_format).c_str()),
     return false);
-  vector<int64_t> input_shape = op_paras.GetInputDesc(0).GetShape().GetDims();
+
+  ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  if (output_desc == nullptr) {
+    return false;
+  }
+  GeShape &output_shape = output_desc->MutableShape();
   OP_TILING_CHECK(
-    input_shape.size() != 5,
+    input_shape.GetDimNum() != 5,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %lu",
             op_paras.GetInputDesc(0).GetShape().GetDimNum()),
     return false);
@@ -215,32 +232,46 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   int32_t strides_h = 1;
   int32_t strides_w = 1;
   int32_t padding = 0;
-  const map<string, int32_t&> compile_params = {
-    {"ub_ele", ub_ele}, {"core_num", core_num}, {"ksize_h", ksize_h}, {"ksize_w", ksize_w},
-    {"strides_h", strides_h}, {"strides_w", strides_w}, {"padding", padding}
-  };
-  for (auto& param : compile_params) {
-    const auto& name = param.first;
-    OP_LOGD(op_type.c_str(), "GetCompileInfo %s.", name.c_str());
-    OP_TILING_CHECK(
-      !GetCompileInfo<int32_t>(op_info, name, param.second),
-          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo %s failed", name.c_str()),
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "ub_ele", ub_ele),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo ub_ele failed"),
           return false);
-    OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
-  }
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "ub_ele", ub_ele),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo ub_ele failed"),
+          return false);
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "core_num", core_num),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo core_num failed"),
+          return false);
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "ksize_h", ksize_h),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo ksize_h failed"),
+          return false);
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "ksize_w", ksize_w),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo ksize_w failed"),
+          return false);
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "strides_h", strides_h),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo strides_h failed"),
+          return false);
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "strides_w", strides_w),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo strides_w failed"),
+          return false);
+  OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, "padding", padding),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo padding failed"),
+          return false);
 
   TilingParam param;
-  param.input_h = input_shape[2];
-  param.input_w = input_shape[3];
+  param.input_h = input_shape.GetDim(2);
+  param.input_w = input_shape.GetDim(3);
   OP_TILING_CHECK(
     (padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w)),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Input height or width must greater than or equal to ksize when padding mode is valid."),
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+          "Input height or width must greater than or equal to ksize when padding mode is valid."),
         return false);
   int32_t one_fourth_ub_ele = ub_ele / 4;
   OP_TILING_CHECK(
-    (one_fourth_ub_ele / input_shape[4] / ksize_h < ksize_w),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
+    (one_fourth_ub_ele / input_shape.GetDim(4) / ksize_h < ksize_w),
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+          "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
         return false);
+
   CalTilingParam(param, input_shape, ub_ele, core_num, ksize_h, ksize_w, strides_h, strides_w, padding);
   SetTilingParam(param, run_info);
   PrintTilingParam(param);
@@ -249,17 +280,29 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   for (auto i : workspace){
     run_info.AddWorkspace(i);
   }
+
   OP_LOGI(op_type.c_str(), "AvgPoolTiling run success.");
   return true;
 }
 
 bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                   utils::OpRunInfo& runInfo) {
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+  ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
+  if (input_desc == nullptr) {
+    return false;
+  }
+  const GeShape &input_shape = input_desc->GetShape();
+  ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  if (output_desc == nullptr) {
+    return false;
+  }
+  GeShape &output_shape = output_desc->MutableShape();
+
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
-  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 ||
-      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0){
+  if (input_shape.GetDimNum() == 0 || output_shape.GetDimNum() == 0){
     return false;
   }
   std::vector<std::string> varMap;
@@ -267,18 +310,18 @@ bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, c
 
   std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(nDim));
+    var_value.insert(var_value.end(), input_shape.GetDim(nDim));
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(hDim));
-    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(hDim));
+    var_value.insert(var_value.end(), input_shape.GetDim(hDim));
+    var_value.insert(var_value.end(), output_shape.GetDim(hDim));
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(wDim));
-    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(wDim));
+    var_value.insert(var_value.end(), input_shape.GetDim(wDim));
+    var_value.insert(var_value.end(), output_shape.GetDim(wDim));
   }
 
-  return cube_tiling(opType, opParas.GetInputDesc(0).GetShape().GetDims(), var_value, opCompileInfo, runInfo);
+  return cube_tiling(opType, input_shape.GetDims(), var_value, opCompileInfo, runInfo);
 }
 // register tiling interface of the avgpool
 bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
@@ -330,6 +373,7 @@ bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const
   } else {
     result = AvgPoolTilingVector(opType, opParas, opInfo, runInfo);
   }
+
   return result;
 }
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(AvgPool, AvgPoolTiling);

@@ -87,6 +87,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_requant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_bnreduce_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_requant_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_clipByValue_fusion_pass.cc
