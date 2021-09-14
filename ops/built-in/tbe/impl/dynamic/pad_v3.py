@@ -48,6 +48,7 @@ MODE1 = 1
 MODE2 = 2
 # compute big last axis
 MODE3 = 3
+MODE4 = 4
 # judge how much ub size to fill the tensor
 THRESHOLD_VALUE = 8192
 BLOCK = 32
@@ -444,15 +445,17 @@ class PadV3Init(object):
         """
 
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
-            if not self.constant_values:
-                self.pad_scalar.set_as(0)
-            else:
-                self.get_pad_scalar()
             self.tiling_args()
             self.core_schedule_args(core_index)
-            self.fill_gm_output_tensor(core_index)
-            self.tik_instance.block_barrier(self.sync_workspace)
-            self.do_pad()
+            with self.tik_instance.if_scope(self.tiling_key != MODE4):
+                if not self.constant_values:
+                    self.pad_scalar.set_as(0)
+                else:
+                    self.get_pad_scalar()
+                self.fill_gm_output_tensor(core_index)
+                self.tik_instance.block_barrier(self.sync_workspace)
+            self.do_pad(core_index)
+
 
     def get_output_outer_idx(self, in_idx, outer_num=5):
         """
@@ -1248,7 +1251,46 @@ class PadV3Init(object):
                 with self.tik_instance.if_scope(self.core_outer_num % 2 == 1):
                     _run_one_outer(self.core_outer_num - 1, ping_ub_list)
 
-    def do_pad(self):
+    def do_tiling_key_mode_4(self, core_index):
+        total_output_tensor = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor', init_value=1)
+        total_output_tensor_each_core = self.tik_instance.Scalar(dtype='int32',
+                                                                 name='total_output_tensor_each_core')
+        offset_gm = self.tik_instance.Scalar(dtype='int32', name='offset_gm')
+        align_burst = self.tik_instance.Scalar(dtype='int32', name='align_burst')
+        for ele in self.tiling_output_shape:
+            total_output_tensor.set_as(total_output_tensor * ele)
+        block = self.tik_instance.Scalar(dtype='int32')
+        block.set_as(BLOCK // 2)
+        core_nums = self.tik_instance.Scalar(dtype='int32')
+        core_nums.set_as(self.core_nums)
+        total_output_tensor_each_core.set_as((total_output_tensor - 1) // core_nums + 1)
+        with self.tik_instance.for_range(0, BLOCK) as i:
+            with self.tik_instance.if_scope(total_output_tensor_each_core < block):
+                core_nums.set_as(core_nums - 1)
+                total_output_tensor_each_core.set_as((total_output_tensor - 1) // core_nums + 1)
+        total_output_tensor_each_core.set_as(((total_output_tensor_each_core - 1) // block + 1) * block)
+        core_nums.set_as((total_output_tensor - 1) // total_output_tensor_each_core + 1)
+        with self.tik_instance.if_scope(core_index < core_nums):
+            with self.tik_instance.new_stmt_scope():
+                move_ub = self.tik_instance.Tensor(dtype=self.inner_dtype, shape=(self.ub_number,), name='move_ub',
+                                                   scope=tik.scope_ubuf)
+                offset_gm.set_as(core_index * total_output_tensor_each_core)
+                with self.tik_instance.if_scope(total_output_tensor_each_core // self.ub_number > 0):
+                    with self.tik_instance.for_range(0, total_output_tensor_each_core // self.ub_number) as i:
+                        self.tik_instance.data_move(move_ub, self.input_gm[offset_gm + i * self.ub_number], 0, 1,
+                                                    self.ub_number // block, 0, 0)
+                        self.tik_instance.data_move(self.output_gm[offset_gm + i * self.ub_number], move_ub, 0, 1,
+                                                    self.ub_number // block, 0, 0)
+                with self.tik_instance.if_scope(total_output_tensor_each_core % self.ub_number > 0):
+                    align_burst.set_as(((total_output_tensor_each_core % self.ub_number) - 1) // block + 1)
+                    self.tik_instance.data_move(move_ub, self.input_gm[offset_gm + total_output_tensor_each_core //
+                                                                       self.ub_number * self.ub_number], 0, 1,
+                                                align_burst, 0, 0)
+                    self.tik_instance.data_move(self.output_gm[offset_gm + total_output_tensor_each_core //
+                                                                       self.ub_number * self.ub_number], move_ub, 0, 1,
+                                                align_burst, 0, 0)
+
+    def do_pad(self, core_index):
         """
         do_pad with different tiling key
         """
@@ -1268,6 +1310,10 @@ class PadV3Init(object):
             # use vnchw to pad_v3, cut by 0-2 dims
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_3()
+        with self.tik_instance.if_scope(self.tiling_key == MODE4):
+            # use vnchw to pad_v3, paddings are all 0
+            with self.tik_instance.new_stmt_scope():
+                self.do_tiling_key_mode_4(core_index)
 
     def pad_compute(self, outer_compile_info=None):
         """
@@ -1346,4 +1392,3 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
     obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
 
     return obj.pad_compute()
-
