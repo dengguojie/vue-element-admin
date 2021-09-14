@@ -30,7 +30,6 @@
 
 namespace optiling {
 namespace utils {
-
 namespace {
 static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
     {1, 32767},
@@ -46,23 +45,55 @@ static const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN{
 
 static const std::string ALL_UNKNOWN_PATTERN = "999";
 static const std::string MILAN = "Ascend920";
+
+static const std::int32_t DTYPE_UINT1 = 100;
+static const std::int32_t ELEMENT_IN_BLOCK_DEFAULT = 16;
+static const std::int32_t ELEMENT_IN_BLOCK_B32 = 8;
+static const std::int32_t ELEMENT_IN_BLOCK_B8 = 32;
+static const std::int32_t ELEMENT_IN_BLOCK_B64 = 4;
+static const std::int32_t ELEMENT_IN_BLOCK_UINT1 = 256;
+
+static const std::int32_t ONLY_CONST_TILING_INDEX = 0;
+static const std::int32_t IS_SUPPORT_BROADCAST_INDEX = 2;
+static const std::int32_t USE_SPECIAL_PATTERN_INDEX = 3;
+static const std::int32_t IS_SUPPORT_ABSORBABLE_BROADCAST_INDEX = 4;
+static const std::int32_t IS_UNKNOWN_RANK_INDEX = 5;
+static const std::int32_t HAS_ALL_UNKNOWN_INDEX = 6;
+
+static const std::int32_t MAX_UB_INDEX = 2;
+static const std::int32_t CUR_CORE_INDEX = 0;
+
+static const std::int32_t MAX_AVAILABLE_UB_INDEX = 2;
+static const std::int32_t MAX_AVAILABLE_UB_DB_INDEX = 3;
+
+static const std::int32_t NUM_TEN = 10;
+static const std::int32_t NUM_TWO = 2;
+static const std::int32_t NUM_ONE_HUNDRED = 100;
+
+static const std::int32_t MIN_SPLIT_FACTOR = 2;
+static const std::int32_t SPLIT_FACTOR_STEP = 2;
+
+static const std::int32_t BASE_KEY_NUM = 200000000;
+static const std::int32_t ORIGINAL_NO_DB_TILING_LEN = 7;
+
+static const std::int32_t MIN_BLOCK_CUT_INDEX = 20000;
 }
 
 const int64_t BGetElementByType(const ge::DataType& dtype) {
   // element nums in one block, default, fp16, int16, uin16
-  int64_t element_in_block = 16;
+  int64_t element_in_block = ELEMENT_IN_BLOCK_DEFAULT;
   if (dtype == ge::DataType::DT_FLOAT || dtype == ge::DataType::DT_INT32 || dtype == ge::DataType::DT_UINT32) {
     // element nums in one block by b32
-    element_in_block = 8;
+    element_in_block = ELEMENT_IN_BLOCK_B32;
   } else if (dtype == ge::DataType::DT_INT8 || dtype == ge::DataType::DT_UINT8 || dtype == ge::DataType::DT_BOOL) {
     // element nums in one block by b8
-    element_in_block = 32;
+    element_in_block = ELEMENT_IN_BLOCK_B8;
   } else if (dtype == ge::DataType::DT_INT64 || dtype == ge::DataType::DT_UINT64) {
     // element nums in one block by b64
-    element_in_block = 4;
-  }else if (dtype == 100) {
+    element_in_block = ELEMENT_IN_BLOCK_B64;
+  }else if (dtype == DTYPE_UINT1) {
     // element nums in one block by uint1
-    element_in_block = 256;
+    element_in_block = ELEMENT_IN_BLOCK_UINT1;
   }
   return element_in_block;
 }
@@ -73,18 +104,19 @@ bool Broadcast::Init() {
   V_CHECK_GE(flag_info.size(), 1,
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info error"),
              return false);
-  only_const_tiling = flag_info[0];
+  only_const_tiling = flag_info[ONLY_CONST_TILING_INDEX];
   if (!only_const_tiling) {
     const size_t flag_info_size = 7;
     V_CHECK_EQ(flag_info.size(), flag_info_size,
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info must be _only_const_tiling, _is_const_shapes, "
-                                                        "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast"),
+                                                        "_is_support_broadcast, _use_special_pattern,"
+                                                        " _is_support_absorbable_broadcast"),
                return false);
-    compileInfo.is_support_broadcast = flag_info[2];
-    compileInfo.use_special_pattern = flag_info[3];
-    compileInfo.is_support_absorbable_broadcast = flag_info[4];
-    compileInfo.is_unknown_rank = flag_info[5];
-    compileInfo.has_all_unknown = flag_info[6];
+    compileInfo.is_support_broadcast = flag_info[IS_SUPPORT_BROADCAST_INDEX];
+    compileInfo.use_special_pattern = flag_info[USE_SPECIAL_PATTERN_INDEX];
+    compileInfo.is_support_absorbable_broadcast = flag_info[IS_SUPPORT_ABSORBABLE_BROADCAST_INDEX];
+    compileInfo.is_unknown_rank = flag_info[IS_UNKNOWN_RANK_INDEX];
+    compileInfo.has_all_unknown = flag_info[HAS_ALL_UNKNOWN_INDEX];
   }
   if (compile_info.contains("_soc_version")) {
     try {
@@ -150,7 +182,7 @@ void Broadcast::TrySwitchToPerfPattern() {
       pattern_key += (base * BROADCAST_BASE_KEY);
       b_axis = i;
     }
-    base /= 10;
+    base /= NUM_TEN;
   }
   if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
@@ -254,7 +286,7 @@ void Broadcast::MulTrySwitchToPerfPattern() {
       } else {
         pattern_key += base;
       }
-      base /= 10;
+      base /= NUM_TEN;
     }
     if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
       s_pattern = SPECIAL_PATTERN.at(pattern_key);
@@ -295,7 +327,7 @@ void Broadcast::MulTrySwitchToPerfPatternMilan() {
     } else {
       pattern_key += base;
     }
-    base /= 10;
+    base /= NUM_TEN;
   }
   if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
@@ -378,7 +410,7 @@ void GenOutputAndBrcAxis(std::vector<int64_t>& out_shape, std::vector<bool>& brc
 
 int64_t FindAlignFactor(const int64_t max_ub_shape, const int64_t ele_in_block) {
   int64_t split_factor = -1;
-  for (int64_t f = 2; f <= ele_in_block; f += 2) {
+  for (int64_t f = MIN_SPLIT_FACTOR; f <= ele_in_block; f += SPLIT_FACTOR_STEP) {
     if ((max_ub_shape * f) % ele_in_block == 0) {
       split_factor = f;
       break;
@@ -395,12 +427,14 @@ bool Broadcast::CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vect
     const auto& base_info = compile_info.at("_base_info").at(ALL_UNKNOWN_PATTERN);
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+               "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
                return false);
-    cur_core = base_info[0];
-    max_ub = base_info[2];
+    cur_core = base_info[CUR_CORE_INDEX];
+    max_ub = base_info[MAX_UB_INDEX];
   } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+    "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
   int64_t b_axis = 0;
@@ -457,7 +491,7 @@ void Broadcast::GenerateAllUnknown(const std::vector<int64_t>& out_shape, const 
   int64_t shape_len = fusion_shapes[0].size();
   int64_t fusion_len = output_shape.size();
   output_shape.clear();
-  size_t start = split_axis == -1 ? fusion_len - 1 - shape_len : fusion_len - shape_len - 2;
+  size_t start = split_axis == -1 ? fusion_len - 1 - shape_len : fusion_len - shape_len - NUM_TWO;
   for (size_t i = 0; i < start; i++) {
     for (size_t j = 0; j < input_num; j++) {
       input_shapes[j][i] = 1;
@@ -502,7 +536,7 @@ bool Broadcast::TryMatchAllUnknown() {
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
   int64_t ele_in_block = BGetElementByType(in_type);
   bool ret = true;
-  if ((output_shape.size() - 1) > shape_len && shape_len > 2 && output_size % ele_in_block == 0) {
+  if ((output_shape.size() - 1) > shape_len && shape_len > NUM_TWO && output_size % ele_in_block == 0) {
     ret = CalcSplitFactor(out_shape, brc_axis, ele_in_block, split_axis, split_factor);
   }
   int64_t fuse_last = 0;
@@ -572,8 +606,8 @@ bool Broadcast::CalcTiling() {
   int64_t key_len = 2;
   char keys[4] = {'0', '0', '0', '\0'};
   while (pattern) {
-    keys[key_len] = '0' + pattern % 10;
-    pattern /= 10;
+    keys[key_len] = '0' + pattern % NUM_TEN;
+    pattern /= NUM_TEN;
     key_len--;
   }
   std::string pattern_key = keys;
@@ -582,12 +616,13 @@ bool Broadcast::CalcTiling() {
     // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db"]
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+               "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
                return false);
     compileInfo.core_num = base_info[0];
     compileInfo.max_dtype = base_info[1];
-    max_available_ub = base_info[2];
-    max_available_ub_db = base_info[3];
+    max_available_ub = base_info[MAX_AVAILABLE_UB_INDEX];
+    max_available_ub_db = base_info[MAX_AVAILABLE_UB_DB_INDEX];
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
@@ -628,7 +663,7 @@ bool Broadcast::DoBlockTiling() {
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo core_num error, it is [%ld]", compileInfo.core_num),
              return false);
   // multi core need more than half of cores
-  int64_t half_core = compileInfo.core_num / 2;
+  int64_t half_core = compileInfo.core_num / NUM_TWO;
   bool is_one_dim = output_shape.size() == 1;
   for (size_t i = 0; i < output_shape.size(); i++) {
     if (output_shape[i] > cur_core) {
@@ -875,7 +910,7 @@ bool Broadcast::DoUbTiling() {
 void Broadcast::OptimizeUbTiling() {
   // tiling optimize for ub factor
   // if BROADCAST axis greater than a half elem_in_block, split ub form split COMMON axis to BROADCAST axis
-  if (!only_const_tiling && block_axis < ub_axis && output_shape[ub_axis - 1] >= (BGetElementByType(in_type) / 2) &&
+  if (!only_const_tiling && block_axis < ub_axis && output_shape[ub_axis - 1] >= (BGetElementByType(in_type) / NUM_TWO) &&
       broadcast_axis[ub_axis - 1] && !broadcast_axis[ub_axis] && ub_factor == output_shape[ub_axis]) {
     ub_axis--;
     ub_factor = 1;
@@ -973,7 +1008,7 @@ void Broadcast::CalcKey() {
   int64_t base_key = 0;
   int64_t doubleBufferKey = 10000;
   if (s_pattern != Pattern::ORIGINAL) {
-    base_key = 200000000 + static_cast<int64_t>(s_pattern) * 100000;
+    base_key = BASE_KEY_NUM + static_cast<int64_t>(s_pattern) * 100000;
   }
   if (need_double_buffer) {
     base_key += doubleBufferKey;
@@ -1008,11 +1043,11 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling key error, it is [%lu], please check it", key),
              return false);
   int64_t cur_key = key;
-  int64_t key_len = cur_key == 0 ? 7 : 8;
+  int64_t key_len = cur_key == 0 ? ORIGINAL_NO_DB_TILING_LEN : 8;
   char keys[10] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '\0'};
-  while(cur_key && key_len >= 0) {
-    keys[key_len] = '0' + cur_key % 10;
-    cur_key /= 10;
+  while (cur_key && key_len >= 0) {
+    keys[key_len] = '0' + cur_key % NUM_TEN;
+    cur_key /= NUM_TEN;
     key_len--;
   }
   std::string str_key = keys + key_len + 1;
@@ -1024,16 +1059,16 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut ub"),
                    return false);
         run_info.AddTilingData(static_cast<int32_t>(ub_factor));
-      } else if (var >= 20000) {
+      } else if (var >= MIN_BLOCK_CUT_INDEX) {
         V_CHECK_GE(block_axis, 0,
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut block"),
                    return false);
         run_info.AddTilingData(static_cast<int32_t>(block_factor));
       } else {
         int64_t var_value = var;
-        size_t operator_index = var_value % 100;
-        var_value /= 100;
-        size_t dim_index = var_value % 100;
+        size_t operator_index = var_value % NUM_ONE_HUNDRED;
+        var_value /= NUM_ONE_HUNDRED;
+        size_t dim_index = var_value % NUM_ONE_HUNDRED;
         V_CHECK_LT(operator_index, B_MAX_INPUT_NUMS,
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 70 input are not supported"),
                    return false);
@@ -1079,6 +1114,5 @@ bool Broadcast::DoTiling() {
   }
   return ret;
 }
-
 }  // namespace utils
 }  // namespace optiling
