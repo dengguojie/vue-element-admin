@@ -44,16 +44,16 @@
 
 #define LOG_ERROR(format, args...) printf(format, ##args)
 
-#define CHECK_KEY_IN_MAP(map, key, name, re_expr)                                 \
-  if(map.find(key) == map.end()) {                                                  \
-    CUBE_INNER_ERR_REPORT("", "not found %s in %s", name, #map);  \
-    re_expr;                                                                    \
+#define CHECK_KEY_IN_MAP(map, key, name, re_expr)                \
+  if (map.find(key) == map.end()) {                              \
+    CUBE_INNER_ERR_REPORT("", "not found %s in %s", name, #map); \
+    re_expr;                                                     \
   }
 
-#define CHECK_PTR_NULL(ptr, name, re_expr)                             \
-  if (ptr == nullptr) {                                                    \
-    CUBE_INNER_ERR_REPORT("", "Get %s failed.", name);                     \
-    re_expr;                                                           \
+#define CHECK_PTR_NULL(ptr, name, re_expr)             \
+  if (ptr == nullptr) {                                \
+    CUBE_INNER_ERR_REPORT("", "Get %s failed.", name); \
+    re_expr;                                           \
   }
 
 namespace ge {
@@ -62,7 +62,7 @@ namespace ge {
 static const std::map<ge::DataType, std::string> DTYPE_STR_MAP{
     {ge::DT_FLOAT16, "float16"}, {ge::DT_FLOAT, "float32"}, {ge::DT_INT8, "int8"},   {ge::DT_INT16, "int16"},
     {ge::DT_INT32, "int32"},     {ge::DT_INT64, "int64"},   {ge::DT_UINT8, "uint8"}, {ge::DT_UINT16, "uint16"},
-    {ge::DT_UINT32, "uint32"},   {ge::DT_UINT64, "uint64"}, {ge::DT_BOOL, "bool"}, {ge::DT_INT4, "int4"},
+    {ge::DT_UINT32, "uint32"},   {ge::DT_UINT64, "uint64"}, {ge::DT_BOOL, "bool"},   {ge::DT_INT4, "int4"},
     {ge::DT_BF16, "bfloat16"}};
 
 // define the input num of shape
@@ -144,7 +144,7 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
                                            const string& output_name);
 
 /*
- * infer shape of two input and on output with broadcast
+ * infer shape of two input and on output with broadcast use name
  * param[in] op  op desc supply by ge
  * param[in] inputName1  first input name
  * param[in] inputName2  second input name
@@ -157,6 +157,19 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name, bool& is_dynamic);
 
+/*
+ * infer shape of two input and on output with broadcast use index
+ * param[in] op  op desc supply by ge
+ * param[in] input_idx_1  first input idx
+ * param[in] input_idx_2  second input idx
+ * param[in] output_idx  output idx
+ * param[in] is_dynamic  whether the shape of output is dynamic shape
+ * return SUCCESS:infer success
+ *        FAILED:infer failed like unsupported broadcast input shape
+ */
+bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const int64_t& input_idx_1, const int64_t& input_idx_2,
+                                           const int64_t& output_idx, bool& is_dynamic);
+
 bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1, const string& input_name2,
                                          const string& output_name);
 
@@ -166,9 +179,8 @@ bool CheckInputDataType(const Operator& op, std::string* data_type, const std::s
 std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const std::vector<int64_t>& dimsY);
 
 std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
-                        const std::vector<int64_t>& dims_out,
-                        const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
-                        std::vector<std::pair<int64_t, int64_t>>& shape_range_y);
+    const std::vector<int64_t>& dims_out, const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
+    std::vector<std::pair<int64_t, int64_t>>& shape_range_y);
 
 /*
  * infer shape of two input and on output with broadcast,Change the original value dimVec and Vec_range.
@@ -182,8 +194,7 @@ std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
  */
 bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& dimVec,
                                           std::vector<std::pair<int64_t, int64_t>>& Vec_range,
-                                          std::vector<int64_t> dims,
-                                          std::vector<std::pair<int64_t, int64_t>> range,
+                                          std::vector<int64_t> dims, std::vector<std::pair<int64_t, int64_t>> range,
                                           const string& input_name1, const string& input_name2);
 
 bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const string& input_name2);
@@ -347,19 +358,26 @@ class DynamicShapeInfer {
   }
 };
 
-#define PREPARE_DYNAMIC_SHAPE(depends_names) auto op_desc = OpDescUtils::GetOpDescFromOperator(op);\
-    do {                                                    \
-      if (!depends_names.empty()) {                         \
-        op_desc->SetOpInferDepends(depends_names);          \
-      }                                                     \
-    } while(0)
-
+#define PREPARE_DYNAMIC_SHAPE(depends_names)             \
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op); \
+  do {                                                   \
+    if (!depends_names.empty()) {                        \
+      op_desc->SetOpInferDepends(depends_names);         \
+    }                                                    \
+  } while (0)
 
 bool IsEmptyTensor(const std::vector<int64_t>& dims);
 
 bool IsUnknownRank(const Operator& op, const std::string& tensor_name, const std::string& types = "input");
 
 bool IsUnknownRankShape(const std::vector<int64_t>& shape_vec);
+
+/*
+ * @brief: check where the shape is unknown rank
+ * @param [in] input_shape: GeShape
+ * @return bool: true when shape is [-2] else false
+ */
+bool IsUnknownRankShape(const GeShape& input_shape);
 
 bool IsUnKnownShape(const std::vector<int64_t>& shape_vec);
 
@@ -373,58 +391,58 @@ void MakeUpShapeRange(const std::vector<int64_t>& shape, std::vector<std::pair<i
 
 std::string DataTypeToStringDesc(const ge::DataType& dataType);
 
-bool OneInOneOutDynamicInfer(const Operator& op,
-                             const std::string& input_name,
+bool OneInOneOutDynamicInfer(const Operator& op, const std::string& input_name,
                              const std::vector<std::string>& output_name_list);
 
-bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
-                                        const string& input1_name,
-                                        const string& input2_name,
+/*
+ * @brief: do infershape for output = input
+ * @param [in] op: ge Operator
+ * @param [in] input_idx: the input idx
+ * @param [in] output_idx_list: the output idx list
+ * @return bool: the status of infershape
+ */
+
+bool OneInOneOutDynamicInfer(const Operator& op, const int64_t& input_idx, const std::vector<int64_t>& output_idx_list);
+
+bool TwoInOneOutDynamicInferNoBroadcast(Operator& op, const string& input1_name, const string& input2_name,
                                         const std::vector<string>& output_name_list);
 
-void FixShapeRangeWithDims(const std::vector<int64_t>& dims,
-                           std::vector<int64_t>& shape_1,
-                           std::vector<int64_t>& shape_2,
-                           std::vector<std::pair<int64_t, int64_t>>& range_1,
+void FixShapeRangeWithDims(const std::vector<int64_t>& dims, std::vector<int64_t>& shape_1,
+                           std::vector<int64_t>& shape_2, std::vector<std::pair<int64_t, int64_t>>& range_1,
                            std::vector<std::pair<int64_t, int64_t>>& range_2);
 
-bool SetScalarOutputDesc(const string& input, 
-                         const string& output,
-                         OpDescPtr op_desc, 
-                         GeShape& output_shape);
+bool SetScalarOutputDesc(const string& input, const string& output, OpDescPtr op_desc, GeShape& output_shape);
 
 bool IsEmptyTensor(GeTensorDescPtr tensor_desc);
 
-bool IsEmptyTensor(const GeShape &ge_shape);
+bool IsEmptyTensor(const GeShape& ge_shape);
 
-std::string RangeToString(const std::vector<std::pair<int64_t, int64_t>> &ranges);
+std::string RangeToString(const std::vector<std::pair<int64_t, int64_t>>& ranges);
 
 namespace array_ops {
 bool CheckInt64MulOverflow(int64_t a, int64_t b);
-int64_t CalcMaxElementsCount(const Operator &op, const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
-                             const GeShape &x_shape);
-void GenerateWorstYShapeAndYShapeRange(int64_t y_rank, int64_t max_elements_count, 
-                                      std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape);
-bool RepairAndCheckRange(const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
-                         std::vector<std::pair<int64_t, int64_t>> &value_range);
-void InferShapeRangeForEmptyTensor(int64_t y_rank, int64_t max_elements_count, 
-                                   const std::vector<std::pair<int64_t, int64_t>> &value_range,
-                                   std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape);
-void UpdateDimsAndShapeRange(const Operator &op, int64_t max_elements_count,
-                             const std::vector<std::pair<int64_t, int64_t>> &value_range,
-                             std::vector<int64_t> &y_dims,
-                             std::vector<std::pair<int64_t, int64_t>> &y_shape_range);
+int64_t CalcMaxElementsCount(const Operator& op, const std::vector<std::pair<int64_t, int64_t>>& x_shape_range,
+                             const GeShape& x_shape);
+void GenerateWorstYShapeAndYShapeRange(int64_t y_rank, int64_t max_elements_count,
+                                       std::vector<std::pair<int64_t, int64_t>>& y_shape_range, GeShape& y_shape);
+bool RepairAndCheckRange(const std::vector<std::pair<int64_t, int64_t>>& x_shape_range,
+                         std::vector<std::pair<int64_t, int64_t>>& value_range);
+void InferShapeRangeForEmptyTensor(int64_t y_rank, int64_t max_elements_count,
+                                   const std::vector<std::pair<int64_t, int64_t>>& value_range,
+                                   std::vector<std::pair<int64_t, int64_t>>& y_shape_range, GeShape& y_shape);
+void UpdateDimsAndShapeRange(const Operator& op, int64_t max_elements_count,
+                             const std::vector<std::pair<int64_t, int64_t>>& value_range, std::vector<int64_t>& y_dims,
+                             std::vector<std::pair<int64_t, int64_t>>& y_shape_range);
 
-void ReshapeRangeInferAllDims(const Operator &op, const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
-                              const GeShape &x_shape,
-                              const std::vector<std::pair<int64_t, int64_t>> &shape_value_range, int64_t y_rank,
-                              std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape);
+void ReshapeRangeInferAllDims(const Operator& op, const std::vector<std::pair<int64_t, int64_t>>& x_shape_range,
+                              const GeShape& x_shape, const std::vector<std::pair<int64_t, int64_t>>& shape_value_range,
+                              int64_t y_rank, std::vector<std::pair<int64_t, int64_t>>& y_shape_range,
+                              GeShape& y_shape);
 
-void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
+void ReshapeRangeInfer(const Operator& op, const std::vector<std::pair<int64_t, int64_t>>& x_range,
                        std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape);
-
-void FixRangeMaxToInt32max(GeShape &shape, std::vector<std::pair<int64_t, int64_t>> &shape_range);
-}
+void FixRangeMaxToInt32max(GeShape& shape, std::vector<std::pair<int64_t, int64_t>>& shape_range);
+}  // namespace array_ops
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_UTIL_H_

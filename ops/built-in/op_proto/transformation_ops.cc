@@ -912,46 +912,54 @@ int64_t GetMin(const std::vector<int64_t>& vec) {
 
 // ----------------Transpose Op Begin-------------------
 static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_list, Operator& op) {
+  PROFILING_PROTO_INIT(op.GetName().c_str());
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();
+  const int64_t input_x_idx = 0;
+  auto input_desc = op_info->MutableInputDesc(input_x_idx);
+  const int64_t output_y_idx = 0;
+  auto output_desc = op_info->MutableOutputDesc(output_y_idx);
+
   auto input_dtype = input_desc->GetDataType();
-  auto output_desc = op_info->MutableOutputDesc("y");
+  const GeShape &input_ge_shape = input_desc->MutableShape();
 
-  // set output dtype as the same with input x
-  output_desc->SetDataType(input_dtype);
+  int64_t input_shape_len = input_ge_shape.GetDimNum();
 
-  if (IsUnknownRankShape(input_shape)) {
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
+
+  if (IsUnknownRankShape(input_ge_shape)) {
     // UnknownRankShape, set shape is -1, -1, -1....
-    input_shape.clear();
-    for (size_t i = 0; i < perm_list.size(); ++i) {
-      input_shape.push_back(-1);
-    }
-  }
-
-  // verify perm_list
-  int64_t perm_value = 0;
-  for (size_t i = 0; i < perm_list.size(); ++i) {
-    perm_value = perm_list[i] < 0 ? perm_list[i] + input_shape.size() : perm_list[i];
-    if (perm_value >= static_cast<int64_t>(input_shape.size())) {
-      std::string err_msg = GetAttrValueErrMsg("perm", ConcatString(perm_value),
-                                               ConcatString("less than input shape size[",
-                                               input_shape.size(), "]"));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-      return GRAPH_FAILED;
-    }
+    std::vector<int64_t> out_vec(perm_list.size(), -1);
+    output_desc->SetShape(GeShape(out_vec));
+    output_desc->SetDataType(input_dtype);
+    return GRAPH_SUCCESS;
   }
 
   // infer the shape
-  vector<int64_t> out_vec;
+  GeShape &output_ge_shape = output_desc->MutableShape();
+  output_ge_shape.SetDimNum(input_shape_len);
   for (size_t i = 0; i < perm_list.size(); ++i) {
-    out_vec.push_back(input_shape[perm_list[i]]);
+    // verify perm_list begin
+    int64_t perm_value = perm_list[i] < 0 ? perm_list[i] + input_shape_len : perm_list[i];
+    if (perm_value >= input_shape_len) {
+      std::string err_msg = GetAttrValueErrMsg("perm", ConcatString(perm_value),
+                                               ConcatString("less than input shape size[",
+                                               input_shape_len, "]"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+    // verify perm_list end
+
+    // set the output shape
+    output_ge_shape.SetDim(i, input_ge_shape.GetDim(perm_value));
   }
-  output_desc->SetShape(GeShape(out_vec));
+  PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
+  // set output dtype as the same with input x
+  output_desc->SetDataType(input_dtype);
 
   // infer the range, when need
-  if (IsUnknownVec(out_vec)) {
-    output_desc->SetOriginShape(GeShape(out_vec));
+  if (output_ge_shape.IsUnknownShape()) {
+    std::vector<int64_t> input_shape = input_ge_shape.GetDims();
+    output_desc->SetOriginShape(output_ge_shape);
     std::vector<std::pair<int64_t, int64_t>> input_range;
     std::vector<std::pair<int64_t, int64_t>> output_range;
     input_desc->GetShapeRange(input_range);
@@ -960,8 +968,9 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
       output_range.push_back(input_range[perm_list[i]]);
     }
     output_desc->SetShapeRange(output_range);
+    return GRAPH_SUCCESS;
   }
-
+  PROFILING_PROTO_END();
   return GRAPH_SUCCESS;
 }
 

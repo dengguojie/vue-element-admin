@@ -3804,7 +3804,11 @@ IMPLEMT_COMMON_INFERFUNC(InferMaskedFillShape) {
   // ge::Operator op;
   OP_LOGD(op.GetName().c_str(), "InferMaskedFillShape Begin.");
   bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "mask", "y", is_dynamic_output)){
+  const int64_t input_x_idx = 0;
+  const int64_t input_mask_idx = 1;
+  const int64_t output_y_idx = 0;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, input_x_idx, input_mask_idx,
+                                             output_y_idx, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   OP_LOGD(op.GetName().c_str(), "InferMaskedFillShape End.");

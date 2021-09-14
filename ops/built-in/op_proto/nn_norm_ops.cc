@@ -30,12 +30,14 @@
 namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
 IMPLEMT_COMMON_INFERFUNC(LogSoftmaxGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  // input 1 is x
+  // output 0 is y
+  const int64_t input_x_idx = 1;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(LogSoftmaxGrad, LogSoftmaxGradInferShape);
@@ -66,7 +68,11 @@ VERIFY_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWi
 
 // ---------------------------SoftmaxV2-----------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxV2InferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  // input0 is x
+  // output0 is y
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -77,7 +83,11 @@ COMMON_INFER_FUNC_REG(SoftmaxV2, SoftmaxV2InferShape);
 
 // ---------------------------LogSoftmaxV2------------------------------
 IMPLEMT_COMMON_INFERFUNC(LogSoftmaxV2InferShape) {
-  if (OneInOneOutDynamicInfer(op, "logits", {"logsoftmax"})) {
+  // input0 is logits
+  // output0 is logsoftmax
+  const int64_t input_logits_idx = 0;
+  const int64_t output_logsoftmax_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_logits_idx, {output_logsoftmax_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -279,7 +289,11 @@ COMMON_INFER_FUNC_REG(Centralization, CentralizationInferShape);
 // -----------------------------SoftmaxGrad------------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxGradInferShape) {
   bool is_dynamic_output = true;
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "softmax", "grad_softmax", "grad_x", is_dynamic_output)) {
+  const int64_t input_softmax_idx = 0;
+  const int64_t input_grad_softmax_idx = 1;
+  const int64_t output_grad_x_idx = 0;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, input_softmax_idx, input_grad_softmax_idx,
+                                            output_grad_x_idx, is_dynamic_output)) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
