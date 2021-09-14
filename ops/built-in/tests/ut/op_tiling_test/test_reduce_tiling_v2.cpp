@@ -15,6 +15,7 @@
 #include "graph/graph.h"
 #include "graph/compute_graph.h"
 #include "graph/utils/graph_utils.h"
+#include "op_tiling/vector_tiling.h"
 
 #include "reduce_ops.h"
 #include "array_ops.h"
@@ -335,4 +336,117 @@ TEST_F(ReduceTilingV2, ReduceTiling9) {
   ASSERT_TRUE(iter->second(reduce_sum_d_op, op_compile_info, runInfo));
 }
 
+// for new interface
+TEST_F(ReduceTilingV2, ReduceTiling10) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{64, 64};
+  std::vector<int64_t> output{1,64};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_4");
+  reduce_sum_d_op.set_input_x(x1);
+  reduce_sum_d_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{reduce_sum_d_op};
+  ge::Graph graph("ReduceTiling4");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
+       "_atomic_flags":{"1": true},
+       "_vars": {"1": []}})";
+
+  // new interface
+  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::vector<std::vector<int64_t>> input_shapes{input,};
+  optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+  ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
+}
+
+
+TEST_F(ReduceTilingV2, ReduceTiling11) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{1};
+  std::vector<int64_t> output{1};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_11");
+  reduce_sum_d_op.set_input_x(x1);
+  reduce_sum_d_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{reduce_sum_d_op};
+  ge::Graph graph("ReduceTiling11");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  std::string compileInfo = R"({"_ori_axis": [0],
+                                "_pattern": "CommReduce",
+                                "_common_info": [32, 1, 8, 1, 1],
+                                "_pattern_info": [5],
+                                "_ub_info": [16256],
+                                "_ub_info_rf": [16256],
+                                "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+
+  // new interface
+  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::vector<std::vector<int64_t>> input_shapes{};
+  optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+  ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
+}
+
+TEST_F(ReduceTilingV2, ReduceTiling12) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{64, 64};
+  std::vector<int64_t> output{1,64};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_12");
+  reduce_sum_d_op.set_input_x(x1);
+  reduce_sum_d_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{reduce_sum_d_op};
+  ge::Graph graph("ReduceTiling12");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_name = "AutoTiling";
+  std::string compileInfo = R"({"_ori_axis": [-2],"_pattern": "CommReduce", "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_compile_pattern": 1, "_block_dims":{"1":32},
+         "_atomic_flags":{"1": true},
+         "_vars": {"1": []}})";
+
+  // new interface
+  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::vector<std::vector<int64_t>> input_shapes{input,};
+  optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+  ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
+}
 

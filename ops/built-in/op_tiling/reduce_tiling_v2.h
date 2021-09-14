@@ -91,9 +91,9 @@ struct GeInfoReduce {
 
 class Reduce {
  public:
-  explicit Reduce(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _op_info,
+  explicit Reduce(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _json_info,
                   utils::OpRunInfo& _run_info)
-      : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), run_info(_run_info) {
+      : op_type(_op_type), op_paras(_op_paras), json_info(_json_info), run_info(_run_info) {
   }
   ~Reduce() {
   }
@@ -107,6 +107,7 @@ class Reduce {
   bool DoZeroBranch();
   bool DoConstRunTimeBranch();
   bool DoTiling();
+  bool NewDoTiling(const OpInfo& op_info);
   bool WriteTilingData();
   void FusedReduceAxis();
   void ChooseAtomic();
@@ -144,7 +145,7 @@ class Reduce {
  private:
   const std::string& op_type;
   const ge::Operator& op_paras;
-  const nlohmann::json& op_info;
+  const nlohmann::json& json_info;
   utils::OpRunInfo& run_info;
   CompileInfoReduce compileInfo;
   GeInfoReduce geInfo;
