@@ -233,8 +233,13 @@ std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_
   const auto &dynamic_mode = compile_info["dynamic_mode"];
   bool isBatchMatmulMode = dynamic_mode == "dynamic_mknb";
   // Update ori_shape info
-  auto format_a = compile_info["format_a"];
-  auto format_b = compile_info["format_b"];
+  string format_a("FRACTAL_NZ");
+  string format_b("FRACTAL_NZ");
+  if (compile_info.contains("format_a") && compile_info.contains("format_b"))
+  {
+    format_a = compile_info["format_a"];
+    format_b = compile_info["format_b"];
+  }
 
   CHECK((dynamic_mode != "dynamic_mkn" && !isBatchMatmulMode),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb"),
