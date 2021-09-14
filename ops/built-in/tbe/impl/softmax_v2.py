@@ -193,26 +193,6 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         x's Tensor(shape=(16, 16, 16, 16, 16, 16), "NDC1HWC0")
         y's Tensor(shape=(16, 16, 16, 16, 16, 16), "NDC1HWC0")
     """
-    shape_x = list(input_x.get("shape"))
-    length_x = len(shape_x)
-    is_dynamic = False
-    for i in range(length_x):
-        if shape_x[i] == -1:
-            is_dynamic = True
-            break
-    if is_dynamic:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16,float32",
-                                               format="ND,ND",
-                                               unknownshape_format="ND,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,float32",
-                                                format="ND,ND",
-                                                unknownshape_format="ND,ND")
-        param_list = [input0, output0]
-        param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
-        return param_dynamic_in_json
-
     shape_x_ori = shape_util.scalar2tensor_one(input_x.get("ori_shape"))
     length_x_ori = len(shape_x_ori)
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
