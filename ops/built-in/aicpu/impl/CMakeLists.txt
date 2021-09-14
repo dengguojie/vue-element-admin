@@ -28,6 +28,7 @@ set(local_kernels_src_files
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
     kernels/normalized/fill.cc
+    kernels/normalized/floor.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/greater.cc
     kernels/normalized/greater_equal.cc
