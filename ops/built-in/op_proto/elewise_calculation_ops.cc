@@ -931,6 +931,7 @@ IMPLEMT_VERIFIER(Mul, MulVerify) {
 INFER_DATA_SLICE_FUNC_REG(Mul, ElewiseTwoInputInferDataSlice);
 COMMON_INFER_FUNC_REG(Mul, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Mul, MulVerify);
+INFER_VALUE_RANGE_DEFAULT_REG(Mul);
 // ----------------Mul END--------------------
 
 // ----------------SqrtGrad Op Begin-----------------
