@@ -28,6 +28,8 @@
 #include "op_tiling.h"
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 using namespace std;
 namespace optiling {
@@ -37,16 +39,18 @@ namespace optiling {
  * @param [in] op_paras: inputs/outputs/atts of the conv2d
  * @param [out] valValue: val value
  */
-std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::Operator& opParas) {
+std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDescPtr& op_desc) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
+  auto input_desc = op_desc->GetInputDescPtr(0);
+  auto output_desc = op_desc->GetOutputDescPtr(0);
 
-  int32_t batch = opParas.GetInputDesc(0).GetShape().GetDim(nDim);
-  int32_t hi = opParas.GetInputDesc(0).GetShape().GetDim(hDim);
-  int32_t wi = opParas.GetInputDesc(0).GetShape().GetDim(wDim);
-  int32_t ho = opParas.GetOutputDesc(0).GetShape().GetDim(hDim);
-  int32_t wo = opParas.GetOutputDesc(0).GetShape().GetDim(wDim);
+  int32_t batch = input_desc->GetShape().GetDim(nDim);
+  int32_t hi = input_desc->GetShape().GetDim(hDim);
+  int32_t wi = input_desc->GetShape().GetDim(wDim);
+  int32_t ho = output_desc->GetShape().GetDim(hDim);
+  int32_t wo = output_desc->GetShape().GetDim(wDim);
   std::vector<int64_t> varValue;
   for (auto var:varMap) {
     if (var == "batch_n") {
@@ -74,19 +78,31 @@ std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::Oper
 
 bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                   utils::OpRunInfo& runInfo) {
+  PROFILING_TILING_INIT(opType.c_str());
   int32_t nDim = 0;
   int32_t cDim = 1;
   int32_t hDim = 2;
   int32_t wDim = 3;
-  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 || 
-      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+  auto input_desc = op_desc->GetInputDescPtr(0);
+  if (input_desc == nullptr) {
+    OP_LOGE(opType.c_str(), "GetInputDescPtr failed");
+  }
+  auto output_desc = op_desc->GetOutputDescPtr(0);
+  if (output_desc == nullptr) {
+    OP_LOGE(opType.c_str(), "GetOutputDescPtr failed");
+  }
+
+  if (op_desc->GetInputsSize() == 0 || op_desc->GetOutputsSize() == 0 || 
+      input_desc->GetShape().GetDimNum() == 0 || output_desc->GetShape().GetDimNum() == 0) {
+    OP_LOGE(opType.c_str(), "inputsize or outputsize is zero");
     return false;
   }
 
   if (opType.c_str() == "Conv2D" && opCompileInfo.contains("fmap_c1") && 
-      opParas.GetInputDesc(0).GetShape().GetDim(cDim) != opCompileInfo["fmap_c1"]) {
+      input_desc->GetShape().GetDim(cDim) != opCompileInfo["fmap_c1"]) {
     CUBE_INNER_ERR_REPORT(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups;"
-      "x_channel=%d, fmap_c1=%d", (int32_t)opParas.GetInputDesc(0).GetShape().GetDim(cDim), (int32_t)opCompileInfo["fmap_c1"]);
+      "x_channel=%d, fmap_c1=%d", (int32_t)input_desc->GetShape().GetDim(cDim), (int32_t)opCompileInfo["fmap_c1"]);
     return false;
   }
 
@@ -98,6 +114,7 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
 
   // accurate build has only one item
   // fuzzy build has multiple items
+  PROFILING_TILING_AFTER_GET_SHAPE_REG()
   std::vector<std::string> varMap;
   nlohmann::json opInfo;
   GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
@@ -129,18 +146,19 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
     varMap = opCompileInfo.at("_vars")["10000"].get<std::vector<std::string>>();
     opInfo = opCompileInfo;
   }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG()
+  std::vector<int64_t> varValue = setValValue(varMap, op_desc);
 
-  std::vector<int64_t> varValue = setValValue(varMap, opParas);
-
-  bool res = cube_tiling1(opType, opParas.GetInputDesc(0).GetShape().GetDims(), varValue, opInfo, runInfo);
+  bool res = cube_tiling1(opType, input_desc->GetShape().GetDims(), varValue, opInfo, runInfo);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG()
   // for log
-  int32_t batch = opParas.GetInputDesc(0).GetShape().GetDim(nDim);
-  int32_t hi = opParas.GetInputDesc(0).GetShape().GetDim(hDim);
-  int32_t wi = opParas.GetInputDesc(0).GetShape().GetDim(wDim);
-  int32_t ho = opParas.GetOutputDesc(0).GetShape().GetDim(hDim);
-  int32_t wo = opParas.GetOutputDesc(0).GetShape().GetDim(wDim);
+  int32_t batch = input_desc->GetShape().GetDim(nDim);
+  int32_t hi = input_desc->GetShape().GetDim(hDim);
+  int32_t wi = input_desc->GetShape().GetDim(wDim);
+  int32_t ho = output_desc->GetShape().GetDim(hDim);
+  int32_t wo = output_desc->GetShape().GetDim(wDim);
   GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
-
+  PROFILING_TILING_END()
   return res;
 }
 
