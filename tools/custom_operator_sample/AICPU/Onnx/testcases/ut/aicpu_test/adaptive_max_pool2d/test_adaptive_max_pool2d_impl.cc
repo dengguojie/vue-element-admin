@@ -3,9 +3,8 @@
 #define private public
 #define protected public
 #endif
-#include "aicpu_test_utils.h"
-#include "cpu_kernel_utils.h"
-#include "node_def_builder.h"
+#include "cpu_nodedef_builder.h"
+#include "adaptive_max_pool2d.h"
 #undef private
 #undef protected
 #include "Eigen/Core"
@@ -16,7 +15,7 @@ using namespace aicpu;
 class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
 
 #define CREATE_NODEDEF(shapes, data_types, input, output0, output1, list_out)                  \
-  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  auto node_def = NodeDefBuilder::CreateNodeDef(); \
   NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
       .Attr("output_size", list_out)           \
       .Input({"x", data_types[0], shapes[0], input, FORMAT_NCHW})           \
@@ -24,7 +23,7 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
       .Output({"argmax", data_types[2], shapes[1], output1});
 
 #define CREATE_NODEDEF_NHWC(shapes, data_types, input, output0, output1, list_out)                  \
-  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  auto node_def = NodeDefBuilder::CreateNodeDef(); \
   NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
       .Attr("output_size", list_out)           \
       .Input({"x", data_types[0], shapes[0], input, FORMAT_NHWC})           \
@@ -32,7 +31,7 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
       .Output({"argmax", data_types[2], shapes[1], output1});
 
 #define CREATE_NODEDEF2(shapes, data_types, input, output0, output1, list_out)                  \
-  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  auto node_def = NodeDefBuilder::CreateNodeDef(); \
   NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
       .Attr("output_size", list_out)           \
       .Input({"x", data_types[0], shapes[0], input, FORMAT_NCHW})           \
@@ -40,13 +39,33 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
       .Output({"argmax", data_types[2], shapes[2], output1});
 
 #define CREATE_NODEDEF3(shapes, data_types, input, output0, output1, list_out, format)                  \
-  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  auto node_def = NodeDefBuilder::CreateNodeDef(); \
   NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
       .Attr("output_size", list_out)           \
       .Input({"x", data_types[0], shapes[0], input, format})           \
       .Output({"y", data_types[1], shapes[1], output0})           \
       .Output({"argmax", data_types[2], shapes[1], output1});
 
+#define RUN_KERNEL(node_def, HOST)                  \
+  CpuKernelContext ctx(DEVICE);                     \
+  EXPECT_EQ(ctx.Init(node_def.get()), 0);           \
+  AdaptiveMaxPool2d adaptiveMaxPool2d;                           \
+  adaptiveMaxPool2d.Compute(ctx);
+
+template <typename T>
+bool CompareResult(T output[], T expectOutput[], int num) {
+    bool result = true;
+    for (int i = 0; i < num; ++i) {
+        if (output[i] != expectOutput[i]) {
+            cout << "output[" << i << "] = ";
+            cout << output[i];
+            cout << "expectOutput[" << i << "] =";
+            cout << expectOutput[i];
+            result = false;
+        }
+    }
+    return result;
+}
 
 vector<int64_t> list_out_1 = {1, 2};
 vector<vector<int64_t>> shapes_1 = {{2, 2, 3}, {2, 1, 2}};
@@ -60,7 +79,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_1, data_types, input_1, output0, output1, list_out_1);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_1, out_data_num), true);
     EXPECT_EQ(CompareResult<int32_t>(output1, expect_output1_1, out_data_num), true);
 }
@@ -77,7 +96,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF_NHWC(shapes_nhwc_1, data_types, input_nhwc_1, output0, output1, list_out_nhwc_1);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_nhwc_1, out_data_num), true);
     EXPECT_EQ(CompareResult<int32_t>(output1, expect_output1_nhwc_1, out_data_num), true);
 }
@@ -94,7 +113,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_2, data_types, input_2, output0, output1, list_out_2);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_2, out_data_num), true);
     EXPECT_EQ(CompareResult<int32_t>(output1, expect_output1_2, out_data_num), true);
 }
@@ -111,7 +130,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int64_t output1[out_data_num] = {(int64_t)0};
     CREATE_NODEDEF(shapes_3, data_types, input_3, output0, output1, list_out_3);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_3, out_data_num), true);
     EXPECT_EQ(CompareResult<int64_t>(output1, expect_output1_3, out_data_num), true);
 }
@@ -128,7 +147,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int64_t output1[out_data_num] = {(int64_t)0};
     CREATE_NODEDEF(shapes_4, data_types, input_4, output0, output1, list_out_4);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_4, out_data_num), true);
     EXPECT_EQ(CompareResult<int64_t>(output1, expect_output1_4, out_data_num), true);
 }
@@ -145,7 +164,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int64_t output1[out_data_num] = {(int64_t)0};
     CREATE_NODEDEF(shapes_5, data_types, input_5, output0, output1, list_out_5);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_5, out_data_num), true);
     EXPECT_EQ(CompareResult<int64_t>(output1, expect_output1_5, out_data_num), true);
 }
@@ -162,7 +181,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_6, data_types, input_6, output0, output1, list_out_6);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_6, out_data_num), true);
     EXPECT_EQ(CompareResult<int32_t>(output1, expect_output1_6, out_data_num), true);
 }
@@ -179,7 +198,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_7, data_types, input_7, output0, output1, list_out_7);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    RUN_KERNEL(node_def, HOST);
     EXPECT_EQ(CompareResult<float_t>(output0, expect_output0_7, out_data_num), true);
     EXPECT_EQ(CompareResult<int32_t>(output1, expect_output1_7, out_data_num), true);
 }
@@ -196,7 +215,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int8_t output1[out_data_num] = {(int8_t)0};
     CREATE_NODEDEF(shapes_8, data_types, input_8, output0, output1, list_out_8);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+    RUN_KERNEL(node_def, HOST);
 }
 
 
@@ -210,7 +229,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_9, data_types, nullptr, output0, output1, list_out_9);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+    RUN_KERNEL(node_def, HOST);
 }
 
 
@@ -224,7 +243,7 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_10, data_types, input_10, output0, output1, nullptr);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+    RUN_KERNEL(node_def, HOST);
 }
 
 vector<int64_t> list_out_11 = {2};
@@ -238,5 +257,5 @@ TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_dapter_max_pool2d_float
     float_t output0[out_data_num] = {(float_t)0};
     int32_t output1[out_data_num] = {(int32_t)0};
     CREATE_NODEDEF(shapes_11, data_types, input_11, output0, output1, list_out_11);
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+    RUN_KERNEL(node_def, HOST);
 }

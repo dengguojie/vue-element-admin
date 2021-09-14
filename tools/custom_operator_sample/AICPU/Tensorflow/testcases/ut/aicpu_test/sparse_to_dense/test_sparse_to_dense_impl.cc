@@ -3,19 +3,24 @@
 #define private public
 #define protected public
 #endif
-#include "aicpu_test_utils.h"
 #include "cpu_kernel_utils.h"
-#include "node_def_builder.h"
+#include "cpu_nodedef_builder.h"
 #undef private
 #undef protected
 #include "Eigen/Core"
+#include "sparse_to_dense.h"
 using namespace std;
 using namespace aicpu;
+
+class SparseToDenseCpuKernelTest : SparseToDenseCpuKernel {
+  public :
+      using SparseToDenseCpuKernel::Compute;
+};
 
 class TEST_SPARSETODENSE_UT : public testing::Test {};
 
 #define CREATE_NODEDEF(shapes, data_types, datas, Validate)            \
-  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();     \
+  auto node_def = NodeDefBuilder::CreateNodeDef();                     \
   NodeDefBuilder(node_def.get(), "SparseToDense", "SparseToDense")     \
       .Input({"indices", data_types[0], shapes[0], datas[0]})          \
       .Input({"out_put_shape", data_types[1], shapes[1], datas[1]})    \
@@ -37,8 +42,14 @@ class TEST_SPARSETODENSE_UT : public testing::Test {};
     bool Validate= true;                                                      \
     vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output}; \
     CREATE_NODEDEF(shapes, data_types, datas, Validate);                                 \
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    RUN_KERNEL(node_def, HOST);                              \
   }
+
+#define RUN_KERNEL(node_def, HOST)          \
+  CpuKernelContext ctx(DEVICE);              \
+  EXPECT_EQ(ctx.Init(node_def.get()), 0);    \
+  SparseToDenseCpuKernelTest sparse_to_dense;        \
+  sparse_to_dense.Compute(ctx);
 
 TEST_F(TEST_SPARSETODENSE_UT, Host2) {
   vector<DataType> data_types = {DT_INT64, DT_INT64, DT_INT64, DT_INT64, DT_INT64};
@@ -51,7 +62,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host2) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host3) {
@@ -65,7 +76,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host3) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host4) {
@@ -79,7 +90,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host4) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host5) {
@@ -93,7 +104,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host5) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host6) {
@@ -107,7 +118,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host6) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host7) {
@@ -121,7 +132,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host7) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host8) {
@@ -135,7 +146,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host8) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host9) {
@@ -149,7 +160,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host9) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host10) {
@@ -163,7 +174,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host10) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host11) {
@@ -177,7 +188,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host11) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host12) {
@@ -191,7 +202,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host12) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host13) {
@@ -205,7 +216,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host13) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 
@@ -220,7 +231,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host14) {
   bool Validate= false;
   vector<void *> datas = {(void *)nullptr, (void *)input2, (void *)&input3, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
 
 TEST_F(TEST_SPARSETODENSE_UT, Host15) {
@@ -234,8 +245,5 @@ TEST_F(TEST_SPARSETODENSE_UT, Host15) {
   bool Validate= true;
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)nullptr, (void *)&input4 ,(void *)output};
   CREATE_NODEDEF(shapes, data_types, datas, Validate);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  RUN_KERNEL(node_def, HOST);
 }
-//ADD_CASE(int64_t, DT_INT64)
-//ADD_CASE(int32_t, DT_INT32)
-
