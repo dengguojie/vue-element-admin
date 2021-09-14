@@ -16,18 +16,13 @@ class BNTrainingUpdate : public testing::Test{
 
 TEST_F(BNTrainingUpdate, BNTrainingUpate_infershape_diff_test){
     ge::op::BNTrainingUpdate op;
-    std::vector<std::pair<int64_t,int64_t>> shape_x_range = {{32,32}, {1,2}, {4,14}, {4,14}, {16,16}};
-    std::vector<std::pair<int64_t,int64_t>> shape_scale_range = {{1,1}, {1,2}, {1,1}, {1,1}, {16,16}};
-    auto tensor_desc_x = create_desc_shape_range({-1, -1, -1, -1, 16},
-                                                ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,
-                                                {32, -1, -1, -1, 16},
-                                                ge::FORMAT_NC1HWC0, shape_x_range);
-    auto tensor_desc_scale = create_desc_shape_range({-1, -1, -1, -1, 16},
-                                                ge::DT_FLOAT, ge::FORMAT_NC1HWC0,
-                                                {1, -1, -1, -1, 16},
-                                                ge::FORMAT_NC1HWC0, shape_scale_range);
-    op.UpdateInputDesc("x", tensor_desc_x);
-    op.UpdateInputDesc("scale", tensor_desc_scale);
+    op.UpdateInputDesc("x", create_desc({2,4,6,6,16}, ge::DT_FLOAT16));
+    op.UpdateInputDesc("sum", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("square_sum", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("scale", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("offset", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("mean", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("variance", create_desc({1,4,1,1,16}, ge::DT_FLOAT));
 
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
@@ -44,42 +39,11 @@ TEST_F(BNTrainingUpdate, BNTrainingUpate_infershape_diff_test){
     EXPECT_EQ(output_batch_mean_desc.GetDataType(), ge::DT_FLOAT);
     EXPECT_EQ(output_batch_variance_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_output_shape = {-1, -1, -1, -1, 16};
-    EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_output_shape);
-    EXPECT_EQ(output_mean_desc.GetShape().GetDims(), expected_output_shape);
-    EXPECT_EQ(output_variance_desc.GetShape().GetDims(), expected_output_shape);
-    EXPECT_EQ(output_batch_mean_desc.GetShape().GetDims(), expected_output_shape);
-    EXPECT_EQ(output_batch_variance_desc.GetShape().GetDims(), expected_output_shape);
-
-    std::vector<std::pair<int64_t,int64_t>> output_y_shape_range;
-    std::vector<std::pair<int64_t,int64_t>> output_mean_shape_range;
-    std::vector<std::pair<int64_t,int64_t>> output_variance_shape_range;
-    std::vector<std::pair<int64_t,int64_t>> output_batch_mean_shape_range;
-    std::vector<std::pair<int64_t,int64_t>> output_batch_variance_shape_range;
-
-    EXPECT_EQ(output_y_desc.GetShapeRange(output_y_shape_range), ge::GRAPH_SUCCESS);
-    EXPECT_EQ(output_mean_desc.GetShapeRange(output_mean_shape_range), ge::GRAPH_SUCCESS);
-    EXPECT_EQ(output_variance_desc.GetShapeRange(output_variance_shape_range), ge::GRAPH_SUCCESS);
-    EXPECT_EQ(output_batch_mean_desc.GetShapeRange(output_batch_mean_shape_range), ge::GRAPH_SUCCESS);
-    EXPECT_EQ(output_batch_variance_desc.GetShapeRange(output_batch_variance_shape_range), ge::GRAPH_SUCCESS);
-
-    std::vector<std::pair<int64_t,int64_t>> expected_y_shape_range = {
-      {32, 32},
-      {1, 2},
-      {4, 14},
-      {4, 14},
-      {16, 16}
-    };
-    std::vector<std::pair<int64_t,int64_t>> expected_scale_shape_range = {
-      {1, 1},
-      {1, 2},
-      {1, 1},
-      {1, 1},
-      {16, 16}
-    };
-  EXPECT_EQ(output_y_shape_range, expected_y_shape_range);
-  EXPECT_EQ(output_mean_shape_range, expected_scale_shape_range);
-  EXPECT_EQ(output_variance_shape_range, expected_scale_shape_range);
-  EXPECT_EQ(output_batch_mean_shape_range, expected_scale_shape_range);
-  EXPECT_EQ(output_batch_variance_shape_range, expected_scale_shape_range);
+    std::vector<int64_t> expected_output_shape1 = {2, 4, 6, 6, 16};
+    std::vector<int64_t> expected_output_shape2 = {1, 4, 1, 1, 16};
+    EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_output_shape1);
+    EXPECT_EQ(output_mean_desc.GetShape().GetDims(), expected_output_shape2);
+    EXPECT_EQ(output_variance_desc.GetShape().GetDims(), expected_output_shape2);
+    EXPECT_EQ(output_batch_mean_desc.GetShape().GetDims(), expected_output_shape2);
+    EXPECT_EQ(output_batch_variance_desc.GetShape().GetDims(), expected_output_shape2);
 }

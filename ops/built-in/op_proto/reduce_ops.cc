@@ -961,82 +961,36 @@ IMPLEMT_VERIFIER(BNTrainingUpdate, BNTrainingUpdateVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_x_desc = op_desc->MutableInputDesc("x");
-  auto output_y_desc = op_desc->MutableOutputDesc("y");
-  auto input_scale_desc = op_desc->MutableInputDesc("scale");
-  auto output_mean_desc = op_desc->MutableOutputDesc("mean");
-  auto output_variance_desc = op_desc->MutableOutputDesc("variance");
-  auto output_batch_mean_desc = op_desc->MutableOutputDesc("batch_mean");
-  auto output_batch_variance_desc = op_desc->MutableOutputDesc("batch_variance");
+  auto input_x_desc = op_desc->GetInputDescPtr(0);
+  auto input_scale_desc = op_desc->GetInputDescPtr(3);
+
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
+  auto output_mean_desc = op_desc->MutableOutputDesc(1);
+  auto output_variance_desc = op_desc->MutableOutputDesc(2);
+  auto output_batch_mean_desc = op_desc->MutableOutputDesc(3);
+  auto output_batch_variance_desc = op_desc->MutableOutputDesc(4);
+
   if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
       output_mean_desc == nullptr || output_variance_desc == nullptr || output_batch_mean_desc == nullptr ||output_batch_variance_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get null node ptr");
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
     return GRAPH_FAILED;
   }
-  auto input_x_shape = input_x_desc->MutableShape().GetDims();
-  auto input_x_dtype = input_x_desc->GetDataType();
 
-  if (!IsUnknown(input_x_shape)) {
-    output_y_desc->SetShape(GeShape(input_x_shape));
-    output_y_desc->SetDataType(input_x_dtype);
-  } else {
-    std::vector<std::pair<int64_t, int64_t>> input_x_range;
-    if (input_x_desc->GetShapeRange(input_x_range) != GRAPH_SUCCESS) {
-      return GRAPH_FAILED;
-    }
-    MakeUpShapeRange(input_x_shape, input_x_range);
-    output_y_desc->SetShape(GeShape(input_x_shape));
-    output_y_desc->SetOriginShape(GeShape(input_x_shape));
-    if (output_y_desc->SetShapeRange(input_x_range) != GRAPH_SUCCESS) {
-      return GRAPH_FAILED;
-    }
-    output_y_desc->SetDataType(input_x_dtype);
-  }
-  auto input_scale_shape = input_scale_desc->MutableShape().GetDims();
-  auto input_scale_dtype = input_scale_desc->GetDataType();
+  output_y_desc->SetShape(input_x_desc->GetShape());
+  output_y_desc->SetDataType(input_x_desc->GetDataType());
 
-  if (!IsUnknown(input_scale_shape)) {
-    output_mean_desc->SetShape(GeShape(input_scale_shape));
-    output_mean_desc->SetDataType(input_scale_dtype);
+  output_mean_desc->SetShape(input_scale_desc->GetShape());
+  output_mean_desc->SetDataType(input_scale_desc->GetDataType());
 
-    output_variance_desc->SetShape(GeShape(input_scale_shape));
-    output_variance_desc->SetDataType(input_scale_dtype);
+  output_variance_desc->SetShape(input_scale_desc->GetShape());
+  output_variance_desc->SetDataType(input_scale_desc->GetDataType());
 
-    output_batch_mean_desc->SetShape(GeShape(input_scale_shape));
-    output_batch_mean_desc->SetDataType(input_scale_dtype);
+  output_batch_mean_desc->SetShape(input_scale_desc->GetShape());
+  output_batch_mean_desc->SetDataType(input_scale_desc->GetDataType());
 
-    output_batch_variance_desc->SetShape(GeShape(input_scale_shape));
-    output_batch_variance_desc->SetDataType(input_scale_dtype);
-  } else {
-    std::vector<std::pair<int64_t, int64_t>> output_scale_range;
-    if (input_scale_desc->GetShapeRange(output_scale_range) != GRAPH_SUCCESS) {
-      return GRAPH_FAILED;
-    }
-    MakeUpShapeRange(input_scale_shape, output_scale_range);
-
-    output_mean_desc->SetShape(GeShape(input_scale_shape));
-    output_variance_desc->SetShape(GeShape(input_scale_shape));
-    output_batch_mean_desc->SetShape(GeShape(input_scale_shape));
-    output_batch_variance_desc->SetShape(GeShape(input_scale_shape));
-
-    output_mean_desc->SetOriginShape(GeShape(input_scale_shape));
-    output_variance_desc->SetOriginShape(GeShape(input_scale_shape));
-    output_batch_mean_desc->SetOriginShape(GeShape(input_scale_shape));
-    output_batch_variance_desc->SetOriginShape(GeShape(input_scale_shape));
-
-    output_mean_desc->SetDataType(input_scale_dtype);
-    output_variance_desc->SetDataType(input_scale_dtype);
-    output_batch_mean_desc->SetDataType(input_scale_dtype);
-    output_batch_variance_desc->SetDataType(input_scale_dtype);
-
-    if (output_mean_desc->SetShapeRange(output_scale_range) != GRAPH_SUCCESS ||
-        output_variance_desc->SetShapeRange(output_scale_range) != GRAPH_SUCCESS ||
-        output_batch_mean_desc->SetShapeRange(output_scale_range) != GRAPH_SUCCESS ||
-        output_batch_variance_desc->SetShapeRange(output_scale_range) != GRAPH_SUCCESS) {
-      return GRAPH_FAILED;
-    }
-  }
-
+  output_batch_variance_desc->SetShape(input_scale_desc->GetShape());
+  output_batch_variance_desc->SetDataType(input_scale_desc->GetDataType());
+  
   return GRAPH_SUCCESS;
 }
 
@@ -1244,29 +1198,30 @@ COMMON_INFER_FUNC_REG(BNInfer, BNInferInferShape);
 // ------------------BNTrainingUpdateGrad---------------------
 IMPLEMT_VERIFIER(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "grads", "x")) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] the dtype of grads and x should be the same");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateGradInferShape) {
-  auto shape = op.GetInputDesc("batch_mean").GetShape();
-  auto output_dtype = op.GetInputDesc("batch_mean").GetDataType();
-  std::vector<int64_t> shapeVector = shape.GetDims();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x_desc = op_desc->GetInputDescPtr(1);
+  auto input_mean_desc = op_desc->GetInputDescPtr(2);
 
-  if (shapeVector.empty()) {
+  auto output_scale_desc = op_desc->MutableOutputDesc(0);
+  auto output_offset_desc = op_desc->MutableOutputDesc(1);
+
+  if (input_x_desc == nullptr || input_mean_desc == nullptr ||
+      output_scale_desc == nullptr || output_offset_desc == nullptr) {
     OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
     return GRAPH_FAILED;
   }
 
-  TensorDesc td_diff_scale = op.GetOutputDesc("diff_scale");
-  td_diff_scale.SetShape(shape);
-  td_diff_scale.SetDataType(output_dtype);
-  op.UpdateOutputDesc("diff_scale", td_diff_scale);
+  output_scale_desc->SetShape(input_mean_desc->GetShape());
+  output_scale_desc->SetDataType(input_mean_desc->GetDataType());
 
-  TensorDesc td_diff_offset = op.GetOutputDesc("diff_offset");
-  td_diff_offset.SetShape(shape);
-  td_diff_offset.SetDataType(output_dtype);
-  op.UpdateOutputDesc("diff_offset", td_diff_scale);
+  output_offset_desc->SetShape(input_mean_desc->GetShape());
+  output_offset_desc->SetDataType(input_mean_desc->GetDataType());
 
   return GRAPH_SUCCESS;
 }
