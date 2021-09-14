@@ -252,14 +252,29 @@ def test_op_check_supported(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
+def test_op_select_format(test_arg):
+    from impl.batch_matmul_v2 import op_select_format
+    # static shape
+    op_select_format({"shape": (3, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
+                     {"shape": (3, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (4, 5), "ori_format": "ND"},
+                     )
+    op_select_format({"shape": (3, 2, 4), "dtype": "float", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
+                     {"shape": (1, 4, 5), "dtype": "float", "format": "ND", "ori_shape": (1, 4, 5), "ori_format": "ND"},
+                     )
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}
-    ut_case.add_case(["Ascend920A"], case14)
-    ut_case.add_case(["Ascend920A"], case15)
+#     ut_case.add_case(["Ascend920A"], case14)
+#     ut_case.add_case(["Ascend920A"], case15)
 
-    from case_batchmatmul_v2 import precision_cases
-    for case in precision_cases:
-        ut_case.add_precision_case(["Ascend310", "Ascend910"], case)
+    # from case_batchmatmul_v2 import precision_cases
+    # for case in precision_cases:
+    #     ut_case.add_precision_case(["Ascend310", "Ascend910"], case)
+
+    from case_nd_in_nd_out import cases
+    for case in cases:
+        print(case)
+        ut_case.add_case(["Ascend310"], case)
 
     ut_case.run(["Ascend310", "Ascend910A", "Ascend920A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")

@@ -466,8 +466,27 @@ def calc_matmul(outs, option=None):
     """
 
     mode = GEMMComputeParam.dynamic_mode
-    var_names = {"dynamic_mkn": ("m", "k", "n"), "dynamic_mknb": ("m", "k", "n", "batch")}
-    target_area = [get_te_var(v).get_bound() for v in var_names[mode]]
+    # The variables is named x_ori in ND format, otherwise named x
+    m_name = GEMMComputeParam.m_var_name
+    k_name = GEMMComputeParam.k_var_name
+    n_name = GEMMComputeParam.n_var_name
+
+    var_names = {"dynamic_mkn": (m_name, k_name, n_name),
+                 "dynamic_mknb": (m_name, k_name, n_name, "batch")}
+    
+    target_area = copy.deepcopy([get_te_var(v).get_bound() for v in var_names[mode]])
+    # process target_area result in ND mode. make it M1/ K1 / N1
+    if GEMMComputeParam.format_a == "ND":
+        target_area[0][0] = math.ceil(target_area[0][0] / UNIT_LEN)
+        target_area[0][1] = None if target_area[0][1] is None else math.ceil(target_area[0][1] / UNIT_LEN)
+        target_area[1][0] = math.ceil(target_area[1][0] / UNIT_LEN)
+        target_area[1][1] = None if target_area[1][1] is None else math.ceil(target_area[1][1] / UNIT_LEN)
+    if GEMMComputeParam.format_b == "ND":
+        target_area[2][0] = math.ceil(target_area[2][0] / UNIT_LEN)
+        target_area[2][1] = None if target_area[2][1] is None else math.ceil(target_area[2][1] / UNIT_LEN)
+
+    add_compile_info("format_a", GEMMComputeParam.format_a)
+    add_compile_info("format_b", GEMMComputeParam.format_b)
 
     context = op_context.get_context()
     if _is_fuzzily_build():
@@ -756,9 +775,26 @@ class MatmulTiling(CubeTilingOp):
 
         var_range = collections.OrderedDict()
 
-        var_range["m"] = (coverage[0], coverage[1])
-        var_range["k"] = (coverage[2], coverage[3])
-        var_range["n"] = (coverage[4], coverage[5])
+        m_name = GEMMComputeParam.m_var_name
+        k_name = GEMMComputeParam.k_var_name
+        n_name = GEMMComputeParam.n_var_name
+
+        block_in = GEMMComputeParam.block_in
+        block_out = GEMMComputeParam.block_out
+        block_reduce = GEMMComputeParam.block_reduce
+        if GEMMComputeParam.format_a == "ND":
+            m_range = (coverage[0] * block_in, min(coverage[1] * block_in, INT_32_MAX))
+            k_range = (coverage[2] * block_reduce, min(coverage[3] * block_reduce, INT_32_MAX))
+        else:
+            m_range = (coverage[0], coverage[1])
+            k_range = (coverage[2], coverage[3])
+        if GEMMComputeParam.format_b == "ND":
+            n_range = (coverage[4] * block_out, min(coverage[5] * block_out, INT_32_MAX))
+        else:
+            n_range = (coverage[4], coverage[5])
+        var_range[m_name] = m_range
+        var_range[k_name] = k_range
+        var_range[n_name] = n_range
         if self.dynamic_mode == "dynamic_mknb":
             var_range["batch"] = (coverage[6], coverage[7])
 
@@ -798,8 +834,8 @@ class MatmulTiling(CubeTilingOp):
             k_bl1 = DEFAULT_K_VALUE
             k_bl0 = DEFAULT_K_VALUE
 
-        tiling["AUB_shape"] = None
-        tiling["BUB_shape"] = None
+        tiling["AUB_shape"] = [16, 1, 1, 1]
+        tiling["BUB_shape"] = [16, 1, 1, 1]
 
         tiling["AL1_shape"] = [k_al1, 1, 1, 1]
         tiling["BL1_shape"] = [k_bl1, 1, 1, 1]

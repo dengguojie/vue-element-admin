@@ -18,6 +18,7 @@ from impl.trans_data import trans_data_compute
 from impl.ascend_dequant import ascend_dequant_compute
 from impl.ascend_requant import ascend_requant_compute
 from te.platform.cce_conf import te_set_version
+from impl.mat_mul import op_select_format
 ut_case = OpUT("MatMul", None, None)
 
 case1 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND"},
@@ -337,7 +338,14 @@ def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (1, 2, 16, 16), "ori_shape": (32, 16)}
     get_op_support_info(x1, x2, None)
+
+def test_op_select_format_matmul(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (1, 2, 16, 16), "ori_shape": (32, 16)}
+    op_select_format(x1, x2, None)
+
 ut_case.add_cust_test_func(test_func=test_split_matmul)
+ut_case.add_cust_test_func(test_func=test_op_select_format_matmul)
 
 def test_matmul_confusion_transpose_910(test_arg):
     te_set_version("Ascend910")
@@ -683,10 +691,11 @@ not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
                         "format_expect": [],
                         "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+ut_case.add_case(["Ascend310", "Ascend910A"], not_align_bias_case2)
 
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
-    ut_case.run(["Ascend310", "Ascend920A"])
+    ut_case.add_cust_test_func(test_func=test_op_select_format_matmul)
+    ut_case.run(["Ascend310", "Ascend910A"])

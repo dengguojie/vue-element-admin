@@ -16,6 +16,8 @@
 batch_matmul
 """
 import functools
+from impl.dynamic.batch_matmul_v2 import base_op_select_format
+from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 
 from impl import batch_matmul_vector
 from impl.util import util_deconv_comm
@@ -116,13 +118,15 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
             util_select_op_base.SplitOutput([0, [out_m_axis]])]
     ]
 
-    out_n_axis = batch_len_a if format_b in ("FRACTAL_NZ", "FRACTAL_Z") else batch_len_a + 1
+    out_n_axis = batch_len_a if format_b in (
+        "FRACTAL_NZ", "FRACTAL_Z") else batch_len_a + 1
     axis_split_matrix_b = [
         [util_select_op_base.SplitInput(*n_split_list),
             util_select_op_base.SplitOutput([0, [out_n_axis]])]
     ]
 
-    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b + axis_split_matrix_batch
+    axis_split_matrix = axis_split_matrix_a + \
+        axis_split_matrix_b + axis_split_matrix_batch
     min_l1space = _cal_min_l1space(dtype_b)
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(
         axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
@@ -203,21 +207,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "reduce axis not same")
 
-    if m_shape % tbe_platform.BLOCK_IN != 0 and m_shape != 1:
-        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
-                                                           "input shape M should be 1 or multiple of %d" %
-                                                           tbe_platform.BLOCK_IN)
-    if m_shape != 1:
-        if km_shape % k_block_size != 0:
-            error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
-                                                               "input shape K1 should be multiple of %d" %
-                                                               tbe_platform.BLOCK_IN)
-
-    if n_shape % tbe_platform.BLOCK_IN != 0 and n_shape != 1:
-        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
-                                                           "input shape N should be 1 or multiple of %d" %
-                                                           tbe_platform.BLOCK_IN)
-
     shape_bias_length = len(shape_bias)
 
     if shape_bias_length > 0:
@@ -286,6 +275,7 @@ def _get_input_shape(shape_x, transpose, src_dtype):
         res.append(dim_b)
     return res
 
+
 def _get_input_shape_b(shape_y, transpose, src_dtype):
     """ get input shape
     :param shape_x
@@ -315,6 +305,7 @@ def _get_input_shape_b(shape_y, transpose, src_dtype):
     else:
         res.append(dim_b)
     return res
+
 
 # pylint: disable=too-many-return-statements
 def _check_batch_range(input_x, input_y):
@@ -359,75 +350,16 @@ def _check_batch_range(input_x, input_y):
     return True
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=dangerous-default-value, no-member
-# pylint: disable=too-many-statements, unused-argument
-def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
+def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
                      trans_b=False, offset_x=0, kernel_name="matmul"):
     """
-    provide dynamic format to FE
+    provide static format to FE
     """
     src_dtype = input_x.get("dtype")
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
+    src_fp16_flag = True if src_dtype == "float16" else False
+    _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
 
-    is_dynamic_shape = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
-    if is_dynamic_shape:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                               datatype="float16,int8,int8",
-                                               format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
-                                               unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
-        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                               datatype="float16,int8,int8",
-                                               format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z",
-                                               unknownshape_format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z")
-        input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                               datatype="float16,int32,float16",
-                                               format="ND,ND,ND",
-                                               unknownshape_format="ND,ND,ND")
-        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                               datatype="int8,int8,int8",
-                                               format="ND,ND,ND",
-                                               unknownshape_format="ND,ND,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,int32,float16",
-                                                format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
-                                                unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
-    else:
-        if src_dtype == "float16":
-            input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                                   datatype="float16,float16",
-                                                   format="FRACTAL_NZ,FRACTAL_NZ")
-            input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                                   datatype="float16,float16",
-                                                   format="FRACTAL_NZ,FRACTAL_NZ")
-            input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                   datatype="float16,float",
-                                                   format="ND,ND")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                   datatype="int8,int8",
-                                                   format="ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float",
-                                                    format="FRACTAL_NZ,FRACTAL_NZ")
-        else:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                                   datatype="float16,float,float,int32,int32,int8,int8",
-                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_NZ,FRACTAL_NZ")
-            input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                                   datatype="float16,float,float,int32,int32,int8,int8",
-                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_Z,FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                   datatype="float16,float,float,int32,int32,int32,float16",
-                                                   format="ND,NHWC,ND,NHWC,ND,ND,ND")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                   datatype="int8,int8,int8,int8,int8,int8,int8",
-                                                   format="ND,ND,ND,ND,ND,ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float,float,int32,int32,int32,int32",
-                                                    format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_NZ,FRACTAL_NZ")
-
-    param_list = [input0, input1, input2, input3, output0]
+    param_list = gen_op_select_format_params(full_case_senario_combinations, is_batch_matmul_v2=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
@@ -592,7 +524,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w={}, output_z={}, 
 
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("batch_matmul",
-                                                "For BatchMatMulV2, tensor offset_w must be None!")
+                                                      "For BatchMatMulV2, tensor offset_w must be None!")
     para_dict = {
         "trans_a": trans_a_local,
         "trans_b": trans_b_local,
@@ -606,7 +538,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w={}, output_z={}, 
         "batch_shape_a": batch_shape_a,
         "batch_shape_b": batch_shape_b,
         "batch_shape_out": batch_shape_out
-        }
+    }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 
     return result
@@ -660,7 +592,6 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
     else:
         trans_a_local = trans_a
 
-
     if format_b == 'FRACTAL_NZ' and not cube_vector_split:
         trans_b_local = False if trans_b else True
     else:
@@ -673,7 +604,7 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
     batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else list()
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("batch_matmul_v2",
-                                                "For BatchMatMulV2, tensor offset_w must be None!")
+                                                      "For BatchMatMulV2, tensor offset_w must be None!")
     para_dict = {
         "trans_a": trans_a_local,
         "trans_b": trans_b_local,

@@ -3,11 +3,12 @@
 from op_test_frame.ut import OpUT
 
 from impl.dynamic.mat_mul import get_op_support_info
+from impl.dynamic.mat_mul import op_select_format
 CUBE_BLOCK = 16
 ut_case = OpUT("MatMul", "impl.dynamic.mat_mul", "mat_mul")
 
 # succ case
-# m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, case_name, expect_result
+# m1_range, k1_range, n1_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, case_name, expect_result
 matmul_case_succ = [
     ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_succcase0"),
     ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", True, False, True, "dynamic_matmul_succcase1"),
@@ -16,12 +17,18 @@ matmul_case_succ = [
     ((1, 4), (1, 2, 1, None), (2, 4), "float16", "float16", "NZ", True, True, True, "dynamic_matmul_succcase4"),
 ]
 
+matmul_ND_case_succ = [
+    # m1_range, k1_range, n1_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, case_name, expect_result
+    ((256,258), (16, 16), (256, 258), "float16", "float16", "ND", False, False, False, "dynamic_matmul_ND_succcase0"),
+    ((256,284), (16, 16), (256, 284), "float16", "float16", "ND", True, True, False, "dynamic_matmul_ND_succcase1"),
+    ((256,284), (16, 16), (256, 284), "float16", "float16", "ND", False, True, False, "dynamic_matmul_ND_succcase2"),
+    ((256,284), (16, 16), (256, 284), "float16", "float16", "ND", True, False, False, "dynamic_matmul_ND_succcase3"),
+]
+
 
 matmul_case_error = [
     # dtype error
     ((1, 4), (1, 2), (2, 4), "float32", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "dtype"),
-    # format error
-    ((1, 4), (1, 2), (2, 4), "float16", "float16", "ND", False, False, False, "dynamic_matmul_errorcase1", "format"),
     # orishape length is not 2
     ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase2", "x1_orishape_len"),
     ((1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase3", "x2_orishape_len"),
@@ -47,39 +54,54 @@ def gen_matmul_dynamic_succecase(m_range, k_range, n_range, src_dtype, dst_dtype
     """
     if format == "NZ":
         format = "FRACTAL_NZ"
-    block_range = [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
-    if len(k_range)  == 4:
-        mk_range = k_range[:2]
-        nk_range = k_range[2:]
-    else:
-        mk_range = nk_range = k_range
-    x1_range = [m_range, mk_range] if trans_a else [mk_range, m_range]
-    x1_range += block_range
-    x2_range = [nk_range, n_range] if trans_b else [n_range, nk_range]
-    x2_range += block_range
-    y_range = [n_range, m_range] + block_range
 
-    x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
+    shape = [-1, -1]
+
+    if format == "FRACTAL_NZ":
+        block_range = [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
+        if len(k_range)  == 4:
+            mk_range = k_range[:2]
+            nk_range = k_range[2:]
+        else:
+            mk_range = nk_range = k_range
+        x1_range = [m_range, mk_range] if trans_a else [mk_range, m_range]
+
+        x2_range = [nk_range, n_range] if trans_b else [n_range, nk_range]
+        y_range = [n_range, m_range]
+
+        x1_range += block_range
+        x2_range += block_range
+        y_range += block_range
+        shape += [CUBE_BLOCK, CUBE_BLOCK]
+    elif format == "ND":
+        x1_range = [k_range, m_range] if trans_a else [m_range, k_range]
+        x2_range = [n_range, k_range] if trans_b else [k_range, n_range]
+        y_range = [m_range, n_range]
+
+    x1 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": shape,
           "format": format , "ori_format": "ND", "range": x1_range
     }
-    x2 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
+    x2 = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": shape,
           "format": format , "ori_format": "ND", "range": x2_range
     }
-    y = {"ori_shape": (-1, -1), "dtype": src_dtype, "shape": (-1, -1, CUBE_BLOCK, CUBE_BLOCK),
+    y = {"ori_shape": (-1, -1), "dtype": dst_dtype, "shape": shape,
          "format": format , "ori_format": "ND", "range": y_range
     }
 
     if bias_flag:
-        bias_n_range = [16*i for i in n_range]
+        bias_n_range = [16*i for i in n_range] if format == "FRACTAL_NZ" else n_range
         bias = {"ori_shape": (-1, ), "dtype": dst_dtype, "shape": (-1,),
                 "format": "ND", "ori_format": "ND", "range": (bias_n_range,)}
     else:
         bias = None
+    print([x1, x2, bias, None, y, trans_a, trans_b])
 
     return {
         "params": [x1, x2, bias, None, y, trans_a, trans_b],
         "case_name": case_name,
-        "expect": "success"
+        "expect": "success",
+        "format_expect":[],
+        "support_expect":True
     }
 
 def gen_matmul_dynamic_errorcase(m_range, k_range, n_range, src_dtype, dst_dtype,
@@ -203,8 +225,8 @@ for case in common_cases:
     for param in gen_cases_by_shape_and_range(case):
         ut_case.add_case("Ascend910A", param)
 
-#for case in matmul_case_succ:
-#    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
+for case in matmul_case_succ:
+   ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
 
 for error_case in matmul_case_error:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))
@@ -215,10 +237,22 @@ def test_get_op_support_info_dynamic_matmul(test_arg):
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, 16, 16), "ori_shape": (-1, -1),
          "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
     get_op_support_info(x1, x2, None)
-ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_matmul)
 
+def test_op_select_format_dynamic_matmul(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, 16, 16), "ori_shape": (-1, -1),
+         "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, 16, 16), "ori_shape": (-1, -1),
+         "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
+    op_select_format(x1, x2)
+
+for case in matmul_case_succ:
+    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
+for case in matmul_ND_case_succ:
+    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_matmul)
+ut_case.add_cust_test_func(test_func=test_op_select_format_dynamic_matmul)
+print(ut_case)
 if __name__ == "__main__":
     ut_case._case_info_map = {}
-    for case in matmul_case_succ:
-        ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
     ut_case.run(["Ascend910A"])
+    exit(0)

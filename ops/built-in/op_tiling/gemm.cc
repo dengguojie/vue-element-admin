@@ -64,11 +64,16 @@ struct BatchmatmulParas {
   int64_t k;
   int64_t n;
   int64_t batch;
+  int64_t ori_shape_M;
+  int64_t ori_shape_K;
+  int64_t ori_shape_N;
+  std::string format_a;
+  std::string format_b;
 };
 
 namespace optiling {
 
-bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::GeShape& shape_b, BatchmatmulParas &params) {
+bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::GeShape& shape_b, BatchmatmulParas& params) {
   int32_t num_dima = shape_a.GetDimNum();
   int32_t num_dimb = shape_b.GetDimNum();
   if (num_dima < 3 && num_dimb < 3) {
@@ -100,7 +105,7 @@ bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::G
 }
 
 bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType dtype, const ge::GeShape& ori_shape_a,
-                  const ge::GeShape& ori_shape_b, BatchmatmulParas &params) {
+                  const ge::GeShape& ori_shape_b, BatchmatmulParas& params) {
   int32_t block_reduce = kBlockReduce, block_in = kBlockIn, block_out = kBlockOut;
   if (dtype == ge::DT_INT8 || dtype == ge::DT_UINT8) {
     block_reduce = kBlockReduceS8;
@@ -112,7 +117,6 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
   int32_t idx_k_of_a = num_dima - 1;
   int32_t idx_k_of_b = num_dimb - 2;
   int32_t idx_n_of_b = num_dimb - 1;
-
   auto& repo_attr = compile_info["attrs"];
   auto trans_a = repo_attr["transpose_a"];
   auto trans_b = repo_attr["transpose_b"];
@@ -131,7 +135,13 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
   params.m = std::ceil(static_cast<double>(ori_shape_a.GetDim(idx_m_of_a)) / block_in);
   params.k = std::ceil(static_cast<double>(ori_shape_a.GetDim(idx_k_of_a)) / block_reduce);
   params.n = std::ceil(static_cast<double>(ori_shape_b.GetDim(idx_n_of_b)) / block_out);
-
+  if (params.format_a == "ND") {
+      params.ori_shape_M = ori_shape_a.GetDim(idx_m_of_a);
+      params.ori_shape_K = ori_shape_a.GetDim(idx_k_of_a);
+    }
+    if (params.format_b == "ND") {
+      params.ori_shape_N = ori_shape_b.GetDim(idx_n_of_b);
+    }
   return GetGEMMBatch(op_type, ori_shape_a, ori_shape_b, params);
 }
 
@@ -151,7 +161,7 @@ string StringTeOperator(const ge::TensorDesc &tensor) {
     oss << "\t\tdtype: " << ge::TypeUtils::DataTypeToSerialString(tensor.GetDataType()) << endl;
     oss << "\t\tformat: " << ge::TypeUtils::FormatToSerialString(tensor.GetFormat()) << endl;
     oss << "\t\tori_format: " << ge::TypeUtils::FormatToSerialString(tensor.GetOriginFormat()) << endl;
-    
+
     return oss.str();
 }
 
@@ -176,7 +186,7 @@ string DebugInfoGEMM(const ge::Operator &op_paras, const json &compile_info) {
   return oss.str();
 }
 
-std::string CheckTilingInRepo(const std::string &op_type, const json &compile_info, BatchmatmulParas params,
+std::string CheckTilingInRepo(const std::string &op_type, const json &compile_info, const BatchmatmulParas& params,
                                bool isBatchMatmulMode) {
   string tiling_id("-1");
   int64_t min_distance = LLONG_MAX;
@@ -214,14 +224,18 @@ std::string CheckTilingInRepo(const std::string &op_type, const json &compile_in
     ++element_seed;
     ++element_range;
   }
-
   return tiling_id;
 }
+
 std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_paras, const json &compile_info,
                              utils::OpRunInfo& run_info) {
   string tiling_id("-1");
   const auto &dynamic_mode = compile_info["dynamic_mode"];
   bool isBatchMatmulMode = dynamic_mode == "dynamic_mknb";
+  // Update ori_shape info
+  auto format_a = compile_info["format_a"];
+  auto format_b = compile_info["format_b"];
+
   CHECK((dynamic_mode != "dynamic_mkn" && !isBatchMatmulMode),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb"),
         return tiling_id);
@@ -237,12 +251,11 @@ std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_
   const ge::GeShape& ori_shape_b = tensor_b->GetOriginShape();
   ge::DataType dtype = tensor_a->GetDataType();
   BatchmatmulParas params;
+  params.format_a = format_a;
+  params.format_b = format_b;
   CHECK((!CalcGEMMMknb(op_type, compile_info, dtype, ori_shape_a, ori_shape_b, params)),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch"), return tiling_id);
-
-  // check tiling of repository
   tiling_id = CheckTilingInRepo(op_type, compile_info, params, isBatchMatmulMode);
-
   // check tiling of costmodel
   if (tiling_id == "-1") {
     for (auto &element : compile_info["cost_range"].items()) {
@@ -266,9 +279,18 @@ std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_
   if (tiling_id != "-1") {
     run_info.SetBlockDim(static_cast<int32_t>(compile_info["block_dim"][tiling_id]));
     run_info.SetTilingKey(stoi(tiling_id));
-    run_info.AddTilingData(static_cast<int32_t>(params.m));
-    run_info.AddTilingData(static_cast<int32_t>(params.k));
-    run_info.AddTilingData(static_cast<int32_t>(params.n));
+    if (format_a == "ND"){
+      run_info.AddTilingData(static_cast<int32_t>(params.ori_shape_M));
+      run_info.AddTilingData(static_cast<int32_t>(params.ori_shape_K));
+    } else {
+      run_info.AddTilingData(static_cast<int32_t>(params.m));
+      run_info.AddTilingData(static_cast<int32_t>(params.k));
+    }
+    if (format_b == "ND"){
+      run_info.AddTilingData(static_cast<int32_t>(params.ori_shape_N));
+    } else {
+      run_info.AddTilingData(static_cast<int32_t>(params.n));
+    }
     if (isBatchMatmulMode) {
       run_info.AddTilingData(static_cast<int32_t>(params.batch));
     }
