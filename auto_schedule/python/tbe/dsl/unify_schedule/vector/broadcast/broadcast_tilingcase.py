@@ -287,7 +287,7 @@ def _pre_build():
     cpt_computes = operation.get_context().get_computes()
     is_const = False
     for compute in cpt_computes:
-        if compute.get("_mode") != ORIGINAL:
+        if compute.get("_mode") in [SPECIAL, SPECIAL_SCALAR]:
             use_special_pattern = True
         if compute.get("_mode") == SPECIAL_SCALAR:
             support_absorbable_broadcast = True
