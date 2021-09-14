@@ -36,7 +36,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_0) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\"}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\", \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{64, 64, 64, 64};
   std::vector<int64_t> padding_shape{8};
@@ -84,11 +84,11 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_1) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\"}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\", \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{1, 512, 40, 10};
   std::vector<int64_t> padding_shape{8};
-  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
   std::vector<int64_t> output{1, 512, 42, 12};
 
   TeOpTensor tensor_input;
@@ -132,11 +132,11 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_2) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\"}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\", \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{1, 512, 40, 1000};
-  std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int32_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
   std::vector<int64_t> output{1, 512, 42, 1002};
 
   TeOpTensor tensor_input;
@@ -180,11 +180,11 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_3) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\"}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\", \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{1, 512, 40, 10000};
   std::vector<int64_t> padding_shape{8};
-  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
   std::vector<int64_t> output{1, 512, 42, 10002};
 
   TeOpTensor tensor_input;
@@ -228,7 +228,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_4) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\"}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\", \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{400, 1000};
   std::vector<int64_t> padding_shape{4};
@@ -276,7 +276,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_5) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\"}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"mode\": \"constant\", \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{400, 100000};
   std::vector<int64_t> padding_shape{4};
