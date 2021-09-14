@@ -16,6 +16,7 @@
 set(OPS_BUILTIN_TEST_DIR ${OPS_DIR}/built-in/tests)
 set(OP_TEST_PLUFIN_AND_PROTO_SOURCE
         ${OPS_BUILTIN_TEST_DIR}/common/utils_plugin_and_op_proto/op_proto_test_util.cpp
+	${OPS_BUILTIN_TEST_DIR}/common/utils/ut_op_util.cpp
         )
 set(OP_TEST_PLUFIN_AND_PROTO_INCLUDE
         ${OPS_BUILTIN_TEST_DIR}/common/utils_plugin_and_op_proto
