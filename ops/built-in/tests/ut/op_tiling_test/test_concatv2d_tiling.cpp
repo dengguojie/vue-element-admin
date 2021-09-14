@@ -9,14 +9,14 @@
 using namespace std;
 using namespace ge;
 
-class ConcatTiling : public testing::Test {
+class ConcatV2DTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "ConcatTiling SetUp" << std::endl;
+    std::cout << "ConcatV2DTiling SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "ConcatTiling TearDown" << std::endl;
+    std::cout << "ConcatV2DTiling TearDown" << std::endl;
   }
 };
 
@@ -33,8 +33,8 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-TEST_F(ConcatTiling, Concat_tiling1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatD");
+TEST_F(ConcatV2DTiling, Concat_tiling1) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4},
@@ -45,7 +45,7 @@ TEST_F(ConcatTiling, Concat_tiling1) {
   TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
   TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
 
-  auto opParas = op::ConcatD("ConcatD");
+  auto opParas = op::ConcatV2D("ConcatV2D");
   opParas.create_dynamic_input_x(3);
   opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
   opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
@@ -61,8 +61,8 @@ TEST_F(ConcatTiling, Concat_tiling1) {
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 384 256 960 3 0 0 256 0 320 256 384 576 ");
 }
 
-TEST_F(ConcatTiling, Concat_tiling2) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatD");
+TEST_F(ConcatV2DTiling, Concat_tiling2) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4},
@@ -73,7 +73,7 @@ TEST_F(ConcatTiling, Concat_tiling2) {
   TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
   TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
 
-  auto opParas = op::ConcatD("ConcatD");
+  auto opParas = op::ConcatV2D("ConcatV2D");
   opParas.create_dynamic_input_x(3);
   opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
   opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
@@ -89,8 +89,8 @@ TEST_F(ConcatTiling, Concat_tiling2) {
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 96 64 240 3 0 0 64 0 80 64 96 144 ");
 }
 
-TEST_F(ConcatTiling, Concat_tiling3) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatD");
+TEST_F(ConcatV2DTiling, Concat_tiling3) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 5},  {4, 6},  {4, 7},  {4, 8},  {4, 9},  {4, 10}, {4, 11}, {4, 12}, {4, 13}, {4, 14},
@@ -128,7 +128,7 @@ TEST_F(ConcatTiling, Concat_tiling3) {
   TensorDesc tensor_input28(ge::Shape(input_shapes[28]), FORMAT_ND, DT_FLOAT16);
   TensorDesc tensor_input29(ge::Shape(input_shapes[29]), FORMAT_ND, DT_FLOAT16);
 
-  auto opParas = op::ConcatD("ConcatD");
+  auto opParas = op::ConcatV2D("ConcatV2D");
   opParas.create_dynamic_input_x(30);
   opParas.UpdateDynamicInputDesc("x", 0, tensor_input0);
   opParas.UpdateDynamicInputDesc("x", 1, tensor_input1);
@@ -174,8 +174,8 @@ TEST_F(ConcatTiling, Concat_tiling3) {
       "180 21 200 22 221 23 243 24 266 25 290 26 315 27 341 28 368 29 396 30 425 31 455 32 486 33 518 34 551 ");
 }
 
-TEST_F(ConcatTiling, Concat_tiling4) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatD");
+TEST_F(ConcatV2DTiling, Concat_tiling4) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   vector<vector<int64_t>> input_shapes = {
       {},
@@ -186,7 +186,7 @@ TEST_F(ConcatTiling, Concat_tiling4) {
   TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
   TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
 
-  auto opParas = op::ConcatD("ConcatD");
+  auto opParas = op::ConcatV2D("ConcatV2D");
   opParas.create_dynamic_input_x(3);
   opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
   opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
@@ -201,8 +201,8 @@ TEST_F(ConcatTiling, Concat_tiling4) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ConcatTiling, Concat_tiling5) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatD");
+TEST_F(ConcatV2DTiling, Concat_tiling5) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 4},
@@ -213,7 +213,7 @@ TEST_F(ConcatTiling, Concat_tiling5) {
   TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
   TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
 
-  auto opParas = op::ConcatD("ConcatD");
+  auto opParas = op::ConcatV2D("ConcatV2D");
   opParas.create_dynamic_input_x(3);
   opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
   opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
@@ -228,8 +228,8 @@ TEST_F(ConcatTiling, Concat_tiling5) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ConcatTiling, Concat_tiling6) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatD");
+TEST_F(ConcatV2DTiling, Concat_tiling6) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   vector<vector<int64_t>> input_shapes = {
       {9, 4},
@@ -240,7 +240,7 @@ TEST_F(ConcatTiling, Concat_tiling6) {
   TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
   TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
 
-  auto opParas = op::ConcatD("ConcatD");
+  auto opParas = op::ConcatV2D("ConcatV2D");
   opParas.create_dynamic_input_x(3);
   opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
   opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
