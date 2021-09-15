@@ -1375,7 +1375,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
         if te_util.L1CommonParam.l1_fusion_tensors_map is not None:
             build_map["dummy_placeholder"] = True
         if hasattr(sch, "tbe_compile_para") and sch.tbe_compile_para is not None:
-            para_list = ("read_write_bank_conflict", "out_of_order", "pipeline_opt", "remove_duplicates_in_load")
+            para_list = ("read_write_bank_conflict", "out_of_order", "pipeline_opt")
             for para in para_list:
                 if para in sch.tbe_compile_para:
                     build_map[para] = sch.tbe_compile_para[para]
