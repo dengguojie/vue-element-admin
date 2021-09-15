@@ -32,6 +32,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_conv2d_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import modify_input_range
 from impl.util.util_conv2d_dynamic import check_l1_size
 from impl.util.util_conv2d_dynamic import create_fuzz_range
 from impl.util.util_conv2d_dynamic import correct_input_range
@@ -881,6 +882,7 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
     x_shape = inputs.get("ori_shape")
     x_format = inputs.get("ori_format")
     x_range = inputs.get("ori_range")
+    data_type = inputs.get("dtype")
 
     idx_n = 0
     if x_format == "NCHW":
@@ -931,8 +933,8 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
     # check fmap exceed l1buffer
     if x_shape[idx_w] != DYNAMIC_VALUE:
         check_l1_size(op_type, inputs, kh, kw, strides, pads)
-
-    return input_range
+    new_in_range = modify_input_range(input_range, data_type, idx_h, idx_w, strides, kh, kw, pads)
+    return new_in_range
 
 @tbe_register.register_param_generalization("AvgPool")
 def avg_pool_generalization(x, filter, bias, y, ksize, strides, padding="VALID",

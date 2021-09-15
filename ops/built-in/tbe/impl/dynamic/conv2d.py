@@ -36,6 +36,7 @@ from tbe.common.utils.errormgr import error_manager_util
 from impl.util import fusion_util
 from impl.util import util_conv2d
 from impl.util.util_conv2d_dynamic import Conv2dParaProcess
+from impl.util.util_conv2d_dynamic import modify_input_range
 from impl.util.util_conv2d_dynamic import check_l1_size
 from impl.util.util_conv2d_dynamic import create_fuzz_range
 from impl.util.util_conv2d_dynamic import correct_input_range
@@ -59,6 +60,7 @@ def gen_conv2d_range(inputs, weights, strides, pads, dilations):
     x_range = inputs.get("ori_range")
     w_shape = weights.get("ori_shape")
     w_format = weights.get("ori_format")
+    data_type = weights.get("dtype")
 
     idx_n = 0
     if x_format == "NCHW":
@@ -121,8 +123,8 @@ def gen_conv2d_range(inputs, weights, strides, pads, dilations):
     # check mini tiling exceed l1buffer
     if x_shape[idx_w] != DYNAMIC_VALUE:
         check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads)
-
-    return input_range
+    new_in_range = modify_input_range(input_range, data_type, idx_h, idx_w, strides, kh_dilate, kw_dilate, pads)
+    return new_in_range
 
 
 @register_param_generalization("Conv2D")
