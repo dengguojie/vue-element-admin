@@ -1,4 +1,4 @@
-/* Copyright (c) Huawei Technologies Co., Ltd. 2021 All rights reserved.
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,8 +116,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& in
     int64_t max_output = input_shapes[0][i];
     output_shape[i] = input_shapes[0][i];
     for (size_t j = 1; j < INPUT_NUM; j++) {
-      bool verify_broadcast = input_shapes[j][i] != 1 &&
-          (input_shapes[j][i] != max_output && max_output != 1);
+      bool verify_broadcast = input_shapes[j][i] != 1 && (input_shapes[j][i] != max_output && max_output != 1);
       if (input_shapes[j][i] > max_output) {
         max_output = input_shapes[j][i];
         output_shape[i] = input_shapes[j][i];
@@ -147,12 +146,16 @@ void CalNdKey(TilingInfo& tiling_info, bool is_special_pattern,
   bool broadcast_dim01_to_dim11 = (dim01 == 1 && dim11 > 1);
   bool broadcast_dim11_to_dim01 = (dim11 == 1 && dim01 > 1);
   if (broadcast_dim01_to_dim11 && dim00 == dim10) {
+    // common 1, common large
     key = 2;
   } else if (broadcast_dim11_to_dim01 && dim00 == dim10) {
+    // common large, common 1
     key = 8;
   } else if (broadcast_dim00_to_dim10 && broadcast_dim11_to_dim01) {
+    // 1 large, large, 1
     key = 9;
   } else if (broadcast_dim01_to_dim11 && broadcast_dim10_to_dim00) {
+    // large 1, 1, large
     key = 6;
   }
   tiling_info.key = key;
@@ -172,23 +175,24 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   int32_t block_axis = 0;
   int32_t block_nparts = 1;
   int32_t dtype_size = GetDtypeSize(out_type);
+  OP_TILING_CHECK(dtype_size == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_size cannot be zero"), return false);
   int32_t bound_size = compile_info.ub_size / dtype_size / MAX_COEXIST_NUM;
   int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
   int32_t c_size_align = (c_size + num_per_block - 1) / num_per_block * num_per_block;
   if (c_size > bound_size) {
-      VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
-      return false;
-  } else if ((c_size * num_per_block < bound_size) &&
-             (n_h_w >= num_per_block)) {
-      // for open multi-core
-      block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * BTYPE_PER_BLOCK) ?
-                     compile_info.core_num : n_h_w * dtype_size / BTYPE_PER_BLOCK;
-      int32_t block_tiling_inner_loop = n_h_w / block_nparts;
-      ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
+    VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
+    return false;
+  } else if ((c_size * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
+    // for open multi-core
+    block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * BTYPE_PER_BLOCK) ?
+                   compile_info.core_num : n_h_w * dtype_size / BTYPE_PER_BLOCK;
+    int32_t block_tiling_inner_loop = n_h_w / block_nparts;
+    ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
   } else {
-      // for cannot open multi-core scene
-      block_nparts = 1;
-      ub_factor = min(bound_size / c_size_align, n_h_w);
+    // for cannot open multi-core scene
+    block_nparts = 1;
+    ub_factor = min(bound_size / c_size_align, n_h_w);
   }
 
   tiling_info.block_nparts = block_nparts;
