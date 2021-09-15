@@ -44,6 +44,27 @@
 				"data_distribute":[
 					"uniform"
 				]
+			},
+			{
+				"format":[
+					"NCHW"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+                    1
+				],
+                "is_const":true,
+				"value_range":[
+					[
+						0,
+						0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
 			}
 		],
 		"output_desc":[
@@ -72,5 +93,49 @@
 				"type":"bool"
 			}
 		]
-	}
+	},
+    {
+        "op": "PadV3",
+        "case_name": "Test_PadV3_002",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 30, 30],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [8],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 0, 0, 0, 1, 1, 1, 1],
+                "name": "paddings"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [2, 2, 32, 32],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "reflect",
+                "type": "string"
+            },
+			{
+                "name": "padding_contiguous",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    }
 ]

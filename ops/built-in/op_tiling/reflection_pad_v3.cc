@@ -240,7 +240,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 bool ReflectionPadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
                            OpRunInfo& run_info) {
   using namespace ge;
-
+  auto allVars = op_compile_info["vars"];
+  auto padding_contiguous = allVars["padding_contiguous"];
   OP_LOGD("begin to run tiling.");
   if (op_compile_info == nullptr) {
     OP_LOGE(op_type, "op [ReflectionPadV3Tiling] : op_compile_info json error.");
@@ -265,7 +266,19 @@ bool ReflectionPadV3Tiling(const std::string& op_type, const TeOpParas& op_paras
   const std::vector<int64_t>& input_shape_const = op_paras.inputs[pad_input_idx].tensor[0].shape;
   std::vector<int64_t> input_shape = input_shape_const;
   std::vector<int64_t> paddings_const_values;
-  GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values);
+  std::vector<int64_t> paddings_const_values_origin;
+  GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values_origin);
+  // change paddings format for onnx 9 version
+  if (!padding_contiguous) {
+      auto rank = input_shape_const.size();
+      for (auto i = 0; i < rank;  i++) {
+          paddings_const_values.push_back(paddings_const_values_origin[i]);
+          paddings_const_values.push_back(paddings_const_values_origin[i + rank]);
+      }
+  }
+  else {
+      paddings_const_values = paddings_const_values_origin;
+  }
 
   _printTensorValue(compile_params, input_shape, "input_shape");
   _printTensorValue(compile_params, paddings_const_values, "paddings");

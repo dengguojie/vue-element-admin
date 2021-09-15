@@ -324,11 +324,11 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_6) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"mode\": \"reflect\"}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"mode\": \"reflect\", \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{64, 64, 64, 64};
-  std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int32_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
   std::vector<int64_t> output{64, 64, 66, 66};
 
   TeOpTensor tensor_input;
@@ -372,10 +372,10 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_7) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"mode\": \"reflect\"}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"mode\": \"reflect\", \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{2, 512, 10, 10};
-  std::vector<int64_t> padding_shape{4};
+  std::vector<int64_t> padding_shape{8};
   std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{2, 512, 12, 12};
 
@@ -411,7 +411,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_7) {
   op_compile_info.key = "1654321";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 2 512 10 10 2 512 12 12 32 1 1 1 1 32 32 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 2 512 10 10 2 512 11 11 32 0 1 0 1 32 32 ");
 }
 
 TEST_F(PadV3Tiling, rpad_v3_tiling_8) {
@@ -420,11 +420,11 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_8) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"mode\": \"reflect\"}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"mode\": \"reflect\", \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{2, 512, 10, 211};
-  std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int32_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
   std::vector<int64_t> output{2, 512, 12, 213};
 
   TeOpTensor tensor_input;

@@ -1377,9 +1377,9 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
     None.
     """
     if mode == 'reflect':
-        return reflection_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
+        return reflection_pad_v3(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
     if mode == 'edge':
-        return replication_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
+        return replication_pad_v3(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
 
     src_dtype = x.get("dtype").lower()
     paddings_dtype = paddings.get("dtype").lower()
