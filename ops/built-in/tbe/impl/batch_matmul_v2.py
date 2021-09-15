@@ -451,12 +451,6 @@ def check_supported(input_x,
                 "but actually K of TensorA is {} and K of TensorB is {}".format(k_shape, k_b_shape)
             return False, reason
 
-        if len(shape_a) == len(shape_b):
-            if shape_a[:shape_length - 2] != shape_b[:shape_length_b - 2]:
-                reason = "The batch of TensorA and TensorB should be equal," \
-                    "but actually batch of TensorA is {} and batch of TensorA is {}".format(
-                    shape_a[:shape_length - 2], shape_b[:shape_length_b - 2])
-                return False, reason
     return True, ""
 
 
