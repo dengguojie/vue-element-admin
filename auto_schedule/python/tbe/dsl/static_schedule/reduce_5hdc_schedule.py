@@ -276,7 +276,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
             if intermediate:
                 # Disable multi-core
                 self.device_core_num = 1
-                split_axis = intermediate[0]
+                split_axis = intermediate[1]
                 if self.tiling_calculation_unit_factor:
                     split_axis_size = self.tiling_calculation_unit_factor
                 else:
