@@ -204,10 +204,8 @@ class LayerNormXBackpropScheduleV2:
         core_num = util.get_core_num()
         ub_factor = self._tensor_space // (self._max_dtype_bytes * last_dim)
 
-        ub_part = core_num
-        ub_outer_outer, ub_outer_inner = self._schedule[res].split(res.op.axis[1], nparts=ub_part)
-        _, ub_inner = self._schedule[res].split(ub_outer_inner, factor=ub_factor)
-        fuse_axis = self._schedule[res].fuse(res.op.axis[0], ub_outer_outer)
+        ub_outer, ub_inner = self._schedule[res].split(res.op.axis[1], factor=ub_factor)
+        fuse_axis = self._schedule[res].fuse(res.op.axis[0], ub_outer)
         block_outer, block_inner = self._schedule[res].split(fuse_axis, nparts=core_num)
 
         self.sum_x_block_outer = block_outer

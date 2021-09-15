@@ -133,7 +133,7 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
         return GRAPH_SUCCESS;
     }
         return GRAPH_FAILED;  
-  } 
+  }
   else {
       // if reduction == "mean" or reduction == "sum" , output a scalar
       auto op_info = OpDescUtils::GetOpDescFromOperator(op);
@@ -644,17 +644,22 @@ COMMON_INFER_FUNC_REG(LayerNormBetaGammaBackpropV2, LayerNormBetaGammaBackpropV2
 
 // --------------------------LayerNormXBackpropV2-----------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropV2InferShape) {
-  TensorDesc tensordesc_output_pd_x = op.GetOutputDesc("pd_x");
-  TensorDesc tensordesc_output_res_for_gamma = op.GetOutputDesc("res_for_gamma");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x_desc = op_desc->GetInputDescPtr(1);
 
-  tensordesc_output_pd_x.SetShape(op.GetInputDesc("dy").GetShape());
-  tensordesc_output_pd_x.SetDataType(op.GetInputDesc("dy").GetDataType());
+  auto output_pd_x_desc = op_desc->MutableOutputDesc(0);
+  auto output_res_gamma_desc = op_desc->MutableOutputDesc(1);
 
-  tensordesc_output_res_for_gamma.SetShape(op.GetInputDesc("dy").GetShape());
-  tensordesc_output_res_for_gamma.SetDataType(DT_FLOAT);
+  if (input_x_desc == nullptr || output_pd_x_desc == nullptr || output_res_gamma_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    return GRAPH_FAILED;
+  }
 
-  (void)op.UpdateOutputDesc("pd_x", tensordesc_output_pd_x);
-  (void)op.UpdateOutputDesc("res_for_gamma", tensordesc_output_res_for_gamma);
+  output_pd_x_desc->SetShape(input_x_desc->GetShape());
+  output_pd_x_desc->SetDataType(input_x_desc->GetDataType());
+
+  output_res_gamma_desc->SetShape(input_x_desc->GetShape());
+  output_res_gamma_desc->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
 }
@@ -1627,12 +1632,12 @@ IMPLEMT_INFERFUNC(SmoothL1LossV2, SmoothL1LossV2InferShape) {
   TensorDesc tensordesc_input2 = op.GetInputDescByName("label");
   Shape input_shape2 = tensordesc_input2.GetShape();
   std::vector<int64_t> dims_input2 = input_shape2.GetDims();
-  
+
   TensorDesc tensordesc_input1 = op.GetInputDescByName("predict");
   Shape input_shape1 = tensordesc_input1.GetShape();
   DataType input_dtype1 = tensordesc_input1.GetDataType();
   std::vector<int64_t> dims_input1 = input_shape1.GetDims();
-  
+
   std::string reduction_val = "mean";
 
   if (GRAPH_SUCCESS != op.GetAttr("reduction", reduction_val)) {
@@ -1681,10 +1686,10 @@ INFER_FUNC_REG(SmoothL1LossV2, SmoothL1LossV2InferShape);
 VERIFY_FUNC_REG(SmoothL1LossV2, SmoothL1LossV2Verify);
 // ----------------SmoothL1LossV2 END---------------------
 // ----------------PoissonNllLoss Begin----------------------------
-bool InferShapeAndTypePoissonNllLoss(Operator& op, 
-                                     const string& input_x, 
-                                     const string& target, 
-                                     const string& loss, 
+bool InferShapeAndTypePoissonNllLoss(Operator& op,
+                                     const string& input_x,
+                                     const string& target,
+                                     const string& loss,
                                      const string& reduction) {
     TensorDesc vOutputDesc = op.GetOutputDesc(loss);
     DataType inputDtype = op.GetInputDesc(input_x).GetDataType();
