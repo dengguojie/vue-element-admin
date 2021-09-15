@@ -1,5 +1,4 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,8 +33,6 @@ struct BNGradTilingInfo {
 };
 
 struct BNGradCompileInfo {
-    bool is_const = false;
-    bool is_const_post = false;
     bool atomic = false;
     bool is_keep_dims = false;
     int32_t core_num;
@@ -57,6 +54,11 @@ int32_t CalcBNGradTilingKey(BNGradTilingInfo& tilingInfo, int32_t pattern, BNGra
 }
 
 int32_t get_nearest_factor(int32_t dim, int32_t split_size) {
+    /* 
+     * find the exact division factor small than split_size as nearest_factor,
+     * if distance of nearest_factor and split_size is small, will use the
+     * nearest_factor as factor, otherwise use the split_size
+     */
     int32_t nearest_factor = split_size;
     while (dim % nearest_factor != 0) {
         nearest_factor -= 1;
@@ -67,7 +69,8 @@ int32_t get_nearest_factor(int32_t dim, int32_t split_size) {
     return split_size;
 }
 
-bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, vector<int64_t> input_shape, int64_t max_ub_count, int32_t core_num, BNGradTilingInfo& tilingInfo) {
+bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, vector<int64_t> input_shape, 
+                         int64_t max_ub_count, int32_t core_num, BNGradTilingInfo& tilingInfo) {
     tilingInfo.block_dim = -1;
     tilingInfo.block_tiling_axis = -1;
     tilingInfo.block_tiling_factor = -1;
@@ -77,7 +80,8 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     int32_t ub_split_axis = 0;
     int32_t ub_split_inner = 0;
 
-    if (max_ub_count / (h*w*c0) >= 2 && ((c1 >= core_num && c1 % core_num == 0) || (n >= core_num && n % core_num == 0))) {
+    if (max_ub_count / (h*w*c0) >= 2 && ((c1 >= core_num && c1 % core_num == 0) || 
+        (n >= core_num && n % core_num == 0))) {
         ub_split_axis = 0;
         ub_split_inner = 1;
         int32_t n_inner = 0;
@@ -88,10 +92,10 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
         }
 
         for (int32_t i = n_inner; i > 0; i--) {
-            if (n_inner % i != 0){
+            if (n_inner % i != 0) {
                 continue;
             }
-            if (h*w*c0*i > max_ub_count){
+            if (h*w*c0*i > max_ub_count) {
                 continue;
             }
 
@@ -128,7 +132,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
                 split_size = i - 1;
                 split_size = get_nearest_factor(input_shape[split_axis], split_size);
                 break;
-            }
+            } 
         }
     } else {
         split_size = block_tiling_inner_loop;
@@ -168,7 +172,7 @@ vector<int32_t> get_factors_of_positive_integer(int32_t value) {
 int32_t find_closest_factor(vector<int32_t> factors, int32_t value) {
     int32_t index = 0;
     bool is_find = false;
-    for (int32_t i = 0; i < factors.size(); i++) {
+    for (uint32_t i = 0; i < factors.size(); i++) {
         if (factors[i] > value) {
             index = i;
             is_find = true;
@@ -212,10 +216,10 @@ bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_
 
 bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                         OpRunInfo& run_info) {
-
     std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
     std::vector<int64_t> output_shape = op_paras.outputs[0].tensor[0].shape;
 
+    // input format is NC1HWC0
     int32_t n = input_shape[0];
     int32_t c1 = input_shape[1];
     int32_t h = input_shape[2];
@@ -242,12 +246,12 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
 
     if (c1 >= core_num) {
         block_tiling_axis = 1;
-    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) &&
+    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) && 
                 outer_loop >= core_num &&
                 input_shape[ub_tiling_axis] % core_num == 0) {
         inner_loop = input_shape[ub_tiling_axis] / core_num;
         block_tiling_axis = 2;
-    } else if (ub_tiling_axis == 2 &&
+    } else if (ub_tiling_axis == 2 && 
                input_shape[ub_tiling_axis] >= half_core_num &&
                input_shape[ub_tiling_axis] % half_core_num == 0 &&
                input_shape[0] < core_num) {
@@ -290,7 +294,5 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
     return true;
 }
-
 REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingUpdateGrad, BNUpdateGradTiling);
-
 }

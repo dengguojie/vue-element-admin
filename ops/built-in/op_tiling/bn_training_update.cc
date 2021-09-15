@@ -1,5 +1,4 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +16,9 @@
 #include "error_log.h"
 #include "vector_tiling.h"
 
-namespace optiling{
+namespace optiling {
     bool BNTrainingUpdateTiling(const std::string& op_type, const TeOpParas& op_paras,
-                                const nlohmann::json& op_info, OpRunInfo& run_info){
+                                const nlohmann::json& op_info, OpRunInfo& run_info) {
         OP_TILING_CHECK(op_paras.inputs.empty(),
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"), return false);
         OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
@@ -33,10 +32,10 @@ namespace optiling{
         float batch_var_scalar = 1.0;
         float num_rec = 1.0;
         int32_t num = N*H*W;
-        if(op_info.count("bn_update_num_rec_dtype") > 0){
+        if (op_info.count("bn_update_num_rec_dtype") > 0) {
             num_rec = 1.0 / (float)num;
         }
-        if(op_info.count("bn_update_batch_var_scaler_dtype") > 0){
+        if (op_info.count("bn_update_batch_var_scaler_dtype") > 0) {
             batch_var_scalar = (float)(num) / (float)((num) - 1);
         }
 
@@ -47,4 +46,4 @@ namespace optiling{
     }
 
     REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingUpdate, BNTrainingUpdateTiling);
-}   //namespace optiling
+}   // namespace optiling
