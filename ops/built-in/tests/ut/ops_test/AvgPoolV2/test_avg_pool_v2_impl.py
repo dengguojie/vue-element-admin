@@ -214,6 +214,9 @@ def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
     None,{"shape": (1, 3, 3, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 3, 256),"ori_format": "ND", "param_type": "output"},
     [1,255,21,1],[1,4,4,1],"VALIED",[0,0,0,0],"NHWC")
+    check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
+    None,{"shape": (1, 3, 3, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 3, 256),"ori_format": "ND", "param_type": "output"},
+    [1,255,21,1],[1,4,64,1],"VALIED",[0,0,0,0],"NHWC")
 
 def test_avg_pool_v2_compute(test_arg):
     a=tvm.placeholder((1, 8, 12, 12, 16), name="fmap", dtype="float16", attrs={"ori_shape":(1, 12, 12, 128), "format":"NC1HWC0", "ori_format":"NHWC","shape":(1, 8, 12, 12, 16)})

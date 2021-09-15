@@ -66,7 +66,42 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_1) {
     EXPECT_EQ(findMul, false);
     EXPECT_EQ(shapeMatch, true);
 }
+TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_111) {
+    ge::Graph graph("avg_pool_v2_fusion_test_1111");
 
+    auto input_x_data = op::Data("input_x_data");
+    std::vector<int64_t> dims_x{16,1,500,500};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_NCHW, DT_FLOAT16);
+    input_x_data.update_input_desc_x(tensorDescX);
+    input_x_data.update_output_desc_y(tensorDescX);
+
+    auto avg_pool_v2_op = op::AvgPoolV2("avg_pool_v2_0");
+    avg_pool_v2_op.set_input_x(input_x_data)
+                  .set_attr_exclusive(false)
+                  .set_attr_ksize({1,1,256,256})
+                  .set_attr_strides({1,1,1,1});
+
+    auto relu_op = op::Relu("relu_op");
+    relu_op.set_input_x(avg_pool_v2_op);
+
+    std::vector<Operator> inputs{input_x_data};
+    std::vector<Operator> outputs{relu_op};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findMul = false;
+    bool shapeMatch = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AvgPoolV2") {
+             shapeMatch= true;
+        }
+    }
+    EXPECT_EQ(shapeMatch, true);
+}
 
 TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_3) {
     ge::Graph graph("avg_pool_v2_fusion_test_3");
@@ -278,12 +313,6 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_rank) {
         }
     }
     EXPECT_EQ(avgPoolMatch, true);
-    std::map<std::string, fe::FusionInfo> graphFusionInfoMap;
-    std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
-    fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
-    fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetMatchTimes(), 5);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetEffectTimes(), 3);
 }
 
 // dynamic nhw
@@ -316,12 +345,6 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_nhw) {
         }
     }
     EXPECT_EQ(avgPoolMatch, true);
-    std::map<std::string, fe::FusionInfo> graphFusionInfoMap;
-    std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
-    fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
-    fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetMatchTimes(), 1);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetEffectTimes(), 1);
 }
 
 
@@ -355,12 +378,6 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_c) {
         }
     }
     EXPECT_EQ(avgPoolMatch, true);
-    std::map<std::string, fe::FusionInfo> graphFusionInfoMap;
-    std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
-    fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
-    fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetMatchTimes(), 1);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetEffectTimes(), 0);
 }
 
 // dynamic hw same
@@ -393,12 +410,6 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_hw) {
         }
     }
     EXPECT_EQ(avgPoolMatch, true);
-    std::map<std::string, fe::FusionInfo> graphFusionInfoMap;
-    std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
-    fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
-    fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetMatchTimes(), 1);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetEffectTimes(), 1);
 }
 
 // dynamic w
@@ -431,12 +442,6 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_w) {
         }
     }
     EXPECT_EQ(avgPoolMatch, true);
-    std::map<std::string, fe::FusionInfo> graphFusionInfoMap;
-    std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
-    fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
-    fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetMatchTimes(), 1);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetEffectTimes(), 1);
 }
 
 // dynamic h
@@ -469,10 +474,57 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_h) {
         }
     }
     EXPECT_EQ(avgPoolMatch, true);
-    std::map<std::string, fe::FusionInfo> graphFusionInfoMap;
-    std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
-    fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
-    fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetMatchTimes(), 1);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolV2FusionPass"].GetEffectTimes(), 1);
+}
+TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_77) {
+    ge::Graph graph("avg_pool_v2_fusion_test_77");
+    std::cout << "avg_pool_v2_fusion_test SetUp7777" << std::endl;
+
+    auto input_x_data = op::Data("input_x_data");
+    std::vector<int64_t> dims_x{1, 16, 1024, 1024};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_NCHW,  DT_FLOAT16);
+    input_x_data.update_input_desc_x(tensorDescX);
+    input_x_data.update_output_desc_y(tensorDescX);
+
+    auto avg_pool_v2_op = op::AvgPoolV2("avg_pool_v2_0");
+    avg_pool_v2_op.set_input_x(input_x_data)
+                  .set_attr_pads({0,0,0,0})
+                  .set_attr_ksize({1,1,266,266})
+                  .set_attr_strides({1,1,2,2})
+                  .set_attr_data_format("NCHW")
+                  .set_attr_padding_mode("VALID")
+                  .set_attr_global_pooling(false)
+                  .set_attr_padding_mode("CALCULATED")
+                  .set_attr_ceil_mode(false)
+                  .set_attr_exclusive(true);
+
+    auto relu_op = op::Relu("relu_op");
+    relu_op.set_input_x(avg_pool_v2_op);
+
+    std::vector<Operator> inputs{input_x_data};
+    std::vector<Operator> outputs{relu_op};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr,false);
+
+    bool findMul = false;
+    bool shapeMatch = false;
+    bool shapeMulMatch = false;
+    vector<int64_t> expectShape{1, 16, 2, 2};
+    vector<int64_t> expectMulShape{1, 1, 2, 2, 16};
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Mul") {
+            findMul = true;
+   
+        }
+        if (node->GetType() == "AvgPoolV2") {
+     
+            shapeMatch = true;
+
+        }
+    }
+    EXPECT_EQ(findMul, false);
+    EXPECT_EQ(shapeMatch, true);
 }
