@@ -30,55 +30,46 @@ namespace ge {
 // ---------------- NMSWithMask Op-------------------
 IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::ConstGeTensorDescPtr in_desc = op_desc->GetInputDescPtr(0);
+
+  ge::GeTensorDescPtr out_box_desc_ptr = op_desc->MutableOutputDesc(0);
+  ge::GeTensorDescPtr out_idx_desc_ptr = op_desc->MutableOutputDesc(1);
+  ge::GeTensorDescPtr out_mask_desc_ptr = op_desc->MutableOutputDesc(2);
+
+  if (in_desc == nullptr ||
+      out_box_desc_ptr == nullptr || out_idx_desc_ptr == nullptr || out_mask_desc_ptr == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    return GRAPH_FAILED;
+  }
+
+  const GeShape &in_shape = in_desc->GetShape();
+  GeShape &out_box_shape = out_box_desc_ptr->MutableShape();
+  GeShape &out_idx_shape = out_idx_desc_ptr->MutableShape();
+  GeShape &out_mask_shape = out_mask_desc_ptr->MutableShape();
+
   float iou_threshold;
-  if (op.GetAttr("iou_threshold", iou_threshold) == GRAPH_SUCCESS) {
-    if (iou_threshold <= 0) {
-      std::string err_msg = GetAttrValueErrMsg("iou_threshold", ConcatString(iou_threshold), ConcatString("more than 0"));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-      return GRAPH_FAILED;
-    }
+  if (!AttrUtils::GetFloat(op_desc, "iou_threshold", iou_threshold)) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get attr iou_threshold failed!");
+    return GRAPH_FAILED;
   }
-
-  TensorDesc out_box_desc = op.GetOutputDesc("selected_boxes");
-  TensorDesc out_idx_desc = op.GetOutputDesc("selected_idx");
-  TensorDesc out_mask_desc = op.GetOutputDesc("selected_mask");
-  TensorDesc in_desc = op.GetInputDesc("box_scores");
-
-  out_box_desc.SetShape(in_desc.GetShape());
-  out_box_desc.SetDataType(in_desc.GetDataType());
-
-  std::vector<int64_t> dims_in = in_desc.GetShape().GetDims();
-  out_idx_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
-  out_idx_desc.SetDataType(DT_INT32);
-
-  out_mask_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
-  out_mask_desc.SetDataType(DT_BOOL);
-
-  std::vector<std::pair<int64_t, int64_t>> shape_range;
-  in_desc.GetShapeRange(shape_range);
-
-  if (shape_range.size() > 0) {
-    std::vector<std::pair<int64_t, int64_t>> out_range = shape_range;
-    out_box_desc.SetShapeRange(out_range);
-    out_idx_desc.SetShapeRange({out_range[0]});
-    out_mask_desc.SetShapeRange({out_range[0]});
-  }
-
-  if (op.UpdateOutputDesc("selected_boxes", out_box_desc) != GRAPH_SUCCESS) {
-    std::string err_msg = UpdateParamErrMsg("selected_boxes");
+  if (iou_threshold <= 0) {
+    std::string err_msg = GetAttrValueErrMsg("iou_threshold", ConcatString(iou_threshold), ConcatString("more than 0"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  if (op.UpdateOutputDesc("selected_idx", out_idx_desc) != GRAPH_SUCCESS) {
-    std::string err_msg = UpdateParamErrMsg("selected_idx");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  if (op.UpdateOutputDesc("selected_mask", out_mask_desc) != GRAPH_SUCCESS) {
-    std::string err_msg = UpdateParamErrMsg("selected_mask");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
+  out_idx_shape.SetDimNum(1);
+  out_idx_shape.SetDim(0, in_shape.GetDim(0));
+
+  out_mask_shape.SetDimNum(1);
+  out_mask_shape.SetDim(0, in_shape.GetDim(0));
+
+  out_box_desc_ptr->SetShape(in_desc->GetShape());
+
+  out_box_desc_ptr->SetDataType(in_desc->GetDataType());
+  out_idx_desc_ptr->SetDataType(DT_INT32);
+  out_mask_desc_ptr->SetDataType(DT_BOOL);
+
   return GRAPH_SUCCESS;
 }
 

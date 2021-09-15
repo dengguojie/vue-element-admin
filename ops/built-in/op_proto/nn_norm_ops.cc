@@ -237,37 +237,109 @@ COMMON_INFER_FUNC_REG(BinaryCrossEntropyGrad, BinaryCrossEntropyGradInferShape);
 //----------------SoftmaxCrossEntropyWithLogits-------------------
 IMPLEMT_VERIFIER(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsVerify) {
   if (!CheckTwoInputDtypeSame(op, "features", "labels")) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] input dtypes are different");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "features", "labels", "backprop", is_dynamic_output)) {
+  OP_LOGI(op.GetName().c_str(), "[TBE Compiler] Enter op_proto inferfunction!");
+  // get input desc ptr and output desc reference
+  ge::OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::ConstGeTensorDescPtr input_features_desc_ptr = op_desc->GetInputDescPtr(0);
+  ge::ConstGeTensorDescPtr input_labels_desc_ptr = op_desc->GetInputDescPtr(1);
+
+  ge::GeTensorDescPtr output_loss_desc = op_desc->MutableOutputDesc(0);
+  ge::GeTensorDescPtr output_backprop_desc = op_desc->MutableOutputDesc(1);
+
+  // check whether ptr or desc is null
+  if (input_features_desc_ptr == nullptr || input_labels_desc_ptr == nullptr ||
+      output_backprop_desc == nullptr || output_loss_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    return GRAPH_FAILED;
+  }
+  // get shape reference
+  const GeShape &input_features_shape = input_features_desc_ptr->GetShape();
+  const GeShape &input_labels_shape = input_labels_desc_ptr->GetShape();
+
+  GeShape &output_loss_shape = output_loss_desc->MutableShape();
+  GeShape &output_backprop_shape = output_backprop_desc->MutableShape();
+
+  // -2 shape
+  if (input_features_shape.IsUnknownDimNum()) {
+    output_loss_desc->SetShape(input_features_shape);
+    output_loss_desc->SetDataType(input_features_desc_ptr->GetDataType());
+
+    output_backprop_desc->SetShape(input_features_shape);
+    output_backprop_desc->SetDataType(input_features_desc_ptr->GetDataType());
+    return GRAPH_SUCCESS;
+  }
+  if (input_labels_shape.IsUnknownDimNum()) {
+    output_loss_desc->SetShape(input_labels_shape);
+    output_loss_desc->SetDataType(input_labels_desc_ptr->GetDataType());
+
+    output_backprop_desc->SetShape(input_labels_shape);
+    output_backprop_desc->SetDataType(input_labels_desc_ptr->GetDataType());
+    return GRAPH_SUCCESS;
+  }
+
+  output_loss_shape.SetDimNum(1);
+  output_backprop_shape.SetDimNum(2);
+
+  size_t input_features_dim_num = input_features_shape.GetDimNum();
+  size_t input_labels_dim_num = input_labels_shape.GetDimNum();
+
+  int64_t input_features_dim_0;
+  int64_t input_features_dim_1;
+  int64_t input_labels_dim_0;
+  int64_t input_labels_dim_1;
+
+  // to fill the shorter shape with 1
+  if (input_features_dim_num == 2 && input_labels_dim_num == 2) {
+    input_features_dim_0 = input_features_shape.GetDim(0);
+    input_features_dim_1 = input_features_shape.GetDim(1);
+    input_labels_dim_0 = input_labels_shape.GetDim(0);
+    input_labels_dim_1 = input_labels_shape.GetDim(1);
+  } else if (input_features_dim_num == 2 && input_labels_dim_num == 1) {
+    input_features_dim_0 = input_features_shape.GetDim(0);
+    input_features_dim_1 = input_features_shape.GetDim(1);
+    input_labels_dim_0 = 1;
+    input_labels_dim_1 = input_labels_shape.GetDim(0);
+  } else if (input_features_dim_num == 1 && input_labels_dim_num == 2) {
+    input_features_dim_0 = 1;
+    input_features_dim_1 = input_features_shape.GetDim(0);
+    input_labels_dim_0 = input_labels_shape.GetDim(0);
+    input_labels_dim_1 = input_labels_shape.GetDim(1);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get invalid shape");
     return GRAPH_FAILED;
   }
 
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto backprop_output = op_desc->MutableOutputDesc("backprop");
-  auto loss_output = op_desc->MutableOutputDesc("loss");
-
-  auto backprop_shape = backprop_output->GetShape().GetDims();
-  auto backprop_dtype = backprop_output->GetDataType();
-  if (backprop_shape.size() > 1) {
-    backprop_shape.pop_back();
-  }
-  loss_output->SetShape(GeShape(backprop_shape));
-  loss_output->SetDataType(backprop_dtype);
-
-  if (is_dynamic_output) {
-    std::vector<std::pair<int64_t, int64_t>> backprop_range;
-    backprop_output->GetShapeRange(backprop_range);
-    if (backprop_range.size() > 1) {
-      backprop_range.pop_back();
+  // static shape, set the output shape and datatype
+  if (input_features_dim_0 > 0 && input_features_dim_1 > 0 && input_labels_dim_0 > 0 && input_labels_dim_1 > 0) {
+    if (input_features_dim_0 != input_labels_dim_0 && input_features_dim_0 != 1 && input_labels_dim_0 != 1) {
+      OP_LOGE(op.GetName().c_str(), "[TBE Compiler] not supported shape for dim0");
+      return GRAPH_FAILED;
     }
-    loss_output->SetShapeRange(backprop_range);
+    if (input_features_dim_1 != input_labels_dim_1 && input_features_dim_1 != 1 && input_labels_dim_1 != 1) {
+      OP_LOGE(op.GetName().c_str(), "[TBE Compiler] not supported shape for dim1");
+      return GRAPH_FAILED;
+    }
+    int64_t dim_0 = input_features_dim_0 >= input_labels_dim_0 ? input_features_dim_0 : input_labels_dim_0;
+    int64_t dim_1 = input_features_dim_1 >= input_labels_dim_1 ? input_features_dim_1 : input_labels_dim_1;
+    output_loss_shape.SetDim(0, dim_0);
+    output_backprop_shape.SetDim(0, dim_0);
+    output_backprop_shape.SetDim(1, dim_1);
+  } else {
+    output_loss_shape.SetDim(0, -1);
+    output_backprop_shape.SetDim(0, -1);
+    output_backprop_shape.SetDim(1, -1);
   }
+
+  output_loss_desc->SetDataType(input_features_desc_ptr->GetDataType());
+  output_backprop_desc->SetDataType(input_features_desc_ptr->GetDataType());
+
   return GRAPH_SUCCESS;
 }
 

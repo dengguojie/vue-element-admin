@@ -73,3 +73,19 @@ TEST_F(NMSWithMaskTest, nms_with_mask_test_case_2) {
     std::vector<int64_t> expected_mask_shape = {720};
     EXPECT_EQ(output_mask_desc.GetShape().GetDims(), expected_mask_shape);
 }
+
+// failed case
+TEST_F(NMSWithMaskTest, nms_with_mask_test_case_3) {
+    ge::op::NMSWithMask op;
+    ge::TensorDesc tensordesc_box_scores;
+    ge::Shape box_scores_shape({720, 5});
+    tensordesc_box_scores.SetDataType(ge::DT_FLOAT16);
+    tensordesc_box_scores.SetShape(box_scores_shape);
+
+    op.UpdateInputDesc("box_scores", tensordesc_box_scores);
+    float iou_threshold = 0;
+    op.SetAttr("iou_threshold", iou_threshold);
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
