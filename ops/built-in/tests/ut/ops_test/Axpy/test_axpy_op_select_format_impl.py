@@ -275,6 +275,148 @@ ut_case.add_case("all", {
 
  })
 
+ut_case.add_case("all", {
+    "params": [{'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (1,), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND'},
+               {'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (1,), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND'},
+               {'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (13, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (13, 15, 17, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (13, 16, 17, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (13, 16, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (13, 16, 17, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (13, 16, 17, 16), 'ori_format': 'NCHW'},
+               {'shape': (13, 16, 17, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (13, 16, 17, 16), 'ori_format': 'NCHW'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'HWCN',
+                'ori_shape': (16, 16, 1, 16), 'ori_format': 'HWCN'},
+               {'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'HWCN',
+                'ori_shape': (16, 16, 16, 16), 'ori_format': 'HWCN'},
+               {'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 16, 16, 16), 'ori_format': 'HWCN'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 16, 1, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 1, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 16, 1, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 1, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 16, 1, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 1, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 16, 1, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 1, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 16, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 16, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 16, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 16, 1, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 1, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 16, 16, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 16, 16, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (32, 16, 1, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (32, 16, 1, 16), 'ori_format': 'NCHW'},
+               {'shape': (32, 16, 16, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (32, 16, 16, 16), 'ori_format': 'NCHW'},
+               {'shape': (32, 16, 16, 16), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (32, 16, 16, 15), 'ori_format': 'NCHW'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (1,), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND'},
+               {'shape': (16, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 15, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (16, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 15, 17, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 15, 17, 16), 'ori_format': 'NHWC'},
+               {'shape': (1,), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND'},
+               {'shape': (16, 15, 17, 16), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16, 15, 17, 16), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16,), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16,), 'ori_format': 'NHWC'},
+               {'shape': (16,), 'dtype': 'float16', 'format': 'ND',
+                'ori_shape': (16,), 'ori_format': 'ND'},
+               {'shape': (16,), 'dtype': 'float16', 'format': 'NHWC',
+                'ori_shape': (16,), 'ori_format': 'NHWC'},
+               1.0],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 16, 15, 32), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 16, 15, 32), 'ori_format': 'NCHW'},
+               {'shape': (16, 16, 1, 32), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 16, 1, 32), 'ori_format': 'NCHW'},
+               {'shape': (16, 16, 15, 32), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 16, 15, 32), 'ori_format': 'NCHW'},
+               1.0],
+    "expect": "success"
+})
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

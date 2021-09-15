@@ -69,94 +69,74 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
     format_x1 = x1.get("ori_format")
     format_x2 = x2.get("ori_format")
 
-    format_list = []
-    if tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
-        dtype_list = ["float16", "float", "int32", "int8", "uint8"]
-    else:
-        dtype_list = ["float16", "int32", "int8", "uint8"]
-    dtype_total = []
-    dtype_total0 = []
-    dtype_total0.append("bool")
-    format_list1 = []
+    format_support_flag = {("ND", "ND", "ND", "ND"): 1,
+                           ("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"): 0,
+                           ("FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"): 0,
+                           ("NC1HWC0", "NC1HWC0", "NC1HWC0", "NC1HWC0"): 0,
+                           ("ND", "NC1HWC0", "NC1HWC0", "NC1HWC0"): 0,
+                           ("ND", "FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"): 0,
+                           ("ND", "NDC1HWC0", "NDC1HWC0", "NDC1HWC0"): 0}
+
     # NZ+NZ ND+ND 5HD+5HD FZ+FZ
-    if (len(shape_condition) != 1) or \
-            (len(shape_condition) == 1 and len(shape_x1) == 1
-             and len(shape_x2) == 1):
-        format_list.append("ND")
-        if format_condition == format_x1 == format_x2 and \
-                format_x1 in format_4d_list and \
-                list(shape_condition) == list(shape_x1) == list(shape_x2):
-            format_list.append("FRACTAL_Z")
-            format_list.append("FRACTAL_NZ")
-            format_list.append("NC1HWC0")
+    if (len(shape_condition) != 1) or (len(shape_condition) == len(shape_x1) == len(shape_x2) == 1):
+        if format_condition == format_x1 == format_x2 and format_x1 in format_4d_list \
+                and list(shape_condition) == list(shape_x1) == list(shape_x2):
+            format_support_flag[("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z")] = 1
+            format_support_flag[("FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ")] = 1
+            format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
         # the bool can not support the 6HD and FZ_3D,
         # so the select can not support the 6HD and FZ_3D, and when transdata support will open this feather
-        if format_condition == format_x1 == format_x2 and \
-                format_x1 in format_5d_list and \
-                list(shape_condition) == list(shape_x1) == list(shape_x2):
+        if format_condition == format_x1 == format_x2 and format_x1 in format_5d_list\
+                and list(shape_condition) == list(shape_x1) == list(shape_x2):
             # do nothing now
             pass
-            # modify: format_list.append("FRACTAL_Z_3D")
-            # modify: format_list.append("NDC1HWC0")
+            # modify: format_support_flag[("FRACTAL_Z_3D", "FRACTAL_Z_3D", "FRACTAL_Z_3D", "FRACTAL_Z_3D")] = 1
+            # modify: format_support_flag[("NDC1HWC0", "NDC1HWC0", "NDC1HWC0", "NDC1HWC0")] = 1
 
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * len(format_list)
-        dtype_total0 = dtype_total0 * len(dtype_total)
-        format_list = format_list * len(dtype_list)
-        input0 = util_select_op_base.gen_param(classify="input0", name="condition",
-                                               datatype=",".join(dtype_total0),
-                                               unknownshape_format=",".join(format_list),
-                                               format=",".join(format_list))
-        input1 = util_select_op_base.gen_param(classify="input1", name="x1",
-                                               datatype=",".join(dtype_total),
-                                               unknownshape_format=",".join(format_list),
-                                               format=",".join(format_list))
-        input2 = util_select_op_base.gen_param(classify="input2", name="x2",
-                                               datatype=",".join(dtype_total),
-                                               unknownshape_format=",".join(format_list),
-                                               format=",".join(format_list))
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype=",".join(dtype_total),
-                                                unknownshape_format=",".join(format_list),
-                                                format=",".join(format_list))
-    else:
-        format_list.append("ND")
-        format_list1.append("ND")
-        if format_x1 == format_x2:
-            if len(shape_x1) == 4 and len(shape_x2) == 4 and \
-                    format_x1 in format_4d_list and format_x2 in format_4d_list:
-                format_list1.append("FRACTAL_NZ")
-                if format_x1 in ("NHWC", "NCHW"):
-                    format_list1.append("NC1HWC0")
-            elif len(shape_x1) > 2 and len(shape_x2) > 2 and \
-                    format_x1 in format_4d_list and format_x2 in format_4d_list:
-                format_list1.append("FRACTAL_NZ")
-            elif len(shape_x1) == 5 and len(shape_x2) == 5 and \
-                    format_x1 in format_5d_list and format_x2 in format_5d_list:
-                format_list1.append("NDC1HWC0")
+    elif format_x1 == format_x2:
+        if len(shape_x1) == 4 and len(shape_x2) == 4 and format_x1 in ("NHWC", "NCHW"):
+            format_support_flag[("ND", "NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+        if len(shape_x1) > 2 and len(shape_x2) > 2 and format_x1 in format_4d_list:
+            format_support_flag[("ND", "FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ")] = 1
+        if len(shape_x1) == 5 and len(shape_x2) == 5 and format_x1 in format_5d_list:
+            format_support_flag[("ND", "NDC1HWC0", "NDC1HWC0", "NDC1HWC0")] = 1
 
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * len(format_list1)
-        dtype_total0 = dtype_total0 * len(dtype_total)
-        format_list1 = format_list1 * len(dtype_list)
-        format_list = format_list * len(dtype_total)
-        input0 = util_select_op_base.gen_param(classify="input0", name="condition",
-                                               datatype=",".join(dtype_total0),
-                                               unknownshape_format=",".join(format_list),
-                                               format=",".join(format_list))
-        input1 = util_select_op_base.gen_param(classify="input1", name="x1",
-                                               datatype=",".join(dtype_total),
-                                               unknownshape_format=",".join(format_list1),
-                                               format=",".join(format_list1))
-        input2 = util_select_op_base.gen_param(classify="input2", name="x2",
-                                               datatype=",".join(dtype_total),
-                                               unknownshape_format=",".join(format_list1),
-                                               format=",".join(format_list1))
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype=",".join(dtype_total),
-                                                unknownshape_format=",".join(format_list1),
-                                                format=",".join(format_list1))
+    # gen format and dtype
+    format_list_input0 = [format_tuple[0] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
+    format_list_input1 = [format_tuple[1] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
+    format_list_input2 = [format_tuple[2] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
+    format_list_output = [format_tuple[3] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
 
+    dtype_x1_x2_y_list = ["float16", "int32", "int8", "uint8"]
+    if tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+        dtype_x1_x2_y_list.append("float")
+
+    dtype_x1_x2_y_total_list = []
+    for dtype in dtype_x1_x2_y_list:
+        dtype_x1_x2_y_total_list = dtype_x1_x2_y_total_list + [dtype] * len(format_list_output)
+    dtype_condition_total_list = ["bool"] * len(dtype_x1_x2_y_list) * len(format_list_output)
+    len_dtype_x1_x2_y_list = len(dtype_x1_x2_y_list)
+    format_input0_total_list = format_list_input0 * len_dtype_x1_x2_y_list
+    format_input1_total_list = format_list_input1 * len_dtype_x1_x2_y_list
+    format_input2_total_list = format_list_input2 * len_dtype_x1_x2_y_list
+    format_output_total_list = format_list_output * len_dtype_x1_x2_y_list
+
+    input0 = util_select_op_base.gen_param(classify="input0", name="condition",
+                                           datatype=",".join(dtype_condition_total_list),
+                                           unknownshape_format=",".join(format_input0_total_list),
+                                           format=",".join(format_input0_total_list))
+    input1 = util_select_op_base.gen_param(classify="input1", name="x1",
+                                           datatype=",".join(dtype_x1_x2_y_total_list),
+                                           unknownshape_format=",".join(format_input1_total_list),
+                                           format=",".join(format_input1_total_list))
+    input2 = util_select_op_base.gen_param(classify="input2", name="x2",
+                                           datatype=",".join(dtype_x1_x2_y_total_list),
+                                           unknownshape_format=",".join(format_input2_total_list),
+                                           format=",".join(format_input2_total_list))
+    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                            datatype=",".join(dtype_x1_x2_y_total_list),
+                                            unknownshape_format=",".join(format_output_total_list),
+                                            format=",".join(format_output_total_list))
     param_list = [input0, input1, input2, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
