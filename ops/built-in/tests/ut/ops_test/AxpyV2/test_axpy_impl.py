@@ -40,6 +40,14 @@ def test_op_select_format(test_args):
                      {"shape": (1, 8, 2, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 8, 2, 16),
                       "ori_format": "ND"},
                      "test_add_op_select_format_2")
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (20, 28, 16, 16), "ori_format": "NCHW"},
+                     {"shape": (1, 28, 16, 16), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (1, 28, 16, 16), "ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (20, 28, 16, 16), "ori_format": "NCHW"},
+                     "test_add_op_select_format_3")
 #    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
 #                      "ori_format": "HWCN", "sub_format" : 1},
 #                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),

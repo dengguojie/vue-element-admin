@@ -20,6 +20,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te.utils.para_check import check_op_params
 from te.utils.para_check import check_dtype
 from te.utils.para_check import REQUIRED_INPUT
@@ -55,7 +56,7 @@ def generate_param(dtypes, formats):
     output0 = gen_param(classify="output0", name="y",
                         datatype=",".join(dtype_output),
                         format=",".join(format_output))
-    return input0, input1, input2, output0
+    return [input0, input1, input2, output0]
 
 
 def get_format_same(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_formats):
@@ -104,12 +105,30 @@ def get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_for
 
 # op select format
 # pylint: disable=unused-argument
+def _can_broad(x, y):
+    if x[2]:
+        x[0] *= 16
+        y[0] *= 16
+    if x[3]:
+        x[1] *= 16
+        y[1] *= 16
+    return (x[0] == y[0] and (x[1] == 16 or y[1] == 16 or x[1] == y[1])) or (
+            x[1] == y[1] and (x[0] == 16 or y[0] == 16)) or x[0] == y[1] == 16 or x[0] == x[1] == 16 or x[1] == y[
+               0] == 16 or y[0] == y[1] == 16
+
+
 def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
     """
     select format dynamically
     """
 
     def _can_division_sixteen(shape):
+        if len(shape) < 2:
+            if shape[-1] == 0:
+                expected_value = "equal to 0"
+                real_value = "not equal to 0"
+                error_manager_vector.raise_err_input_value_invalid("axpy", "value of shape", expected_value, real_value)
+            return False
         if shape[-1] == 0 or shape[-2] == 0:
             raise RuntimeError("value of shape is illegal")
 
@@ -125,6 +144,7 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
     shape_y = shape_util.scalar2tensor_one(shape_y)
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16", "int32"]
@@ -154,69 +174,56 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
         param_dynamic_in_json = get_dynamic_param_in_json(param_list)
         return param_dynamic_in_json
 
-    if len(shape_x) == 4 and len(shape_y) == 4 and \
-            format_x in format_4d_list and format_y in format_4d_list:
-        x_cdim = shape_x[format_x.index("C")]
-        x_wdim = shape_x[format_x.index("W")]
-        x_hdim = shape_x[format_x.index("H")]
-        x_ndim = shape_x[format_x.index("N")]
-        y_cdim = shape_y[format_y.index("C")]
-        y_wdim = shape_y[format_y.index("W")]
-        y_hdim = shape_y[format_y.index("H")]
-        y_ndim = shape_y[format_y.index("N")]
-    if (len(shape_y) == 1 and shape_y[0] == 1 and len(shape_x) == 4) and \
-            format_x in format_4d_list:
+    x_flag = {"5d": len(shape_x) == 5 and format_x in format_5d_list,
+              "4d": len(shape_x) == 4 and format_x in format_4d_list,
+              "Scalar": len(shape_x) == 1 and shape_x[0] == 1}
+    y_flag = {"5d": len(shape_y) == 5 and format_y in format_5d_list,
+              "4d": len(shape_y) == 4 and format_y in format_4d_list,
+              "Scalar": len(shape_y) == 1 and shape_y[0] == 1}
+    common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
+            not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
+    if x_flag["5d"] or x_flag["4d"]:
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
-    if (len(shape_x) == 1 and shape_x[0] == 1 and len(shape_y) == 4) and \
-            format_y in format_4d_list:
+    if y_flag["5d"] or y_flag["4d"]:
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
 
+    format_flag = {"NDC1HWC0": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim,
+                   "FRACTAL_Z_3D": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim and x_ndim == y_ndim,
+                   "FRACTAL_NZ": len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:],
+                   "NC1HWC0": x_flag["4d"] and
+                              y_flag["4d"] and
+                              ((format_y == format_x and
+                                ((x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim) and _can_broad(
+                               [shape_x[format_x.index(format_x[0])], shape_x[format_x.index(format_x[1])],
+                                format_x[0] != "C", format_x[1] != "C"],
+                               [shape_y[format_y.index(format_y[0])], shape_y[format_y.index(format_y[1])],
+                                format_y[0] != "C", format_y[1] != "C"])) or (
+                                list(shape_x) == list(shape_y) and -1 not in shape_x) or (
+                                common_flag["half_16_div_flg"] and (x_cdim == y_cdim or x_cdim == 16 or y_cdim == 16))),
+                   "FRACTAL_Z": x_flag["4d"] and y_flag["4d"] and format_x == format_y and (
+                           (all(i % 16 == 0 for i in [x_cdim, y_cdim, x_ndim, y_ndim])
+                            and util_common.is_support_fractal_z_inputs(list_input)
+                            and ((list(shape_x) == list(shape_y) and format_x.upper() in ("NCHW", "NHWC")) or
+                                 (format_x.upper() == "HWCN" and shape_x[0]*shape_x[1] == shape_y[0]*shape_y[1])))
+                           or (list(shape_x) == list(shape_y) and util_common.is_support_fractal_z_inputs(list_input))),
+                   "ND": True
+                   }
+
+    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or (x_flag["4d"] and y_flag["Scalar"] and x_cdim % 16 == 0) or (
+            x_flag["Scalar"] and y_flag["4d"] and y_cdim % 16 == 0) or (
+            len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0)
+    format_flag["FRACTAL_Z"] = format_flag["FRACTAL_Z"] or \
+                               (util_common.is_support_fractal_z_inputs(list_input) and
+                               (x_flag["4d"] and y_flag["Scalar"] and x_cdim % 16 == 0 and x_ndim % 16 == 0) or
+                               (x_flag["Scalar"] and y_flag["4d"] and y_cdim % 16 == 0 and y_ndim % 16 == 0))
+
+
+    format_list = [i for i in format_flag if format_flag[i]]
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
     if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:
-        format_list.append("FRACTAL_NZ")
-        if len(shape_x) == 4 and len(shape_y) == 4 and \
-                format_x in format_4d_list and format_y in format_4d_list:
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                if format_x == format_y == "NCHW" and \
-                        (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1) and \
-                        (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
-                    format_list.append("NC1HWC0")
-                if format_x == format_y == "HWCN":
-                    if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_wdim == y_wdim and x_hdim == y_hdim:
-                        format_list.append("NC1HWC0")
-                    if (x_wdim == x_hdim == 1) or (y_hdim == y_wdim == 1):
-                        format_list.append("NC1HWC0")
-                    if (x_hdim == y_wdim == 1) or (x_wdim == y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                if format_x == format_y == "NHWC":
-                    if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                    if x_ndim == y_ndim and x_hdim == y_hdim:
-                        format_list.append("NC1HWC0")
-                    if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                        format_list.append("NC1HWC0")
-                    if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                        format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0 and \
-                    util_common.is_support_fractal_z_inputs(list_input):
-                if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) \
-                        or (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
-                    format_list.append("FRACTAL_Z")
-                if format_x == format_y == "HWCN" and \
-                        x_wdim * x_hdim == y_wdim * y_hdim:
-                    format_list.append("FRACTAL_Z")
-            if list(shape_x) == list(shape_y):
-                format_list.append("NC1HWC0")
-            if list(shape_x) == list(shape_y) and util_common.is_support_fractal_z_inputs(list_input):
-                format_list.append("FRACTAL_Z")
+
 
         dtypes, formats = get_format_same(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_formats)
         input0, input1, input2, output0 = generate_param(dtypes, formats)
@@ -227,24 +234,6 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
               not _can_division_sixteen(shape_y)) or
              (not _can_division_sixteen(shape_x) and
               _can_division_sixteen(shape_y))):
-        if len(shape_x) == 4 and len(shape_y) == 4 and \
-                format_x in format_4d_list and format_y in format_4d_list:
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
-                    format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and \
-                    y_cdim % 16 == 0 and y_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
-                if format_x == format_y == "NCHW" and \
-                        x_hdim * x_wdim == y_hdim * y_wdim and x_cdim == y_cdim:
-                    if x_ndim == y_ndim:
-                        format_list.append("FRACTAL_Z")
-                    if (x_ndim // 16 == 1 and y_ndim % 16 == 0) or \
-                            (y_ndim // 16 == 1 and x_ndim % 16 == 0):
-                        format_list.append("FRACTAL_Z")
-                if format_x == format_y == "NHWC" and \
-                        x_hdim * x_wdim == y_hdim * y_wdim and \
-                        x_ndim == y_ndim and x_cdim == y_cdim:
-                    format_list.append("FRACTAL_Z")
 
         dtypes, formats0, formats1, _ = get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes,
                                                        alpha_formats, len_format_list, format_nz, format_nd)
@@ -256,70 +245,17 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
 
     # 5HD+scalar,ND+ND,FZ+scalar
     elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
-        if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
-            if x_cdim % 16 == 0:
-                format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
-                format_list.append("FRACTAL_Z")
         dtypes, formats0, _, _ = get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes,
                                                 alpha_formats, len_format_list, format_nz, format_nd)
         input0, input1, input2, output0 = generate_param(dtypes, formats0)
 
     # ND+ND,scalar+5HD,scalar+FZ
     elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
-        if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
-            if y_cdim % 16 == 0:
-                format_list.append("NC1HWC0")
-            if y_cdim % 16 == 0 and y_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
-                format_list.append("FRACTAL_Z")
         dtypes, _, _, formats2 = get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes,
                                                 alpha_formats, len_format_list, format_nz, format_nd)
         input0, input1, input2, output0 = generate_param(dtypes, formats2)
     # ND+ND,5HD+5HD
     else:
-        if len(shape_x) == 1 and len(shape_y) == 1 and \
-                shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
-            format_list.append("NC1HWC0")
-        if len(shape_x) == 4 and len(shape_y) == 4 \
-                and format_x in format_4d_list and format_y in format_4d_list:
-            if format_x == format_y == "NCHW" or format_x == format_y == "HWCN" \
-                    or format_x == format_y == "NHWC":
-                if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-                    if (x_cdim // 16 == 1 or y_cdim // 16 == 1) or x_cdim == y_cdim:
-                        if x_ndim == y_ndim:
-                            if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_hdim == y_hdim and x_wdim == y_wdim:
-                                format_list.append("NC1HWC0")
-                            if (x_wdim == x_hdim == 1) or (y_wdim == y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if (x_hdim == 1 and y_wdim == 1) or (x_wdim == 1 and y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                        if x_hdim == y_hdim:
-                            if x_ndim == y_ndim and (x_wdim == 1 or y_wdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_wdim == y_wdim and (x_ndim == 1 or y_ndim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_ndim == y_ndim and x_wdim == y_wdim:
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == x_wdim == 1) or (y_ndim == y_wdim == 1):
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == 1 and y_wdim == 1) or (x_wdim == 1 and y_ndim == 1):
-                                format_list.append("NC1HWC0")
-                        if x_wdim == y_wdim:
-                            if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                                format_list.append("NC1HWC0")
-                            if x_ndim == y_ndim and x_hdim == y_hdim:
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                                format_list.append("NC1HWC0")
-                            if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                                format_list.append("NC1HWC0")
-
         dtypes, formats = get_format_same(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_formats)
         input0, input1, input2, output0 = generate_param(dtypes, formats)
 
