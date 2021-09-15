@@ -29,6 +29,9 @@
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
+#include "graph/node.h"
+#include "graph/op_desc.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 /*
@@ -50,8 +53,18 @@ bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas,
   int32_t hDim = 2;
   int32_t wDim = 3;
 
-  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 ||
-      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0) {
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+  ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
+  if (input_desc == nullptr) {
+    return false;
+  }
+  const GeShape &input_shape = input_desc->GetShape();
+  ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  if (output_desc == nullptr) {
+    return false;
+  }
+  GeShape &output_shape = output_desc->MutableShape();
+  if (input_shape.GetDimNum() == 0 || output_shape.GetDimNum() == 0) {
     return false;
   }
 
@@ -64,11 +77,11 @@ bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas,
   GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
 
   std::vector<std::string> varMap = opCompileInfo.at("_vars").begin().value().get<std::vector<std::string>>();
-  int64_t batch = opParas.GetInputDesc(0).GetShape().GetDim(nDim);
-  int64_t hi = opParas.GetInputDesc(0).GetShape().GetDim(hDim);
-  int64_t ho = opParas.GetOutputDesc(0).GetShape().GetDim(hDim);
-  int64_t wi = opParas.GetInputDesc(0).GetShape().GetDim(wDim);
-  int64_t wo = opParas.GetOutputDesc(0).GetShape().GetDim(wDim);
+  int64_t batch = input_shape.GetDim(nDim);
+  int64_t hi = input_shape.GetDim(hDim);
+  int64_t ho = output_shape.GetDim(hDim);
+  int64_t wi = input_shape.GetDim(wDim);
+  int64_t wo = output_shape.GetDim(wDim);
   std::vector<int64_t> var_value;
   for (auto var:varMap) {
     if (var == "batch_n") {

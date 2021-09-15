@@ -18,7 +18,6 @@ matmul_case = [
     # dtype error
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float32", "NZ", False, False, False, True, "dynamic_matmul_errorcase0", "dtype"),
     # format error
-    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "ND", False, False, False, True, "dynamic_matmul_errorcase1", "format"),
     # ori_shape error
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_errorcase2", "x1_orishape"),
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_errorcase3", "x2_orishape"),
@@ -28,6 +27,12 @@ matmul_case = [
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_errorcase6", "x2_range")
 ]
 
+matmul_ND_case = [
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, False, False, True, "dynamic_matmul_ND_format_1"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, False, False, True, "dynamic_matmul_ND_format_1"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, True, False, True, "dynamic_matmul_ND_format_1"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, True, False, True, "dynamic_matmul_ND_format_1"),
+]
 
 def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, dst_dtype,
                              format, trans_a, trans_b, bias_flag, batchb_flag, case_name, error_mode=None):
@@ -37,7 +42,7 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
 
     if format == "NZ":
         format = "FRACTAL_NZ"
-    block_range = [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
+    block_range = [] if format == "ND" else [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
 
     x1_range = [*batch_range, m_range, k_range] if trans_a else [*batch_range, k_range, m_range]
     x1_range += block_range
@@ -48,17 +53,20 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     if batchb_flag:
         x2_range = [*batch_range] + x2_range
 
-    x1_ori_shape = (-1,) * (len(x1_range) - 2)
-    x2_ori_shape = (-1,) * (len(x2_range) - 2)
+    ori_shape_len_x1 = len(x1_range) if format == "ND" else len(x1_range) - 2
+    ori_shape_len_x2 = len(x2_range) if format == "ND" else len(x2_range) - 2
+    x1_ori_shape = (-1,) * ori_shape_len_x1
+    x2_ori_shape = (-1,) * ori_shape_len_x2
+    x1_shape = x1_ori_shape if format == "ND" else x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK)
+    x2_shape = x2_ori_shape if format == "ND" else x2_ori_shape + (CUBE_BLOCK, CUBE_BLOCK)
 
-
-    x1 = {"ori_shape": x1_ori_shape, "dtype": src_dtype, "shape": x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
+    x1 = {"ori_shape": x1_ori_shape, "dtype": src_dtype, "shape": x1_shape,
           "format": format , "ori_format": "ND", "range": x1_range
     }
-    x2 = {"ori_shape": x2_ori_shape, "dtype": src_dtype, "shape":  x2_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
+    x2 = {"ori_shape": x2_ori_shape, "dtype": src_dtype, "shape": x2_shape,
           "format": format , "ori_format": "ND", "range": x2_range
     }
-    y = {"ori_shape": x1_ori_shape, "dtype": dst_dtype, "shape": x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
+    y = {"ori_shape": x1_ori_shape, "dtype": dst_dtype, "shape": x1_shape,
          "format": format , "ori_format": "ND", "range": y_range
     }
 
@@ -94,14 +102,7 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     }
 
 def test_op_select_format(test_arg):
-    from impl.batch_matmul import op_select_format
-    # static shape
-    op_select_format({"shape": (3, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
-                     {"shape": (3, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (4, 5), "ori_format": "ND"},
-                     )
-    op_select_format({"shape": (3, 2, 4), "dtype": "float", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
-                     {"shape": (1, 4, 5), "dtype": "float", "format": "ND", "ori_shape": (1, 4, 5), "ori_format": "ND"},
-                     )
+    from impl.dynamic.batch_matmul import op_select_format
     # dynamic shape
     op_select_format({"shape": (-1, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 2, 4), "ori_format": "ND"},
                      {"shape": (7, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (7, 4, 5), "ori_format": "ND"},
@@ -262,6 +263,9 @@ for case in normal_case:
     ut_case.add_case(case=gen_batch_matmul_dynamic_normally(case))
 
 for case in matmul_case:
+    ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
+
+for case in matmul_ND_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
 
 for case in common_cases:

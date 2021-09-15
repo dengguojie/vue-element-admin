@@ -276,14 +276,109 @@ std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
   return out_range;
 }
 
+bool InferBroadcastshapeForStatic(const GeShape& shape_x, const GeShape& shape_y, GeShape& shape_output) {
+  auto shape_x_len = shape_x.GetDimNum();
+  auto shape_y_len = shape_y.GetDimNum();
+
+  OP_LOGI("BroadcastInfer", "input1 shape is: %s, input2 shape is: %s.",
+          to_string(shape_x).c_str(), to_string(shape_y).c_str());
+  if (shape_x_len >= shape_y_len) {
+    // when inputx len >= inputy len
+    // input_x = [128, 128, 128] Vs input_y = [128]
+    auto len_sub = shape_x_len - shape_y_len;
+    shape_output.SetDimNum(shape_x_len);
+    for (size_t i = 0; i < len_sub; i++) {
+      shape_output.SetDim(i, shape_x.GetDim(i));
+    }
+    for (size_t i = 0; i < shape_y_len; i++) {
+      int64_t dim_size = std::max(shape_x.GetDim(len_sub + i), shape_y.GetDim(i));
+      // if one dim is 0, the output dim is 0
+      dim_size = (shape_x.GetDim(len_sub + i) == 0 || shape_y.GetDim(i) == 0) ? 0 : dim_size;
+      shape_output.SetDim(len_sub + i, dim_size);
+    }
+  } else {
+    // when inputx len < inputy len
+    // input_x = [128] Vs input_y = [128, 128, 128]
+    auto len_sub = shape_y_len - shape_x_len;
+    shape_output.SetDimNum(shape_y_len);
+    for (size_t i = 0; i < len_sub; i++) {
+      shape_output.SetDim(i, shape_y.GetDim(i));
+    }
+    for (size_t i = 0; i < shape_x_len; i++) {
+      int64_t dim_size = std::max(shape_y.GetDim(len_sub + i), shape_x.GetDim(i));
+      // if one dim is 0, the output dim is 0
+      dim_size = (shape_y.GetDim(len_sub + i) == 0 || shape_x.GetDim(i) == 0) ? 0 : dim_size;
+      shape_output.SetDim(len_sub + i, dim_size);
+    }
+  }
+  OP_LOGI("BroadcastInfer", "output1 shape is: %s.", to_string(shape_output).c_str());
+  return true;
+}
+
+bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const int64_t& input_idx_1, const int64_t& input_idx_2,
+                                           const int64_t& output_idx, bool& is_dynamic) {
+  PROFILING_PROTO_INIT(op.GetName().c_str());
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
+        return false);
+  auto tensordesc_input_1 = op_desc->MutableInputDesc(input_idx_1);
+  auto tensordesc_input_2 = op_desc->MutableInputDesc(input_idx_2);
+  auto tensordesc_output = op_desc->MutableOutputDesc(output_idx);
+  CHECK(tensordesc_output == nullptr ||
+        tensordesc_input_1 == nullptr || tensordesc_input_2 == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid tensordesc.")),
+        return false);
+
+  // set output
+  DataType input_dtype = tensordesc_input_1->GetDataType();
+  tensordesc_output->SetDataType(input_dtype);
+
+  const GeShape &shape_x = tensordesc_input_1->MutableShape();
+  const GeShape &shape_y = tensordesc_input_2->MutableShape();
+  OP_LOGI(op.GetName().c_str(), "shape_1: %s, shape_2: %s.", to_string(shape_x).c_str(), to_string(shape_y).c_str());
+
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
+
+  if (IsUnknownRankShape(shape_x) || IsUnknownRankShape(shape_y)) {
+    OP_LOGI(op.GetName().c_str(), "do unknownrank infershape for Broadcast");
+    tensordesc_output->SetShape(GeShape(UNKNOWN_RANK));
+    is_dynamic = false;
+    return true;
+  }
+  // do static infershape start
+  if ((!shape_x.IsUnknownShape()) && (!shape_x.IsUnknownShape())) {
+    OP_LOGI(op.GetName().c_str(), "do static infershape for Broadcast");
+    GeShape &shape_output = tensordesc_output->MutableShape();
+    CHECK(!InferBroadcastshapeForStatic(shape_x, shape_y, shape_output),
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("infershape failed.")),
+          return false);
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%s.", to_string(shape_output).c_str(),
+            ge::TypeUtils::DataTypeToSerialString(input_dtype).c_str());
+    is_dynamic = false;
+    PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
+    PROFILING_PROTO_END();
+    return true;
+  }
+  // do static infershape end
+
+  // dynamic case
+  auto input_name1 = op_desc->GetInputNameByIndex(input_idx_1);
+  auto input_name2 = op_desc->GetInputNameByIndex(input_idx_2);
+  auto output_name = op_desc->GetOutputNameByIndex(output_idx);
+  OP_LOGI(op.GetName().c_str(), "get the input name by idx is  %s vs %s vs %s",
+                                 input_name1.c_str(), input_name2.c_str(), output_name.c_str());
+  return InferShapeAndTypeTwoInOneOutBroadcast(op, input_name1, input_name2, output_name, is_dynamic);
+}
+
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name, bool& is_dynamic) {
   PROFILING_PROTO_INIT(op.GetName().c_str());
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_desc == nullptr || op_desc->MutableOutputDesc(output_name) == nullptr ||
-      op_desc->MutableInputDesc(input_name1) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
-      return false);
+        op_desc->MutableInputDesc(input_name1) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
+        return false);
 
   DataType input_dtype = op_desc->MutableInputDesc(input_name1)->GetDataType();
 
@@ -1100,6 +1195,10 @@ bool IsUnknownRankShape(const std::vector<int64_t>& shape_vec) {
   return false;
 }
 
+bool IsUnknownRankShape(const GeShape& input_shape) {
+  return input_shape.IsUnknownDimNum();
+}
+
 bool IsUnKnownShape(const std::vector<int64_t>& shape_vec) {
   auto found = find(shape_vec.begin(), shape_vec.end(), -1);
   return found != shape_vec.end();
@@ -1200,6 +1299,49 @@ bool OneInOneOutDynamicInfer(const Operator& op,
     for (const string& output_name : output_name_list) {
       output_desc = op_info->MutableOutputDesc(output_name);
       output_desc->SetShape(GeShape(input_shape));
+      output_desc->SetDataType(input_dtype);
+    }
+    PROFILING_PROTO_END();
+  }
+  return true;
+}
+
+bool OneInOneOutDynamicInfer(const Operator& op,
+                             const int64_t& input_idx,
+                             const std::vector<int64_t>& output_idx_list) {
+  // get input desc
+  PROFILING_PROTO_INIT(op.GetName().c_str());
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")), return false);
+  auto input_desc = op_info->MutableInputDesc(input_idx);
+  CHECK(input_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid input_desc")), return false);
+  auto &input_shape = input_desc->MutableShape();
+  DataType input_dtype = input_desc->GetDataType();
+
+  if (input_shape.IsUnknownShape()) {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    std::vector<int64_t> input_shape_vec = input_shape.GetDims();
+    MakeUpShapeRange(input_shape_vec, input_range);
+
+    for (const int64_t& output_idx : output_idx_list) {
+      auto output_desc = op_info->MutableOutputDesc(output_idx);
+      CHECK(output_desc == nullptr,
+            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")), return false);
+      output_desc->SetShape(input_shape);
+      output_desc->SetShapeRange(input_range);
+      output_desc->SetDataType(input_dtype);
+    }
+  } else {
+    PROFILING_PROTO_AFTER_GET_SHAPE_REG();
+    PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
+    for (const int64_t& output_idx : output_idx_list) {
+      auto output_desc = op_info->MutableOutputDesc(output_idx);
+      CHECK(output_desc == nullptr,
+            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")), return false);
+      output_desc->SetShape(input_shape);
       output_desc->SetDataType(input_dtype);
     }
     PROFILING_PROTO_END();

@@ -163,4 +163,3 @@ TEST_F(EmbeddingDenseGradTiling, embedding_dense_grad_tiling_2) {
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "10000 768 1 32 ");
 }
-

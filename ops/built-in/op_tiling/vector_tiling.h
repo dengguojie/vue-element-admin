@@ -31,24 +31,30 @@ namespace optiling {
 
 class OpInfo {
 public:
-  explicit OpInfo(const std::vector<std::vector<int64_t>>& _op_input_shapes,
-                  const ge::DataType& _op_in_type) :
-                  op_input_shapes (_op_input_shapes),
-                  op_in_type (_op_in_type) {
-  }
-  ~OpInfo() = default;
+    explicit OpInfo(const std::vector<std::vector<int64_t>>& _op_input_shapes,
+                    const ge::DataType& _op_in_type,
+                    const std::vector<std::vector<int32_t>>& _op_reduce_axes={}) :
+            op_input_shapes (_op_input_shapes),
+            op_in_type (_op_in_type),
+            op_reduce_axes (_op_reduce_axes){
+    }
 
-  const std::vector<std::vector<int64_t>>& GetInputShape() const {
-    return op_input_shapes;
-  }
+    const std::vector<std::vector<int64_t>>& GetInputShape() const {
+      return op_input_shapes;
+    }
 
-  const ge::DataType& GetInType() const {
-    return op_in_type;
-  }
+    const std::vector<std::vector<int32_t>>& GetReduceAxes() const {
+      return op_reduce_axes;
+    }
+
+    const ge::DataType& GetInType() const {
+      return op_in_type;
+    }
 
 private:
-  const std::vector<std::vector<int64_t>>& op_input_shapes;
-  const ge::DataType& op_in_type;
+    const std::vector<std::vector<int64_t>>& op_input_shapes;
+    const std::vector<std::vector<int32_t>>& op_reduce_axes;
+    const ge::DataType& op_in_type;
 };
 
 /*
@@ -63,6 +69,8 @@ bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const n
                   OpRunInfo& run_info);
 bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                   utils::OpRunInfo& run_info);
+bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                  utils::OpRunInfo& run_info, const OpInfo& opInfo);
 /*
  * @brief: tiling function of elementwise operator
  * @param [in] op_type: op_type of the elementwise operator

@@ -1117,6 +1117,7 @@ COMMON_INFER_FUNC_REG(EmbeddingDenseGrad, g_embeddingDenseGradInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(EmbeddingDenseGrad, EmbeddingDenseGradVerify);
 // ----------------EmbeddingDenseGrad END---------------------
+
 // ----------------RnnGenMaskV2 Begin-------------------
 bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
                                          const char* seq_length,

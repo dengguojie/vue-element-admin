@@ -545,11 +545,11 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     kernel_name = para_dict.get("kernel_name", "")
     para_dict_copy = para_dict.copy()
-    is_dynamic = in_dynamic()
     cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     is_confusion_transpose = para_dict.get("confusion_transpose", False)
     use_old_code = cube_vector_split or is_confusion_transpose
-    use_old_code = filter_case(use_old_code, tensor_a, tensor_b, kernel_name)
+    if not in_dynamic():
+        use_old_code = use_old_code or filter_case(tensor_a, tensor_b, kernel_name)
 
     if not use_old_code:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
@@ -562,9 +562,7 @@ def gemm(tensor_a, tensor_b, para_dict):
     return result
 
 
-def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
-    if in_dynamic():
-        return use_old_code
+def filter_case(tensor_a, tensor_b, kernel_name):
     # vgg16_faster_rcnn_coco_int8 sppnet vgg16_faster_rcnn_coco vgg_ilsvrc_16
     black_list_compress_fc = [
         "304_25088_784_256_16_32_int8",
@@ -620,18 +618,18 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
     info_list.append(tensor_a.dtype)
     info_str = "_".join(info_list)
     if info_str in black_list_compress_fc and kernel_name.find("compress_fully_connection") != -1:
-        use_old_code = True
+        return True
     if info_str in black_list_fc and kernel_name.find("fully_connection") != -1:
-        use_old_code = True
+        return True
     if info_str in black_list_1980:
-        use_old_code = True
+        return True
     if info_str in black_list_910.get(soc_version, []):
-        use_old_code = True
+        return True
     # ACL_BERTBASE excute fail
     if kernel_name.find("gelu") != -1 and kernel_name.find("batch_matmul") == -1:
-        use_old_code = True
+        return True
 
-    return use_old_code
+    return False
 
 
 @tbe_utils.para_check.check_input_type(Tensor)
@@ -877,7 +875,6 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
 
 class GEMMComputeParam:
     tiling_info_dict = {}
-    dynamic_mode = None
     batch_a = False
     batch_b = False
     def __init__(self) -> None:
@@ -2357,12 +2354,6 @@ class GEMMCompute:
         GEMMComputeParam.batch_a = (self.tensor_a_length == 5)
         GEMMComputeParam.batch_b = (self.tensor_b_length == 5)
 
-        if in_dynamic():
-            if GEMMComputeParam.batch_a:
-                GEMMComputeParam.dynamic_mode = "dynamic_mknb"
-            else:
-                GEMMComputeParam.dynamic_mode = "dynamic_mkn"
-
         tensor_alpha_ub, tensor_beta_ub = None, None
         if not self.matmul_flag:
             tensor_alpha_ub, tensor_beta_ub = self._compute_alpha_beta()
@@ -2415,60 +2406,6 @@ class GEMMCompute:
         tensor_c_gm = self._compute_c_martix(tensor_a_l0a, tensor_b_l0b, reduce_kb, reduce_kp, tensor_alpha_ub,
                                              tensor_beta_bias_ub)
 
-        if in_dynamic():
-
-            def _get_trans_flag(transpose_a, transpose_b):
-                trans_flag = 1
-                if transpose_a:
-                    if transpose_b:
-                        trans_flag = 4
-                    else:
-                        trans_flag = 2
-                elif transpose_b:
-                    trans_flag = 3
-                return trans_flag
-
-            def _get_a_shape_in_nc1hwc0():
-                if GEMMComputeParam.batch_a:
-                    return [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
-                else:
-                    return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
-
-            def _get_b_shape_in_nc1hwc0():
-                if GEMMComputeParam.batch_b:
-                    return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
-                else:
-                    return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
-
-            GEMMComputeParam.tiling_info_dict = {
-                "A_shape": _get_a_shape_in_nc1hwc0(),
-                "B_shape": _get_b_shape_in_nc1hwc0(),
-                "C_shape": None,
-                "A_dtype": self.tensor_a.dtype,
-                "B_dtype": self.tensor_b.dtype,
-                "C_dtype": tensor_c_gm.dtype,
-                "mad_dtype": self.out_dtype,
-                "padl": 0,
-                "padr": 0,
-                "padu": 0,
-                "padd": 0,
-                "strideH": 1,
-                "strideW": 1,
-                "strideH_expand": 1,
-                "strideW_expand": 1,
-                "dilationH": _get_trans_flag(not self.trans_a, not self.trans_b),
-                "dilationW": 1,
-                "group": 1,
-                "fused_double_operand_num": 0,
-                "bias_flag": (self.tensor_bias is not None),
-                "op_tag": "matmul",
-                "op_type": "matmul",
-                "kernel_name": self.kernel_name,
-                "dynamic_shape_flag": True,
-                "trans_a": self.trans_a if self.format_a != "fractal" else not self.trans_a,
-                "trans_b": self.trans_b if self.format_b != "fractal" else not self.trans_b
-            }
-
         return tensor_c_gm
 
     def calculate(self):
@@ -2479,7 +2416,7 @@ class GEMMCompute:
         ---------------------------------
         Return: result
         """
-        if self.matmul_flag and not in_dynamic():
+        if self.matmul_flag:
             tensor_y = matmul(tensor_a=self.tensor_a,
                               tensor_b=self.tensor_b,
                               trans_a=self.trans_a,

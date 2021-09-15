@@ -99,5 +99,7 @@ ut_case.add_case(["all"], case9)
 ut_case.add_case(["all"], case10)
 ut_case.add_case(["all"], case11)
 
+
+
 if __name__ == '__main__':
     ut_case.run("Ascend710")

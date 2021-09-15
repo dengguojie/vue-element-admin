@@ -26,6 +26,7 @@ from tbe.common.platform import platform_info as tbe_platform_info
 import tbe.common.utils as tbe_utils
 from tbe.common.utils import broadcast_shapes
 from tbe.dsl.compute.util import check_input_tensor_shape
+from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.compute import cube_util
 from tbe.dsl.base.operation import in_dynamic
 from tbe.common.utils import para_check
@@ -88,8 +89,68 @@ class GEMMComputeParam:
     dynamic_mode = None
     batch_a = False
     batch_b = False
+    format_a = "Fractal_NZ"
+    format_b = "Fractal_NZ"
+    m_var_name = None
+    k_var_name = None
+    n_var_name = None
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
+    block_reduce = tbe_platform.BLOCK_REDUCE
     def __init__(self) -> None:
         pass
+
+    @staticmethod
+    def get_op_type_flag(format_a, format_b, mmad_mode):
+        """
+        0: a and b both ND input
+        1: a and b both fractal input
+        2: a is fractal b is ND
+        3: a is ND b is fractal
+        """
+        if (format_a == "ND" and format_b == "ND"):
+            op_type_flag = 0
+        elif (format_a != "ND" and format_b == "ND"):
+            op_type_flag = 2
+        elif (format_a == "ND" and format_b != "ND"):
+            op_type_flag = 3
+        else:
+            op_type_flag = 1
+        if mmad_mode == "gemv" and op_type_flag in (2, 3):
+            change_value_dict = {
+                2: 3,
+                3: 2
+            }
+            op_type_flag = change_value_dict.get(op_type_flag)
+
+        return op_type_flag
+
+
+    @staticmethod
+    def check_tail_block(n_shape, ops_data_flow_mode, format_out, is_dynamic):
+        """
+        This function is used to calculate Extra block needed under specific data
+        flow mode and n_shape
+        """
+        tail_block_flag = 0
+        if is_dynamic and format_out == "ND":
+            # Do not have n_shape runtime info therefore considering n_dynamic contains tail block
+            return tail_block_flag
+        if ops_data_flow_mode in ("int82int32", "int82fp32"):
+            divide_factor = 32
+            data_num = 8
+        elif ops_data_flow_mode == "fp162fp16":
+            divide_factor = 16
+            data_num = 16
+        else:
+            divide_factor = 16
+            data_num = 8
+        
+        if 1 <= int(n_shape) <= divide_factor or int(n_shape) % divide_factor == 0:
+            tail_block_flag = 1
+        elif int(n_shape) % divide_factor < data_num:
+            tail_block_flag = 0
+        return tail_block_flag
 
 
 class GEMMCompute(FormatCompute):
@@ -168,6 +229,7 @@ class GEMMCompute(FormatCompute):
         self.mmad_mode = "gemm"
         self.quantize_params = para_dict.get("quantize_params")
         self.format_out = para_dict.get("format_out")
+        self.need_reformat_to_nd = False
         self.compress_index = para_dict.get("compress_index")
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.attrs = para_dict.get("attrs", {})
@@ -245,6 +307,36 @@ class GEMMCompute(FormatCompute):
         else:
             GEMMComputeParam.dynamic_mode = "dynamic_mkn"
         is_gevm = int(self.mmad_mode in ("gemv", "gevm"))
+
+        op_type_flag = GEMMComputeParam.get_op_type_flag(
+            self.format_a, self.format_b, self.mmad_mode)
+
+        # If Batch Matmul, n_shape = n1 * n0 else n_shape = N_ori_shape
+        aligned_coeff = 1 if tensor_b_length == 3 else self.block_out
+        batch_idx_offset = 1 if GEMMComputeParam.batch_b else 0
+        n_dim = (batch_idx_offset + 1) if self.trans_b else batch_idx_offset
+
+        n1_shape = self.tensor_b.shape[n_dim]
+        n_shape = aligned_coeff * n1_shape
+        GEMMComputeParam.block_in = self.block_in
+        GEMMComputeParam.block_out = self.block_out
+        GEMMComputeParam.block_reduce = self.block_reduce
+
+        # This self.ops_format means format_a in this scenario.
+        n_shape_dynamic_flag = isinstance(n1_shape, tvm.expr.Var)
+        tail_block = GEMMComputeParam.check_tail_block(
+            n_shape, self.ops_data_flow_mode,
+            self.format_out,
+            n_shape_dynamic_flag) if self.ops_format == "ND" else 1
+
+        a_fused_num = 10 if self.format_a == "ND" else 0
+        b_fused_num = 10 if self.format_b == "ND" else 0
+        fused_double_operand_num = 1 if self.format_out == "ND" else 0
+        GEMMComputeParam.format_a = self.format_a
+        GEMMComputeParam.format_b = self.format_b
+        GEMMComputeParam.m_var_name = "m_ori" if self.format_a == "ND" else "m"
+        GEMMComputeParam.k_var_name = "k_ori" if self.format_a == "ND" else "k"
+        GEMMComputeParam.n_var_name = "n_ori" if self.format_b == "ND" else "n"
         GEMMComputeParam.tiling_info_dict = {
             "A_shape": self._get_a_shape_in_nc1hwc0(tensor_l0a),
             "B_shape": self._get_b_shape_in_nc1hwc0(tensor_l0b),
@@ -253,18 +345,18 @@ class GEMMCompute(FormatCompute):
             "B_dtype": self.tensor_b.dtype,
             "C_dtype": tensor_c_gm.dtype,
             "mad_dtype": self.matrix_type,
-            "padl": 0,
-            "padr": 0,
+            "padl": a_fused_num,
+            "padr": b_fused_num,
             "padu": is_gevm,
             "padd": 0,
-            "strideH": 1,
-            "strideW": 1,
+            "strideH": op_type_flag,
+            "strideW": tail_block,
             "strideH_expand": 1,
             "strideW_expand": 1,
             "dilationH": self._get_trans_flag(self.trans_a, self.trans_b),
             "dilationW": 1,
             "group": 1,
-            "fused_double_operand_num": 0,
+            "fused_double_operand_num": fused_double_operand_num,
             "bias_flag": (self.tensor_bias is not None),
             "op_tag": "matmul",
             "op_type": "matmul",
@@ -335,7 +427,7 @@ class GEMMCompute(FormatCompute):
         b_shape = [self._get_value(i) for i in self.tensor_b.shape]
         mmad_mode = "gemm"
         # The op GEMM not use gevm/gemv now
-        if self._get_not_gevm_gemv_flag() or (self.alpha is not None):
+        if self._get_not_gevm_gemv_flag() or (self.alpha is not None) or in_dynamic():
             self.mmad_mode = "gemm"
             return
 
@@ -405,8 +497,7 @@ class GEMMCompute(FormatCompute):
 
     def _get_not_gevm_gemv_flag(self):
         not_use_gevm_gemv_flag = False
-        is_int82int32_nd = (self.ops_data_flow_mode == "int82int32"
-            and (self.format_a == "ND" or self.format_b == "ND")) and (self.alpha is not None)
+        is_int82int32_nd = self._is_nd_int82fp32() and (self.alpha is not None)
         not_use_gevm_gemv_flag = (self.ops_data_flow_mode == "int82fp32" or is_int82int32_nd) and (self.alpha is not None)
         return not_use_gevm_gemv_flag
 
@@ -496,7 +587,9 @@ class GEMMCompute(FormatCompute):
         have_batch = len(c_gm_shape) in (3, 5)
 
         if not_align:
-            if len(c_gm_shape) in (2, 3):
+            if self.need_reformat_to_nd and attrs_dict['shape'][-1] % self.block_in != 0:
+                self.res = res
+            elif len(c_gm_shape) in (2, 3):
                 if have_batch:
                     self.res = tvm.compute(
                         c_gm_shape,
@@ -704,14 +797,14 @@ class GEMMCompute(FormatCompute):
         ori_m_shape = self._get_value(self.tensor_a.shape[index_m])
         ori_km_shape = self._get_value(self.tensor_a.shape[index_km])
         if is_nd_int82fp32:
-            m_shape = math.ceil(ori_m_shape / 32) * 32 // 16
-            km_shape = math.ceil(ori_km_shape / 32) * 32 // 16
+            m_shape = int_ceil_div(ori_m_shape, 32) * 32 // 16
+            km_shape = int_ceil_div(ori_km_shape, 32) * 32 // 16
         else:
             if self.src_dtype in ("uint8", "int8"):
-                m_shape = math.ceil(ori_m_shape / 32) * 32 // 16
+                m_shape = int_ceil_div(ori_m_shape, 32) * 32 // 16
             else:
-                m_shape = math.ceil(ori_m_shape / self.block_in)
-            km_shape = math.ceil(ori_km_shape / self.block_reduce)
+                m_shape = int_ceil_div(ori_m_shape, self.block_in)
+            km_shape = int_ceil_div(ori_km_shape, self.block_reduce)
 
         aligned_shape_a = [m_shape * self.block_in, km_shape * self.block_reduce]
         align_flag_a = (ori_m_shape == aligned_shape_a[-2]) and (ori_km_shape == aligned_shape_a[-1])
@@ -735,14 +828,14 @@ class GEMMCompute(FormatCompute):
         ori_n_shape = self._get_value(self.tensor_b.shape[index_n])
         ori_kn_shape = self._get_value(self.tensor_b.shape[index_kn])
         if is_nd_int82fp32:
-            n_shape = math.ceil(ori_n_shape / 32) * 32 // 16
-            kn_shape = math.ceil(ori_kn_shape / 32) * 32 // 16
+            n_shape = int_ceil_div(ori_n_shape, 32) * 32 // 16
+            kn_shape = int_ceil_div(ori_kn_shape, 32) * 32 // 16
         else:
             if self.src_dtype in ("uint8", "int8"):
-                n_shape = math.ceil(ori_n_shape / 32) * 32 // 16
+                n_shape = int_ceil_div(ori_n_shape, 32) * 32 // 16
             else:
-                n_shape = math.ceil(ori_n_shape / self.block_out)
-            kn_shape = math.ceil(ori_kn_shape / self.block_reduce)
+                n_shape = int_ceil_div(ori_n_shape, self.block_out)
+            kn_shape = int_ceil_div(ori_kn_shape, self.block_reduce)
 
         aligned_shape_b = [kn_shape * self.block_reduce, n_shape * self.block_out]
         align_flag_b = (ori_n_shape == aligned_shape_b[-1]) and (ori_kn_shape == aligned_shape_b[-2])
@@ -766,8 +859,8 @@ class GEMMCompute(FormatCompute):
             else:
                 ori_m_shape = self._get_value(tensor_need_align.shape[-2])
                 ori_n_shape = self._get_value(tensor_need_align.shape[-1])
-                m_shape = math.ceil(ori_m_shape / self.block_in) * self.block_in
-                n_shape = math.ceil(ori_n_shape / self.block_out) * self.block_out
+                m_shape = int_ceil_div(ori_m_shape, self.block_in) * self.block_in
+                n_shape = int_ceil_div(ori_n_shape, self.block_out) * self.block_out
                 is_align = (ori_m_shape == m_shape) and (ori_n_shape == n_shape)
                 aligned_shape = [m_shape, n_shape]
         elif tensor_name == "a":
@@ -781,7 +874,7 @@ class GEMMCompute(FormatCompute):
         if not_need_align or (not need_check_align):
             tensor_normalize_ub = tvm.compute(
                 tensor_need_align.shape,
-                lambda *indices: tensor_need_align(*indices), # pylint: disable=W0108
+                lambda *indices: tensor_need_align(*indices),
                 name="tensor_{}_normalize_ub".format(tensor_name)
             )
             return tensor_normalize_ub
@@ -946,6 +1039,7 @@ class GEMMCompute(FormatCompute):
         nd2Zz_normal_flag = nd2Zz_normal_flag or (self.ops_data_flow_mode in ("int82int32", "int4int32"))
         nd2Zz_normal_flag = nd2Zz_normal_flag or (self.mmad_mode == "gevm")
         nd2Zz_normal_flag = nd2Zz_normal_flag or use_normal_func
+        nd2Zz_normal_flag = nd2Zz_normal_flag or in_dynamic()
 
         nd2Zz_vnchwconv_flag = False
         nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (not self.ops_data_flow_mode  in ("int82int32", "int4int32"))
@@ -1084,6 +1178,7 @@ class GEMMCompute(FormatCompute):
         nd2Zn_normal_flag = False
         nd2Zn_normal_flag = nd2Zn_normal_flag or self.cube_vector_split
         nd2Zn_normal_flag = nd2Zn_normal_flag or (self.ops_data_flow_mode == "int82int32")
+        nd2Zn_normal_flag = nd2Zn_normal_flag or in_dynamic()
 
         nd2Zn_vnchwconv_flag = False
         nd2Zn_vnchwconv_flag = nd2Zn_vnchwconv_flag or (self.ops_data_flow_mode != "int82int32")
@@ -1248,7 +1343,7 @@ class GEMMCompute(FormatCompute):
         def index_bias_of_fractal_nz(indices):
             return [0]*(len(bias_shape) - 1) + [indices[-4]*block_out + indices[-1]]
 
-        if ori_shape[-1] % 16 == 0:
+        if not in_dynamic() and ori_shape[-1] % 16 == 0:
             tensor_bias_ub = tvm.compute(
                 bias_shape, lambda *indices: tensor_bias(*index_bias_of_ori_shape(indices)), name="tensor_bias_ub")
         else:
@@ -1368,8 +1463,15 @@ class GEMMCompute(FormatCompute):
             )
 
         need_reformat_to_nd = ((self.format_out == "ND") and (cur_format_out == "FRACTAL_NZ"))
+        self.need_reformat_to_nd = need_reformat_to_nd
         if need_reformat_to_nd:
-            tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias)
+            attrs_dict = self._get_attrs_dict(tensor_alpha_c_add_beta_bias)
+            c_gm_shape = self._get_out_shape(tensor_alpha_c_add_beta_bias)
+            attrs_dict["shape"] = c_gm_shape
+            if attrs_dict['shape'][-1] % self.block_in != 0:
+                tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias, output_shape=c_gm_shape, tensor_name="tensor_c_gm", res_tag=self._get_ops_tag(), attrs_dict=attrs_dict)
+            else:
+                tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias)
             return tensor_out_nd
         return tensor_alpha_c_add_beta_bias
 
@@ -1771,7 +1873,8 @@ class GEMMCompute(FormatCompute):
             kn_shape *= self.block_reduce
 
         if km_shape != kn_shape:
-            raise RuntimeError("[E69999] A matrix's k should be equal B matrix's k.")
+            raise RuntimeError(
+                f"[E69999] A matrix's k should be equal B matrix's k, but are {km_shape} and {kn_shape}.")
 
     def _check_n_align(self):
         """

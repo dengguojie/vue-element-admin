@@ -41,5 +41,15 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
                                     (16, 16, 16),
                                     "float32", -1, "dynamic_softmax_v2_3", "success"))
 
+
+from impl.dynamic.softmax_v2 import op_select_format
+
+def test_op_select_format(test_arg):
+    op_select_format({"shape": (16,16), "dtype": "float16", "format": "ND", "ori_shape": (16,16),"ori_format": "ND"},
+                     {"shape": (16,16), "dtype": "float16", "format": "ND", "ori_shape": (16,16),"ori_format": "ND"},
+                     -1)
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

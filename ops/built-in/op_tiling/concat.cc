@@ -21,41 +21,22 @@
 #include <map>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 using namespace ge;
 using namespace std;
 
-static vector<vector<int64_t>> GetInputShapes(const TeOpParas& paras) {
-  vector<vector<int64_t>> shapes;
-  for (const auto& input : paras.inputs) {
-    if (input.tensor.empty()) {
-      return {};
-    }
-
-    if (input.arg_type == TA_LIST) {
-      OP_LOGD("concat", "TA_LIST");
-      for (const auto& tensor : input.tensor) {
-        shapes.emplace_back(tensor.shape);
-      }
-    } else if (input.arg_type == TA_SINGLE) {
-      OP_LOGD("concat", "TA_SINGLE");
-      shapes.emplace_back(input.tensor[0].shape);
-    }
-  }
-
-  return shapes;
-}
-
 static string to_string(const ByteBuffer& tiling_data) {
   auto data = tiling_data.str();
   string result;
-  const int64_t *data_addr = reinterpret_cast<const int64_t*>(data.c_str());
+  const int64_t* data_addr = reinterpret_cast<const int64_t*>(data.c_str());
   for (size_t i = 0; i < data.length() / sizeof(int64_t); i++) {
     result += std::to_string(*data_addr);
     data_addr++;
@@ -220,15 +201,18 @@ static void Pack2ConcatParams(const std::string& opType, vector<vector<int64_t>>
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                    OpRunInfo& runInfo) {
+bool ConcatV2Tiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& op_info,
+                    utils::OpRunInfo& runInfo) {
   OP_LOGD(opType.c_str(), "ConcatV2Tiling running.");
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(opParas);
+  PROFILING_TILING_INIT(opType.c_str());
 
   vector<vector<int64_t>> input_shapes = GetInputShapes(opParas);
   if (input_shapes.empty()) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get input shapes failed.");
     return false;
   }
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   int32_t concat_dim = 0;
   int32_t input_size = 0;
@@ -250,6 +234,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     OP_LOGD(opType.c_str(), "%s=%d.", name.c_str(), param.second);
   }
 
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   Pack2ConcatParams(opType, input_shapes, concat_dim);
   OP_LOGD(opType.c_str(), "to check params.");
   if (!CheckParams(opType, input_shapes, concat_dim)) {
@@ -259,7 +244,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   if (input_size != static_cast<int32_t>(input_shapes.size())) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType,
                                     "check input size failed. "
-                                        "Input_size in compile is %d, but in params is %zd",
+                                    "Input_size in compile is %d, but in params is %zd",
                                     input_size, input_shapes.size());
     return false;
   }
@@ -271,24 +256,22 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   }
 
   OP_LOGD(opType.c_str(), "encode TilingParam.");
-  tiling_param.encode(runInfo.tiling_data);
-  OP_LOGD(opType.c_str(), "TilingParam:%s.", to_string(runInfo.tiling_data).c_str());
+  tiling_param.encode(runInfo.GetAllTilingData());
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  OP_LOGD(opType.c_str(), "TilingParam:%s.", to_string(runInfo.GetAllTilingData()).c_str());
 
   // block_dim, not need for concat tiling
-  runInfo.block_dim = block_dim;
-
-  // workspace, null for tik op
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
+  runInfo.SetBlockDim(block_dim);
   OP_LOGD(opType.c_str(), "tiling run success.");
+  PROFILING_TILING_END();
 
   return true;
 }
 
 // register tiling interface of the Concat, ConcatV2 op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ConcatV2D, ConcatV2Tiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(ConcatD, ConcatV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ConcatV2D, ConcatV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ConcatD, ConcatV2Tiling);
 
 // register tiling interface of the Pack op.
-REGISTER_OP_TILING_FUNC_BUFFERED(Pack, ConcatV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Pack, ConcatV2Tiling);
 }  // namespace optiling

@@ -814,8 +814,8 @@ bool Reduce::DoConstRunTimeBranch() {
   EliminateOne();
   pattern = CalcConstPattern(reduce_axis_ori);
   std::string pattern_str = std::to_string(pattern);
-  compileInfo.const_block_dims = op_info.at("_block_dims").at(pattern_str).get<std::uint32_t>();
-  compileInfo.const_atomic_flag = op_info.at("_atomic_flags").at(pattern_str).get<bool>();
+  compileInfo.const_block_dims = json_info.at("_block_dims").at(pattern_str).get<std::uint32_t>();
+  compileInfo.const_atomic_flag = json_info.at("_atomic_flags").at(pattern_str).get<bool>();
   return true;
 }
 
@@ -886,24 +886,24 @@ bool Reduce::WriteTilingData() {
 bool Reduce::GetCompileInfoForProcessControl() {
   // Optional info from SCH that control the process of tiling
   compileInfo.idx_before_reduce =
-        op_info.count("_idx_before_reduce") > 0 ? op_info.at("_idx_before_reduce").get<uint32_t>() : 0;
-  compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 && op_info.at("_reduce_shape_known").get<bool>();
-  compileInfo.zero_ub_factor = op_info.count("_zero_ub_factor") > 0 ? op_info.at("_zero_ub_factor").get<int64_t>() : -1;
-  compileInfo.is_const_post = op_info.count("_const_shape_post") > 0 && op_info.at("_const_shape_post").get<bool>();
+          json_info.count("_idx_before_reduce") > 0 ? json_info.at("_idx_before_reduce").get<uint32_t>() : 0;
+  compileInfo.is_const = json_info.count("_reduce_shape_known") > 0 && json_info.at("_reduce_shape_known").get<bool>();
+  compileInfo.zero_ub_factor = json_info.count("_zero_ub_factor") > 0 ? json_info.at("_zero_ub_factor").get<int64_t>() : -1;
+  compileInfo.is_const_post = json_info.count("_const_shape_post") > 0 && json_info.at("_const_shape_post").get<bool>();
 
-  if (op_info.count("_ori_axis") > 0) {
+  if (json_info.count("_ori_axis") > 0) {
     compileInfo.ori_axis.first = true;
-    compileInfo.ori_axis.second = op_info.at("_ori_axis").get<std::vector<int32_t>>();
+    compileInfo.ori_axis.second = json_info.at("_ori_axis").get<std::vector<int32_t>>();
   }
 
-  if (op_info.count("axes_idx") > 0) {
+  if (json_info.count("axes_idx") > 0) {
     compileInfo.axes_idx.first = true;
-    compileInfo.axes_idx.second = op_info.at("axes_idx").get<uint32_t>();
+    compileInfo.axes_idx.second = json_info.at("axes_idx").get<uint32_t>();
   }
 
-  if (op_info.count("_compile_pattern") > 0) {
+  if (json_info.count("_compile_pattern") > 0) {
     compileInfo.compile_pattern.first = true;
-    compileInfo.compile_pattern.second = op_info.at("_compile_pattern").get<std::int32_t>();
+    compileInfo.compile_pattern.second = json_info.at("_compile_pattern").get<std::int32_t>();
   }
   return true;
 }
@@ -912,10 +912,10 @@ bool Reduce::GetCompileInfoForCalculate() {
   // Required info from SCH that do for calculating
   try {
     std::vector<int32_t> common_info;
-    common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
-    compileInfo.pattern_info = op_info.at("_pattern_info").get<std::vector<int32_t>>();
-    compileInfo.ub_info_rf = op_info.at("_ub_info_rf").get<std::vector<int32_t>>();
-    compileInfo.ub_info = op_info.at("_ub_info").get<std::vector<int32_t>>();
+    common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
+    compileInfo.pattern_info = json_info.at("_pattern_info").get<std::vector<int32_t>>();
+    compileInfo.ub_info_rf = json_info.at("_ub_info_rf").get<std::vector<int32_t>>();
+    compileInfo.ub_info = json_info.at("_ub_info").get<std::vector<int32_t>>();
 
     V_CHECK_EQ(compileInfo.pattern_info.size(), compileInfo.ub_info.size(),
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pattern_info's size should be as same as ub_info"),
@@ -1096,14 +1096,127 @@ bool Reduce::DoTiling() {
 
   return true;
 }
+
+bool Reduce::NewDoTiling(const OpInfo& op_info) {
+  /* Situations of DoTiling include:
+     1. input(known):
+        status of compile: do others except FusedReduceAxis
+        status of runtime: do WriteTilingData
+     2. input(unknown):
+        do all process
+  */
+  V_OP_TILING_CHECK(GetCompileInfoForProcessControl(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfoForProcessControl Failed"), return false);
+
+  // Get Input
+  if (op_info.GetInputShape().size() > 0) {
+    input_shape_ori = op_info.GetInputShape()[0];
+  } else {
+    int inputs_num = static_cast<int>(op_paras.GetInputsSize());
+    V_OP_TILING_CHECK(!(inputs_num == 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs cannot be empty"),
+                      return false);
+    V_OP_TILING_CHECK(!(inputs_num <= compileInfo.idx_before_reduce),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
+                      return false);
+    input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
+  }
+
+  if (op_info.GetReduceAxes().size() > 0) {
+    reduce_axis_ori = op_info.GetReduceAxes()[0];
+  } else {
+    // Get ReduceAxisTensor
+    if (not compileInfo.ori_axis.first) {
+      // axes is tensor
+      // te_fusion will convert axes_idx while do fusion in reduce_op
+      auto axes_desc = compileInfo.axes_idx.first ?
+                       ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
+                       ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
+      std::string axes_name = axes_desc->GetName();
+      geInfo.axes_type = axes_desc->GetDataType();
+
+      // push data in axis_tensor
+      V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
+                        return false);
+      V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]", geInfo.axes_type),
+                        return false);
+    }
+
+    // Get ReduceAxis
+    if (compileInfo.ori_axis.first) {
+      reduce_axis_ori = compileInfo.ori_axis.second;
+    } else {
+      GetConstValue(geInfo.axis_tensor, geInfo.axes_type, reduce_axis_ori);
+    }
+  }
+
+  // Convert reduce axis (-1 -> length+1)
+  int32_t max_value = int32_t(input_shape_ori.size());
+  int32_t min_value = -1 * max_value;
+  for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
+    if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is %d which exceed max_value: %d or min_value: %d",
+                                      reduce_axis_ori[i], max_value, min_value);
+      return false;
+    }
+    if (reduce_axis_ori[i] < 0) {
+      reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
+    }
+  }
+
+  if (IsZero()){
+    return DoZeroBranch();
+  }
+
+  if (compileInfo.is_const && compileInfo.is_const_post) {
+    // status: runtime
+    return DoConstRunTimeBranch();
+  }
+
+  if (compileInfo.is_const) {
+    // status: compile
+    V_OP_TILING_CHECK(compileInfo.compile_pattern.first,
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get compile_pattern Failed"), return false);
+    pattern = compileInfo.compile_pattern.second;
+    reduce_axis = reduce_axis_ori;
+    input_shape = input_shape_ori;
+  } else {
+    // input(unknown)
+    // Discard "1" and default sorted
+    EliminateOne();
+    FusedReduceAxis();
+    pattern = CalcPattern(input_shape, reduce_axis);
+  }
+
+  // common process
+  V_OP_TILING_CHECK(GetCompileInfoForCalculate(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfoForCalculate Failed"), return false);
+  V_OP_TILING_CHECK(MatchPattern(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "MatchPattern Failed"), return false);
+  V_OP_TILING_CHECK(TilingProcess(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TilingProcess Failed"), return false);
+  V_OP_TILING_CHECK(FineTuning(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "FineTuning Failed"), return false);
+
+  return true;
+}
+
 }  // namespace utils
 
-bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& json_info,
                   utils::OpRunInfo& run_info) {
   using namespace utils;
   OP_LOGD(op_type.c_str(), "tiling running");
-  utils::Reduce reduce(op_type, op_paras, op_info, run_info);
+  utils::Reduce reduce(op_type, op_paras, json_info, run_info);
   bool ret = reduce.DoTiling();
+  ret = ret && reduce.WriteTilingData();
+  return ret;
+}
+
+bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& json_info,
+                  utils::OpRunInfo& run_info, const OpInfo& op_info) {
+  using namespace utils;
+  OP_LOGD(op_type.c_str(), "user-defined shape tiling running");
+  utils::Reduce reduce(op_type, op_paras, json_info, run_info);
+  // accept user-defined shape
+  bool ret = reduce.NewDoTiling(op_info);
   ret = ret && reduce.WriteTilingData();
   return ret;
 }

@@ -22,7 +22,8 @@ from typing import Dict
 from typing import Optional
 import copy
 from functools import reduce
-from enum import Enum, auto
+from enum import Enum
+from enum import auto
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -103,6 +104,9 @@ class BroadcastElewiseClassifier:
         return [clone_complete(x) for x in self.ins]
 
     def check_update_unknown_rank(self):
+        """
+        check_update_unknown_rank -2
+        """
         is_unknown_rank = False
         for _in in self.ins:
             shapes = list(_in["shape"])
@@ -118,6 +122,9 @@ class BroadcastElewiseClassifier:
         self.is_unknown_rank = is_unknown_rank
 
     def check_update_empty_shape(self):
+        """
+        check_update_empty_shape
+        """
         is_empty_shape = False
         for _in in self.ins:
             shapes, ranges = list(_in["shape"]), list(_in.get("range"))

@@ -848,7 +848,7 @@ class BaseBroadcastSchedule:
             sch[self._get_ub_tensor(tensor_i)].set_store_predicate(cond)
             sch[self._get_ub_tensor(tensor_i)].mem_unique()
         for tensor_i in self._all_pre_node_broadcast:
-            if util.is_broadcast(tensor_i):
+            if util.is_broadcast(tensor_i) and not util.is_scalar_broadcast(tensor_i):
                 ub_split_src = tensor_i.op.input_tensors[0].shape[u_idx]
             else:
                 ub_split_src = tensor_i.shape[u_idx]

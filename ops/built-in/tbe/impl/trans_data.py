@@ -398,6 +398,19 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 batch_idx, co_idx // src_c0, howo_idx, co_idx % src_c0),
             name="res_nhwc",
             tag="5HD_trans_NHWC")
+    
+    elif src_format == "NC1HWC0" and dst_format == "NCHW":
+        src_n =  src.shape[0].value
+        src_c1 =  src.shape[1].value 
+        src_hw =  src.shape[2].value
+        src_c0 =  src.shape[3].value
+        dst_ori_shape = dst.get("shape")
+        dst_shape = [src_n, dst_ori_shape[1], src_hw]
+        dst_tensor = tvm.compute(dst_shape,
+                                 lambda n_idx, c_idx, hw_idx:
+                                 src(n_idx, c_idx // src_c0, hw_idx, c_idx % src_c0),
+                                 name="res_nchw",
+                                 tag="5HD_trans_NCHW")
 
     elif src_format == "NHWC" and dst_format == "FRACTAL_Z":
         src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)

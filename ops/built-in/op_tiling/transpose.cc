@@ -14,12 +14,15 @@
 
 #include "transpose.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <iostream>
 #include <math.h>
+#include <limits.h>
 
 #include "register/op_tiling.h"
 #include "op_log.h"
@@ -34,12 +37,216 @@ namespace optiling {
 
 #define INVALID_SPLIT 999
 #define LOOP_FOR_UB_PADDING 10
-
 #define TRANSPOSE_CHECK_RET(res) \
     if (res == false) { \
         return false; \
     }
+// PTA: protect transpose array
+#define PTA(...) __VA_ARGS__
+#define BUILD_T_ID(dup, srcAxisNum, dstAxisNum, srcPerm, dstPerm, ubPerm) \
+    (((int64_t)dup << 56) + ((int64_t)srcAxisNum << 53) + \
+     ((int64_t)dstAxisNum << 50) + ((int64_t)srcPerm << 36) + ((int64_t)dstPerm << 26) + (int64_t)ubPerm);
+#define ADD_T_ITEM(dup, srcAxisNum, dstAxisNum, srcPerm, dstPerm, ubPerm, perms) \
+    {\
+        uint64_t id = BUILD_T_ID(dup, srcAxisNum, dstAxisNum, srcPerm, dstPerm, ubPerm);\
+        __typeof__(permDict[id].perm) tmp = perms;\
+        memcpy_s(&permDict[id].perm, sizeof(permDict[id].perm), &tmp, sizeof(permDict[id].perm));\
+    }
 
+#define ADD_SPECIFIC(info) \
+    {\
+        vector<int64_t> t(info);\
+        specificShape.push_back(t);\
+    }
+
+static map<uint64_t, PermInfo> InitPerm() {
+    map<uint64_t, PermInfo> permDict;
+
+    /*         dup src dst s_perm d_perm ubperm    perm0               perm1          perm2          perm3            */
+    ADD_T_ITEM(0,  1,  1,  0x0,   0x0,   0x10,     PTA({{0,1},         {1,0}                                         }))
+    ADD_T_ITEM(0,  1,  2,  0x0,   0x01,  0x201,    PTA({{0,1,2},       {2,0,1}                                       }))
+    ADD_T_ITEM(0,  1,  2,  0x0,   0x10,  0x210,    PTA({{0,1,2},       {1,0,2},       {2,1,0}                        }))
+    ADD_T_ITEM(0,  1,  3,  0x0,   0x012, 0x3012,   PTA({{0,1,2,3},     {3,0,1,2}                                     }))
+    ADD_T_ITEM(0,  1,  3,  0x0,   0x021, 0x3021,   PTA({{0,1,2,3},     {0,2,1,3},     {3,0,2,1}                      }))
+    ADD_T_ITEM(0,  1,  3,  0x0,   0x102, 0x3102,   PTA({{0,1,2,3},     {1,0,2,3},     {3,1,0,2}                      }))
+    ADD_T_ITEM(0,  1,  3,  0x0,   0x120, 0x3120,   PTA({{0,1,2,3},     {1,2,0,3},     {3,1,2,0}                      }))
+    ADD_T_ITEM(0,  1,  3,  0x0,   0x201, 0x3201,   PTA({{0,1,2,3},     {2,0,1,3},     {3,2,0,1}                      }))
+    ADD_T_ITEM(0,  1,  3,  0x0,   0x210, 0x3210,   PTA({{0,1,2,3},     {2,0,1,3},     {2,1,0,3},     {3,2,1,0}       }))
+    ADD_T_ITEM(0,  2,  1,  0x01,  0x0,   0x120,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(0,  2,  1,  0x10,  0x0,   0x210,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(0,  2,  2,  0x01,  0x01,  0x2301,   PTA({{0,1,2,3},     {2,3,0,1}                                     }))
+    ADD_T_ITEM(0,  2,  2,  0x01,  0x10,  0x2310,   PTA({{0,1,2,3},     {1,0,2,3},     {2,3,1,0}                      }))
+    ADD_T_ITEM(0,  2,  2,  0x10,  0x01,  0x3201,   PTA({{0,1,2,3},     {2,3,0,1}                                     }))
+    ADD_T_ITEM(0,  2,  2,  0x10,  0x10,  0x3210,   PTA({{0,1,2,3},     {1,0,2,3},     {2,3,1,0}                      }))
+    ADD_T_ITEM(0,  2,  3,  0x01,  0x012, 0x34012,  PTA({{0,1,2,3,4},   {3,4,0,1,2}                                   }))
+    ADD_T_ITEM(0,  2,  3,  0x01,  0x021, 0x34021,  PTA({{0,1,2,3,4},   {0,2,1,3,4},   {3,4,0,2,1}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x01,  0x102, 0x34102,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {3,4,1,0,2}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x01,  0x120, 0x34120,  PTA({{0,1,2,3,4},   {1,2,0,3,4},   {3,4,1,2,0}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x01,  0x201, 0x34201,  PTA({{0,1,2,3,4},   {2,0,1,3,4},   {3,4,2,0,1}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x01,  0x210, 0x34210,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,1,0,3,4},   {3,4,2,1,0}     }))
+    ADD_T_ITEM(0,  2,  3,  0x10,  0x012, 0x43012,  PTA({{0,1,2,3,4},   {3,4,0,1,2}                                   }))
+    ADD_T_ITEM(0,  2,  3,  0x10,  0x021, 0x43021,  PTA({{0,1,2,3,4},   {0,2,1,3,4},   {3,4,0,2,1}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x10,  0x102, 0x43102,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {3,4,1,0,2}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x10,  0x120, 0x43120,  PTA({{0,1,2,3,4},   {1,2,0,3,4},   {3,4,1,2,0}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x10,  0x201, 0x43201,  PTA({{0,1,2,3,4},   {2,0,1,3,4},   {3,4,2,0,1}                    }))
+    ADD_T_ITEM(0,  2,  3,  0x10,  0x210, 0x43210,  PTA({{0,1,2,3,4},   {2,0,1,3,4},   {2,1,0,3,4},   {3,4,2,1,0}     }))
+    ADD_T_ITEM(0,  3,  1,  0x012, 0x0,   0x1230,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(0,  3,  1,  0x021, 0x0,   0x1320,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(0,  3,  1,  0x102, 0x0,   0x2130,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(0,  3,  1,  0x120, 0x0,   0x2310,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(0,  3,  1,  0x201, 0x0,   0x3120,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(0,  3,  1,  0x210, 0x0,   0x3210,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(0,  3,  2,  0x012, 0x01,  0x23401,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(0,  3,  2,  0x021, 0x01,  0x24301,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(0,  3,  2,  0x102, 0x01,  0x32401,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(0,  3,  2,  0x120, 0x01,  0x34201,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(0,  3,  2,  0x120, 0x10,  0x34210,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  2,  0x201, 0x01,  0x42301,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(0,  3,  2,  0x210, 0x01,  0x43201,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(0,  3,  2,  0x012, 0x10,  0x23410,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  2,  0x021, 0x10,  0x24310,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  2,  0x102, 0x10,  0x32410,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  2,  0x120, 0x10,  0x34110,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  2,  0x201, 0x10,  0x42310,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  2,  0x210, 0x10,  0x43210,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(0,  3,  3,  0x012, 0x012, 0x345102, PTA({{0,1,2,3,4,5}, {3,4,5,0,1,2}                                 }))
+    ADD_T_ITEM(0,  3,  3,  0x012, 0x021, 0x345021, PTA({{0,1,2,3,4,5}, {0,2,1,3,4,5}, {3,4,5,0,2,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x012, 0x102, 0x345102, PTA({{0,1,2,3,4,5}, {1,0,2,3,4,5}, {3,4,5,1,0,2}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x012, 0x120, 0x345120, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {3,4,5,1,2,0}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x012, 0x201, 0x345201, PTA({{0,1,2,3,4,5}, {2,0,1,3,4,5}, {3,4,5,2,0,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x012, 0x210, 0x345210, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {2,1,0,3,4,5}, {3,4,5,2,1,0}   }))
+    ADD_T_ITEM(0,  3,  3,  0x021, 0x012, 0x354012, PTA({{0,1,2,3,4,5}, {3,4,5,0,1,2}                                 }))
+    ADD_T_ITEM(0,  3,  3,  0x021, 0x021, 0x354021, PTA({{0,1,2,3,4,5}, {0,2,1,3,4,5}, {3,4,5,0,2,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x021, 0x102, 0x354102, PTA({{0,1,2,3,4,5}, {1,0,2,3,4,5}, {3,4,5,1,0,2}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x021, 0x120, 0x354120, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {3,4,5,1,2,0}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x021, 0x201, 0x354201, PTA({{0,1,2,3,4,5}, {2,0,1,3,4,5}, {3,4,5,2,0,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x021, 0x210, 0x354210, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {2,1,0,3,4,5}, {3,4,5,2,1,0}   }))
+    ADD_T_ITEM(0,  3,  3,  0x102, 0x012, 0x435012, PTA({{0,1,2,3,4,5}, {3,4,5,0,1,2}                                 }))
+    ADD_T_ITEM(0,  3,  3,  0x102, 0x021, 0x435021, PTA({{0,1,2,3,4,5}, {0,2,1,3,4,5}, {3,4,5,0,2,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x102, 0x102, 0x435102, PTA({{0,1,2,3,4,5}, {1,0,2,3,4,5}, {3,4,5,1,0,2}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x102, 0x120, 0x435120, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {3,4,5,1,2,0}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x102, 0x201, 0x435201, PTA({{0,1,2,3,4,5}, {2,0,1,3,4,5}, {3,4,5,2,0,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x102, 0x210, 0x435210, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {2,1,0,3,4,5}, {3,4,5,2,1,0}   }))
+    ADD_T_ITEM(0,  3,  3,  0x120, 0x012, 0x453012, PTA({{0,1,2,3,4,5}, {3,4,5,0,1,2}                                 }))
+    ADD_T_ITEM(0,  3,  3,  0x120, 0x021, 0x453021, PTA({{0,1,2,3,4,5}, {0,2,1,3,4,5}, {3,4,5,0,2,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x120, 0x102, 0x453102, PTA({{0,1,2,3,4,5}, {1,0,2,3,4,5}, {3,4,5,1,0,2}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x120, 0x120, 0x453120, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {3,4,5,1,2,0}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x120, 0x201, 0x453201, PTA({{0,1,2,3,4,5}, {2,0,1,3,4,5}, {3,4,5,2,0,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x120, 0x210, 0x453210, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {2,1,0,3,4,5}, {3,4,5,2,1,0}   }))
+    ADD_T_ITEM(0,  3,  3,  0x201, 0x012, 0x534012, PTA({{0,1,2,3,4,5}, {3,4,5,0,1,2}                                 }))
+    ADD_T_ITEM(0,  3,  3,  0x201, 0x021, 0x534021, PTA({{0,1,2,3,4,5}, {0,2,1,3,4,5}, {3,4,5,0,2,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x201, 0x102, 0x534102, PTA({{0,1,2,3,4,5}, {1,0,2,3,4,5}, {3,4,5,1,0,2}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x201, 0x120, 0x534120, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {3,4,5,1,2,0}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x201, 0x201, 0x534201, PTA({{0,1,2,3,4,5}, {2,0,1,3,4,5}, {3,4,5,2,0,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x201, 0x210, 0x534210, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {2,1,0,3,4,5}, {3,4,5,2,1,0}   }))
+    ADD_T_ITEM(0,  3,  3,  0x210, 0x012, 0x543012, PTA({{0,1,2,3,4,5}, {3,4,5,0,1,2}                                 }))
+    ADD_T_ITEM(0,  3,  3,  0x210, 0x021, 0x543021, PTA({{0,1,2,3,4,5}, {0,2,1,3,4,5}, {3,4,5,0,2,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x210, 0x102, 0x543102, PTA({{0,1,2,3,4,5}, {1,0,2,3,4,5}, {3,4,5,1,0,2}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x210, 0x120, 0x543120, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {3,4,5,1,2,0}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x210, 0x201, 0x543201, PTA({{0,1,2,3,4,5}, {2,0,1,3,4,5}, {3,4,5,2,0,1}                  }))
+    ADD_T_ITEM(0,  3,  3,  0x210, 0x210, 0x543210, PTA({{0,1,2,3,4,5}, {1,2,0,3,4,5}, {2,1,0,3,4,5}, {3,4,5,2,1,0}   }))
+    ADD_T_ITEM(1,  1,  1,  0x0,   0x0,   0x10,     PTA({{0,1},         {1,0}                                         }))
+    ADD_T_ITEM(1,  1,  2,  0x0,   0x10,  0x10,     PTA({{0,1},         {1,0}                                         }))
+    ADD_T_ITEM(1,  1,  3,  0x0,   0x201, 0x201,    PTA({{0,1,2},       {2,0,1}                                       }))
+    ADD_T_ITEM(1,  1,  3,  0x0,   0x021, 0x021,    PTA({{0,1,2},       {0,2,1}                                       }))
+    ADD_T_ITEM(1,  1,  3,  0x0,   0x120, 0x120,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(1,  1,  3,  0x0,   0x210, 0x210,    PTA({{0,1,2},       {1,0,2},       {2,1,0}                        }))
+    ADD_T_ITEM(1,  2,  1,  0x01,  0x0,   0x10,     PTA({{0,1},         {1,0}                                         }))
+    ADD_T_ITEM(1,  2,  1,  0x10,  0x0,   0x10,     PTA({{0,1},         {1,0}                                         }))
+    ADD_T_ITEM(1,  2,  2,  0x01,  0x10,  0x120,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(1,  2,  2,  0x10,  0x01,  0x201,    PTA({{0,1,2},       {2,0,1}                                       }))
+    ADD_T_ITEM(1,  2,  2,  0x10,  0x10,  0x210,    PTA({{0,1,2},       {1,0,2},       {2,1,0}                        }))
+    ADD_T_ITEM(1,  2,  3,  0x01,  0x021, 0x2031,   PTA({{0,1,2,3},     {2,0,1,3},     {2,0,3,1}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x01,  0x120, 0x2130,   PTA({{0,1,2,3},     {0,2,1,3},     {2,1,3,0}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x01,  0x201, 0x2301,   PTA({{0,1,2,3},     {2,3,0,1}                                     }))
+    ADD_T_ITEM(1,  2,  3,  0x01,  0x210, 0x2310,   PTA({{0,1,2,3},     {1,0,2,3},     {2,3,1,0}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x012, 0x3012,   PTA({{0,1,2,3},     {3,0,1,2}                                     }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x021, 0x3021,   PTA({{0,1,2,3},     {0,2,1,3},     {3,0,2,1}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x102, 0x3102,   PTA({{0,1,2,3},     {1,0,2,3},     {3,1,0,2}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x120, 0x3120,   PTA({{0,1,2,3},     {1,2,0,3},     {3,1,2,0}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x201, 0x3201,   PTA({{0,1,2,3},     {2,0,1,3},     {3,2,0,1}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x201, 0x3120,   PTA({{0,1,2,3},     {1,2,0,3},     {3,1,2,0}                      }))
+    ADD_T_ITEM(1,  2,  3,  0x10,  0x210, 0x3210,   PTA({{0,1,2,3},     {2,0,1,3},     {2,1,0,3},     {3,2,1,0}       }))
+    ADD_T_ITEM(1,  3,  1,  0x120, 0x0,   0x120,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(1,  3,  1,  0x210, 0x0,   0x210,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(1,  3,  2,  0x021, 0x01,  0x1302,   PTA({{0,1,2,3},     {0,2,1,3},     {1,3,0,2}                      }))
+    ADD_T_ITEM(1,  3,  2,  0x021, 0x10,  0x1320,   PTA({{0,1,2,3},     {1,2,3,0},     {1,3,2,0}                      }))
+    ADD_T_ITEM(1,  3,  2,  0x102, 0x10,  0x2130,   PTA({{0,1,2,3},     {1,2,3,0}                                     }))
+    ADD_T_ITEM(1,  3,  2,  0x120, 0x01,  0x2301,   PTA({{0,1,2,3},     {2,3,0,1}                                     }))
+    ADD_T_ITEM(1,  3,  2,  0x120, 0x10,  0x2310,   PTA({{0,1,2,3},     {1,0,2,3},     {2,3,1,0}                      }))
+    ADD_T_ITEM(1,  3,  2,  0x201, 0x01,  0x3102,   PTA({{0,1,2,3},     {1,0,2,3},     {1,3,0,2}                      }))
+    ADD_T_ITEM(1,  3,  2,  0x201, 0x10,  0x3120,   PTA({{0,1,2,3},     {2,0,1,3},     {1,3,2,0}                      }))
+    ADD_T_ITEM(1,  3,  2,  0x210, 0x01,  0x3201,   PTA({{0,1,2,3},     {2,3,0,1}                                     }))
+    ADD_T_ITEM(1,  3,  2,  0x210, 0x10,  0x3210,   PTA({{0,1,2,3},     {1,0,2,3},     {2,3,1,0}                      }))
+    ADD_T_ITEM(1,  3,  3,  0x012, 0x021, 0x23041,  PTA({{0,1,2,3,4},   {2,3,4,0,1},   {2,3,0,4,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x012, 0x120, 0x23140,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {2,3,1,4,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x012, 0x201, 0x23401,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(1,  3,  3,  0x012, 0x210, 0x23410,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x021, 0x012, 0x24013,  PTA({{0,1,2,3,4},   {2,3,4,0,1},   {2,4,0,1,3}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x021, 0x021, 0x24031,  PTA({{0,1,2,3,4},   {0,3,1,2,4},   {2,4,0,3,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x021, 0x102, 0x24103,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {1,0,3,2,4},   {2,4,1,0,3}     }))
+    ADD_T_ITEM(1,  3,  3,  0x021, 0x120, 0x24130,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {2,4,1,3,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x021, 0x201, 0x24301,  PTA({{0,1,2,3,4},   {2,3,4,0,1},   {2,4,3,0,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x021, 0x210, 0x24310,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {2,4,3,1,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x102, 0x021, 0x32041,  PTA({{0,1,2,3,4},   {0,4,1,2,3},   {2,3,0,4,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x102, 0x120, 0x32140,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {2,3,1,4,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x102, 0x201, 0x32401,  PTA({{0,1,2,3,4},   {2,3,4,0,1}                                   }))
+    ADD_T_ITEM(1,  3,  3,  0x102, 0x210, 0x32410,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x120, 0x012, 0x34012,  PTA({{0,1,2,3,4},   {3,4,0,1,2}                                   }))
+    ADD_T_ITEM(1,  3,  3,  0x120, 0x021, 0x34021,  PTA({{0,1,2,3,4},   {0,2,1,3,4},   {3,4,0,2,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x120, 0x102, 0x34102,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {3,4,1,0,2}     }))
+    ADD_T_ITEM(1,  3,  3,  0x120, 0x120, 0x34120,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {3,4,1,2,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x120, 0x201, 0x34201,  PTA({{0,1,2,3,4},   {2,0,1,3,4},   {3,4,2,0,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x120, 0x210, 0x34210,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,1,0,3,4},   {3,4,2,1,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x201, 0x012, 0x42013,  PTA({{0,1,2,3,4},   {0,1,3,2,4},   {2,4,0,1,3}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x201, 0x021, 0x42031,  PTA({{0,1,2,3,4},   {0,3,1,2,4},   {2,4,0,3,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x201, 0x102, 0x42103,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {1,0,3,2,4},   {2,4,1,0,3}     }))
+    ADD_T_ITEM(1,  3,  3,  0x201, 0x120, 0x42130,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {1,3,0,2,4},   {2,4,1,3,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x201, 0x201, 0x42301,  PTA({{0,1,2,3,4},   {2,3,4,0,1},   {2,4,3,0,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x201, 0x210, 0x42310,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {2,4,3,1,0}     }))
+    ADD_T_ITEM(1,  3,  3,  0x210, 0x012, 0x43012,  PTA({{0,1,2,3,4},   {3,4,0,1,2}                                   }))
+    ADD_T_ITEM(1,  3,  3,  0x210, 0x021, 0x43021,  PTA({{0,1,2,3,4},   {0,2,1,3,4},   {3,4,0,2,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x210, 0x102, 0x43102,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {3,4,1,0,2}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x210, 0x120, 0x43120,  PTA({{0,1,2,3,4},   {1,2,0,3,4},   {3,4,1,2,0}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x210, 0x201, 0x43201,  PTA({{0,1,2,3,4},   {2,3,4,0,1},   {3,4,2,0,1}                    }))
+    ADD_T_ITEM(1,  3,  3,  0x210, 0x210, 0x43210,  PTA({{0,1,2,3,4},   {1,0,2,3,4},   {2,3,4,1,0},   {3,4,2,1,0}     }))
+    ADD_T_ITEM(2,  2,  2,  0x10,  0x10,  0x10,     PTA({{0,1},         {1,0}                                         }))
+    ADD_T_ITEM(2,  2,  3,  0x10,  0x021, 0x021,    PTA({{0,1,2},       {0,2,1}                                       }))
+    ADD_T_ITEM(2,  2,  3,  0x10,  0x210, 0x210,    PTA({{0,1,2},       {1,0,2},       {2,1,0}                        }))
+    ADD_T_ITEM(2,  2,  3,  0x10,  0x201, 0x201,    PTA({{0,1,2},       {2,0,1},                                      }))
+    ADD_T_ITEM(2,  3,  2,  0x120, 0x10,  0x120,    PTA({{0,1,2},       {1,2,0}                                       }))
+    ADD_T_ITEM(2,  3,  2,  0x210, 0x10,  0x210,    PTA({{0,1,2},       {1,0,2},       {2,1,0}                        }))
+    ADD_T_ITEM(2,  3,  3,  0x021, 0x021, 0x1032,   PTA({{0,1,2,3},     {1,0,2,3},     {1,0,3,2}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x021, 0x201, 0x1302,   PTA({{0,1,2,3},     {1,0,2,3},     {1,3,0,2}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x021, 0x210, 0x1320,   PTA({{0,1,2,3},     {1,2,3,0},     {1,3,2,0}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x102, 0x120, 0x2130,   PTA({{0,1,2,3},     {0,2,1,3},     {2,1,3,0}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x120, 0x021, 0x2031,   PTA({{0,1,2,3},     {0,3,1,2},     {2,0,3,1}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x120, 0x210, 0x2310,   PTA({{0,1,2,3},     {1,0,2,3},     {2,3,1,0}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x120, 0x201, 0x2301,   PTA({{0,1,2,3},     {2,3,0,1}                                     }))
+    ADD_T_ITEM(2,  3,  3,  0x201, 0x012, 0x3012,   PTA({{0,1,2,3},     {3,0,1,2}                                     }))
+    ADD_T_ITEM(2,  3,  3,  0x201, 0x102, 0x3102,   PTA({{0,1,2,3},     {1,0,2,3},     {3,1,0,2}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x201, 0x120, 0x3120,   PTA({{0,1,2,3},     {1,2,0,3},     {3,1,2,0}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x210, 0x021, 0x3021,   PTA({{0,1,2,3},     {0,2,1,3},     {3,0,2,1}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x210, 0x201, 0x3201,   PTA({{0,1,2,3},     {2,0,1,3},     {3,2,0,1}                      }))
+    ADD_T_ITEM(2,  3,  3,  0x210, 0x210, 0x3210,   PTA({{0,1,2,3},     {1,0,2,3},     {2,1,0,3},     {3,2,1,0}       }))
+    ADD_T_ITEM(3,  3,  3,  0x021, 0x021, 0x021,    PTA({{0,1,2},       {0,2,1}                                       }))
+    ADD_T_ITEM(3,  3,  3,  0x120, 0x120, 0x120,    PTA({{0,1,2},       {1,2,0},                                      }))
+    ADD_T_ITEM(3,  3,  3,  0x201, 0x201, 0x201,    PTA({{0,1,2},       {2,0,1},                                      }))
+    ADD_T_ITEM(3,  3,  3,  0x210, 0x210, 0x210,    PTA({{0,1,2},       {1,0,2},       {2,1,0}                        }))
+
+    return permDict;
+}
+static vector<vector<int64_t>> InitSpecificShape() {
+    vector<vector<int64_t>> specificShape;
+
+    /*                scenario  dim     sizeof(dtype)     inShape                      perm */
+    ADD_SPECIFIC(PTA({4,        4,      2,                1000,5,64,64,-1,-1,-1,-1,    0,2,1,3,-1,-1,-1,-1}))
+    return specificShape;
+}
+
+static std::map<uint64_t, PermInfo> gPermDict = InitPerm();
+
+static std::vector<vector<int64_t>> gSpecificShape = InitSpecificShape();
 
 static string PrintScreenImpl(const string & logStr) {
     cout << logStr << endl;
@@ -65,7 +272,7 @@ static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
 // full usage of UB with vnchwconv
 static int64_t CalcVnchwconvFullColSize(int64_t coreNum, int64_t ubBlocks) {
     if (coreNum > 2 && ubBlocks == BLOCK_NUM_256K) {
-        return 256; //910, 224*2 is better
+        return 224*2; //910, 224*2 is better
     }
     else if (coreNum == 2 && ubBlocks == BLOCK_NUM_248K) {
         return 256; //310, 224*2 is better
@@ -84,13 +291,13 @@ static int GCD(int a, int b) {
 
 static int64_t Align16(int64_t val, int64_t factor, int64_t upLimit = 0) {
     int64_t res = val / factor;
-    int64_t k = res % ELE_NUM_PER_BLOCK_FP16;
+    int64_t k = res % ELE_NUM_PER_BLOCK_B16;
     if (k != 0) {
-        res = res + ELE_NUM_PER_BLOCK_FP16 - k;
+        res = res + ELE_NUM_PER_BLOCK_B16 - k;
     }
     if (upLimit != 0) {
         while (res * factor > upLimit)  {
-            res -= ELE_NUM_PER_BLOCK_FP16;
+            res -= ELE_NUM_PER_BLOCK_B16;
         }
     }
     return res;
@@ -143,19 +350,12 @@ template<typename T> static string to_string(T in, int width = 0) {
 }
 
 static string hex_perm_to_string(int64_t hexPerm, int width = 0) {
-    string s;
-    if (hexPerm == 0x10) {
-        s = "0x10";
-    }
-    if (hexPerm == 0x01) {
-        s = "0x01";
-    }
-    if (hexPerm == 0x00) {
-        s = "0x0";
-    }
-    if (hexPerm == 0x210) {
-        s = "0x210";
-    }
+    string s = "0x";
+    string temp;
+    stringstream ss;
+    ss << std::hex << hexPerm;
+    ss >> temp;
+    s += temp;
     return PadString(s, width);
 }
 
@@ -190,35 +390,6 @@ template<typename T> static string arr_to_string(const T * v, int64_t size, int 
         }
     }
     return PadString(s, width);
-}
-
-static bool IsSubset(vector<int64_t> a, vector<int64_t> b){
-    int i = 0;
-    int j = 0;
-    int m = a.size();
-    int n = b.size();
-    if (m < n) {
-        return false;
-    }
-
-    sort(a.begin(), a.end());
-    sort(b.begin(), b.end());
-    while ((i < n) && (j < m)) {
-        if (a[j] < b[i]) {
-            j++;
-        }
-        else if(a[j] == b[i]) {
-            j++;
-            i++;
-        }
-        else if(a[j] > b[i]) {
-            return false;
-        }
-    }
-    if (i < n) {
-        return false;
-    }
-    return true;
 }
 
 static void VectorSub(vector<int64_t> a, vector<int64_t> b, vector<int64_t> &c) {
@@ -277,10 +448,10 @@ static bool Is32BAligned(const CompilerInfo & compilerInfo, const vector<int64_t
 
 static void BlockAlign(vector<int64_t> & vec) {
     int i = vec.size();
-    int k = i % ELE_NUM_PER_BLOCK_INT64;
+    int k = i % ELE_NUM_PER_BLOCK_B64;
     int align = 0;
     if (k != 0)  {
-        align = ELE_NUM_PER_BLOCK_INT64 - k;
+        align = ELE_NUM_PER_BLOCK_B64 - k;
     }
     for (int i = 0; i < align; i++) {
         vec.push_back(0);
@@ -300,7 +471,28 @@ static bool IsStrideTooHuge(const ShapeInfo &shapeInfo, const RuntimeInfo &runti
     return runtimeInfo.srcStrideLogic * shapeInfo.lastAxisBurstLen > STRIDE_BOUNDARY;
 }
 
-static bool IsLastAxisJoinTranspose(ShapeInfo & shapeInfo) {
+static bool IsSrcStrideTooHuge(const ShapeInfo& shapeInfo) {
+    int64_t vol = 1;
+    int64_t repeatAxis = shapeInfo.reducedPerm[shapeInfo.dim - 2];
+    for (size_t i = repeatAxis + 1; i < (size_t)shapeInfo.dim - 1; i++) {
+        vol *= shapeInfo.reducedInShape[i];
+    }
+    return (vol - 1) * shapeInfo.lastAxisBurstLen > STRIDE_BOUNDARY;
+}
+
+static bool IsOverSize(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, int64_t repeatAxis) {
+    return shapeInfo.lastAxisBurstLen * repeatAxis > compilerInfo.ubSizeCouldUse;
+}
+
+static bool IsCouldUseFullCore(const CompilerInfo& compilerInfo, const ShapeInfo &shapeInfo) {
+    int64_t vol = 1;
+    for (size_t i = 0; i < shapeInfo.reducedOutShape.size() - 2; i++) {
+        vol *= shapeInfo.reducedOutShape[i];
+    }
+    return vol >= compilerInfo.coreNum;
+}
+
+static bool IsLastAxisJoinTranspose(const ShapeInfo& shapeInfo) {
     int dim = shapeInfo.reducedPerm.size();
     if (dim <= 1) {
         return false;
@@ -311,6 +503,37 @@ static bool IsLastAxisJoinTranspose(ShapeInfo & shapeInfo) {
     } else {
         return false;
     }
+}
+
+static bool IsLastTwoAlignedAndTrans(const CompilerInfo& ci, const ShapeInfo& shapeInfo) {
+    int dim = shapeInfo.reducedPerm.size();
+    if (dim < 3) {
+        return false;
+    }
+    //if ((shapeInfo.elePerBlock != EPB16) && (shapeInfo.elePerBlock != EPB8)) {
+    if (shapeInfo.elePerBlock != EPB16) {
+        return false;
+    }
+    if (shapeInfo.reducedPerm[dim - 1] != dim - 2) {
+        return false;
+    }
+    if (shapeInfo.reducedPerm[dim - 2] != dim - 1) {
+        return false;
+    }
+    if (shapeInfo.reducedInShape[shapeInfo.dim - 2] % shapeInfo.elePerBlock != 0) {
+        return false;
+    }
+    if (shapeInfo.reducedInShape[shapeInfo.dim - 1] % shapeInfo.elePerBlock != 0) {
+        return false;
+    }
+    if (shapeInfo.reducedInShape[dim - 1] * shapeInfo.reducedInShape[dim - 2] * ci.fp16Times >= \
+        LAST_TWO_TRANS_MAX_SIZE_B16) {
+        return false;
+    }
+    if ((shapeInfo.elePerBlock == EPB8) && (shapeInfo.reducedInShape[dim - 2] > 128)) {
+        return false;
+    }
+    return true;
 }
 
 static void Reshape(ShapeInfo & shapeInfo) {
@@ -336,7 +559,7 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
 
     auto tensor = std::get<2>(paras.const_inputs.at("perm"));
     auto dType = tensor.GetTensorDesc().GetDataType();
-    
+
     if (dType == ge::DataType::DT_INT64 || dType == ge::DataType::DT_UINT64) {
         const int64_t* pPerm = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at("perm")));
         if (pPerm == nullptr) {
@@ -364,7 +587,7 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
                                         "inputs.size=%ld, outputs.size=%ld,",
                                         paras.inputs.size(), paras.outputs.size());
         return false;
-    } 
+    }
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(opType,
                                         "inputs tensor size=%ld, outputs tensor size=%ld,",
@@ -522,6 +745,10 @@ static bool CheckTensorShape(const string & opType,
     }
 
     for (int64_t i = 0; i < inDims; i++) {
+        if (shapeInfo.perm[i] >= inDims) {
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Invalid perm value %ld.", shapeInfo.perm[i]);
+            return false;
+        }
         if (shapeInfo.inShape[shapeInfo.perm[i]] != shapeInfo.outShape[i]) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim of inputs or outputs conflict with perm.");
             return false;
@@ -750,29 +977,94 @@ void UpdateCoreNum(CompilerInfo &compilerInfo, ShapeInfo &shapeInfo) {
     }
 }
 
+static bool IsScenario2B8(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
+    if (shapeInfo.elePerBlock != ELE_NUM_PER_BLOCK_B8) {
+        return false;
+    }
+
+    if (IsLastAxisJoinTranspose(shapeInfo)) {
+        Reshape(shapeInfo);
+        return true;
+    }
+
+    if (shapeInfo.lastAxisLen < B8_HUGE_SIZE) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool IsScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo) {
+    if ((shapeInfo.lastAxisLen % shapeInfo.elePerBlock) != 0) {
+        return false;
+    }
+    if (IsLastAxisJoinTranspose(shapeInfo)) {
+        return false;
+    }
+    if (IsSrcStrideTooHuge(shapeInfo)) {
+        return false;
+    }
+    if (!IsCouldUseFullCore(compilerInfo, shapeInfo)) {
+        return false;
+    }
+    int64_t repeatAxis = shapeInfo.reducedOutShape[shapeInfo.dim - 2];
+    if (IsOverSize(compilerInfo, shapeInfo, repeatAxis)) {
+        return false;
+    }
+    if (repeatAxis > NBURST_BOUNDARY) {
+        return false;
+    }
+    if (repeatAxis * shapeInfo.lastAxisBurstLen > compilerInfo.ubSizeCouldUse) {
+        return false;
+    }
+    if (shapeInfo.lastAxisBurstLen < 4) {
+        //By verification, if burstlen < 4, borrow axis is better than using repeat
+        return false;
+    }
+    if (repeatAxis * shapeInfo.lastAxisBurstLen < 16) {
+        //By verification, borrow axis is better than using repeat
+        return false;
+    }
+    return true;
+}
+
+static bool IsScenario10(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo) {
+    return shapeInfo.isLastTwoAlignedAndTrans;
+}
+
 static void SetScenario(const string & opType,
                         CompilerInfo & compilerInfo,
                         ShapeInfo & shapeInfo) {
     OP_LOGD(opType.c_str(), "Entering SetScenario.");
 
-    if(IsIdentical(shapeInfo)) {
+    if (IsLastAxisJoinTranspose(shapeInfo)) {
+        shapeInfo.isLastAxisTranspose = true;
+    } else {
+        shapeInfo.isLastAxisTranspose = false;
+    }
+
+    if (IsLastTwoAlignedAndTrans(compilerInfo, shapeInfo)) {
+        shapeInfo.isLastTwoAlignedAndTrans = true;
+    }
+
+    if (IsIdentical(shapeInfo)) {
         shapeInfo.identical = 1;
         shapeInfo.scenario = SCENARIO_0;
     } else if(compilerInfo.coreNum == 96) {
-        shapeInfo.scenario = SCENARIO_8;
+        shapeInfo.scenario = SCENARIO_8;// vcopy
     } else if (IsSmallShape(shapeInfo)) {
-        shapeInfo.scenario = SCENARIO_6;
+        shapeInfo.scenario = SCENARIO_6; // small shape
         Reshape(shapeInfo);
         UpdateCoreNum(compilerInfo, shapeInfo);
-    } else if (shapeInfo.elePerBlock == ELE_NUM_PER_BLOCK_B8) {
+    } else if (IsScenario9(compilerInfo, shapeInfo)) {
+        shapeInfo.scenario = SCENARIO_9;
+    } else if (IsScenario10(compilerInfo, shapeInfo)) {
+        shapeInfo.scenario = SCENARIO_10;
+    } else if (IsScenario2B8(compilerInfo, shapeInfo)) {
         shapeInfo.scenario = SCENARIO_2;
         shapeInfo.isLastAxisHuge = true;
-        if (IsLastAxisJoinTranspose(shapeInfo)) {
-            Reshape(shapeInfo);
-        }
     } else if (IsLastAxisJoinTranspose(shapeInfo)) {
         shapeInfo.scenario = SCENARIO_7;
-        shapeInfo.isLastAxisTranspose = true;
     } else {
         if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes >= LAST_AXIS_HUGE_THRESHOLD) {
             shapeInfo.scenario = SCENARIO_3;
@@ -794,7 +1086,6 @@ static void SetScenario(const string & opType,
             }
 
         }
-        shapeInfo.isLastAxisTranspose = false;
     }
 
     if ((shapeInfo.lastAxisLen % shapeInfo.elePerBlock) != 0) {
@@ -856,7 +1147,7 @@ static void PrintShapeInfo(const ShapeInfo &shapeInfo, string & logStr) {
     logStr += "\nscenario  in                  out                 perm            reducedIn           reducedOut     ";
     logStr += "     reducedPerm     dim  lastAxisLen  lastAxisBurstLen  alignElement\n";
     logStr += "------------------------------------------------------------------------------------------------------";
-    logStr += "-----------------------------------------------------------------\n";
+    logStr += "-----------------------------------------------------------------------\n";
     logStr += to_string(shapeInfo.scenario, 10);
     logStr += vec_to_string(shapeInfo.inShape, 20);
     logStr += vec_to_string(shapeInfo.outShape, 20);
@@ -881,9 +1172,9 @@ static void PrintCompilerInfo(const CompilerInfo &compilerInfo, string &logStr) 
     logStr += "\n\n";
 }
 
-static string PrintTilingInfoScenario0(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
+static string PrintScenario0(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -903,9 +1194,9 @@ static string PrintTilingInfoScenario0(const CompilerInfo & compilerInfo,
     return logStr;
 }
 
-static string PrintTilingInfoScenario1(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
+static string PrintScenario1(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -921,11 +1212,14 @@ static string PrintTilingInfoScenario1(const CompilerInfo & compilerInfo,
     logStr += arr_to_string(runtimeInfo.dstJumpFactorMod, shapeInfo.dim - 1, 30);
     logStr += "\n\n";
 
-    logStr += "base    num    initTuple\n";
-    logStr += "--------------------------\n";
+    logStr += "base    num    aggregateLoopUnit  aggregateLoopNum  aggregateLoopTail  initTuple\n";
+    logStr += "------------------------------------------------------------------------------------------------\n";
     for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
         logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].base, 8);
         logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].num, 7);
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].aggregateLoopUnit, 19);
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].aggregateLoopNum, 18);
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].aggregateLoopTail, 19);
         logStr += arr_to_string(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple, shapeInfo.dim - 1);
         logStr += "\n";
     }
@@ -934,9 +1228,9 @@ static string PrintTilingInfoScenario1(const CompilerInfo & compilerInfo,
     return logStr;
 }
 
-static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
+static string PrintScenario2(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -980,9 +1274,9 @@ static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
     return logStr;
 }
 
-static string PrintTilingInfoScenario3(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
+static string PrintScenario3(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -1015,9 +1309,9 @@ static string PrintTilingInfoScenario3(const CompilerInfo & compilerInfo,
     return logStr;
 }
 
-static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
+static string PrintScenario4(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
     string logStr;
     const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
     PrintShapeInfo(shapeInfo, logStr);
@@ -1026,7 +1320,7 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     logStr += "srcNum dstNum dupAxis srcVol dstVol srcIndexIn.i dstIndexIn.i srcIndexIn.o dstIndexIn.o ";
     logStr += "otherIndex.i srcIndexInNoDup.i dstIndexInNoDup.i srcIndexInNoDup.o dstIndexInNoDup.o\n";
     logStr += "------------------------------------------------------------------------------------------------------";
-    logStr += "----------------------------------------------------------------------------------------------------\n";
+    logStr += "------------------------------------------------------------------------------\n";
     logStr += to_string(borrowInfo.srcNum, 7);
     logStr += to_string(borrowInfo.dstNum, 7);
     logStr += to_string(borrowInfo.dupAxis, 8);
@@ -1037,7 +1331,7 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
         arr[i] = borrowInfo.srcIndexIn[i].idx_in;
     }
     logStr += arr_to_string(arr, borrowInfo.srcNum, 13);
-    
+
     for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
         arr[i] = borrowInfo.dstIndexIn[i].idx_in;
     }
@@ -1079,8 +1373,10 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     logStr += arr_to_string(arr, borrowInfo.dstNumNoDup, 16);
 
     logStr += "\n\n";
-    logStr += "srcTail dstTail ubPermRaw    ubPerm      srcAxisPerm dstAxisPerm axisPerm\n";
-    logStr += "------------------------------------------------------------------------------\n";
+    logStr += "srcTail dstTail ubPermRaw    ubPerm      srcAxisPerm dstAxisPerm axisPerm    ";
+    logStr += "pivotSrcAxisDup  pivotDstAxisDup\n";
+    logStr += "-------------------------------------------------------------------------------------------------------";
+    logStr += "-----------------\n";
     logStr += to_string(borrowInfo.srcIndexIn[0].tail, 8);
     logStr += to_string(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].tail, 8);
     logStr += arr_to_string(borrowInfo.ubPermRaw, borrowInfo.ubPermNum, 13);
@@ -1088,12 +1384,14 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     logStr += hex_perm_to_string(borrowInfo.srcAxisPerm, 12);
     logStr += hex_perm_to_string(borrowInfo.dstAxisPerm, 12);
     logStr += hex_perm_to_string(borrowInfo.axisPerm, 12);
+    logStr += to_string(borrowInfo.pivotSrcAxisDup, 17);
+    logStr += to_string(borrowInfo.pivotDstAxisDup, 17);
     logStr += "\n\n";
 
     logStr += "majorDstLoop_in tailDstLoop_in majorSrcLoop_out tailSrcLoop_out majorBurstLen_in ";
     logStr += "tailBurstLen_in majorBurstLen_out tailBurstLen_out\n";
     logStr += "--------------------------------------------------------------------------------";
-    logStr += "---------------------------------------------------------------------\n";
+    logStr += "------------------------------------------------------\n";
     logStr += to_string(borrowInfo.majorDstLoop_in, 16);
     logStr += to_string(borrowInfo.tailDstLoop_in, 15);
     logStr += to_string(borrowInfo.majorSrcLoop_out, 17);
@@ -1106,7 +1404,7 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     logStr += "majorInEle tailInEle majorInTailEle tailInTailEle ";
     logStr += "majorOutEle tailOutEle majorOutTailEle tailOutTailEle\n";
     logStr += "--------------------------------------------------------------------------------";
-    logStr += "---------------------------------------------------------------------\n";
+    logStr += "----------------------------------------------\n";
     logStr += to_string(borrowInfo.majorInEle, 11);
     logStr += to_string(borrowInfo.tailInEle, 10);
     logStr += to_string(borrowInfo.majorInTailEle, 15);
@@ -1136,14 +1434,14 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     }
     logStr += "\n";
 
-    logStr += "srcJumpFactorLogic_in dstJumpFactorLogic_in srcStep dstStep dstFactorCopyIn dstStrideCopyIn      ";
+    logStr += "srcJumpFactorLogic_in dstJumpFactorLogic_in srcStep bi.dstStep dstFactorCopyIn dstStrideCopyIn      ";
     logStr += "srcFactorCopyOut srcStrideCopyOut      srcJumpFactorMod_in dstJumpFactorMod_in\n";
     logStr += "------------------------------------------------------------------------------------------------------";
     logStr += "-----------------------------------------------------------------------------------\n";
     logStr += to_string(borrowInfo.srcJumpFactorLogic_in, 22);
     logStr += to_string(borrowInfo.dstJumpFactorLogic_in, 22);
-    logStr += to_string(borrowInfo.srcIndexIn[0].step, 8);
-    logStr += to_string(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].step, 8);
+    logStr += to_string(borrowInfo.srcStep, 8);
+    logStr += to_string(borrowInfo.dstStep, 8);
     logStr += arr_to_string(borrowInfo.dstFactorCopyIn, borrowInfo.dstNumNoDup, 16);
     logStr += arr_to_string(borrowInfo.dstStrideCopyIn, borrowInfo.dstNumNoDup, 21);
     logStr += arr_to_string(borrowInfo.srcFactorCopyOut, borrowInfo.srcNumNoDup, 17);
@@ -1152,90 +1450,98 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     logStr += to_string(borrowInfo.dstJumpFactorMod_in, 20);
     logStr += "\n\n";
 
-    logStr += "flag      idxIn idxOut loop    step    tail    intact \n";
-    logStr += "-------------------------------------------------------------------------------------------\n";
+    logStr += "flag        idxIn idxOut loop    step    tail    pivot   dup \n";
+    logStr += "------------------------------------------------------------------------\n";
     for(int i = 0; i < borrowInfo.srcNum; i++) {
-        logStr += "src       ";
+        logStr += "srcIn       ";
         logStr += to_string(borrowInfo.srcIndexIn[i].idx_in, 6);
         logStr += to_string(borrowInfo.srcIndexIn[i].idx_out,7);
         logStr += to_string(borrowInfo.srcIndexIn[i].loop, 8);
         logStr += to_string(borrowInfo.srcIndexIn[i].step, 8);
         logStr += to_string(borrowInfo.srcIndexIn[i].tail, 8);
-        logStr += to_string(borrowInfo.srcIndexIn[i].intact, 7);
+        logStr += to_string(borrowInfo.srcIndexIn[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].dup, 8);
         logStr += "\n";
     }
     for(int i = 0; i < borrowInfo.dstNum; i++) {
-        logStr += "dst       ";
+        logStr += "dstIn       ";
         logStr += to_string(borrowInfo.dstIndexIn[i].idx_in, 6);
         logStr += to_string(borrowInfo.dstIndexIn[i].idx_out,7);
         logStr += to_string(borrowInfo.dstIndexIn[i].loop, 8);
         logStr += to_string(borrowInfo.dstIndexIn[i].step, 8);
         logStr += to_string(borrowInfo.dstIndexIn[i].tail, 8);
-        logStr += to_string(borrowInfo.dstIndexIn[i].intact, 7);
+        logStr += to_string(borrowInfo.dstIndexIn[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].dup, 8);
         logStr += "\n";
     }
     for(int i = 0; i < borrowInfo.srcNumNoDup; i++) {
-        logStr += "srcNoDup  ";
+        logStr += "srcInNoDup  ";
         logStr += to_string(borrowInfo.srcIndexInNoDup[i].idx_in, 6);
         logStr += to_string(borrowInfo.srcIndexInNoDup[i].idx_out,7);
         logStr += to_string(borrowInfo.srcIndexInNoDup[i].loop, 8);
         logStr += to_string(borrowInfo.srcIndexInNoDup[i].step, 8);
         logStr += to_string(borrowInfo.srcIndexInNoDup[i].tail, 8);
-        logStr += to_string(borrowInfo.srcIndexInNoDup[i].intact, 7);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].dup, 8);
         logStr += "\n";
     }
     for(int i = 0; i < borrowInfo.dstNumNoDup; i++) {
-        logStr += "dstNoDup  ";
+        logStr += "dstInNoDup  ";
         logStr += to_string(borrowInfo.dstIndexInNoDup[i].idx_in, 6);
         logStr += to_string(borrowInfo.dstIndexInNoDup[i].idx_out,7);
         logStr += to_string(borrowInfo.dstIndexInNoDup[i].loop, 8);
         logStr += to_string(borrowInfo.dstIndexInNoDup[i].step, 8);
         logStr += to_string(borrowInfo.dstIndexInNoDup[i].tail, 8);
-        logStr += to_string(borrowInfo.dstIndexInNoDup[i].intact, 7);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].dup, 8);
         logStr += "\n";
     }
     logStr += "\n";
 
-    logStr += "flag      idxIn idxOut loop    step    tail    intact \n";
-    logStr += "-------------------------------------------------------------------------------------------\n";
+    logStr += "flag        idxIn idxOut loop    step    tail    pivot   dup\n";
+    logStr += "----------------------------------------------------------------------\n";
     for(int i = 0; i < borrowInfo.srcNum; i++) {
-        logStr += "src       ";
+        logStr += "srcOut      ";
         logStr += to_string(borrowInfo.srcIndexOut[i].idx_in, 6);
         logStr += to_string(borrowInfo.srcIndexOut[i].idx_out,7);
         logStr += to_string(borrowInfo.srcIndexOut[i].loop, 8);
         logStr += to_string(borrowInfo.srcIndexOut[i].step, 8);
         logStr += to_string(borrowInfo.srcIndexOut[i].tail, 8);
-        logStr += to_string(borrowInfo.srcIndexOut[i].intact, 7);
+        logStr += to_string(borrowInfo.srcIndexOut[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].dup, 8);
         logStr += "\n";
     }
     for(int i = 0; i < borrowInfo.dstNum; i++) {
-        logStr += "dst       ";
+        logStr += "dstOut      ";
         logStr += to_string(borrowInfo.dstIndexOut[i].idx_in, 6);
         logStr += to_string(borrowInfo.dstIndexOut[i].idx_out,7);
         logStr += to_string(borrowInfo.dstIndexOut[i].loop, 8);
         logStr += to_string(borrowInfo.dstIndexOut[i].step, 8);
         logStr += to_string(borrowInfo.dstIndexOut[i].tail, 8);
-        logStr += to_string(borrowInfo.dstIndexOut[i].intact, 7);
+        logStr += to_string(borrowInfo.dstIndexOut[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].dup, 8);
         logStr += "\n";
     }
     for(int i = 0; i < borrowInfo.srcNumNoDup; i++) {
-        logStr += "srcNoDup  ";
+        logStr += "srcOutNoDup ";
         logStr += to_string(borrowInfo.srcIndexOutNoDup[i].idx_in, 6);
         logStr += to_string(borrowInfo.srcIndexOutNoDup[i].idx_out,7);
         logStr += to_string(borrowInfo.srcIndexOutNoDup[i].loop, 8);
         logStr += to_string(borrowInfo.srcIndexOutNoDup[i].step, 8);
         logStr += to_string(borrowInfo.srcIndexOutNoDup[i].tail, 8);
-        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].intact, 7);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].dup, 8);
         logStr += "\n";
     }
     for(int i = 0; i < borrowInfo.dstNumNoDup; i++) {
-        logStr += "dstNoDup  ";
+        logStr += "dstOutNoDup ";
         logStr += to_string(borrowInfo.dstIndexOutNoDup[i].idx_in, 6);
         logStr += to_string(borrowInfo.dstIndexOutNoDup[i].idx_out,7);
         logStr += to_string(borrowInfo.dstIndexOutNoDup[i].loop, 8);
         logStr += to_string(borrowInfo.dstIndexOutNoDup[i].step, 8);
         logStr += to_string(borrowInfo.dstIndexOutNoDup[i].tail, 8);
-        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].intact, 7);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].dup, 8);
         logStr += "\n";
     }
     logStr += "\n";
@@ -1265,15 +1571,296 @@ static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
     return logStr;
 }
 
-static string PrintTilingInfoScenario6(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
-    return PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo);
+static string PrintScenario5(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
+    string logStr;
+    const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    PrintShapeInfo(shapeInfo, logStr);
+    PrintCompilerInfo(compilerInfo, logStr);
+
+    logStr += "srcNum dstNum dupAxis srcVol dstVol srcIndexIn.i dstIndexIn.i srcIndexIn.o dstIndexIn.o ";
+    logStr += "otherIndex.i srcIndexInNoDup.i dstIndexInNoDup.i srcIndexInNoDup.o dstIndexInNoDup.o\n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "----------------------------------------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.srcNum, 7);
+    logStr += to_string(borrowInfo.dstNum, 7);
+    logStr += to_string(borrowInfo.dupAxis, 8);
+    logStr += to_string(borrowInfo.srcVol, 7);
+    logStr += to_string(borrowInfo.dstVol, 7);
+    int64_t arr[TRANSPOSE_MAX_AXIS_NUM];
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        arr[i] = borrowInfo.srcIndexIn[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
+        arr[i] = borrowInfo.dstIndexIn[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        arr[i] = borrowInfo.srcIndexIn[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
+        arr[i] = borrowInfo.dstIndexIn[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.otherNum; i++) {
+        arr[i] = borrowInfo.otherIndex[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.otherNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        arr[i] = borrowInfo.srcIndexInNoDup[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNumNoDup, 18);
+
+    for (int64_t i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        arr[i] = borrowInfo.dstIndexInNoDup[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNumNoDup, 18);
+
+    for (int64_t i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        arr[i] = borrowInfo.srcIndexInNoDup[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNumNoDup, 18);
+
+    for (int64_t i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        arr[i] = borrowInfo.dstIndexInNoDup[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNumNoDup, 16);
+
+    logStr += "\n\n";
+    logStr += "srcTail dstTail ubPermRaw    ubPerm      srcAxisPerm dstAxisPerm axisPerm    ";
+    logStr += "pivotSrcAxisDup  pivotDstAxisDup\n";
+    logStr += "-------------------------------------------------------------------------------------------------------";
+    logStr += "-----------------------------------\n";
+    logStr += to_string(borrowInfo.srcIndexIn[0].tail, 8);
+    logStr += to_string(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].tail, 8);
+    logStr += arr_to_string(borrowInfo.ubPermRaw, borrowInfo.ubPermNum, 13);
+    logStr += arr_to_string(borrowInfo.ubPerm, borrowInfo.ubPermNum, 12);
+    logStr += hex_perm_to_string(borrowInfo.srcAxisPerm, 12);
+    logStr += hex_perm_to_string(borrowInfo.dstAxisPerm, 12);
+    logStr += hex_perm_to_string(borrowInfo.axisPerm, 12);
+    logStr += to_string(borrowInfo.pivotSrcAxisDup, 17);
+    logStr += to_string(borrowInfo.pivotDstAxisDup, 17);
+    logStr += "\n\n";
+
+    logStr += "majorDstLoop_in tailDstLoop_in majorSrcLoop_out tailSrcLoop_out majorBurstLen_in ";
+    logStr += "tailBurstLen_in majorBurstLen_out tailBurstLen_out\n";
+    logStr += "--------------------------------------------------------------------------------";
+    logStr += "---------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.majorDstLoop_in, 16);
+    logStr += to_string(borrowInfo.tailDstLoop_in, 15);
+    logStr += to_string(borrowInfo.majorSrcLoop_out, 17);
+    logStr += to_string(borrowInfo.tailSrcLoop_out, 16);
+    logStr += to_string(borrowInfo.majorBurstLen_in, 17);
+    logStr += to_string(borrowInfo.tailBurstLen_in, 16);
+    logStr += to_string(borrowInfo.majorBurstLen_out, 18);
+    logStr += to_string(borrowInfo.tailBurstLen_out, 17);
+    logStr += "\n\n";
+    logStr += "majorInEle tailInEle majorInTailEle tailInTailEle ";
+    logStr += "majorOutEle tailOutEle majorOutTailEle tailOutTailEle\n";
+    logStr += "--------------------------------------------------------------------------------";
+    logStr += "---------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.majorInEle, 11);
+    logStr += to_string(borrowInfo.tailInEle, 10);
+    logStr += to_string(borrowInfo.majorInTailEle, 15);
+    logStr += to_string(borrowInfo.tailInTailEle, 14);
+    logStr += to_string(borrowInfo.majorOutEle, 12);
+    logStr += to_string(borrowInfo.tailOutEle, 11);
+    logStr += to_string(borrowInfo.majorOutTailEle, 16);
+    logStr += to_string(borrowInfo.tailOutTailEle, 15);
+    logStr += "\n\n";
+    logStr += "n_1 vol_1 loop1 repeat1 srcStride1 dstStride1 burstLen1 srcOffset1 dstOffset1 ";
+    logStr += "n_2 vol_2 loop2 repeat2 srcStride2 dstStride2 burstLen2 srcOffset2 dstOffset2 ";
+    logStr += "n_3 vol_3 loop3 repeat3 srcStride3 dstStride3 burstLen3 srcOffset3 dstOffset3 \n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "------------------------------\n";
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        const LRSB* lrsb = borrowInfo.lrsb[i];
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            logStr += to_string(lrsb[j].n, 4);
+            logStr += to_string(lrsb[j].vol, 6);
+            logStr += to_string(lrsb[j].loop, 6);
+            logStr += to_string(lrsb[j].repeat, 8);
+            logStr += to_string(lrsb[j].srcStride, 11);
+            logStr += to_string(lrsb[j].dstStride, 11);
+            logStr += to_string(lrsb[j].burstLen, 10);
+            logStr += to_string(lrsb[j].srcOffset, 11);
+            logStr += to_string(lrsb[j].dstOffset, 11);
+        }
+        logStr += "\n";
+    }
+    logStr += "\n";
+
+    logStr += "mdmsVol mdtsVol tdmsVol tdtsVol lastTwoLoop lastTwoRepeat lastTwosStride lastTwodStride ";
+    logStr += "lastTwosListRepeat lastTwodListRepeat\n";
+    logStr += "-------------------------------------------------------------------------------------------------------";
+    logStr += "------------------------------------\n";
+    logStr += to_string(borrowInfo.xdxsVol[MDMS], 8);
+    logStr += to_string(borrowInfo.xdxsVol[MDTS], 8);
+    logStr += to_string(borrowInfo.xdxsVol[TDMS], 8);
+    logStr += to_string(borrowInfo.xdxsVol[TDTS], 8);
+    logStr += to_string(borrowInfo.lastTwoLoop, 12);
+    logStr += to_string(borrowInfo.lastTwoRepeat, 14);
+    logStr += to_string(borrowInfo.lastTwosStride, 15);
+    logStr += to_string(borrowInfo.lastTwodStride, 15);
+    logStr += to_string(borrowInfo.lastTwosListRepeat, 19);
+    logStr += to_string(borrowInfo.lastTwodListRepeat, 19);
+    logStr += "\n\n";
+
+    logStr += "srcJumpFactorLogic_in dstJumpFactorLogic_in srcStep dstStep dstFactorCopyIn dstStrideCopyIn      ";
+    logStr += "srcFactorCopyOut srcStrideCopyOut      srcJumpFactorMod_in dstJumpFactorMod_in\n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "-----------------------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.srcJumpFactorLogic_in, 22);
+    logStr += to_string(borrowInfo.dstJumpFactorLogic_in, 22);
+    logStr += to_string(borrowInfo.srcStep, 8);
+    logStr += to_string(borrowInfo.dstStep, 8);
+    logStr += arr_to_string(borrowInfo.dstFactorCopyIn, borrowInfo.dstNumNoDup, 16);
+    logStr += arr_to_string(borrowInfo.dstStrideCopyIn, borrowInfo.dstNumNoDup, 21);
+    logStr += arr_to_string(borrowInfo.srcFactorCopyOut, borrowInfo.srcNumNoDup, 17);
+    logStr += arr_to_string(borrowInfo.srcStrideCopyOut, borrowInfo.srcNumNoDup, 22);
+    logStr += to_string(borrowInfo.srcJumpFactorMod_in, 20);
+    logStr += to_string(borrowInfo.dstJumpFactorMod_in, 20);
+    logStr += "\n\n";
+
+    logStr += "flag       idxIn idxOut loop    step    tail    pivot   dup\n";
+    logStr += "-------------------------------------------------------------------------------------------\n";
+    for(int i = 0; i < borrowInfo.srcNum; i++) {
+        logStr += "srcIn      ";
+        logStr += to_string(borrowInfo.srcIndexIn[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexIn[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexIn[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].dup, 8);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNum; i++) {
+        logStr += "dstIn      ";
+        logStr += to_string(borrowInfo.dstIndexIn[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexIn[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexIn[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].dup, 8);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        logStr += "srcInNoDup ";
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].dup, 8);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        logStr += "dstInNoDup ";
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].dup, 8);
+        logStr += "\n";
+    }
+    logStr += "\n";
+
+    logStr += "flag        idxIn idxOut loop    step    tail    pivot   dup\n";
+    logStr += "-------------------------------------------------------------------------------------------\n";
+    for(int i = 0; i < borrowInfo.srcNum; i++) {
+        logStr += "srcOut      ";
+        logStr += to_string(borrowInfo.srcIndexOut[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexOut[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexOut[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].dup, 8);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNum; i++) {
+        logStr += "dstOut      ";
+        logStr += to_string(borrowInfo.dstIndexOut[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexOut[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexOut[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].dup, 8);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        logStr += "srcOutNoDup ";
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].dup, 8);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        logStr += "dstOutNoDup ";
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].pivot, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].dup, 8);
+        logStr += "\n";
+    }
+    logStr += "\n";
+
+    logStr += "otherJumpFactor_in otherJumpStride_in otherJumpStride_out otherJumpFactorMod_in\n";
+    logStr += "----------------------------------------------------------------------------------------------------\n";
+    logStr += arr_to_string(borrowInfo.otherJumpFactor_in, borrowInfo.otherNum, 19);
+    logStr += arr_to_string(borrowInfo.otherJumpStride_in, borrowInfo.otherNum, 19);
+    logStr += arr_to_string(borrowInfo.otherJumpStride_out, borrowInfo.otherNum, 20);
+    logStr += arr_to_string(borrowInfo.otherJumpFactorMod_in, borrowInfo.otherNum, 22);
+    logStr += "\n\n";
+
+    logStr += "core_id loopPerCore srcTupleLogic dstTupleLogic otherTuple    srcTuple       dstTuple       \n";
+    logStr += "-------------------------------------------------------------------------------------------\n";
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        logStr += to_string(i, 8);
+        logStr += to_string(borrowInfo.loopPerCore[i], 12);
+        logStr += to_string(borrowInfo.srcAxis_in[i].initTupleLogic, 14);
+        logStr += to_string(borrowInfo.dstAxis_in[i].initTupleLogic, 14);
+        logStr += arr_to_string(borrowInfo.otherAxis_in[i].initTuple, borrowInfo.otherNum, 14);
+        logStr += arr_to_string(borrowInfo.srcAxis_in[i].initTuple, borrowInfo.srcNumNoDup, 15);
+        logStr += arr_to_string(borrowInfo.dstAxis_in[i].initTuple, borrowInfo.dstNumNoDup, 15);
+        logStr += "\n";
+    }
+    logStr += "\n\n";
+    PrintScreen(logStr);
+    return logStr;
 }
 
-static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
-                                       const ShapeInfo & shapeInfo,
-                                       const RuntimeInfo & runtimeInfo) {
+static string PrintScenario6(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
+    return PrintScenario2(compilerInfo, shapeInfo, runtimeInfo);
+}
+
+static string PrintScenario7(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -1298,30 +1885,29 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
     }
     logStr += "\n\n";
 
-    logStr += "nJumpAxisNum  srcJumpAxisNum  dstJumpAxisNum  nJumpFactor         nJumpStride         ";
-    logStr += "srcJumpFactor       srcJumpStride       dstJumpFactor       dstJumpStride       rPartVol\n";
+    logStr += "nJumpAxisNum  srcJumpAxisNum  dstJumpAxisNum  nJumpFactor         nJumpStrideIn         nJumpStrideOut";
+    logStr += "         srcJumpFactor       srcJumpStride       dstJumpFactor       dstJumpStride\n";
     logStr += "------------------------------------------------------------------------------------------------------";
     logStr += "----------------------------------------------------------------------------------------------\n";
     logStr += to_string(runtimeInfo.nJumpAxisNum, 14);
     logStr += to_string(runtimeInfo.srcJumpAxisNum, 16);
     logStr += to_string(runtimeInfo.dstJumpAxisNum, 16);
     logStr += arr_to_string(runtimeInfo.nJumpFactor, runtimeInfo.nJumpAxisNum, 20);
-    logStr += arr_to_string(runtimeInfo.nJumpStride, runtimeInfo.nJumpAxisNum, 20);
+    logStr += arr_to_string(runtimeInfo.nJumpStrideIn, runtimeInfo.nJumpAxisNum, 22);
+    logStr += arr_to_string(runtimeInfo.nJumpStrideOut, runtimeInfo.nJumpAxisNum, 23);
     logStr += arr_to_string(runtimeInfo.srcJumpFactor,runtimeInfo.srcJumpAxisNum, 20);
     logStr += arr_to_string(runtimeInfo.srcJumpStride, runtimeInfo.srcJumpAxisNum, 20);
     logStr += arr_to_string(runtimeInfo.dstJumpFactor,runtimeInfo.dstJumpAxisNum, 20);
     logStr += arr_to_string(runtimeInfo.dstJumpStride, runtimeInfo.dstJumpAxisNum, 20);
-    logStr += to_string(runtimeInfo.rPartVol, 16);
     logStr += "\n\n";
 
-    logStr += "loopN  nOffsetActual  initNTuple          colPerMC  loopMC  colTC  colOffset  bsl  ";
+    logStr += "loopN  initNTuple          colPerMC  loopMC  colTC  colOffset  bsl  ";
     logStr += "initDstTuple        tailDstTuple        rowPerMR  loopMR  rowTR  rowOffset  bsu  ";
     logStr += "initSrcTuple        tailSrcTuple\n";
     logStr += "------------------------------------------------------------------------------------------------------";
     logStr += "----------------------------------------------------------------------------------------------------\n";
     for (int i = 0; i < compilerInfo.coreNum; i++) {
         logStr += to_string(runtimeInfo.infoPerCore[i].infoN.loopOnN, 7);
-        logStr += to_string(runtimeInfo.infoPerCore[i].infoN.nOffsetActual, 15);
         logStr += vec_to_string(runtimeInfo.infoPerCore[i].infoN.initNTuple, 20);
         logStr += to_string(runtimeInfo.infoPerCore[i].infoCol.colPerMC, 10);
         logStr += to_string(runtimeInfo.infoPerCore[i].infoCol.loopOnMC, 8);
@@ -1340,6 +1926,78 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
+    PrintScreen(logStr);
+    return logStr;
+}
+
+static string PrintScenario9(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
+    string logStr;
+    PrintShapeInfo(shapeInfo, logStr);
+    PrintCompilerInfo(compilerInfo, logStr);
+
+    logStr += "srcJumpStride                 dstJumpStride                 ";
+    logStr += "dstJumpFactor                dstJumpFactorMod             srcStride\n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "-----------------------------------------------------\n";
+    logStr += arr_to_string(runtimeInfo.srcJumpStride, shapeInfo.dim - 2, 30);
+    logStr += arr_to_string(runtimeInfo.dstJumpStride, shapeInfo.dim - 2, 30);
+    logStr += arr_to_string(runtimeInfo.dstJumpFactor, shapeInfo.dim - 2, 30);
+    logStr += arr_to_string(runtimeInfo.dstJumpFactorMod, shapeInfo.dim - 2, 30);
+    logStr += to_string(runtimeInfo.srcStride, 30);
+    logStr += "\n\n";
+
+    logStr += "base    num    initTuple\n";
+    logStr += "--------------------------\n";
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].base, 8);
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].num, 7);
+        logStr += arr_to_string(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple, shapeInfo.dim - 2);
+        logStr += "\n";
+    }
+    logStr += "\n\n";
+    PrintScreen(logStr);
+    return logStr;
+}
+
+static string PrintScenario10(const CompilerInfo & compilerInfo,
+                             const ShapeInfo & shapeInfo,
+                             const RuntimeInfo & runtimeInfo) {
+    string logStr;
+    PrintShapeInfo(shapeInfo, logStr);
+    PrintCompilerInfo(compilerInfo, logStr);
+
+    logStr += "srcStrideIn srcStrideInTail dstStrideOut dstStrideOutTail ";
+    logStr += "colPerMC colBlockPerMC colBlockTC rowPerMR rowBlockPerMR rowBlockTR\n";
+    logStr += "-------------------------------------------------------------------------------------------------------";
+    logStr += "-------------------------------------------------------------------\n";
+    logStr += to_string(runtimeInfo.twoDInfo.srcStrideIn, 12);
+    logStr += to_string(runtimeInfo.twoDInfo.srcStrideInTail, 16);
+    logStr += to_string(runtimeInfo.twoDInfo.dstStrideOut, 14);
+    logStr += to_string(runtimeInfo.twoDInfo.dstStrideOutTail, 17);
+    logStr += to_string(runtimeInfo.twoDInfo.colPerMC, 9);
+    logStr += to_string(runtimeInfo.twoDInfo.colBlockPerMC, 14);
+    logStr += to_string(runtimeInfo.twoDInfo.colBlockTC, 10);
+    logStr += to_string(runtimeInfo.twoDInfo.rowPerMR, 9);
+    logStr += to_string(runtimeInfo.twoDInfo.rowBlockPerMR, 14);
+    logStr += to_string(runtimeInfo.twoDInfo.rowBlockTR, 10);
+    logStr += "\n\n";
+
+    logStr += "loopN  initNTuple          loopMC  colTC  colOffset  loopMR  rowTR  rowOffset\n";
+    logStr += "-----------------------------------------------------------------------------------------------------\n";
+    for (int i = 0; i < compilerInfo.coreNum; i++) {
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoN.loopOnN, 7);
+        logStr += vec_to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoN.initNTuple, 20);
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoCol2D.loopOnMC, 8);
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoCol2D.colTC, 7);
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoCol2D.colOffset, 11);
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoRow2D.loopOnMR, 8);
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoRow2D.rowTR, 7);
+        logStr += to_string(runtimeInfo.twoDInfo.infoPerCore2D[i].infoRow2D.rowOffset, 11);
+        logStr += "\n";
+    }
+
     PrintScreen(logStr);
     return logStr;
 }
@@ -1394,6 +2052,48 @@ static void CalcTuple(const CompilerInfo &compilerInfo, const ShapeInfo &shapeIn
     ReverseArray(runtimeInfo.dstJumpFactorMod, dim - 1);
 }
 
+static void CalcTupleS9(const CompilerInfo &compilerInfo, const ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
+    int64_t dim = shapeInfo.dim;
+    int64_t vol = 1;
+    int64_t v1 = 0;
+    int64_t v2 = 0;
+    int64_t v1Num = 0;
+    int64_t v2Num = 0;
+    InfoPerCoreLastAxisNT infoPerCore;
+    for (int64_t i = 1; i < dim - 2; i++) {
+        runtimeInfo.dstJumpFactorMod[i] = shapeInfo.reducedOutShape[i - 1] * runtimeInfo.dstJumpFactorMod[i - 1];
+    }
+    for (int64_t i = 0; i < dim - 2; i++) {
+        vol = vol * shapeInfo.reducedOutShape[i];
+    }
+
+    SplitEvenly(compilerInfo.coreNum, vol, v1Num, v2Num, v1, v2);
+
+    vol = 0;
+    for (int64_t i = 0; i < v1Num; i++) {
+        infoPerCore.base = vol;
+        infoPerCore.num = v1;
+        for (int64_t j = 0; j < dim - 2; j++) {
+            infoPerCore.initTuple[j] = (vol / runtimeInfo.dstJumpFactorMod[j]) % shapeInfo.reducedOutShape[j];
+        }
+        runtimeInfo.infoPerCoreLastAxisNT.emplace_back(infoPerCore);
+        vol += v1;
+    }
+    for (int64_t i = 0; i < v2Num; i++) {
+        infoPerCore.base = vol;
+        infoPerCore.num = v2;
+        for (int64_t j = 0; j < dim - 2; j++) {
+            infoPerCore.initTuple[j] = (vol / runtimeInfo.dstJumpFactorMod[j]) % shapeInfo.reducedOutShape[j];
+        }
+        runtimeInfo.infoPerCoreLastAxisNT.emplace_back(infoPerCore);
+        vol += v2;
+    }
+    for(int64_t i = v1Num + v2Num; i < compilerInfo.coreNum; i++) {
+        InfoPerCoreLastAxisNT infoPerCore;
+        runtimeInfo.infoPerCoreLastAxisNT.emplace_back(infoPerCore);
+    }
+}
+
 static void CalcHugeInfo(const ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     runtimeInfo.hugeInfo.majorBlocks =  HUGE_BLOCKS_UNIT;
     runtimeInfo.hugeInfo.majorLoopNum = shapeInfo.lastAxisBurstLen / HUGE_BLOCKS_UNIT;
@@ -1431,9 +2131,7 @@ static void CalcLoopInfo(const CompilerInfo &compilerInfo, const ShapeInfo &shap
 
         //1: workspace detect, if not block aligned and workspace not work , copy in one by one
         if (shapeInfo.lastAxisLen % shapeInfo.elePerBlock != 0) {
-            if (runtimeInfo.byWorkspace == 0) {
-                ubBlockNum = shapeInfo.lastAxisBurstLen;
-            }
+            ubBlockNum = shapeInfo.lastAxisBurstLen;
         }
 
         //2: head loop info
@@ -1497,6 +2195,32 @@ static void ReorderSrcStride(const vector<int64_t> & perm, int64_t * stride, int
     }
     for (int64_t i = size - 1; i >= 0; i--) {
         stride[index++] = temp[perm[i]];
+    }
+}
+
+static void CalcMte2LoopNum(const CompilerInfo & compilerInfo,
+                            const ShapeInfo & shapeInfo,
+                            RuntimeInfo & runtimeInfo) {
+
+    if (shapeInfo.lastAxisBurstLen > compilerInfo.ubSizeCouldUse) {
+        return;
+    }
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        InfoPerCoreLastAxisNT & info = runtimeInfo.infoPerCoreLastAxisNT[i];
+        if (info.num <= 1) {
+            continue;
+        }
+        info.aggregateLoopUnit = compilerInfo.ubSizeCouldUse / shapeInfo.lastAxisBurstLen;
+        if (info.aggregateLoopUnit >= info.num) {
+            info.aggregateLoopUnit = info.num - 1;
+        }
+        if (shapeInfo.alignElement == 0) {
+            info.aggregateLoopNum = info.num  / info.aggregateLoopUnit;
+            info.aggregateLoopTail = info.num - (info.aggregateLoopUnit * info.aggregateLoopNum);
+        } else {
+            info.aggregateLoopNum = (info.num - 1) / info.aggregateLoopUnit;
+            info.aggregateLoopTail = info.num - 1 - (info.aggregateLoopUnit * info.aggregateLoopNum);
+        }
     }
 }
 
@@ -1574,6 +2298,9 @@ bool TilingDataScenario1(const CompilerInfo & compilerInfo,
 
     //4. init tuple
     CalcTuple(compilerInfo, shapeInfo, runtimeInfo);
+
+    //5. mte2 copy by pipeline
+    CalcMte2LoopNum(compilerInfo, shapeInfo, runtimeInfo);
 
     return true;
 }
@@ -1655,6 +2382,43 @@ static void CalcStrideS4(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     }
 }
 
+static int64_t Hex2Bcd(unsigned char hex, int i) {
+    return hex << (4 * i);
+}
+
+static void MakeBeContiguous(const IndexInfo* indexInfo, int64_t& perm, const int size, bool reverse) {
+    unsigned char tPerm[size];
+    unsigned char rPerm[size];
+
+    for (int64_t i = 0; i < size; i++) {
+        if (reverse) {
+            tPerm[size - i - 1] = indexInfo[i].idx_in;
+        }else {
+            tPerm[i] = indexInfo[i].idx_out;
+        }
+    }
+
+    for (int64_t i = 0; i < size; i++) {
+        int idx = 0;
+        int minVal = TRANSPOSE_MAX_AXIS_NUM;
+        for (int64_t j = 0; j < size; j++) {
+            if (tPerm[j] < minVal) {
+                minVal = tPerm[j];
+                idx = j;
+            }
+        }
+        tPerm[idx] = TRANSPOSE_MAX_AXIS_NUM;
+        rPerm[idx] = TRANSPOSE_MAX_AXIS_NUM + i;
+    }
+    for (int64_t i = 0; i < size; i++) {
+        rPerm[i] = rPerm[i] - TRANSPOSE_MAX_AXIS_NUM;
+    }
+
+    for (int i = 0; i < size; i++) {
+        perm += Hex2Bcd(rPerm[i], size - 1 - i);
+    }
+}
+
 static void CalcSrcDstPerm(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     if (bi.srcNum == 2) {
@@ -1671,12 +2435,18 @@ static void CalcSrcDstPerm(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo)
             bi.dstAxisPerm = 0x01;
         }
     }
+    if (bi.srcNum == BORROW_SRC_AXIS_NUM_LT) {
+        MakeBeContiguous(bi.srcIndexOut, bi.srcAxisPerm, BORROW_SRC_AXIS_NUM_LT, true);
+    }
+    if (bi.dstNum == BORROW_DST_AXIS_NUM_LT) {
+        MakeBeContiguous(bi.dstIndexOut, bi.dstAxisPerm, BORROW_DST_AXIS_NUM_LT, true);
+    }
 }
 
 static void SplitCore(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     int64_t sum = 1;
     int64_t coreNum = compilerInfo.coreNum;
-    BorrowInfo & bi = runtimeInfo.borrowInfo;
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
 
     for (int64_t i = 0; i < bi.srcNum; i++) {
         sum *= bi.srcIndexIn[i].loop;
@@ -1700,10 +2470,19 @@ static void SplitCore(const CompilerInfo& compilerInfo, const ShapeInfo& shapeIn
 
     SplitEvenly(coreNum, sum, s1Num, s2Num, stride1, stride2);
 
-    int srcFactor = bi.srcIndexIn[0].loop;
-    int dstFactor = 1;
-    if (bi.dstNumNoDup > 0) {
-        dstFactor = bi.dstIndexOutNoDup[bi.dstNumNoDup - 1].loop;
+    int64_t srcFactor = 1;
+    if (bi.srcIndexIn[0].dup == 1) {
+        bi.pivotSrcAxisDup = 1;
+    }
+    srcFactor  = bi.srcIndexIn[0].loop;
+    bi.srcStep = bi.srcIndexIn[0].step;
+
+    int64_t dstFactor = 1;
+    if (bi.dstIndexOut[bi.dstNum - 1].dup == 0) {
+        dstFactor = bi.dstIndexOut[bi.dstNum - 1].loop;
+        bi.dstStep = bi.dstIndexOut[bi.dstNum - 1].step;
+    } else {
+        bi.pivotDstAxisDup = 1;
     }
 
     bi.srcJumpFactorLogic_in = srcFactor;
@@ -1723,9 +2502,9 @@ static void SplitCore(const CompilerInfo& compilerInfo, const ShapeInfo& shapeIn
         bi.otherJumpFactor_in[i] = shapeInfo.reducedInShape[bi.otherIndex[i].idx_in];
     }
 
-    bi.srcJumpFactorMod_in  = 1;
-    bi.dstJumpFactorMod_in  = srcFactor;
-    bi.otherJumpFactorMod_in[0] = srcFactor * dstFactor;
+    bi.srcJumpFactorMod_in = 1;
+    bi.dstJumpFactorMod_in = abs(srcFactor);
+    bi.otherJumpFactorMod_in[0] = abs(srcFactor) * abs(dstFactor);
 
     for (int64_t i = 1; i < bi.otherNum; i++) {
         bi.otherJumpFactorMod_in[i] *= bi.otherJumpFactorMod_in[i - 1] * bi.otherJumpFactor_in[i - 1];
@@ -1738,10 +2517,10 @@ static void SplitCore(const CompilerInfo& compilerInfo, const ShapeInfo& shapeIn
 
     for (int64_t i = 0; i < s1Num; i++) {
         bi.loopPerCore[i] = stride1;
-        bi.srcAxis_in[i].initTupleLogic = base % srcFactor;
-        bi.dstAxis_in[i].initTupleLogic = base / srcFactor % dstFactor;
-        bi.srcAxis_in[i].initTuple[0] =  (base % srcFactor) * bi.srcIndexIn[0].step;
-        bi.dstAxis_in[i].initTuple[0] =  (base / srcFactor % dstFactor) * bi.dstIndexOut[bi.dstNum - 1].step;
+        bi.srcAxis_in[i].initTupleLogic = base % abs(srcFactor);
+        bi.dstAxis_in[i].initTupleLogic = base / abs(srcFactor) % dstFactor;
+        bi.srcAxis_in[i].initTuple[0] = (base % abs(srcFactor)) * bi.srcStep;
+        bi.dstAxis_in[i].initTuple[0] = (base / abs(srcFactor) % abs(dstFactor)) * bi.dstStep;
 
         for (int j = 0; j < bi.otherNum; j++) {
             bi.otherAxis_in[i].initTuple[j] = base / bi.otherJumpFactorMod_in[j] % bi.otherJumpFactor_in[j];
@@ -1752,8 +2531,8 @@ static void SplitCore(const CompilerInfo& compilerInfo, const ShapeInfo& shapeIn
         bi.loopPerCore[i] = stride2;
         bi.srcAxis_in[i].initTupleLogic = base % srcFactor;
         bi.dstAxis_in[i].initTupleLogic = base / srcFactor % dstFactor;
-        bi.srcAxis_in[i].initTuple[0] =  (base % srcFactor) * bi.srcIndexIn[0].step;
-        bi.dstAxis_in[i].initTuple[0] =  (base / srcFactor % dstFactor) * bi.dstIndexOut[bi.dstNum - 1].step;
+        bi.srcAxis_in[i].initTuple[0] = (base % srcFactor) * bi.srcStep;
+        bi.dstAxis_in[i].initTuple[0] = (base / srcFactor % dstFactor) * bi.dstStep;
 
         for (int j = 0; j < bi.otherNum; j++) {
             bi.otherAxis_in[i].initTuple[j] = base / bi.otherJumpFactorMod_in[j] % bi.otherJumpFactor_in[j];
@@ -1778,8 +2557,8 @@ static void MergeDupAxis(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
         int64_t p = borrowInfo.srcIndexIn[i].idx_in;
         for (int64_t j = 0; j < borrowInfo.dstNum; j++) {
             if (p == borrowInfo.dstIndexIn[j].idx_in) {
-                int64_t step = max(borrowInfo.srcIndexIn[i].step, borrowInfo.dstIndexIn[j].step); 
-                int64_t axisVol = shapeInfo.reducedInShape[p]; 
+                int64_t step = max(borrowInfo.srcIndexIn[i].step, borrowInfo.dstIndexIn[j].step);
+                int64_t axisVol = shapeInfo.reducedInShape[p];
                 UpdateIndexInfo(borrowInfo.srcIndexIn[i], step, axisVol);
                 UpdateIndexInfo(borrowInfo.dstIndexIn[j], step, axisVol);
                 break;
@@ -1798,22 +2577,41 @@ static void MergeDupAxis(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     }
 }
 
-static void CalcLeftVol(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
     int64_t ubSize = 0;
-    if (shapeInfo.alignElement == 0) {
-        ubSize = 32 * 1024; // as b16
+    bool lastAxisTrans = IsLastAxisJoinTranspose(si);
+    int64_t reservedVol = si.lastAxisLen * ci.fp16Times;
+
+    if (si.alignElement == 0 && (!lastAxisTrans)) {
+        ubSize = LAST_AXIS_N_TRANS_MAX_SIZE_B16; // as b16
     } else {
-        ubSize = CalcVnchwconvPartialUbSize(compilerInfo.coreNum, compilerInfo.ubSize);
+        if (si.isLastTwoAlignedAndTrans) {
+            ubSize = LAST_TWO_TRANS_MAX_SIZE_B16; // vnchwconv max repeat is 255
+            reservedVol = si.reducedInShape[si.dim - 2] * si.reducedInShape[si.dim - 1] * ci.fp16Times;
+        } else {
+            ubSize = CalcVnchwconvPartialUbSize(ci.coreNum, ci.ubSize);
+            if (lastAxisTrans) {
+                reservedVol = ci.fp16Times;
+            }
+        }
     }
 
-    int64_t leftVol = ubSize / (shapeInfo.lastAxisLen * compilerInfo.fp16Times);
+    int64_t leftVol = ubSize / reservedVol;
+
     // since block align padding may result ub size not enough
     // loop 10 is ok for lastAxisLen from 1 to 256
+    if (si.isLastTwoAlignedAndTrans)  {
+        int64_t vol = sqrt(leftVol);
+        runtimeInfo.borrowInfo.srcVol = vol;
+        runtimeInfo.borrowInfo.dstVol = vol;
+        return;
+    }
+
     for (int i = 0; i < LOOP_FOR_UB_PADDING; i++) {
         int64_t vol = sqrt(leftVol) - i;
-        if (vol * AlignX(vol * shapeInfo.lastAxisLen, shapeInfo.elePerBlock) * compilerInfo.fp16Times <= ubSize) {
-            runtimeInfo.borrowInfo.srcVol = vol;
-            runtimeInfo.borrowInfo.dstVol = vol;
+        if (vol * AlignX(vol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times <= ubSize) {
+            runtimeInfo.borrowInfo.srcVol = vol - 1;
+            runtimeInfo.borrowInfo.dstVol = vol - 1;
             break;
         }
         else {
@@ -1823,7 +2621,7 @@ static void CalcLeftVol(const CompilerInfo& compilerInfo, const ShapeInfo& shape
 }
 
 static void MakeSrcIndexAsInShape(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-    IndexInfo indexInfo[BORROW_MAX_AXIS_NUM];
+    IndexInfo indexInfo[BORROW_MAX_AXIS_NUM_LT];
     BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
     int k = 0;
     for (int64_t i = 0; i < shapeInfo.dim; i++) {
@@ -1873,7 +2671,7 @@ static void MakeSrcIndexAsOutShape(const ShapeInfo& shapeInfo, RuntimeInfo& runt
 }
 
 static void MakeDstIndexAsInShape(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-    IndexInfo indexInfo[BORROW_MAX_AXIS_NUM];
+    IndexInfo indexInfo[BORROW_MAX_AXIS_NUM_LT];
     BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
     int k = 0;
     for (int64_t i = 0; i < shapeInfo.dim; i++) {
@@ -1886,6 +2684,7 @@ static void MakeDstIndexAsInShape(const ShapeInfo& shapeInfo, RuntimeInfo& runti
     for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
         borrowInfo.dstIndexIn[i] = indexInfo[i];
     }
+
     k = 0;
     for (int64_t i = 0; i < shapeInfo.dim; i++) {
         for (int64_t j = 0; j < borrowInfo.dstNumNoDup; j++) {
@@ -1926,8 +2725,8 @@ static void MakeDstIndexAsOutShape(const ShapeInfo& shapeInfo, RuntimeInfo& runt
  */
 static void MakeDiscreteBeContiguous(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
-    int64_t perm[BORROW_MAX_AXIS_NUM];
-    for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
+    int64_t perm[BORROW_MAX_AXIS_NUM_LT];
+    for (int i = 0; i < BORROW_MAX_AXIS_NUM_LT; i++) {
         perm[i] = borrowInfo.ubPermRaw[i];
     }
 
@@ -1955,7 +2754,7 @@ static void CalcPermInUb(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
         bool exist = false;
         int64_t p = shapeInfo.reducedPerm[i];
         for (int64_t j = 0; j < borrowInfo.srcNum; j++) {
-            if(p == borrowInfo.srcIndexIn[j].idx_in) {
+            if (p == borrowInfo.srcIndexIn[j].idx_in) {
                 for (int64_t k = 0; k < borrowInfo.ubPermNum; k++) {
                     if (borrowInfo.ubPermRaw[k] == p) {
                         exist = true;
@@ -1971,7 +2770,7 @@ static void CalcPermInUb(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
 
         exist = false;
         for (int64_t j = 0; j < borrowInfo.dstNum; j++) {
-            if(p == borrowInfo.dstIndexIn[j].idx_in) {
+            if (p == borrowInfo.dstIndexIn[j].idx_in) {
                 for (int64_t k = 0; k < borrowInfo.ubPermNum; k++) {
                     if (borrowInfo.ubPermRaw[k] == p) {
                         exist = true;
@@ -1998,28 +2797,101 @@ static int64_t GetDupAxisInSrc(const RuntimeInfo& runtimeInfo, int64_t index) {
     return -1;
 }
 
-static void CalcSrcBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
+static int64_t GetOffset(const ShapeInfo& si) {
+    if (si.isLastAxisTranspose) {
+        if (si.isLastTwoAlignedAndTrans) {
+            return 3;
+        } else {
+            return 1;
+        }
+    } else {
+        return 2;
+    }
+}
+
+static void CalcSrcBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo, int borrowSrcAxisNum) {
     int64_t dim = si.dim;
     int64_t borrowed = 1;
+    int64_t offset = GetOffset(si);
+
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    for (int i = 0; i < BORROW_SRC_AXIS_NUM; i++) {
-        if (dim >= i + 2) {
-            borrowed *= si.reducedInShape[dim - i - 2];
+    for (int i = 0; i < borrowSrcAxisNum; i++) {
+        if (dim >= i + offset) {
+            borrowed *= si.reducedInShape[dim - i - offset];
             int64_t srcNum = bi.srcNum;
             bi.srcNum++;
-            bi.srcIndexIn[srcNum].idx_in = dim - i - 2;
+            bi.srcIndexIn[srcNum].idx_in = dim - i - offset;
             bi.srcIndexIn[srcNum].idx_out = GetPermIndex(si.reducedPerm, bi.srcIndexIn[srcNum].idx_in);
             if (borrowed >= bi.srcVol) {
-                borrowed /= si.reducedInShape[dim - i - 2];
+                borrowed /= si.reducedInShape[dim - i - offset];
                 bi.srcIndexIn[srcNum].step =  bi.srcVol / borrowed;
-                bi.srcIndexIn[srcNum].loop =  si.reducedInShape[dim - i - 2] / bi.srcIndexIn[srcNum].step;
-                bi.srcIndexIn[srcNum].tail =  si.reducedInShape[dim - i - 2] % \
+                bi.srcIndexIn[srcNum].loop =  si.reducedInShape[dim - i - offset] / bi.srcIndexIn[srcNum].step;
+                bi.srcIndexIn[srcNum].tail =  si.reducedInShape[dim - i - offset] % \
                                                 (bi.srcIndexIn[srcNum].step * bi.srcIndexIn[srcNum].loop);
                 break;
             } else {
                 bi.srcIndexIn[srcNum].loop = 1;
-                bi.srcIndexIn[srcNum].step = si.reducedInShape[dim - i - 2];
-                bi.srcIndexIn[srcNum].intact = 1;
+                bi.srcIndexIn[srcNum].step = si.reducedInShape[dim - i - offset];
+                bi.srcIndexIn[srcNum].loop =  si.reducedInShape[dim - i - offset] / bi.srcIndexIn[srcNum].step;
+            }
+        }
+    }
+    bi.srcIndexIn[bi.srcNum - 1].pivot = 1;
+}
+
+static bool IsSrcAxisFullyUsed(const ShapeInfo& si, const RuntimeInfo& ri) {
+    const BorrowInfo& bi = ri.borrowInfo;
+    return (bi.srcIndexIn[bi.srcNum - 1].step == si.reducedInShape[bi.srcIndexIn[bi.srcNum - 1].idx_in]);
+}
+
+static bool IsSrcAxisInDstFullyUsed(const ShapeInfo& si, RuntimeInfo& runtimeInfo, int64_t axis) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    for (int64_t i = 0; i < bi.dstNum; i++) {
+        if (axis == bi.dstIndexIn[i].idx_in) {
+            if (bi.dstIndexIn[i].step == si.reducedInShape[bi.dstIndexIn[i].idx_in]) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+/*
+ *   before extending: src:  A, (B, C)  dst: (A, C, B)
+ *   after  extending: src:  (A, B, C), dst: (A, C, B)
+ */
+static void ExtendSrcAxisIndex(const ShapeInfo& si, RuntimeInfo& ri, int borrowSrcAxisNum) {
+    BorrowInfo& bi = ri.borrowInfo;
+
+    for (int64_t i = 0; i < bi.dstNum; i++) {
+        for (int64_t j = 0; j < bi.dstNum; j++) {
+            if (bi.srcNum >= borrowSrcAxisNum) {
+                return;
+            }
+            bool exist = true;
+            for (int64_t k = 0; k < bi.srcNum; k++) {
+                if (bi.dstIndexIn[j].idx_in == bi.srcIndexIn[k].idx_in) {
+                    exist = true;
+                    break;
+                } else {
+                    exist = false;
+                }
+            }
+            if (exist) {
+                continue;
+            }
+            if (bi.dstIndexIn[j].idx_in == bi.srcIndexIn[bi.srcNum - 1].idx_in - 1) {
+                if (IsSrcAxisFullyUsed(si, ri) || \
+                    IsSrcAxisInDstFullyUsed(si, ri, bi.srcIndexIn[bi.srcNum - 1].idx_in)) {
+                    bi.srcIndexIn[bi.srcNum - 1].pivot = 0;
+                    for (int m = bi.srcNum; m >= 1; m--) {
+                        bi.srcIndexIn[m] = bi.srcIndexIn[m - 1];
+                    }
+                    bi.srcNum++;
+                    bi.srcIndexIn[0] = bi.dstIndexIn[j];
+                }
             }
         }
     }
@@ -2054,8 +2926,46 @@ static void CalcBorrowLoop(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo)
     }
 }
 
-static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
+static void CalcBorrowLoopS5(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
+
+    for (int64_t i = 0; i < bi.srcNumNoDup; i++) {
+        bi.majorSrcLoop_out *= bi.srcIndexInNoDup[i].step;
+    }
+
+    for (int64_t i = 0; i < bi.srcNumNoDup; i++) {
+        if (bi.srcIndexInNoDup[i].pivot == 1) {
+            bi.tailSrcLoop_out *= bi.srcIndexInNoDup[i].tail;
+        } else {
+            bi.tailSrcLoop_out *= bi.srcIndexInNoDup[i].step;
+        }
+    }
+
+    for (int64_t i = 0; i < bi.dstNumNoDup; i++) {
+        bi.majorDstLoop_in *= bi.dstIndexInNoDup[i].step;
+    }
+
+    for (int64_t i = 0; i < bi.dstNumNoDup; i++) {
+        if (bi.dstIndexOutNoDup[i].pivot == 1) {
+            bi.tailDstLoop_in *= bi.dstIndexOutNoDup[i].tail;
+        } else {
+            bi.tailDstLoop_in *= bi.dstIndexOutNoDup[i].step;
+        }
+    }
+}
+
+static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& ri) {
+    BorrowInfo& bi = ri.borrowInfo;
+
+    int64_t lastAxisLen = si.lastAxisLen;
+
+    if (si.isLastAxisTranspose) {
+        if (si.isLastTwoAlignedAndTrans) {
+            lastAxisLen = si.reducedInShape[si.dim - 2] * si.reducedInShape[si.dim - 1];
+        } else {
+            lastAxisLen = 1;
+        }
+    }
 
     for (int64_t i = 0; i < bi.srcNum; i++) {
         if (i == 0) {
@@ -2066,12 +2976,6 @@ static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
             bi.tailBurstLen_in *= bi.srcIndexIn[i].loop * bi.srcIndexIn[i].step;
         }
     }
-    bi.majorInEle = bi.majorBurstLen_in * si.lastAxisLen;
-    bi.tailInEle = bi.tailBurstLen_in * si.lastAxisLen;
-    bi.majorInTailEle = bi.majorBurstLen_in * si.lastAxisLen % si.elePerBlock;
-    bi.tailInTailEle = bi.tailBurstLen_in * si.lastAxisLen % si.elePerBlock;
-    bi.majorBurstLen_in = (bi.majorBurstLen_in * si.lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
-    bi.tailBurstLen_in = (bi.tailBurstLen_in * si.lastAxisLen + si.elePerBlock -1) / si.elePerBlock;
 
     for (int64_t i = 0; i < bi.dstNum; i++) {
         if (i == bi.dstNum - 1) {
@@ -2083,25 +2987,37 @@ static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
         }
     }
 
-    bi.majorOutEle = bi.majorBurstLen_out * si.lastAxisLen;
-    bi.tailOutEle = bi.tailBurstLen_out * si.lastAxisLen;
-    bi.majorOutTailEle = bi.majorBurstLen_out * si.lastAxisLen % si.elePerBlock;
-    bi.tailOutTailEle = bi.tailBurstLen_out * si.lastAxisLen % si.elePerBlock;
-    bi.majorBurstLen_out = (bi.majorBurstLen_out * si.lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
-    bi.tailBurstLen_out = (bi.tailBurstLen_out * si.lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
+    bi.majorInEle = bi.majorBurstLen_in * lastAxisLen;
+    bi.tailInEle = bi.tailBurstLen_in * lastAxisLen;
+    bi.majorInTailEle = bi.majorBurstLen_in * lastAxisLen % si.elePerBlock;
+    bi.tailInTailEle = bi.tailBurstLen_in * lastAxisLen % si.elePerBlock;
+    bi.majorBurstLen_in = (bi.majorBurstLen_in * lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
+    bi.tailBurstLen_in = (bi.tailBurstLen_in * lastAxisLen + si.elePerBlock -1) / si.elePerBlock;
+
+    bi.majorOutEle = bi.majorBurstLen_out * lastAxisLen;
+    bi.tailOutEle = bi.tailBurstLen_out * lastAxisLen;
+    bi.majorOutTailEle = bi.majorBurstLen_out * lastAxisLen % si.elePerBlock;
+    bi.tailOutTailEle = bi.tailBurstLen_out * lastAxisLen % si.elePerBlock;
+    bi.majorBurstLen_out = (bi.majorBurstLen_out * lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
+    bi.tailBurstLen_out = (bi.tailBurstLen_out * lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
 }
 
-void CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
+static bool CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& ri, int borrowDstAxisNum) {
     int64_t dim = si.dim;
     int64_t borrowed = 1;
     int64_t tailEle = si.lastAxisLen;
-    BorrowInfo& bi = runtimeInfo.borrowInfo;
-    for (int i = 0; i < BORROW_DST_AXIS_NUM; i++) {
-        if (dim >= i + 2) {
-            int64_t id = dim -i - 2;
+    int64_t offset = GetOffset(si);
+
+    if (si.isLastAxisTranspose) {
+        tailEle = 1;
+    }
+    BorrowInfo& bi = ri.borrowInfo;
+    for (int i = 0; i < borrowDstAxisNum; i++) {
+        if (dim >= i + offset) {
+            int64_t id = dim - i - offset;
             int64_t dstNum = bi.dstNum;
             int64_t index = si.reducedPerm[id];
-            int64_t dupId = GetDupAxisInSrc(runtimeInfo, index);
+            int64_t dupId = GetDupAxisInSrc(ri, index);
             bi.dstIndexIn[dstNum].idx_out = id;
             bi.dstIndexIn[dstNum].idx_in = index;
 
@@ -2113,21 +3029,21 @@ void CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
                 borrowed *= si.reducedOutShape[id];
                 bi.dstNum++;
                 bi.dstIndexIn[dstNum].loop = 1;
-                bi.dstIndexIn[dstNum].step = si.reducedOutShape[dim - i - 2];
-                bi.dstIndexIn[dstNum].intact = 1;
+                bi.dstIndexIn[dstNum].step = si.reducedOutShape[id];
                 tailEle *= bi.dstIndexIn[dstNum].step;
             } else {
-                if (borrowed * 2 > bi.dstVol) {
-                    break;
-                }
+                //if (borrowed * 2 > bi.dstVol) {
+                //    break;
+                //}
 
                 bi.dstNum++;
-                bi.dstIndexIn[dstNum].step =  bi.dstVol / borrowed;
+                bi.dstIndexIn[dstNum].step =  bi.dstVol / borrowed == 0 ? 1 : bi.dstVol /borrowed;
+                borrowed *= bi.dstIndexIn[dstNum].step;
                 bi.dstIndexIn[dstNum].loop =  si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
                 bi.dstIndexIn[dstNum].tail =  si.reducedOutShape[id] % \
                                               (bi.dstIndexIn[dstNum].step * bi.dstIndexIn[dstNum].loop);
 
-                for (int j = 0; j < ELE_NUM_PER_BLOCK_FP16; j++) {
+                for (int j = 0; j < ELE_NUM_PER_BLOCK_B16; j++) {
                     if ((bi.dstIndexIn[dstNum].tail != 0) && (tailEle * bi.dstIndexIn[dstNum].tail < si.elePerBlock)) {
                         bi.dstIndexIn[dstNum].step -= 1;
                         bi.dstIndexIn[dstNum].loop = si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
@@ -2141,35 +3057,60 @@ void CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
             }
         }
     }
+    bi.dstIndexIn[bi.dstNum - 1].pivot = 1;
+
+    if (si.isLastAxisTranspose) {
+        if (si.isLastTwoAlignedAndTrans) {
+            ExtendSrcAxisIndex(si, ri, BORROW_SRC_AXIS_NUM_LT);
+            return true;
+        }
+        if (borrowed < si.elePerBlock) {
+            return false;
+        } else {
+            ExtendSrcAxisIndex(si, ri, BORROW_SRC_AXIS_NUM_LT);
+        }
+    } else {
+        if (borrowed * si.lastAxisLen < si.elePerBlock) {
+            return false;
+        } else {
+            //ExtendSrcAxisIndex(si, ri, BORROW_SRC_AXIS_NUM);
+        }
+    }
+    return true;
 }
 
-static void ReorderIndexInfo(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-    MakeSrcIndexAsInShape(shapeInfo, runtimeInfo);
-    MakeSrcIndexAsOutShape(shapeInfo, runtimeInfo);
-    MakeDstIndexAsInShape(shapeInfo, runtimeInfo);
-    MakeDstIndexAsOutShape(shapeInfo, runtimeInfo);
+static void ReorderIndexInfo(const ShapeInfo& si, RuntimeInfo& ri) {
+    MakeSrcIndexAsInShape(si, ri);
+    MakeSrcIndexAsOutShape(si, ri);
+    MakeDstIndexAsInShape(si, ri);
+    MakeDstIndexAsOutShape(si, ri);
 }
 
-static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-    for (int64_t i = 0; i < static_cast<int64_t>(shapeInfo.reducedPerm.size()); i++) {
+static void CalcOtherAxisIndex(const ShapeInfo& si, RuntimeInfo& ri) {
+    for (int64_t i = 0; i < static_cast<int64_t>(si.reducedPerm.size()); i++) {
         bool borrowed = false;
-        for (int j = 0; j < runtimeInfo.borrowInfo.srcNum; j++) {
-            if (i == runtimeInfo.borrowInfo.srcIndexIn[j].idx_in) {
+        for (int j = 0; j < ri.borrowInfo.srcNum; j++) {
+            if (i == ri.borrowInfo.srcIndexIn[j].idx_in) {
                 borrowed = true;
             }
         }
-        for (int j = 0; j < runtimeInfo.borrowInfo.dstNum; j++) {
-            if (i == runtimeInfo.borrowInfo.dstIndexIn[j].idx_in) {
+        for (int j = 0; j < ri.borrowInfo.dstNum; j++) {
+            if (i == ri.borrowInfo.dstIndexIn[j].idx_in) {
+                borrowed = true;
+            }
+        }
+        if (si.isLastTwoAlignedAndTrans) {
+            if ((i == si.dim - 1) || (i == si.dim - 2)) {
                 borrowed = true;
             }
         }
         if (!borrowed) {
-            if (i != shapeInfo.dim - 1) {
-                int otherNum = runtimeInfo.borrowInfo.otherNum;
-                runtimeInfo.borrowInfo.otherIndex[otherNum].idx_in = i;
-                runtimeInfo.borrowInfo.otherIndex[otherNum].idx_out = GetPermIndex(shapeInfo.reducedPerm, i);
-                runtimeInfo.borrowInfo.otherIndex[otherNum].loop = shapeInfo.reducedInShape[i];
-                runtimeInfo.borrowInfo.otherNum++;
+            if (i != si.dim - 1) {
+                int otherNum = ri.borrowInfo.otherNum;
+                ri.borrowInfo.otherIndex[otherNum].idx_in = i;
+                ri.borrowInfo.otherIndex[otherNum].idx_out = GetPermIndex(si.reducedPerm, i);
+                ri.borrowInfo.otherIndex[otherNum].loop = si.reducedInShape[i];
+                ri.borrowInfo.otherNum++;
             }
         }
     }
@@ -2185,8 +3126,8 @@ static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeI
  * 3 0 1 2        n
  * 3 1 2 0        n
  * 3 1 0 2        n
- * 2 3 0 1        y 
- * 2 3 1 0        y 
+ * 2 3 0 1        y
+ * 2 3 1 0        y
  * 2 0 3 1        n
  * 2 0 1 3        n
  * 2 1 3 0        n
@@ -2207,8 +3148,8 @@ static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeI
  * there axis
  * perm           valid
  * ---------------------
- * 1 0 2          n 
- * 1 2 0          y 
+ * 1 0 2          n
+ * 1 2 0          y
  * 0 1 2          n
  * 0 2 1          n
  * 2 1 0          y
@@ -2222,31 +3163,16 @@ static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeI
  */
 static int64_t GetPermHex(const RuntimeInfo& runtimeInfo) {
     const BorrowInfo& bi = runtimeInfo.borrowInfo;
-    if (bi.ubPermNum == 4) {
-        if(bi.ubPerm[0] == 3 && bi.ubPerm[1] == 2 && bi.ubPerm[2] == 1 && bi.ubPerm[3] == 0) {
-            return 0x3210;
-        } else  if(bi.ubPerm[0] == 3 && bi.ubPerm[1] == 2 && bi.ubPerm[2] == 0 && bi.ubPerm[3] == 1) {
-            return 0x3201;
-        } else  if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 3 && bi.ubPerm[2] == 0 && bi.ubPerm[3] == 1) {
-            return 0x2301;
-        } else  if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 3 && bi.ubPerm[2] == 1 && bi.ubPerm[3] == 0) {
-            return 0x2310;
-        }
-    } else if (bi.ubPermNum == 3) {
-        if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 1 && bi.ubPerm[2] == 0) {
-            return 0x210;
-        } else if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 0 && bi.ubPerm[2] == 1) {
-            return 0x201;
-        } else if(bi.ubPerm[0] == 1 && bi.ubPerm[1] == 2 && bi.ubPerm[2] == 0) {
-            return 0x120;
-        }
-    } else if (bi.ubPermNum == 2) {
-        return 0x10;
+    int64_t perm = 0;
+    for (int i = 0; i < bi.ubPermNum; i++) {
+        perm += Hex2Bcd(bi.ubPerm[i], bi.ubPermNum - 1 - i);
     }
-    return 0;
+    return perm;
+
 }
 
 static void SetLRSB(LRSB& lrsb, int64_t p1, int64_t p2, int64_t bl, int epb) {
+    // loop repeat srcStride dstStride burstLen srcOffset dstOffset, add key words for grep
     if (p1 > 1 && p2 > 1) {
         if (p1 < p2) {
             lrsb.Set(p1, p2, 0, bl * (p1 - 1),  bl, bl * epb * p2,  bl * epb);
@@ -2256,17 +3182,29 @@ static void SetLRSB(LRSB& lrsb, int64_t p1, int64_t p2, int64_t bl, int epb) {
     }
 }
 
+static void SetLRSB(LRSB& lrsb, int64_t n, int64_t vol, int64_t p1, int64_t p2, int64_t bl, int epb) {
+    // loop repeat srcStride dstStride burstLen srcOffset dstOffset, add key words for grep
+    if (p1 > 1 && p2 > 1) {
+        if (p1 < p2) {
+            lrsb.Set(n, vol, p1, p2, 0, bl * (p1 - 1),  bl, bl * epb * p2,  bl * epb);
+        } else {
+            lrsb.Set(n, vol, p2, p1, bl * (p2 - 1), 0, bl, bl * epb, bl * epb * p1);
+        }
+    }
+}
+
+
 /*
  * 0123 -> 1203 -> 2103 -> 3210
  */
-static void RepeatStride3210(const CompilerInfo& compilerInfo,
-                             const ShapeInfo& shapeInfo,
-                             RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
-    BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
-                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
-    int64_t epb = shapeInfo.elePerBlock;
+static void RepeatStride3210(const CompilerInfo& ci,
+                             const ShapeInfo& si,
+                             RuntimeInfo& ri,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
+    BorrowInfo& bi = ri.borrowInfo;
+    int64_t bl = si.alignElement == 0 ? si.lastAxisBurstLen : si.lastAxisLen * ci.fp16Times;
+
+    int64_t epb = si.elePerBlock;
     for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
         LRSB * lrsb = bi.lrsb[i];
         int64_t* s = step[i];
@@ -2277,12 +3215,12 @@ static void RepeatStride3210(const CompilerInfo& compilerInfo,
 }
 
 /*
- * 3201:   0123  ->  2301 -> 3201 
+ * 3201:   0123  ->  2301 -> 3201
  */
 static void RepeatStride3201(const CompilerInfo& compilerInfo,
                              const ShapeInfo& shapeInfo,
                              RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2296,12 +3234,12 @@ static void RepeatStride3201(const CompilerInfo& compilerInfo,
 }
 
 /*
- * 2301:   0123  ->  2301 
+ * 2301:   0123  ->  2301
  */
 static void RepeatStride2301(const CompilerInfo& compilerInfo,
                              const ShapeInfo& shapeInfo,
                              RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2319,7 +3257,7 @@ static void RepeatStride2301(const CompilerInfo& compilerInfo,
 static void RepeatStride2310(const CompilerInfo& compilerInfo,
                              const ShapeInfo& shapeInfo,
                              RuntimeInfo& runtimeInfo,
-                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2338,7 +3276,7 @@ static void RepeatStride2310(const CompilerInfo& compilerInfo,
 static void RepeatStride210(const CompilerInfo& compilerInfo,
                             const ShapeInfo& shapeInfo,
                             RuntimeInfo& runtimeInfo,
-                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2352,12 +3290,12 @@ static void RepeatStride210(const CompilerInfo& compilerInfo,
 }
 
 /*
- * 201: 012 -> 201 
+ * 201: 012 -> 201
  */
 static void RepeatStride201(const CompilerInfo& compilerInfo,
                             const ShapeInfo& shapeInfo,
                             RuntimeInfo& runtimeInfo,
-                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2370,12 +3308,12 @@ static void RepeatStride201(const CompilerInfo& compilerInfo,
 }
 
 /*
- * 120: 012 -> 120 
+ * 120: 012 -> 120
  */
 static void RepeatStride120(const CompilerInfo& compilerInfo,
                             const ShapeInfo& shapeInfo,
                             RuntimeInfo& runtimeInfo,
-                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                            int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2393,7 +3331,7 @@ static void RepeatStride120(const CompilerInfo& compilerInfo,
 static void RepeatStride10(const CompilerInfo& compilerInfo,
                            const ShapeInfo& shapeInfo,
                            RuntimeInfo& runtimeInfo,
-                           int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+                           int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
@@ -2405,16 +3343,135 @@ static void RepeatStride10(const CompilerInfo& compilerInfo,
     }
 }
 
+static void CalcLoop1(int j, int64_t* s, int64_t num, const int64_t pi[][BORROW_MAX_AXIS_NUM_LT],
+                      int64_t& loop1, int64_t& id) {
+    for (int64_t k = 0; k < num; k++) {
+        if (pi[j][k] == pi[j + 1][k]) {
+            loop1 *= s[pi[j][k]];
+            id = k + 1;
+        } else {
+            id = k;
+            break;
+        }
+    }
+}
+
+static void CalcLoop2(int j, int64_t* s, int64_t num, const int64_t pi[][BORROW_MAX_AXIS_NUM_LT],
+                      int64_t& loop2, int64_t& id) {
+    bool found = false;
+    for (int64_t k = id; k < num; k++) {
+        if (pi[j][id] != pi[j + 1][k]) {
+            if (!found) {
+                continue;
+            }
+            if (found) {
+                break;
+            }
+        }
+        if (pi[j][id] == pi[j + 1][k]) {
+            loop2 *= s[pi[j][id]];
+            id++;
+            found = true;
+        }
+    }
+}
+
+static void CalcLoop3(int j, int64_t* s, int64_t num, const int64_t pi[][BORROW_MAX_AXIS_NUM_LT],
+                      int64_t& loop3, int64_t& id) {
+    for (int64_t k = id; k < num; k++) {
+        if (pi[j][k] == pi[j+1][k]) {
+            id = k;
+            break;
+        } else {
+            loop3 *= s[pi[j][k]];
+            id = k + 1;
+        }
+    }
+}
+
+static void CalcBurstLen(int j, int64_t* s, int64_t num, const int64_t pi[][BORROW_MAX_AXIS_NUM_LT],
+                         int64_t& bl, int64_t& id) {
+    for (int64_t k = id; k < num; k++) {
+        bl *= s[pi[j][k]];
+    }
+}
+
+static void RepeatStride(const CompilerInfo& ci,
+                         const ShapeInfo& si,
+                         RuntimeInfo& ri,
+                         int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
+    BorrowInfo& bi = ri.borrowInfo;
+    int64_t burstLen = ci.fp16Times;
+    if (si.isLastTwoAlignedAndTrans) {
+        burstLen = si.reducedInShape[si.dim - 2] * si.reducedInShape[si.dim - 1] / si.elePerBlock;
+    }
+    int64_t id = BUILD_T_ID(bi.dupAxis, bi.srcNum, bi.dstNum, bi.srcAxisPerm, bi.dstAxisPerm, GetPermHex(ri));
+    const PermInfo& permInfo = gPermDict[id];
+
+    int64_t epb = si.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        for (int j = 0; j < UB_REORDER_NUM; j++){
+            int64_t loop1 = 1;
+            int64_t loop2 = 1;
+            int64_t loop3 = 1;
+            int64_t vol = 1;
+            int64_t bl = burstLen;
+            int64_t id = 0;
+            CalcLoop1(j, s, bi.ubPermNum, permInfo.perm, loop1, id);
+            CalcLoop2(j, s, bi.ubPermNum, permInfo.perm, loop2, id);
+            CalcLoop3(j, s, bi.ubPermNum, permInfo.perm, loop3, id);
+            CalcBurstLen(j, s, bi.ubPermNum, permInfo.perm, bl, id);
+            vol = loop2 * loop3 * bl * epb;
+            if ((loop1 != 0) && (loop2 != 0) && (loop3 != 0) && (bl != 0)) {
+                SetLRSB(lrsb[j], loop1, vol, loop2, loop3, bl, epb);
+            }
+        }
+    }
+}
+
+static void SetVol(const ShapeInfo& si, RuntimeInfo& ri, int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
+    BorrowInfo& bi = ri.borrowInfo;
+    for (int64_t i = 0; i < UB_REORDER_COMBINATION; i++) {
+        for (int64_t j = 0; j < BORROW_MAX_AXIS_NUM_LT; j++) {
+            if (step[i][j] != 0) {
+                bi.xdxsVol[i] *= step[i][j];
+            } else {
+                break;
+            }
+        }
+    }
+    if (si.reducedInShape[si.dim - 1] >= si.reducedInShape[si.dim - 2]) {
+        bi.lastTwoLoop = si.reducedInShape[si.dim - 2] / EPB16;
+        bi.lastTwoRepeat = si.reducedInShape[si.dim - 1] / EPB16;
+        bi.lastTwosListRepeat = si.reducedInShape[si.dim - 1] * EPB16;
+        bi.lastTwodListRepeat = EPB16;
+        bi.lastTwosStride = 1;
+        bi.lastTwodStride = si.reducedInShape[si.dim - 2];
+    } else {
+        bi.lastTwoLoop = si.reducedInShape[si.dim - 1] / EPB16;
+        bi.lastTwoRepeat = si.reducedInShape[si.dim - 2] / EPB16;
+        bi.lastTwosListRepeat = EPB16;
+        bi.lastTwodListRepeat = si.reducedInShape[si.dim - 2] * EPB16;
+        bi.lastTwosStride = si.reducedInShape[si.dim - 1];
+        bi.lastTwodStride = 1;
+    }
+
+}
+
 /*   0 :  major_dst_major_src
- *   1 :  major_dst_tail_src 
- *   2 :  major_src_tail_dst
- *   3 :  tail_src_tail_dst
+ *   1 :  major_dst_tail_src
+ *   2 :  tail_dst_major_src
+ *   3 :  tail_dst_tail_src
  *
  */
 #define SET_P4(d0, p0, p1, p2, p3) step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2, step[d0][3] = p3;
+#define SET_P6(d0, p0, p1, p2, p3, p4, p5) step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2;\
+                                           step[d0][3] = p3, step[d0][4] = p4, step[d0][5] = p5;
 
-static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM]) {
-    const BorrowInfo& bi = runtimeInfo.borrowInfo; 
+static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
+    const BorrowInfo& bi = runtimeInfo.borrowInfo;
 
     if (bi.srcNum == 1 && bi.dstNum == 1) {
         SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, 0, 0);
@@ -2494,14 +3551,14 @@ static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_
         SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, 0, 0);
     }
 
-    if(bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
+    if (bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
         SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
         SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
         SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, 0)
         SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, 0)
     }
 
-    if(bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
+    if (bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
         SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
         SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
         SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
@@ -2509,13 +3566,104 @@ static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_
     }
 }
 
+//static void ConstructStepS5(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
+//    const BorrowInfo& bi = runtimeInfo.borrowInfo;
+//
+//    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
+//        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+//        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+//        SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+//        SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+//    }
+//
+//    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
+//        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+//        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+//        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+//        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+//    }
+//
+//    if (bi.srcNum == 2 && bi.dstNum == 3 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x021) {
+//        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+//        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+//        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+//        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+//    }
+//
+//    if (bi.srcNum == 3 && bi.dstNum == 3 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.dstAxisPerm == 0x210) {
+//        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
+//        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
+//        SET_P4(2, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
+//        SET_P4(3, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
+//    }
+//
+//    if (bi.srcNum == 3 && bi.dstNum == 3 && bi.srcNumNoDup == 0 && bi.dstNumNoDup == 0 && bi.dstAxisPerm == 0x210) {
+//        SET_P4(0, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
+//        //SET_P4(1, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
+//        //SET_P4(2, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
+//        //SET_P4(3, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
+//    }
+//
+//    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.dstAxisPerm == 0x10) {
+//        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+//        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+//        SET_P4(2, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+//        SET_P4(3, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+//    }
+//}
+
+static void ConstructStepS5New(const RuntimeInfo& ri, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
+    const BorrowInfo& bi = ri.borrowInfo;
+    int64_t st[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT] = {0};
+    int axis = 0;
+    for (int64_t i = 0; i < bi.dstNumNoDup; i++) {
+        if (bi.dstIndexIn[i].dup == 1) {
+            continue;
+        }
+        if (bi.dstIndexIn[i].pivot == 0) {
+            st[0][axis] = bi.dstIndexIn[i].step;
+            st[1][axis] = bi.dstIndexIn[i].step;
+            st[2][axis] = bi.dstIndexIn[i].step;
+            st[3][axis] = bi.dstIndexIn[i].step;
+        } else {
+            st[0][axis] = bi.dstIndexIn[i].step;
+            st[1][axis] = bi.dstIndexIn[i].step;
+            st[2][axis] = bi.dstIndexIn[i].tail;
+            st[3][axis] = bi.dstIndexIn[i].tail;
+        }
+        axis++;
+    }
+
+    for (int64_t i = 0; i < bi.srcNum; i++) {
+        if (bi.srcIndexIn[i].pivot == 0) {
+            st[0][axis] = bi.srcIndexIn[i].step;
+            st[1][axis] = bi.srcIndexIn[i].step;
+            st[2][axis] = bi.srcIndexIn[i].step;
+            st[3][axis] = bi.srcIndexIn[i].step;
+        } else {
+            st[0][axis] = bi.srcIndexIn[i].step;
+            st[1][axis] = bi.srcIndexIn[i].tail;
+            st[2][axis] = bi.srcIndexIn[i].step;
+            st[3][axis] = bi.srcIndexIn[i].tail;
+        }
+        axis++;
+    }
+
+    for (int64_t i = 0; i < UB_REORDER_COMBINATION; i++) {
+        SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
+        SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
+        SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
+        SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
+    }
+}
+
 static void CalcRepetStride(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     int perm = GetPermHex(runtimeInfo);
     runtimeInfo.borrowInfo.axisPerm = perm;
 
-    int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM];
+    int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT];
     for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
-        for (int j = 0; j < BORROW_MAX_AXIS_NUM; j++) {
+        for (int j = 0; j < BORROW_MAX_AXIS_NUM_LT; j++) {
             step[i][j] = 0;
         }
     }
@@ -2550,12 +3698,30 @@ static void CalcRepetStride(const CompilerInfo& compilerInfo, const ShapeInfo& s
     }
 }
 
+static void CalcRepetStrideS5(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    int perm = GetPermHex(runtimeInfo);
+    runtimeInfo.borrowInfo.axisPerm = perm;
+
+    int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT];
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        for (int j = 0; j < BORROW_MAX_AXIS_NUM_LT; j++) {
+            step[i][j] = 0;
+        }
+    }
+
+    ConstructStepS5New(runtimeInfo, step);
+
+    RepeatStride(compilerInfo, shapeInfo, runtimeInfo, step);
+
+    SetVol(shapeInfo, runtimeInfo, step);
+}
+
 static bool TilingDataScenario4(const CompilerInfo& compilerInfo,
                                 const ShapeInfo& shapeInfo,
                                 RuntimeInfo& runtimeInfo) {
     CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
-    CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo);
-    CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo);
+    CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM);
+    TRANSPOSE_CHECK_RET(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM));
     MergeDupAxis(shapeInfo, runtimeInfo);
     ReorderIndexInfo(shapeInfo, runtimeInfo);
     CalcSrcDstPerm(shapeInfo, runtimeInfo);
@@ -2565,6 +3731,25 @@ static bool TilingDataScenario4(const CompilerInfo& compilerInfo,
     CalcPermInUb(shapeInfo, runtimeInfo);
     CalcRepetStride(compilerInfo, shapeInfo, runtimeInfo);
     SplitCore(compilerInfo, shapeInfo, runtimeInfo);
+    CalcStrideS4(shapeInfo, runtimeInfo);
+    return true;
+}
+
+static bool TilingDataScenario5(const CompilerInfo& compilerInfo,
+                                const ShapeInfo& shapeInfo,
+                                RuntimeInfo& runtimeInfo) {
+    CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
+    CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM_LT);
+    TRANSPOSE_CHECK_RET(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT));
+    MergeDupAxis(shapeInfo, runtimeInfo);
+    ReorderIndexInfo(shapeInfo, runtimeInfo);
+    CalcSrcDstPerm(shapeInfo, runtimeInfo);
+    CalcBorrowLoopS5(shapeInfo, runtimeInfo);
+    CalcBorrowBurstLen(shapeInfo, runtimeInfo);
+    CalcOtherAxisIndex(shapeInfo, runtimeInfo);
+    CalcPermInUb(shapeInfo, runtimeInfo);
+    SplitCore(compilerInfo, shapeInfo, runtimeInfo);
+    CalcRepetStrideS5(compilerInfo, shapeInfo, runtimeInfo);
     CalcStrideS4(shapeInfo, runtimeInfo);
     return true;
 }
@@ -2649,14 +3834,11 @@ static void SplitColRowForCores(const CompilerInfo & compilerInfo,
 static void SplitNByFactor(RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
     priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
     shared_ptr<TilingModel> tm = pqtm.top();
-    int64_t vol = tm->ncr.cVol * tm->ncr.rVol;
     int64_t factor = tm->sp.nFactor;
-    runtimeInfo.rPartVol = vol;
     runtimeInfo.infoN.resize(factor);
     vector<InfoN> & info = runtimeInfo.infoN;
     for (int64_t i = 0; i < factor; i++) {
         info[i].nOffsetLogic = runtimeInfo.nRange[i].first;
-        info[i].nOffsetActual = runtimeInfo.nRange[i].first * vol;
         info[i].loopOnN = runtimeInfo.nRange[i].second;
 
     }
@@ -2694,6 +3876,7 @@ static bool SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                     col = col - k;
                 }
                 if (col == 0) {
+                    OP_LOGI("Transpose", "SplitColByFactor, col is 0");
                     return false;
                 }
                 info[i].colPerMC = min(maxCol, col);
@@ -2750,6 +3933,7 @@ static bool SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                     row = row - k;
                 }
                 if (row == 0) {
+                    OP_LOGI("Transpose", "SplitColByFactor, row is 0");
                     return false;
                 }
                 info[i].rowPerMR = min(maxRow, row);
@@ -2803,8 +3987,10 @@ void CalcJumpInfo(RuntimeInfo & runtimeInfo,
     // 1. n jump
     for (int64_t i = runtimeInfo.nJumpAxisNum - 1; i >= 0; i--) {
         int64_t p = tm->ncr.n[i];
+        int64_t index = GetPermIndex(perm, p);
         runtimeInfo.nJumpFactor[nAxisIndex] = inShape[p];
-        runtimeInfo.nJumpStride[nAxisIndex] = CalcStride(inShape, dim, p);
+        runtimeInfo.nJumpStrideIn[nAxisIndex] = CalcStride(inShape, dim, p);
+        runtimeInfo.nJumpStrideOut[nAxisIndex] = CalcStride(outShape, dim, index);
         nAxisIndex++;
     }
 
@@ -2828,83 +4014,10 @@ void CalcJumpInfo(RuntimeInfo & runtimeInfo,
     }
 }
 
-static bool IsContiguousIndex(const vector<int64_t> & perm, vector<int64_t> partialPerm) {
-    vector<int64_t> index;
-    for (size_t i = 0; i < partialPerm.size(); i++) {
-        index.push_back(GetPermIndex(perm, partialPerm[i]));
-    }
-    sort(index.begin(), index.end());
-    for (size_t i = 0; i < index.size() - 1 ; i++) {
-        if (index[i] + 1 != index[i + 1]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static bool IsContiguousPerm(const vector<int64_t> & perm, vector<int64_t> partialPerm) {
-    sort(partialPerm.begin(), partialPerm.end());
-    for (size_t i = 0; i < partialPerm.size() - 1 ; i++) {
-        if (partialPerm[i] + 1 != partialPerm[i + 1]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static bool IsContainTailAxis(const vector<int64_t> & perm, const vector<int64_t> & col) {
-    int lastAxis = perm.size() - 1;
-    for(size_t i = 0; i < col.size(); i++) {
-        if (lastAxis == col[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool IsCouldBeCol(const vector<int64_t> & perm, const vector<int64_t> & col, const vector<int64_t> & colPerm) {
-    if (!IsSubset(colPerm, col)) {
-        return false;
-    }
-    if (!IsContainTailAxis(perm, col)) {
-        return false;
-    }
-    if (!IsContiguousPerm(perm, col)) {
-        return false;
-    }
-    return true;
-}
-
-static bool IsCouldBeRow(const vector<int64_t> & row, const vector<int64_t> & rowPerm) {
-    if (IsSubset(rowPerm, row)) {
-        return true;
-    }
-    return false;
-}
-
-static void FindLongestRowPerm(const ShapeInfo & shapeInfo, RuntimeInfo & runtimeInfo) {
-    int64_t dim = shapeInfo.dim;
-    int64_t re = dim - 1; //right endian
-    int idx = GetPermIndex(shapeInfo.reducedPerm, re);
-    for (int i = idx + 1; i < dim; i++) {
-        runtimeInfo.rowPerm.push_back(shapeInfo.reducedPerm[i]);
-    }
-}
-
 static void FindLongestColPerm(const ShapeInfo & shapeInfo,RuntimeInfo & runtimeInfo) {
     int64_t dim = shapeInfo.dim;
-    int64_t le = shapeInfo.reducedPerm[dim - 1]; //left endian
-    int idx = le;
-    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
-        vector<int64_t> cPerm;
-        for (int j = idx + 1; j < dim; j++) {
-            cPerm.push_back(j);
-        }
-        if (IsContiguousIndex(shapeInfo.reducedPerm, cPerm)) {
-            runtimeInfo.colPerm = cPerm;
-            return;
-        }
-        idx++;
+    for (int64_t i = 1; i < dim; i++) {
+        runtimeInfo.colPerm.push_back(i);
     }
 }
 
@@ -2957,35 +4070,46 @@ static int64_t CalcVolumeByPartialPerm(const ShapeInfo & shapeInfo,
     return vol;
 }
 
+static int64_t CalcSrcRightIndexInDst(const vector<int64_t>& perm, const vector<int64_t>& col) {
+    int64_t re = -1;
+    for (size_t i = 0; i < col.size(); i++) {
+        int64_t index = GetPermIndex(perm, col[i]);
+        if (index > re) {
+            re = index;
+        }
+    }
+    return re;
+}
+
 static void DispatchNCR(const ShapeInfo & shapeInfo, RuntimeInfo & runtimeInfo) {
-    vector<int64_t> row;
+    vector<int64_t> trow;
     int64_t dim = shapeInfo.dim;
 
-    FindLongestRowPerm(shapeInfo, runtimeInfo);
     FindLongestColPerm(shapeInfo, runtimeInfo);
 
-    for (int64_t i = dim - 1; i >= 0; i--) {
-        row.push_back(shapeInfo.reducedPerm[i]);
-        if (!IsCouldBeRow(row, runtimeInfo.rowPerm)) {
-            break;
+
+    for (size_t i = 0; i < runtimeInfo.colPerm.size(); i++) {
+        vector<int64_t> col(runtimeInfo.colPerm.begin() + i, runtimeInfo.colPerm.end());
+        int64_t re = CalcSrcRightIndexInDst(shapeInfo.reducedPerm, col);
+
+        if (re == dim - 1) {
+            continue;
         }
-        vector<int64_t> col;
-        for (int64_t j = i - 1; j >= 0 ; j--) {
-            col.push_back(shapeInfo.reducedPerm[j]);
-            if (IsCouldBeCol(shapeInfo.reducedPerm, col, runtimeInfo.colPerm)) {
-                vector<int64_t> n;
-                GetN(shapeInfo.reducedPerm, row, col, n);
-                NCR ncr;
-                FixNCRSeq(shapeInfo.reducedPerm, n, col, row);
-                ncr.n = n;
-                ncr.col = col;
-                ncr.row = row;
-                ncr.nVol = CalcVolumeByPartialPerm(shapeInfo, n);
-                ncr.cVol = CalcVolumeByPartialPerm(shapeInfo, col);
-                ncr.rVol = CalcVolumeByPartialPerm(shapeInfo, row);
-                runtimeInfo.ncrs.push_back(ncr);
-            }
-        }
+
+        vector<int64_t> trow(shapeInfo.reducedPerm.begin() + re + 1, shapeInfo.reducedPerm.end());
+
+        vector<int64_t> n;
+        vector<int64_t> row(trow.begin(), trow.end());
+        NCR ncr;
+        GetN(shapeInfo.reducedPerm, row, col, n);
+        FixNCRSeq(shapeInfo.reducedPerm, n, col, row);
+        ncr.n = n;
+        ncr.col = col;
+        ncr.row = row;
+        ncr.nVol = CalcVolumeByPartialPerm(shapeInfo, n);
+        ncr.cVol = CalcVolumeByPartialPerm(shapeInfo, col);
+        ncr.rVol = CalcVolumeByPartialPerm(shapeInfo, row);
+        runtimeInfo.ncrs.push_back(ncr);
     }
 }
 
@@ -3126,13 +4250,13 @@ public:
     ~Model006() {}
     void Decision(const NCR & n, int64_t dim) {
         if (n.nVol >= coreNum) {
-            if (n.cVol >= 8 && n.rVol >= 8) {
+            if (n.cVol >= 24 && n.rVol >= 24) {
                 sp.Set(coreNum, 1, 1);
             } else {
                 priority = INVALID_SPLIT;
             }
         } else {
-            if (n.cVol < 8 || n.rVol < 8) {
+            if (n.cVol < 24 || n.rVol < 24) {
                 priority = INVALID_SPLIT;
             } else {
                 if (n.cVol > n.rVol) {
@@ -3160,7 +4284,7 @@ public:
         int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
         maxCol = Align16(ubSize, n.rVol, ubSize) / 2;
 
-        if ((n.cVol >= 8) && (n.rVol < F2T_THRESHOLD_B32)) {
+        if ((n.rVol < F2T_THRESHOLD_B32) && (n.cVol * n.rVol >= 2048)) {
             sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
@@ -3189,7 +4313,7 @@ public:
         int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
         maxRow = Align16(ubSize, n.cVol, ubSize) / 2;
 
-        if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol >= 8)) {
+        if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol * n.cVol >= 2048)) {
             sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
@@ -3354,13 +4478,13 @@ public:
     ~Model006_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         if (n.nVol >= coreNum) {
-            if (n.cVol >= 16 && n.rVol >= 16) {
+            if (n.cVol >= 32 && n.rVol >= 32) {
                 sp.Set(coreNum, 1, 1);
             } else {
                 priority = INVALID_SPLIT;
             }
         } else {
-            if (n.cVol < 16 || n.rVol < 16) {
+            if (n.cVol < 48 || n.rVol < 48) {
                 priority = INVALID_SPLIT;
             } else {
                 if (n.cVol > n.rVol) {
@@ -3390,7 +4514,7 @@ public:
         int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
         maxCol = Align16(ubSize, n.rVol, ubSize);
 
-        if ((n.cVol >= 16) && (n.rVol < F2T_THRESHOLD_B16)) {
+        if ((n.rVol < F2T_THRESHOLD_B16) && (n.cVol * n.rVol >= 4096)) {
             sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
@@ -3421,7 +4545,7 @@ public:
         int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
         maxRow = Align16(ubSize, n.cVol, ubSize);
 
-        if ((n.cVol < F2T_THRESHOLD_B16) && (n.rVol >= 16)) {
+        if ((n.cVol < F2T_THRESHOLD_B16) && (n.rVol * n.cVol >= 4096)) {
             sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
@@ -3437,6 +4561,25 @@ private:
             return false;
         }
         return true;
+    }
+};
+
+class Model002_b64 : public TilingModel {
+public:
+    Model002_b64(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002_b64") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 4;
+        maxRow = 128;
+    }
+    ~Model002_b64() {}
+    void Decision(const NCR & n, int64_t dim) {
+        bool res = ((n.cVol >= 16) && (n.rVol >= 16 * coreNum));
+        if (res) {
+            sp.Set(1, 1, coreNum);
+        } else {
+            priority = INVALID_SPLIT;
+        }
+        ncr = n;
     }
 };
 
@@ -3462,7 +4605,7 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
             ADD_MODEL(Model007);
             ADD_MODEL(Model008);
         }
-    } else {
+    } else if (compilerInfo.fp16Times == 1) {
         for (size_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
             ADD_MODEL(Model001_b16);
             ADD_MODEL(Model002_b16);
@@ -3472,6 +4615,10 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
             ADD_MODEL(Model006_b16);
             ADD_MODEL(Model007_b16);
             ADD_MODEL(Model008_b16);
+        }
+    } else if (compilerInfo.fp16Times == 4) {
+        for (size_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
+            ADD_MODEL(Model002_b64);
         }
     }
 }
@@ -3498,10 +4645,12 @@ static void Composite(RuntimeInfo & runtimeInfo, int64_t coreNum) {
 static bool IsScenario7Accept(const RuntimeInfo & runtimeInfo) {
     priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
     if (pqtm.empty()) {
+        OP_LOGI("Transpose", "IsScenario7Accept, pqtm is empty.");
         return false;
     }
     shared_ptr<TilingModel> tm = pqtm.top();
     if (tm->priority == INVALID_SPLIT) {
+        OP_LOGI("Transpose", "IsScenario7Accept, priority is INVALID_SPLIT.");
         return false;
     }
     return true;
@@ -3541,14 +4690,250 @@ static bool TilingDataScenario8(const CompilerInfo & compilerInfo,
     return true;
 }
 
-static bool ScenarioGuaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
+bool TilingDataScenario9(const CompilerInfo & compilerInfo,
+                         const ShapeInfo & shapeInfo,
+                         RuntimeInfo & runtimeInfo) {
+    int64_t dim = shapeInfo.dim;
+    int64_t index = 0;
+
+    //1. dst stride
+    for (int64_t i = 0; i < dim - 2; i++) {
+        runtimeInfo.dstJumpStride[i] = CalcStride(shapeInfo.reducedOutShape, dim, i);
+    }
+
+    //2. src stride
+    for (int64_t i = 0; i < dim - 2; i++) {
+        runtimeInfo.srcJumpStride[i] = CalcStride(shapeInfo.reducedInShape, dim, shapeInfo.reducedPerm[i]);
+    }
+
+    //3. dst factor
+    for (int64_t i = 0; i < dim - 2; i++) {
+        runtimeInfo.dstJumpFactor[index++] = shapeInfo.reducedOutShape[i];
+    }
+
+    //4. src stride for repeat in data_move
+    int64_t vol = 1;
+    int64_t repeatAxis = shapeInfo.reducedPerm[dim - 2];
+    for (int64_t i = repeatAxis + 1; i < shapeInfo.dim - 1; i++) {
+        vol *= shapeInfo.reducedInShape[i];
+    }
+    runtimeInfo.srcStride = (vol - 1) * shapeInfo.lastAxisBurstLen;
+
+    //5. init tuple
+    CalcTupleS9(compilerInfo, shapeInfo, runtimeInfo);
+
+    return true;
+}
+
+//static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t& cFactor, int64_t& rFactor) {
+//    double diff = shapeInfo.reducedInShape[shapeInfo.dim - 1] * 1.0 / shapeInfo.reducedInShape[shapeInfo.dim - 2];
+//    double minDiff = std::numeric_limits<double>::max();
+//    for (int64_t i = 1; i <= crFactor / 2; i++) {
+//        int j = crFactor / i;
+//        double rtDiff = i * 1.0 / j;
+//        if ((abs(rtDiff - diff)) < minDiff) {
+//            cFactor = i;
+//            rFactor = j;
+//            minDiff = abs(rtDiff - diff);
+//        }
+//    }
+//
+//    double rtDiff = crFactor;
+//    if ((abs(rtDiff - diff)) < minDiff) {
+//        cFactor = 1;
+//        rFactor = crFactor;
+//    }
+//}
+//
+//static void CalcUnit(const ShapeInfo& shapeInfo,
+//                     int64_t colUnit, int64_t rowUnit,
+//                     int64_t& colUnitNum, int64_t& rowUnitNum,
+//                     int64_t& colTail, int64_t& rowTail) {
+//    colUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 1] / colUnit;
+//    rowUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 2] / rowUnit;
+//    colTail = shapeInfo.reducedInShape[shapeInfo.dim - 1] % colUnit;
+//    rowTail = shapeInfo.reducedInShape[shapeInfo.dim - 2] % rowUnit;
+//}
+//
+//static void Composite2D(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo,
+//                        int64_t nFactor, int64_t cFactor, int64_t rFactor,
+//                        int64_t colUnit, int64_t rowUnit, int64_t colTail, int64_t rowTail,
+//                        int64_t p1Num[], int64_t p2Num[], int64_t loop1[], int64_t loop2[]) {
+//
+//    TwoDInfo & twoDInfo = runtimeInfo.twoDInfo;
+//    twoDInfo.infoPerCore2D.resize(compilerInfo.coreNum);
+//
+//    for (int64_t i = 0; i < nFactor; i++) {
+//        int64_t colOffset = 0;
+//        for (int64_t j = 0; j < cFactor; j++) {
+//            int64_t rowOffset = 0;
+//            for (int64_t k = 0; k < rFactor; k++) {
+//                int64_t id = i * cFactor * rFactor + j * rFactor + k;
+//
+//                // 1. n
+//                if (i < p1Num[0]) {
+//                    twoDInfo.infoPerCore2D[id].infoN.loopOnN = loop1[0];
+//                } else {
+//                    twoDInfo.infoPerCore2D[id].infoN.loopOnN = loop2[0];
+//                }
+//
+//                // 2. col
+//                if (j < p1Num[1]) {
+//                    twoDInfo.infoPerCore2D[id].infoCol2D.loopOnMC = loop1[1];
+//                    twoDInfo.infoPerCore2D[id].infoCol2D.colOffset = colOffset;
+//                }else {
+//                    twoDInfo.infoPerCore2D[id].infoCol2D.loopOnMC = loop2[1];
+//                    twoDInfo.infoPerCore2D[id].infoCol2D.colOffset = colOffset;
+//                }
+//                if (j == p1Num[1] + p2Num[1] - 1) {
+//                    twoDInfo.infoPerCore2D[id].infoCol2D.colTC = colTail;
+//                }
+//                twoDInfo.infoPerCore2D[id].infoCol2D.colPerMC = colUnit;
+//                twoDInfo.infoPerCore2D[id].infoCol2D.colBlockPerMC += colUnit / shapeInfo.elePerBlock;
+//
+//                // 3. row
+//                if (k < p1Num[2]) {
+//                    twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop1[2];
+//                    twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
+//                    rowOffset += loop1[2] * rowUnit;
+//                }else {
+//                    twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop2[2];
+//                    twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
+//                    rowOffset += loop2[2] * rowUnit;
+//                }
+//                if (k == p1Num[2] + p2Num[2] - 1) {
+//                    twoDInfo.infoPerCore2D[id].infoRow2D.rowTR = rowTail;
+//                }
+//                twoDInfo.infoPerCore2D[id].infoRow2D.rowPerMR = rowUnit;
+//                twoDInfo.infoPerCore2D[id].infoRow2D.rowBlockPerMR = rowUnit / shapeInfo.elePerBlock;
+//            }
+//            if (j < p1Num[1]) {
+//                colOffset += loop1[1] * colUnit;
+//            }else {
+//                colOffset += loop2[1] * colUnit;
+//            }
+//        }
+//    }
+//}
+//
+//static bool TilingDataScenario10(const CompilerInfo & compilerInfo,
+//                                 const ShapeInfo & shapeInfo,
+//                                 RuntimeInfo & runtimeInfo) {
+//    int64_t dim = shapeInfo.dim;
+//    int64_t height =  (int64_t(compilerInfo.ubSizeCouldUse / 2 / shapeInfo.lastAxisBurstLen / EPB16)) * EPB16;
+//    if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < height) {
+//        height = shapeInfo.reducedInShape[shapeInfo.dim - 2];
+//    }
+//    int64_t p1Num[3]; // 0: n, 1: col, 2: row
+//    int64_t p2Num[3];
+//    int64_t loop1[3];
+//    int64_t loop2[3];
+//    int64_t nFactor = 1;
+//    int64_t crFactor = compilerInfo.coreNum / nFactor;
+//    int64_t cFactor = 1;
+//    int64_t rFactor = 1;
+//    int64_t colUnit = 256;
+//    int64_t rowUnit = 128;
+//    int64_t colUnitNum = 1;
+//    int64_t rowUnitNum = 1;
+//    int64_t colTail = 0;
+//    int64_t rowTail = 0;
+//
+//    if (crFactor == 0) {
+//        crFactor = 1;
+//    }
+//
+//    if (shapeInfo.reducedInShape[shapeInfo.dim - 1] < colUnit) {
+//        colUnit = shapeInfo.reducedInShape[shapeInfo.dim - 1];
+//    }
+//
+//    if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < rowUnit) {
+//        rowUnit = shapeInfo.reducedInShape[shapeInfo.dim - 2];
+//    }
+//
+//    CalcCRFactor(shapeInfo, crFactor, cFactor, rFactor);
+//    CalcUnit(shapeInfo, colUnit, rowUnit, colUnitNum, rowUnitNum, colTail, rowTail);
+//    SplitEvenly(nFactor, 1, p1Num[0], p2Num[0], loop1[0], loop2[0]);
+//    SplitEvenly(cFactor, colUnitNum, p1Num[1], p2Num[1], loop1[1], loop2[1]);
+//    SplitEvenly(rFactor, rowUnitNum, p1Num[2], p2Num[2], loop1[2], loop2[2]);
+//
+//    Composite2D(compilerInfo, shapeInfo, runtimeInfo,
+//                nFactor, cFactor, rFactor, colUnit, rowUnit, colTail, rowTail, p1Num, p2Num, loop1, loop2);
+//
+//    TwoDInfo& tdInfo = runtimeInfo.twoDInfo;
+//
+//    tdInfo.nAxisNum = 0;
+//
+//    tdInfo.colPerMC = colUnit;
+//    tdInfo.colBlockPerMC = colUnit / shapeInfo.elePerBlock;
+//    tdInfo.colBlockTC = colTail / shapeInfo.elePerBlock;
+//
+//    tdInfo.rowPerMR = rowUnit;
+//    tdInfo.rowBlockPerMR = rowUnit / shapeInfo.elePerBlock;
+//    tdInfo.rowBlockTR = rowTail / shapeInfo.elePerBlock;
+//
+//    tdInfo.srcStrideIn = shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock - tdInfo.colBlockPerMC;
+//    tdInfo.srcStrideInTail = shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock - tdInfo.colBlockTC;
+//    tdInfo.dstStrideOut = shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock - tdInfo.rowBlockPerMR;
+//    tdInfo.dstStrideOutTail = shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock - tdInfo.rowBlockTR;
+//
+//    return true;
+//}
+
+static bool TilingDataScenario10(const CompilerInfo & compilerInfo,
+                                 const ShapeInfo & shapeInfo,
+                                 RuntimeInfo & runtimeInfo) {
+    CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
+    CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM_LT);
+    CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT);
+    MergeDupAxis(shapeInfo, runtimeInfo);
+    ReorderIndexInfo(shapeInfo, runtimeInfo);
+    CalcSrcDstPerm(shapeInfo, runtimeInfo);
+    CalcBorrowLoopS5(shapeInfo, runtimeInfo);
+    CalcBorrowBurstLen(shapeInfo, runtimeInfo);
+    CalcOtherAxisIndex(shapeInfo, runtimeInfo);
+    CalcPermInUb(shapeInfo, runtimeInfo);
+    SplitCore(compilerInfo, shapeInfo, runtimeInfo);
+    CalcRepetStrideS5(compilerInfo, shapeInfo, runtimeInfo);
+    CalcStrideS4(shapeInfo, runtimeInfo);
+    return true;
+}
+
+static void Scenario2Guaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     Reshape(shapeInfo);
     shapeInfo.scenario = SCENARIO_2;
     shapeInfo.isLastAxisHuge = true;
-    return TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
 }
 
-static bool IsSpecificShape(const ShapeInfo &shapeInfo) {
+static void Scenario5Guaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
+    shapeInfo.scenario = SCENARIO_5;
+}
+
+static bool IsSpecificShape(const CompilerInfo compilerInfo, const ShapeInfo &shapeInfo, TransposeScenario& scenario) {
+    for (uint64_t i = 0; i < gSpecificShape.size(); i++) {
+        int dim = gSpecificShape[i][1];
+        bool match = true;
+        if (shapeInfo.dim != dim) {
+            continue;
+        }
+        if (gSpecificShape[i][2] != compilerInfo.fp16Times * 2) {
+            continue; 
+        }
+        for (int64_t j = 0; j < dim; j++) {
+            if (shapeInfo.reducedInShape[j] != gSpecificShape[i][3 + j]) {
+                match = false;
+                break;
+            }
+            if (shapeInfo.reducedPerm[j] != gSpecificShape[i][11 + j]) {
+                match = false;
+                break;
+            }
+        }
+        if (match) {
+            scenario = (TransposeScenario)gSpecificShape[i][0];
+            return true;
+        }
+    }
     return false;
 }
 
@@ -3556,50 +4941,72 @@ bool TransposeCalcTilingData(const string &opType,
                              const CompilerInfo &compilerInfo,
                              ShapeInfo &shapeInfo,
                              RuntimeInfo &runtimeInfo) {
-    bool res = true;
-    if (IsSpecificShape(shapeInfo)) {
-        return ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
+    bool res = false;
+    TransposeScenario scenario;
+    if (IsSpecificShape(compilerInfo, shapeInfo, scenario)) {
+        shapeInfo.scenario = scenario;
     }
 
-    switch (shapeInfo.scenario) {
-        case SCENARIO_0:
-            res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            break;
-        case SCENARIO_1:
-            res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            break;
-        case SCENARIO_2:
-            res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            break;
-        case SCENARIO_3:
-            res = TilingDataScenario3(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario3(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            break;
-        case SCENARIO_4:
-            res = TilingDataScenario4(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario4(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            break;
-        case SCENARIO_6:
-            res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            break;
-        case SCENARIO_7:
-            res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
-            if (res == false) {
-                res = ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
-                OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            } else {
-                OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
-            }
-            break;
-        case SCENARIO_8:
-            res = TilingDataScenario8(compilerInfo, shapeInfo, runtimeInfo);
-            break;
-        default:
-            break;
+    while (!res) {
+        switch (shapeInfo.scenario) {
+            case SCENARIO_0:
+                res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGI(opType.c_str(), "%s", PrintScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            case SCENARIO_1:
+                res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGD(opType.c_str(), "%s", PrintScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            case SCENARIO_2:
+                res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGI(opType.c_str(), "%s", PrintScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            case SCENARIO_3:
+                res = TilingDataScenario3(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGI(opType.c_str(), "%s", PrintScenario3(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            case SCENARIO_4:
+                res = TilingDataScenario4(compilerInfo, shapeInfo, runtimeInfo);
+                if (res == false) {
+                    Scenario2Guaranteed(compilerInfo, shapeInfo, runtimeInfo);
+                } else {
+                    OP_LOGI(opType.c_str(), "%s", PrintScenario4(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                }
+                break;
+            case SCENARIO_5:
+                res = TilingDataScenario5(compilerInfo, shapeInfo, runtimeInfo);
+                if (res == false) {
+                    Scenario2Guaranteed(compilerInfo, shapeInfo, runtimeInfo);
+                } else {
+                    OP_LOGI(opType.c_str(), "%s", PrintScenario5(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                }
+                break;
+            case SCENARIO_6:
+                res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGI(opType.c_str(), "%s", PrintScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            case SCENARIO_7:
+                res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
+                if (res == false) {
+                    Scenario5Guaranteed(compilerInfo, shapeInfo, runtimeInfo);
+                } else {
+                    OP_LOGI(opType.c_str(), "%s", PrintScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                }
+                break;
+            case SCENARIO_8:
+                res = TilingDataScenario8(compilerInfo, shapeInfo, runtimeInfo);
+                break;
+            case SCENARIO_9:
+                res = TilingDataScenario9(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGI(opType.c_str(), "%s", PrintScenario9(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            case SCENARIO_10:
+                res = TilingDataScenario10(compilerInfo, shapeInfo, runtimeInfo);
+                OP_LOGI(opType.c_str(), "%s", PrintScenario5(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                break;
+            default:
+                break;
+        }
     }
     return res;
 }
@@ -3760,6 +5167,9 @@ static void SerializeScenario1(OpRunInfo &runInfo,
     int perCoreLen = 0;
     for (int i = 0; i < compilerInfo.coreNum; i++) {
         WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].num);
+        WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].aggregateLoopUnit);
+        WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].aggregateLoopNum);
+        WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].aggregateLoopTail);
         for (int j = 0; j < shapeInfo.dim - 1; j++) {
             WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple[j]);
         }
@@ -3995,6 +5405,8 @@ static void SerializeScenario4(OpRunInfo &runInfo,
     WRITE_DATA_F(borrowInfo.srcAxisPerm);
     WRITE_DATA_F(borrowInfo.dstAxisPerm);
     WRITE_DATA_F(borrowInfo.axisPerm);
+    WRITE_DATA_F(borrowInfo.pivotSrcAxisDup);
+    WRITE_DATA_F(borrowInfo.pivotDstAxisDup);
 
     for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
         const LRSB* lrsb = borrowInfo.lrsb[i];
@@ -4019,6 +5431,175 @@ static void SerializeScenario4(OpRunInfo &runInfo,
         for (int j = 0; j < UB_REORDER_LOOP; j++) {
             WRITE_DATA_F(lrsb[j].dstOffset);
         }
+    }
+
+    for (int64_t i = 0 ; i < borrowInfo.dstNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.dstFactorCopyIn[i]);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.srcNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.srcFactorCopyOut[i]);
+    }
+
+    WRITE_DATA_F(borrowInfo.srcJumpFactorLogic_in);
+    WRITE_DATA_F(borrowInfo.dstJumpFactorLogic_in);
+
+    for (int64_t i = 0 ; i < borrowInfo.otherNum; i++) {
+        WRITE_DATA_F(borrowInfo.otherJumpFactor_in[i]);
+    }
+
+    for (int64_t i = 0 ; i < borrowInfo.dstNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.dstStrideCopyIn[i]);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.srcNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.srcStrideCopyOut[i]);
+    }
+
+    //logicStrideIn,first two is 0 for no use
+    for (int i = 0; i < 2; i++) {
+        WRITE_DATA_F(0);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.otherNum; i++) {
+        WRITE_DATA_F(borrowInfo.otherJumpStride_in[i]);
+    }
+
+    //logicStrideOut, first two is 0 for no use
+    for (int i = 0; i < 2; i++) {
+        WRITE_DATA_F(0);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.otherNum; i++) {
+        WRITE_DATA_F(borrowInfo.otherJumpStride_out[i]);
+    }
+
+    // part3: per core
+    int perCoreLen = 0;
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        WRITE_DATA_P(borrowInfo.loopPerCore[i]);
+        for (int64_t j = 0; j < borrowInfo.srcNumNoDup; j++) {
+            WRITE_DATA_P(borrowInfo.srcAxis_in[i].initTuple[j]);
+        }
+        for (int64_t j = 0; j < borrowInfo.dstNumNoDup; j++) {
+            WRITE_DATA_P(borrowInfo.dstAxis_in[i].initTuple[j]);
+        }
+
+        WRITE_DATA_P(borrowInfo.srcAxis_in[i].initTupleLogic);
+        WRITE_DATA_P(borrowInfo.dstAxis_in[i].initTupleLogic);
+
+        for(int64_t j = 0; j < borrowInfo.otherNum; j++) {
+            WRITE_DATA_P(borrowInfo.otherAxis_in[i].initTuple[j]);
+        }
+        if (perCoreLen == 0) {
+            perCoreLen = perCoreVec.size();
+        }
+    }
+
+    BlockAlign(fixedVec);
+    BlockAlign(perCoreVec);
+
+    headVec[1] = fixedVec.size();
+    headVec[2] = perCoreLen;
+
+    for (size_t i = 0; i < headVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, headVec[i]);
+    }
+    for (size_t i = 0; i < fixedVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
+    }
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
+    }
+
+    runInfo.block_dim = compilerInfo.coreNum;
+    std::vector<int64_t> workspace;
+    workspace.push_back(1024);
+    runInfo.workspaces = workspace;
+}
+
+static void SerializeScenario5(OpRunInfo &runInfo,
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
+    vector<int64_t> headVec;
+    vector<int64_t> fixedVec;
+    vector<int64_t> perCoreVec;
+    const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+
+    // part1: head
+    WRITE_DATA_H(shapeInfo.scenario);              //0 : scenario
+    WRITE_DATA_H(0);                               //1 : fixed_len
+    WRITE_DATA_H(0);                               //2 : percore_len
+    WRITE_DATA_H(0);                               //3 : subSceanrio
+
+    // part2: fixed
+    WRITE_DATA_F(shapeInfo.lastAxisLen);
+    WRITE_DATA_F(shapeInfo.reducedInShape[shapeInfo.dim - 2]);
+    WRITE_DATA_F(shapeInfo.lastAxisBurstLen);
+    WRITE_DATA_F(shapeInfo.alignElement);
+    WRITE_DATA_F(borrowInfo.otherNum + 2);//logic_axis_num
+    WRITE_DATA_F(borrowInfo.otherNum);
+    WRITE_DATA_F(borrowInfo.srcNumNoDup);
+    WRITE_DATA_F(borrowInfo.dstNumNoDup);
+    WRITE_DATA_F(borrowInfo.majorBurstLen_in);
+    WRITE_DATA_F(borrowInfo.tailBurstLen_in);
+    WRITE_DATA_F(borrowInfo.majorBurstLen_out);
+    WRITE_DATA_F(borrowInfo.tailBurstLen_out);
+    WRITE_DATA_F(borrowInfo.majorDstLoop_in);
+    WRITE_DATA_F(borrowInfo.tailDstLoop_in);
+    WRITE_DATA_F(borrowInfo.majorSrcLoop_out);
+    WRITE_DATA_F(borrowInfo.tailSrcLoop_out);
+    WRITE_DATA_F(borrowInfo.majorInEle);
+    WRITE_DATA_F(borrowInfo.tailInEle);
+    WRITE_DATA_F(borrowInfo.majorInTailEle);
+    WRITE_DATA_F(borrowInfo.tailInTailEle);
+    WRITE_DATA_F(borrowInfo.majorOutEle);
+    WRITE_DATA_F(borrowInfo.tailOutEle);
+    WRITE_DATA_F(borrowInfo.majorOutTailEle);
+    WRITE_DATA_F(borrowInfo.tailOutTailEle);
+    WRITE_DATA_F(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].step);
+    WRITE_DATA_F(borrowInfo.srcIndexIn[0].step);
+    WRITE_DATA_F(borrowInfo.dupAxis);
+    WRITE_DATA_F(borrowInfo.srcAxisPerm);
+    WRITE_DATA_F(borrowInfo.dstAxisPerm);
+    WRITE_DATA_F(borrowInfo.axisPerm);
+    WRITE_DATA_F(borrowInfo.pivotSrcAxisDup);
+    WRITE_DATA_F(borrowInfo.pivotDstAxisDup);
+    WRITE_DATA_F(borrowInfo.lastTwoLoop);
+    WRITE_DATA_F(borrowInfo.lastTwoRepeat);
+    WRITE_DATA_F(borrowInfo.lastTwosStride);
+    WRITE_DATA_F(borrowInfo.lastTwodStride);
+    WRITE_DATA_F(borrowInfo.lastTwosListRepeat);
+    WRITE_DATA_F(borrowInfo.lastTwodListRepeat);
+    WRITE_DATA_F(shapeInfo.isLastTwoAlignedAndTrans ? 1 : 0);
+
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        const LRSB* lrsb = borrowInfo.lrsb[i];
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].n);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].vol);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].loop);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].repeat);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].srcStride);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].dstStride);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].burstLen);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].srcOffset);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].dstOffset);
+        }
+        WRITE_DATA_F(borrowInfo.xdxsVol[i]);
     }
 
     for (int64_t i = 0 ; i < borrowInfo.dstNumNoDup; i++) {
@@ -4132,13 +5713,15 @@ static void SerializeScenario7(OpRunInfo &runInfo,
     WRITE_DATA_F(runtimeInfo.nJumpAxisNum);
     WRITE_DATA_F(runtimeInfo.dstJumpAxisNum);
     WRITE_DATA_F(runtimeInfo.srcJumpAxisNum);
-    WRITE_DATA_F(runtimeInfo.rPartVol);
 
     for (int i = 0; i < runtimeInfo.nJumpAxisNum; i++) {
         WRITE_DATA_F(runtimeInfo.nJumpFactor[i]);
     }
     for (int i = 0; i < runtimeInfo.nJumpAxisNum; i++) {
-        WRITE_DATA_F(runtimeInfo.nJumpStride[i]);
+        WRITE_DATA_F(runtimeInfo.nJumpStrideIn[i]);
+    }
+    for (int i = 0; i < runtimeInfo.nJumpAxisNum; i++) {
+        WRITE_DATA_F(runtimeInfo.nJumpStrideOut[i]);
     }
     for (int i = 0; i < runtimeInfo.dstJumpAxisNum; i++) {
         WRITE_DATA_F(runtimeInfo.dstJumpFactor[i]);
@@ -4157,7 +5740,6 @@ static void SerializeScenario7(OpRunInfo &runInfo,
     int perCoreLen = 0;
     for (int i = 0; i < compilerInfo.coreNum; i++) {
         WRITE_DATA_P(runtimeInfo.infoPerCore[i].infoN.loopOnN);
-        WRITE_DATA_P(runtimeInfo.infoPerCore[i].infoN.nOffsetActual);
         WRITE_DATA_P(runtimeInfo.infoPerCore[i].infoCol.colPerMC);
         WRITE_DATA_P(runtimeInfo.infoPerCore[i].infoCol.loopOnMC);
         WRITE_DATA_P(runtimeInfo.infoPerCore[i].infoCol.colTC);
@@ -4233,6 +5815,152 @@ static void SerializeScenario8(OpRunInfo &runInfo,
     runInfo.workspaces = workspace;
 }
 
+static void SerializeScenario9(OpRunInfo &runInfo,
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
+    vector<int64_t> headVec;
+    vector<int64_t> fixedVec;
+    vector<int64_t> perCoreVec;
+
+    // part1: head
+    WRITE_DATA_H(shapeInfo.scenario);              //0 : scenario
+    WRITE_DATA_H(0);                               //1 : fixed_len
+    WRITE_DATA_H(0);                               //2 : percore_len
+    WRITE_DATA_H(0);                               //3 : subSceanrio
+
+    // part2: fixed
+    WRITE_DATA_F(compilerInfo.coreNum);
+    WRITE_DATA_F(compilerInfo.ubSize);
+    WRITE_DATA_F(shapeInfo.lastAxisLen);
+    WRITE_DATA_F(shapeInfo.lastAxisBurstLen);
+    WRITE_DATA_F(shapeInfo.dim - 2);
+    WRITE_DATA_F(shapeInfo.reducedOutShape[shapeInfo.dim - 2]);
+    WRITE_DATA_F(runtimeInfo.srcStride);
+
+    for (int i = 0; i < shapeInfo.dim - 2; i++) {
+        WRITE_DATA_F(runtimeInfo.srcJumpStride[i]);
+    }
+    for (int i = 0; i < shapeInfo.dim - 2; i++) {
+        WRITE_DATA_F(runtimeInfo.dstJumpStride[i]);
+    }
+    for (int i = 0; i < shapeInfo.dim - 2; i++) {
+        WRITE_DATA_F(runtimeInfo.dstJumpFactor[i]);
+    }
+
+    // part3: per core
+    int perCoreLen = 0;
+    for (int i = 0; i < compilerInfo.coreNum; i++) {
+        WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].num);
+        for (int j = 0; j < shapeInfo.dim - 2; j++) {
+            WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple[j]);
+        }
+        if (perCoreLen == 0) {
+            perCoreLen = perCoreVec.size();
+        }
+    }
+
+    BlockAlign(fixedVec);
+    BlockAlign(perCoreVec);
+
+    headVec[1] = fixedVec.size();
+    headVec[2] = perCoreLen;
+
+    for (size_t i = 0; i < headVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, headVec[i]);
+    }
+    for (size_t i = 0; i < fixedVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
+    }
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
+    }
+
+    runInfo.block_dim = compilerInfo.coreNum;
+    std::vector<int64_t> workspace;
+    workspace.push_back(1024);
+    runInfo.workspaces = workspace;
+}
+
+static void SerializeScenario10(OpRunInfo &runInfo,
+                                const CompilerInfo &compilerInfo,
+                                const ShapeInfo &shapeInfo,
+                                const RuntimeInfo &runtimeInfo) {
+    vector<int64_t> headVec;
+    vector<int64_t> fixedVec;
+    vector<int64_t> perCoreVec;
+
+    // part1: head
+    WRITE_DATA_H(shapeInfo.scenario);              //0 : scenario
+    WRITE_DATA_H(0);                               //1 : fixed_len
+    WRITE_DATA_H(0);                               //2 : percore_len
+    WRITE_DATA_H(0);                               //3 : subSceanrio
+
+    // part2: fixed
+    const TwoDInfo& tdInfo = runtimeInfo.twoDInfo;
+    WRITE_DATA_F(compilerInfo.coreNum);
+    WRITE_DATA_F(compilerInfo.ubSize);
+    WRITE_DATA_F(tdInfo.nAxisNum);
+    WRITE_DATA_F(tdInfo.colPerMC);
+    WRITE_DATA_F(tdInfo.colBlockPerMC);
+    WRITE_DATA_F(tdInfo.colBlockTC);
+    WRITE_DATA_F(tdInfo.rowPerMR);
+    WRITE_DATA_F(tdInfo.rowBlockPerMR);
+    WRITE_DATA_F(tdInfo.rowBlockTR);
+    WRITE_DATA_F(tdInfo.srcStrideIn);
+    WRITE_DATA_F(tdInfo.srcStrideInTail);
+    WRITE_DATA_F(tdInfo.dstStrideOut);
+    WRITE_DATA_F(tdInfo.dstStrideOutTail);
+    WRITE_DATA_F(shapeInfo.reducedInShape[shapeInfo.dim - 1]);
+    WRITE_DATA_F(shapeInfo.reducedInShape[shapeInfo.dim - 2]);
+
+    for (int i = 0; i < tdInfo.nAxisNum; i++) {
+        WRITE_DATA_F(tdInfo.nFactor[i]);
+    }
+    for (int i = 0; i < tdInfo.nAxisNum; i++) {
+        WRITE_DATA_F(tdInfo.nSrcStride[i]);
+    }
+    for (int i = 0; i < tdInfo.nAxisNum; i++) {
+        WRITE_DATA_F(tdInfo.nDstStride[i]);
+    }
+
+    // part3: per core
+    int perCoreLen = 0;
+    for (int i = 0; i < compilerInfo.coreNum; i++) {
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoN.loopOnN);
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoCol2D.loopOnMC);
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoCol2D.colTC);
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoCol2D.colOffset);
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoRow2D.loopOnMR);
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoRow2D.rowTR);
+        WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoRow2D.rowOffset);
+        if (perCoreLen == 0) {
+            perCoreLen = perCoreVec.size();
+        }
+    }
+
+    BlockAlign(fixedVec);
+    BlockAlign(perCoreVec);
+
+    headVec[1] = fixedVec.size();
+    headVec[2] = perCoreLen;
+
+    for (size_t i = 0; i < headVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, headVec[i]);
+    }
+    for (size_t i = 0; i < fixedVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
+    }
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
+    }
+
+    runInfo.block_dim = compilerInfo.coreNum;
+    std::vector<int64_t> workspace;
+    workspace.push_back(1024);
+    runInfo.workspaces = workspace;
+}
+
 void SerializeTilingData(OpRunInfo &runInfo,
                          const CompilerInfo & compilerInfo,
                          const ShapeInfo & shapeInfo,
@@ -4254,6 +5982,9 @@ void SerializeTilingData(OpRunInfo &runInfo,
         case SCENARIO_4:
             SerializeScenario4(runInfo, compilerInfo, shapeInfo, runtimeInfo);
             break;
+        case SCENARIO_5:
+            SerializeScenario5(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+            break;
         case SCENARIO_6:
             SerializeScenario6(runInfo, compilerInfo, shapeInfo, runtimeInfo);
             break;
@@ -4262,6 +5993,12 @@ void SerializeTilingData(OpRunInfo &runInfo,
             break;
         case SCENARIO_8:
             SerializeScenario8(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+            break;
+        case SCENARIO_9:
+            SerializeScenario9(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+            break;
+        case SCENARIO_10:
+            SerializeScenario5(runInfo, compilerInfo, shapeInfo, runtimeInfo);
             break;
         default:
             break;

@@ -20,7 +20,6 @@
 #include <graph/utils/type_utils.h>
 #include "graph/tensor.h"
 #include "op_proto_test_util.h"
-#include "op_tiling/op_tiling_util.h"
 #include "third_party/transformer/inc/transfer_shape_according_to_format.h"
 #include "third_party/transformer/inc/transfer_range_according_to_format.h"
 
@@ -52,6 +51,7 @@
   paras.UpdateOutputDesc(#key, tensor_desc_##key)
 
 namespace ut_util {
+
 template <typename T>
 void SetValueToConstTensor(ge::Tensor const_tensor, std::vector<T> const_value) {
   T* cosnt_data = new T[const_value.size()];

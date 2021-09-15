@@ -17,6 +17,8 @@ matmul
 """
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
+from impl.dynamic.mat_mul import base_op_select_format
+from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -36,7 +38,22 @@ L1FUSION_INPUT_CTR = 2
 _C0_16 = 16
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches, too-many-statements, too-many-locals,
+def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
+                     trans_b=False, offset_x=0, kernel_name="matmul"):
+    """
+    provide dynamic format to FE
+    """
+    # BatchMatMulV1 does not support offset_w
+    src_dtype = input_x.get("dtype")
+    src_fp16_flag = True if src_dtype == "float16" else False
+    _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
+
+    param_list = gen_op_select_format_params(full_case_senario_combinations, is_batch_matmul_v2=False)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
 def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     Check the given input if legal
@@ -60,7 +77,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     shape_len = len(shape_a)
     src_dtype = src_dtype.lower()
-    k_block_size = tbe_platform.CUBE_MKN[src_dtype]["mac"][1]
 
     check_list = ["float16"]
     cube_vector_split_flag = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -83,18 +99,18 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     is_gemv = bool((shape_b[-2] == 1) or (shape_b[-1] == 1))
 
     if trans_a:
-        m_shape = shape_a[shape_len - 1]
-        km_shape = shape_a[shape_len - 2]
+        m_shape = shape_a[-1]
+        km_shape = shape_a[-2]
     else:
-        m_shape = shape_a[shape_len - 2]
-        km_shape = shape_a[shape_len - 1]
+        m_shape = shape_a[-2]
+        km_shape = shape_a[-1]
 
     if trans_b:
-        kn_shape = shape_b[shape_len - 1]
-        n_shape = shape_b[shape_len - 2]
+        kn_shape = shape_b[-1]
+        n_shape = shape_b[-2]
     else:
-        kn_shape = shape_b[shape_len - 2]
-        n_shape = shape_b[shape_len - 1]
+        kn_shape = shape_b[-2]
+        n_shape = shape_b[-1]
 
     if m_shape == 1:
         if n_shape == 1:
@@ -107,21 +123,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1",
                                                                "x2", error_detail)
 
-    if m_shape % tbe_platform.BLOCK_IN != 0 and m_shape != 1:
-        error_detail = "input shape x1 should be 1 or multiple of %d" % tbe_platform.BLOCK_IN
-        error_manager_vector.raise_err_input_shape_invalid(
-            "mat_mul", "x1", error_detail)
-
-    if m_shape != 1:
-        if km_shape % k_block_size != 0:
-            error_detail = "input shape x1 should be multiple of %d" % tbe_platform.BLOCK_IN
-            error_manager_vector.raise_err_input_shape_invalid(
-                "mat_mul", "x1", error_detail)
-
-    if n_shape % tbe_platform.BLOCK_IN != 0 and n_shape != 1:
-        error_detail = "input shape x2 should be 1 or multiple of %d" % tbe_platform.BLOCK_IN
-        error_manager_vector.raise_err_input_shape_invalid(
-            "mat_mul", "x2", error_detail)
     shape_bias_length = len(shape_bias)
     if shape_bias_length > 0:
         if shape_bias_length == 1:
@@ -136,7 +137,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
                     error_manager_vector.raise_err_input_shape_invalid(
                         "mat_mul", "bias", error_detail)
         elif shape_bias_length == shape_len:
-            if [i for i in shape_bias[-2:]] != [m_shape, n_shape]:# pylint: disable=unnecessary-comprehension
+            if [i for i in shape_bias[-2:]] != [m_shape, n_shape]:  # pylint: disable=unnecessary-comprehension
                 error_detail = "non broadcast bias shape must be same as output shape"
                 error_manager_vector.raise_err_input_shape_invalid(
                     "mat_mul", "bias", error_detail)
@@ -186,7 +187,7 @@ def _get_bias(shape_bias, ori_shape_bias):
     return [(bias_length + _C0_16 - 1) // _C0_16 * _C0_16], [ori_bias_length]
 
 
-def _get_input_shape(shape_x, transpose):
+def _align_shape_a(shape_x, transpose):
     dim_a = shape_x[0]
     dim_b = shape_x[1]
     res = []
@@ -197,21 +198,12 @@ def _get_input_shape(shape_x, transpose):
         factor_1 = 16
         factor_2 = 32
 
-    if dim_a % factor_1 != 0:
-        dim_a = (dim_a // factor_1) * factor_1 + factor_1
-        res.append(dim_a)
-    else:
-        res.append(dim_a)
-
-    if dim_b % factor_2 != 0:
-        dim_b = (dim_b // factor_2) * factor_2 + factor_2
-        res.append(dim_b)
-    else:
-        res.append(dim_b)
+    res.append((dim_a + factor_1 - 1) // factor_1 * factor_1)
+    res.append((dim_b + factor_2 - 1) // factor_2 * factor_2)
     return res
 
 
-def _get_input_shape_b(shape_y, transpose):
+def _align_shape_b(shape_y, transpose):
     dim_a = shape_y[0]
     dim_b = shape_y[1]
     res = []
@@ -222,17 +214,8 @@ def _get_input_shape_b(shape_y, transpose):
         factor_1 = 32
         factor_2 = 16
 
-    if dim_a % factor_1 != 0:
-        dim_a = (dim_a // factor_1) * factor_1 + factor_1
-        res.append(dim_a)
-    else:
-        res.append(dim_a)
-
-    if dim_b % factor_2 != 0:
-        dim_b = (dim_b // factor_2) * factor_2 + factor_2
-        res.append(dim_b)
-    else:
-        res.append(dim_b)
+    res.append((dim_a + factor_1 - 1) // factor_1 * factor_1)
+    res.append((dim_b + factor_2 - 1) // factor_2 * factor_2)
     return res
 
 
@@ -244,7 +227,7 @@ def _cal_min_l1space(dtype_b):
     return mini_l1space
 
 
-def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
+def get_op_support_info(input_x1,  # pylint: R0913,R0914,W0613
                         input_x2,
                         bias,
                         offset_w={},
@@ -257,7 +240,6 @@ def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
     get the matmul split, which only split the m and n, cannot cut k with bias
 
     """
-
 
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
@@ -369,17 +351,17 @@ def check_supported(input_x1,
     if src_dtype in target_type and not dynamic_flag:
         if len(shape_a) != 2 and len(shape_b) != 2:
             reason = "the input_shape is not supported, shape_a:%s, shape_b%s"\
-                      % (str(shape_a), str(shape_b))
+                     % (str(shape_a), str(shape_b))
             res = False, reason
         elif trans_a:
             if trans_b:
                 if shape_a[0] != shape_b[1]:
                     reason = "the input_shape is not equal, shape_a[0]:%s, shape_b[1]:%s"\
-                              % (shape_a[0], shape_b[1])
+                             % (shape_a[0], shape_b[1])
                     res = False, reason
             elif shape_a[0] != shape_b[0]:
                 reason = "the input_shape is not equal, shape_a[0]:%s, shape_b[0]:%s"\
-                          % (shape_a[0], shape_b[0])
+                         % (shape_a[0], shape_b[0])
                 res = False, reason
         elif trans_b:
             if shape_a[1] != shape_b[1]:
@@ -388,12 +370,12 @@ def check_supported(input_x1,
                 res = False, reason
         elif shape_a[1] != shape_b[0]:
             reason = "the input_shape is not equal, shape_a[1]:%s, shape_b[0]:%s"\
-                      % (shape_a[1], shape_b[0])
+                     % (shape_a[1], shape_b[0])
             res = False, reason
     elif src_dtype in cube_type and not dynamic_flag:
         if len(shape_a) != 2 and len(shape_b) != 2:
             reason = "the input_shape is not supported, shape_a:%s, shape_b%s"\
-                      % (str(shape_a), str(shape_b))
+                     % (str(shape_a), str(shape_b))
             res = False, reason
         if trans_a:
             k_shape = shape_a[0]
@@ -478,7 +460,6 @@ def mat_mul_compute(input_x1,
 
     dst_dtype = output_y.get("dtype").lower()
 
-
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("mat_mul",
                                                       "For MatMul, tensor offset_w must be None!")
@@ -493,9 +474,11 @@ def mat_mul_compute(input_x1,
         "offset_a": offset_x,
         "offset_b": offset_w,
         "kernel_name": kernel_name,
-        "impl_mode": impl_mode
-        }
-    result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+        "impl_mode": impl_mode,
+        "format_out": output_y.get("format"),
+    }
+    result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2,
+                      para_dict=para_dict)
 
     return result
 
@@ -573,7 +556,8 @@ def mat_mul_compute_self(input_x1,
         "offset_a": offset_x,
         "offset_b": offset_w,
         "kernel_name": kernel_name,
-        "impl_mode": impl_mode
+        "impl_mode": impl_mode,
+        "format_out": output_y.get("format"),
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
@@ -742,47 +726,48 @@ def mat_mul(input_x1,
     shape_b = input_x2.get("ori_shape")
     shape_a_length = len(shape_a)
     shape_b_length = len(shape_b)
-    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
 
-    if shape_a is not None:
-        if shape_a_length < 2:
-            shape_a = input_x1.get("shape")
+    # if ori_shape is invalid use shape
+    if shape_a is not None and shape_a_length < 2:
+        shape_a = input_x1.get("shape")
 
-    if shape_b is not None:
-        if shape_b_length < 2:
-            shape_b = input_x2.get("shape")
+    # if ori_shape is invalid use shape
+    if shape_b is not None and shape_b_length < 2:
+        shape_b = input_x2.get("shape")
 
     shape_a = list(shape_a)
     shape_b = list(shape_b)
 
     if input_x1.get("format") == "FRACTAL_NZ":
-        shape_a = _get_input_shape(shape_a, trans_a)
-        shape_b = _get_input_shape_b(shape_b, trans_b)
+        shape_a = _align_shape_a(shape_a, trans_a)
+        shape_b = _align_shape_b(shape_b, trans_b)
 
     para_check.check_shape(shape_a, param_name="input_x1")
     para_check.check_shape(shape_b, param_name="input_x2")
 
-    shape_bias = ()
+    align_shape_bias = ()
     ori_shape_bias = ()
     if bias is not None and bool(bias):
-        shape_bias, ori_shape_bias = _get_bias(bias.get("shape"), bias.get("ori_shape"))
+        align_shape_bias, ori_shape_bias = _get_bias(bias.get("shape"), bias.get("ori_shape"))
 
     src_dtype = input_x1.get("dtype").lower()
-    dst_dtype = output_y.get("dtype").lower()
-    
+
     target_type = ["float32", "int32"]
-    if src_dtype in target_type and not cube_vector_split:
+    if src_dtype in target_type and not tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT"):
         if (trans_b and shape_b[0] == 1) or (not trans_b and shape_b[1] == 1):
             _matmul_vector_one(shape_a, shape_b, src_dtype, trans_a, trans_b,
                                bias, kernel_name)
         else:
             matmul_vector_cce(shape_a, shape_b, src_dtype, trans_a, trans_b,
-                              shape_bias, kernel_name)
+                              align_shape_bias, kernel_name)
 
         return
 
     if src_dtype not in ("int8", "int4"):
-        _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b)
+        if input_x1.get("format") == "FRACTAL_NZ":
+            _shape_check(shape_a, shape_b, align_shape_bias, src_dtype, trans_a, trans_b)
+        else:
+            _shape_check(shape_a, shape_b, ori_shape_bias, src_dtype, trans_a, trans_b)
     else:
         _shape_check_quantification(shape_a, shape_b, trans_a, trans_b,
                                     input_x1.get("format"))
@@ -790,12 +775,8 @@ def mat_mul(input_x1,
     shape_a_temp = input_x1.get("shape")
     shape_b_temp = input_x2.get("shape")
     tensor_bias = None
-    if src_dtype in ("int8", "int4") and not cube_vector_split:
-        format_a = "FRACTAL_NZ"
-        format_b = "FRACTAL_Z"
-    else:
-        format_a = "FRACTAL_NZ"
-        format_b = "FRACTAL_NZ"
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
     tensor_a = tvm.placeholder(shape_a_temp, name='tensor_a',
                                attrs={'format': format_a,
                                       'ori_shape': input_x1.get("ori_shape")},
@@ -804,10 +785,10 @@ def mat_mul(input_x1,
                                attrs={'format': format_b,
                                       'ori_shape': input_x2.get("ori_shape")},
                                dtype=src_dtype)
-    shape_bias_length = len(shape_bias)
+    shape_bias_length = len(align_shape_bias)
     if shape_bias_length > 0:
         bias_dtype = bias.get("dtype")
-        tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias',
+        tensor_bias = tvm.placeholder(align_shape_bias, name='tensor_bias',
                                       dtype=bias_dtype, attrs={'ori_shape': ori_shape_bias})
 
     if offset_w is None:

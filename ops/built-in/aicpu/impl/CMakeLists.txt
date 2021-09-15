@@ -16,6 +16,7 @@ set(local_kernels_src_files
     kernels/normalized/case_condition.cc
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
+    kernels/normalized/check_numerics.cc
     kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
     kernels/normalized/coordinates_1d_to_2d.cc
@@ -28,6 +29,7 @@ set(local_kernels_src_files
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
     kernels/normalized/fill.cc
+    kernels/normalized/floor.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/greater.cc
     kernels/normalized/greater_equal.cc
@@ -54,6 +56,7 @@ set(local_kernels_src_files
     kernels/normalized/round.cc
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
+    kernels/normalized/sign.cc
     kernels/normalized/slice_write.cc
     kernels/normalized/softmaxv2.cc
     kernels/normalized/sparse_to_dense.cc

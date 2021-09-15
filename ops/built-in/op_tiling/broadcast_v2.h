@@ -30,7 +30,6 @@
 
 namespace optiling {
 namespace utils {
-
 static const size_t B_MAX_DIM_LEN = 16;
 static const size_t B_MAX_INPUT_NUMS = 70;
 
@@ -164,7 +163,6 @@ class Broadcast {
   bool need_block_align{false};
   bool is_milan_soc{false};
 };
-
 }  // namespace utils
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_BROADCAST_H_

@@ -577,7 +577,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose) {
     EXPECT_EQ(runtimeInfo.dstJumpStride[1], 42);
 
     EXPECT_EQ(runtimeInfo.infoPerCore[6].infoN.loopOnN, 1);
-    EXPECT_EQ(runtimeInfo.infoPerCore[6].infoN.nOffsetActual, 30240);
 
     EXPECT_EQ(runtimeInfo.infoPerCore[6].infoCol.colPerMC, 120);
     EXPECT_EQ(runtimeInfo.infoPerCore[6].infoCol.loopOnMC, 1);
@@ -1216,6 +1215,99 @@ TEST_F(TransposeTilingTest, int8) {
     EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
 
+TEST_F(TransposeTilingTest, specific_shape_scenario_4) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.ubSizeCouldUse = 8064;
+    compilerInfo.dType ="float16";
+    compilerInfo.fp16Times = 1;
+
+    shapeInfo.inShape.push_back(1000);
+    shapeInfo.inShape.push_back(5);
+    shapeInfo.inShape.push_back(64);
+    shapeInfo.inShape.push_back(64);
+
+    shapeInfo.outShape.push_back(1000);
+    shapeInfo.outShape.push_back(64);
+    shapeInfo.outShape.push_back(5);
+    shapeInfo.outShape.push_back(64);
+
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+    EXPECT_EQ(shapeInfo.scenario, 4);
+}
+
+TEST_F(TransposeTilingTest, specific_shape_scenario_5) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.ubSizeCouldUse = 8064;
+    compilerInfo.dType ="float16";
+    compilerInfo.fp16Times = 1;
+
+    shapeInfo.inShape.push_back(2);
+    shapeInfo.inShape.push_back(3);
+    shapeInfo.inShape.push_back(4);
+    shapeInfo.inShape.push_back(2);
+    shapeInfo.inShape.push_back(3);
+    shapeInfo.inShape.push_back(4);
+
+    shapeInfo.outShape.push_back(4);
+    shapeInfo.outShape.push_back(3);
+    shapeInfo.outShape.push_back(2);
+    shapeInfo.outShape.push_back(4);
+    shapeInfo.outShape.push_back(3);
+    shapeInfo.outShape.push_back(2);
+
+    shapeInfo.perm.push_back(5);
+    shapeInfo.perm.push_back(4);
+    shapeInfo.perm.push_back(3);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+    EXPECT_EQ(shapeInfo.scenario, 5);
+}
+
+TEST_F(TransposeTilingTest, specific_shape_scenario_9) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.ubSizeCouldUse = 8064;
+    compilerInfo.dType ="float16";
+    compilerInfo.fp16Times = 1;
+
+    shapeInfo.inShape.push_back(100);
+    shapeInfo.inShape.push_back(200);
+    shapeInfo.inShape.push_back(128);
+
+    shapeInfo.outShape.push_back(200);
+    shapeInfo.outShape.push_back(100);
+    shapeInfo.outShape.push_back(128);
+
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(2);
+
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+    EXPECT_EQ(shapeInfo.scenario, 9);
+}
+
 TEST_F(TransposeTilingTest, fp16_310) {
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
@@ -1298,9 +1390,7 @@ TEST_F(TransposeTilingTest, split_n_with_small_shape_1) {
     shapeInfo.perm.push_back(3);
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
-    EXPECT_EQ(runtimeInfo.infoPerCore[0].infoN.loopOnN, 1);
-    EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.rowPerMR, 40);
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoN.loopOnN, 0);
+    EXPECT_EQ(shapeInfo.scenario, 5);
 }
 
 
@@ -1367,7 +1457,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
     compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(3);
-    shapeInfo.inShape.push_back(4);
+    shapeInfo.inShape.push_back(40);
     shapeInfo.inShape.push_back(5);
     shapeInfo.inShape.push_back(6);
     shapeInfo.inShape.push_back(7);
@@ -1380,7 +1470,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
     shapeInfo.outShape.push_back(9);
     shapeInfo.outShape.push_back(8);
     shapeInfo.outShape.push_back(5);
-    shapeInfo.outShape.push_back(4);
+    shapeInfo.outShape.push_back(40);
 
     shapeInfo.perm.push_back(0);
     shapeInfo.perm.push_back(4);
@@ -1392,31 +1482,19 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
-    EXPECT_EQ(runtimeInfo.nJumpAxisNum, 3);
-    EXPECT_EQ(runtimeInfo.srcJumpAxisNum, 3);
-    EXPECT_EQ(runtimeInfo.dstJumpAxisNum, 1);
+    EXPECT_EQ(runtimeInfo.nJumpAxisNum, 1);
+    EXPECT_EQ(runtimeInfo.srcJumpAxisNum, 1);
+    EXPECT_EQ(runtimeInfo.dstJumpAxisNum, 5);
 
-    EXPECT_EQ(runtimeInfo.nJumpFactor[0], 6);
-    EXPECT_EQ(runtimeInfo.nJumpFactor[1], 7);
-    EXPECT_EQ(runtimeInfo.nJumpFactor[2], 3);
+    EXPECT_EQ(runtimeInfo.nJumpFactor[0], 3);
 
-    EXPECT_EQ(runtimeInfo.nJumpStride[0], 504);
-    EXPECT_EQ(runtimeInfo.nJumpStride[1], 72);
-    EXPECT_EQ(runtimeInfo.nJumpStride[2], 60480);
+    EXPECT_EQ(runtimeInfo.nJumpStrideIn[0], 604800);
 
     EXPECT_EQ(runtimeInfo.srcJumpStride[0], 15120);
-    EXPECT_EQ(runtimeInfo.srcJumpStride[1], 9);
 
-    EXPECT_EQ(runtimeInfo.dstJumpStride[0], 160);
+    EXPECT_EQ(runtimeInfo.dstJumpStride[0], 1600);
 
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoN.loopOnN, 4);
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoN.nOffsetActual, 5760);
-
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colPerMC, 8);
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.loopOnMC, 1);
-
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.rowPerMR, 128);
-    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.loopOnMR, 1);
+    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoN.loopOnN, 1);
 }
 
 TEST_F(TransposeTilingTest, para_test_32) {
@@ -1515,9 +1593,7 @@ TEST_F(TransposeTilingTest, para_test_64) {
 
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-
 }
-
 
 
 TEST_F(TransposeTilingTest, 920A_vcopy) {
@@ -1573,4 +1649,111 @@ TEST_F(TransposeTilingTest, 920A_vcopy) {
 
 }
 
+TEST_F(TransposeTilingTest, scenario_4_seri) {
+    using namespace optiling;
+    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("Transpose");
+    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+    TeOpParas opParas;
+    vector<int64_t> inShape;
+    vector<int64_t> outShape;
+    inShape.push_back(5);
+    inShape.push_back(6);
+    inShape.push_back(7);
+    inShape.push_back(32);
+    outShape.push_back(7);
+    outShape.push_back(6);
+    outShape.push_back(5);
+    outShape.push_back(32);
+
+    TeOpTensorArg tensorInputs;
+    TeOpTensor tensorInput;
+    tensorInput.shape = inShape ;
+    tensorInput.dtype = "float16";
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+
+    TeOpTensorArg tensorOutputsArg;
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = outShape;
+    tensorOutput.dtype = "float16";
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+
+    std::vector<int64_t> perm_shape;
+    perm_shape.push_back(4);
+    ge::Shape ge_shape(perm_shape);
+    ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT64));
+    int64_t buf[4];
+    buf[0] = 2;
+    buf[1] = 1;
+    buf[2] = 0;
+    buf[3] = 3;
+    opParas.const_inputs["perm"] = std::make_tuple((const unsigned char *)buf, sizeof(buf), const_tensor);
+
+    std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "123456d";
+
+    opParas.op_type = "Transpose";
+
+    OpRunInfo runInfo;
+    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+
+TEST_F(TransposeTilingTest, scenario_9_seri) {
+    using namespace optiling;
+    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("Transpose");
+    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+    TeOpParas opParas;
+    vector<int64_t> inShape;
+    vector<int64_t> outShape;
+    inShape.push_back(100);
+    inShape.push_back(200);
+    inShape.push_back(128);
+    outShape.push_back(200);
+    outShape.push_back(100);
+    outShape.push_back(128);
+
+    TeOpTensorArg tensorInputs;
+    TeOpTensor tensorInput;
+    tensorInput.shape = inShape ;
+    tensorInput.dtype = "float16";
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+
+    TeOpTensorArg tensorOutputsArg;
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = outShape;
+    tensorOutput.dtype = "float16";
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+
+    std::vector<int64_t> perm_shape;
+    perm_shape.push_back(3);
+    ge::Shape ge_shape(perm_shape);
+    ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT64));
+    int64_t buf[3];
+    buf[0] = 1;
+    buf[1] = 0;
+    buf[2] = 2;
+    opParas.const_inputs["perm"] = std::make_tuple((const unsigned char *)buf, sizeof(buf), const_tensor);
+
+    std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "123456e";
+
+    opParas.op_type = "Transpose";
+
+    OpRunInfo runInfo;
+    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
 

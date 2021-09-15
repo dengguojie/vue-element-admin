@@ -21,17 +21,17 @@ from impl.util import fusion_util
 from impl.util import util_common
 from impl.util import util_gemm
 from impl.util import util_select_op_base
-from impl.util.platform_adapter import error_manager_util
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import error_manager_cube
-from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
+from impl.util.util_common import cal_mini_l1_size_matmul
+from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
+from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
+from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 
 
 # General limitation of the size for input shape: 2**32 - 1
@@ -45,8 +45,7 @@ DYNAMIC_FLAG_UNRANK = [-2]
 NZ_LENGTH = 4
 ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
-
-
+EXPECT_FORMAT = ["FRACTAL_NZ", "ND"]
 
 def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
                         trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
@@ -103,261 +102,60 @@ def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
 
     return op_cal_info_in_json
 
-
-def _check_format(real_format, expect_format, param_name):
+def base_op_select_format(src_fp16_flag):
     """
-    check format
-    """
-    if real_format != expect_format:
-        error_manager_vector.raise_err_input_format_invalid(
-            "mat_mul", param_name, expect_format, real_format)
+    provide dynamic format to FE(Base processing)
+    This funciton contains all basic format combinations
 
-
-def _get_range_intersection(range1, range2, param_name):
+    return : dynamic format combination, static format combination
     """
-    get range intersection of two range
-    """
-    if range1[1] is None:
-        return range2
-    if range2[1] is None:
-        return range1
+    dyn_case_scenario_list = []
+    full_case_scenario_list = []
+    # The order from left to right is input1, input2, input3(bias), output
+    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
 
-    range_ins = [max(range1[0], range2[0]), min(range1[1], range2[1])]
-    if range_ins[0] > range_ins[1]:
-        reson = "interval is not valid of " + param_name
-        error_manager_vector.raise_err_specific_reson("mat_mul", reson)
-    return range_ins
+    base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "FRACTAL_NZ"))]
 
+    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int32", "FRACTAL_NZ")),
+                                (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
 
-def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
-    """
-    get range in m, k, n
-    """
-    if range_x1 and len(range_x1) == NZ_LENGTH:
-        if trans_a:
-            m_range = list(range_x1[0])
-            k_range_x1 = list(range_x1[1])
-        else:
-            k_range_x1 = list(range_x1[0])
-            m_range = list(range_x1[1])
+    quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
+                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
+                           (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC")),
+                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND")),]
+
+    # ND input and output scenario
+    nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("float16", "ND")),
+                        (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "ND"))]
+    nd_case_scenario = []
+    nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("float", "ND")),
+                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "ND")),]
+    nd_fp32out_scenario = []
+
+    dyn_case_scenario_list = base_case_scenario + nd_case_scenario
+    # Construct scenario list for static
+    if src_fp16_flag:
+        full_case_scenario_list = base_case_scenario + base_case_fp32_out_scenario + \
+            nd_case_scenario + nd_fp32out_scenario
     else:
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", "length of x1_range must be 4"
-        )
-
-    if range_x2 and len(range_x2) == NZ_LENGTH:
-        if trans_b:
-            k_range_x2 = list(range_x2[0])
-            n_range = list(range_x2[1])
-        else:
-            n_range = list(range_x2[0])
-            k_range_x2 = list(range_x2[1])
-    else:
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", "length of x2_range must be 4"
-        )
-
-    k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range")
-    if range_bias:
-        range_bias_n = list(range_bias[0])
-        if range_bias[0][1] is not None:
-            range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
-        n_range = _get_range_intersection(n_range, range_bias_n, "n_range")
-
-    return [m_range, k_range, n_range]
+        full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
+    return dyn_case_scenario_list, full_case_scenario_list
 
 
-def _check_dynamic_mode(shape_x1, shape_x2):
+def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
+                     trans_b=False, offset_x=0, kernel_name="matmul"):
     """
-    check dynamic mode
+    provide dynamic format to FE
     """
-    if len(shape_x1) != ND_LENGTH:
-        error_manager_vector.raise_err_input_shape_invalid(
-            "mat_mul", "x1", "ori_shape dim must be 2"
-        )
+    # BatchMatMulV1 does not support offset_w
+    src_dtype = input_x.get("dtype")
+    src_fp16_flag = True if src_dtype == "float16" else False
+    scenario_combinations, _ = base_op_select_format(src_fp16_flag)
 
-    if len(shape_x2) != ND_LENGTH:
-        error_manager_vector.raise_err_input_shape_invalid(
-            "mat_mul", "x2", "ori_shape dim must be 2"
-        )
+    param_list = gen_op_select_format_params(scenario_combinations, is_batch_matmul_v2=False)
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
-    if all([i != DYNAMIC_FLAG for i in shape_x1]) and all([i != DYNAMIC_FLAG for i in shape_x2]):
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", "dynamic must at least one in m,k,n"
-        )
-
-
-def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
-    """
-    get the shape and range of matmul
-    """
-    shape_x1 = input_x1.get("ori_shape")
-    shape_x2 = input_x2.get("ori_shape")
-    range_x1 = input_x1.get("range")
-    range_x2 = input_x2.get("range")
-    bias_range = None
-
-    if list(shape_x1) == DYNAMIC_FLAG_UNRANK:
-        shape_x1 = (-1, -1)
-        range_x1 = ((1, None), (1, None), (BLOCK_CUBE, BLOCK_CUBE), (BLOCK_CUBE, BLOCK_CUBE))
-    if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
-        shape_x2 = (-1, -1)
-        range_x2 = ((1, None), (1, None), (BLOCK_CUBE, BLOCK_CUBE), (BLOCK_CUBE, BLOCK_CUBE))
-
-    if bias:
-        bias_range = bias.get("range")
-
-    return [shape_x1, shape_x2], [range_x1, range_x2, bias_range]
-
-
-def check_and_config_para(input_x1, input_x2, bias, output_y,
-                          trans_a, trans_b, kernel_name):
-    """
-    check and config dynamic mode
-    """
-
-    # get format and dtype
-    format_a = input_x1.get("format")
-    format_b = input_x2.get("format")
-    format_out = output_y.get("format")
-    dtype_a = input_x1.get("dtype").lower()
-    dtype_b = input_x2.get("dtype").lower()
-    dtype_out = output_y.get("dtype").lower()
-
-    # check kernel_name dtype and format
-    para_check.check_kernel_name(kernel_name)
-    para_check.check_dtype_rule(dtype_a, ["float16"], "x1")
-    para_check.check_dtype_rule(dtype_b, ["float16"], "x2")
-    para_check.check_dtype_rule(dtype_out, ["float16"], "output")
-    _check_format(format_a, "FRACTAL_NZ", "x1")
-    _check_format(format_b, "FRACTAL_NZ", "x2")
-    _check_format(format_out, "FRACTAL_NZ", "output")
-
-    # get range and ori_shape
-    shape_input, range_input = _get_dynamic_shape_and_range(input_x1, input_x2, bias)
-    range_x1, range_x2, range_bias = range_input
-    shape_x1, shape_x2 = shape_input
-
-    # check dynamic mode
-    _check_dynamic_mode(shape_x1, shape_x2)
-    # get range in m,k,n
-    input_range = _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b)
-
-    # check bias if bias in not None
-    if bias:
-        dtype_bias = bias.get("dtype")
-        para_check.check_dtype_rule(dtype_bias, ("float16", "float32"), "bias")
-
-    return dtype_a, dtype_out, input_range
-
-
-def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, trans_b, offset_x, kernel_name):
-    """
-    matmul computer
-
-    Parameters:
-    input_x1: dict
-        A dict object, dict with keys(shape, dtype and range)
-        the dtype must be fp16
-        the format must be FRACTAL_NZ
-    input_x2: dict
-        A dict object, dict with keys(shape, dtype and range)
-        the dtype must be fp16
-        the format must be FRACTAL_NZ
-    bias: dict
-        A dict object, dict with keys(shape and format) or None
-        the dtype must be fp16
-        the format must be ND
-    offset_w: None
-        input offset_w tensor
-    output_y: dict
-        A dict object, dict with keys(shape and dtype)
-        the dtype must be fp16
-        the format must be FRACTAL_NZ
-    trans_a: bool
-        If true, shape_a == transposed before multiplication
-    trans_b: bool
-        If true, shape_a == transposed before multiplication
-    offset_x:
-        offset of x
-    kernel_name: str
-        cce kernel_name
-    Returns
-    -------
-    res : dict
-        A dict object, dict with input tensor and output tensor
-    """
-
-    # check offset
-    if offset_w:
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", 'offset_w must be None!'
-        )
-    if offset_x != 0:
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", 'offset_x must be 0!'
-        )
-
-    # check soc_version
-    soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
-    if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
-        error_manager_vector.raise_err_specific_reson(
-            "mat_mul", "Hi3796CV300ES and Hi3796CV300CS don't support dynamic shape"
-        )
-
-    dtype_in, dtype_out, input_range = check_and_config_para(
-        input_x1, input_x2, bias, output_y, trans_a, trans_b, kernel_name
-    )
-
-    m_range, k_range, n_range = input_range
-
-    shape_x1_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
-    shape_x2_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
-
-    m_var = operation.var("m", m_range)
-    k_var = operation.var("k", k_range)
-    n_var = operation.var("n", n_range)
-
-    # only support NZ for dynamic mode
-    trans_a = not trans_a
-    trans_b = not trans_b
-    if not trans_a:
-        shape_x1_nz[0] = m_var
-        shape_x1_nz[1] = k_var
-    else:
-        shape_x1_nz[0] = k_var
-        shape_x1_nz[1] = m_var
-
-    if not trans_b:
-        shape_x2_nz[0] = k_var
-        shape_x2_nz[1] = n_var
-    else:
-        shape_x2_nz[0] = n_var
-        shape_x2_nz[1] = k_var
-
-    tensor_x1 = tvm.placeholder(shape_x1_nz, name="tensor_a", dtype=dtype_in)
-    tensor_x2 = tvm.placeholder(shape_x2_nz, name="tensor_b", dtype=dtype_in)
-    if bias:
-        bias_dtype = bias.get("dtype")
-        bias_shape = [BLOCK_CUBE * n_var]
-        tensor_bias = tvm.placeholder(
-            bias_shape, name="bias", dtype=bias_dtype)
-    else:
-        tensor_bias = None
-    para_dict = {
-        "trans_a": trans_a,
-        "trans_b": trans_b,
-        "format_a": "FRACTAL_NZ",
-        "format_b": "FRACTAL_NZ",
-        "dst_dtype": dtype_out,
-        "tensor_c": tensor_bias,
-        "kernel_name": kernel_name
-    }
-    op_res = tbe.gemm(tensor_x1, tensor_x2, para_dict)
-    tensor_list = [tensor_x1, tensor_x2]
-    if bias:
-        tensor_list.append(tensor_bias)
-    return {"op_placeholder": tensor_list, "op_res": [op_res]}
+    return param_dynamic_in_json
 
 
 @register_operator_compute("MatMul", op_mode="dynamic", support_fusion=False)
@@ -387,28 +185,9 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
     res : dict
         A dict object, dict with input tensor and output tensor
     """
-    fusion_util.check_fusion_input([input_x1])
-    fusion_util.check_fusion_input([input_x2])
-    if bias:
-        fusion_util.check_fusion_input([bias])
-
-    # set fusion build config
-    build_cfg = tbe_register.get_fusion_buildcfg()
-    build_cfg['constant_realize_extent_in_infer_bound'] = False
-
-    para_dict = {
-        "trans_a": trans_a,
-        "trans_b": trans_b,
-        "format_a": "FRACTAL_NZ",
-        "format_b": "FRACTAL_NZ",
-        "tensor_c": bias,
-        "kernel_name": kernel_name
-    }
-    op_res = tbe.gemm(input_x1, input_x2, para_dict)
-    tensor_list = [input_x1, input_x2]
-    if bias:
-        tensor_list.append(bias)
-    return {"op_placeholder": tensor_list, "op_res": [op_res]}
+    batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
+                                 trans_a=trans_a, trans_b=trans_b, offset_x=offset_x,
+                                 kernel_name=kernel_name)
 
 
 @tbe_register.register_param_generalization("MatMul")
@@ -486,8 +265,8 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
         None
     """
     with tbe.compute():
-        res = _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y,
-                               trans_a, trans_b, offset_x, kernel_name)
+        res = batch_matmul_compute(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
+                                   trans_a=trans_a, trans_b=trans_b, offset_x=offset_x, kernel_name=kernel_name, op_type="MatMulV2")
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res.get("op_res"))

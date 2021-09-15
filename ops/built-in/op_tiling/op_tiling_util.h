@@ -50,6 +50,13 @@ const std::map<std::string, DataType> STR_TO_DATATYPE = {{"float", DT_FLOAT},
                                                          {"bfloat16", DT_BF16}};
 
 /*
+ * @brief: read input shapes from paras
+ * @param [in] paras: ge::Operator
+ * @return vector<vector<int64_t>>: shapes vector of inputs
+ */
+vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras);
+
+/*
  * @brief: read constvalue from paras store into values
  * @param [in] paras: ge::Operator
  * @param [in] input_name: constvalue name

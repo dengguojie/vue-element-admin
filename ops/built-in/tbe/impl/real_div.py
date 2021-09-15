@@ -25,9 +25,11 @@ from impl.util import util_common
 from impl.util import util_select_op_base
 
 SIZE_SIXTEEN = 16
+
+
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
-def _can_division_sixteen(shape):
+def _is_last_two_axis_16_multiple(shape):
     """
     check whether divided by 16.
 
@@ -42,7 +44,7 @@ def _can_division_sixteen(shape):
     if shape[-1] == 0 or shape[-2] == 0:
         expected_value = "not equal to 0"
         real_value = "equal to 0"
-        error_manager_vector.raise_err_input_value_invalid("add", "shape[-1] and shape[-2]",
+        error_manager_vector.raise_err_input_value_invalid("real_div", "shape[-1] and shape[-2]",
                                                            expected_value, real_value)
 
     if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
@@ -81,151 +83,69 @@ def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
     shape_y = input_y.get("ori_shape")
     shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_y = shape_util.scalar2tensor_one(shape_y)
-    format_4d_list = ["NCHW", "NHWC", "HWCN"]
-    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     format_x = input_x.get("ori_format")
     format_y = input_y.get("ori_format")
-    format_list_input0 = ["ND"]
-    format_list_input1 = ["ND"]
-    format_list_output = ["ND"]
-    def _all_append_format_list(format):
-        format_list_input0.append(format)
-        format_list_input1.append(format)
-        format_list_output.append(format)
 
-    #NZ/NZ
-    if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:
-        if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
-            _all_append_format_list("FRACTAL_NZ")
+    format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
 
-    if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
+    x_is_which_format = {"is_5d": len(shape_x) == 5 and format_x in format_5d_list,
+                         "is_4d": len(shape_x) == 4 and format_x in format_4d_list,
+                         "is_scalar": len(shape_x) == 1 and shape_x[0] == 1}
+    y_is_which_format = {"is_5d": len(shape_y) == 5 and format_y in format_5d_list,
+                         "is_4d": len(shape_y) == 4 and format_y in format_4d_list,
+                         "is_scalar": len(shape_y) == 1 and shape_y[0] == 1}
+
+    x_info = {"shape": shape_x, "format": format_x,  "dim_n": 1, "dim_c": 1}
+    y_info = {"shape": shape_y, "format": format_y, "dim_n": 1, "dim_c": 1}
+
+    if (x_is_which_format["is_4d"] and y_is_which_format["is_4d"]) or \
             (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
-        x_cdim = shape_x[format_x.index("C")]
-        x_wdim = shape_x[format_x.index("W")]
-        x_hdim = shape_x[format_x.index("H")]
-        x_ndim = shape_x[format_x.index("N")]
-        y_cdim = shape_y[format_y.index("C")]
-        y_wdim = shape_y[format_y.index("W")]
-        y_hdim = shape_y[format_y.index("H")]
-        y_ndim = shape_y[format_y.index("N")]
+        x_info["dim_c"] = shape_x[format_x.index("C")]
+        x_info["dim_n"] = shape_x[format_x.index("N")]
+        y_info["dim_c"] = shape_y[format_y.index("C")]
+        y_info["dim_n"] = shape_y[format_y.index("N")]
+    if len(shape_y) == 1 and x_is_which_format["is_4d"]:
+        x_info["dim_c"] = shape_x[format_x.index("C")]
+        x_info["dim_n"] = shape_x[format_x.index("N")]
+    if len(shape_x) == 1 and y_is_which_format["is_4d"]:
+        y_info["dim_c"] = shape_y[format_y.index("C")]
+        y_info["dim_n"] = shape_y[format_y.index("N")]
 
-    if (len(shape_y) == 1 and len(shape_x) == 4) and format_x in format_4d_list:
-        x_cdim = shape_x[format_x.index("C")]
-        x_ndim = shape_x[format_x.index("N")]
+    format_support_flag = {("ND", "ND", "ND"): 1,
+                           ("FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"): 0,
+                           ("NDC1HWC0", "NDC1HWC0", "NDC1HWC0"): 0,
+                           ("FRACTAL_Z_3D", "FRACTAL_Z_3D", "FRACTAL_Z_3D"): 0,
+                           ("NC1HWC0", "NC1HWC0", "NC1HWC0"): 0,
+                           ("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"): 0,
+                           ("NC1HWC0", "ND", "NC1HWC0"): 0,
+                           ("FRACTAL_Z", "ND", "FRACTAL_Z"): 0,
+                           ("ND", "NC1HWC0", "NC1HWC0"): 0,
+                           ("ND", "FRACTAL_NZ", "FRACTAL_NZ"): 0,
+                           ("FRACTAL_NZ", "ND", "FRACTAL_NZ"): 0,
+                           ("ND", "FRACTAL_Z", "FRACTAL_Z"): 0}
 
-    if (len(shape_x) == 1 and len(shape_y) == 4) and format_y in format_4d_list:
-        y_cdim = shape_y[format_y.index("C")]
-        y_ndim = shape_y[format_y.index("N")]
+    # FRACTAL_NZ    /     FRACTAL_NZ
+    # NDC1HWC0      /     NDC1HWC0
+    # FRACTAL_Z_3D  /     FRACTAL_Z_3D
+    # NC1HWC0       /     NC1HWC0
+    # FRACTAL_Z     /     FRACTAL_Z
+    _is_support_same_formats(x_info, y_info, y_is_which_format, x_is_which_format, format_support_flag)
 
-    # NDC1HWC0 FRACTAL_Z_3D
-    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
-        if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-            _all_append_format_list("NDC1HWC0")
-            if x_ndim % 16 == 0 and y_ndim % 16 == 0:
-                _all_append_format_list("FRACTAL_Z_3D")
-
-    # ND/ND 5HD/5HD FZ/FZ
-    if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
-        if x_cdim % 16 == 0 and y_cdim % 16 == 0:
-            if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1) \
-                    and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
-                _all_append_format_list("NC1HWC0")
-            if format_x == format_y == "HWCN":
-                if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                    _all_append_format_list("NC1HWC0")
-                if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                    _all_append_format_list("NC1HWC0")
-                if x_wdim == y_wdim and x_hdim == y_hdim:
-                    _all_append_format_list("NC1HWC0")
-                if (x_wdim == x_hdim == 1) or (y_hdim == y_wdim == 1):
-                    _all_append_format_list("NC1HWC0")
-                if (x_hdim == y_wdim == 1) or (x_wdim == y_hdim == 1):
-                    _all_append_format_list("NC1HWC0")
-            if format_x == format_y == "NHWC":
-                if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                    _all_append_format_list("NC1HWC0")
-                if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                    _all_append_format_list("NC1HWC0")
-                if x_ndim == y_ndim and x_hdim == y_hdim:
-                    _all_append_format_list("NC1HWC0")
-                if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                    _all_append_format_list("NC1HWC0")
-                if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                    _all_append_format_list("NC1HWC0")
-        if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
-            if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) or \
-                    (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
-                _all_append_format_list("FRACTAL_Z")
-            if format_x == format_y == "HWCN" and x_wdim * x_hdim == y_wdim * y_hdim:
-                _all_append_format_list("FRACTAL_Z")
-
-    # NZ/ND,ND/NZ
-    if (len(shape_x) >= 2 and len(shape_y) >= 2):
-        if  _can_division_sixteen(shape_x) and \
-            (not _can_division_sixteen(shape_y)):
-            format_list_input0.append("FRACTAL_NZ")
-            format_list_input1.append("ND")
-            format_list_output.append("FRACTAL_NZ")
-        elif (not _can_division_sixteen(shape_x)) and \
-             _can_division_sixteen(shape_y):
-            format_list_input0.append("ND")
-            format_list_input1.append("FRACTAL_NZ")
-            format_list_output.append("FRACTAL_NZ")
-
-    #ND/NZ & scalar/NZ
-    if len(shape_x) == 1 and len(shape_y) >= 2 and (shape_x[-1] == shape_y[-1] or \
-        shape_x[-1] == 1):
-        if _can_division_sixteen(shape_y):
-            format_list_input0.append("ND")
-            format_list_input1.append("FRACTAL_NZ")
-            format_list_output.append("FRACTAL_NZ")
-    #NZ/ND & NZ/scalar
-    if len(shape_y) == 1 and len(shape_x) >= 2 and (shape_x[-1] == shape_y[-1] or \
-        shape_y[-1] == 1):
-        format_list_input0.append("FRACTAL_NZ")
-        format_list_input1.append("ND")
-        format_list_output.append("FRACTAL_NZ")
-    #5HD/5HD
-    if len(shape_y) == 1 and len(shape_x) == 4 and format_x in format_4d_list:
-        if shape_y[0] % 16 == 0 and x_cdim % 16 == 0:
-            _all_append_format_list("NC1HWC0")
-    if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
-        if shape_x[0] % 16 == 0 and y_cdim % 16 == 0:
-            _all_append_format_list("NC1HWC0")
-    #5HD+ND->5HD
-    if len(shape_x) == 1 and len(shape_y) == 1 and shape_y[0] == 1 and format_x in format_4d_list \
-        and shape_x[0] % 16 == 0:
-        format_list_input0.append("NC1HWC0")
-        format_list_input1.append("ND")
-        format_list_output.append("NC1HWC0")
-
-    # 4D/scalar --> FZ/ND & 5HD/ND
-    if len(shape_x) == 4 and len(shape_y) == 1 and shape_y[0] == 1 \
-       and format_x in format_4d_list:
-        format_list_input0.append("NC1HWC0")
-        format_list_input1.append("ND")
-        format_list_output.append("NC1HWC0")
-        format_list_input0.append("FRACTAL_Z")
-        format_list_input1.append("ND")
-        format_list_output.append("FRACTAL_Z")
-
-    # scalar/4D --> ND/FZ & ND/5HD
-    if len(shape_y) == 4 and len(shape_x) == 1 and shape_x[0] == 1 \
-       and format_y in format_4d_list:
-        if y_cdim % 16 == 0:
-            format_list_input0.append("ND")
-            format_list_input1.append("NC1HWC0")
-            format_list_output.append("NC1HWC0")
-        if y_cdim % 16 == 0 and y_ndim % 16 == 0:
-            format_list_input0.append("ND")
-            format_list_input1.append("FRACTAL_Z")
-            format_list_output.append("FRACTAL_Z")
-
-    # ND/ND,5HD/5HD
-    if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
-        _all_append_format_list("NC1HWC0")
+    # FRACTAL_NZ    /     ND          ->    FRACTAL_NZ       /     ND
+    # ND            /     FRACTAL_NZ  ->    ND               /     FRACTAL_NZ
+    # ND & scalar   /     FRACTAL_NZ  ->    ND               /     FRACTAL_NZ
+    # FRACTAL_NZ    /     ND & scalar ->    FRACTAL_NZ       /     ND
+    # 5HD           /     ND          ->    5HD              /     ND
+    # 4D            /     scalar      ->    FRACTAL_Z & 5HD  /     ND
+    # scalar        /     4D          ->    ND               /     FRACTAL_Z & 5HD
+    _is_support_diff_formats(x_info, y_info, x_is_which_format, y_is_which_format, format_4d_list, format_support_flag)
 
     # gen format and dtype
+    format_list_input0 = [format_tuple[0] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
+    format_list_input1 = [format_tuple[1] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
+    format_list_output = [format_tuple[2] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
+
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16"]
@@ -261,8 +181,167 @@ def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
-
     return param_dynamic_in_json
+
+
+def _is_support_same_formats(x_info, y_info, y_is_which_format, x_is_which_format, format_support_flag):
+    # FRACTAL_NZ/FRACTAL_NZ
+    all_append_format_fractal_nz_cond_list = []
+    all_append_format_fractal_nz_cond_list.append(
+        (len(x_info["shape"]) >= 2 and len(y_info["shape"]) >= 2 and x_info["shape"][-2:] == y_info["shape"][-2:])
+        and (_is_last_two_axis_16_multiple(y_info["shape"]))
+    )
+    format_support_flag[("FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ")] = any(all_append_format_fractal_nz_cond_list)
+
+    # NDC1HWC0/NDC1HWC0
+    all_append_format_ndc1hwc0_cond_list = []
+    all_append_format_ndc1hwc0_cond_list.append(
+        (x_is_which_format["is_5d"] and y_is_which_format["is_5d"] and x_info["format"] == y_info["format"])
+        and (x_info["dim_c"] % 16 == 0 and y_info["dim_c"] % 16 == 0)
+    )
+    format_support_flag[("NDC1HWC0", "NDC1HWC0", "NDC1HWC0")] = any(all_append_format_ndc1hwc0_cond_list)
+
+    # FRACTAL_Z_3D/FRACTAL_Z_3D
+    all_append_format_fractal_z_3d_cond_list = []
+    all_append_format_fractal_z_3d_cond_list.append(
+        (x_is_which_format["is_5d"] and y_is_which_format["is_5d"] and x_info["format"] == y_info["format"])
+        and (x_info["dim_c"] % 16 == 0 and y_info["dim_c"] % 16 == 0)
+        and (x_info["dim_n"] % 16 == 0 and y_info["dim_n"] % 16 == 0)
+    )
+    format_support_flag[("FRACTAL_Z_3D", "FRACTAL_Z_3D", "FRACTAL_Z_3D")] = \
+        any(all_append_format_fractal_z_3d_cond_list)
+
+    # NC1HWC0/NC1HWC0
+    _is_support_5d_5d_5d(x_info, y_info, x_is_which_format, y_is_which_format, format_support_flag)
+
+    # FRACTAL_Z/FRACTAL_Z
+    _is_support_fz_fz_fz(x_info, y_info, x_is_which_format, y_is_which_format, format_support_flag)
+
+
+def _is_support_diff_formats(x_info, y_info, x_is_which_format, y_is_which_format, format_4d_list, format_support_flag):
+    # FRACTAL_NZ/ND -> FRACTAL_NZ/ND
+    # ND/FRACTAL_NZ -> ND/FRACTAL_NZ
+    # if inputs are [shape_0, shape_1] == [shape_x, shape_y], is_x_y is True, else False
+    _is_any_fractal_nz_res = _is_any_fractal_nz(x_info["shape"], y_info["shape"], is_x_y=True)
+    if _is_any_fractal_nz_res is not None:
+        format_0, format_1, format_2 = _is_any_fractal_nz_res
+        format_support_flag[(format_0, format_1, format_2)] = 1
+    # ND/FRACTAL_NZ & scalar/FRACTAL_NZ -> ND/FRACTAL_NZ
+    # FRACTAL_NZ/ND & FRACTAL_NZ/scalar -> FRACTAL_NZ/ND
+    _is_any_fractal_nz_res = _is_any_fractal_nz(y_info["shape"], x_info["shape"], is_x_y=False)
+    if _is_any_fractal_nz_res is not None:
+        format_0, format_1, format_2 = _is_any_fractal_nz_res
+        format_support_flag[(format_0, format_1, format_2)] = 1
+
+    # 5HD/ND -> 5HD/ND
+    if len(x_info["shape"]) == 1 and x_info["format"] in format_4d_list and x_info["shape"][0] % 16 == 0 \
+            and y_is_which_format["is_scalar"]:
+        format_support_flag[("NC1HWC0", "ND", "NC1HWC0")] = 1
+
+    # 4D/scalar --> FRACTAL_Z/ND & 5HD/ND
+    if x_is_which_format["is_4d"] and y_is_which_format["is_scalar"]:
+        format_support_flag[("NC1HWC0", "ND", "NC1HWC0")] = 1
+        format_support_flag[("FRACTAL_Z", "ND", "FRACTAL_Z")] = 1
+    # scalar/4D --> ND/FRACTAL_Z & ND/5HD
+    if y_is_which_format["is_4d"] and x_is_which_format["is_scalar"]:
+        if y_info["dim_c"] % 16 == 0:
+            format_support_flag[("ND", "NC1HWC0", "NC1HWC0")] = 1
+        if y_info["dim_c"] % 16 == 0 and y_info["dim_n"] % 16 == 0:
+            format_support_flag[("ND", "FRACTAL_Z", "FRACTAL_Z")] = 1
+
+
+def _is_support_5d_5d_5d(x_info, y_info, x_is_which_format, y_is_which_format, format_support_flag):
+    format_x, shape_x, x_cdim = x_info["format"], x_info["shape"], x_info["dim_c"]
+    format_y, shape_y, y_cdim = y_info["format"], y_info["shape"], y_info["dim_c"]
+    if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
+        format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+    if len(shape_y) == 1 and x_is_which_format["is_4d"] and shape_y[0] % 16 == 0 and x_cdim % 16 == 0:
+        format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+    if len(shape_x) == 1 and y_is_which_format["is_4d"] and shape_x[0] % 16 == 0 and y_cdim % 16 == 0:
+        format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+    if x_is_which_format["is_4d"] and y_is_which_format["is_4d"]:
+        if x_cdim % 16 == 0 and y_cdim % 16 == 0:
+            if format_x == format_y == "NCHW":
+                if (shape_x[1] == shape_y[1] or shape_x[1] == 16 or shape_y[1] == 16) \
+                        or (shape_x[0] == shape_y[0] or shape_x[0] == 1 or shape_y[0] == 1):
+                    format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+            if format_x == format_y in ("HWCN", "NHWC"):
+                if shape_x[0] == shape_y[0] and (shape_x[1] == 1 or shape_y[1] == 1):
+                    format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+                if shape_x[1] == shape_y[1] and (shape_x[0] == 1 or shape_y[0] == 1):
+                    format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+                if shape_x[0] == shape_y[0] and shape_x[1] == shape_y[1]:
+                    format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+                if (shape_x[1] == shape_x[0] == 1) or (shape_y[0] == shape_y[1] == 1):
+                    format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+                if (shape_x[0] == shape_y[1] == 1) or (shape_x[1] == shape_y[0] == 1):
+                    format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
+
+
+def _is_support_fz_fz_fz(x_info, y_info, x_is_which_format, y_is_which_format, format_support_flag):
+    all_append_format_fractal_z_cond_list = []
+    all_append_format_fractal_z_cond1 = (
+            (x_is_which_format["is_4d"] and y_is_which_format["is_4d"])
+            and (x_info["dim_c"] % 16 == 0 and x_info["dim_n"] % 16 == 0)
+            and (y_info["dim_c"] % 16 == 0 and y_info["dim_n"] % 16 == 0)
+            and (x_info["format"] == y_info["format"] == "NHWC")
+            and (list(x_info["shape"]) == list(y_info["shape"]))
+    )
+    all_append_format_fractal_z_cond_list.append(all_append_format_fractal_z_cond1)
+    all_append_format_fractal_z_cond2 = (
+            (x_is_which_format["is_4d"] and y_is_which_format["is_4d"])
+            and (x_info["dim_c"] % 16 == 0 and x_info["dim_n"] % 16 == 0)
+            and (y_info["dim_c"] % 16 == 0 and y_info["dim_n"] % 16 == 0)
+            and (x_info["format"] == y_info["format"] == "NCHW")
+            and (list(x_info["shape"]) == list(y_info["shape"]))
+    )
+    all_append_format_fractal_z_cond_list.append(all_append_format_fractal_z_cond2)
+    all_append_format_fractal_z_cond3 = (
+            (x_is_which_format["is_4d"] and y_is_which_format["is_4d"])
+            and (x_info["dim_c"] % 16 == 0 and x_info["dim_n"] % 16 == 0)
+            and (y_info["dim_c"] % 16 == 0 and y_info["dim_n"] % 16 == 0)
+            and (x_info["format"] == y_info["format"] == "HWCN")
+            and (x_info["shape"][0] * x_info["shape"][1] == y_info["shape"][0] * y_info["shape"][1])
+    )
+    all_append_format_fractal_z_cond_list.append(all_append_format_fractal_z_cond3)
+    format_support_flag[("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z")] = any(all_append_format_fractal_z_cond_list)
+
+
+def _is_any_fractal_nz(shape_0, shape_1, is_x_y):
+    """
+    Check whether is any FRACTAL_NZ format, and return the format tuple
+
+    Parameters
+    ----------
+    shape_0: list or tuple
+    shape_1: list or tuple
+    is_x_y： bool
+        if inputs are [shape_0, shape_1] == [shape_x, shape_y], is_x_y is True, else False
+
+    Returns
+    -------
+    Str
+    "FRACTAL_NZ", "ND", "FRACTAL_NZ" or
+    "ND", "FRACTAL_NZ", "FRACTAL_NZ"
+    """
+    # FRACTAL_NZ/ND -> FRACTAL_NZ/ND
+    # ND/FRACTAL_NZ -> ND/FRACTAL_NZ
+    if len(shape_0) >= 2 and len(shape_1) >= 2:
+        if _is_last_two_axis_16_multiple(shape_0) and (not _is_last_two_axis_16_multiple(shape_1)):
+            if is_x_y:
+                return "FRACTAL_NZ", "ND", "FRACTAL_NZ"
+            else:
+                return "ND", "FRACTAL_NZ", "FRACTAL_NZ"
+
+    # ND/FRACTAL_NZ & scalar/FRACTAL_NZ -> ND/FRACTAL_NZ
+    # FRACTAL_NZ/ND & FRACTAL_NZ/scalar -> FRACTAL_NZ/ND
+    if (len(shape_0) == 1 and len(shape_1) >= 2 and shape_0[-1] == shape_1[-1]) or \
+            (len(shape_0) == 1 and len(shape_1) >= 2 and shape_0[-1] == 1):
+        if is_x_y and _is_last_two_axis_16_multiple(shape_1):
+            return "ND", "FRACTAL_NZ", "FRACTAL_NZ"
+        if not is_x_y:
+            return "FRACTAL_NZ", "ND", "FRACTAL_NZ"
+    return None
 
 
 def _check_format(x, y):

@@ -4377,6 +4377,25 @@ class CceConvOp:
             sch[bl0].mem_unique()
             if "int32_bias" not in tensor_map.keys() and not ConvParam.convbn1_flag:
                 sch[c_col].mem_unique()
+        
+        def _handle_transdata_ubfusion():
+            # conv+transdata ub fusion, cout must be 1
+            transdata_tensor = res.op.input_tensors[0]
+            # hardware must process 16*16 block, cout is 1, so need reserved extras 15*16 ub space
+            storage_bound = c_tiling_factor[1] + 15 * 16 
+            process_tensor = transdata_tensor.op.input_tensors[0]
+            if res.op.tag == "conv2d_data_rm" and res.op.input_tensors[0].op.tag == "5HD_trans_NCHW":
+                sch[transdata_tensor].set_storage_bound(storage_bound)
+                sch[transdata_tensor].split(sch[transdata_tensor].op.axis[2], 16)
+                sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "vnchwconv")
+                # need storage_align all tensors between res tensor and c_ub tensor
+                while True:
+                    if process_tensor.op.name == tensor_map["c_ub"].op.name:
+                        break
+                    sch[process_tensor].storage_align(sch[process_tensor].op.axis[-1], 16, 0)
+                    if not process_tensor.op.input_tensors:
+                        break
+                    process_tensor = process_tensor.op.input_tensors[0]
 
         def _l0a_dma_load3d_support_check():
             """
@@ -5637,6 +5656,7 @@ class CceConvOp:
         if self._dynamic_flag:
             _handle_dynamic_scope()
             return True
+        _handle_transdata_ubfusion()
 
         tensor_map.clear()
         dim_map.clear()

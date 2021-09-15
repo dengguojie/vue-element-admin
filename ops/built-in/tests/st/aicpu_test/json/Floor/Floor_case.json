@@ -1,0 +1,364 @@
+[{
+  "case_name" : "Test_Floor_001",
+  "op" : "Floor",
+  "input_desc" : [ {
+    "format" : ["ND"],
+    "type" : ["double"],
+    "shape" : [ 1, 64 ],
+    "data_distribute" : ["uniform"],
+    "value_range" : [ 0, 10 ]
+  } ],
+  "output_desc" : [
+    {"format" : ["ND"], "type" : ["double"], "shape" : [ 1, 64 ]}
+  ]
+},
+ {
+   "case_name" : "Test_Floor_002",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 1, 128 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 1, 128 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_003",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 1, 512 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 1, 512 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_004",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 1, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 1, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_005",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 2, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 2, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_006",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 4, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 4, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_007",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 8, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 8, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_008",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 16, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 16, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_009",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 32, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 32, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_010",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 64, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 64, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_011",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 128, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 128, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_012",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 256, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 256, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_013",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["double"],
+     "shape" : [ 1, 1024, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["double"], "shape" : [ 1, 1024, 1024 ]}
+   ]
+ },
+ {
+  "case_name" : "Test_Floor_014",
+  "op" : "Floor",
+  "input_desc" : [ {
+    "format" : ["ND"],
+    "type" : ["float"],
+    "shape" : [ 1, 64 ],
+    "data_distribute" : ["uniform"],
+    "value_range" : [ 0, 10 ]
+  } ],
+  "output_desc" : [
+    {"format" : ["ND"], "type" : ["float"], "shape" : [ 1, 64 ]}
+  ]
+},
+ {
+   "case_name" : "Test_Floor_015",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 1, 128 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 1, 128 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_016",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 1, 512 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 1, 512 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_017",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 1, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 1, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_018",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 2, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 2, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_019",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 4, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 4, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_020",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 8, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 8, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_021",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 16, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 16, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_022",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 32, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 32, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_023",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 64, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 64, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_024",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 128, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 128, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_025",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 256, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 256, 1024 ]}
+   ]
+ },
+ {
+   "case_name" : "Test_Floor_026",
+   "op" : "Floor",
+   "input_desc" : [ {
+     "format" : ["ND"],
+     "type" : ["float"],
+     "shape" : [ 1, 1024, 1024 ],
+     "data_distribute" : ["uniform"],
+     "value_range" : [ 0, 10 ]
+   } ],
+   "output_desc" : [
+     {"format" : ["ND"], "type" : ["float"], "shape" : [ 1, 1024, 1024 ]}
+   ]
+ }]

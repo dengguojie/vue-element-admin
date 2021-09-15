@@ -87,6 +87,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_requant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_bnreduce_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_requant_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_clipByValue_fusion_pass.cc
@@ -333,6 +334,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/force_fp16_cast.cc
   graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
   graph_fusion/ai_core/continuation_indicator_fusion_pass.cc
+  graph_fusion/ai_core/mul_square_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

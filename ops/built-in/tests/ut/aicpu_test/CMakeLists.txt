@@ -92,6 +92,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/case_condition.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/check_numerics.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
@@ -103,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/floor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/greater.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/greater_equal.cc
@@ -129,6 +131,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/sign.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/slice_write.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/softmaxv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
@@ -220,6 +223,7 @@ set(_cpu_kernels_ut_files
   testcase/case_condition/src/case_condition_utest.cpp
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
+  testcase/check_numerics/src/check_numerics_utest.cpp
   testcase/common/src/async_cpu_kernel_utest.cpp
   testcase/common/src/async_event_util_utest.cpp
   testcase/common/src/attr_value_utest.cpp
@@ -242,6 +246,7 @@ set(_cpu_kernels_ut_files
   testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
+  testcase/floor/src/floor_utest.cpp
   testcase/gemm/src/gemm_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/greater/src/greater_utest.cpp
@@ -272,6 +277,7 @@ set(_cpu_kernels_ut_files
   testcase/round/src/round_utest.cpp
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
+  testcase/sign/src/sign_utest.cpp
   testcase/slice_write/src/slice_write_utest.cpp
   testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp

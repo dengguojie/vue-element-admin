@@ -481,9 +481,9 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     return NOT_CHANGED;
   }
   bool AicoreSupport = true;
-  AicoreSupport = (ksizeH * ksizeW <= AVGV2_KERNEL_SIZE_H_MUL_W) || (ksizeH < AVGV2_KERNEL_SIZE and ksizeW < AVGV2_KERNEL_SIZE);
-  if(!AicoreSupport){
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "ksize_h or ksize_w aicore not support");
+  AicoreSupport = CheckOpSupported(avgPoolDesc);
+  if (!isDynamic && !AicoreSupport) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "aicore not support");
     return NOT_CHANGED;
   }
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(avgPoolNode->GetOpDesc(), "groups", inputC),

@@ -91,7 +91,7 @@ bool InferShapeForMaximumAndMinimum(Operator& op) {
 
 IMPLEMT_COMMON_INFERFUNC(TwoInOneOutCommonInferShape) {
   bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
 
@@ -252,17 +252,8 @@ IMPLEMT_VERIFIER(Add, AddVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(AddInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-
-  return GRAPH_SUCCESS;
-}
-
 INFER_DATA_SLICE_FUNC_REG(Add, ElewiseTwoInputInferDataSlice);
-COMMON_INFER_FUNC_REG(Add, AddInferShape);
+COMMON_INFER_FUNC_REG(Add, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Add, AddVerify);
 // ---------------------Add END------------------------
 
@@ -369,7 +360,7 @@ IMPLEMT_VERIFIER(AddV2, AddV2Verify) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(AddV2, AddInferShape);
+COMMON_INFER_FUNC_REG(AddV2, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(AddV2, AddV2Verify);
 // -------------------AddV2 END----------------------
 
@@ -377,21 +368,28 @@ VERIFY_FUNC_REG(AddV2, AddV2Verify);
 IMPLEMT_COMMON_INFERFUNC(CastInferShape) {
   // get input desc
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
 
-  auto output_desc = op_info->MutableOutputDesc("y");
-  if (IsUnknown(input_shape)) {
+  // get x input desc use idx = 0
+  auto input_desc = op_info->MutableInputDesc(0);
+  const GeShape &input_shape = input_desc->MutableShape();
+
+  // get y output desc use idx = 0
+  auto output_desc = op_info->MutableOutputDesc(0);
+
+  if (input_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc->GetShapeRange(input_range);
-    MakeUpShapeRange(input_shape, input_range);
+    std::vector<int64_t> input_shape_vec = input_shape.GetDims();
+    MakeUpShapeRange(input_shape_vec, input_range);
 
-    output_desc->SetShape(GeShape(input_shape));
-    output_desc->SetOriginShape(GeShape(input_shape));
+    output_desc->SetShape(input_shape);
+    output_desc->SetOriginShape(input_shape);
     output_desc->SetShapeRange(input_range);
   } else {
-    output_desc->SetShape(GeShape(input_shape));
+    output_desc->SetShape(input_shape);
   }
+
+  // set the output dtype base on attr: dst_type
   int type;
   if (op.GetAttr("dst_type", type) == GRAPH_SUCCESS) {
     output_desc->SetDataType((ge::DataType)type);
@@ -504,17 +502,8 @@ COMMON_INFER_FUNC_REG(Reciprocal, OneInOneOutCommonInferShape);
 // ---------------Reciprocal END-----------------
 
 // -------------------Sub----------------------
-IMPLEMT_COMMON_INFERFUNC(SubInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-
-  return GRAPH_SUCCESS;
-}
-
 INFER_DATA_SLICE_FUNC_REG(Sub, ElewiseTwoInputInferDataSlice);
-COMMON_INFER_FUNC_REG(Sub, SubInferShape);
+COMMON_INFER_FUNC_REG(Sub, TwoInOneOutCommonInferShape);
 // -----------------Sub END-----------------
 
 // ----------------Abs-------------------
@@ -538,16 +527,7 @@ COMMON_INFER_FUNC_REG(Sign, SignInferShape);
 // ---------------Sign END-----------------
 
 // ----------------SquaredDifference-------------------
-IMPLEMT_COMMON_INFERFUNC(SquaredDifferenceInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(SquaredDifference, SquaredDifferenceInferShape);
+COMMON_INFER_FUNC_REG(SquaredDifference, TwoInOneOutCommonInferShape);
 // ----------------SquaredDifference END---------------
 
 // ------------------Div---------------------
@@ -597,7 +577,9 @@ COMMON_INFER_FUNC_REG(Exp, OneInOneOutCommonInferShape);
 
 // ----------------------Inv----------------------
 IMPLEMT_COMMON_INFERFUNC(InvInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -614,15 +596,7 @@ IMPLEMT_VERIFIER(InvGrad, InvGradVerify) {
     return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(InvGradInferShape) {
-    bool is_dynamic_output = true;
-    if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "grad", "y", is_dynamic_output)) {
-    return GRAPH_SUCCESS;
-    }
-    return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(InvGrad, InvGradInferShape);
+COMMON_INFER_FUNC_REG(InvGrad, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(InvGrad, InvGradVerify);
 // ----------------------InvGrad END----------------------
 
@@ -700,15 +674,7 @@ IMPLEMT_VERIFIER(DivNoNan, DivNoNanVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(DivNoNanInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y",is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(DivNoNan, DivNoNanInferShape);
+COMMON_INFER_FUNC_REG(DivNoNan, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(DivNoNan, DivNoNanVerify);
 // --------------DivNoNan END----------------------
 
@@ -1208,17 +1174,7 @@ IMPLEMT_VERIFIER(Atan2, Atan2Verify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(Atan2InferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-
-  return GRAPH_SUCCESS;
-}
-
-
-COMMON_INFER_FUNC_REG(Atan2, Atan2InferShape);
+COMMON_INFER_FUNC_REG(Atan2, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Atan2, Atan2Verify);
 // --------------Atan2 END-----------------
 
@@ -1231,15 +1187,7 @@ IMPLEMT_VERIFIER(AcosGrad, AcosGradVerify) {
 }
 VERIFY_FUNC_REG(AcosGrad, AcosGradVerify);
 
-IMPLEMT_COMMON_INFERFUNC(AcosGradInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "y", "dy", "z", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(AcosGrad, AcosGradInferShape);
+COMMON_INFER_FUNC_REG(AcosGrad, TwoInOneOutCommonInferShape);
 // ------------AcosGrad END----------------
 
 // ----------------AcoshGrad-------------------

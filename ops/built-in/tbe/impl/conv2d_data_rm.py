@@ -43,35 +43,48 @@ def conv2d_data_rm_compute(input_tensor, res_tensor=None):
                                         "but actually it is {}.".format(type(input_tensor)))
     if input_tensor.dtype not in ("int8", "float16"):
         err_man_cube.raise_err_one_para("E62006", "conv2d_data_rm", "The input_tensor dtype should be int8 or float16,"
-                                           " but actually it is {}.".format(input_tensor.dtype))
-    if len(input_tensor.shape) != 4:
+                                        " but actually it is {}.".format(input_tensor.dtype))
+
+    if len(input_tensor.shape) == 3 or len(input_tensor.shape) == 4:
+        tensor_queue = deque()
+        tensor_queue.append(input_tensor)
+
+        while tensor_queue:
+            src_tensor = tensor_queue.popleft()
+            if "mad1" in src_tensor.op.name:
+                output_hw = int(src_tensor.op.attrs["remove_pad_M"])
+                if len(input_tensor.shape) == 4:
+                    batch, co1, hw_mad, co0 = tuple(i.value for i in input_tensor.shape)
+                    if output_hw > hw_mad:
+                        err_man_cube.raise_err_specific("conv2d_data_rm", "conv2d_data_rm output_hw {} is bigger than input_hw {} !!!"
+                                                        .format(output_hw, hw_mad))
+                    output_shape = (batch, co1, output_hw, co0)
+                    output_tensor = tvm.compute(
+                        output_shape,
+                        lambda batch_idx, c1_idx, hw_idx, c0_idx:
+                        input_tensor[batch_idx, c1_idx, hw_idx, c0_idx],
+                        name="conv2d_data_rm_" + str(COMPUTE_INDEX[0]),
+                        tag="conv2d_data_rm")
+                else:
+                    batch, c, hw_mad = tuple(i.value for i in input_tensor.shape)
+                    if output_hw > hw_mad:
+                        err_man_cube.raise_err_specific("conv2d_data_rm", "conv2d_data_rm output_hw {} is bigger than input_hw {} !!!"
+                                                        .format(output_hw, hw_mad))
+                    output_shape = (batch, c, output_hw)
+                    output_tensor = tvm.compute(
+                        output_shape,
+                        lambda batch_idx, c_idx, hw_idx:
+                        input_tensor[batch_idx, c_idx, hw_idx],
+                        name="conv2d_data_rm_" + str(COMPUTE_INDEX[0]),
+                        tag="conv2d_data_rm")
+                COMPUTE_INDEX[0] += 1
+                return output_tensor
+
+            if src_tensor.op.input_tensors:
+                tensor_queue.extend(list(i for i in src_tensor.op.input_tensors))
+
+        err_man_cube.raise_err_specific("conv2d_data_rm", "conv2d_data_rm Cannot find remove_align_data_M information "
+                                        "after traversing all input tensors!")
+    else:
         err_man_cube.raise_err_specific("conv2d_data_rm", "Wrong input_tensor shape {}, \
-                                        the format should be [N C1 HW C0]!".format(input_tensor.shape))
-
-    batch, co1, hw_mad, co0 = tuple(i.value for i in input_tensor.shape)
-
-    tensor_queue = deque()
-    tensor_queue.append(input_tensor)
-
-    while tensor_queue:
-        src_tensor = tensor_queue.popleft()
-        if "mad1" in src_tensor.op.name:
-            output_hw = int(src_tensor.op.attrs["remove_pad_M"])
-            if output_hw > hw_mad:
-                err_man_cube.raise_err_specific("conv2d_data_rm",
-                                                "output_hw {} is bigger than input_hw {} !!!".format(output_hw, hw_mad))
-            output_shape = (batch, co1, output_hw, co0)
-            output_tensor = tvm.compute(
-                output_shape,
-                lambda batch_idx, c1_idx, hw_idx, c0_idx:
-                input_tensor[batch_idx, c1_idx, hw_idx, c0_idx],
-                name="conv2d_data_rm_" + str(COMPUTE_INDEX[0]),
-                tag="conv2d_data_rm")
-            COMPUTE_INDEX[0] += 1
-            return output_tensor
-
-        if src_tensor.op.input_tensors:
-            tensor_queue.extend(list(i for i in src_tensor.op.input_tensors))
-
-    err_man_cube.raise_err_specific("conv2d_data_rm",
-                                    "Cannot find remove_align_data_M information after traversing all input tensors!")
+                                         the format should be [N C1 HW C0] or [N C HW]!".format(input_tensor.shape))

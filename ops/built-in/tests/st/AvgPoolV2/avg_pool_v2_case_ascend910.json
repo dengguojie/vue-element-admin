@@ -1,0 +1,70 @@
+[
+  {
+    "op": "AvgPoolV2",
+    "case_name" : "test_avg_pool_v2_001",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [16,1,256,256],
+        "ori_shape": [16,1,256,256],
+        "type": "float16",
+        "value_range": [[0,1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [16,1,256,256],
+        "ori_shape": [16,1,256,256],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,31,31],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [15,15,15,15],
+        "type": "list_int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "global_pooling",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "padding_mode",
+        "value": "CALCULATED",
+        "type": "string"
+      },
+      {
+        "name": "ceil_mode",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "exclusive",
+        "value": true,
+        "type": "bool"
+      }
+    ]
+  }
+]

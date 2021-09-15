@@ -23,6 +23,7 @@
 #include <functional>
 #include <ge_error_codes.h>
 #include <graph/utils/type_utils.h>
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 using namespace std;
@@ -60,7 +61,8 @@ bool GetConstValue(const ge::Operator& paras, const string& input_name, std::vec
     return false;
   }
 
-  auto dtype = const_tensor.GetTensorDesc().GetDataType();
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(paras);
+  ge::DataType dtype = operator_info->MutableInputDesc(input_name)->GetDataType();
   auto data = const_tensor.GetData();
   auto size = const_tensor.GetSize();
   if (data == nullptr || size == 0) {
@@ -100,6 +102,21 @@ int64_t GetByteLenByString(const std::string& data_type) {
   }
   OP_LOGW("GetByteLen", "con not get the dtype[%s] in ge::DataType list. will return 0", data_type.c_str());
   return 0;
+}
+
+vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(paras);
+  if (op_desc == nullptr)
+    return {};
+
+  vector<vector<int64_t>> shapes;
+  int count = op_desc->GetInputsSize();
+  for (int i = 0; i < count; i++) {
+    auto ptr = op_desc->MutableInputDesc(i);
+    shapes.emplace_back(ptr->MutableShape().GetDims());
+  }
+
+  return shapes;
 }
 
 }  // namespace optiling

@@ -22,6 +22,30 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_platform
+from impl.util import util_select_op_base
+
+
+def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
+    """
+    select format dynamically \n
+    1.when is dynamic softmax, the formats of x and y are the same and only support ND.
+
+        example:
+        original:
+        x's Tensor(shape=(16, 16, 16), "ND")
+        y's Tensor(shape=(16, 16, 16), "ND")
+    """
+    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                           datatype="float16,float32",
+                                           format="ND,ND",
+                                           unknownshape_format="ND,ND")
+    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                            datatype="float16,float32",
+                                            format="ND,ND",
+                                            unknownshape_format="ND,ND")
+    param_list = [input0, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):

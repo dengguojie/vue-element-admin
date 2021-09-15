@@ -30,67 +30,67 @@ def gen_trans_data_precision_case(src, dst, dtype, dst_dtype, precision, dst_for
             "precision_standard": precision_info.PrecisionStandard(precision, precision)}
 
 #normal
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((4, 8, 16, 16), (1, 1, 62, 120), "float16", "float16", "case_1", "success"))
-
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((127, 4, 16, 16), (1, 1, 2016, 60), "float16", "float16", "case_2", "success"))
-
-ut_case.add_case(["Ascend910"],
-                gen_trans_data_case((2, 4, 16, 16), (1, 1, 31, 60), "float16", "float16", "case_3", "success"))
-
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4), "float32", "float32", "case_4", "success"))
-
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((4, 8, 16, 16), (1, 1, 64, 128), "float32", "float32", "case_5", "success"))
-
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((8, 8, 16, 16), (1, 1, 128, 128), "float32", "float32", "case_6", "success"))
-
-# exception
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
-                                     "float16", "float32","err_1",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
-                                     "int8", "int8","err_2",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
-                                     "float16", "float16", "err_3",
-                                     RuntimeError,
-                                     src_format="NHWC"))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
-                                     "float16", "float16", "err_4",
-                                     RuntimeError,
-                                     dst_format="NC1HWC0"))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 1, 16), (1, 1, 18, 4),
-                                     "float16", "float16", "err_5",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 4, 18, 4),
-                                     "float16", "float16", "err_6",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16, 5), (1, 1, 18, 4),
-                                     "float16", "float16", "err_7",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 5),
-                                     "float16", "float16", "err_8",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 4, 4),
-                                     "float16", "float16", "err_9",
-                                     RuntimeError))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((2, 4, 16, 16), (1, 1, 18, 4),
-                                     "float16", "float16", "err_10",
-                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((4, 8, 16, 16), (1, 1, 62, 120), "float16", "float16", "case_1", "success"))
+#
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((127, 4, 16, 16), (1, 1, 2016, 60), "float16", "float16", "case_2", "success"))
+#
+#ut_case.add_case(["Ascend910"],
+#                gen_trans_data_case((2, 4, 16, 16), (1, 1, 31, 60), "float16", "float16", "case_3", "success"))
+#
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4), "float32", "float32", "case_4", "success"))
+#
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((4, 8, 16, 16), (1, 1, 64, 128), "float32", "float32", "case_5", "success"))
+#
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((8, 8, 16, 16), (1, 1, 128, 128), "float32", "float32", "case_6", "success"))
+#
+## exception
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
+#                                     "float16", "float32","err_1",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
+#                                     "int8", "int8","err_2",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
+#                                     "float16", "float16", "err_3",
+#                                     RuntimeError,
+#                                     src_format="NHWC"))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 4),
+#                                     "float16", "float16", "err_4",
+#                                     RuntimeError,
+#                                     dst_format="NC1HWC0"))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 1, 16), (1, 1, 18, 4),
+#                                     "float16", "float16", "err_5",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 4, 18, 4),
+#                                     "float16", "float16", "err_6",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16, 5), (1, 1, 18, 4),
+#                                     "float16", "float16", "err_7",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 18, 5),
+#                                     "float16", "float16", "err_8",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((3, 4, 16, 16), (1, 1, 4, 4),
+#                                     "float16", "float16", "err_9",
+#                                     RuntimeError))
+#ut_case.add_case(["Ascend910"],
+#                 gen_trans_data_case((2, 4, 16, 16), (1, 1, 18, 4),
+#                                     "float16", "float16", "err_10",
+#                                     RuntimeError))
 
 
 def calc_expect_func(src, dst, src_format, dst_format):
