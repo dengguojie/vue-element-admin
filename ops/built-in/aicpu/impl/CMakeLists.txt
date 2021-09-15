@@ -8,6 +8,7 @@ set(local_kernels_src_files
     kernels/normalized/asin.cc
     kernels/normalized/asinh.cc
     kernels/normalized/atan.cc
+    kernels/normalized/atan2.cc
     kernels/normalized/atanh.cc
     kernels/normalized/betainc.cc
     kernels/normalized/cache_swap_table.cc
@@ -67,6 +68,7 @@ set(local_kernels_src_files
     kernels/normalized/strided_slice_v2.cc
     kernels/normalized/sub.cc
     kernels/normalized/top_k.cc
+    kernels/normalized/top_k_pq_distance.cc
     kernels/normalized/top_k_v2_d.cc
     utils/allocator_utils.cc
     utils/bcast.cc
@@ -76,7 +78,6 @@ set(local_kernels_src_files
     utils/range_sampler.cc
     utils/sparse_group.cc
     utils/sparse_tensor.cc
-    kernels/normalized/top_k_pq_distance.cc
 )
 
 set(local_host_kernels_src_files
