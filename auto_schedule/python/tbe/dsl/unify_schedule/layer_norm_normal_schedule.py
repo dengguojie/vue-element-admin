@@ -35,7 +35,6 @@ from ..base import operation
 from ..base.operation import get_context
 from ..base.operation import register_schedule
 from ..base.operation import var
-from ..base.operation import add_compile_info
 from .constants import Pattern
 from .constants import INSN_MAPPING
 from .layer_norm_tilingcase import LayerNormInfo
@@ -48,7 +47,8 @@ MAX_NODE_COUNT = 12
 LAST_DIM_RANGE_NUM1 = 64
 PHONY_INSN = "phony_insn"
 DMA_COPY = "dma_copy"
-MAX_BOUND = 10 * 1024
+# Ascend310 bound value
+MAX_BOUND = 8 * 1024
 
 
 @register_schedule(pattern=Pattern.LayerNorm)
@@ -180,7 +180,6 @@ class NormalLayerNormSchedule:
         self._do_compute_at()
         self._do_storage_align()
         self._do_emit_insn()
-        self._add_compile_info()
         return self.schedule
 
     def _do_create_schedule(self):
@@ -343,7 +342,7 @@ class NormalLayerNormSchedule:
         # block tiling
 
         if case.is_split_ub:
-            if block_split_axis_index != block_split_axis_index_1:
+            if block_split_axis_index != block_split_axis_index_1 and abs(block_split_axis_index - block_split_axis_index_1) < 2:
                 pre_outer, pre_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index],
                                                                        factor=block_inner)
                 suf_outer, suf_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index_1],
@@ -621,7 +620,3 @@ class NormalLayerNormSchedule:
                     elif insn == "":
                         insn = get_dsl_insn(tensor)
                     self.schedule[tensor].emit_insn(emit_insn_axis, INSN_MAPPING[insn])
-
-    def _add_compile_info(self):
-        add_compile_info("max_ub_size_normal_fp16", 10 * 1024)
-        add_compile_info("max_ub_size_normal_fp32", 10 * 1024)

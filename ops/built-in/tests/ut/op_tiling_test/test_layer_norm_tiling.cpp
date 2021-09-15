@@ -1251,6 +1251,6 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_12) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 5390000);
+  EXPECT_EQ(runInfo.tiling_key, 5391000);
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 32 16 16 989855744 1 1 1 0 ");
 }

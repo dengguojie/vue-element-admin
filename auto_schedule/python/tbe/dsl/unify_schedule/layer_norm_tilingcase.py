@@ -227,6 +227,13 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_fo
             break
 
     core_num = get_soc_spec("CORE_NUM")
+    soc_version = get_soc_spec("SOC_VERSION")
+    max_ub_size_normal_fp16 = 10 * 1024
+    max_ub_size_normal_fp32 = 10 * 1024
+    if soc_version in ("Ascend310",):
+        max_ub_size_normal_fp16 = 8 * 1024
+        max_ub_size_normal_fp32 = 8 * 1024
+
     keep_dims = 1
     min_block_size = _get_block_size(
         list(graph_info.input_tensor_set)[0].dtype)
@@ -239,9 +246,9 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_fo
     ub_info = [max_ub_count]
 
     pre_compile_info = get_compile_info()
-    if pre_compile_info and "core_num" not in pre_compile_info:
-        info_map = {"common_info": common_info, "pattern_info": pattern_info,
-                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": core_num, "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 10 * 1024, "mode": mode, "input_format": input_format}
+    if pre_compile_info and "common_info" not in pre_compile_info:
+        info_map = {
+            "common_info": common_info, "pattern_info": pattern_info, "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": core_num, "max_ub_size_normal_fp16": max_ub_size_normal_fp16, "max_ub_size_normal_fp32": max_ub_size_normal_fp32, "mode": mode, "input_format": input_format}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
                 add_compile_info(key, info_map.get(key))
@@ -510,6 +517,7 @@ def _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce,
             ub_split_axis_index_reduce = k
             workspace_tiling_case = LayerNormTilingCase()
             workspace_tiling_case.block_split_axis_index = block_split_axis
+            workspace_tiling_case.block_split_axis_index_1 = block_split_axis
             workspace_tiling_case.ub_split_axis_index = ub_split_axis
             workspace_tiling_case.ub_split_axis_index_reduce = ub_split_axis_index_reduce
             workspace_tiling_case.is_normal = False
@@ -525,6 +533,7 @@ def _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce,
             continue
         normal_tiling_case = LayerNormTilingCase()
         normal_tiling_case.block_split_axis_index = block_split_axis
+        normal_tiling_case.block_split_axis_index_1 = block_split_axis
         normal_tiling_case.ub_split_axis_index = n_ub_split_axis
         normal_tiling_case.ub_split_axis_index_reduce = 0
         normal_tiling_case.multi_core = True

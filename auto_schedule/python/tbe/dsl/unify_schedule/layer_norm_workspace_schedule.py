@@ -35,7 +35,6 @@ from ..base import operation
 from ..base.operation import get_context
 from ..base.operation import register_schedule
 from ..base.operation import var
-from ..base.operation import add_compile_info
 from .constants import Pattern
 from .constants import INSN_MAPPING
 from .layer_norm_tilingcase import LayerNormInfo
@@ -46,7 +45,8 @@ from .util import get_dsl_insn
 MAX_NODE_COUNT = 12
 PHONY_INSN = "phony_insn"
 DMA_COPY = "dma_copy"
-MAX_BOUND = 10 * 1024
+# Ascend310 bound value
+MAX_BOUND = 8 * 1024
 
 
 class WorkspaceLayerNormSchedule:
@@ -156,7 +156,6 @@ class WorkspaceLayerNormSchedule:
         self._do_storage_align()
         self._do_compute_at()
         self._do_emit_insn()
-        self._add_compile_info()
         return self.schedule
 
     def _do_create_schedule(self):
@@ -699,7 +698,3 @@ class WorkspaceLayerNormSchedule:
                 elif insn == "":
                     insn = get_dsl_insn(tensor)
                 self.schedule[tensor].emit_insn(emit_insn_axis, INSN_MAPPING[insn])
-
-    def _add_compile_info(self):
-        add_compile_info("max_ub_size_normal_fp16", 10 * 1024)
-        add_compile_info("max_ub_size_normal_fp32", 10 * 1024)

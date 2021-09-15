@@ -519,21 +519,30 @@ COMMON_INFER_FUNC_REG(LayerNormGrad, LayerNormGradInferShape);
 
 // ------------------------LayerNorm--------------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
-  TensorDesc td_output_y = op.GetOutputDesc("y");
-  TensorDesc td_output2_mean = op.GetOutputDesc("mean");
-  TensorDesc td_output3_variance = op.GetOutputDesc("variance");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x = op_desc -> GetInputDescPtr(0);
+  auto output_y = op_desc -> MutableOutputDesc(0);
+  auto output_mean = op_desc -> MutableOutputDesc(1);
+  auto output_var = op_desc -> MutableOutputDesc(2);
 
-  ge::Shape output_shape1 = op.GetInputDesc("x").GetShape();
-  ge::Shape output_shape2 = op.GetInputDesc("x").GetShape();
+  GeShape output_shape1 = input_x -> GetShape();
+  GeShape &output_y_shape = output_y -> MutableShape();
+  GeShape &output_mean_shape = output_mean -> MutableShape();
+  GeShape &output_var_shape = output_var -> MutableShape();
+  size_t real_dim_num = output_shape1.GetDimNum();
+  output_y_shape.SetDimNum(real_dim_num);
+  output_mean_shape.SetDimNum(real_dim_num);
+  output_var_shape.SetDimNum(real_dim_num);
+
 
   int64_t begin_norm_axis = 0;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("begin_norm_axis", begin_norm_axis)) {
-    OpsGetAttrErrReport(op.GetName(), "begin_norm_axis");
-    OP_LOGE("GetOpAttr beginNormAxis failed!");
+  if (!AttrUtils::GetInt(op_desc, "begin_norm_axis", begin_norm_axis)) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get attr beginNormAxis failed!");
     return GRAPH_FAILED;
   }
-
-  size_t real_dim_num = output_shape1.GetDimNum();
+  if (begin_norm_axis < 0) {
+    begin_norm_axis = begin_norm_axis + real_dim_num;
+  }
   if (begin_norm_axis >= (int64_t)real_dim_num) {
     string excepted_value = ConcatString("less than x's dims [", (int64_t)real_dim_num, "]");
     OpsAttrValueErrReport(op.GetName(), "begin_norm_axis", excepted_value, ConcatString(begin_norm_axis));
@@ -543,28 +552,20 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
         begin_norm_axis, real_dim_num);
     return GRAPH_FAILED;
   }
-  if (begin_norm_axis == -1) {
-    begin_norm_axis = real_dim_num - 1;
-  }
   for (size_t i = 0; i < real_dim_num; ++i) {
     if (i >= (size_t)begin_norm_axis) {
-      output_shape2.SetDim(i, 1);
+      output_mean_shape.SetDim(i, 1);
+      output_var_shape.SetDim(i, 1);
     } else {
-      output_shape2.SetDim(i, output_shape1.GetDim(i));
+      output_mean_shape.SetDim(i, output_shape1.GetDim(i));
+      output_var_shape.SetDim(i, output_shape1.GetDim(i));
     }
+    output_y_shape.SetDim(i, output_shape1.GetDim(i));
   }
-  td_output_y.SetShape(output_shape1);
-  td_output_y.SetDataType(op.GetInputDesc("x").GetDataType());
 
-  td_output2_mean.SetShape(output_shape2);
-  td_output2_mean.SetDataType(op.GetInputDesc("gamma").GetDataType());
-
-  td_output3_variance.SetShape(output_shape2);
-  td_output3_variance.SetDataType(op.GetInputDesc("gamma").GetDataType());
-
-  (void)op.UpdateOutputDesc("y", td_output_y);
-  (void)op.UpdateOutputDesc("mean", td_output2_mean);
-  (void)op.UpdateOutputDesc("variance", td_output3_variance);
+  output_y -> SetDataType(output_y -> GetDataType());
+  output_mean -> SetDataType(output_mean -> GetDataType());
+  output_var -> SetDataType(output_var -> GetDataType());
 
   return GRAPH_SUCCESS;
 }
