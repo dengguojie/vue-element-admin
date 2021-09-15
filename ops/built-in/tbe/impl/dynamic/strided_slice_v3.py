@@ -22,6 +22,8 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tik
 from .strided_slice import StridedSlice
 
+MAX_SIZE = 2 ** 31 - 1
+
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
 # pylint: disable=unused-argument,too-many-locals,redefined-builtin
@@ -65,10 +67,14 @@ def strided_slice_v3(x, begin, end, axes, strides, y, kernel_name="strided_slice
     strided_slice_instance.strided_slice()
     inst = strided_slice_instance.tik_instance
     opt_config = {"out_of_bound_sync_check": True}
+    strided_slice_instance.axes_gm = inst.Tensor(strided_slice_instance.dtype, (MAX_SIZE,),
+                                                 name="axes_gm", scope=tik.scope_gm)
     inst.BuildCCE(kernel_name=strided_slice_instance.kernel_name,
                   inputs=(strided_slice_instance.input_gm,
                           strided_slice_instance.begin_gm,
-                          strided_slice_instance.end_gm),
+                          strided_slice_instance.end_gm,
+                          strided_slice_instance.strides_gm,
+                          strided_slice_instance.axes_gm),
                   outputs=(strided_slice_instance.output_gm,),
                   flowtable=[strided_slice_instance.tiling_param.tiling_gm],
                   config=opt_config,
