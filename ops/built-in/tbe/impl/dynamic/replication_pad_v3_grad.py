@@ -673,7 +673,7 @@ class ReplicationPadV3GradInit(object):
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 burst = self.tik_instance.Scalar('int64', name='burst')
-                burst.set_as((self.tiling_input_dim_3 - TRANS_MIN_BLKS) // TRANS_MIN_BLKS)
+                burst.set_as((self.tiling_output_dim_3 - (TRANS_MIN_BLKS - self.padding_index_0)) // TRANS_MIN_BLKS)
                 with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_2) as i:
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
                                                                index * self.tiling_output_dim_2 *
@@ -710,12 +710,11 @@ class ReplicationPadV3GradInit(object):
                                                 ping_ub_2[i * TRANS_MIN_BLKS], 0, 1,
                                                 TRANS_MIN_BLKS // self.block_num, 0, 0)
                     self.tik_instance.data_move(ping_ub_1,
-                                                self.input_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + (i + self.padding_index_2)
-                                                              * self.tiling_output_dim_3
-                                                + TRANS_MIN_BLKS], 0, 1,
-                                                burst, 0, 0)
+                                                self.input_gm[core_index * input_ele_per_core
+                                                              + index * self.tiling_input_dim_2 * self.tiling_input_dim_3
+                                                              + (i + self.padding_index_2) * self.tiling_input_dim_3
+                                                              + TRANS_MIN_BLKS],
+                                                              0, 1, burst, 0, 0)
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
                                                                index * self.tiling_output_dim_2 *
                                                                self.tiling_output_dim_3 + i * self.tiling_output_dim_3
