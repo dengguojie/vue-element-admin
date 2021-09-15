@@ -1703,11 +1703,11 @@ IMPLEMT_INFERFUNC(Size, SizeInfer) {
   std::vector<int64_t> oShapeVector;
   output_desc_y->SetShape(GeShape(oShapeVector));
 
-  DataType out_type = DT_INT32;
+  int64_t out_type = static_cast<int64_t>(DT_INT32);
   GeAttrValue out_type_value;
   op_desc->GetAttr("dtype", out_type_value);
-  out_type_value.GetValue<GeAttrValue::INT>(out_type);
-  output_desc_y->SetDataType(DataType(out_type));
+  out_type_value.GetValue<int64_t>(out_type);
+  output_desc_y->SetDataType(static_cast<DataType>(out_type));
   OP_LOGI(op.GetName().c_str(), "Size infershape end");
   return GRAPH_SUCCESS;
 }
