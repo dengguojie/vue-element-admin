@@ -384,3 +384,60 @@ TEST_F(Merge, pass_throw_infer) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+// if infered shape same with pre out shape, but range not same
+// set shape range to [1-1]
+TEST_F(Merge, while_shape_range_protect) {
+  // build graph 
+  // data0   next_iteration(shape:[-1]; range[1,10])
+  //    \   /
+  //    merge(shape:[-1]; range[1,9])
+  const std::vector<std::pair<int64_t,int64_t>> shape_range_x1 = {{1,10}};
+  const std::vector<std::pair<int64_t,int64_t>> shape_range_y = {{1,9}};
+  const auto tensor_desc_x0 = create_desc_shape_range({32},
+                                                      ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                      {64},
+                                                      ge::FORMAT_ND, {});
+  const auto tensor_desc_x1 = create_desc_shape_range({-1},
+                                                      ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                      {32},
+                                                      ge::FORMAT_ND, shape_range_x1);
+  const auto tensor_desc_y = create_desc_shape_range({-1},
+                                                      ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                      {32},
+                                                      ge::FORMAT_ND, shape_range_y);
+  auto data0 = ge::op::Data("data0").set_attr_index(0);
+  data0.update_input_desc_x(tensor_desc_x0);
+  data0.update_output_desc_y(tensor_desc_x0);
+  auto next1 = ge::op::NextIteration("next_iteration");
+  next1.update_input_desc_x(tensor_desc_x1);
+  next1.update_output_desc_y(tensor_desc_x1);
+
+  auto merge = ge::op::Merge("merge");
+  merge.create_dynamic_input_x(2);
+  merge.UpdateDynamicInputDesc("x", 0, tensor_desc_x0);
+  merge.UpdateDynamicInputDesc("x", 1, tensor_desc_x1);
+  merge.update_output_desc_y(tensor_desc_y);
+  merge.set_dynamic_input_x(0, data0);
+  merge.set_dynamic_input_x(1, next1);
+
+  std::vector<ge::Operator> inputs{data0, next1};
+  std::vector<ge::Operator> outputs{merge};
+  ge::Graph graph("merge_infer_shape_test");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph = ge::GraphUtils::GetComputeGraph(graph);
+  auto node = compute_graph->FindFirstNodeMatchType("Merge");
+  EXPECT_NE(node, nullptr);
+
+  ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
+  EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_SUCCESS);
+
+  ge::TensorDesc td_y = op.GetOutputDescByName("y");
+  std::vector<int64_t> expected_output_shape_y = {-1};
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range_y;
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range_y = {{1, -1}};
+  EXPECT_EQ(td_y.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(td_y.GetShape().GetDims(), expected_output_shape_y);
+  EXPECT_EQ(td_y.GetShapeRange(output_shape_range_y), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_shape_range_y, expected_shape_range_y);
+}
+

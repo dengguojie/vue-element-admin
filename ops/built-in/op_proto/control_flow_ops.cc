@@ -36,6 +36,18 @@ struct DimGroup {
 };
 const std::vector<int64_t> DUMMY_SHAPE = {-3};
 
+bool IsMergeInWhile(const Operator &op) {
+  // Check is while_loop, order of InferShape: Enter -> Merge -> Switch -> NextIteration -> Merge -> Switch -> Exit
+  auto in_num = op.GetInputsSize();
+  const auto &node = NodeUtils::GetNodeFromOperator(op);
+  if (in_num == 2 && node != nullptr) {
+    const auto &node_x1 = node->GetInDataNodes().at(1);
+    if (node_x1->GetType() == "NextIteration" || node_x1->GetType() == "RefNextIteration") {
+      return true;
+    }
+  }
+  return false;
+}
 static graphStatus MergeAsMaxInput(Operator &op) {
   const auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
   const auto x0_dims = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
@@ -160,13 +172,10 @@ graphStatus MergeInferImpl(Operator &op) {
   }
 
   // check N of "x" == 2
-  const auto &node = NodeUtils::GetNodeFromOperator(op);
-  if (in_num == 2 && node != nullptr) {
-    // Check is while_loop, order of InferShape: Enter -> Merge -> Switch -> NextIteration -> Merge -> Switch -> Exit
+  if (IsMergeInWhile(op)) {
     // So when processing InferShape on Merge op on first time, shape of NextIteration op is set as dummy_shape.
     // Therefore, shape & datatype of Merge op should be set as the Enter op.
-    const auto& node_x1 = node->GetInDataNodes().at(1);  // NextIteration
-    auto x1_dims = op.GetDynamicInputDesc("x", 1).GetShape().GetDims();
+    auto x1_dims = op.GetDynamicInputDesc("x", 1).GetShape().GetDims(); // next_iteration
     if (x1_dims == DUMMY_SHAPE) {  // first time infer.
       OP_LOGD(op.GetName(), "Update output shape by merge input enter");
       TensorDesc td_x = op.GetDynamicInputDesc("x", 0);
@@ -254,6 +263,29 @@ graphStatus MergeInferImpl(Operator &op) {
 
     out_shape_range[i].first = dim_group.dim_value_min < 0 ? 0 : dim_group.dim_value_min;
     out_shape_range[i].second = dim_group.is_max_unknown ? -1 : dim_group.dim_value_max;
+  }
+
+  // while infer times protect
+  // if next_iteration output shape is same with merge output shape, means after infer one loop, shape not change
+  // but shape range is not same, set shape range to [1,-1]
+  auto pre_output_shape = td_y.GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> pre_output_shape_range;
+  td_y.GetShapeRange(pre_output_shape_range);
+  if (IsMergeInWhile(op) && (pre_output_shape == out_dims)) {
+    for (size_t i = 0; i < pre_output_shape.size(); ++i) {
+      if (pre_output_shape[i] == UNKNOWN_DIM) {
+        if (pre_output_shape.size() != pre_output_shape_range.size()
+            || pre_output_shape.size() != out_shape_range.size()) {
+          OP_LOGW(op.GetName(), "while merge shape range size not same with rank.");
+          return GRAPH_FAILED;
+        }
+        if (pre_output_shape_range[i].second != out_shape_range[i].second) {
+          out_shape_range[i].second = -1;
+          OP_LOGD(op.GetName(), "while merge pre shape same with out shape, dim index: %zu, pre right_range %d, out right_range %d.",
+                                i,pre_output_shape_range[i].second, out_shape_range[i].second);
+        }
+      }
+    }
   }
 
   // Update output shape
