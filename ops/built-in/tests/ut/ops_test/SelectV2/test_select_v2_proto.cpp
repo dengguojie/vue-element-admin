@@ -101,3 +101,35 @@ TEST_F(select_v2, select_v2_infer_shape_3){
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(select_v2, select_v2_infer_shape_4) {
+  ge::op::SelectV2 op;
+
+  op.UpdateInputDesc("condition", create_desc({5, 1, 1, 5}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("then", create_desc({1}, ge::DT_FLOAT16));
+
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x2 = {{0, 6}, {0, 4}, {0, 5}, {0, 5}};
+  auto tensor_desc_x2 = create_desc_shape_range({-1, -1, -1, -1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {1, 1, 1, 1},
+                                             ge::FORMAT_ND, shape_range_x2);
+  op.UpdateInputDesc("else", tensor_desc_x2);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("result");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+
+  std::vector<int64_t> expected_output_shape = {5, -1, -1, 5};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {
+      {0, 6}, {0, 4}, {0, 5}, {0, 5}
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
