@@ -418,6 +418,11 @@ def general_schedule(
                     a_ddr = a_filling.op.input_tensors[0]
                     if cube_vector_split:
                         a_ub = None
+                        if a_ddr.op.input_tensors:
+                            if "NHWC_trans_5HD" in a_ddr.op.tag:
+                                tensor_attr["FM_NHWC_TRANS_5HD"] = True
+                            sch[a_ddr].compute_inline()
+                            a_ddr = a_ddr.op.input_tensors[0]
                     elif input_mem[0] == 0 and l1_fusion_type != 1:
                         a_ub = sch.cache_read(
                             a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
@@ -1167,7 +1172,6 @@ def general_schedule(
                 bl0_tiling_n0,
                 bl0_tiling_k0
             ) = list(i.value for i in b_col.shape)
-            bl0_tiling_kb = bl0_tiling_kb
         return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0, bl0_tiling_g
 
     def _tiling_l1_process():
@@ -1509,7 +1513,7 @@ def general_schedule(
                           cl0_tiling_n0 * 2)
         else:
             if tensor_attr.get("5HD_TRANS_NHWC"):
-                affine_l0c = 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
+                affine_l0c = 1, 1, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0 * cl0_tiling_nc
             else:
                 affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
 
@@ -1574,6 +1578,9 @@ def general_schedule(
             al0_tiling_m0,
             al0_tiling_k0
         )
+        l0a2out_affine_shape = [1, 1, None, al0_tiling_ma * al0_tiling_m0, cl0_tiling_n0]
+        if tensor_attr.get("5HD_TRANS_NHWC"):
+            l0a2out_affine_shape = [1, 1, al0_tiling_ma * al0_tiling_m0, cl0_tiling_nc * cl0_tiling_n0]
 
         # a_col will attach on c_col, c_ub or c_ddr in dynamic shape
         if not var_map:
@@ -1592,13 +1599,6 @@ def general_schedule(
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(a_col, c_col, affine_shape=l0a2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
-            l0a2out_affine_shape = [
-                1,
-                1,
-                None,
-                al0_tiling_ma * al0_tiling_m0,
-                cl0_tiling_n0
-            ]
             sch_agent.attach_at(a_col, c_ddr, affine_shape=l0a2out_affine_shape)
         else:
             _raise_dx_general_err("l0a attach error.")
@@ -1622,6 +1622,9 @@ def general_schedule(
                 bl0_tiling_n0,
                 bl0_tiling_k0
             )
+            l0b2out_affine_shape = [1, 1, bl0_tiling_nb, cl0_tiling_m0, bl0_tiling_n0]
+            if tensor_attr.get("5HD_TRANS_NHWC"):
+                l0b2out_affine_shape = [1, 1, cl0_tiling_m0, bl0_tiling_n0 * bl0_tiling_nb]
             b_col_shape = cube_util.shape_to_list(b_col.shape)
             status_ori = Compare.compare(tiling_ori_l0b, b_col_shape)
             status = Compare.compare(
@@ -1636,7 +1639,6 @@ def general_schedule(
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape)
             elif status == Compare.GREATE_EQ:
-                l0b2out_affine_shape = [1, 1, bl0_tiling_nb, cl0_tiling_m0, bl0_tiling_n0]
                 sch_agent.attach_at(b_col, c_ddr, affine_shape=l0b2out_affine_shape)
             else:
                 _raise_dx_general_err("l0b attach error.")
@@ -1677,8 +1679,8 @@ def general_schedule(
             return status
 
         status = _get_attach_status()
-        if tensor_attr.get("FM_NHWC_TRANS_5HD"):
-            l1a2out_affine_shape = [1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
+        if tensor_attr.get("5HD_TRANS_NHWC"):
+            l1a2out_affine_shape = [1, 1, l1_ma * al0_tiling_m0, cl0_tiling_nc * cl0_tiling_n0]
         else:
             l1a2out_affine_shape = [1, 1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
 
@@ -1779,6 +1781,8 @@ def general_schedule(
                         l1_nb = l1_nb * bl1_tilling_g // 2
                         _n0 *= 2
                     l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, _n0]
+                    if tensor_attr.get("5HD_TRANS_NHWC"):
+                        l1b2out_affine_shape = [1, cl0_tiling_m0, l1_nb * _n0]
                     sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
                 else:
                     _raise_dx_general_err("b_l1 attach error.")
@@ -2010,7 +2014,8 @@ def general_schedule(
                 sch[bias_ub_brc].preload()
 
         if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2 and "a_avg" not in tensor_map:
-            sch[c_ub].double_buffer()
+            if not cube_vector_split:
+                sch[c_ub].double_buffer()
             if bias_add_vector is not None:
                 sch[bias_add_vector].double_buffer()
             _fusion_double_buffer()
@@ -2147,7 +2152,10 @@ def general_schedule(
             if cube_vector_split and (stride_h > 1 or stride_w > 1):
                 sch_agent[a_filling].reused_by(a_zero)
                 sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "set_2d")
-                sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
+                if tensor_attr.get("FM_NHWC_TRANS_5HD"):
+                    sch_agent[a_filling].emit_insn(afill_c, "dma_copy", {"layout_transform": "nd2nz"})
+                else:
+                    sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
                 sch_agent[a_l1].emit_insn(al1_insn, "phony_insn")
                 sch_agent[a_l1].reused_by(a_filling)
             else:
@@ -2326,7 +2334,9 @@ def general_schedule(
 
         if not double_out_tensor:
             if tensor_attr.get("5HD_TRANS_NHWC"):
-                sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy", {"layout_transform": "nz2nd"})
+                hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
+                sch_agent[c_ddr].split(c_dim, 16)
+                sch[c_ddr].emit_insn(hw_dim, "dma_copy", {"layout_transform": "nz2nd"})
             else:
                 sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         else:
@@ -2657,13 +2667,6 @@ def general_schedule(
             sch[b_l1].compute_at(sch[c_ddr], bl1_at_inner)
             if not tiling.get("BL0_matrix"):
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
-        if cube_vector_split:
-            if tensor_attr.get("5HD_TRANS_NHWC") and not tiling.get("BL1_shape"):
-                axs = sch_agent[c_ddr].get_active_scopes()
-                _, _, _, ax_n = axs
-                sch[b_l1].compute_at(sch[c_ddr], ax_n)
-                if not tiling.get("BL0_matrix"):
-                    sch[b_col].compute_at(sch[c_ddr], ax_n)
 
     _full_load_bl1_bl0()
 

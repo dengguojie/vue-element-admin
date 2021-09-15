@@ -2427,6 +2427,7 @@ class GEMM_Schedule:
                         bl0_tiling_n0,
                         bl0_tiling_k0
                     ) = list(i.value for i in b_l0b.shape)
+                    bl0_tiling_nb = cl0_tiling_nc
                 return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
 
             def _get_al1_params_cube_vector_split():

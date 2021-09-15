@@ -5,6 +5,8 @@ the Conv2DBackpropInputD test
 """
 import sys
 from math import ceil as math_ceil
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import conv2d_bp_input_ut_testcase
 import util_for_conv2d_bp_input as util
@@ -12,17 +14,29 @@ from op_test_frame.ut import OpUT
 from te import tvm
 from te.platform import cce_conf
 from te.tvm.target import cce
+import tbe
 from tbe.dsl import auto_schedule
 from te.lang.cce import cce_build_code
 from impl.trans_data import trans_data_compute
 from impl.conv2d_backprop_input_d import conv2d_backprop_input_d_compute
 
-
 ut_case = OpUT(
     "Conv2DBackpropInputD", "impl.conv2d_backprop_input_d", "conv2d_backprop_input_d"
 )
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 196608,
+        ("L0C_SIZE", ): 131072,
+        ("SOC_VERSION",): "Ascend920A"
+        }
+
 DEBUG_MODE = False
 
+def side_effects(*args):
+    return vals[args]
 
 def _gen_kernel_name(dedy_shape, w_shape, dx_shape, strides, data_flow):
     dedy_shape_info = "_".join([str(i) for i in dedy_shape])
@@ -236,9 +250,22 @@ def _gen_conv2d_bp_input_920A_case():
     ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_2)
     ut_case.add_cust_test_func(test_func=_test_set2d_case_1)
 
+def _gen_conv2d_bp_input_920A_case_mock(test_arg):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with cce():
+            x = tvm.placeholder((2, 7, 7, 32), name="x", dtype="float16", attrs={"ori_shape": (2, 7, 7, 32), "format": "NHWC", "ori_format": "NHWC"})
+            x_trans = trans_data_compute(x, None, "NHWC", "NC1HWC0")
+            weight = tvm.placeholder((18, 2, 16, 16), name="filter", dtype="float16", attrs={"ori_shape": (3, 3, 32, 32), "format": "FRACTAL_Z", "ori_format": "HWCN"})
+            y = {"shape": (2, 2, 14, 14, 16), "ori_shape": (2, 14, 14, 32), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+            dx_res = conv2d_backprop_input_d_compute(weight, x_trans, y, (2, 14, 14, 32), (1, 2, 2, 1), (0, 1, 0, 1))
+            trans_out = {"shape": (2, 14, 14, 32), "ori_shape": (2, 14, 14, 32), "format": "NHWC", "ori_format": "NHWC", "dtype": "float16"}
+            out = trans_data_compute(dx_res, trans_out, "NC1HWC0", "NHWC")
+            sch = auto_schedule(out)
+
 
 _gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
+ut_case.add_cust_test_func(test_func=_gen_conv2d_bp_input_920A_case_mock)
 #_gen_conv2d_bp_input_920A_case()
 
 

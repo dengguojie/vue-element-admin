@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 from te import tvm
 from te.lang.cce import vadds
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
+import tbe
 from tbe.dsl import auto_schedule
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
@@ -20,6 +24,18 @@ from impl.ascend_requant import ascend_requant_compute
 from te.platform.cce_conf import te_set_version
 from impl.mat_mul import op_select_format
 ut_case = OpUT("MatMul", None, None)
+
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 196608,
+        ("L0C_SIZE", ): 131072,
+        ("SOC_VERSION",): "Ascend920A"
+        }
+def side_effects(*args):
+    return vals[args]
 
 case1 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND"},
                     {"shape": (4, 6,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND"},
@@ -623,7 +639,7 @@ def test_matmul_error(test_args):
     except Exception:
         pass
     te_set_version('Ascend910A')        
-    
+
     
 #ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
 #ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
@@ -693,9 +709,20 @@ not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
 
 ut_case.add_case(["Ascend310", "Ascend910A"], not_align_bias_case2)
 
+def test_matmul_trans_data_fusion_920_mock(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with cce():
+            x1 = tvm.placeholder((32, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "ND", "ori_format": "ND"})
+            x2 = tvm.placeholder((32, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 16), "format": "ND", "ori_format": "ND"})
+            x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
+            x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
+            y = {"shape": (1, 1, 16, 16), "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+            dx_res = mat_mul_compute(x1_trans, x2_trans, None, None, y, True, False, 0)
+            trans_out = {"shape": (16, 16), "ori_shape": (16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+            out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
+            sch = auto_schedule(out)
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock)
 
 if __name__ == '__main__':
-    ut_case._case_info_map = {}
-    ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
-    ut_case.add_cust_test_func(test_func=test_op_select_format_matmul)
-    ut_case.run(["Ascend310", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend920A"])
+    sys.exit(0)
