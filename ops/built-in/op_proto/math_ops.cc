@@ -940,7 +940,7 @@ VERIFY_FUNC_REG(LpNorm, LpNormVerify);
 // ----------------LpNorm END---------------------
 
 // ----------------LpNormReduce Begin-------------------
-IMPLEMT_COMMON_INFERFUNC(LpNormReduceInfer) {;
+IMPLEMT_COMMON_INFERFUNC(LpNormReduceInfer) {
   Shape x_shape = op.GetInputDescByName("x").GetShape();
   DataType x_type = op.GetInputDescByName("x").GetDataType();
   Format x_format = op.GetInputDescByName("x").GetFormat();
@@ -995,8 +995,8 @@ IMPLEMT_COMMON_INFERFUNC(LpNormUpdateInfer) {
   Shape x_shape =  op.GetInputDescByName("x").GetShape();
   DataType x_type =  op.GetInputDescByName("x").GetDataType();
   // update output desc
-  ge::TensorDesc output_desc = op.GetOutputDescByName("y");
-  output_desc.SetShape(x_shape);
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(ge::Shape(x_shape));
   output_desc.SetDataType(x_type);
   (void)op.UpdateOutputDesc("y", output_desc);
   return GRAPH_SUCCESS;
