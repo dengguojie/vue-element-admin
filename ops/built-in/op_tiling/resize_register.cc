@@ -43,28 +43,43 @@
 
 namespace optiling {
 
-static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                               OpRunInfo& run_info) {
+static bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                               utils::OpRunInfo& run_info) {
   using namespace ge;
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  if (operator_info == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed.");
+    return false;
+  }
+
   OP_LOGI(op_type, "tiling run begin.");
-
-  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs is empty."),
-                  return false);
-
-  OP_TILING_CHECK(op_paras.outputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.outputs is empty."),
-                  return false);
+  PROFILING_TILING_INIT(op_type.c_str());
 
   // get input_shape and output_shape
-  const std::vector<int64_t>& input_shape = op_paras.inputs[0].tensor[0].shape;
-  const std::vector<int64_t>& output_shape = op_paras.outputs[0].tensor[0].shape;
+  auto input_x_desc = operator_info->MutableInputDesc(0);
+  if (input_x_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed.");
+    return false;
+  }
+
+  auto out_desc = operator_info->MutableOutputDesc(0);
+  if (out_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get out_desc failed.");
+    return false;
+  }
+
+  const std::vector<int64_t>& input_shape = input_x_desc->MutableShape().GetDims();
+  const std::vector<int64_t>& output_shape = out_desc->MutableShape().GetDims();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
   OP_TILING_CHECK(
       input_shape.size() != 5,
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the input shape size must be 5(NC1HWC0) but %lu.", input_shape.size()),
       return false);
-  OP_TILING_CHECK(
-      output_shape.size() != 5,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the output shape size must be 5(NC1HWC0) but %lu.", output_shape.size()),
-      return false);
+  OP_TILING_CHECK(output_shape.size() != 5,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the output shape size must be 5(NC1HWC0) but %lu.",
+                                                  output_shape.size()),
+                  return false);
 
   // get compile data begin
   ResizeClassCompileParams compile_params;
@@ -78,6 +93,7 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
   if (!GetResizeClassCompileParams(op_info, compile_params)) {
     return false;
   }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   // get compile data end
 
   // get auto turn params
@@ -114,22 +130,22 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get tiling data failed.");
     return false;
   }
-
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
   // get tiling data end
   PrintTilingParams(op_type, tiling_params, compile_params);
   SetTilingParams(tiling_params, run_info);
-  run_info.block_dim = compile_params.core_num;
-  std::vector<int64_t> workspace;
-  run_info.workspaces = workspace;
+  run_info.SetBlockDim(compile_params.core_num);
+
+  PROFILING_TILING_END();
   OP_LOGI(op_type, "tiling run success.");
 
   return true;
 }
 
 // register tiling interface of the ResizeNearestNeighborV2 op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ResizeNearestNeighborV2, ResizeCommonTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ResizeNearestNeighborV2, ResizeCommonTiling);
 // register tiling interface of the ResizeBilinearV2 op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ResizeBilinearV2, ResizeCommonTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ResizeBilinearV2, ResizeCommonTiling);
 // register tiling interface of the ResizeNearestNeighborV2Grad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ResizeNearestNeighborV2Grad, ResizeCommonTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(ResizeNearestNeighborV2Grad, ResizeCommonTiling);
 }  // namespace optiling
