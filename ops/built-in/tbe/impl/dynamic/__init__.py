@@ -29,6 +29,7 @@ from .rnn_gen_mask_v2 import rnn_gen_mask_v2
 from .apply_proximal_adagrad_d import apply_proximal_adagrad_d
 from .arg_max_v2 import arg_max_v2
 from .arg_min import arg_min
+from .inplace_update import inplace_update
 from .mirror_pad import mirror_pad
 from .arg_max_with_value import arg_max_with_value
 from .arg_min_with_value import arg_min_with_value
