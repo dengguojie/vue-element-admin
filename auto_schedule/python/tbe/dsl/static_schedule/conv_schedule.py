@@ -4379,12 +4379,12 @@ class CceConvOp:
                 sch[c_col].mem_unique()
         
         def _handle_transdata_ubfusion():
-            # conv+transdata ub fusion, cout must be 1
-            transdata_tensor = res.op.input_tensors[0]
-            # hardware must process 16*16 block, cout is 1, so need reserved extras 15*16 ub space
-            storage_bound = c_tiling_factor[1] + 15 * 16 
-            process_tensor = transdata_tensor.op.input_tensors[0]
             if res.op.tag == "conv2d_data_rm" and res.op.input_tensors[0].op.tag == "5HD_trans_NCHW":
+                # conv+transdata ub fusion, cout must be 1
+                transdata_tensor = res.op.input_tensors[0]
+                # hardware must process 16*16 block, cout is 1, so need reserved extras 15*16 ub space
+                storage_bound = c_tiling_factor[1] + 15 * 16 
+                process_tensor = transdata_tensor.op.input_tensors[0]
                 sch[transdata_tensor].set_storage_bound(storage_bound)
                 sch[transdata_tensor].split(sch[transdata_tensor].op.axis[2], 16)
                 sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "vnchwconv")

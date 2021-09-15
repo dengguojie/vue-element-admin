@@ -1683,19 +1683,23 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
 
 IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   OP_LOGD(op.GetName().c_str(), "Enter AvgPoolInferShape");
-  const size_t DIM_SIZE4 = 4;
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_tensor_desc = op_desc->MutableInputDesc("x");
-  auto shape = input_tensor_desc->MutableShape();
-  Format input_format = input_tensor_desc->GetFormat();
-  std::vector<int64_t> dims_input = shape.GetDims();
-  bool unknown_rank = IsUnknownRankShape(dims_input);
-  bool is_dynamic = false;
-  // when static op or dynamic op phase_running, is_dynamic == False
-  if (std::find(dims_input.begin(), dims_input.end(), -1) != dims_input.end()) {
-    is_dynamic = true;
-    reset_range(op, "x");
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
+  if (input_desc == nullptr) {
+    std::string err_msg = OtherErrMsg("can't get input desc");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
+  const GeShape &input_shape = input_desc->GetShape();
+  Format input_format = input_desc->GetFormat();
+  DataType input_dtype = input_desc->GetDataType();
+  ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  if (output_desc == nullptr) {
+    std::string err_msg = OtherErrMsg("can't get output desc");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  GeShape &output_shape = output_desc->MutableShape();
 
   // get input ksize
   std::vector<int32_t> ksize_list;
@@ -1749,59 +1753,97 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
     return GRAPH_FAILED;
   }
 
-  std::string input_format_str = format2str[input_format];
-  if (input_format_str != "NHWC") {
-    input_format_str = "NCHW";
+  int32_t n_position = 0;
+  int32_t c_position = 0;
+  int32_t h_position = 0;
+  int32_t w_position = 0;
+  if (input_format != FORMAT_NHWC) {
+    // regard input format NCHW
+    n_position = 0;
+    c_position = 1;
+    h_position = 2;
+    w_position = 3;
+  } else {
+    n_position = 0;
+    h_position = 1;
+    w_position = 2;
+    c_position = 3;
   }
-  int32_t n_input_position = input_format_str.find("N");
-  int32_t c_input_position = input_format_str.find("C");
-  int32_t w_input_position = input_format_str.find("W");
-  int32_t h_input_position = input_format_str.find("H");
-  // set output shape
-  std::vector<int64_t> output_shape;
-  output_shape.resize(4);
-  int32_t n_output_position = data_format.find("N");
-  int32_t c_output_position = data_format.find("C");
-  int32_t w_output_position = data_format.find("W");
-  int32_t h_output_position = data_format.find("H");
+  int64_t input_n = input_shape.GetDim(n_position);
+  int64_t input_c = input_shape.GetDim(c_position);
+  int64_t input_h = input_shape.GetDim(h_position);
+  int64_t input_w = input_shape.GetDim(w_position);
+  int64_t output_n = 0;
+  int64_t output_c = 0;
+  int64_t output_h = 0;
+  int64_t output_w = 0;
 
-  if (!unknown_rank) {
-    int64_t input_w = dims_input[w_input_position];
-    int64_t input_h = dims_input[h_input_position];
+  int32_t h_attr_position = 0;
+  int32_t w_attr_position = 0;
+  int32_t window_h = 0;
+  int32_t window_w = 0;
+  int32_t stride_h = 0;
+  int32_t stride_w = 0;
+  if (data_format == "NCHW") {
+    window_h = ksize_list[2];
+    window_w = ksize_list[3];
+    stride_h = strides_list[2];
+    stride_w = strides_list[3];
+    h_attr_position = 2;
+    w_attr_position = 3;
+  } else if (data_format == "NHWC") {
+    window_h = ksize_list[1];
+    window_w = ksize_list[2];
+    stride_h = strides_list[1];
+    stride_w = strides_list[2];
+    h_attr_position = 1;
+    w_attr_position = 2;
+  } else {
+    std::string err_msg = OtherErrMsg("attr data format is wrong.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
 
+  bool unknown_dim_num = input_shape.IsUnknownDimNum();
+  if (!unknown_dim_num) {
     // set for global avg pool
-    if (ksize_list[h_output_position] == -1 && ksize_list[w_output_position] == -1) {
-      ksize_list[h_output_position] = dims_input[h_output_position];
-      ksize_list[w_output_position] = dims_input[w_output_position];
+    if (window_h == -1 && window_w == -1) {
+      ksize_list[h_attr_position] = input_h;
+      ksize_list[w_attr_position] = input_w;
     }
     op.SetAttr("ksize", ksize_list);
-    output_shape[n_input_position] = dims_input[n_input_position];
-    output_shape[c_input_position] = dims_input[c_input_position];
+    output_n = input_n;
+    output_c = input_c;
     if (padding_mode == "SAME") {
-      output_shape[h_input_position] = (input_h + strides_list[h_output_position] - 1) / strides_list[h_output_position];
-      output_shape[w_input_position] = (input_w + strides_list[w_output_position] - 1) / strides_list[w_output_position];
+      output_h = (input_h + stride_h - 1) / stride_h;
+      output_w = (input_w + stride_w - 1) / stride_w;
     } else {
-      output_shape[h_input_position] =
-        (input_h - ksize_list[h_output_position] + 1 + (strides_list[h_output_position] - 1)) / strides_list[h_output_position];
-      output_shape[w_input_position] =
-        (input_w - ksize_list[w_output_position] + 1 + (strides_list[w_output_position] - 1)) / strides_list[w_output_position];
+      output_h = (input_h - window_h + 1 + (stride_h - 1)) / stride_h;
+      output_w = (input_w - window_w + 1 + (stride_w - 1)) / stride_w;
     }
   } else {
-    output_shape[n_input_position] = -1;
-    output_shape[h_input_position] = -1;
-    output_shape[w_input_position] = -1;
-    output_shape[c_input_position] = -1;
+    output_n = -1;
+    output_c = -1;
+    output_h = -1;
+    output_w = -1;
   }
-  auto td = op_desc->MutableOutputDesc("y");
-  DataType input_dtype = input_tensor_desc->GetDataType();
-  td->SetShape(GeShape(output_shape));
-  td->SetDataType(input_dtype);
+
+  output_shape.SetDimNum(4);
+  output_shape.SetDim(n_position, output_n);
+  output_shape.SetDim(c_position, output_c);
+  output_shape.SetDim(h_position, output_h);
+  output_shape.SetDim(w_position, output_w);
+  output_desc->SetShape(output_shape);
+  output_desc->SetDataType(input_dtype);
+
+  bool is_dynamic = (input_n == -1) || (input_c == -1) || (input_h == -1) || (input_w == -1);
   if (is_dynamic) {
     std::vector<int32_t> pad_vec = {0, 0, 0, 0};
     bool is_global_pool = false;
     bool ceil_mode = false;
-    if (!SetAvgPoolOutShapeRange(op, input_tensor_desc, td, input_format, data_format,
-                                      ksize_list, strides_list, pad_vec, dims_input, output_shape,
+    auto input_tensor_desc = op_desc->MutableInputDesc("x");
+    if (!SetAvgPoolOutShapeRange(op, input_tensor_desc, output_desc, input_format, data_format,
+                                      ksize_list, strides_list, pad_vec, input_shape.GetDims(), output_shape.GetDims(),
                                       ceil_mode, is_global_pool, padding_mode)) {
       return GRAPH_FAILED;
     }
@@ -1811,7 +1853,7 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   bool fuzz_build = false;
   op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
   // fuzz build
-  if ((!unknown_rank) && fuzz_build) {
+  if ((!unknown_dim_num) && fuzz_build) {
     OP_LOGD(op.GetName().c_str(), "start fuzz build.");
   }
   OP_LOGD(op.GetName().c_str(), "Leave AvgPoolInferShape");
@@ -2048,49 +2090,55 @@ IMPLEMT_VERIFIER(AvgPoolV2, AvgPoolV2Verify) {
   return GRAPH_SUCCESS;
 }
 
-
 IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
+  OP_LOGD(op.GetName().c_str(), "Enter AvgPoolV2InferShape");
+
   const size_t DIM_SIZE4 = 4;
-  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
-  auto inputTensorDesc = opDesc->MutableInputDesc("x");
-  auto shape = inputTensorDesc->MutableShape();
-  Format inputFormat = inputTensorDesc->GetFormat();
-  std::vector<int64_t> dimsInput = shape.GetDims();
-  bool unknownRank = IsUnknownRankShape(dimsInput);
-  bool isDynamic = false;
-  // when static op or dynamic op phase_running, is_dynamic == False
-  if (std::find(dimsInput.begin(), dimsInput.end(), -1) != dimsInput.end()) {
-    isDynamic = true;
-    reset_range(op, "x");
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
+  if (input_desc == nullptr) {
+    std::string err_msg = OtherErrMsg("can't get input desc");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
+  const GeShape &input_shape = input_desc->GetShape();
+  Format input_format = input_desc->GetFormat();
+  DataType input_dtype = input_desc->GetDataType();
+  ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  if (output_desc == nullptr) {
+    std::string err_msg = OtherErrMsg("can't get output desc");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  GeShape &output_shape = output_desc->MutableShape();
 
   // get input kszie
-  std::vector<int32_t> ksizeList;
-  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
+  std::vector<int32_t> ksize_list;
+  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize_list)) {
     std::string err_msg = GetInputInvalidErrMsg("ksize");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input strides
-  std::vector<int32_t> stridesList;
-  if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
+  std::vector<int32_t> strides_list;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", strides_list)) {
     std::string err_msg = GetInputInvalidErrMsg("strides");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input data_format
-  std::string dataFormat;
-  if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
+  std::string data_format;
+  if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     std::string err_msg = GetInputInvalidErrMsg("data_format");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  // get input paddingMode
-  std::string paddingMode;
-  if (GRAPH_SUCCESS != op.GetAttr("padding_mode", paddingMode)) {
+  // get input padding_mode
+  std::string padding_mode;
+  if (GRAPH_SUCCESS != op.GetAttr("padding_mode", padding_mode)) {
     std::string err_msg = GetInputInvalidErrMsg("padding_mode");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
 
@@ -2098,110 +2146,117 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
   }
 
   // get input strides
-  std::vector<int32_t> padVec;
-  if (GRAPH_SUCCESS != op.GetAttr("pads", padVec)) {
+  std::vector<int32_t> pad_vec;
+  if (GRAPH_SUCCESS != op.GetAttr("pads", pad_vec)) {
     std::string err_msg = GetInputInvalidErrMsg("pads");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input global_padding
-  bool globalPooling;
-  if (GRAPH_SUCCESS != op.GetAttr("global_pooling", globalPooling)) {
+  bool global_pooling;
+  if (GRAPH_SUCCESS != op.GetAttr("global_pooling", global_pooling)) {
     std::string err_msg = GetInputInvalidErrMsg("global_pooling");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  // get input ceilMode
-  bool ceilMode;
-  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceilMode)) {
+  // get input ceil_mode
+  bool ceil_mode;
+  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceil_mode)) {
     std::string err_msg = GetInputInvalidErrMsg("ceil_mode");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // input format mast equals to data_format
-  if ((inputFormat == FORMAT_NCHW && dataFormat != "NCHW") || (inputFormat == FORMAT_NHWC && dataFormat != "NHWC")) {
-    string err_msg1 = ConcatString("Input format and dataFormat is not same. input_format:",inputFormat, ", dataFormat:",dataFormat);
+  if ((input_format == FORMAT_NCHW && data_format != "NCHW") || (input_format == FORMAT_NHWC && data_format != "NHWC")) {
+    string err_msg1 = ConcatString("Input format and data_format is not same. input_format:",input_format, ", data_format:",data_format);
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // INFER
-  if (!unknownRank && dimsInput.size() != DIM_SIZE4) {
-    std::string err_msg = GetAttrSizeErrMsg("x", std::to_string(dimsInput.size()), std::to_string(DIM_SIZE4));
+  bool unknownRank = input_shape.IsUnknownDimNum();
+  if (!unknownRank && input_shape.GetDimNum() != DIM_SIZE4) {
+    std::string err_msg = GetAttrSizeErrMsg("x", std::to_string(input_shape.GetDimNum()), std::to_string(DIM_SIZE4));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  int32_t nPosition = dataFormat.find("N");
-  int32_t cPosition = dataFormat.find("C");
-  int32_t wPosition = dataFormat.find("W");
-  int32_t hPosition = dataFormat.find("H");
-  // set output shape
-  std::vector<int64_t> dimOutput;
-  dimOutput.resize(4);
-  int64_t window_h, window_w;
+  int32_t position_n = data_format.find("N");
+  int32_t position_c = data_format.find("C");
+  int32_t position_w = data_format.find("W");
+  int32_t position_h = data_format.find("H");
+  int64_t input_n = input_shape.GetDim(position_n);
+  int64_t input_c = input_shape.GetDim(position_c);
+  int64_t input_h = input_shape.GetDim(position_h);
+  int64_t input_w = input_shape.GetDim(position_w);
+  int64_t output_n = 0;
+  int64_t output_c = 0;
+  int64_t output_h = 0;
+  int64_t output_w = 0;
 
+  int32_t window_h, window_w;
   if (!unknownRank) {
-    if (globalPooling) {
-      window_h = dimsInput[hPosition];
-      window_w = dimsInput[wPosition];
-      stridesList[hPosition] = dimsInput[hPosition];
-      stridesList[wPosition] = dimsInput[wPosition];
-      padVec = {0, 0, 0, 0};
+    if (global_pooling) {
+      window_h = input_h;
+      window_w = input_w;
+      strides_list[position_h] = input_h;
+      strides_list[position_w] = input_w;
+      pad_vec = {0, 0, 0, 0};
     } else {
-      window_h = (int64_t)ksizeList[hPosition];
-      window_w = (int64_t)ksizeList[wPosition];
+      window_h = ksize_list[position_h];
+      window_w = ksize_list[position_w];
     }
-    dimOutput[nPosition] = dimsInput[nPosition];
-    dimOutput[cPosition] = dimsInput[cPosition];
-    if (paddingMode == "SAME") {
-      dimOutput[hPosition] = (dimsInput[hPosition] + stridesList[hPosition] - 1) / stridesList[hPosition];
-      dimOutput[wPosition] = (dimsInput[wPosition] + stridesList[wPosition] - 1) / stridesList[wPosition];
-    } else if (paddingMode == "VALID") {
-      if (ceilMode) {
-        dimOutput[hPosition] = (dimsInput[hPosition] - window_h + padVec[0] + padVec[1]
-                                + stridesList[hPosition] - 1) / stridesList[hPosition] + 1;
-        dimOutput[wPosition] = (dimsInput[wPosition] - window_w + padVec[2] + padVec[3]
-                                + stridesList[wPosition] - 1) / stridesList[wPosition] + 1;
+    output_n = input_n;
+    output_c = input_c;
+
+    int32_t stride_h = strides_list[position_h];
+    int32_t stride_w = strides_list[position_w];
+    if (padding_mode == "SAME") {
+      output_h = (input_h + stride_h - 1) / stride_h;
+      output_w = (input_w + stride_w - 1) / stride_w;
+    } else if (padding_mode == "VALID") {
+      if (ceil_mode) {
+        output_h = (input_h - window_h + pad_vec[0] + pad_vec[1] + stride_h - 1) / stride_h + 1;
+        output_w = (input_w - window_w + pad_vec[2] + pad_vec[3] + stride_w - 1) / stride_w + 1;
       } else {
-        dimOutput[hPosition] = (dimsInput[hPosition] - window_h + 1 + stridesList[hPosition]
-                                - 1) / stridesList[hPosition];
-        dimOutput[wPosition] = (dimsInput[wPosition] - window_w + 1 + stridesList[wPosition]
-                                - 1) / stridesList[wPosition];
+        output_h = (input_h - window_h + 1 + stride_h - 1) / stride_h;
+        output_w = (input_w - window_w + 1 + stride_w - 1) / stride_w;
       }
     } else {
-      for (size_t i = 0; i < dimsInput.size(); i++) {
-        if (ceilMode) {
-          dimOutput[hPosition] = (dimsInput[hPosition] - window_h + padVec[0] + padVec[1]
-                                  + stridesList[hPosition] - 1) / stridesList[hPosition] + 1;
-          dimOutput[wPosition] = (dimsInput[wPosition] - window_w + padVec[2] + padVec[3]
-                                  + stridesList[wPosition] - 1) / stridesList[wPosition] + 1;
+      for (size_t i = 0; i < input_shape.GetDimNum(); i++) {
+        if (ceil_mode) {
+          output_h = (input_h - window_h + pad_vec[0] + pad_vec[1] + stride_h - 1) / stride_h + 1;
+          output_w = (input_w - window_w + pad_vec[2] + pad_vec[3] + stride_w - 1) / stride_w + 1;
         } else {
-          dimOutput[hPosition] = (dimsInput[hPosition] - window_h + padVec[0]
-                                  + padVec[1]) / stridesList[hPosition] + 1;
-          dimOutput[wPosition] = (dimsInput[wPosition] - window_w + padVec[2]
-                                  + padVec[3]) / stridesList[wPosition] + 1;
+          output_h = (input_h - window_h + pad_vec[0] + pad_vec[1]) / stride_h + 1;
+          output_w = (input_w - window_w + pad_vec[2] + pad_vec[3]) / stride_w + 1;
         }
       }
     }
   } else {
-    dimOutput[nPosition] = -1;
-    dimOutput[cPosition] = -1;
-    dimOutput[hPosition] = -1;
-    dimOutput[wPosition] = -1;
+    output_n = -1;
+    output_c = -1;
+    output_h = -1;
+    output_w = -1;
   }
 
-  auto td = opDesc->MutableOutputDesc("y");
-  DataType inputDtype = inputTensorDesc->GetDataType();
-  td->SetShape(GeShape(dimOutput));
-  td->SetDataType(inputDtype);
+  output_shape.SetDimNum(4);
+  output_shape.SetDim(position_n, output_n);
+  output_shape.SetDim(position_c, output_c);
+  output_shape.SetDim(position_h, output_h);
+  output_shape.SetDim(position_w, output_w);
+  output_desc->SetShape(output_shape);
+  output_desc->SetDataType(input_dtype);
+
+  bool isDynamic = (input_n == -1) || (input_c == -1) || (input_h == -1) || (input_w == -1);
   if (isDynamic) {
-    if (!SetAvgPoolOutShapeRange(op, inputTensorDesc, td, inputFormat, dataFormat,
-                                 ksizeList, stridesList, padVec, dimsInput, dimOutput,
-                                 ceilMode, globalPooling, paddingMode)) {
+    auto input_tensor_desc = op_desc->MutableInputDesc("x");
+    if (!SetAvgPoolOutShapeRange(op, input_tensor_desc, output_desc, input_format, data_format,
+                                 ksize_list, strides_list, pad_vec, input_shape.GetDims(), output_shape.GetDims(),
+                                 ceil_mode, global_pooling, padding_mode)) {
       return GRAPH_FAILED;
     }
   }
