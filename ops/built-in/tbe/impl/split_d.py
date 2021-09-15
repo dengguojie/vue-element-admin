@@ -32,6 +32,7 @@ from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.split_equal import SplitEqual
 
 # vtranspose can deal 16*16
 TRANSPOSE_SIZE = 256
@@ -647,6 +648,14 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
     if split_mov.check_whether_use_split_mov():
         split_mov.split_mov_compute()
         return
+
+    list_shape = list(shape)
+    supported_shapes = [[4, 300, 257, 600], [8, 46, 46, 63]]
+    if list_shape in supported_shapes:
+        split_equal = SplitEqual(new_shape, dtype_lower, new_split_dim, new_size_splits, kernel_name)
+        if split_equal.check_support():
+            split_equal.run()
+            return
 
     data = tvm.placeholder(shape, name="data", dtype=dtype_lower)
     output_shape_list, output_tensor_list = split_d_compute(data, output_data,

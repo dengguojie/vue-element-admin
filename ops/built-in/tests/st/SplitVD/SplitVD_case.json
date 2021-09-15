@@ -1,0 +1,53 @@
+[
+  {
+    "op": "SplitVD",
+    "case_name" : "test_split_v_d_001",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [8, 46, 46, 63],
+         "type": "float16",
+         "value_range": [[0, 100]],
+         "data_distribute" : "uniform",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [8, 46, 46, 21],
+         "type": "float16",
+         "name": "y1"
+       },
+       {
+        "format": "ND",
+        "shape": [8, 46, 46, 21],
+        "type": "float16",
+        "name": "y2"
+       },
+       {
+        "format": "ND",
+        "shape": [8, 46, 46, 21],
+        "type": "float16",
+        "name": "y3"
+       }
+     ],
+     "attr": [
+         {
+          "name": "size_splits",
+          "value": [21, 21, 21],
+          "type": "list_int"
+         },
+         {
+          "name": "split_dim",
+          "value": 3,
+          "type": "int"
+         },
+         {
+          "name": "num_split",
+          "value": 3,
+          "type": "int"
+         }
+     ]
+  }
+]
