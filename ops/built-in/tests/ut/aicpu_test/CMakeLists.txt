@@ -92,6 +92,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/case_condition.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/check_numerics.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
@@ -222,6 +223,7 @@ set(_cpu_kernels_ut_files
   testcase/case_condition/src/case_condition_utest.cpp
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
+  testcase/check_numerics/src/check_numerics_utest.cpp
   testcase/common/src/async_cpu_kernel_utest.cpp
   testcase/common/src/async_event_util_utest.cpp
   testcase/common/src/attr_value_utest.cpp
