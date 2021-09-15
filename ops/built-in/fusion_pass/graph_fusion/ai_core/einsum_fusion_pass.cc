@@ -41,7 +41,7 @@ static const string EINSUM = "Einsum";
 static const string RESHAPE = "Reshape";
 static const string TRANSPOSE = "TransposeD";
 static const string MATMUL = "MatMulV2";
-static const string BATCHMATMUL = "BatchMatMulV2";
+static const string BATCHMATMUL = "BatchMatMul";
 
 /*
     einsum -> reshape + matmul + reshape
