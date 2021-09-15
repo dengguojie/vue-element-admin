@@ -5,6 +5,9 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "external/graph/operator.h"
+
+using namespace ge;
 
 namespace optiling
 {
@@ -35,20 +38,21 @@ namespace optiling
         return true;
     }
 
-    int32_t CalculateTensorNumel(std::vector<int64_t> tensor_shape)
+    int32_t CalculateTensorNumel(ge::Shape tensor_shape)
     {
         int32_t numel = 1;
-        for (auto ele : tensor_shape)
+        auto length = tensor_shape.GetDimNum();
+        for (auto i = 0; i < length; i++)
         {
-            numel *= ele;
+            numel *= tensor_shape.GetDim(i);
         }
         return numel;
     }
 
-    int32_t CalTilingMode(std::vector<int64_t> grad_shape)
+    int32_t CalTilingMode(ge::Shape grad_shape)
     {
         int32_t tiling_mode = 0;
-        int32_t embedding_dim = grad_shape[grad_shape.size() - 1];
+        int32_t embedding_dim = grad_shape.GetDim(grad_shape.GetDimNum() - 1);
 
         if (embedding_dim >= 32 && embedding_dim <= 1024)
         {
@@ -59,12 +63,12 @@ namespace optiling
 
     void CalRunningInfo(const std::string &op_type, const nlohmann::json &op_compile_info,
         EmbeddingDenseGradTilingParams &tiling_params,
-        const std::vector<int64_t> &indices_shape, const std::vector<int64_t> &grad_shape)
+        const ge::Shape &indices_shape, const ge::Shape &grad_shape)
     {
         int32_t numel_indices = 1;
         numel_indices = CalculateTensorNumel(indices_shape);
         tiling_params.numel_indices = numel_indices;
-        tiling_params.embedding_dim = grad_shape[grad_shape.size() - 1];
+        tiling_params.embedding_dim =grad_shape.GetDim(grad_shape.GetDimNum() - 1);
         tiling_params.mode_of_cal = CalTilingMode(grad_shape);
         int32_t padding_idx;
         int32_t num_weights;
@@ -73,12 +77,12 @@ namespace optiling
         tiling_params.core_num = core_num;
     }
 
-    void SetRunningInfo(const EmbeddingDenseGradTilingParams &tiling_params, OpRunInfo &run_info)
+    void SetRunningInfo(const EmbeddingDenseGradTilingParams &tiling_params, utils::OpRunInfo &run_info)
     {
-        ByteBufferPut(run_info.tiling_data, tiling_params.numel_indices);
-        ByteBufferPut(run_info.tiling_data, tiling_params.embedding_dim);
-        ByteBufferPut(run_info.tiling_data, tiling_params.mode_of_cal);
-        ByteBufferPut(run_info.tiling_data, tiling_params.core_num);
+        run_info.AddTilingData(tiling_params.numel_indices);
+        run_info.AddTilingData(tiling_params.embedding_dim);
+        run_info.AddTilingData(tiling_params.mode_of_cal);
+        run_info.AddTilingData(tiling_params.core_num);
     }
 
     void PrintTilingParams(const EmbeddingDenseGradTilingParams &tiling_params)
@@ -89,10 +93,9 @@ namespace optiling
         GELOGD("op [EmbeddingDenseGradTiling] : core_num=%d.", tiling_params.core_num);
     }
 
-    bool EmbeddingDenseGradTiling(const std::string &op_type, const TeOpParas &op_paras,
-                                  const nlohmann::json &op_compile_info, OpRunInfo &run_info)
+    bool EmbeddingDenseGradTiling(const std::string& op_type, const ge::Operator& op_paras,
+                                  const nlohmann::json& op_compile_info, utils::OpRunInfo& run_info)
     {
-        using namespace ge;
         int32_t padding_idx;
         int32_t num_weights;
         int32_t core_num;
@@ -106,16 +109,14 @@ namespace optiling
         EmbeddingDenseGradTilingParams tiling_params;
         InitTilingParams(tiling_params);
 
-        std::vector<int64_t> grad_shape = op_paras.inputs[0].tensor[0].shape;
-        std::vector<int64_t> indices_shape = op_paras.inputs[1].tensor[0].shape;
+        ge::Shape grad_shape = op_paras.GetInputDesc(0).GetShape();
+        ge::Shape indices_shape = op_paras.GetInputDesc(1).GetShape();
         CalRunningInfo(op_type, op_compile_info, tiling_params, indices_shape, grad_shape);
         SetRunningInfo(tiling_params, run_info);
         PrintTilingParams(tiling_params);
 
-        run_info.block_dim = tiling_params.core_num;
-        std::vector<int64_t> workspace;
-        run_info.workspaces = workspace;
+        run_info.SetBlockDim(tiling_params.core_num);
         return true;
     }
-    REGISTER_OP_TILING_FUNC_BUFFERED(EmbeddingDenseGrad, EmbeddingDenseGradTiling);
+    REGISTER_OP_TILING_FUNC_BUFFERED_V2(EmbeddingDenseGrad, EmbeddingDenseGradTiling);
 } // namespace optiling.
