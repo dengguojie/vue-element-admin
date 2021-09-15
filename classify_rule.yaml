@@ -1157,7 +1157,6 @@ vector_B:
       - ops/built-in/tbe/impl/nll_loss.py
       - ops/built-in/tbe/impl/nll_loss_grad.py
       - ops/built-in/tbe/impl/not_equal.py
-      - ops/built-in/tbe/impl/nz_2_nd.py
       - ops/built-in/tbe/impl/one_hot_d.py
       - ops/built-in/tbe/impl/pad_d.py
       - ops/built-in/tbe/impl/pad_v2_d.py
@@ -1211,9 +1210,6 @@ vector_B:
       - ops/built-in/tbe/impl/util/util_common.py
       - ops/built-in/tbe/impl/util/util_select_op_base.py
       - ops/built-in/tbe/impl/write_select.py
-      - ops/built-in/tbe/impl/zn_2_hwcn.py
-      - ops/built-in/tbe/impl/zn_2_nchw.py
-      - ops/built-in/tbe/impl/zng_2_nchw_hwcn.py
       - ops/built-in/tbe/impl_mode/all_ops_impl_mode.ini
       - ops/built-in/tbe/impl_mode/high_performance.ini
       - ops/built-in/tbe/impl_mode/high_performance_for_all.ini
