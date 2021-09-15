@@ -36,8 +36,8 @@ def op_select_format(x1, x2, grad, y, ksize, strides,
     fixed shape output only supports float16 
     """
     x1_shape = list(x1.get("ori_shape"))
-    x2_shape = list(x1.get("ori_shape"))
-    grad_shape = list(x1.get("ori_shape"))
+    x2_shape = list(x2.get("ori_shape"))
+    grad_shape = list(grad.get("ori_shape"))
     dynamic = False
     atomic_flag = _branch_choice(x1_shape, ksize, strides, padding, data_format)
     for i in range(len(x1_shape)):

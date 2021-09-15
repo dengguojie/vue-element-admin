@@ -3,11 +3,13 @@
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "image_ops.h"
+#include "array_ops.h"
 
 using namespace std;
 
 class ResizeNearestNeighborV2Tiling : public testing::Test {
-  protected:
+ protected:
   static void SetUpTestCase() {
     std::cout << "ResizeNearestNeighborV2Tiling SetUp" << std::endl;
   }
@@ -17,7 +19,7 @@ class ResizeNearestNeighborV2Tiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int64_t tmp = 0;
@@ -30,77 +32,81 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_0) {
-  using namespace optiling;
-  std::string op_name = "ResizeNearestNeighborV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+using namespace ge;
+#include "test_common.h"
+/*
+.INPUT(x, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32,
+                               DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(size, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32,
+                           DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .ATTR(align_corners, Bool, false)
+    .ATTR(half_pixel_centers, Bool, false)
+*/
 
-  std::string compileInfo = "{\"vars\": {\"max_w_len\": 1305, \"core_num\": 32, \"align_corners\": 0, \"half_pixel_centers\": 0, \"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
+TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_0) {
+  std::string op_name = "ResizeNearestNeighborV2";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::ResizeNearestNeighborV2("ResizeNearestNeighborV2");
+
+  std::string compileInfo =
+      "{\"vars\": {\"max_w_len\": 1305, \"core_num\": 32, \"align_corners\": 0, \"half_pixel_centers\": 0, "
+      "\"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
 
   std::vector<int64_t> input{16, 1, 1000, 1000, 16};
   std::vector<int64_t> output{16, 1, 1000, 1000, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
+  TensorDesc tensor_input;
+  tensor_input.SetShape(ge::Shape(input));
+  tensor_input.SetDataType(ge::DT_FLOAT);
+  TensorDesc tensor_output;
+  tensor_output.SetShape(ge::Shape(output));
+  tensor_output.SetDataType(ge::DT_FLOAT);
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
+  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_OUTPUT(opParas, tensor_output, y);
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "113000 16 1 1000 1000 1000 1000 16 1 2 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "113000 16 1 1000 1000 1000 1000 16 1 2 ");
+
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_2) {
-  using namespace optiling;
   std::string op_name = "ResizeNearestNeighborV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::ResizeNearestNeighborV2("ResizeNearestNeighborV2");
 
-  std::string compileInfo = "{\"vars\": {\"max_w_len\": 1305, \"core_num\": 32, \"align_corners\": 0, \"half_pixel_centers\": 0, \"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
+  std::string compileInfo =
+      "{\"vars\": {\"max_w_len\": 1305, \"core_num\": 32, \"align_corners\": 0, \"half_pixel_centers\": 0, "
+      "\"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
 
   std::vector<int64_t> input{16, 1, 1000, 1000, 16};
   std::vector<int64_t> output{16, 1, 999, 999, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
+  TensorDesc tensor_input;
+  tensor_input.SetShape(ge::Shape(input));
+  tensor_input.SetDataType(ge::DT_FLOAT);
+  TensorDesc tensor_output;
+  tensor_output.SetShape(ge::Shape(output));
+  tensor_output.SetDataType(ge::DT_FLOAT);
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "100000 16 1 1000 1000 999 999 2 4 4 ");
-}
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 16 1 1000 1000 999 999 2 4 4 ");
 
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
+}

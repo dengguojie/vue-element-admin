@@ -330,7 +330,7 @@ class PyTorchModelParse:
     def _get_model_inputs(self):
         graph = _load_model(self.model_path).graph
         all_tensors = _parse_tensor_info(graph.input, {})
-        params = (init.name for init in graph.initializer)
+        params = generator_to_list((init.name for init in graph.initializer))
         input_shape_map = {}
         for tensor_name, tensor_info in all_tensors.items():
             if tensor_name in params:
@@ -466,3 +466,20 @@ def get_model_nodes(args, op_type):
     """
     pt_parser = PyTorchModelParse(args)
     return pt_parser.get_model_nodes(op_type)
+
+
+def generator_to_list(gen: any) -> list:
+    """
+    convert generator to list
+    :param gen : generator
+    :return:
+    """
+    result = []
+    try:
+        for data in gen:
+            result.append(data)
+    except(TypeError,) as err:
+        utils.print_error_log("Failed to convert generator to list. %s", err)
+    finally:
+        pass
+    return result

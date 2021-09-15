@@ -435,7 +435,8 @@ checkopts() {
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
       m) MINIRC_AICPU_ONLY=TRUE ;;
-      f) CHANGED_FILES=$OPTARG ;;
+      f) CHANGED_FILES=$OPTARG 
+	 CI_MODE=TRUE ;;
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;
@@ -612,8 +613,11 @@ compile_mod(){
       rely_ONNX=(ops_all_onnx_plugin)
       rely_PASS=(ops_fusion_pass_aicore ops_fusion_pass_vectorcore optiling)
       rely_TILING=(optiling)
-      rely_PROTO=(opsproto ops_all_plugin ops_all_onnx_plugin optiling ops_fusion_pass_aicore ops_fusion_pass_vectorcore)
-      mods=(TF CAFFE ONNX PASS TILING PROTO)
+      rely_PROTO=(opsproto ops_all_plugin ops_all_onnx_plugin optiling ops_fusion_pass_aicore ops_fusion_pass_vectorcore copy_op_proto_inc)
+      rely_TBE=(tbe_aicore_ops_impl tbe_ops_json_info)
+      rely_FUSION_RULES=(copy_aicore_fusion_rules copy_veccore_fusion_rules)
+      rely_TOOLS=(OpTestFrameFiles MsopgenFiles)
+      mods=(TF CAFFE ONNX PASS TILING PROTO TBE FUSION_RULES TOOLS)
       for mod in "${mods[@]}"
         do
           if [[ "$related" =~ "$mod" ]]; then

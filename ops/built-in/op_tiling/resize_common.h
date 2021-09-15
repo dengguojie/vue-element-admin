@@ -22,9 +22,11 @@
 #include <math.h>
 #include <algorithm>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 
@@ -108,7 +110,7 @@ void PrintTilingParams(const std::string& op_type, const ResizeClassTilingParams
  * @param [in] run_info: OpRunInfo
  * @param [out] run_info: set the tiling info to OpRunInfo
  */
-void SetTilingParams(const ResizeClassTilingParams& tiling_params, OpRunInfo& run_info);
+void SetTilingParams(const ResizeClassTilingParams& tiling_params, utils::OpRunInfo& run_info);
 
 /*
  * @brief: tiling function for HW2MHNW

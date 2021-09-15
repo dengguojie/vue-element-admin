@@ -29,6 +29,7 @@ from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 from impl.split_last_dim import check_use_last_dim_branch
 from impl.split_last_dim import split_last_dim
 from impl.split_last_dim import SplitWith5HD
+from impl.split_equal import SplitEqual
 from impl.split_d import SplitMov
 from impl.split_d import SplitLastDimVnv
 from impl.copy_only import copy_only
@@ -578,6 +579,14 @@ def split_v_d(input_value, output_data, size_splits, split_dim, num_split, kerne
         split_not_equal = SplitNotEqual(new_shape, dtype_lower, new_split_dim, new_size_splits, kernel_name)
         if split_not_equal.check_support():
             split_not_equal.run()
+            return
+
+    list_shape = list(shape)
+    supported_shapes = [[4, 300, 257, 600], [8, 46, 46, 63]]
+    if list_shape in supported_shapes:
+        split_equal = SplitEqual(new_shape, dtype_lower, new_split_dim, new_size_splits, kernel_name)
+        if split_equal.check_support():
+            split_equal.run()
             return
 
     data = tvm.placeholder(shape, name="data", dtype=dtype_lower)

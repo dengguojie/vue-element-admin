@@ -92,17 +92,17 @@ bool GetResizeClassTuneParams(const nlohmann::json& compile_info, ResizeClassCom
   return true;
 }
 
-void SetTilingParams(const ResizeClassTilingParams& tiling_params, OpRunInfo& run_info) {
-  ByteBufferPut(run_info.tiling_data, tiling_params.tiling_key);
-  ByteBufferPut(run_info.tiling_data, tiling_params.input_batch);
-  ByteBufferPut(run_info.tiling_data, tiling_params.input_c1);
-  ByteBufferPut(run_info.tiling_data, tiling_params.input_height);
-  ByteBufferPut(run_info.tiling_data, tiling_params.input_width);
-  ByteBufferPut(run_info.tiling_data, tiling_params.output_height);
-  ByteBufferPut(run_info.tiling_data, tiling_params.output_width);
-  ByteBufferPut(run_info.tiling_data, tiling_params.cut_batch_c1_num);
-  ByteBufferPut(run_info.tiling_data, tiling_params.cut_height_num);
-  ByteBufferPut(run_info.tiling_data, tiling_params.cut_width_num);
+void SetTilingParams(const ResizeClassTilingParams& tiling_params, utils::OpRunInfo& run_info) {
+  run_info.AddTilingData(tiling_params.tiling_key);
+  run_info.AddTilingData(tiling_params.input_batch);
+  run_info.AddTilingData(tiling_params.input_c1);
+  run_info.AddTilingData(tiling_params.input_height);
+  run_info.AddTilingData(tiling_params.input_width);
+  run_info.AddTilingData(tiling_params.output_height);
+  run_info.AddTilingData(tiling_params.output_width);
+  run_info.AddTilingData(tiling_params.cut_batch_c1_num);
+  run_info.AddTilingData(tiling_params.cut_height_num);
+  run_info.AddTilingData(tiling_params.cut_width_num);
 }
 
 void PrintTilingParams(const std::string& op_type, const ResizeClassTilingParams& tiling_params,

@@ -172,7 +172,7 @@ class AclOpRunner:
         :return:
         """
         toolkit_root_path = os.getenv(ConstManager.INSTALL_PATH)
-        if not os.path.exists(toolkit_root_path):
+        if not os.path.exists(toolkit_root_path) or not toolkit_root_path:
             utils.print_error_log("Path of env install_path: "
                                   "%s does not exist" % toolkit_root_path)
             return

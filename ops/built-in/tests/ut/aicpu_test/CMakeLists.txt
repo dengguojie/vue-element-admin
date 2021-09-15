@@ -84,6 +84,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/atan2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atanh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/betainc.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cache_swap_table.cc
@@ -132,6 +133,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sign.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/sigmoid.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/slice_write.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/softmaxv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
@@ -141,6 +143,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sub.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
   ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
@@ -149,7 +152,6 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/range_sampler.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
 )
 
 set(cpu_kernels_llt_src
@@ -214,6 +216,7 @@ set(_cpu_kernels_ut_files
   testcase/asinh/src/asinh_utest.cpp
   testcase/assign/src/assign_utest.cpp
   testcase/atan/src/atan_utest.cpp
+  testcase/atan2/src/atan2_utest.cpp
   testcase/atanh/src/atanh_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
   testcase/betainc/src/betainc_utest.cpp
@@ -278,6 +281,7 @@ set(_cpu_kernels_ut_files
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sign/src/sign_utest.cpp
+  testcase/sigmoid/src/sigmoid_utest.cpp
   testcase/slice_write/src/slice_write_utest.cpp
   testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
