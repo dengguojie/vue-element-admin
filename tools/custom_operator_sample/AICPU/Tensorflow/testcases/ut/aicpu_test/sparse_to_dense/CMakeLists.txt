@@ -48,13 +48,11 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
 
     file(GLOB TEST_FILE_CPP ${CMAKE_CURRENT_SOURCE_DIR}/**_impl.cpp)
     file(GLOB TEST_FILE_CC ${CMAKE_CURRENT_SOURCE_DIR}/**_impl.cc)
-    file(GLOB SECURE_C_KERNEL ${PROJECT_PATH}/testcases/ut/aicpu_test/third_party/src/secure_c_kernel/src/**.c)
     file(GLOB OP_UTILS ${OP_PATH}/utils/kernel_util.cc ${OP_PATH}/utils/sparse_tensor.cc ${OP_PATH}/utils/eigen_tensor.cc)
     set(_cpu_kernels_llt_files
       ${TEST_FILE_CPP}
       ${TEST_FILE_CC}
       ${OP_IMPL_FILE}
-      ${SECURE_C_KERNEL}
       ${OP_UTILS}
     )
 
@@ -85,6 +83,7 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       cpu_kernels_context
       aicpu_nodedef_builder
       ascend_protobuf
+      c_sec
       alog
       -ldl
     )
