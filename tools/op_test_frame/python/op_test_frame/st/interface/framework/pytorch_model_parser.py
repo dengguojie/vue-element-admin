@@ -479,7 +479,7 @@ def generator_to_list(gen: any) -> list:
         for data in gen:
             result.append(data)
     except(TypeError,) as err:
-        utils.print_error_log("Failed to convert generator to list. %s", err)
+        utils.print_error_log("Failed to convert generator to list. %s" % err)
     finally:
         pass
     return result

@@ -17,21 +17,27 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
     set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../../)
     set(OP_PATH ${PROJECT_PATH}/cpukernel/impl/)
 
+    add_custom_target(third_kernel)
     add_library(gtest SHARED IMPORTED)
     set_target_properties(gtest PROPERTIES IMPORTED_LOCATION ${PROJECT_PATH}/testcases/libs/gtest/libgtest.a)
+    include(${PROJECT_PATH}/third_party/eigen.cmake)
+    add_dependencies(third_kernel eigen_headers)
 
     add_library(gtest_main SHARED IMPORTED)
     set_target_properties(gtest_main PROPERTIES IMPORTED_LOCATION ${PROJECT_PATH}/testcases/libs/gtest/libgtest_main.a)
 
 	set(GTEST_INCLUDE  ${PROJECT_PATH}/testcases/libs/gtest/include)
+    set(EIGEN_INCLUDE  ${PROJECT_PATH}/testcases/ut/aicpu_test/third_party/src/eigen/)
 
     file(GLOB OP_IMPL_FILE ${OP_PATH}/**.cc)
     file(GLOB TEST_FILE_CPP ${CMAKE_CURRENT_SOURCE_DIR}/**/**_impl.cpp)
     file(GLOB TEST_FILE_CC ${CMAKE_CURRENT_SOURCE_DIR}/**/**_impl.cc)
+    file(GLOB OP_UTILS ${OP_PATH}/utils/kernel_util.cc)
     set(_cpu_kernels_llt_files
       ${TEST_FILE_CPP}
       ${TEST_FILE_CC}
       ${OP_IMPL_FILE}
+      ${OP_UTILS}
     )
 
     link_directories(${AICPU_OPP_ENV}/lib/arch64
@@ -46,8 +52,12 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       ${GTEST_INCLUDE}
       ${ASCEND_CUSTOM_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/inc/
       ${OP_PATH}
+      ${EIGEN_INCLUDE}
+      ${PROJECT_PATH}/cpukernel/context/inc
     )
 
+    message(STATUS "INC_PATH=${ASCEND_CUSTOM_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/inc/")
+    add_dependencies(cpu_kernels_llt third_kernel)
     target_link_libraries(cpu_kernels_llt
       gtest
       gtest_main
@@ -55,6 +65,7 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       pthread
       cpu_kernels_context
       ascend_protobuf
+      aicpu_nodedef_builder
       alog
       -ldl
     )
