@@ -347,7 +347,7 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const int64_t& input_id
     return true;
   }
   // do static infershape start
-  if ((!shape_x.IsUnknownShape()) && (!shape_x.IsUnknownShape())) {
+  if ((!shape_x.IsUnknownShape()) && (!shape_y.IsUnknownShape())) {
     OP_LOGI(op.GetName().c_str(), "do static infershape for Broadcast");
     GeShape &shape_output = tensordesc_output->MutableShape();
     CHECK(!InferBroadcastshapeForStatic(shape_x, shape_y, shape_output),
