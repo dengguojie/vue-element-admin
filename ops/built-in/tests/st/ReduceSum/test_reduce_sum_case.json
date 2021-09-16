@@ -1,0 +1,82 @@
+[
+    {
+        "op": "ReduceSum",
+        "case_name": "test_sum_keep_dims_false",
+	"calc_expect_func_file": "test_reduce_sum_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-2],
+                "typical_shape": [4, 16, 16, 16],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [-2],
+                "typical_shape": [2],
+                "shape_range": [[1, 2240]],
+                "type": "int32",
+                "value": [0, 1],
+                "name": "axes"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [16, 16],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "keep_dims",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+        {
+        "op": "ReduceSum",
+        "case_name": "test_sum_keep_dims_true",
+        "calc_expect_func_file": "test_reduce_sum_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-2],
+                "typical_shape": [4, 16, 16, 16],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [-2],
+                "typical_shape": [2],
+                "shape_range": [[1, 2240]],
+                "type": "int32",
+                "value": [0, 1],
+                "name": "axes"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 1, 16, 16],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "keep_dims",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    }
+]
