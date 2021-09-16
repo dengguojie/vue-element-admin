@@ -333,6 +333,9 @@
     ],
     "auto_schedule/python/tbe/dsl/static_schedule/softmax_schedule.py":[
         "softmax"
+    ],
+    "auto_schedule/python/tbe/common/utils/create_kb_query_key.py":[
+        "tik_kb_query_key"
     ]
 
 }

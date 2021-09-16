@@ -113,4 +113,4 @@ from .shape_util import shape_to_list
 from .op_tiling import do_op_tiling
 from .op_tiling import decode
 
-from . import create_kb_query_key
+from .create_kb_query_key import get_op_compile_unique_key
