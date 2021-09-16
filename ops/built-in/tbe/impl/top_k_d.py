@@ -24,6 +24,7 @@ from te import platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -1780,3 +1781,7 @@ def top_k_d(input_tensor,
 
     with tbe_platform.build_config:
         tvm.build(sch, [data_input, indices, res, indices_out], 'cce', name=kernel_name)
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610", "Ascend920A"):
+            parameters_dict = {"parameters": [0, 0, 1, 0]}
+            write_code(parameters_dict, kernel_name)
