@@ -563,9 +563,9 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
     output_y_shape.SetDim(i, output_shape1.GetDim(i));
   }
 
-  output_y -> SetDataType(output_y -> GetDataType());
-  output_mean -> SetDataType(output_mean -> GetDataType());
-  output_var -> SetDataType(output_var -> GetDataType());
+  output_y -> SetDataType(input_x -> GetDataType());
+  output_mean -> SetDataType(input_x -> GetDataType());
+  output_var -> SetDataType(input_x -> GetDataType());
 
   return GRAPH_SUCCESS;
 }
