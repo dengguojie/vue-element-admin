@@ -23,9 +23,12 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tuple_sum
-from tbe.dsl.base import operation
+from impl.util.platform_adapter import tbe_context
+
+
+# max last dim factor
+MAX_LAST_FACTOR = 2048
 
 
 @tbe_register.register_param_generalization("LayerNormBetaGammaBackpropV2")
@@ -102,25 +105,43 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
     param_axis = _update_gamma_shape(shape_x, shape_gamma)[1]
 
     has_improve_precision = False
-    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+    if dtype == "float16":
         has_improve_precision = True
         dtype = "float32"
 
     if has_improve_precision:
         data_dy = tbe.cast_to(data_dy, "float32")
-        res_for_gamma = tbe.cast_to(res_for_gamma, "float32")
 
     data_x = tbe.vmul(res_for_gamma, data_dy)
     if param_axis:
         pd_gamma, pd_beta = tuple_sum([data_x, data_dy], param_axis, keepdims=True)
-
-    if dtype == "float16" and not has_improve_precision:
-        pd_gamma = tbe.cast_to(pd_gamma, "float32")
-        pd_beta = tbe.cast_to(pd_beta, "float32")
+    else:
+        pd_beta = tbe.vadds(data_dy, tvm.const(0, dtype=dtype))
+        pd_gamma = data_x
 
     res_list = [pd_gamma, pd_beta]
 
     return res_list
+
+
+def calc_max_reduce_factor(dy_type, last_dim):
+    ub_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    bytes_fp32 = 4
+    bytes_fp16 = 2
+    if last_dim < 8:
+        last_dim = 8
+    # 4 fp32 tensor
+    bytes_independent = last_dim * 2 * bytes_fp32
+    if dy_type == "float32":
+        # 2 data ub depend on factor, 2 rf ub, 1 mul ub reusse data ub
+        factor = (ub_bytes - bytes_independent) // (2 * bytes_fp32 * last_dim)
+    else:
+        # 2 rf ub same as fp32, 1 mul ub reuse and 2nd data ub same as fp32
+        # 1st data ub half as 2nd data ub , 1 cast ub
+        # so depend factor ub is 2 fp32 and 1 fp16, equals 5 fp16
+        factor = (ub_bytes - bytes_independent) // (5 * bytes_fp16 * last_dim)
+    factor -= factor % 2
+    return factor
 
 
 @register_operator("LayerNormBetaGammaBackpropV2", pattern="Layer_norm_beta_gamma_backprop_v2")
@@ -131,52 +152,95 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
                                       output_pd_beta, shape_gamma,
                                       kernel_name="layer_norm_beta_gamma_backprop_v2"):
     """
-      algorithm: layernorm_grad
-      calculating: gradient of layernorm
-                   compute partial derivation of x, gamma and beta
-          pd_gamma = np.sum(data_dy*res_for_gamma, param_axis, keepdims=True)
-          pd_beta  = np.sum(data_dy, param_axis, keepdims=True)
+    algorithm: layernorm_grad
+    calculating: gradient of layernorm
+                 compute partial derivation of x, gamma and beta
+    pd_gamma = np.sum(data_dy*res_for_gamma, param_axis, keepdims=True)
+    pd_beta  = np.sum(data_dy, param_axis, keepdims=True)
 
-      Parameters
-      ----------
-      input_dy : dict
-          shape and dtype of input dy, only support float16, float32
-      res_for_gamma: dict
-          shape and dtype of input res_for_gamma, only support float16, float32
-      output_pd_gamma: dict
-          shape and dtype of output, only support float16, float32
-      output_pd_beta: dict
-          shape and dtype of output, only support float16, float32
-      shape_gamma: list
-          shape of gamma
-      kernel_name: str
-          cce kernel name, default value is "layer_norm_beta_gamma_backprop_v2"
+    Parameters
+    ----------
+    input_dy : dict
+        shape and dtype of input dy, only support float16, float32
+    res_for_gamma: dict
+        shape and dtype of input res_for_gamma, only support float16, float32
+    output_pd_gamma: dict
+        shape and dtype of output, only support float16, float32
+    output_pd_beta: dict
+        shape and dtype of output, only support float16, float32
+    shape_gamma: list
+        shape of gamma
+    kernel_name: str
+        cce kernel name, default value is "layer_norm_beta_gamma_backprop_v2"
 
-      Returns
-      -------
-      None
-      """
+    Returns
+    -------
+    None
+    """
     dtype = input_dy.get("dtype").lower()
     shape_dy = input_dy.get("shape")
     dtype_x = res_for_gamma.get("dtype").lower()
     format_dy = input_dy.get("format")
 
-    fused_axis = tbe.var("fused_axis")
-    shape_data = (fused_axis, shape_dy[2])
+    no_reduce = False
+    reduce_dim = None
+    dynamic_reduce = False
+    dynamic_normal = False
+    reduce_dim = 1
+    normal_dim = 1
+
+    if len(shape_dy) == len(shape_gamma):
+        # do not reduce
+        fused_all_axis = tbe.var("fused_all_axis")
+        shape_data = (fused_all_axis, )
+        no_reduce = True
+        shape_gamma_new = shape_gamma
+    else:
+        len_reduce = len(shape_dy) - len(shape_gamma)
+        for i in range(len_reduce):
+            if shape_dy[i] < 0:
+                reduce_dim = tbe.var("reduce_axis")
+                dynamic_reduce = True
+                break
+            reduce_dim *= shape_dy[i]
+        for i in range(len_reduce, len(shape_dy)):
+            if shape_dy[i] < 0:
+                normal_dim = tbe.var("normal_axis")
+                dynamic_normal = True
+                break
+            normal_dim *= shape_dy[i]
+        gamma_dim = 1
+        for i in range(len(shape_gamma)):
+            gamma_dim = gamma_dim * shape_gamma[i]
+        shape_gamma_new = (gamma_dim, )
+        shape_data = (reduce_dim, normal_dim)
+
+    if dynamic_normal:
+        max_reduce_factor = calc_max_reduce_factor(dtype, MAX_LAST_FACTOR)
+    else:
+        max_reduce_factor = calc_max_reduce_factor(dtype, normal_dim)
 
     data_dy = tvm.placeholder(shape_data, name="data_dy_layernormgrad_beta_gamma", dtype=dtype)
     data_x = tvm.placeholder(shape_data, name="data_x", dtype=dtype_x)
 
-    with tbe.compute():
-        current_compute = operation.get_context().get_current_compute()
-        if current_compute:
-            current_compute.add("fused_axis", fused_axis)
+    core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    tbe_context.get_context().add_compile_info("core_num", core_num)
+    tbe_context.get_context().add_compile_info("max_reduce_factor", max_reduce_factor)
+    tbe_context.get_context().add_compile_info("max_last_factor", MAX_LAST_FACTOR)
+    tbe_context.get_context().add_compile_info("shape_gamma", shape_gamma)
+    tbe_context.get_context().add_compile_info("dynamic_reduce", dynamic_reduce)
+    tbe_context.get_context().add_compile_info("dynamic_normal", dynamic_normal)
+
+    with tbe.compute() as current_compute:
+        current_compute.add("reduce_dim", reduce_dim)
+        current_compute.add("normal_dim", normal_dim)
+        current_compute.add("dy_type", dtype)
+        current_compute.add("no_reduce", no_reduce)
         res_list = layer_norm_beta_gamma_backprop_v2_compute(data_dy,
                                                              data_x,
                                                              output_pd_gamma,
                                                              output_pd_beta,
-                                                             shape_gamma)
-
+                                                             shape_gamma_new)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res_list)
 
