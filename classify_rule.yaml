@@ -1137,7 +1137,6 @@ vector_B:
       - ops/built-in/tbe/impl/layer_norm_beta_gamma_backprop_v2.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/lrn_grad.py
-      - ops/built-in/tbe/impl/lru_cache_v2.py
       - ops/built-in/tbe/impl/matrix_diag_part_d.py
       - ops/built-in/tbe/impl/matrix_set_diag_d.py
       - ops/built-in/tbe/impl/max_pool.py
