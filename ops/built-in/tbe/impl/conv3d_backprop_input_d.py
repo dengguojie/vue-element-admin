@@ -649,25 +649,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
 
-    def _check_l1_limitation():
-        w_value = dedy_w * stride_w
-        if fmap_w > _BLOCK_SIZE:
-            h_value_max = filter_h_dilation + 1
-        elif _BLOCK_SIZE % fmap_w == 0:
-            h_value_max = filter_h_dilation + _BLOCK_SIZE // fmap_w - 1
-        else:
-            h_value_max = filter_h_dilation + _BLOCK_SIZE // fmap_w + 1
-
-        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * _BLOCK_SIZE * 2
-        b_l1_size = filter_h_dilation * filter_w_dilation * filter_d_dilation * _BLOCK_SIZE * _BLOCK_SIZE * 2
-        l1_size = tbe_platform.get_soc_spec("L1_SIZE")
-        if (a_l1_size + b_l1_size) > l1_size:
-            dict_args = {
-                'errCode': 'E60026'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
     def _check_shape_error():
         fmap_h_padding = fmap_h + pad_up + pad_down
         fmap_w_padding = fmap_w + pad_left + pad_right
@@ -807,8 +788,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     if stride_h > 1 or stride_w > 1:
         _check_ub_limitation()
-
-    _check_l1_limitation()
+    block_size_k = tbe_platform.CUBE_MKN.get(out_backprop_dtype).get('mac')[1]
+    util_conv3d.check_l1_limitation_dx(dedy_w * stride_w, stride_d, filter_h_dilation, filter_d_dilation, block_size_k)
     # check shape size, 64 bits limitation
     # ===========================================================
 

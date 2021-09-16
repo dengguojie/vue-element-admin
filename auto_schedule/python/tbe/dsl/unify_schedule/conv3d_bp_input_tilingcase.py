@@ -793,9 +793,9 @@ class Conv3dBpInputTiling(CubeTilingOp):
             h_value_max = self.k_h_dilation + _C0_SIZE // fmap_w_upper - 1
         else:
             h_value_max = self.k_h_dilation + _C0_SIZE // fmap_w_upper + 1
-
-        a_l1_size = h_value_max * w_value * ((self.k_d_dilation - 2) // self.stride_d + 2) * _C0_SIZE * 2
-        b_l1_size = self.k_h_dilation * self.k_w_dilation * self.k_d_dilation * _C0_SIZE * _C0_SIZE * 2
+        block_size_k = tbe_platform.CUBE_MKN.get(self.a_type).get("mac")[1]
+        a_l1_size = h_value_max * w_value * ((self.k_d_dilation - 2) // self.stride_d + 2) * block_size_k * 2
+        b_l1_size = _C0_SIZE * block_size_k * 2
         l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")
         return (a_l1_size + b_l1_size) <= l1_size
 

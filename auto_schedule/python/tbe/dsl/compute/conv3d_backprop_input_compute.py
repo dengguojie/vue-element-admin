@@ -260,16 +260,16 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         if not dedy_w_upper:
             return
         w_value = dedy_w_upper * stride_w
-        if dedx_w_upper > _BLOCK_SIZE:
-            h_value_max = filter_h_dilation + 1
-        elif _BLOCK_SIZE % dedx_w_upper == 0:
-            h_value_max = filter_h_dilation + _BLOCK_SIZE // dedx_w_upper - 1
+        if w_value > _BLOCK_SIZE:
+            h_value_max = filter_h_dilation
         else:
-            h_value_max = filter_h_dilation + _BLOCK_SIZE // dedx_w_upper + 1
-
-        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * _BLOCK_SIZE * 2
-        b_l1_size = filter_h_dilation * filter_w_dilation * filter_d_dilation * _BLOCK_SIZE * _BLOCK_SIZE * 2
-        l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")
+            h_value_max = filter_h_dilation + _BLOCK_SIZE // w_value
+        if w_value % _BLOCK_SIZE != 0 and _BLOCK_SIZE % w_value != 0:
+            h_value_max += 1
+        block_size_k = tbe_platform.CUBE_MKN[out_backprop_dtype]["mac"][1]
+        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * block_size_k * 2
+        b_l1_size = _BLOCK_SIZE * block_size_k * 2
+        l1_size = tbe_platform.get_soc_spec("L1_SIZE")
         if (a_l1_size + b_l1_size) > l1_size:
             dict_args = {
                 'errCode': 'E60026'

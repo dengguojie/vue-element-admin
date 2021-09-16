@@ -134,8 +134,9 @@ case11 = _run_api(y=y)
 
 # test None in range
 y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
-     'range': ((1, 1), (8, 8), (56, 56), (75, None), (16, 16))}
+     'range': ((1, 1), (8, 8), (16, 16), (56, 56), (75, None), (16, 16))}
 case12 = _run_api(y=y)
+
 
 # test range exceed 4096
 y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
@@ -189,11 +190,12 @@ filter = {'ori_shape': (3, 3, 3, 128, 256), 'ori_format': 'DHWCN', 'dtype': 'flo
 out_backprop = {'ori_shape': (-2,), 'ori_format': 'NDHWC', 'dtype': 'float16',
                 'range': ((1, None), (1, None), (16, 16), (1, None), (1, None), (16, 16))}
 y = {'ori_shape': (-1, -1, -1, -1, 128), 'ori_format': 'NDHWC', 'dtype': 'float16',
-    'range': ((1, None), (1, None), (8, 8), (1, None), (1, None), (16, 16))}
+     'range': ((1, None), (1, None), (8, 8), (1, None), (1, None), (16, 16))}
 strides = (1, 2, 2, 2, 1)
 pads = [1, 2, 1, 2, 1, 2]
 case18 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
                   input_size=input_size, filter=filter, pads=pads)
+
 
 def test_conv3d_bp_input_fuzz_build_tilingcase(test_arg):
     import json

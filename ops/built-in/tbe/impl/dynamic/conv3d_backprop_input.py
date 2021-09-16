@@ -15,6 +15,8 @@
 """
 conv3d_backprop_input
 """
+import re
+
 from impl.util import util_common
 from impl.util import util_conv3d
 from impl.util import util_cube_dynamic
@@ -394,27 +396,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
 
-    def _check_l1_limitation():
-        if not fmap_w_upper:
-            return
-        w_value = fmap_w_upper * stride_w
-        if fmap_w_upper > _C0_SIZE:
-            h_value_max = filter_h_dilation + 1
-        elif _C0_SIZE % fmap_w_upper == 0:
-            h_value_max = filter_h_dilation + _C0_SIZE // fmap_w_upper - 1
-        else:
-            h_value_max = filter_h_dilation + _C0_SIZE // fmap_w_upper + 1
-
-        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * _C0_SIZE * 2
-        b_l1_size = filter_h_dilation * filter_w_dilation * filter_d_dilation * _C0_SIZE * _C0_SIZE * 2
-        l1_size = tbe_platform.get_soc_spec("L1_SIZE")
-        if (a_l1_size + b_l1_size) > l1_size:
-            dict_args = {
-                'errCode': 'E60026'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
     def _check_shape_error():
 
         if not isinstance(fmap_batch, tvm.expr.Var) and dedy_channel != filter_batch:
@@ -563,8 +544,10 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             'E62006', 'conv3d_backprop_input', 'Chip Design demand input_size_w must >=2 when input_size_h != 1')
 
     _check_shape_error()
-
-    _check_l1_limitation()
+    if dedy_w_upper is not None:
+        block_k = tbe_platform.CUBE_MKN.get(out_backprop_dtype).get('mac')[1]
+        util_conv3d.check_l1_limitation_dx(dedy_w_upper * stride_w, stride_d, filter_h_dilation,
+                                           filter_d_dilation, block_k)
 
     if stride_h > 1 or stride_w > 1:
         _check_ub_limitation()
@@ -748,6 +731,53 @@ def _get_pad_mode(pads):
     return pad_mode
 
 
+def _get_filter_dilation(weight, dilation, data_format):
+    filter_d = weight.get("ori_shape")[weight.get("ori_format").find("D")]
+    filter_h = weight.get("ori_shape")[weight.get("ori_format").find("H")]
+    filter_w = weight.get("ori_shape")[weight.get("ori_format").find("W")]
+    dilation_d = dilation[data_format.find("D")]
+    dilation_h = dilation[data_format.find("H")]
+    dilation_w = dilation[data_format.find("W")]
+    filter_h_dilation = (filter_h - 1) * dilation_h + 1
+    filter_d_dilation = (filter_d - 1) * dilation_d + 1
+    filter_w_dilation = (filter_w - 1) * dilation_w + 1
+    return filter_d_dilation, filter_h_dilation, filter_w_dilation
+
+
+def _modify_w_range_max(fmap, weight, dedy, strides, dilation, data_format):
+    """
+    modify w range max value
+    """
+    d_pos = data_format.find("D")
+    w_pos = data_format.find("W")
+    dedy_w = dedy.get("ori_shape")[w_pos]
+    w_value = dedy_w * strides[w_pos]
+    out_backprop_date_byte = int(re.findall(r'\d+', dedy.get("dtype"))[0]) // 8
+    filter_data_byte = int(re.findall(r'\d+', weight.get("dtype"))[0]) // 8
+    filter_d_dilation, filter_h_dilation, _ = _get_filter_dilation(weight, dilation, data_format)
+    d_factor = (filter_d_dilation - 2) // strides[d_pos] + 2
+    block_size_k = tbe_platform.CUBE_MKN[dedy.get("dtype")].get("mac")[1]
+    # Using default tiling, b_l1_size is _C0_SIZE * block_size_k * filter_data_byte
+    a_l1_size = tbe_platform.get_soc_spec("L1_SIZE") - _C0_SIZE * block_size_k * filter_data_byte
+    h_value_max = filter_h_dilation + 1
+    w_max = a_l1_size // (h_value_max * d_factor * block_size_k * out_backprop_date_byte) // strides[w_pos]
+    if w_max < dedy_w:
+        if w_value % _C0_SIZE == 0 or _C0_SIZE % w_value == 0:
+            h_value_max = filter_h_dilation
+            w_max = a_l1_size // (h_value_max * d_factor * block_size_k * out_backprop_date_byte) // strides[w_pos]
+            if w_max >= dedy_w:
+                # cover a single w point
+                dedy.get("ori_range")[w_pos] = (dedy_w, dedy_w)
+                return True
+    else:
+        dedy.get("ori_range")[w_pos][1] = min(w_max, dedy.get("ori_range")[w_pos][1])
+        return False
+
+    error_manager_cube.raise_err_specific_user(_OP_TYPE,
+                                               "w of dedy is too large, only support not larger than {}, "
+                                               "actually is {}".format(str(w_max), str(dedy_w)))
+
+
 @register_param_generalization("Conv3DBackpropInput")
 def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R0913,R0914
                                          out_backprop, y, strides,
@@ -804,6 +834,7 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
         error_manager_cube.raise_err_one_para("E62306",
                                               _OP_TYPE,
                                               "Invalid generalize mode, currently only support keep_rank")
+    
     # get dx_range depends on dy_range
     para_dict = {
         "strides": _get_ndhwc_by_format(out_backprop["ori_format"], strides),
@@ -816,9 +847,15 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
                         "y": y,
                         "input_size": input_size}
     }
+    # if excced L1 size, narrow the w range.
+    w_range_single_point = _modify_w_range_max(y, filter, out_backprop, strides, dilations, data_format)
+    w_pos = data_format.find("W")
     conv3d_backprop = util_cube_dynamic.Conv3dBackpropParaProcess(para_dict, _get_pad_mode(pads))
-    dy_ori_range = out_backprop["ori_range"]
+    dy_ori_range = out_backprop.get("ori_range")
     dx_ori_range = conv3d_backprop.get_dx_ori_range(dy_ori_range)
+    dx_ori_shape_w = y.get("ori_shape")[w_pos]
+    if w_range_single_point:
+        dx_ori_range[w_pos] = (dx_ori_shape_w, dx_ori_shape_w)
     input_size["const_value_range"] = dx_ori_range
     y["ori_range"] = dx_ori_range
     util_conv3d.generalize_input_keep_rank(out_backprop)

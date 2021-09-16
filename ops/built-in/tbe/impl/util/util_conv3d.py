@@ -17,9 +17,11 @@ util_conv3d
 """
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import tbe_platform
 
 BIAS_LENGTH = 1
 DYNAMIC_DIM_VAL = -1
+_BLOCK_SIZE = 16
 
 def transform_shape_with_exception(src_format, to_format, ori_shape,
                                    format_white_list, attr_name):
@@ -101,3 +103,21 @@ def generalize_input_keep_rank(param_dict):
     for idx in idx_tup:
         ori_shape[idx] = DYNAMIC_DIM_VAL
     param_dict["ori_shape"] = tuple(ori_shape)
+
+
+def check_l1_limitation_dx(w_value, stride_d, filter_h_dilation, filter_d_dilation, block_size_k):
+    if w_value > _BLOCK_SIZE:
+        h_value_max = filter_h_dilation
+    else:
+        h_value_max = filter_h_dilation + _BLOCK_SIZE // w_value
+    if w_value % _BLOCK_SIZE != 0 and _BLOCK_SIZE % w_value != 0:
+        h_value_max += 1
+    a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * block_size_k * 2
+    b_l1_size = _BLOCK_SIZE * block_size_k * 2
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+    if (a_l1_size + b_l1_size) > l1_size:
+        dict_args = {
+            'errCode': 'E60026'
+        }
+        raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
