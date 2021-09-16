@@ -23,6 +23,7 @@ TEST_F(AddTest, add_test_case_1)
     ge::Shape shape({2, 3, 4});
     tensorDesc.SetDataType(ge::DT_FLOAT16);
     tensorDesc.SetShape(shape);
+    tensorDesc.SetOriginShape(shape);
 
     // update op input
     addOp.UpdateInputDesc("x1", tensorDesc);
