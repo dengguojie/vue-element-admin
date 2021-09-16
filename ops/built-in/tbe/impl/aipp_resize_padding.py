@@ -703,7 +703,9 @@ def aipp_compute(input_tensor, input_shape, input_format,
 
     if "crop" in aipp_config and aipp_config.get("crop") == 1:
         src_image_size_h, src_image_size_w, load_start_pos_h, load_start_pos_w, \
-        load_image_h, load_image_w = aipp_comm.get_crop_info(aipp_config)
+        load_image_h, load_image_w = aipp_comm.get_crop_info(aipp_config,
+                                                             src_image_size_h,
+                                                             src_image_size_w)
 
     dtype = output_data.get('dtype')
     if dtype == "float16":

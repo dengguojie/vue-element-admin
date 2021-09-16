@@ -557,7 +557,272 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     return p_ub_buf, spr, tmp
 
 
-def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp, is_hisi_yuv400=False):
+def set_spr_dync_from_gm(ib, param_buf, dtype):
+    """
+    :param ib:
+    :param param_buf:
+    :param dtype:
+    :param cur_cce_product:
+    :return:
+    """
+    spr = ib.allocate("uint64", [17], name="spr", scope=tbe_platform.scope_reg)
+    tmp = ib.allocate("uint64", [1], name="tmp", scope=tbe_platform.scope_reg)
+
+    input_format_tmp = ib.allocate("uint64", [1], name="input_format_tmp", scope=tbe_platform.scope_reg)
+    input_format_tmp[0] = tvm.const(0, dtype="uint64")
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
+
+    input_format_tmp[0] = tmp[0]
+
+    # spr2
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C0)))
+    spr[2] = (tmp[0] & 0xffff)
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C1)))
+    spr[2] = spr[2] | (tmp[0] & 0xffff) << 16
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C2)))
+    spr[2] = spr[2] | (tmp[0] & 0xffff) << 32
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C0)))
+    spr[2] = spr[2] | (tmp[0] & 0xffff) << 48
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_2", spr[2]))
+
+    # spr3
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C1)))
+    spr[3] = (tmp[0] & 0xffff)
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C2)))
+    spr[3] = spr[3] | (tmp[0] & 0xffff) << 16
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C0)))
+    spr[3] = spr[3] | (tmp[0] & 0xffff) << 32
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C1)))
+    spr[3] = spr[3] | (tmp[0] & 0xffff) << 48
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_3", spr[3]))
+
+    # spr4
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C2)))
+    spr[4] = (tmp[0] & 0xffff)
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
+    spr[4] = spr[4] | (tmp[0] & 0xff) << 16
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
+    spr[4] = spr[4] | (tmp[0] & 0xff) << 24
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
+    spr[4] = spr[4] | (tmp[0] & 0xff) << 32
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
+    spr[4] = spr[4] | (tmp[0] & 0xff) << 40
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
+    spr[4] = spr[4] | (tmp[0] & 0xff) << 48
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
+    spr[4] = spr[4] | (tmp[0] & 0xff) << 56
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4", spr[4]))
+
+    # spr8
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_8", spr[8]))
+
+    # spr9
+    ib.emit(tvm.call_extern("int8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_RBUV_SWAP_SWITCH)))
+    # YUV400
+    with ib.if_scope(input_format_tmp[0] != 10):
+        spr[9] = (tmp[0] & 0x1) << 16
+        spr[9] = spr[9] | (tmp[0] & 0x1) << 17
+
+    # XRGB8888_U8
+    with ib.if_scope(input_format_tmp[0] == 2):
+        ib.emit(tvm.call_extern("int8",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+        spr[9] = spr[9] | (tmp[0] & 0x1) << 18
+    # ARGB8888_U8
+    with ib.if_scope(input_format_tmp[0] == 6):
+        ib.emit(tvm.call_extern("int8",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+        spr[9] = spr[9] | (tmp[0] & 0x1) << 18
+    # AYUV444_U8
+    with ib.if_scope(input_format_tmp[0] == 9):
+        ib.emit(tvm.call_extern("int8",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+        spr[9] = spr[9] | (tmp[0] & 0x1) << 18
+
+    ib.emit(tvm.call_extern("uint8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
+    spr[9] = spr[9] | ((tmp[0] - tvm.const(1, dtype="uint64")) & 0xf) << 19
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr[9]))
+
+    return spr, tmp
+
+
+def get_dync_padding_size(ib, param_buf, tmp, padding_info,
+    offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+    """
+    :param aipp_config:
+    :return:
+    """
+
+    ib.emit(tvm.call_extern("int8",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset +
+                                                 BATCH_OFFSET_PAD_SWITCH)))
+    with ib.if_scope(tmp[0] > 0):
+        ib.emit(tvm.call_extern("int32",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=offset +
+                                                    BATCH_OFFSET_PAD_TOP)))
+        padding_info[0] = tmp[0]
+
+        ib.emit(tvm.call_extern("int32",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=offset +
+                                                     BATCH_OFFSET_PAD_BOTTOM)))
+        padding_info[1] = tmp[0]
+
+        ib.emit(tvm.call_extern("int32",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=offset +
+                                                     BATCH_OFFSET_PAD_LEFT)))
+        padding_info[2] = tmp[0]
+
+        ib.emit(tvm.call_extern("int32",
+                                "reg_mov",
+                                tvm.call_extern("uint64", "reg", tmp[0]),
+                                param_buf.access_ptr('r', offset=offset +
+                                                     BATCH_OFFSET_PAD_RIGHT)))
+        padding_info[3] = tmp[0]
+
+
+def get_dync_src_image_size(ib, param_buf, tmp, src_image_size):
+    """
+    :param ib:
+    :param p_ub_buf:
+    :param tmp:
+    :param src_image_size:
+    :return:
+    """
+
+    ib.emit(tvm.call_extern("int32", "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_SRCIMAGE_H)))
+    with ib.if_scope(tmp[0] > 0):
+        src_image_size[0] = tmp[0]
+
+    ib.emit(tvm.call_extern("int32", "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=HEAD_OFFSET_SRCIMAGE_W)))
+    with ib.if_scope(tmp[0] > 0):
+        src_image_size[1] = tmp[0]
+
+
+def get_dync_crop_info(ib, param_buf, tmp, load_image_info,
+    offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+    """
+    :param ib:
+    :param p_ub_buf:
+    :param tmp:
+    :param load_image_info:
+    :return:
+    """
+
+    ib.emit(tvm.call_extern("int32", "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_CROP_STARTPOS_W)))
+    # load_start_pos_w
+    load_image_info[1] = tmp[0]
+
+    ib.emit(tvm.call_extern("int32", "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_CROP_STARTPOS_H)))
+    # load_start_pos_h
+    load_image_info[0] = tmp[0]
+
+    ib.emit(tvm.call_extern("int32", "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_CROP_W)))
+    # load_image_w
+    load_image_info[3] = tmp[0]
+
+    ib.emit(tvm.call_extern("int32", "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_CROP_H)))
+    # load_image_h
+    load_image_info[2] = tmp[0]
+
+
+def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
+    is_hisi_yuv400=False, offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
     set_spr_dync_in_batch
     """
@@ -571,28 +836,28 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp, is_hisi_yuv400=False):
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MEAN_C0)))
     spr[5] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MEAN_C1)))
     spr[5] = spr[5] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MEAN_C2)))
     spr[5] = spr[5] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MEAN_C3)))
     spr[5] = spr[5] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_5", spr[5]))
@@ -601,28 +866,28 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp, is_hisi_yuv400=False):
     ib.emit(tvm.call_extern("uint16",  # actual data type
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MIN_C0)))
     spr[6] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MIN_C1)))
     spr[6] = spr[6] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MIN_C2)))
     spr[6] = spr[6] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_MIN_C3)))
     spr[6] = spr[6] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_6", spr[6]))
@@ -631,31 +896,111 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp, is_hisi_yuv400=False):
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_VAR_C0)))
     spr[7] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_VAR_C1)))
     spr[7] = spr[7] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_VAR_C2)))
     spr[7] = spr[7] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                            param_buf.access_ptr('r', offset=offset + \
                                                             BATCH_OFFSET_DTC_VAR_C3)))
     spr[7] = spr[7] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_7", spr[7]))
+
+
+def get_spr9(aipp_config, dtype, output_format="NC1HWC0"):
+    spr9 = 0
+    if 'cpadding_value' in aipp_config:
+        spr9 = spr9 | (aipp_config.get('cpadding_value') & 0xff)
+    if 'rbuv_swap_switch' in aipp_config:
+        if aipp_config.get('input_format') not in ("YUV400_U8", "RAW10", "RAW12", "RAW16"):
+            spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 16
+            spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 17
+    if 'ax_swap_switch' in aipp_config:
+        if aipp_config.get('input_format') in ("XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"):
+            spr9 = spr9 | (aipp_config.get('ax_swap_switch') & 0x1) << 18
+    if 'input_format' in aipp_config:
+        if aipp_config.get('input_format') == "YUV420SP_U8":
+            spr9 = spr9 | 0 << 19
+        elif aipp_config.get('input_format') == "XRGB8888_U8":
+            spr9 = spr9 | 1 << 19
+        elif aipp_config.get('input_format') == "NC1HWC0DI_FP16":
+            spr9 = spr9 | 2 << 19
+        elif aipp_config.get('input_format') == "NC1HWC0DI_S8":
+            spr9 = spr9 | 3 << 19
+        elif aipp_config.get('input_format') == "RGB888_U8":
+            spr9 = spr9 | 4 << 19
+        elif aipp_config.get('input_format') == "ARGB8888_U8":
+            spr9 = spr9 | 5 << 19
+        elif aipp_config.get('input_format') == "YUYV_U8":
+            spr9 = spr9 | 6 << 19
+        elif aipp_config.get('input_format') == "YUV422SP_U8":
+            spr9 = spr9 | 7 << 19
+        elif aipp_config.get('input_format') == "AYUV444_U8":
+            spr9 = spr9 | 8 << 19
+        elif aipp_config.get('input_format') == "YUV400_U8":
+            spr9 = spr9 | 9 << 19
+        elif aipp_config.get('input_format') == "RAW10":
+            spr9 = spr9 | 10 << 19
+        elif aipp_config.get('input_format') == "RAW12":
+            spr9 = spr9 | 11 << 19
+        elif aipp_config.get('input_format') == "RAW16" or \
+                aipp_config.get('input_format') == "uint16":
+            spr9 = spr9 | 12 << 19
+        elif aipp_config.get('input_format') == "RGB16":
+            spr9 = spr9 | 18 << 19
+        elif aipp_config.get('input_format') == "RGB20":
+            spr9 = spr9 | 19 << 19
+        elif aipp_config.get('input_format') == "RGB24":
+            spr9 = spr9 | 20 << 19
+        elif aipp_config.get('input_format') == "RGB8_IR":
+            spr9 = spr9 | 21 << 19
+        elif aipp_config.get('input_format') == "RGB16_IR":
+            spr9 = spr9 | 22 << 19
+        elif aipp_config.get('input_format') == "RGB24_IR":
+            spr9 = spr9 | 23 << 19
+    if 'single_line_mode' in aipp_config:
+        spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
+
+    n = 8
+    if 'raw_rgbir_to_f16_n' in aipp_config:
+        n = aipp_config.get('raw_rgbir_to_f16_n')
+    if aipp_config.get('input_format') in ("RAW10", "RAW12", "RAW16", "uint16") \
+            and dtype == "float16":
+        # [33:30]: raw_to_f16_n
+        # the n = 8
+        spr9 = spr9 | (n << 30)
+        spr9 = spr9 | (1 << 35)
+
+    if output_format == "NC1HWC0_C04":
+        spr9 = spr9 | (1 << 40)
+
+    if aipp_config.get('input_format') in ("RGB16", "RGB20", "RGB24",
+                                           "RGB16_IR", "RGB24_IR"):
+        spr9 = spr9 | (n << 30)
+
+    if aipp_config.get('input_format') in ("RGB20", "RGB24", "RGB24_IR"):
+        mean_chn_2 = aipp_config.get('mean_chn_2', 0)
+        mean_chn_3 = aipp_config.get('mean_chn_3', 0)
+        spr9 = spr9 | (((mean_chn_2 >> 16) & 0xff) << 48)
+        spr9 = spr9 | (((mean_chn_3 >> 16) & 0xff) << 56)
+
+    return spr9
 
 
 def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC0"):
@@ -902,86 +1247,7 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_8",
                             tvm.const(spr8, dtype="uint64")))
 
-    spr9 = 0
-    if 'cpadding_value' in aipp_config:
-        spr9 = spr9 | (aipp_config.get('cpadding_value') & 0xff)
-    if 'rbuv_swap_switch' in aipp_config:
-        if aipp_config.get('input_format') not in ("YUV400_U8", "RAW10", "RAW12", "RAW16"):
-            spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 16
-            spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 17
-    if 'ax_swap_switch' in aipp_config:
-        if aipp_config.get('input_format') in ("XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"):
-            spr9 = spr9 | (aipp_config.get('ax_swap_switch') & 0x1) << 18
-    if 'input_format' in aipp_config:
-        if aipp_config.get('input_format') == "YUV420SP_U8":
-            spr9 = spr9 | 0 << 19
-        elif aipp_config.get('input_format') == "XRGB8888_U8":
-            spr9 = spr9 | 1 << 19
-        elif aipp_config.get('input_format') == "NC1HWC0DI_FP16":
-            spr9 = spr9 | 2 << 19
-        elif aipp_config.get('input_format') == "NC1HWC0DI_S8":
-            spr9 = spr9 | 3 << 19
-        elif aipp_config.get('input_format') == "RGB888_U8":
-            spr9 = spr9 | 4 << 19
-        elif aipp_config.get('input_format') == "ARGB8888_U8":
-            spr9 = spr9 | 5 << 19
-        elif aipp_config.get('input_format') == "YUYV_U8":
-            spr9 = spr9 | 6 << 19
-        elif aipp_config.get('input_format') == "YUV422SP_U8":
-            spr9 = spr9 | 7 << 19
-        elif aipp_config.get('input_format') == "AYUV444_U8":
-            spr9 = spr9 | 8 << 19
-        elif aipp_config.get('input_format') == "YUV400_U8":
-            spr9 = spr9 | 9 << 19
-        elif aipp_config.get('input_format') == "RAW10":
-            spr9 = spr9 | 10 << 19
-        elif aipp_config.get('input_format') == "RAW12":
-            spr9 = spr9 | 11 << 19
-        elif aipp_config.get('input_format') == "RAW16" or \
-                aipp_config.get('input_format') == "uint16":
-            spr9 = spr9 | 12 << 19
-        elif aipp_config.get('input_format') == "RGB16":
-            spr9 = spr9 | 18 << 19
-        elif aipp_config.get('input_format') == "RGB20":
-            spr9 = spr9 | 19 << 19
-        elif aipp_config.get('input_format') == "RGB24":
-            spr9 = spr9 | 20 << 19
-        elif aipp_config.get('input_format') == "RGB8_IR":
-            spr9 = spr9 | 21 << 19
-        elif aipp_config.get('input_format') == "RGB16_IR":
-            spr9 = spr9 | 22 << 19
-        elif aipp_config.get('input_format') == "RGB24_IR":
-            spr9 = spr9 | 23 << 19
-    if 'single_line_mode' in aipp_config:
-        spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
-
-    n = 8
-    if 'raw_rgbir_to_f16_n' in aipp_config:
-        n = aipp_config.get('raw_rgbir_to_f16_n')
-    if aipp_config.get('input_format') in ("RAW10", "RAW12", "RAW16", "uint16") \
-            and dtype == "float16":
-        # [33:30]: raw_to_f16_n
-        # the n = 8
-        spr9 = spr9 | (n << 30)
-        spr9 = spr9 | (1 << 35)
-
-    if output_format == "NC1HWC0_C04":
-        spr9 = spr9 | (1 << 40)
-
-    if aipp_config.get('input_format') in ("RGB16", "RGB20", "RGB24",
-                                           "RGB16_IR", "RGB24_IR"):
-        spr9 = spr9 | (n << 30)
-
-    if aipp_config.get('input_format') in ("RGB20", "RGB24", "RGB24_IR"):
-        mean_chn_2 = 0
-        mean_chn_3 = 0
-        if 'mean_chn_2' in aipp_config:
-            mean_chn_2 = aipp_config.get('mean_chn_2')
-        if 'mean_chn_3' in aipp_config:
-            mean_chn_3 = aipp_config.get('mean_chn_3')
-        spr9 = spr9 | (((mean_chn_2 >> 16) & 0xff) << 48)
-        spr9 = spr9 | (((mean_chn_3 >> 16) & 0xff) << 56)
-
+    spr9 = get_spr9(aipp_config, dtype, output_format)
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9",
                             tvm.const(spr9, dtype="uint64")))
 
@@ -1197,61 +1463,7 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
 
     spr8 = 0
 
-    spr9 = 0
-    if 'cpadding_value' in aipp_config:
-        spr9 = spr9 | (aipp_config.get('cpadding_value') & 0xff)
-    if 'rbuv_swap_switch' in aipp_config:
-        if aipp_config.get('input_format') not in ["YUV400_U8", "RAW10",
-                                                   "RAW12", "RAW16"]:
-            spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 16
-            spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 17
-    if 'ax_swap_switch' in aipp_config:
-        if aipp_config.get('input_format') in ["XRGB8888_U8",
-                                               "ARGB8888_U8", "AYUV444_U8"]:
-            spr9 = spr9 | (aipp_config.get('ax_swap_switch') & 0x1) << 18
-    if 'input_format' in aipp_config:
-        if aipp_config.get('input_format') == "YUV420SP_U8":
-            spr9 = spr9 | 0 << 19
-        elif aipp_config.get('input_format') == "XRGB8888_U8":
-            spr9 = spr9 | 1 << 19
-        elif aipp_config.get('input_format') == "NC1HWC0DI_FP16":
-            spr9 = spr9 | 2 << 19
-        elif aipp_config.get('input_format') == "NC1HWC0DI_S8":
-            spr9 = spr9 | 3 << 19
-        elif aipp_config.get('input_format') == "RGB888_U8":
-            spr9 = spr9 | 4 << 19
-        elif aipp_config.get('input_format') == "ARGB8888_U8":
-            spr9 = spr9 | 5 << 19
-        elif aipp_config.get('input_format') == "YUYV_U8":
-            spr9 = spr9 | 6 << 19
-        elif aipp_config.get('input_format') == "YUV422SP_U8":
-            spr9 = spr9 | 7 << 19
-        elif aipp_config.get('input_format') == "AYUV444_U8":
-            spr9 = spr9 | 8 << 19
-        elif aipp_config.get('input_format') == "YUV400_U8":
-            spr9 = spr9 | 9 << 19
-        elif aipp_config.get('input_format') == "RAW10":
-            spr9 = spr9 | 10 << 19
-        elif aipp_config.get('input_format') == "RAW12":
-            spr9 = spr9 | 11 << 19
-        elif aipp_config.get('input_format') == "RAW16" or \
-                aipp_config.get('input_format') == "uint16":
-            spr9 = spr9 | 12 << 19
-    if 'single_line_mode' in aipp_config:
-        spr9 = spr9 | (aipp_config.get('single_line_mode') & 0x1) << 24
-    n = 8
-    if 'raw_rgbir_to_f16_n' in aipp_config:
-        n = aipp_config.get('raw_rgbir_to_f16_n')
-    if aipp_config.get('input_format') in ["RAW10", "RAW12",
-                                           "RAW16", "uint16"] and \
-            dtype == "float16":
-        # [33:30]: raw_to_f16_n
-        # the n = 8
-        spr9 = spr9 | (n << 30)
-        spr9 = spr9 | (1 << 35)
-
-    if output_format == "NC1HWC0_C04":
-        spr9 = spr9 | (1 << 40)
+    spr9 = get_spr9(aipp_config, dtype, output_format)
 
     aipp_map['spr_2'] = tvm.const(spr2, dtype="uint64")
     aipp_map['spr_3'] = tvm.const(spr3, dtype="uint64")
@@ -1376,6 +1588,58 @@ def check_mean(aipp_config, mean_name, mean_value):
         check_param_range(mean_name, mean_value, 0, 16777215)
     else:
         check_param_range(mean_name, mean_value, 0, 255)
+
+
+def check_aipp_dtype(aipp_config, input_dtype, output_dtype):
+    if aipp_config.get("input_format") == "NC1HWC0DI_S8":
+        if input_dtype != "int8":
+            cause_desc = "when input_format is NC1HWC0DI_S8, the input dtype must be int8, " \
+                         "but actually is %s" % input_dtype
+            raise_runtime_error(cause_desc)
+
+        if output_dtype != "int8":
+            cause_desc = "when input_format is NC1HWC0DI_S8, the output dtype must be int8, " \
+                         "but actually is %s" % output_dtype
+            raise_runtime_error(cause_desc)
+    elif aipp_config.get("input_format") == "NC1HWC0DI_FP16":
+        if input_dtype != "float16":
+            cause_desc = "when input_format is NC1HWC0DI_FP16, the input dtype must be float16, " \
+                     "but actually is %s" % input_dtype
+            raise_runtime_error(cause_desc)
+
+        if output_dtype != "float16":
+            cause_desc = "when input_format is NC1HWC0DI_FP16, the output dtype must be float16, " \
+                         "but actually is %s" % output_dtype
+            raise_runtime_error(cause_desc)
+    elif aipp_config.get("input_format") in ["RAW10", "RAW12",
+                                             "RAW16", "uint16"]:
+        if input_dtype != "uint16":
+            cause_desc = "when input_format is %s, the input dtype must be uint16, " \
+                         "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
+            raise_runtime_error(cause_desc)
+    elif aipp_config.get("input_format") in ["RGB16", "RGB16_IR"]:
+        if input_dtype != "uint16":
+            cause_desc = "when input_format is %s, the input dtype must be uint16, " \
+                         "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
+            raise_runtime_error(cause_desc)
+        if output_dtype != "float16":
+            cause_desc = "when input_format is %s, the output dtype must be float16, " \
+                         "but actually is %s" % (aipp_config.get("input_format"), output_dtype)
+            raise_runtime_error(cause_desc)
+    elif aipp_config.get("input_format") in ["RGB20", "RGB24", "RGB24_IR"]:
+        if input_dtype != "uint32":
+            cause_desc = "when input_format is %s, the input dtype must be uint32, " \
+                         "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
+            raise_runtime_error(cause_desc)
+        if output_dtype != "float16":
+            cause_desc = "when input_format is %s, the output dtype must be float16, " \
+                         "but actually is %s" % (aipp_config.get("input_format"), output_dtype)
+            raise_runtime_error(cause_desc)
+    else:
+        if input_dtype != "uint8":
+            cause_desc = "when input_format is %s, the input dtype must be uint8, " \
+                         "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
+            raise_runtime_error(cause_desc)
 
 
 def check_aipp_static_config(input_data, input_format, output_data, aipp_config, cur_cce_product):
@@ -2191,12 +2455,17 @@ def new_alloc(ib, dtype, size):
     return output_cb_buf, output_ub_buf
 
 
-def get_crop_info(aipp_config):
+def get_crop_info(aipp_config, src_h, src_w):
     """
     :param aipp_config:
     :return:
     """
-
+    image_h = src_h
+    image_w = src_w
+    load_start_pos_h = 0
+    load_start_pos_w = 0
+    crop_size_h = src_h
+    crop_size_w = src_w
     if "src_image_size_h" in aipp_config and \
         aipp_config.get("src_image_size_h") > 0:
         image_h = aipp_config.get("src_image_size_h")

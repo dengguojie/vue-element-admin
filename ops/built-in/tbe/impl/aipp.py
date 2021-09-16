@@ -28,7 +28,7 @@ from impl import aipp_comm
 from impl import aipp_resize_padding
 from impl import aipp_dynamic
 from impl.util import util_select_op_base
-
+from impl.aipp_stc_dyn import new_aipp_compute
 
 # pylint: disable=invalid-name,unused-argument,too-many-statements
 # pylint: disable=too-many-arguments,too-many-locals,too-many-lines
@@ -218,7 +218,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
 
     if "crop" in aipp_config and aipp_config.get("crop") == 1:
         src_image_size_h, src_image_size_w, load_start_pos_h, load_start_pos_w, \
-        load_image_h, load_image_w = aipp_comm.get_crop_info(aipp_config)
+        load_image_h, load_image_w = aipp_comm.get_crop_info(aipp_config, h, w)
 
     dtype = output_data.get('dtype')
     if dtype == "float16":
@@ -907,6 +907,9 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     para_check.check_format(input_format, input_format_list, param_name="input")
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if cur_cce_product in ('Ascend920',):
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config, kernel_name)
+        return
 
     if output_format == "NC1HWC0_C04":
         if cur_cce_product not in ["Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403"]:
@@ -954,56 +957,7 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
         aipp_comm.set_aipp_default_params(aipp_config)
         aipp_comm.check_aipp_static_config(input_shape, input_format, output_data,
                                            aipp_config, cur_cce_product)
-
-        if aipp_config.get("input_format") == "NC1HWC0DI_S8":
-            if input_dtype != "int8":
-                cause_desc = "when input_format is NC1HWC0DI_S8, the input dtype must be int8, " \
-                             "but actually is %s" % input_dtype
-                aipp_comm.raise_runtime_error(cause_desc)
-
-            if output_dtype != "int8":
-                cause_desc = "when input_format is NC1HWC0DI_S8, the output dtype must be int8, " \
-                             "but actually is %s" % output_dtype
-                aipp_comm.raise_runtime_error(cause_desc)
-        elif aipp_config.get("input_format") == "NC1HWC0DI_FP16":
-            if input_dtype != "float16":
-                cause_desc = "when input_format is NC1HWC0DI_FP16, the input dtype must be float16, " \
-                             "but actually is %s" % input_dtype
-                aipp_comm.raise_runtime_error(cause_desc)
-
-            if output_dtype != "float16":
-                cause_desc = "when input_format is NC1HWC0DI_FP16, the output dtype must be float16, " \
-                             "but actually is %s" % output_dtype
-                aipp_comm.raise_runtime_error(cause_desc)
-        elif aipp_config.get("input_format") in ["RAW10", "RAW12",
-                                                 "RAW16", "uint16"]:
-            if input_dtype != "uint16":
-                cause_desc = "when input_format is %s, the input dtype must be uint16, " \
-                             "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
-                aipp_comm.raise_runtime_error(cause_desc)
-        elif aipp_config.get("input_format") in ["RGB16", "RGB16_IR"]:
-            if input_dtype != "uint16":
-                cause_desc = "when input_format is %s, the input dtype must be uint16, " \
-                             "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
-                aipp_comm.raise_runtime_error(cause_desc)
-            if output_dtype != "float16":
-                cause_desc = "when input_format is %s, the output dtype must be float16, " \
-                             "but actually is %s" % (aipp_config.get("input_format"), output_dtype)
-                aipp_comm.raise_runtime_error(cause_desc)
-        elif aipp_config.get("input_format") in ["RGB20", "RGB24", "RGB24_IR"]:
-            if input_dtype != "uint32":
-                cause_desc = "when input_format is %s, the input dtype must be uint32, " \
-                             "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
-                aipp_comm.raise_runtime_error(cause_desc)
-            if output_dtype != "float16":
-                cause_desc = "when input_format is %s, the output dtype must be float16, " \
-                             "but actually is %s" % (aipp_config.get("input_format"), output_dtype)
-                aipp_comm.raise_runtime_error(cause_desc)
-        else:
-            if input_dtype != "uint8":
-                cause_desc = "when input_format is %s, the input dtype must be uint8, " \
-                             "but actually is %s" % (aipp_config.get("input_format"), input_dtype)
-                aipp_comm.raise_runtime_error(cause_desc)
+        aipp_comm.check_aipp_dtype(aipp_config, input_dtype, output_dtype)
 
         # Compute
         data = tvm.placeholder(input_shape, name='input',
