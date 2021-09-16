@@ -24,6 +24,17 @@
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeReduceSum";
 static const string FUSED_NODE = "ReduceSum";
+static const int32_t INT_NUM_ZERO = 0;
+static const std::string CONSTANTOP = "Const";
+
+template <typename Dtype>
+Status AssitHelp(const int32_t n, vector<int64_t> shape, Dtype& output1) {
+  Dtype* output = &output1;
+  for (int32_t i = 0; i < n; ++i) {
+    output[i] = shape[i];
+  }
+  return SUCCESS;
+}
 
 Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info,
                                                   Operator& op) {
@@ -40,7 +51,7 @@ Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, v
     }
   }
   for (size_t i = 0; i < axis_info.size(); ++i) {
-    if ((tensor_info[axis_info[i]] == 1 && !keep_dims) || tensor_info[axis_info[i]] != 1) {
+    if (tensor_info[axis_info[i]] != 1) {
       return FAILED;
     }
   }
@@ -116,16 +127,58 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete edge of afterNode and sum. connect beforeNode and afterNode");
-  for (auto &inDataAnchor : sumNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum and outnode edge failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(sumNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
-  }
+  ge::GeTensorDesc out_desc = sumNode->GetOpDesc()->GetOutputDesc(0);
+  ge::GeShape sum_out_shape = out_desc.GetShape();
+  vector<int64_t> dim_sum = sum_out_shape.GetDims();
+  int32_t len_dim = dim_sum.size();
+  unique_ptr<int32_t[]> inputAssit(new (std::nothrow) int32_t[len_dim]());
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputassist is null."),
+                    return PARAM_INVALID);
+  
+  Status ret = NnSet(len_dim, INT_NUM_ZERO, *reinterpret_cast<int32_t*>(inputAssit.get()));
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."),
+                    return ret);
+  ret = AssitHelp(len_dim, dim_sum, *inputAssit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."),
+                    return ret);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetInDataAnchor(1)->GetPeerOutAnchor(), sumNode->GetInDataAnchor(1)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum and outnode edge failed."), return FAILED);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "delete reducesum edge.");
-  FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sumNode failed."),
-                    return FAILED);
+  ge::InDataAnchorPtr sum_anchor_ptr = sumNode->GetInDataAnchor(1);
+  ge::NodeUtils::ClearInDataAnchor(sumNode, sum_anchor_ptr);
+  ge::OpDescUtils::ClearInputDesc(sumNode->GetOpDesc(), 1);
+
+  vector<int64_t> assitDimInfo = {len_dim};
+  Format assitMatrixFormat = out_desc.GetFormat();
+  ge::GeTensorPtr assitPtr = nullptr;
+  ge::GeShape assitShape(assitDimInfo);
+  ge::GeTensorDesc tensorDesc(GeShape(), ge::FORMAT_NCHW, ge::DT_INT32);
+  tensorDesc.SetShape(assitShape);
+  tensorDesc.SetOriginShape(assitShape);
+  tensorDesc.SetDataType(ge::DT_INT32);
+  tensorDesc.SetOriginDataType(ge::DT_INT32);
+  tensorDesc.SetFormat(assitMatrixFormat);
+  tensorDesc.SetOriginFormat(assitMatrixFormat);
+
+  FUSION_PASS_MAKE_SHARED((assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()), 
+                          len_dim * sizeof(int32_t))), assitPtr = nullptr;
+                          return PARAM_INVALID);
+  vector<ge::GeTensorPtr> weights = {assitPtr};
+  ge::OpDescUtils::SetWeights(sumNode, weights);
+  auto constInputNodes = OpDescUtils::GetConstInputs(sumNode);
+  if (constInputNodes.empty()) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "sum_node get const failed.");
+    return FAILED;
+  }
+  NodePtr constInput = constInputNodes[0];
+  constInput->GetOpDesc()->SetType(CONSTANTOP);
+  sumNode->GetOpDesc()->SetType("Reshape");
+
+  std::map<string, uint32_t> input_name_id = {{"x", 0}, {"shape", 1}};
+  sumNode->GetOpDesc()->UpdateInputName(input_name_id);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceSumFusionPass fusion end");
 
