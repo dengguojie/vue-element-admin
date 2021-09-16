@@ -27,7 +27,7 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
     set_target_properties(gtest_main PROPERTIES IMPORTED_LOCATION ${PROJECT_PATH}/testcases/libs/gtest/libgtest_main.a)
 
 	set(GTEST_INCLUDE  ${PROJECT_PATH}/testcases/libs/gtest/include)
-    set(EIGEN_INCLUDE  ${PROJECT_PATH}/testcases/ut/aicpu_test/third_party/src/eigen/)
+    set(EIGEN_INCLUDE  ${PROJECT_PATH}/testcases/ut/third_party/src/eigen/)
 
     file(GLOB OP_IMPL_FILE ${OP_PATH}/**.cc)
     file(GLOB TEST_FILE_CPP ${CMAKE_CURRENT_SOURCE_DIR}/**/**_impl.cpp)
