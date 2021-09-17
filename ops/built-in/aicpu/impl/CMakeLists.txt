@@ -70,6 +70,7 @@ set(local_kernels_src_files
     kernels/normalized/top_k.cc
     kernels/normalized/top_k_pq_distance.cc
     kernels/normalized/top_k_v2_d.cc
+    kernels/normalized/zeroslike.cc
     utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc

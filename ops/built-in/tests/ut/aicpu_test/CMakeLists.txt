@@ -144,6 +144,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/sub.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/zeroslike.cc
   ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
@@ -295,6 +296,7 @@ set(_cpu_kernels_ut_files
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
   testcase/where/src/where_utest.cpp
+  testcase/zeroslike/src/zeroslike_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
