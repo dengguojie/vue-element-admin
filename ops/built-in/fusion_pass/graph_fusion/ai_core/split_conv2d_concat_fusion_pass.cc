@@ -25,6 +25,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/attr_utils.h"
+#include "graph/utils/type_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -44,7 +45,6 @@ static const char kConv2dType[] = "Conv2D";
 static const char kSplitType[] = "Split";
 static const char kConstType[] = "Const";
 static const char kAttrGroups[] = "groups";
-static const char kAttrOrgFmt[] = "origin_format";
 static const char kNameCcatDim[] = "concat_dim";
 static const char kCcatHostOp[] = "Concatv2HostCpuOp";
 static const char kSptOutKey[] = "y";
@@ -221,8 +221,7 @@ bool SplitConv2dConcatPass::VerifySptCcatAxis(OpDescPtr& conv_desc, NodePtr& spl
                     return false);
 
   GeTensorDesc x_tensor = conv_desc->GetInputDesc(0);
-  std::string fmt_str = "";
-  AttrUtils::GetStr(x_tensor, kAttrOrgFmt, fmt_str);
+  std::string fmt_str = TypeUtils::FormatToSerialString(x_tensor.GetOriginFormat());
   int32_t pos = fmt_str.find('C');
   FUSION_PASS_CHECK(ccat_axis[0] != pos, OP_LOGW(fused_op_type_.c_str(), "split axis is not on input channel"),
                     return false);
@@ -282,8 +281,7 @@ bool SplitConv2dConcatPass::UpdateConv2dDesc(OpDescPtr& conv_desc, NodePtr& spli
     std::vector<int64_t> b_in_shape = bTensor.GetOriginShape().GetDims();
     size_t pos = 0;
     if (b_in_shape.size() == 4) {
-      std::string fmt_str = "";
-      AttrUtils::GetStr(bTensor, kAttrOrgFmt, fmt_str);
+      std::string fmt_str = TypeUtils::FormatToSerialString(bTensor.GetOriginFormat());
       size_t found = fmt_str.find('N');
       pos = found == std::string::npos ? 0 : found;
     }
@@ -357,8 +355,7 @@ bool SplitConv2dConcatPass::AddConcatDesc(NodePtr& split_node, NodePtr& ccat_nod
     DataType concat_origin_dtype = concat_tensor.GetOriginDataType();
     size_t pos = 0;
     if (concat_shape.size() == 4) {
-      std::string fmt_str = "";
-      AttrUtils::GetStr(concat_tensor, kAttrOrgFmt, fmt_str);
+      std::string fmt_str = TypeUtils::FormatToSerialString(concat_tensor.GetOriginFormat());
       size_t found = fmt_str.find('N');
       pos = found == std::string::npos ? 0 : found;
     }
@@ -474,8 +471,7 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
     std::vector<int64_t> ccat_in_shape = ccat_tensor.GetOriginShape().GetDims();
     int32_t pos = 0;
     if (ccat_in_shape.size() == 4) {
-      std::string fmt_str = "";
-      AttrUtils::GetStr(ccat_tensor, kAttrOrgFmt, fmt_str);
+      std::string fmt_str = TypeUtils::FormatToSerialString(ccat_tensor.GetOriginFormat());
       size_t found = fmt_str.find('N');
       pos = found == std::string::npos ? 0 : found;
     }

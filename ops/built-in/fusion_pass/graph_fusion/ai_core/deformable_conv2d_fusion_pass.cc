@@ -25,6 +25,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/attr_utils.h"
+#include "graph/utils/type_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -47,7 +48,6 @@ static const char kAttrGroups[] = "groups";
 static const char kAttrDataFmt[] = "data_format";
 static const char kAttrDfmGroups[] = "deformable_groups";
 static const char kAttrModulated[] = "modulated";
-static const char kAttrOrgFmt[] = "origin_format";
 static const std::set<string> kFilterFmt = {"HWCN", "NCHW"};
 
 /*!
@@ -108,7 +108,7 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
                       OP_LOGW(fused_op_type_.c_str(), "add defomable_offset input failed"), return false);
   }
   std::string fmt_str;
-  AttrUtils::GetStr(filter_tensor, kAttrOrgFmt, fmt_str);
+  fmt_str = TypeUtils::FormatToSerialString(filter_tensor.GetOriginFormat());
   FUSION_PASS_CHECK(kFilterFmt.find(fmt_str) == kFilterFmt.end(),
                     OP_LOGW(fused_op_type_.c_str(), "unsupport filter format %s", fmt_str.c_str()), return false);
   size_t pos_h = fmt_str.find('H');
@@ -144,7 +144,7 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
                     OP_LOGW(fused_op_type_.c_str(), "get %s attr failed", kAttrModulated), return false);
   AttrUtils::SetBool(offset_desc, kAttrModulated, modulated);
 
-  AttrUtils::GetStr(x_tensor, kAttrOrgFmt, fmt_str);
+  fmt_str = TypeUtils::FormatToSerialString(x_tensor.GetOriginFormat());
   pos_h = fmt_str.find('H');
   pos_w = fmt_str.find('W');
   if (pos_h == std::string::npos || pos_w == std::string::npos) {
@@ -157,7 +157,7 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(out_shape.size() != 4,
                     OP_LOGW(fused_op_type_.c_str(), "output y shape is not 4D"), return false);
-  AttrUtils::GetStr(y_tensor, kAttrOrgFmt, fmt_str);
+  fmt_str = TypeUtils::FormatToSerialString(y_tensor.GetOriginFormat());
   size_t out_pos_h = fmt_str.find('H');
   size_t out_pos_w = fmt_str.find('W');
   if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
@@ -205,7 +205,7 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
   auto x_tensor = dfm_conv_desc->GetInputDesc(0);
   auto filter_tensor = dfm_conv_desc->GetInputDesc(1);
   std::string fmt_str;
-  AttrUtils::GetStr(filter_tensor, kAttrOrgFmt, fmt_str);
+  fmt_str = TypeUtils::FormatToSerialString(filter_tensor.GetOriginFormat());
   FUSION_PASS_CHECK(kFilterFmt.find(fmt_str) == kFilterFmt.end(),
                     OP_LOGW(fused_op_type_.c_str(), "unsupport filter format %s", fmt_str.c_str()), return false);
   size_t pos_h = fmt_str.find('H');
@@ -220,7 +220,7 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
   ksize.push_back(filter_shape[pos_h]);
   ksize.push_back(filter_shape[pos_w]);
 
-  AttrUtils::GetStr(x_tensor, kAttrOrgFmt, fmt_str);
+  fmt_str = TypeUtils::FormatToSerialString(x_tensor.GetOriginFormat());
   pos_h = fmt_str.find('H');
   pos_w = fmt_str.find('W');
   if (pos_h == std::string::npos || pos_w == std::string::npos) {
@@ -234,7 +234,7 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
   vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(out_shape.size() != 4,
                     OP_LOGW(fused_op_type_.c_str(), "output y shape is not 4D"), return false);
-  AttrUtils::GetStr(y_tensor, kAttrOrgFmt, fmt_str);
+  fmt_str = TypeUtils::FormatToSerialString(y_tensor.GetOriginFormat());
   size_t out_pos_h = fmt_str.find('H');
   size_t out_pos_w = fmt_str.find('W');
   if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
