@@ -45,6 +45,46 @@ DYNAMIC_FLAG = -1
 SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
 
+def modify_input_range(in_range_nchw, data_type, idx_h, idx_w, strides, hk_dilation, wk_dilation, pads):
+    '''
+    check for not bigger than L1
+    '''
+    fmap_w_min = in_range_nchw[W_DIM][0]
+    fmap_w_max = in_range_nchw[W_DIM][1]
+    m_bit_ratio = {"float16": 2, "int8": 1}
+    c0 = tbe_platform.CUBE_MKN[data_type]["mac"][1]
+    fmap_w_upper = in_range_nchw[W_DIM][1]
+    new_in_range_nchw = list(in_range_nchw)
+
+    stride_h = strides[idx_h]
+    stride_w = strides[idx_w]
+    l1size_limit_upper = tbe_platform.get_soc_spec("L1_SIZE")
+    w_left = fmap_w_min
+    w_right = fmap_w_max
+    current_w = fmap_w_max
+    while (w_right - w_left) != 1:
+        if -1 in pads:
+            w_out = (current_w + stride_w - 1) // stride_w
+        else:
+            w_out = math.floor((current_w - wk_dilation + pads[2] + pads[3]) / stride_w) + 1
+        ho_num = math.floor(tbe_platform.CUBE_MKN[data_type]["mac"][0] / w_out) + 2
+        l1_m = ((ho_num - 1) * stride_h + hk_dilation) * current_w
+        max_feature_map_l1 = c0 * l1_m * m_bit_ratio[data_type]
+        if max_feature_map_l1 > l1size_limit_upper:
+            w_right = current_w
+        else:
+            w_left = current_w
+        current_w = w_left + (w_right - w_left)//2
+
+        if w_left == fmap_w_max:
+            break
+    cor_w_range = (fmap_w_min, w_left)
+    new_in_range_nchw[W_DIM] = cor_w_range
+    to_print = "conv2d fmap ori_range changed from {} to {}.".format(in_range_nchw, new_in_range_nchw)
+    warnings.warn(to_print)
+
+    return new_in_range_nchw
+
 def check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads):
     """
     check exceed l1 buf
@@ -74,6 +114,7 @@ def create_fuzz_range(op_type, dim_value, grade_item):
     # dim_value must less than grade max_value
     if dim_value > grade_item[-1]:
         err_man.raise_err_specific_user(op_type, "input value {} is out the range of {}", dim_value, grade_item[-1])
+        err_man.raise_err_attr_range_invalid(op_type, "[1, 4096]", "input shape", str(dim_value))
 
     for g_value in grade_item:
         if dim_value > g_value:
