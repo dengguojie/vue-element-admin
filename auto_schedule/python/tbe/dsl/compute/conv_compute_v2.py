@@ -298,8 +298,9 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         return fmap_im2col_res
 
     def l0c_compute(fmap_im2col, bias_tensor=None):
-        # CL0's M is not aligned by block_m0.
-        mad_shape = (group_opt, batch, co1_opt, out_height*out_width, block_n0)
+        # CL0's M is aligned by block_m0.
+        mad_m = ceil_div(out_height*out_width, block_m0) * block_m0
+        mad_shape = (group_opt, batch, co1_opt, mad_m, block_n0)
         weight_k1, _, _, _ = weight_fracz_shape
 
         reduce_k1 = weight_k1 // group_opt
@@ -366,7 +367,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     def res_compute(cl0):
         """
-        Compute of conv2d res. merge group axis && remove C padding.
+        Compute of conv2d res. merge group axis && remove M/C padding.
         """
         # L0C —> out / L1
         res = tvm.compute(

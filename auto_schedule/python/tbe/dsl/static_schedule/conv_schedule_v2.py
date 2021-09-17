@@ -438,6 +438,7 @@ class DynamicShape:
             bl1 = tensor_param["bl1"]
             al0 = tensor_param["al0"]
             bl0 = tensor_param["bl0"]
+            cl0 = tensor_param["cl0"]
 
             # disable_allocate
             sch.disable_allocate(cce.scope_cbuf)
@@ -451,8 +452,7 @@ class DynamicShape:
             if bl1 is not None:
                 sch[bl1].mem_unique()
             sch[bl0].mem_unique()
-            # if "int32_bias" not in tensor_map:
-            #     sch[cl0].mem_unique()
+            sch[cl0].mem_unique()
 
     def set_al1_bound(self, sch, al1, conv_param, tiling_param, strideh_opti_flag):
         """
@@ -1676,13 +1676,19 @@ class Conv2dSchedule:
         if pingpong_buffer["CL0_pbuffer"] == 2 and preload_flag:
             sch[cl0].preload()
 
-        #=================================CL0 storage align======================================
+        #=================================CL0 buffer align======================================
         _, _, m0_cl0, n0_cl0, _, _ = cl0_tiling
 
         # CL0 shape: [group_opt, batch, co1_opt, howo, co0]
-        sch[cl0].storage_align(sch[cl0].op.axis[2],
-                               m0_cl0*n0_cl0,
-                               0)
+        sch[cl0].buffer_align(
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            (self._block_m0, self._block_m0),
+            (self._block_n0, self._block_n0),
+            (1, 1), # reduce_axis_k1
+            (self._block_k0, self._block_k0) # reduce_axis_k0
+            )
 
         # align cl0 memory allocation when channel merging
         if res.dtype in ("int4", "int8"):
