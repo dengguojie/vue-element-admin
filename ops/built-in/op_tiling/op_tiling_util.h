@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,5 +100,12 @@ string to_string(const ByteBuffer& tiling_data) {
  * @return int64_t: byte len
  */
 int64_t GetByteLenByString(const std::string& op_type);
+
+/*
+ * @brief: get data block elements
+ * @param [in] dtype: ge DataType
+ * @return Int: dataBlock;
+ */
+int64_t GetDataBlockElems(const ge::DataType& dtype);
 }  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_OP_TILING_UTIL_H_

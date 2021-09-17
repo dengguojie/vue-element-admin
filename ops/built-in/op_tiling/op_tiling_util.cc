@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,6 +117,20 @@ vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras) {
   }
 
   return shapes;
+}
+
+int64_t GetDataBlockElems(const ge::DataType& dtype) {
+  int64_t dataBlock = 0;
+  if (dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) {
+    dataBlock = 8;
+  } else if (dtype == DT_FLOAT16 || dtype == DT_INT16 || dtype == DT_UINT16) {
+    dataBlock = 16;
+  } else if (dtype == DT_INT8 || dtype == DT_UINT8) {
+    dataBlock = 32;
+  } else if (dtype == DT_INT64 || dtype == DT_UINT64) {
+    dataBlock = 4;
+  }
+  return dataBlock;
 }
 
 }  // namespace optiling
