@@ -184,6 +184,11 @@ def _calculation_dilation(input_shape, weight_sizes, strides, padding="SAME"):
 
     dilated_pad = (dilated_pad_top, dilated_pad_bottom, dilated_pad_left, dilated_pad_right)
 
+    if any([dilated_pad_i > 255 for dilated_pad_i in dilated_pad]):
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
+                                                          'chip ISA limit pad after dilation must less than 255',
+                                                          'dilated_pad', dilated_pad)
+
     return dilated_shape, dilated_pad
 
 
