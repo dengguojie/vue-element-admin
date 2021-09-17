@@ -91,6 +91,31 @@ INFER_FUNC_REG(BatchNorm3D, BatchNorm3DInferShape);
 VERIFY_FUNC_REG(BatchNorm3D, BatchNorm3DVerify);
 // -----------------------------BatchNorm3D END----------------------------
 
+// ----------------SyncBatchNormBackwardReduce Op-------------------
+IMPLEMT_VERIFIER(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceInferShape) {
+  auto x_shape = op.GetInputDesc("sum_dy").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDesc("sum_dy").GetDataType();
+
+  TensorDesc sum_dy_xmu_desc = op.GetOutputDesc("sum_dy_xmu");
+  sum_dy_xmu_desc.SetShape(ge::Shape(x_shape));
+  sum_dy_xmu_desc.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("sum_dy_xmu", sum_dy_xmu_desc);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(ge::Shape(x_shape));
+  y_desc.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("y", y_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceInferShape);
+VERIFY_FUNC_REG(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceVerify);
+// ----------------SyncBatchNormBackwardReduce END-------------------
+
 // -----------------------------BatchNormExt2------------------------------
 IMPLEMT_VERIFIER(BatchNormExt2, BatchNormExt2Verify) {
   if (!CheckTwoInputDtypeSame(op, "input_scale", "input_offset")) {

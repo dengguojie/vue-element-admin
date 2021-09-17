@@ -374,3 +374,4 @@ from .strided_slice_v3 import strided_slice_v3
 from .swish_grad import swish_grad
 from .hard_swish_grad import hard_swish_grad
 from .dynamic_gru_v2 import dynamic_gru_v2
+from .sync_batch_norm_backward_reduce import sync_batch_norm_backward_reduce

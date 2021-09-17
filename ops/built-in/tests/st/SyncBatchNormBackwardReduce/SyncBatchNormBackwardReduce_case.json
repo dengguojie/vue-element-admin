@@ -1,0 +1,62 @@
+[
+  {
+    "op": "SyncBatchNormBackwardReduce",
+    "case_name" : "test_dynamic_SyncBatchNormBackwardReduce_0",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [1],
+        "shape_range": [[1, 1]],
+        "type": "float32",
+        "value_range": [1, 1],
+        "data_distribute":"uniform",
+        "name": "sum_dy"
+      },
+      {
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [1],
+        "shape_range": [[1, 1]],
+        "type": "float32",
+        "value_range": [1, 1],
+        "data_distribute":"uniform",
+        "name": "sum_dy_dx_pad"
+      },
+      {
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [1],
+        "shape_range": [[1, 1]],
+        "type": "float32",
+        "value_range": [1, 1],
+        "data_distribute":"uniform",
+        "name": "mean"
+      },
+      {
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [1],
+        "shape_range": [[1, 1]],
+        "type": "float32",
+        "value_range": [1, 1],
+        "data_distribute":"uniform",
+        "name": "invert_std"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [1],
+        "type": "float32",
+        "name": "sum_dy_xmu"
+      },
+      {
+        "format": "ND",
+        "shape": [1],
+        "type": "float32",
+        "name": "y"
+      }
+    ]
+  }
+]
