@@ -73,6 +73,7 @@ bool SoftmaxFusionPass::CheckISUsePattern(vector<int64_t>& dimInfo) {
 }
 
 vector<FusionPattern*> SoftmaxFusionPass::DefinePatterns() {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern object failed."),
@@ -80,6 +81,7 @@ vector<FusionPattern*> SoftmaxFusionPass::DefinePatterns() {
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
   return patterns;
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern end");
 }
 
 Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {

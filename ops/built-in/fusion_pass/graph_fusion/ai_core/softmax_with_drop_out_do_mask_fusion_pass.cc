@@ -18,55 +18,72 @@
  * \file softmax_with_drop_out_do_mask_fusion_pass.cpp
  * \brief SoftmaxWithDropOutDoMask fusion pass
  */
+#include "softmax_with_drop_out_do_mask_fusion_pass.h"
+
 #include <memory>
 #include <string>
-#include "softmax_with_drop_out_do_mask_fusion_pass.h"
-#include "graph/debug/ge_attr_define.h"
-#include "graph/utils/graph_utils.h"
 #include "op_log.h"
 #include "error_util.h"
-#include "pattern_fusion_util.h"
+#include "common/util/platform_info.h"
+#include "graph/debug/ge_attr_define.h"
+#include "graph/utils/graph_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "pattern_fusion_util.h"
 
 using namespace ge;
 namespace fe {
-static const string SOFTMAXWITHDROPOUTDOMASK = "SoftmaxV2WithDropOutDoMaskV3D";
-static const string PATTERN_SOFTMAX = "SoftmaxV2";
-static const string PATTERN_DROPOUT = "DropOutDoMaskV3D";
+static const uint32_t CORE_NUM = 32;
 static const string AXIS = "axes";
+static const string PATTERN_DROPOUT = "DropOutDoMaskV3D";
+static const string PATTERN_SOFTMAX = "SoftmaxV2";
 static const string KEEPPROB = "keep_prob";
+static const string SOFTMAXWITHDROPOUTDOMASK = "SoftmaxV2WithDropOutDoMaskV3D";
 
 vector<FusionPattern*> SoftmaxWithDropOutDoMaskFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxWithDropOutDoMaskFusionPass pattern begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxWithDropOutDoMaskFusionPass pattern begin.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxWithDropOutDoMaskFusionPass");
 
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_SOFTMAX, {"SoftmaxV2"})
-    .AddOpDesc(PATTERN_DROPOUT, {"DropOutDoMaskV3D"})
-    .SetInputs(PATTERN_DROPOUT, {PATTERN_SOFTMAX})
-    .SetOutput(PATTERN_DROPOUT);
+          .AddOpDesc(PATTERN_DROPOUT, {"DropOutDoMaskV3D"})
+          .SetInputs(PATTERN_DROPOUT, {PATTERN_SOFTMAX})
+          .SetOutput(PATTERN_DROPOUT);
 
   patterns.push_back(pattern);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxWithDropOutDoMaskFusionPass pattern end");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxWithDropOutDoMaskFusionPass pattern end.");
 
   return patterns;
 }
 
 Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxWithDropOutDoMaskFusionPass fusion begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxWithDropOutDoMaskFusionPass fusion begin.");
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_SOFTMAX, mapping);
   ge::NodePtr dropoutNode = GetNodeFromMapping(PATTERN_DROPOUT, mapping);
 
-  FUSION_PASS_CHECK(softmaxNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmaxNode is null, fusion failed."),
+  FUSION_PASS_CHECK(softmaxNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmaxNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(dropoutNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dropoutNode is null, fusion failed."),
+  FUSION_PASS_CHECK(dropoutNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dropoutNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (softmaxNode->GetOpDesc()->GetInputDesc(0).GetDataType() != ge::DT_FLOAT16) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "type is not fp16.");
+    return NOT_CHANGED;
+  }
+
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
+                                                                                     optional_info) != fe::SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get platformInfo failed."), return false);
+  uint32_t core_num = platform_info.soc_info.ai_core_cnt;
+  if (core_num != CORE_NUM) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "platform is not support.");
     return NOT_CHANGED;
   }
 
