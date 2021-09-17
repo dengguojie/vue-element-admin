@@ -637,7 +637,7 @@ class Conv2dTiling(CubeTilingOp):
         if (self.pad_mode == "VAR" or sum(self.cur_pads) == 0) \
             and (self.stride_h * self.stride_w == 1) \
                 and (self.k_h * self.k_w == 1) and self.w_type == "float16":
-            al1_m_data = min(al1_m_data, h_i*w_i)
+            al1_m_data = min(al1_m_data, h_i * w_i)
             return al1_m_data
 
         # load3d instructions refer to load extra lines with pad/stride/filter
