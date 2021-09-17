@@ -25,11 +25,11 @@ void ScanPQCodesWriteTilingParams(const ScanPQCodesTilingParams& params, OpRunIn
 }
 
 void ScanPQCodesPrintTilingParams(const std::string& opType, const ScanPQCodesTilingParams& params) {
-  OP_LOGD("op [ScanPQCodes] : params.bucketNumTotal=%d", params.bucketNumTotal);
-  OP_LOGD("op [ScanPQCodes] : params.bucketNumPerCore=%d", params.bucketNumPerCore);
-  OP_LOGD("op [ScanPQCodes] : params.bucketNumLeft=%d", params.bucketNumLeft);
-  OP_LOGD("op [ScanPQCodes] : params.coreUsedNum=%d", params.coreUsedNum);
-  OP_LOGD("op [ScanPQCodes] : params.coreUsedNum=%d", params.bucketStartBase);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumTotal=%d", params.bucketNumTotal);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumPerCore=%d", params.bucketNumPerCore);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumLeft=%d", params.bucketNumLeft);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.coreUsedNum=%d", params.coreUsedNum);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketStartBase=%d", params.bucketStartBase);
 }
 
 int64_t ScanPQCodesCeilDiv(int64_t dividend, int64_t divisor) {
@@ -38,7 +38,7 @@ int64_t ScanPQCodesCeilDiv(int64_t dividend, int64_t divisor) {
 
 bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
                        OpRunInfo& run_info) {
-  OP_LOGI("========================ScanPQCodesTiling running.====================");
+  OP_LOGI("========================ScanPQCodesTiling running====================");
   if (op_paras.inputs.empty()) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op_paras.inputs cannot be empty");
     return false;
@@ -81,7 +81,7 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   bucketNumPerCore = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
   bucketNumLeft = bucketNumTotal % bucketNumPerCore;
   coreUsedNum = ScanPQCodesCeilDiv(bucketNumTotal, bucketNumPerCore);
-  bucketStartBase = bucketNumTotal * splitIndex;
+  bucketStartBase = (bucketShape[0] / splitCount) * splitIndex;
   ScanPQCodesTilingParams params{bucketNumTotal, bucketNumPerCore, bucketNumLeft, coreUsedNum, bucketStartBase};
   run_info.block_dim = coreUsedNum;
   ScanPQCodesWriteTilingParams(params, run_info);

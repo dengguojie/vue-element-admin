@@ -158,7 +158,7 @@ class ScanPQCodes():
         self.adc_trans_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (256 * 17, ),
                                                            name="adc_trans_ub_fp16", scope=tik.scope_ubuf)
         #assist ub
-        self.assist_add_init_ub_fp32 = self.tik_instance.Tensor("float32", (MASK_FLOAT32, ),
+        self.assist_add_init_ub_fp32 = self.tik_instance.Tensor("float32", (MASK_FLOAT32 * 2 + 24, ),
                                                                 name="assist_add_init_ub_fp32", scope=tik.scope_ubuf)
         self.assist_pq_index_init_ub_fp32 = self.tik_instance.Tensor("float32", (SLICE_SIZE, ),
                                                                      name="assist_pq_index_init_ub_fp32",
@@ -257,6 +257,7 @@ class ScanPQCodes():
         self.tik_instance.vmuls(16, self.assist_add_init_ub_fp32, self.assist_add_init_ub_fp32, 32, 1, 1, 1, 8, 8)
         self.tik_instance.vadds(16, self.assist_add_init_ub_fp32[16], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 2, 2)
         self.tik_instance.vadds(32, self.assist_add_init_ub_fp32[32], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 4, 4)
+        self.tik_instance.vadds(64, self.assist_add_init_ub_fp32[64], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 8, 8)
         self.tik_instance.data_move(self.assist_pq_index_init_ub_fp32, assist_init_ub, 0, 1, 2, 0, 0)
         self.tik_instance.vadds(16, self.assist_pq_index_init_ub_fp32[16], self.assist_pq_index_init_ub_fp32, 16, 1, 1, 1, 2, 2)
         self.tik_instance.vadds(32, self.assist_pq_index_init_ub_fp32[32], self.assist_pq_index_init_ub_fp32, 32, 1, 1, 1, 4, 4)
@@ -291,7 +292,6 @@ class ScanPQCodes():
         bucket_offset_input.set_as(bucket_offset_input * IVF_UNIT_LEN)
         self._calc_output_count(bucket_offset_output, bucket_idx)
         bucket_max_offset.set_as(bucket_offset_output // self.group_size)
-        self._init_assist_ub()
 
 
     def _run_multi_core(self):
@@ -354,13 +354,18 @@ class ScanPQCodes():
             self.tik_instance.vconv(MASK_FLOAT32, "", self.ivf_cur_process_ub_fp32,
                                     self.ivf_cur_process_ub_fp16,
                                     IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 8, 4)
-            self.tik_instance.vmuls(MASK_FLOAT32, self.ivf_cur_process_ub_fp32,
+            vmuls_result_ub_fp32 = self.ivf_cur_process_ub_fp16.reinterpret_cast_to("float32")
+            self.tik_instance.vmuls(MASK_FLOAT32, vmuls_result_ub_fp32,
                                     self.ivf_cur_process_ub_fp32, 512,
                                     IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.vadd(MASK_FLOAT32, self.ivf_cur_process_ub_fp32,
-                                    self.ivf_cur_process_ub_fp32,
-                                    self.assist_add_init_ub_fp32,
-                                    IVF_SLICE_INNER_SIZE // MASK_FLOAT32, 1, 1, 1, 8, 8, 0)
+                                   vmuls_result_ub_fp32,
+                                   self.assist_add_init_ub_fp32,
+                                   IVF_SLICE_INNER_SIZE // 2 // MASK_FLOAT32, 1, 1, 1, 16, 16, 0)
+            self.tik_instance.vadd(MASK_FLOAT32, self.ivf_cur_process_ub_fp32[MASK_FLOAT32],
+                                   vmuls_result_ub_fp32[MASK_FLOAT32],
+                                   self.assist_add_init_ub_fp32[MASK_FLOAT32],
+                                   IVF_SLICE_INNER_SIZE // 2 //  MASK_FLOAT32, 1, 1, 1, 16, 16, 0)
             ivf_cur_process_ub_int32 = self.ivf_cur_process_ub_fp32.reinterpret_cast_to("int32")
             self.tik_instance.vconv(MASK_FLOAT32, "floor", ivf_cur_process_ub_int32,
                                     self.ivf_cur_process_ub_fp32,
@@ -403,7 +408,7 @@ class ScanPQCodes():
         with self.tik_instance.for_range(0, thread_loop, thread_num=2) as thread_idx:
             self.ivf_cur_process_ub_uint8 = self.tik_instance.Tensor(self.ivf_dtype, (IVF_SLICE_SIZE, ),
                                                                      name="ivf_cur_process_ub_uint8", scope=tik.scope_ubuf)
-            self.ivf_cur_process_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (IVF_SLICE_INNER_SIZE, ),
+            self.ivf_cur_process_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (IVF_SLICE_INNER_SIZE * 2 + MASK_FLOAT16, ),
                                                                      name="ivf_cur_process_ub_fp16", scope=tik.scope_ubuf)
             self.ivf_cur_process_ub_fp32 = self.tik_instance.Tensor("float32", (IVF_SLICE_INNER_SIZE, ),
                                                                      name="ivf_cur_process_ub_fp32", scope=tik.scope_ubuf)
@@ -414,10 +419,6 @@ class ScanPQCodes():
             self.grouped_extrim_distance_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (BLOCK_FLOAT16, ),
                                                                             name="grouped_extrim_distance_ub_fp16",
                                                                             scope=tik.scope_ubuf)
-            self.pq_index_ub_fp32 = self.tik_instance.Tensor("float32", (SLICE_SIZE, ),
-                                                             name="pq_index_ub_fp32", scope=tik.scope_ubuf)
-            self.pq_ivf_ub_int32 = self.tik_instance.Tensor(self.bucket_limits_dtype, (SLICE_SIZE, ),
-                                                            name="pq_ivf_ub_int32", scope=tik.scope_ubuf)
             index_offset.set_as(thread_idx * SLICE_SIZE)
             args = (bucket_offset_input, IVF_SLICE_SIZE, INNER_LOOP_TIME, thread_idx)
             self._handle_input_data(args)
@@ -426,14 +427,16 @@ class ScanPQCodes():
                                     SLICE_SIZE // MASK_FLOAT16, 1, 1, 8, 8)
             args_dis = (bucket_offset_output, bucket_offset_max, SLICE_SIZE)
             self._handle_pq_distance(args_dis)
-            self.tik_instance.vector_dup(MASK_FLOAT32, self.pq_ivf_ub_int32,
+            pq_ivf_ub_int32 = self.ivf_cur_process_ub_uint8.reinterpret_cast_to("int32")
+            self.tik_instance.vector_dup(MASK_FLOAT32, pq_ivf_ub_int32,
                                          bucket_id, SLICE_SIZE // MASK_FLOAT32, 1, 8)
             # index set by assistant cube for performance
-            self.tik_instance.vadds(MASK_FLOAT32, self.pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
+            pq_index_ub_fp32 = self.ivf_cur_process_ub_fp32
+            self.tik_instance.vadds(MASK_FLOAT32, pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
                                     index_offset, SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
-            pq_index_ub_int32 = self.pq_index_ub_fp32.reinterpret_cast_to("int32")
+            pq_index_ub_int32 = pq_index_ub_fp32.reinterpret_cast_to("int32")
             self.tik_instance.vconv(MASK_FLOAT32, "round", pq_index_ub_int32,
-                                    self.pq_index_ub_fp32,
+                                    pq_index_ub_fp32,
                                     SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.data_move(self.pq_index_gm[bucket_offset_output + SLICE_SIZE * thread_idx],
                                         pq_index_ub_int32, 0, 1,
@@ -444,12 +447,12 @@ class ScanPQCodes():
                                         self.pq_distance_ub_fp16, 0, 1,
                                         SLICE_SIZE // BLOCK_FLOAT16, 0, 0)
             self.tik_instance.data_move(self.pq_ivf_gm[bucket_offset_output + SLICE_SIZE * thread_idx],
-                                        self.pq_ivf_ub_int32, 0, 1,
+                                        pq_ivf_ub_int32, 0, 1,
                                         SLICE_SIZE // BLOCK_INT32, 0, 0)
         with self.tik_instance.if_scope(thread_tail > 0):
             self.ivf_cur_process_ub_uint8 = self.tik_instance.Tensor(self.ivf_dtype, (IVF_SLICE_SIZE, ),
                                                                      name="ivf_cur_process_ub_uint8", scope=tik.scope_ubuf)
-            self.ivf_cur_process_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (IVF_SLICE_INNER_SIZE, ),
+            self.ivf_cur_process_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (IVF_SLICE_INNER_SIZE * 2 + MASK_FLOAT16, ),
                                                                      name="ivf_cur_process_ub_fp16", scope=tik.scope_ubuf)
             self.ivf_cur_process_ub_fp32 = self.tik_instance.Tensor("float32", (IVF_SLICE_INNER_SIZE, ),
                                                                      name="ivf_cur_process_ub_fp32", scope=tik.scope_ubuf)
@@ -460,10 +463,6 @@ class ScanPQCodes():
             self.grouped_extrim_distance_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (BLOCK_FLOAT16, ),
                                                                             name="grouped_extrim_distance_ub_fp16",
                                                                             scope=tik.scope_ubuf)
-            self.pq_index_ub_fp32 = self.tik_instance.Tensor("float32", (SLICE_SIZE, ),
-                                                             name="pq_index_ub_fp32", scope=tik.scope_ubuf)
-            self.pq_ivf_ub_int32 = self.tik_instance.Tensor(self.bucket_limits_dtype, (SLICE_SIZE, ),
-                                                            name="pq_ivf_ub_int32", scope=tik.scope_ubuf)
             index_offset.set_as(thread_loop * SLICE_SIZE)
             self.tik_instance.vector_dup(MASK_FLOAT16, self.ivf_cur_process_ub_uint8.reinterpret_cast_to("float16"), 0,
                                          IVF_SLICE_SIZE // 2 // MASK_FLOAT16, 1, 1)
@@ -479,21 +478,23 @@ class ScanPQCodes():
                 extreme_value.set_as(MAX_FP16)
             with self.tik_instance.for_range(0, BLOCK_FLOAT16 - thread_tail % BLOCK_FLOAT16) as idx:
                 self.pq_distance_ub_fp16[thread_tail + idx].set_as(extreme_value)
-            with self.tik_instance.if_scope(SLICE_SIZE - _ceil_fill(thread_tail, BLOCK_FLOAT16) > 0):
+            with self.tik_instance.if_scope((SLICE_SIZE - _ceil_fill(thread_tail, BLOCK_FLOAT16)) // BLOCK_FLOAT16 > 0):
                 self.tik_instance.vector_dup(BLOCK_FLOAT16, self.pq_distance_ub_fp16[_ceil_fill(thread_tail, BLOCK_FLOAT16)],
                                              extreme_value,
                                              (SLICE_SIZE - _ceil_fill(thread_tail, BLOCK_FLOAT16)) // BLOCK_FLOAT16,
                                              1, 1)
             args_dis = (bucket_offset_output, bucket_offset_max, SLICE_SIZE)
             self._handle_pq_distance(args_dis)
-            self.tik_instance.vector_dup(MASK_FLOAT32, self.pq_ivf_ub_int32,
+            pq_ivf_ub_int32 = self.ivf_cur_process_ub_uint8.reinterpret_cast_to("int32")
+            self.tik_instance.vector_dup(MASK_FLOAT32, pq_ivf_ub_int32,
                                          bucket_id, SLICE_SIZE // MASK_FLOAT32, 1, 8)
             # index set by assistant cube for performance
-            self.tik_instance.vadds(MASK_FLOAT32, self.pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
+            pq_index_ub_fp32 = self.ivf_cur_process_ub_fp32
+            self.tik_instance.vadds(MASK_FLOAT32, pq_index_ub_fp32, self.assist_pq_index_init_ub_fp32,
                                     index_offset, SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
-            pq_index_ub_int32 = self.pq_index_ub_fp32.reinterpret_cast_to("int32")
+            pq_index_ub_int32 = pq_index_ub_fp32.reinterpret_cast_to("int32")
             self.tik_instance.vconv(MASK_FLOAT32, "round", pq_index_ub_int32,
-                                    self.pq_index_ub_fp32,
+                                    pq_index_ub_fp32,
                                     SLICE_SIZE // MASK_FLOAT32, 1, 1, 8, 8)
             self.tik_instance.data_move(self.pq_index_gm[bucket_offset_output + SLICE_SIZE * thread_loop],
                                         pq_index_ub_int32, 0, 1,
@@ -504,7 +505,7 @@ class ScanPQCodes():
                                         self.pq_distance_ub_fp16, 0, 1,
                                         SLICE_SIZE // BLOCK_FLOAT16, 0, 0)
             self.tik_instance.data_move(self.pq_ivf_gm[bucket_offset_output + SLICE_SIZE * thread_loop],
-                                        self.pq_ivf_ub_int32, 0, 1,
+                                        pq_ivf_ub_int32, 0, 1,
                                         SLICE_SIZE // BLOCK_INT32, 0, 0)
 
 
@@ -515,6 +516,7 @@ class ScanPQCodes():
         self._tiling_args()
         self._init_gm_tensor()
         self._init_ub_tensor()
+        self._init_assist_ub()
         self._run_multi_core()
         # Build CCE
         # this "global_variable_link" flag suggest ccec.py do link without "-r" option
