@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,9 @@
 #include "../op_proto/util/op_common_util.h"
 #include "../op_proto/strided_slice_infer_shape.h"
 #include "error_log.h"
+#include "graph/utils/op_desc_utils.h"
+#include "op_tiling_util.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 using namespace ge;
@@ -95,17 +98,12 @@ static bool isShapeEqualExceptLast(const std::vector<int64_t>& input_shape, cons
   return true;
 }
 
-static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const string& dtype, int32_t ub_size,
+static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const ge::DataType& dtype, int32_t ub_size,
                           const std::string& opType) {
-  map<string, int64_t> dtype_size_map = {
-      {"int8", 1},    {"uint8", 1},  {"bool", sizeof(bool)},    {"int16", 2},   {"uint16", 2}, {"float16", 2},
-      {"int32", 4},   {"uint32", 4}, {"float", sizeof(float)},  {"float32", 4}, {"int64", 8},  {"uint64", 8},
-      {"float64", 8}, {"int64", 8},  {"double", sizeof(double)}};
-
-  int64_t dtype_size = dtype_size_map[dtype];
+  int64_t dtype_size = GetSizeByDataType(dtype);
   const int32_t BYTE_BLOCK = 32;
   const int32_t STRIDE_LIMIT = 65535 * BYTE_BLOCK;
-  OP_LOGD(opType.c_str(), "param input/output tensor's data type: %s", dtype.c_str(), "dtype size: %lld", dtype_size);
+  OP_LOGD(opType.c_str(), "param input/output tensor's data type: %s", dtype, "dtype size: %lld", dtype_size);
   OP_LOGD(opType.c_str(), "param CalVnchwUbSize: %lld", CalVnchwUbSize(ub_size, dtype_size, BYTE_BLOCK));
   int64_t shape_len = parameters.output_shape.size();
 
@@ -115,7 +113,7 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const s
     parameters.tiling_mode = 2;
   }
 
-  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= 2 && dtype == "float16" &&
+  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= 2 && dtype == DT_FLOAT16 &&
       CalShapeMul(parameters.output_shape, 0, shape_len - 3) % core_num == 0 &&
       parameters.output_shape[shape_len - 2] >= 16 &&
       parameters.input[shape_len - 1] * 256 <= CalVnchwUbSize(ub_size, dtype_size, BYTE_BLOCK)) {
@@ -132,17 +130,17 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const s
   OP_LOGD(opType.c_str(), "parameters.tiling_mode: %lld", parameters.tiling_mode);
 }
 
-static void SetRuningParams(const SliceParameters& params, OpRunInfo& runInfo) {
+static void SetRuningParams(const SliceParameters& params, utils::OpRunInfo& runInfo) {
   int64_t shape_length = static_cast<int64_t>(params.input.size());
-  ByteBufferPut(runInfo.tiling_data, params.tiling_mode);
-  ByteBufferPut(runInfo.tiling_data, shape_length);
+  runInfo.AddTilingData(params.tiling_mode);
+  runInfo.AddTilingData(shape_length);
   const vector<int64_t>* tiling_params[] = {
       &params.input, &params.output_shape, &params.begin_list, &params.end_list, &params.stride_list,
   };
 
   for (auto item : tiling_params) {
     for (auto x : *item) {
-      ByteBufferPut(runInfo.tiling_data, x);
+      runInfo.AddTilingData(x);
     }
   }
 }
@@ -313,22 +311,29 @@ static void MakePerformanceParams(SliceParameters& parameters) {
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                        OpRunInfo& runInfo) {
+bool StridedSliceTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                        utils::OpRunInfo& runInfo) {
   using namespace nlohmann;
   OP_LOGD(opType.c_str(), "StridedSliceTiling running.");
-
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: input shape error.");
+  PROFILING_TILING_INIT(opType.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+  if (operator_info == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "operator_info is null");
+    return false;
+  }
+  auto opdesc = operator_info->MutableInputDesc(0);
+  if (opdesc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opdesc is null");
     return false;
   }
 
   struct SliceParameters slice_params = {};
   struct SliceMasks slice_masks = {};
 
-  const std::vector<int64_t>& input_shape = opParas.inputs[0].tensor[0].shape;
+  const std::vector<int64_t> input_shape = opdesc->MutableShape().GetDims();
   if (input_shape.size() > MAX_SUPPORTED_DIMS) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: input shape error, max supported dims is %zu, actual is %zu.",
+    VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                    "StridedSliceTiling: input shape error, max supported dims is %zu, actual is %zu.",
                                     MAX_SUPPORTED_DIMS, input_shape.size());
     return false;
   }
@@ -343,12 +348,12 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
     auto& name = item.first;
     int index = item.second.first;
     auto& values = item.second.second;
-    if (!GetConstValue(opParas, name, opParas.inputs[index].tensor[0].dtype, values)) {
+    if (!GetConstValue(opParas, name, values)) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get %s values failed", name.c_str());
       return false;
     }
   }
-
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   for (size_t i = 0; i < slice_params.stride_list.size(); i++) {
     if (slice_params.stride_list[i] == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: the dim of stride must be non-zero");
@@ -368,11 +373,12 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
                                        slice_masks.ellipsis_mask, slice_masks.new_axis_mask,
                                        slice_masks.shrink_axis_mask, ub_size);
   OP_LOGD(opType.c_str(), "param ub_size: %d", ub_size);
+
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: get soc params error");
     return false;
   }
-
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   StridedSliceParams input_params = {
       input_shape,
       slice_params.begin_list,
@@ -406,26 +412,26 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   MakeSameDims(slice_params, input_shape);
   OP_LOGD(opType.c_str(), "origin slice params: %s", slice_params.to_string().c_str());
 
-  SetSliceTilingData(opType, slice_params, runInfo, opParas, core_num, ub_size);
-  runInfo.block_dim = core_num;
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
+  ge::DataType input_dtype = opdesc->GetDataType();
+  SetSliceTilingData(opType, slice_params, runInfo, input_dtype, core_num, ub_size);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  runInfo.SetBlockDim(core_num);
   OP_LOGD(opType.c_str(), "tiling run success.");
-
+  PROFILING_TILING_END();
   return true;
 }
 
-void SetSliceTilingData(const string& opType, SliceParameters& slice_params, OpRunInfo& runInfo,
-                        const TeOpParas& opParas, int32_t core_num, int32_t ub_size) {
+void SetSliceTilingData(const string& opType, SliceParameters& slice_params, utils::OpRunInfo& runInfo,
+                        const ge::DataType& dtype, int32_t core_num, int32_t ub_size) {
   MakePerformanceParams(slice_params);
+  // if
   OP_LOGD(opType.c_str(), "perf slice params: %s", slice_params.to_string().c_str());
-
-  SetTilingMode(slice_params, core_num, opParas.inputs[0].tensor[0].dtype, ub_size, opType);
+  SetTilingMode(slice_params, core_num, dtype, ub_size, opType);
   OP_LOGD(opType.c_str(), "set tiling_mode params: %s", slice_params.to_string().c_str());
 
   SetRuningParams(slice_params, runInfo);
-  OP_LOGD(opType.c_str(), "tiling param:%s", to_string(runInfo.tiling_data).c_str());
+  OP_LOGD(opType.c_str(), "tiling param:%s", to_string(runInfo.GetAllTilingData()).c_str());
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(StridedSlice, StridedSliceTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(StridedSlice, StridedSliceTiling);
 }  // namespace optiling

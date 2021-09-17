@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,37 +40,8 @@ struct SliceParameters {
   std::string to_string() const;
 };
 
-void SetSliceTilingData(const string& opType, SliceParameters& slice_params, OpRunInfo& runInfo,
-                        const TeOpParas& opParas, int32_t core_num, int32_t ub_size);
-
-static bool GetConstValue(const TeOpParas& paras, const string& name, const string& dtype,
-                          std::vector<int64_t>& values) {
-  values.clear();
-  if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
-    return false;
-  }
-
-  auto size = std::get<1>(paras.const_inputs.at(name));
-  if (dtype == "int64") {
-    int count = size / sizeof(int64_t);
-    const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  } else if (dtype == "int32") {
-    int count = size / sizeof(int32_t);
-    const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  } else {
-    return false;
-  }
-
-  return true;
-}
+void SetSliceTilingData(const string& opType, SliceParameters& slice_params, utils::OpRunInfo& runInfo,
+                        const ge::DataType& dtype, int32_t core_num, int32_t ub_size);
 
 }  // namespace optiling
 
