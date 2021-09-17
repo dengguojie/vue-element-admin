@@ -35,6 +35,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#include "graph/utils/type_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -132,8 +133,7 @@ Status Conv2DbpInputDilationFusionPass::generate_pre_dilation_node(
     (dilation_desc = std::make_shared<ge::OpDesc>(basename + "_dilation", "Dilation")),
     return FAILED);
 
-  std::string fmt_str;
-  AttrUtils::GetStr(next_in_desc, kAttrOrgFmt, fmt_str);
+  std::string fmt_str = TypeUtils::FormatToSerialString(next_in_desc->GetOriginFormat());
   size_t pos_h = fmt_str.find('H');
   CHECK_POSITION(pos_h);
   size_t pos_w = fmt_str.find('W');
@@ -192,15 +192,14 @@ Status Conv2DbpInputDilationFusionPass::generate_post_dilation_node(
     (dilation_desc = std::make_shared<ge::OpDesc>(basename + "_dilation", "Dilation")),
     return FAILED);
 
-  std::string y_fmt_str;
-  AttrUtils::GetStr(prev_out_desc, kAttrOrgFmt, y_fmt_str);
+  std::string y_fmt_str = TypeUtils::FormatToSerialString(prev_out_desc->GetOriginFormat());
   size_t pos_y_h = y_fmt_str.find('H');
   CHECK_POSITION(pos_y_h);
   size_t pos_y_w = y_fmt_str.find('W');
   CHECK_POSITION(pos_y_w);
 
-  std::string outbackprop_fmt_str;
-  AttrUtils::GetStr(conv2dbp_input_outbackprop_desc, kAttrOrgFmt, outbackprop_fmt_str);
+  std::string outbackprop_fmt_str = TypeUtils::FormatToSerialString(
+    conv2dbp_input_outbackprop_desc->GetOriginFormat());
   size_t pos_outbackprop_out_h = outbackprop_fmt_str.find('H');
   CHECK_POSITION(pos_outbackprop_out_h);
   size_t pos_outbackprop_out_w = outbackprop_fmt_str.find('W');
@@ -262,8 +261,7 @@ Status Conv2DbpInputDilationFusionPass::generate_pad_node(
   FUSION_PASS_MAKE_SHARED(
     (pad_desc = std::make_shared<ge::OpDesc>(basename + "_pad", "PadD")),
     return FAILED);
-  std::string fmt_str;
-  AttrUtils::GetStr(next_in_desc, kAttrOrgFmt, fmt_str);
+  std::string fmt_str = TypeUtils::FormatToSerialString(next_in_desc->GetOriginFormat());
   size_t pos_h = fmt_str.find('H');
   CHECK_POSITION(pos_h);
   size_t pos_w = fmt_str.find('W');
@@ -554,8 +552,8 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
 
   vector<int64_t> dilation_hw;
   vector<int64_t> pad_hw;
-  std::string backprop_out_fmt_str;
-  AttrUtils::GetStr(conv2dbp_input_outbackprop_desc, kAttrOrgFmt, backprop_out_fmt_str);
+  std::string backprop_out_fmt_str = TypeUtils::FormatToSerialString(
+    conv2dbp_input_outbackprop_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByOutBackprop.begin(), kOriFormatSupportByOutBackprop.end(),
                          backprop_out_fmt_str) == kOriFormatSupportByOutBackprop.end(),
                     OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support NHWC, NCHW", backprop_out_fmt_str),
@@ -565,8 +563,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   size_t pos_backprop_out_w = backprop_out_fmt_str.find('W');
   CHECK_POSITION(pos_backprop_out_w);
 
-  std::string y_fmt_str;
-  AttrUtils::GetStr(conv2dbp_input_y_desc, kAttrOrgFmt, y_fmt_str);
+  std::string y_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_y_desc.GetOriginFormat());
   FUSION_PASS_CHECK(
       find(kOriFormatSupportByY.begin(), kOriFormatSupportByY.end(), y_fmt_str) == kOriFormatSupportByY.end(),
       OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support NHWC, NCHW", y_fmt_str), return FAILED);
@@ -577,8 +574,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
 
   bool pre_dilation = false;
   bool need_dilation_flag = false;
-  std::string filter_fmt_str;
-  AttrUtils::GetStr(filter_desc, kAttrOrgFmt, filter_fmt_str);
+  std::string filter_fmt_str = TypeUtils::FormatToSerialString(filter_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByFilter.begin(), kOriFormatSupportByFilter.end(), filter_fmt_str) ==
                         kOriFormatSupportByFilter.end(),
                     OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support HWCN, NHWC, NCHW", filter_fmt_str),
