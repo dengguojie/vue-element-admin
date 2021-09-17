@@ -269,8 +269,25 @@ IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
   op_desc->SetOpInferDepends(input_infer_depends);
   Tensor shape_tensor;
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
+    std::vector<std::pair<int64_t, int64_t>> value_range;
+    auto input_shape_desc = op_desc->MutableInputDesc("shape");
+    (void)input_shape_desc->GetValueRange(value_range);
     TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
+    output_desc.SetShapeRange(value_range);
+    std::vector<int64_t> shape_y;
+    std::string info_msg = ConcatString("DropOutGenMaskInfer::value_range.size() =[", 
+                                         value_range.size(), "]");
+    OP_LOGW(op.GetName().c_str(), info_msg.c_str());
+    for (size_t i = 0; i < value_range.size(); i++) {
+      int64_t dim_value = ge::UNKNOWN_DIM;
+      if (value_range[i].first == value_range[i].second) {
+        dim_value = value_range[i].first;        
+      }
+      std::string dim_msg = ConcatString("## dim_value ##[", dim_value, "]");
+      OP_LOGW(op.GetName().c_str(), dim_msg.c_str());
+      shape_y.push_back(dim_value);
+    }
+    output_desc.SetShape(ge::Shape(shape_y));
     return op.UpdateOutputDesc("y", output_desc);
   }
 
