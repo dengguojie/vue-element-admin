@@ -48,6 +48,10 @@ from .constants import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
 VAR_BOUND_LIMIT = 2147483647
 
 
+def is_true(expr, dict_args):
+    if expr:
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
 def shape_to_list(shape):
     """
     :param shape:
@@ -236,12 +240,11 @@ def get_bound(expr):
     :return:
     """
     valid_types = (int, tvm.expr.Expr)
-    if not isinstance(expr, valid_types):
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
-                                      "is [%s]." % type(expr)
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    is_true(not isinstance(expr, valid_types),
+            {"errCode": "E90001",
+            "detailed_cause": "Only accept (int, expr), but now " \
+                              "is [%s]." % type(expr)
+            })
 
     if isinstance(expr, int):
         return expr, expr
@@ -281,7 +284,7 @@ def get_bound(expr):
             right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)
         else:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Only accept (ConstExpr, Var, Mul, Max), but now " \
                                           "is [%s]" % type(_expr)

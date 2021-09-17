@@ -43,6 +43,10 @@ CLASSIFY_SAME_PATTERN_MAP = {
 }
 
 
+def is_true(expr, dict_args):
+    if expr:
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
 def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify
@@ -53,22 +57,18 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
     """
     mode = CLASSIFY_SAME_PATTERN_MAP.get(mode, mode)
     if mode == ELEWISE:
-        if not extra_params is None and "disable_optimization" in extra_params:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "inputs of classify not support the dict extra_params with "\
-                                           "the key disable_optimization when mode is ELEWISE"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        is_true(not extra_params is None and "disable_optimization" in extra_params,
+                {"errCode": "E90001",
+                "detailed_cause": "inputs of classify not support the dict extra_params with "\
+                                           "the key disable_optimization when mode is ELEWISE"})
         return classify_elewise(ins, support_broadcast=False, extra_params=extra_params)
     if mode == BROADCAST:
         return classify_elewise(ins, support_broadcast=True, extra_params=extra_params)
     if mode == REDUCE:
-        if extra_params is None or "keepdims" not in extra_params:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "inputs of classify must include the dict extra_params with the key keepdims " \
-                                          "when mode is reduce"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        is_true(extra_params is None or "keepdims" not in extra_params,
+                {"errCode": "E90001",
+                "detailed_cause": "inputs of classify must include the dict extra_params with the key keepdims " \
+                                          "when mode is reduce"})
 
         return classify_reduction(ins, extra_params.get("keepdims"))
     if mode == SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE:

@@ -45,6 +45,10 @@ from . import util
 CONST = "const"
 
 
+def is_true(expr, dict_args):
+    if expr:
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
 def schedule_cce(outs, option=None):
     """
     :param outs:
@@ -180,14 +184,13 @@ class Builder:
             if not (len(tensors) == 1 and isinstance(tensors[0], (tuple, list))):
                 tensors = [tensors]
 
-        if len(cpt_contexts) != len(tensors):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The size of compute, build " \
-                                          "tensors does not match, they " \
-                                          "are [%s] vs [%s]." \
-                                          % (len(cpt_contexts), len(tensors))
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        is_true(len(cpt_contexts) != len(tensors),
+                {"errCode": "E90001",
+                "detailed_cause": "The size of compute, build " \
+                                   "tensors does not match, they " \
+                                   "are [%s] vs [%s]." \
+                                   % (len(cpt_contexts), len(tensors))
+                })
 
         return tensors
 
@@ -215,13 +218,12 @@ class Builder:
                 sch_tensors_list.append(list(self.tensors[i]))
 
         lens = [len(self.schedules), len(te_vars_list), len(ebv_list)]
-        if len(set(lens)) != 1:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The size of schedule, var, and " \
-                                          "var_bound does not match, " \
-                                          "they are [%s]." % lens
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        is_true(len(set(lens)) != 1,
+                {"errCode": "E90001",
+                "detailed_cause": "The size of schedule, var, and " \
+                                  "var_bound does not match, " \
+                                  "they are [%s]." % lens
+                })
 
         self.te_vars_list = te_vars_list
         self.ebv_list = ebv_list

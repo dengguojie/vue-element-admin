@@ -1,6 +1,13 @@
 import tbe
 from sch_test_frame.ut import OpUT
 from tbe.common.utils import para_check
+from tbe.dsl.compute import reduce as _reduce
+from tbe.dsl.unify_schedule.vector.norm.norm_tilingcase import get_block_size
+from tbe.dsl.compute.reduce import _auto_cast_of_tuple_reduce
+from tbe.dsl.compute.reduce import _single_reduce_op
+from tbe.dsl.compute.reduce import _tuple_reduce_op
+from tbe.dsl.base.expr_compare import _te_expr2sympy_expr
+from tbe.dsl.unify_schedule.util import get_bound
 
 
 ut_case = OpUT("check_util", "para_check.test_dynamic_check_util_impl")
@@ -300,6 +307,86 @@ def test_outer_check_shape_min_size(_):
         return e.args[0].get("errCode") == "E80011"
     return False
 
+def test_norm_tilingcase_get_block_size(_):
+    try:
+        get_block_size("float64")
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90003"
+    return False
+
+def test_auto_cast_of_tuple_reduce(_):
+    try:
+        @_auto_cast_of_tuple_reduce
+        def tuple_sum_err(input_tensor_list, axis, keepdims=False):
+            return True
+        input_tensor_list = [2, 3, 4]
+        axis = [0]
+        tuple_sum_err(input_tensor_list, axis)
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90001"
+    return False
+
+def test_auto_cast_of_tuple_reduce_2(_):
+    try:
+        @_auto_cast_of_tuple_reduce
+        def tuple_sum(input_tensor_list, axis, keepdims=False):
+            return True
+        input_tensor_list = [2, 3, 4]
+        axis = [0]
+        tuple_sum(input_tensor_list, axis)
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90001"
+    return False
+
+def test_auto_cast_of_tuple_reduce_3(_):
+    try:
+        @_auto_cast_of_tuple_reduce
+        def tuple_sum(input_tensor_list, axis, keepdims=False):
+            return True
+        x = tbe.tvm.placeholder((2,3,4))
+        y = tbe.tvm.placeholder((2,3))
+        input_tensor_list = [x, y]
+        axis = [0]
+        tuple_sum(input_tensor_list, axis)
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90001"
+    return False
+
+def test_single_reduce_op(_):
+    try:
+        x = tbe.tvm.placeholder((2,3,4))
+        axis = [0]
+        _single_reduce_op(x, axis, "reduce_err")
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90003"
+    return False
+
+def test_tuple_reduce_op(_):
+    try:
+        x = tbe.tvm.placeholder((2,3,4))
+        y = tbe.tvm.placeholder((2,3))
+        input_tensor_list = [x, y]
+        axis = [0]
+        _tuple_reduce_op(input_tensor_list, axis, "tuple_reduce_err")
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90003"
+    return False
+
+def test_te_expr2sympy_expr(_):
+    try:
+        _te_expr2sympy_expr("err")
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90001"
+    return False
+def test_get_bound(_):
+    try:
+        x = tbe.tvm.var('x')
+        y = tbe.tvm.var('y')
+        get_bound(tbe.tvm.expr.FloorMod(x, y))
+    except RuntimeError as e:
+        return e.args[0].get("errCode") == "E90001"
+    return False
+
 ut_case.add_cust_test_func(test_func=test_outer_check_shape_rank)
 ut_case.add_cust_test_func(test_func=test_outer_check_shape_value)
 ut_case.add_cust_test_func(test_func=test_outer_check_shape_min_size)
@@ -342,3 +429,12 @@ ut_case.add_cust_test_func(test_func=test_check_reduce_shape_rule)
 ut_case.add_cust_test_func(test_func=test_outer_check_format_None)
 ut_case.add_cust_test_func(test_func=test_outer_check_format_XXXX)
 ut_case.add_cust_test_func(test_func=test_outer_check_shape_type)
+ut_case.add_cust_test_func(test_func=test_norm_tilingcase_get_block_size)
+ut_case.add_cust_test_func(test_func=test_auto_cast_of_tuple_reduce)
+ut_case.add_cust_test_func(test_func=test_auto_cast_of_tuple_reduce_2)
+ut_case.add_cust_test_func(test_func=test_auto_cast_of_tuple_reduce_3)
+ut_case.add_cust_test_func(test_func=test_single_reduce_op)
+ut_case.add_cust_test_func(test_func=test_tuple_reduce_op)
+ut_case.add_cust_test_func(test_func=test_te_expr2sympy_expr)
+ut_case.add_cust_test_func(test_func=test_get_bound)
+
