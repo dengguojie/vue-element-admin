@@ -39,6 +39,7 @@ set(local_kernels_src_files
     kernels/normalized/index_to_addr.cc
     kernels/normalized/inplace_top_k_distance.cc
     kernels/normalized/is_inf.cc
+    kernels/normalized/is_nan.cc
     kernels/normalized/less.cc
     kernels/normalized/log_matrix_determinant.cc
     kernels/normalized/logging.cc
