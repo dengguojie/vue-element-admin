@@ -113,6 +113,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/image_warp_offsets.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/index_to_addr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/inplace_top_k_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/is_inf.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/log_matrix_determinant.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
@@ -259,6 +260,7 @@ set(_cpu_kernels_ut_files
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
   testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
+  testcase/is_inf/src/is_inf_utest.cpp
   testcase/less/src/less_utest.cpp
   testcase/log_matrix_determinant/src/log_matrix_determinant_utest.cpp
   testcase/logging/src/logging_utest.cpp
