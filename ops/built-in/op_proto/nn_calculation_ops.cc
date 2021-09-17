@@ -957,7 +957,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     return GRAPH_FAILED;
   }
 
-  if (dataTypeIn == ge::DT_INT8) {
+  if ((dataTypeIn == ge::DT_INT8) || (dataTypeIn == ge::DT_INT4)) {
     tensordesc_output->SetDataType(ge::DT_INT32);
   } else {
     tensordesc_output->SetDataType(dataTypeIn);

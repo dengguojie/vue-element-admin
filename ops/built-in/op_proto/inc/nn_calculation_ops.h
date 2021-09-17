@@ -269,10 +269,10 @@ REG_OP(DepthwiseConv2DBackpropInputD)
 
 *@par Inputs:
 *Two required inputs and two optional inputs, including: \n
-* @li x: A 4D tensor of type float16 or int8, with shape [N, C, H, W] or [N, H, W, C]
-* @li filter: A 4D tensor of type float16 or int8, with shape [H, W, C, K]
+* @li x: A 4D tensor of type float16 or int8 or int4, with shape [N, C, H, W] or [N, H, W, C]
+* @li filter: A 4D tensor of type float16 or int8 or int4, with shape [H, W, C, K]
 * @li bias: An optional tensor of type float16 or int32
-* @li offset_w: An optional float16 or int8, used for quantized inference
+* @li offset_w: An optional float16 or int8 or int4, used for quantized inference
 
 * @par Attributes:
 * @li strides: A required list or tuple. The stride of the sliding window for
@@ -312,10 +312,10 @@ REG_OP(DepthwiseConv2DBackpropInputD)
 * @li Compatible with the Caffe operator DepthwiseConv2D.
 */
 REG_OP(DepthwiseConv2D)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_INT8}))
-    .INPUT(filter, TensorType({DT_FLOAT16, DT_INT8}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_INT8, DT_INT4}))
+    .INPUT(filter, TensorType({DT_FLOAT16, DT_INT8, DT_INT4}))
     .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_INT32}))
-    .OPTIONAL_INPUT(offset_w, TensorType({DT_FLOAT16, DT_INT8}))
+    .OPTIONAL_INPUT(offset_w, TensorType({DT_FLOAT16, DT_INT8, DT_INT4}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT32}))
     .REQUIRED_ATTR(strides, ListInt)
     .ATTR(dilations, ListInt, {1, 1, 1, 1})
