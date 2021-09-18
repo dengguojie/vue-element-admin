@@ -102,75 +102,11 @@ TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT_SUCC_1D) {
   RunFloorKernel<float, float>(files, data_types, shapes);
 }
 
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT_SUCC_2D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12}, {15, 12}};
-  vector<string> files{"floor/data/floor_data_input1_2.txt",
-                       "floor/data/floor_data_output1_2.txt"};
-  RunFloorKernel<float, float>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT_SUCC_3D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30}, {15, 12, 30}};
-  vector<string> files{"floor/data/floor_data_input1_3.txt",
-                       "floor/data/floor_data_output1_3.txt"};
-  RunFloorKernel<float, float>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT_SUCC_4D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30, 8}, {15, 12, 30, 8}};
-  vector<string> files{"floor/data/floor_data_input1_4.txt",
-                       "floor/data/floor_data_output1_4.txt"};
-  RunFloorKernel<float, float>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT_SUCC_5D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30, 8, 16}, {15, 12, 30, 8, 16}};
-  vector<string> files{"floor/data/floor_data_input1_5.txt",
-                       "floor/data/floor_data_output1_5.txt"};
-  RunFloorKernel<float, float>(files, data_types, shapes);
-}
-
 TEST_F(TEST_FLOOR_UT, DATA_TYPE_DOUBLE_SUCC_1D) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
   vector<vector<int64_t>> shapes = {{7}, {7}};
   vector<string> files{"floor/data/floor_data_input1_6.txt",
                        "floor/data/floor_data_output1_6.txt"};
-  RunFloorKernel<double, double>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_DOUBLE_SUCC_2D) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{7, 15}, {7, 15}};
-  vector<string> files{"floor/data/floor_data_input1_7.txt",
-                       "floor/data/floor_data_output1_7.txt"};
-  RunFloorKernel<double, double>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_DOUBLE_SUCC_3D) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{1, 1024, 1024}, {1, 1024, 1024}};
-  vector<string> files{"floor/data/floor_data_input1_8.txt",
-                       "floor/data/floor_data_output1_8.txt"};
-  RunFloorKernel<double, double>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_DOUBLE_SUCC_4D) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{7, 15, 20, 18}, {7, 15, 20, 18}};
-  vector<string> files{"floor/data/floor_data_input1_9.txt",
-                       "floor/data/floor_data_output1_9.txt"};
-  RunFloorKernel<double, double>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_DOUBLE_SUCC_5D) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{7, 15, 20, 18, 24}, {7, 15, 20, 18, 24}};
-  vector<string> files{"floor/data/floor_data_input1_10.txt",
-                       "floor/data/floor_data_output1_10.txt"};
   RunFloorKernel<double, double>(files, data_types, shapes);
 }
 
@@ -182,38 +118,6 @@ TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT16_SUCC_1D) {
   RunFloorKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
 }
 
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT16_SUCC_2D) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 130}, {12, 130}};
-  vector<string> files{"floor/data/floor_data_input1_12.txt",
-                       "floor/data/floor_data_output1_12.txt"};
-  RunFloorKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT16_SUCC_3D) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 130, 28}, {12, 130, 28}};
-  vector<string> files{"floor/data/floor_data_input1_13.txt",
-                       "floor/data/floor_data_output1_13.txt"};
-  RunFloorKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT16_SUCC_4D) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 130, 28, 32}, {12, 130, 28, 32}};
-  vector<string> files{"floor/data/floor_data_input1_14.txt",
-                       "floor/data/floor_data_output1_14.txt"};
-  RunFloorKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
-TEST_F(TEST_FLOOR_UT, DATA_TYPE_FLOAT16_SUCC_5D) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 130, 28, 32, 16}, {12, 130, 28, 32, 16}};
-  vector<string> files{"floor/data/floor_data_input1_15.txt",
-                       "floor/data/floor_data_output1_15.txt"};
-  RunFloorKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
 // exception instance
 TEST_F(TEST_FLOOR_UT, INPUT_BOOL_UNSUPPORT) {
   vector<DataType> data_types = {DT_BOOL, DT_BOOL};
@@ -221,16 +125,6 @@ TEST_F(TEST_FLOOR_UT, INPUT_BOOL_UNSUPPORT) {
   bool input1[22] = {(bool)1};
   bool output[22] = {(bool)0};
   vector<void *> datas = {(void *)input1, (void *)output};
-  CREATE_NODEDEF(shapes, data_types, datas);
-  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
-}
-
-TEST_F(TEST_FLOOR_UT, INPUT_NULL_EXCEPTION) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{2, 11}, {2, 11}};
-  // bool output[22] = {(bool)0};
-  float output[22] = {0};
-  vector<void *> datas = {(void *)nullptr, (void *)output};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }

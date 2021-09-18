@@ -96,58 +96,6 @@ def gen_random_data_float_1d():
         data = session.run(re, feed_dict={x: a})
     write_file_txt(data_files[1], data, fmt="%s")
 
-def gen_random_data_float_2d():
-    data_files=["floor/data/floor_data_input1_2.txt",
-                "floor/data/floor_data_output1_2.txt"]
-    np.random.seed(23457)
-    shape_x = [15, 12]
-    a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 0, 100)
-
-    x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-
-def gen_random_data_float_3d():
-    data_files=["floor/data/floor_data_input1_3.txt",
-                "floor/data/floor_data_output1_3.txt"]
-    np.random.seed(23457)
-    shape_x = [15, 12, 30]
-    a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 0, 100)
-
-    x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_float_4d():
-    data_files=["floor/data/floor_data_input1_4.txt",
-                "floor/data/floor_data_output1_4.txt"]
-    np.random.seed(23457)
-    shape_x = [15, 12, 30, 8]
-    a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 0, 100)
-
-    x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-
-def gen_random_data_float_5d():
-    data_files=["floor/data/floor_data_input1_5.txt",
-                "floor/data/floor_data_output1_5.txt"]
-    np.random.seed(23457)
-    shape_x = [15, 12, 30, 8, 16]
-    a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 0, 100)
-
-    x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-
 def gen_random_data_double_1d():
     data_files=["floor/data/floor_data_input1_6.txt",
                 "floor/data/floor_data_output1_6.txt"]
@@ -160,59 +108,6 @@ def gen_random_data_double_1d():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x: a})
     write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_double_2d():
-    data_files=["floor/data/floor_data_input1_7.txt",
-                "floor/data/floor_data_output1_7.txt"]
-    np.random.seed(3457)
-    shape_x = [7, 15]
-    a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", 0, 10)
-
-    x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_double_3d():
-    data_files=["floor/data/floor_data_input1_8.txt",
-                "floor/data/floor_data_output1_8.txt"]
-    np.random.seed(3457)
-    shape_x = [1, 1, 1024]
-    a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", 0, 10)
-
-    x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_double_4d():
-    data_files=["floor/data/floor_data_input1_9.txt",
-                "floor/data/floor_data_output1_9.txt"]
-    np.random.seed(3457)
-    shape_x = [7, 15, 20, 18]
-    a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", 0, 10)
-
-    x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_double_5d():
-    data_files=["floor/data/floor_data_input1_10.txt",
-                "floor/data/floor_data_output1_10.txt"]
-    np.random.seed(3457)
-    shape_x = [7, 15, 20, 18, 24]
-    a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", 0, 10)
-
-    x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
 
 def gen_random_data_float16_1d():
     data_files=["floor/data/floor_data_input1_11.txt",
@@ -227,73 +122,9 @@ def gen_random_data_float16_1d():
         data = session.run(re, feed_dict={x: a})
     write_file_txt(data_files[1], data, fmt="%s")
     
-def gen_random_data_float16_2d():
-    data_files=["floor/data/floor_data_input1_12.txt",
-                "floor/data/floor_data_output1_12.txt"]
-    np.random.seed(3457)
-    shape_x = [12, 130]
-    a = gen_data_file(data_files[0], shape_x, np.float16, "uniform", -10, 10)
-
-    x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_float16_3d():
-    data_files=["floor/data/floor_data_input1_13.txt",
-                "floor/data/floor_data_output1_13.txt"]
-    np.random.seed(3457)
-    shape_x = [12, 130, 28]
-    a = gen_data_file(data_files[0], shape_x, np.float16, "uniform", -10, 10)
-
-    x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_float16_4d():
-    data_files=["floor/data/floor_data_input1_14.txt",
-                "floor/data/floor_data_output1_14.txt"]
-    np.random.seed(3457)
-    shape_x = [12, 130, 28, 32]
-    a = gen_data_file(data_files[0], shape_x, np.float16, "uniform", -10, 10)
-
-    x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
-    
-def gen_random_data_float16_5d():
-    data_files=["floor/data/floor_data_input1_15.txt",
-                "floor/data/floor_data_output1_15.txt"]
-    np.random.seed(3457)
-    shape_x = [12, 130, 28, 32, 16]
-    a = gen_data_file(data_files[0], shape_x, np.float16, "uniform", -10, 10)
-
-    x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
-    re = tf.floor(x)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x: a})
-    write_file_txt(data_files[1], data, fmt="%s")
 
     
 def run():
     gen_random_data_float_1d()
-    gen_random_data_float_2d()
-    gen_random_data_float_3d()
-    gen_random_data_float_4d()
-    gen_random_data_float_5d()
     gen_random_data_double_1d()
-    gen_random_data_double_2d()
-    gen_random_data_double_3d()
-    gen_random_data_double_4d()
-    gen_random_data_double_5d()
     gen_random_data_float16_1d()
-    gen_random_data_float16_2d()
-    gen_random_data_float16_3d()
-    gen_random_data_float16_4d()
-    gen_random_data_float16_5d()
-
