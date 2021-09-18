@@ -87,6 +87,11 @@ Status DreluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(reluGrad == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reluGrad is null, fusion failed."),
                     return PARAM_INVALID);
 
+  if (IsUnknownShape(reluGrad->GetOpDesc()->GetInputDesc(0).GetShape())) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "DreluFusionPass cannot be applied for unknown shape.");
+    return NOT_CHANGED;
+  }
+
   ge::NodePtr relu2 = CreateNode(graph, relu, fusionNodes);
   FUSION_PASS_CHECK(relu2 == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu2 is null, fusion failed."),
