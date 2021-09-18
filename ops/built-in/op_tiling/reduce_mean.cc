@@ -137,6 +137,10 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
+        if (input_shape[i] == 0) {
+	  OP_LOGD(op_type.c_str(), "reduce mean shape is 0");
+	  return ret;
+	}
         if (IsInVector(reduce_axis, i)) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
@@ -145,6 +149,10 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
+	if (input_shape[i] == 0) {
+          OP_LOGD(op_type.c_str(), "reduce mean shape is 0, dtype is fp16");
+          return ret;
+        }
         if (IsInVector(reduce_axis, i)) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }

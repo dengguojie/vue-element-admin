@@ -89,6 +89,16 @@ def reduce_mean_compute(x,
         calc_dtype = "float16"
 
     if isinstance(reduce_elts, float):
+        if reduce_elts == 0:
+            if calc_dtype == "float16":
+                nan_data = tvm.const(65504, dtype=calc_dtype)
+            else:
+                nan_data = tvm.const(2**62, dtype=calc_dtype)
+            sum_data_shape0 = tbe.reduce_sum(x, axis=axes, keepdims=keepdims)
+            vadds_data_shape0 = tbe.vadds(sum_data_shape0, nan_data)
+            res = tbe.cast_to(vadds_data_shape0, dtype)
+            return res
+
         cof = reduce_elts ** (-1)
         cof = tvm.const(cof, dtype=calc_dtype)
     else:
