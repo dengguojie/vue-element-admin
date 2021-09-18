@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include "util/util.h"
+#include "util/reduce_infer_util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
 #include "graph/utils/node_utils.h"
@@ -1272,6 +1273,14 @@ IMPLEMT_COMMON_INFERFUNC(BNInferGradInferShape){
 COMMON_INFER_FUNC_REG(BNInferGrad, BNInferGradInferShape);
 // ----------------BNInferGrad End----------------------
 
+static bool InferReduceShapeProcess(const Operator& op, const int64_t input_x_idx,
+                                    const int64_t output_y_idx, const int64_t input_axes_idx) {
+  bool keep_dims = false;
+  op.GetAttr("keep_dims", keep_dims);
+  reduce_ops::CommonReduceInferWithInputAxes(op, input_x_idx, output_y_idx, input_axes_idx, keep_dims);
+  return true;
+}
+
 // ----------------ReduceSum Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
   std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
@@ -1279,7 +1288,10 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
     before_infer = std::chrono::steady_clock::now();
   }
   OP_LOGD(op.GetName().c_str(), "Enter ReduceSumInferShape");
-  if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  const int64_t input_axes_idx = 1;
+  if (InferReduceShapeProcess(op, input_x_idx, output_y_idx, input_axes_idx)) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
       auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();

@@ -36,6 +36,7 @@ set(_op_proto_utils
   util/resource_variable_ops_shape_fns.cc
   util/transfer_shape_according_to_format.cc
   util/util.cc
+  util/reduce_infer_util.cc
 )
 
 set(_op_proto_srcs
