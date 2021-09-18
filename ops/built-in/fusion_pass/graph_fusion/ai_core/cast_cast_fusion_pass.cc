@@ -97,7 +97,7 @@ Status CastCastFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vec
         return NOT_CHANGED;
     }
     if (ReLinkControlAnchor(castNode1, castNode2) != SUCCESS) {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "process control link failed");
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "process %s and %s control link failed", castNode1->GetName().c_str(), castNode2->GetName().c_str());
         return FAILED;
     }
     ge::GeTensorDesc cast1InputDesc = castNode1->GetOpDesc()->GetInputDesc(0).Clone();

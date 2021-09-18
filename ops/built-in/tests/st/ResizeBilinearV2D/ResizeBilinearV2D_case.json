@@ -1,0 +1,40 @@
+[
+    {
+        "op": "ResizeBilinearV2D",
+        "case_name": "test_resize_bilinear_v2_001",
+        "calc_expect_func_file": "test_test_resize_bilinear_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NCHW",
+                "shape": [1, 32, 30, 30],
+                "type": "float",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "shape": [1, 32, 240, 240],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": true,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            },
+			{
+                "name": "size",
+                "value": [240, 240],
+                "type": "list_int"
+            }			
+        ]
+    }
+]
