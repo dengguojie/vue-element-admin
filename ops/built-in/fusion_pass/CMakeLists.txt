@@ -327,6 +327,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/logsoftmax_fusion_pass.cc
   graph_fusion/ai_core/im2col_fusion_pass.cc
   graph_fusion/ai_core/softmax_with_drop_out_do_mask_fusion_pass.cc
+  graph_fusion/ai_core/squeeze_unsqueeze_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_grad_d_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_seqlength_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_transdatarnn_fusion_pass.cc
