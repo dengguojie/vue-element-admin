@@ -30,6 +30,10 @@ namespace fe {
 static const char* FUSED_NODE = "NLLLoss";
 static const std::string PATTERN_FUSEDNODE = "NLLLoss";
 
+static const vector<vector<int64_t>> SUPPORT_CASES = {
+    {4210704, 21},
+};
+
 vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -133,6 +137,7 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
 Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
   bool fail_status = false;
   bool is_unknown_shape = false;
+  bool is_match = false;
   string reduction = "";
   string reduction_attr = "reduction";
 
@@ -140,17 +145,6 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::NodePtr nll_loss_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(nll_loss_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "nll_loss_node is null, fusion failed."),
                     return PARAM_INVALID);
-  
-  // check nllloss support dynamic
-  if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
-    return FAILED;
-  }
-
-  if (!is_unknown_shape) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape.");
-    return NOT_CHANGED;
-  }
   
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(nll_loss_node);
   if (GRAPH_SUCCESS != op.GetAttr(reduction_attr, reduction)) {
@@ -161,6 +155,28 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (reduction != "mean") {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "reduction is not mean.");
     return NOT_CHANGED;
+  }
+
+  // check nllloss support dynamic
+  if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
+    return FAILED;
+  }
+
+  if (!is_unknown_shape) {
+    GeTensorDesc x_desc = nll_loss_node->GetOpDesc()->GetInputDesc(0);
+    vector<int64_t> x_shape = x_desc.GetShape().GetDims();
+    for (auto shape : SUPPORT_CASES) {
+      if (x_shape == shape) {
+        is_match = true;
+        break;
+      }
+    }
+
+    if (!is_match) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape or not match static shape.");
+      return NOT_CHANGED;
+    }
   }
 
   ge::NodePtr nll_loss_sum_node = AddNLLLossSumNode(nll_loss_node, graph, new_nodes, fail_status);
