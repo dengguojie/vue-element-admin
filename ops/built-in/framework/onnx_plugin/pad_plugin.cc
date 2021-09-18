@@ -25,17 +25,18 @@ Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  std::string mode_value = "constant";
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
-      std::string mode_value = attr.s();
-      if (mode_value == "reflect" || mode_value == "edge") {
-        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
+      mode_value = attr.s();
+      if (mode_value == "edge") {
+        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant/refletc, current is %s .", mode_value.c_str());
         return FAILED;
       }
     }
   }
   op_dest.SetAttr("paddings_contiguous", false);
-
+  op_dest.SetAttr("mode", mode_value);
   return SUCCESS;
 }
 
@@ -57,12 +58,12 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   std::vector<int32_t> v_pads;
   bool set_pads_flag = false;
   float value = 0.0;
-
+  std::string mode_value = "constant";
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
-      std::string mode_value = attr.s();
-      if (mode_value == "reflect" || mode_value == "edge") {
-        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
+      mode_value = attr.s();
+      if (mode_value == "edge") {
+        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant/refletc, current is %s .", mode_value.c_str());
         return FAILED;
       }
     } else if (attr.name() == "pads") {
@@ -92,7 +93,7 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   std::vector<int64_t> dims_1 = {1};
   ge::Tensor tensor2 = Scalar2Tensor(value, dims_1, ge::DT_FLOAT);
   op_dest.SetAttr("constant_values", tensor2);
-
+  op_dest.SetAttr("mode", mode_value);
   return SUCCESS;
 }
 
@@ -107,9 +108,14 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
+  std::string mode = "constant";
+  op.GetAttr("mode", mode);
   auto data1 = op::Const("data1").set_attr_value(value1);
   auto data2 = op::Const("data2").set_attr_value(value2);
-  auto pad_v3 = op::PadV3().set_input_x(data0).set_input_paddings(data1).set_input_constant_values(data2);
+  auto pad_v3 = op::PadV3().set_input_x(data0)
+                           .set_input_paddings(data1)
+                           .set_input_constant_values(data2)
+                           .set_attr_mode(mode);
 
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
