@@ -1281,68 +1281,6 @@ TEST_F(TransposeTilingTest, specific_shape_scenario_5) {
     EXPECT_EQ(shapeInfo.scenario, 5);
 }
 
-TEST_F(TransposeTilingTest, scenario_9_src_mode) {
-    CompilerInfo compilerInfo;
-    ShapeInfo shapeInfo;
-    RuntimeInfo runtimeInfo;
-    compilerInfo.coreNum = 32;
-    compilerInfo.ubSize = 8192;
-    compilerInfo.ubSizeCouldUse = 8064;
-    compilerInfo.dType ="float32";
-    compilerInfo.fp16Times = 1;
-
-    shapeInfo.inShape.push_back(1477);
-    shapeInfo.inShape.push_back(1477);
-    shapeInfo.inShape.push_back(8);
-    shapeInfo.inShape.push_back(64);
-
-    shapeInfo.outShape.push_back(1477);
-    shapeInfo.outShape.push_back(8);
-    shapeInfo.outShape.push_back(1477);
-    shapeInfo.outShape.push_back(64);
-
-    shapeInfo.perm.push_back(0);
-    shapeInfo.perm.push_back(2);
-    shapeInfo.perm.push_back(1);
-    shapeInfo.perm.push_back(3);
-
-    ReduceAxis("Transpose", compilerInfo, shapeInfo);
-    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
-    EXPECT_EQ(shapeInfo.scenario, 9);
-    EXPECT_EQ(shapeInfo.mteMode, MTE_MODE_SRC);
-}
-
-TEST_F(TransposeTilingTest, scenario_9_dst_mode) {
-    CompilerInfo compilerInfo;
-    ShapeInfo shapeInfo;
-    RuntimeInfo runtimeInfo;
-    compilerInfo.coreNum = 32;
-    compilerInfo.ubSize = 8192;
-    compilerInfo.ubSizeCouldUse = 8064;
-    compilerInfo.dType ="float32";
-    compilerInfo.fp16Times = 1;
-
-    shapeInfo.inShape.push_back(1477);
-    shapeInfo.inShape.push_back(8);
-    shapeInfo.inShape.push_back(1447);
-    shapeInfo.inShape.push_back(64);
-
-    shapeInfo.outShape.push_back(1477);
-    shapeInfo.outShape.push_back(1447);
-    shapeInfo.outShape.push_back(8);
-    shapeInfo.outShape.push_back(64);
-
-    shapeInfo.perm.push_back(0);
-    shapeInfo.perm.push_back(2);
-    shapeInfo.perm.push_back(1);
-    shapeInfo.perm.push_back(3);
-
-    ReduceAxis("Transpose", compilerInfo, shapeInfo);
-    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
-    EXPECT_EQ(shapeInfo.scenario, 9);
-    EXPECT_EQ(shapeInfo.mteMode, MTE_MODE_DST);
-}
-
 TEST_F(TransposeTilingTest, specific_shape_scenario_9) {
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
