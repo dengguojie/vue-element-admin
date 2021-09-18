@@ -52,15 +52,75 @@ case6 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW"
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-
-
+case7 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    {"shape": (8,), "dtype": "float16", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[0, 0],[0, 16],[0, 0]]],
+         "case_name": "pad_v2_d_7",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+case8 = {"params": [{"shape": (2, 2, 1027), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 2, 1027),"ori_format": "NHWC"},
+                    {"shape": (8,), "dtype": "float16", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[0, 0],[0, 16],[0, 0]]],
+         "case_name": "pad_v2_d_8",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+case9 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    {"shape": (8,), "dtype": "float32", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[0, 0, 0],[0, 16],[0, 0]]],
+         "case_name": "pad_v2_d_6",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+case10 = {"params": [{"shape": (2, 2, 1027), "dtype": "int8", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    {"shape": (8,), "dtype": "int8", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[0, 0],[0, 16],[1, 1]]],
+         "case_name": "pad_v2_d_10",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+case11 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    {"shape": (8,), "dtype": "float32", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[1, 0],[0, 16],[1, 1]]],
+         "case_name": "pad_v2_d_11",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case12 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    {"shape": (8,), "dtype": "float32", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[0, 1],[0, 16],[1, 1]]],
+         "case_name": "pad_v2_d_12",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case13 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    {"shape": (8,), "dtype": "float32", "format": "NCHW", "ori_shape": (8,),"ori_format": "NCHW"},
+                    {"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 1027),"ori_format": "NCHW"},
+                    [[0, 0],[0, 0],[1, 1]]],
+         "case_name": "pad_v2_d_13",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
 if __name__ == '__main__':
     ut_case.run("Ascend910")
     exit(0)
