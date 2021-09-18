@@ -497,7 +497,8 @@ class GEMMCompute(FormatCompute):
 
     def _get_not_gevm_gemv_flag(self):
         not_use_gevm_gemv_flag = False
-        is_int82int32_nd = self._is_nd_int82fp32() and (self.alpha is not None)
+        is_int82int32_nd = (self.ops_data_flow_mode == "int82int32"
+            and (self.format_a == "ND" or self.format_b == "ND")) and (self.alpha is not None)
         not_use_gevm_gemv_flag = (self.ops_data_flow_mode == "int82fp32" or is_int82int32_nd) and (self.alpha is not None)
         return not_use_gevm_gemv_flag
 

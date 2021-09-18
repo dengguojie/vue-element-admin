@@ -2523,7 +2523,7 @@ class GemmSchedule(object):
         # a_ub_ori_shape([m, k]) and tiling_ori_aub are used to compare full load (pass) or not
         a_ub_ori_shape = list(self._get_value(i) for i in a_ub.shape)
         tiling_ori_aub = [aub_tiling_m * aub_tiling_m0,  ub_ka * aub_tiling_k0]
-        
+
         # tiling_ori_al1, tiling_ori_aub_with_l1 are used to choose compute at tensor
         tiling_ori_al1 = [l1_ma, l1_ka, al0_tiling_m0, al0_tiling_k0]
         tiling_ori_aub_with_l1 = [aub_tiling_m, ub_ka, aub_tiling_m0, aub_tiling_k0]
@@ -2536,14 +2536,15 @@ class GemmSchedule(object):
         if self.get_a_matrix_mode == "Nz2Zz_int82fp32":
             tiling_ori_aub = [ub_ka // 2, aub_tiling_m, aub_tiling_m0, aub_tiling_k0 * 2]
         # in nd2Zz_vnchwconv scene L1 tensor is 3d
-        if self.get_a_matrix_mode == "nd2Zz_vnchwconv":
+        elif self.get_a_matrix_mode == "nd2Zz_vnchwconv":
             tiling_ori_al1 = [l1_ma, l1_ka * al0_tiling_k0, al0_tiling_m0]
             tiling_ori_aub_with_l1 = [aub_tiling_m, ub_ka * aub_tiling_k0, aub_tiling_m0]
             if transpose_a:
                 aub_l1_affine_shape = [ub_ka, aub_tiling_m * aub_tiling_m0, aub_tiling_k0]
             else:
                 aub_l1_affine_shape = [aub_tiling_m, ub_ka * aub_tiling_k0, aub_tiling_m0]
-
+        elif self.get_a_matrix_mode in ("nd2Zz_int8", "nd2Zz", "nd_gemv", "nd_gevm"):
+            tiling_ori_aub_with_l1 = [aub_tiling_m, ub_ka, al0_tiling_m0, aub_tiling_k0]
         a_ub_ori_shape, tiling_ori_aub = self._get_dynamic_aub_shape(a_ub_ori_shape, tiling_ori_aub)
 
         if self.format_out == "ND":

@@ -63,11 +63,26 @@ case4 = {"params": [{'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'N
          "format_expect": [],
          "support_expect": True}
 
+gevm_L1_attach_equal = {"params": [{'shape': (1, 1, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0',
+                        "ori_format":"NHWC", "ori_shape":(1, 1, 1, 16)},
+                        {'shape': (1, 1, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z',
+                        "ori_format":"HWCN", "ori_shape":(1, 1, 16, 8)},
+                        {'shape': (1, 1, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0',
+                        "ori_format":"NHWC", "ori_shape":(8, )},
+                        None,
+                        {'shape': (1, 1, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0',
+                        "ori_format":"NHWC", "ori_shape":(1, 1, 1, 8)},
+                        32, False, 1, 0],
+                        "case_name": "gevm_L1_attach_equal",
+                        "expect": "success",
+                        "format_expect": [],
+                        "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], gevm_L1_attach_equal)
 # ND -> ND
 def test_split_fc(test_arg):
     x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 16)}
