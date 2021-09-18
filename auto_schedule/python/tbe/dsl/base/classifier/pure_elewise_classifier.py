@@ -59,7 +59,7 @@ class PureElewiseClassifier:
             shapes = list(_in["shape"])
             if UNKNOWN_RANK in shapes:
                 if len(shapes) != 1:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2,)"
                     raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -70,13 +70,13 @@ class PureElewiseClassifier:
 
     def _is_const(self):
         for i in range(self.dim_length):
-            if max([s[i] for s in self.shapes]) == -1:
+            if max(s[i] for s in self.shapes) == -1:
                 return False
         return True
 
     def _classify_const(self):
         def get_dim(i):
-            return max([s[i] for s in self.shapes])
+            return max(s[i] for s in self.shapes)
 
         const_shape = [get_dim(i) for i in range(self.dim_length)]
         shape = [reduceIns(lambda x, y: x * y, const_shape)]

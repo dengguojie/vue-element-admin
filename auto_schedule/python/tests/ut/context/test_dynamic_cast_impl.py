@@ -174,7 +174,6 @@ def test_cast_to_not_tensor_exception(_):
     try:
         lhs_shape = (16, 64, 1, 8)
         cast.cast_to(lhs_shape, "int32")
-        return True
     except RuntimeError as e:
         if e.args[0].get("errCode") == "E90001":
             return True
@@ -218,6 +217,27 @@ def test_cast_to_same_dtype(_):
     return False
 
 
+def test_cast_para_check_input_not_tensor_exception(_):
+    try:
+        lhs_shape = (16, 64, 1, 8)
+        cast.ceil(lhs_shape, "int32")
+    except RuntimeError as e:
+        if e.args[0].get("errCode") == "E90001":
+            return True
+    return False
+
+
+def test_cast_to_round_exception(_):
+    try:
+        lhs_shape = (16, 64, 1, 8)
+        lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+        cast.cast_to_round(lhs_shape, "int8")
+    except RuntimeError as e:
+        if e.args[0].get("errCode") == "E90001":
+            return True
+    return False
+
+
 test_func_list_Ascend910 = [
     test_cast_para_check_of_cast_dynamic,
     test_cast_para_check_of_cast_tensor,
@@ -237,7 +257,9 @@ test_func_list_Ascend910 = [
     test_cast_cast_type_float16,
     test_cast_cast_type_float32,
     test_cast_to_not_tensor_exception,
-    test_cast_to_normal
+    test_cast_to_normal,
+    test_cast_para_check_input_not_tensor_exception,
+    test_cast_to_round_exception
 ]
 
 test_func_list_Ascend310 = [
@@ -245,8 +267,9 @@ test_func_list_Ascend310 = [
     test_cast_to_f322s32z,
     test_cast_to_f162s32z,
     test_cast_to_not_f1628IntegerFlag,
-    test_cast_to_same_dtype
-
+    test_cast_to_same_dtype,
+    test_cast_para_check_input_not_tensor_exception,
+    test_cast_to_round_exception
     ]
 for item in test_func_list_Ascend910:
     ut_case.add_cust_test_func(["Ascend910A"], test_func=item)

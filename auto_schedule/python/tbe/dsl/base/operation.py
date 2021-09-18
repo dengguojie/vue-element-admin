@@ -138,7 +138,7 @@ def var(name, bound=None, dtype="int32", addition=None):
     :return:
     """
     if name.startswith("_"):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "the name of var must not start with '_'."
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -197,7 +197,7 @@ def var_inner(name, bound=None, dtype="int32", addition=None):
     :return:
     """
     if not name.startswith("_"):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "the name of var must start with '_' in internal use scenarios."
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -263,7 +263,7 @@ def add_compile_info(key, value):
     :return: None
     """
     if key.startswith("_"):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "the key of compile_info must not start with '_'."
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -278,7 +278,7 @@ def add_compile_info_inner(key, value):
     :return:
     """
     if not key.startswith("_"):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "the key of compile_info must start with '_' " \
                                       "in internal use scenarios."
@@ -365,7 +365,7 @@ def _():
 
 
 def _raise_error(message):
-    dict_args = dict()
+    dict_args = {}
     dict_args["errCode"] = "E90001"
     dict_args["detailed_cause"] = message
     raise RuntimeError(dict_args, get_error_message(dict_args))

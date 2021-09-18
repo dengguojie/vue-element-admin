@@ -73,7 +73,7 @@ def _check_keepdims(keepdims: bool):
     :return:
     """
     if not isinstance(keepdims, bool):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "keepdims in reduce_classifier must be the bool type"
         raise RuntimeError(dict_args, get_error_message(dict_args))

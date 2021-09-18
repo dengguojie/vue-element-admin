@@ -39,7 +39,8 @@
         "vlogic",
         "vcmp",
         "vsel",
-        "vcmpsel"
+        "vcmpsel",
+        "context/test_dynamic_util_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
         "vadd",
@@ -69,7 +70,8 @@
         "vcmp",
         "vsel",
         "vcmpsel",
-        "dsl_cpu/test_math_cpu_impl.py"
+        "dsl_cpu/test_math_cpu_impl.py",
+        "context/test_dynamic_math_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/nn.py":[
         "broadcast",
@@ -79,7 +81,8 @@
         "vrelu",
         "vlrelu",
         "clip",
-        "dsl_cpu/test_nn_cpu_impl.py"
+        "dsl_cpu/test_nn_cpu_impl.py",
+        "context/test_dynamic_nn_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",
@@ -104,7 +107,8 @@
         "round",
         "trunc",
         "round_half_up",
-        "cast_to"
+        "cast_to",
+        "context/test_dynamic_cast_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/array.py":[
         "concat",
@@ -336,6 +340,8 @@
     ],
     "auto_schedule/python/tbe/common/utils/create_kb_query_key.py":[
         "tik_kb_query_key"
+    ],
+    "auto_schedule/python/tbe/dsl/base/context.py":[
+        "context"
     ]
-
 }

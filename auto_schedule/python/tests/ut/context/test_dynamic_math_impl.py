@@ -419,6 +419,537 @@ def test_vcmpsel_dsl_tttt_op(_):
     return True
 
 
+def test_auto_cast_of_elewise_first_input_not_tensor_exception(_):
+    @math._auto_cast_of_elewise
+    def test_vadd(args):
+        return None
+
+    lhs_shape = (16, 64)
+    rhs_shape = (16, 64)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        test_vadd([lhs_shape, rhs])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_auto_cast_of_elewise_second_input_not_tensor_exception(_):
+    @math._auto_cast_of_elewise
+    def test_vmadd(args):
+        return None
+
+    lhs_shape = (16, 64)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    mid_shape = (16, 64)
+    rhs_shape = (16, 64)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        test_vmadd([lhs, mid_shape, rhs])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_auto_cast_of_elewise_three_input_not_same_exception(_):
+    @math._auto_cast_of_elewise
+    def test_vmadd(args):
+        return None
+
+    lhs_shape = (16, 64)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    mid_shape = (16, 64)
+    mid = tvm.placeholder(mid_shape, name="mid", dtype="int8")
+    rhs_shape = (16, 64)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        test_vmadd([lhs, mid, rhs])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_check_multi_compute_pattern_exception(_):
+    lhs_shape = (1, 2, 3)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    pattern = (123,)
+    try:
+        math._check_multi_compute_pattern(pattern, lhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vmod_first_input_not_tensor_exception(_):
+    shape_first = (16, 64, 1, 8)
+    shape_second = (16, 64, 1, 8)
+    tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="float32")
+    try:
+        math.vmod(shape_first, tensor_second)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vaxpy_second_input_not_tensor_exception(_):
+    shape_first = (16, 64, 1, 8)
+    tensor_first = tvm.placeholder(shape_first, name="tensor_first", dtype="float16")
+    shape_second = (16, 64, 1, 8)
+    scalar_third = tvm.const(2, dtype="float16")
+    try:
+        math.vaxpy(shape_first, shape_second, scalar_third)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vcmp_input_check_exception(_):
+    shape_first = (16, 64, 1, 8)
+    shape_second = (16, 64, 1, 8)
+    tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="float16")
+    try:
+        math.vcmp(shape_first, tensor_second, "lt", "bool")
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vcmp_check_and_change_rhs_dtype_exception(_):
+    shape_first = (16, 64, -1, 8)
+    tensor_first = tvm.placeholder(shape_first, name="tensor_first", dtype="float16")
+    shape_second = (16, 64, -1, 8)
+    tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="float32")
+    try:
+        math.vcmp(tensor_first, tensor_second, "lt", "bool")
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vcmp_bit_mode_exception(_):
+    shape_first = (16, 64, 1, 7)
+    tensor_first = tvm.placeholder(shape_first, name="tensor_first", dtype="float16")
+    shape_second = (16, 64, 1, 7)
+    tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="float16")
+    try:
+        math.vcmp(tensor_first, tensor_second, "lt", "bit")
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vlogic_dynamic_support_exception(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        shape_first = (16, 64, -1, 8)
+        tensor_first = tvm.placeholder(shape_first, name="tensor_first", dtype="bool")
+        shape_second = (16, 64, -1, 8)
+        tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="bool")
+        try:
+            math.vlogic(tensor_first, tensor_second, "logic_and")
+        except RuntimeError as e:
+            errorCode = e.args[0].get("errCode")
+            if errorCode == "E90003":
+                return True
+        return False
+
+
+def test_vlogic_operation_support_exception(_):
+    shape_first = (16, 64, 1, 8)
+    tensor_first = tvm.placeholder(shape_first, name="tensor_first", dtype="bool")
+    shape_second = (16, 64, 1, 8)
+    tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="bool")
+    operation = "logic_add"
+    try:
+        math.vlogic(tensor_first, tensor_second, operation)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True  
+    return False
+
+
+def test_vlogic_lhs_not_tensor_exception(_):
+    shape_first = (16, 64, 1, 8)
+    shape_second = (16, 64, 1, 8)
+    tensor_second = tvm.placeholder(shape_second, name="tensor_second", dtype="float16")
+    operation = "logic_and"
+    try:
+        math.vlogic(shape_first, tensor_second, operation)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vlogic_rhs_not_tensor_exception(_):
+    shape_first = (16, 64, 1, 8)
+    tensor_first = tvm.placeholder(shape_first, name="tensor_first", dtype="bool")
+    shape_second = (16, 64, 1, 8)
+    operation = "logic_and"
+    try:
+        math.vlogic(tensor_first, shape_second, operation)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_binary_elewise_op_dtype_not_same_exception(_):
+    lhs_shape = (1, 32, 32, 16)
+    rhs_shape = (1, 32, 32, 16)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float32")
+    op_name = "elewise_binary_and"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_binary_elewise_op_axpy_dtype_not_same_exception(_):
+    lhs_shape = (1, 32, 32, 16)
+    rhs_shape = (1, 32, 32, 16)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float32")
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    const_scalar = tvm.const(2, dtype="float16")
+    op_name = "elewise_binary_scalar_axpy"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name,args=[const_scalar])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True
+    return False
+
+
+def test_binary_elewise_op_axpy_not_support_dtype_exception(_):
+    lhs_shape = (1, 32, 32, 16)
+    rhs_shape = (1, 32, 32, 16)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="int8")
+    const_scalar = tvm.const(2, dtype="float16")
+    op_name = "elewise_binary_scalar_axpy"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name,args=[const_scalar])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True
+    return False
+
+
+def test_binary_elewise_op_cmp_mode_support_exception(_):
+    lhs_shape = (1, 32, 32, 16)
+    rhs_shape = (1, 32, 32, 16)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="int8")
+    op_name = "emit_insn_elewise_binary_cmp"
+    operation = "gl"
+    mode = "bool"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name, args=[operation, mode])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True
+    return False
+
+
+def test_binary_elewise_op_logic_mode_exception(_):
+    lhs_shape = (1, 32, 32, 16)
+    rhs_shape = (1, 32, 32, 16)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="int8")
+    op_name = "elewise_binary_logic"
+    operation = "add"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name, args=[operation])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True
+    return False
+
+
+def test_binary_elewise_op_name_exception(_):
+    lhs_shape = (1, 32, 32, 16)
+    rhs_shape = (1, 32, 32, 16)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    op_name = "elewise_binary_abc"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90003":
+            return True
+    return False
+
+
+def test_binary_elewise_op_cmp_bit_exception(_):
+    lhs_shape = (16, 64, 1, 7)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs_shape = (16, 64, 1, 7)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    op_name = "emit_insn_elewise_binary_cmp"
+    operation = "lt"
+    mode = "bit"
+    try:
+        math.__binary_elewise_op(lhs, rhs, op_name, [operation, mode])
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vmla_input_type_exception(_):
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    mid_shape = (16, 64, 1, 8)
+    rhs_shape = (16, 64, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math.vmla(lhs, mid_shape, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vmadd_input_type_exception(_):
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    mid_shape = (16, 64, 1, 8)
+    rhs_shape = (16, 64, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math.vmadd(lhs, mid_shape, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_multiple_elewise_op_dtype_exception(_):
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    mid_shape = (16, 64, 1, 8)
+    mid = tvm.placeholder(mid_shape, name="mid", dtype="float32")
+    rhs_shape = (16, 64, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    op_name = "elewise_multiple_madd"
+    try:
+        math.__multiple_elewise_op(lhs, mid, rhs, op_name)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True
+    return False
+
+
+def test_multiple_elewise_op_dtype_support_exception(_):
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
+    mid_shape = (16, 64, 1, 8)
+    mid = tvm.placeholder(mid_shape, name="mid", dtype="int8")
+    rhs_shape = (16, 64, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="int8")
+    op_name = "elewise_multiple_madd"
+    try:
+        math.__multiple_elewise_op(lhs, mid, rhs, op_name)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90002":
+            return True
+    return False
+
+
+def test_vsel_bit_shape_check_len_diff_exception(_):
+    condition_shape = (16, 64,)
+    condition = tvm.placeholder(condition_shape, name="condition", dtype="float16")
+    input_shape = (16, 64, 1, 8)
+    input = tvm.placeholder(input_shape, name="input", dtype="float16")
+    try:
+        math._vsel_bit_shape_check(condition, input)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vsel_bit_shape_check_last_dim_exception(_):
+    condition_shape = (16, 64, 1, 7)
+    condition = tvm.placeholder(condition_shape, name="condition", dtype="float16")
+    input_shape = (16, 64, 1, 7)
+    input = tvm.placeholder(input_shape, name="input", dtype="float16")
+    try:
+        math._vsel_bit_shape_check(condition, input)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vsel_bit_shape_check_shape_equal_exception(_):
+    condition_shape = (16, 64, 1, 8)
+    condition = tvm.placeholder(condition_shape, name="condition", dtype="float16")
+    input_shape = (16, 64, 2, 8)
+    input = tvm.placeholder(input_shape, name="input", dtype="float16")
+    try:
+        math._vsel_bit_shape_check(condition, input)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vsel_bit_shape_check_shape_legal_exception(_):
+    condition_shape = (16, 64, -1, 8)
+    condition = tvm.placeholder(condition_shape, name="condition", dtype="float16")
+    input_shape = (16, 64, -1, 8)
+    input = tvm.placeholder(input_shape, name="input", dtype="float16")
+    try:
+        math._vsel_bit_shape_check(condition, input)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vsel_condition_type_exception(_):
+    condition_shape = (16, 64, 1, 8)
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs_shape = (16, 64, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math.vsel(condition_shape, lhs, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vsel_last_dim_exception(_):
+    condition_shape = (16, 64, 1, 7)
+    condition = tvm.placeholder(condition_shape, name="condition", dtype="bool")
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs_shape = (16, 64, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math.vsel(condition, lhs, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vsel_dynamic_condition_dtype_exception(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        condition_shape = (16, 64, -1, 8)
+        condition = tvm.placeholder(condition_shape, name="condition", dtype="float16")
+        lhs_shape = (16, 64, -1, 8)
+        lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+        rhs_shape = (16, 64, -1, 8)
+        rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+        try:
+            math.vsel(condition, lhs, rhs)
+        except RuntimeError as e:
+            errorCode = e.args[0].get("errCode")
+            if errorCode == "E90003":
+                return True
+        return False
+
+
+def test_vcmpsel_data_shape_check_exception(_):
+    lhs_shape = (16, 64, -1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs_shape = (16, 64, -1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math._vcmpsel_data_shape_check(lhs, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vcmpsel_data_shape_len_exception(_):
+    lhs_shape = (16, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs_shape = (16, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math._vcmpsel_data_shape_check(lhs, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vcmpsel_data_shape_diff_exception(_):
+    lhs_shape = (16, 2, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
+    rhs_shape = (16, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math._vcmpsel_data_shape_check(lhs, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
+def test_vcmpsel_data_dtype_check_exception(_):
+    lhs_shape = (16, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float32")
+    rhs_shape = (16, 1, 8)
+    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
+    try:
+        math._vcmpsel_data_dtype_check(lhs, rhs)
+    except RuntimeError as e:
+        errorCode = e.args[0].get("errCode")
+        if errorCode == "E90001":
+            return True
+    return False
+
+
 test_func_list = [
     test_var_addition,
     test_single_elewise_op_name_check,
@@ -446,7 +977,42 @@ test_func_list = [
     test_vcmpsel_dsl_ttts_op,
     test_vcmpsel_dsl_ttst_op,
     test_vcmpsel_dsl_tstt_op,
-    test_vcmpsel_dsl_tttt_op
+    test_vcmpsel_dsl_tttt_op,
+    test_auto_cast_of_elewise_first_input_not_tensor_exception,
+    test_auto_cast_of_elewise_second_input_not_tensor_exception,
+    test_auto_cast_of_elewise_three_input_not_same_exception,
+    test_check_multi_compute_pattern_exception,
+    test_vmod_first_input_not_tensor_exception,
+    test_vaxpy_second_input_not_tensor_exception,
+    test_vcmp_input_check_exception,
+    test_vcmp_check_and_change_rhs_dtype_exception,
+    test_vcmp_bit_mode_exception,
+    test_vlogic_dynamic_support_exception,
+    test_vlogic_operation_support_exception,
+    test_vlogic_lhs_not_tensor_exception,
+    test_vlogic_rhs_not_tensor_exception,
+    test_binary_elewise_op_dtype_not_same_exception,
+    test_binary_elewise_op_axpy_dtype_not_same_exception,
+    test_binary_elewise_op_axpy_not_support_dtype_exception,
+    test_binary_elewise_op_cmp_mode_support_exception,
+    test_binary_elewise_op_logic_mode_exception,
+    test_binary_elewise_op_name_exception,
+    test_binary_elewise_op_cmp_bit_exception,
+    test_vmla_input_type_exception,
+    test_vmadd_input_type_exception,
+    test_multiple_elewise_op_dtype_exception,
+    test_multiple_elewise_op_dtype_support_exception,
+    test_vsel_bit_shape_check_len_diff_exception,
+    test_vsel_bit_shape_check_last_dim_exception,
+    test_vsel_bit_shape_check_shape_equal_exception,
+    test_vsel_bit_shape_check_shape_legal_exception,
+    test_vsel_condition_type_exception,
+    test_vsel_last_dim_exception,
+    test_vsel_dynamic_condition_dtype_exception,
+    test_vcmpsel_data_shape_check_exception,
+    test_vcmpsel_data_shape_len_exception,
+    test_vcmpsel_data_shape_diff_exception,
+    test_vcmpsel_data_dtype_check_exception,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)

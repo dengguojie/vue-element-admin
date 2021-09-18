@@ -42,13 +42,13 @@ def _check(ins, dim_len, min_dim_len):
                 is_illegal_case = True
 
     if is_illegal_case:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "dim len of input in norm classifier must be the same except -2"
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if min_dim_len > dim_len:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "min_dim_len in norm classifier should not be larger than dim_len"
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -75,7 +75,7 @@ def _infer_negative_two(ins, axis):
                 single_input["range"] = [(1, None)] * dim_len
     ins_list.append(local_ins)
 
-    min_dim_len = max([x + dim_len if x < 0 else x for x in axis]) + 1
+    min_dim_len = max(x + dim_len if x < 0 else x for x in axis) + 1
     _check(local_ins, dim_len, min_dim_len)
 
     # special case, input are all -2

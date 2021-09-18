@@ -56,7 +56,7 @@ def _para_check_of_cast(func, *args, **kwargs):
     intr = func.__name__
     if len(args) == 2:
         if not isinstance(args[0], tvm.tensor.Tensor):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The first input type must be [%s]," \
                                           " while type is [%s]" % ('tvm.tensor', type(args[0]))
@@ -68,13 +68,13 @@ def _para_check_of_cast(func, *args, **kwargs):
 
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "[%s] is not supported!" % intr
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if cast_type not in supported_dtypes:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "the target platform is not " \
                                           "support %s %s" % (cast_type, intr)
@@ -119,7 +119,7 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
             raw_tensor = _cast_op(raw_tensor, "int16", 'elewise_single_cast')
             src_dtype = raw_tensor.dtype
         else:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "Unsupported cast type! src_dtype is [%s]," \
                                           " dst_dtype is [%s]" % (src_dtype.lower(), dst_dtype.lower())
@@ -276,8 +276,7 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     check_input_tensor_shape(shape)
     if is_debug_mode():
         return _cast_op_for_protogenes(tensor, op_type, shape)
-    else:
-        return _cast_op_for_davinci(tensor, is_auto_cast, op_type, shape, output_dtype)
+    return _cast_op_for_davinci(tensor, is_auto_cast, op_type, shape, output_dtype)
 
 
 def _cast_op_for_davinci(tensor, is_auto_cast, op_type, shape, output_dtype):
@@ -297,7 +296,7 @@ def _cast_op_for_davinci(tensor, is_auto_cast, op_type, shape, output_dtype):
     elif op_type == "elewise_single_round_d":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "operation %s not support yet." % op_type
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -324,7 +323,7 @@ def _cast_op_for_protogenes(tensor, op_type, shape):
     elif op_type == "elewise_single_trunc":
         lambda_func = lambda *indice: tvm.trunc(tensor(*indice))
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "operation %s not support yet." % op_type
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -357,7 +356,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     if isinstance(data, tvm.tensor.Tensor):
         data_dtype = getattr(data, 'dtype')
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The cast input type must be " \
                                       "tvm.tensor, while is [%s]" % type(data)
@@ -430,7 +429,7 @@ def cast_to_round(data, dtype):
                   DeprecationWarning)
     dtype = dtype.lower()
     if dtype != "int32":
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The cast output dtype must be int32," \
                                       " while is [%s]" % dtype

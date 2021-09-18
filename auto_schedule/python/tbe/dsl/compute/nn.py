@@ -59,14 +59,14 @@ def vmaddrelu(tensor_0, tensor_1, tensor_2):
     wrapped_tensor : relu(tensor_0*tensor_2 + tensor_1)
     """
     if not isinstance(tensor_1, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % (
                                       'tvm.tensor', type(tensor_1))
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(tensor_2, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The third input type must be [%s], " \
                                       "while type is [%s]" % (
@@ -96,7 +96,7 @@ def vaddrelu(lhs, rhs):
     wrapped_tensor : relu (lhs + rhs)
     """
     if not isinstance(lhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The lhs input type must be [%s], " \
                                       "while type is [%s]" \
@@ -104,7 +104,7 @@ def vaddrelu(lhs, rhs):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The rhs input type must be [%s], " \
                                       "while type is [%s]" \
@@ -112,7 +112,7 @@ def vaddrelu(lhs, rhs):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if lhs.dtype != rhs.dtype:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "dtype must be the same, " \
                                       "while lhs is %s, rhs is %s" % (
@@ -157,7 +157,7 @@ def vsubrelu(lhs, rhs):
     wrapped_tensor : relu (lhs - rhs)
     """
     if not isinstance(lhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The lhs input type must be [%s], " \
                                       "while type is [%s]" \
@@ -165,7 +165,7 @@ def vsubrelu(lhs, rhs):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The rhs input type must be [%s], " \
                                       "while type is [%s]" \
@@ -173,7 +173,7 @@ def vsubrelu(lhs, rhs):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if lhs.dtype != rhs.dtype:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "dtype must be the same, " \
                                       "while lhs is %s, rhs is %s" % (
@@ -249,7 +249,7 @@ def vlrelu(raw_tensor, alpha=0):
 
     if judge_var(alpha) == "tvm_const":
         if alpha.dtype != dtype:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The dtype of alpha [%s] " \
                                           "must be equal to raw_tensor's [%s]"\
@@ -260,7 +260,7 @@ def vlrelu(raw_tensor, alpha=0):
         alpha_value = alpha
         alpha = tvm.const(alpha, dtype=dtype)
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % \
@@ -349,7 +349,7 @@ def broadcast(var, shape, output_dtype=None):
     wrapped_tensor : broadcast tensor
     """
     if not isinstance(shape, (list, tuple, tvm.container.Array)):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "the input parameter shape must be " \
                                       "list or tuple, while type of input is %s" % (type(shape))
@@ -400,7 +400,7 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
     orig_shape = shape_to_list(tensor.shape)
     check_input_tensor_shape(orig_shape)
     if len(orig_shape) > len(shape):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "Length of original shape must be " \
                                       "smaller than target shape, but src shape is %s, " \
@@ -422,7 +422,7 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
                 isinstance(dst_shape, valid_types):
             is_unknown_broadcast = True
             continue
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "For tensor broadcasting, shape must " \
                                       "be the same or corresponding shape of" \
@@ -454,9 +454,8 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
                 else:
                     index.append(tvm.select(orig_shape[i] == 1, 0, indices[i]))
             return tensor(*(index[difference:]))
-        else:
-            return tensor(*([0 if orig_shape[i] == 1 else
-                             indices[i] for i in range(len(orig_shape))][difference:]))
+        return tensor(*([0 if orig_shape[i] == 1 else
+                         indices[i] for i in range(len(orig_shape))][difference:]))
 
     with tvm.tag_scope(_op):
         out = tvm.compute(shape, lambda_func, name=name)

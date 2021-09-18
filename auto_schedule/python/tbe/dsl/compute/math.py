@@ -61,7 +61,7 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
     def _check_args_type(args):
         if len(args) in (1, 2, 3):
             if not isinstance(args[0], tvm.tensor.Tensor):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The first input type must be [%s]" \
                                               ", while type is [%s]" \
@@ -69,7 +69,7 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             if len(args) == 3:
                 if not isinstance(args[1], tvm.tensor.Tensor):
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                                   "while type is [%s]" \
@@ -169,7 +169,7 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
                 tensor_2_t = tensor_2
 
                 if dtype_0 != dtype_1 or dtype_0 != dtype_2 or dtype_2 != dtype_1:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "Input tensors must has same dtype! " \
                                                   "while dtype_0 is [%s], " \
@@ -346,7 +346,7 @@ def vmuls(raw_tensor, scalar):
     dtype = raw_tensor.dtype
 
     if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % ('scalar', type(scalar))
@@ -375,7 +375,7 @@ def vadds(raw_tensor, scalar):
     dtype = raw_tensor.dtype
 
     if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % (
@@ -407,7 +407,7 @@ def vmaxs(raw_tensor, scalar):
     dtype = raw_tensor.dtype
 
     if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % (
@@ -439,7 +439,7 @@ def vmins(raw_tensor, scalar):
     dtype = raw_tensor.dtype
 
     if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % (
@@ -754,7 +754,7 @@ def _check_multi_compute_pattern(pattern, *tensors):
             else:
                 tensors = tuple(tensors[0].op.input_tensors)
         else:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "A valid pattern list should be a " \
                                           "string or tuple, while is [%s]" % type(pat)
@@ -900,7 +900,7 @@ def _check_elewise_single_shape(input_tensor):
     for i in range(len(input_tensor.shape)):
         if input_tensor.shape[i].value <= 0 \
                 or isinstance(input_tensor.shape[i].value, int) is False:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input shape value [%s] " \
                                           "must be a positive integer or -1!" \
@@ -944,7 +944,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     elif op_name == "elewise_single_rsqrt":
         lambda_func = lambda *indice: tvm.rsqrt(input_tensor(*indice))
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "operation %s not support yet" % op_name
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -1032,7 +1032,7 @@ def vmul(lhs, rhs):
     wrapped_tensor : lhs*rhs
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = \
             "The second input type must be [%s], while type is [%s]" % (
@@ -1060,7 +1060,7 @@ def vdiv(lhs, rhs):
     wrapped_tensor: lhs / rhs
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = \
             "The second input type must be [%s], while type is [%s]" % (
@@ -1168,14 +1168,14 @@ def vmod(lhs, rhs):
     wrapped_tensor : lhs - floor(lhs/rhs) * rhs
     """
     if not isinstance(lhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = \
             "The first input type must be [%s], while type is [%s]" % (
                 'tvm.tensor', type(lhs))
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = \
             "The second input type must be [%s], while type is [%s]" % (
@@ -1184,7 +1184,7 @@ def vmod(lhs, rhs):
 
     _check_elewise_binary_shape(lhs, rhs)
     if lhs.dtype != rhs.dtype:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = \
             "dtype must be the same while lhType is [%s], rhType is [%s]" \
@@ -1195,16 +1195,10 @@ def vmod(lhs, rhs):
     # and mini should improve vmod calculation accuracy.
     if (not intrinsic_check_support("Intrinsic_vdiv")) and \
             (not intrinsic_check_support("Intrinsic_vconv", "f322s32f")):
-        if lhs.dtype not in ("float16", ):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = \
-                "dtype must be float16, while dtype is [%s]" % lhs.dtype
-            raise RuntimeError(dict_args, get_error_message(dict_args))
         res = __vmod_mini(lhs, rhs)
     elif not intrinsic_check_support("Intrinsic_vconv", "f322s32f"):
         if lhs.dtype not in ("float16", ):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = \
                 "dtype must be float16, while dtype is [%s]" % lhs.dtype
@@ -1212,7 +1206,7 @@ def vmod(lhs, rhs):
         res = __vmod_small_hisi(lhs, rhs)
     else:
         if lhs.dtype not in ("float16", "float32"):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = \
                 "dtype must be float16 or float32, while dtype is [%s]" % lhs.dtype
@@ -1242,7 +1236,7 @@ def vadd(lhs, rhs):
     """
 
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1285,7 +1279,7 @@ def vsub(lhs, rhs):
     """
 
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1311,7 +1305,7 @@ def vmin(lhs, rhs):
     wrapped_tensor : min(lhs , rhs)
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1337,7 +1331,7 @@ def vmax(lhs, rhs):
     wrapped_tensor : max(lhs , rhs)
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1363,7 +1357,7 @@ def vor(lhs, rhs):
     wrapped_tensor : or(lhs , rhs)
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1389,7 +1383,7 @@ def vand(lhs, rhs):
     wrapped_tensor : max(lhs , rhs)
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1415,14 +1409,14 @@ def vaxpy(lhs, rhs, scalar):
     wrapped_tensor : max(lhs , rhs)
     """
     if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" \
                                       % ('tvm.tensor', type(rhs))
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The third input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1470,7 +1464,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     def __vcmp_input_check(lhs, operation, mode, shape):
 
         if not isinstance(lhs, tvm.tensor.Tensor):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input type must be [%s], " \
                                           "while type is [%s]" \
@@ -1478,7 +1472,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if operation not in ['eq', 'ne', 'lt', 'gt', 'ge', 'le']:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "vcmp does not support the " \
                                           "operation: %s, The operation's " \
@@ -1486,14 +1480,14 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if mode not in ['bool', 'bit']:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The op's mode must be bit and bool," \
                                           " while mode is [%s]" % mode
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if mode == 'bit' and isinstance(shape[-1], int) and shape[-1] % 8 != 0:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "in bit mode the last dim must be " \
                                           "mutiply of 8, while last dim is [%s]" % shape[-1]
@@ -1509,7 +1503,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
         def __check_and_change_rhs_dtype(lhs, rhs):
             if isinstance(rhs, tvm.tensor.Tensor):
                 if lhs.dtype != rhs.dtype:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "dtype must be the same, " \
                                                   "while lhs is %s, rhs is %s" % (lhs.dtype, rhs.dtype)
@@ -1592,7 +1586,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     # no need to cast to back in auto schedule
     if isinstance(rhs, tvm.tensor.Tensor):
         if lhs.dtype != rhs.dtype:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "dtype must be the same, " \
                                           "while lhs is %s, rhs is %s" % (lhs.dtype, rhs.dtype)
@@ -1645,7 +1639,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     if mode == 'bit':
         shape = shape_to_list(lhs.shape)
         if shape[-1] % 8 != 0:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "in bit mode the last dim must be " \
                                           "mutiply of 8, while last dim is [%s]" % \
@@ -1701,13 +1695,13 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     wrapped_tensor
     """
     if in_dynamic_and_static_unify():
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "Dynamic shape not support vlogic"
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if operation not in ['logic_and', 'logic_or', 'logic_not']:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90002"
         dict_args["detailed_cause"] = "vlogic does not support the " \
                                       "operation: %s, The operation's " \
@@ -1715,7 +1709,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if not isinstance(lhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The lhs input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1723,7 +1717,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if operation != "logic_not" and not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The rhs input type must be [%s], " \
                                       "while type is [%s]" \
@@ -1744,7 +1738,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
     """
     _check_elewise_binary_shape(tensor_l, tensor_r)
     if tensor_l.dtype != tensor_r.dtype and op_name != "elewise_binary_scalar_axpy":
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "dtype must be the same, while lhType " \
                                       "is [%s], rhType is [%s]" \
@@ -1790,7 +1784,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
                                                    tensor_l.dtype)
         if tensor_l.dtype != tensor_r.dtype:
             if tensor_l.dtype != "float16" or tensor_r.dtype != "float32":
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90002"
                 dict_args["detailed_cause"] = "dtype error, vaxpy not support " \
                                               "mixed data type auto cast, " \
@@ -1799,7 +1793,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
                                               % (tensor_l.dtype, tensor_r.dtype)
                 raise RuntimeError(dict_args, get_error_message(dict_args))
         elif not is_support_dtype:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "dtype error, vaxpy not support " \
                                           "mixed data type auto cast, " \
@@ -1828,7 +1822,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
             lambda_func = lambda *indice: \
                 tvm.expr.NE(tensor_l(*indice), tensor_r(*indice))
         else:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "vcmp do not support the " \
                                           "input op_name: %s" % operation
@@ -1842,14 +1836,14 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
         elif operation == 'not':
             lambda_func = lambda *indice: ~tensor_l(*indice)
         else:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "vlogic do not support the " \
                                           "input op_name: %s" % operation
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "operation %s not support yet" % op_name
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -1857,7 +1851,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
     if op_name == "emit_insn_elewise_binary_cmp" and args[1] == 'bit':
         shape = shape_to_list(shape)
         if shape[-1] % 8 != 0:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input shape's last axis must be " \
                                           "mutiply of 8, while last dim is [%s]" % \
@@ -1906,7 +1900,7 @@ def _check_elewise_binary_shape(lhs, rhs):
     :return:
     """
     if len(lhs.shape) != len(rhs.shape):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The lhs ndim [%s] must be equal" \
                                       " to the rhs [%s]" % (len(lhs.shape), len(rhs.shape))
@@ -1920,7 +1914,7 @@ def _check_elewise_binary_shape(lhs, rhs):
             continue
 
         if not equal(_l, _r):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The lhs shape [%s] must be equal" \
                                     " to the rhs [%s]" % (lhs.shape, rhs.shape)
@@ -1930,7 +1924,7 @@ def _check_elewise_binary_shape(lhs, rhs):
         for sh_value in lhs.shape:
             if sh_value.value <= 0 \
                     or not isinstance(sh_value.value, int):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The input shape value [%s] must be a positive integer" % sh_value.value
                 raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -1944,7 +1938,7 @@ def _check_is_equal(lhs, rhs):
     :return:
     """
     if lhs.value == rhs.value:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
                                       "lhs should unequal to rhs"
@@ -1966,13 +1960,13 @@ def vmla(tensor_0, tensor_1, tensor_2):
     wrapped_tensor : X*tensor_1 + tensor_2
     """
     if not isinstance(tensor_1, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % ('tvm.tensor', type(tensor_1))
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(tensor_2, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The third input type must be [%s], " \
                                       "while type is [%s]" % ('tvm.tensor', type(tensor_2))
@@ -1997,14 +1991,14 @@ def vmadd(tensor_0, tensor_1, tensor_2):
     wrapped_tensor : tensor_0*tensor_2 + tensor_1
     """
     if not isinstance(tensor_1, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The second input type must be [%s], " \
                                       "while type is [%s]" % (
                                       'tvm.tensor', type(tensor_1))
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(tensor_2, tvm.tensor.Tensor):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The third input type must be [%s], " \
                                       "while type is [%s]" % (
@@ -2030,7 +2024,7 @@ def __multiple_elewise_op(tensor_0, tensor_1, tensor_2, op_name):
                 or tensor_0.dtype != tensor_1.dtype \
                 or tensor_0.dtype != "float16" \
                 or tensor_2.dtype != "float32":
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "dtype error, vmla not support " \
                                           "mixed data type auto cast, " \
@@ -2040,7 +2034,7 @@ def __multiple_elewise_op(tensor_0, tensor_1, tensor_2, op_name):
                                           % (tensor_0.dtype, tensor_1.dtype, tensor_2.dtype)
             raise RuntimeError(dict_args, get_error_message(dict_args))
     elif not is_support_dtype:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90002"
         dict_args["detailed_cause"] = "dtype error, vmla not support " \
                                       "mixed data type auto cast, " \
@@ -2062,7 +2056,7 @@ def __multiple_elewise_op(tensor_0, tensor_1, tensor_2, op_name):
         lambda_func = lambda *indice: \
             tvm.relu(tensor_0(*indice) * tensor_2(*indice) + tensor_1(*indice))
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "operation %s not support yet" % op_name
         raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -2099,7 +2093,7 @@ def _check_multiple_elewise_op_shape(tensor_0, tensor_1, tensor_2):
     """
     if len(tensor_0.shape) != len(tensor_1.shape) or len(tensor_0.shape) != len(tensor_2.shape) \
             or len(tensor_2.shape) != len(tensor_1.shape):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The input shape ndim must be equal to" \
                                       " the each other, " \
@@ -2111,7 +2105,7 @@ def _check_multiple_elewise_op_shape(tensor_0, tensor_1, tensor_2):
 
     for _a, _b, _c in zip(tensor_0.shape, tensor_1.shape, tensor_2.shape):
         if not (equal(_a, _b) and equal(_b, _c)):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input shape must be equal to the each other, " \
                                           "while tensor_0 shape is [%s], " \
@@ -2123,7 +2117,7 @@ def _check_multiple_elewise_op_shape(tensor_0, tensor_1, tensor_2):
     if not operation_context.in_dynamic():
         for i in range(len(tensor_0.shape)):
             if tensor_0.shape[i].value <= 0 or isinstance(tensor_0.shape[i].value, int) is False:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The input shape value must " \
                                               "be a positive integer, " \
@@ -2139,7 +2133,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
     :return:
     """
     if len(condition.shape) != len(input_tensor.shape):
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "The condition ndim [%s] must " \
                                       "be equal to the input_tensor [%s]" \
@@ -2150,7 +2144,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
         if i == len(condition.shape) - 1:
             if (input_tensor.shape[i].value % 8 != 0) \
                     or (input_tensor.shape[i].value // 8 != condition.shape[i].value):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "the sel tensor's last dim [%s] " \
                                               "must be multiple of 8 " \
@@ -2161,7 +2155,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
                 raise RuntimeError(dict_args, get_error_message(dict_args))
         else:
             if condition.shape[i].value != input_tensor.shape[i].value:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The lhs shape [%s] must be " \
                                               "equal to the rhs [%s]" \
@@ -2171,7 +2165,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
     for i in range(len(input_tensor.shape)):
         if input_tensor.shape[i].value <= 0 \
                 or isinstance(input_tensor.shape[i].value, int) is False:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input shape value [%s] must " \
                                           "be a positive integer" % input_tensor.shape[i].value
@@ -2202,7 +2196,7 @@ def vsel(condition, lhs, rhs):
     def __vsel_input_check(condition):
 
         if not isinstance(condition, tvm.tensor.Tensor):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = \
                 "The condition type must be [%s], while type is [%s]" % (
@@ -2228,14 +2222,14 @@ def vsel(condition, lhs, rhs):
     def _check_two_scalar_inputs(lhs, rhs):
         # if lhs,rhs are all scalar, only support float16
         if judge_var(lhs) == "tvm_const" and lhs.dtype != "float16":
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
                                           "only support float16, while lhs.dtype is [%s]" % lhs.dtype
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if judge_var(rhs) == "tvm_const" and rhs.dtype != "float16":
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "when lhs and rhs are all scalar, " \
                                           "only support float16, while rhs.dtype is [%s]" % rhs.dtype
@@ -2244,7 +2238,7 @@ def vsel(condition, lhs, rhs):
     # dynamic realize
     def _dynamic_check_shape(condition_shape):
         if isinstance(condition_shape[-1], int) and condition_shape[-1] % 8 != 0:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "vsel last dim must be " \
                                           "mutiply of 8, while last dim is [%s]" % condition_shape[-1]
@@ -2256,7 +2250,7 @@ def vsel(condition, lhs, rhs):
 
         def _check_dynamic_condition_dtype(condition_dtype):
             if condition_dtype not in ("uint1", "bool"):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90003"
                 dict_args["detailed_cause"] = "Dynamic shape vsel only support uint1 and bool, " \
                                               "but condtion dtype is [%s]" % condition_dtype
@@ -2425,7 +2419,7 @@ def vsel(condition, lhs, rhs):
         with tvm.tag_scope(op_name):
             tmp = tvm.compute(shape, _compute, name=name)
     else:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "condition only support bool and " \
                                       "uint8, but condition dtype is [%s]" % condition.dtype
@@ -2446,18 +2440,10 @@ def _vcmpsel_data_shape_check(*args):
     arg_temp = args[0]
 
     for sh_value in arg_temp.shape:
-        if operation_context.in_dynamic():
-            if not isinstance(sh_value, tvm.expr.Expr):
-                if sh_value.value == 0 or not isinstance(sh_value.value, int):
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "dynamic input shape value [%s]" \
-                                                  " must be a nonzero integer or variable!" % sh_value.value
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-        else:
+        if not operation_context.in_dynamic():
             if sh_value.value <= 0 \
                     or not isinstance(sh_value.value, int):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The input shape value [%d] " \
                                               "must be a positive integer!" % sh_value.value
@@ -2465,7 +2451,7 @@ def _vcmpsel_data_shape_check(*args):
 
     for arg in args:
         if len(arg.shape) != len(arg_temp.shape):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input shape ndim must be equal" \
                                           " to the each other! " \
@@ -2476,7 +2462,7 @@ def _vcmpsel_data_shape_check(*args):
     for i in range(len(arg_temp.shape)):
         for arg in args:
             if not equal(arg_temp.shape[i], arg.shape[i]):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The lhs shape [%s] must be " \
                                               "equal to the rhs [%s]" % (arg_temp.shape, arg.shape)
@@ -2493,7 +2479,7 @@ def _vcmpsel_data_dtype_check(*args):
 
     for arg in args:
         if arg.dtype != arg_temp.dtype:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "The input dtype must be the same " \
                                           "to the each other! while arg.dtype is [%s], " \
@@ -2524,29 +2510,13 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     wrapped_tensor
     """
     def check_input(lhs, operation):
-        if not isinstance(lhs, tvm.tensor.Tensor):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = \
-                "The second input type must be [%s], while type is [%s]" % (
-                'tvm.tensor', type(lhs))
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
         if operation not in ['eq', 'ne', 'lt', 'gt', 'ge', 'le']:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "vcmpsel does not support the " \
                                           "operation: %s, The operation's " \
                                           "value must be eq, ne, lt, gt, ge, le!" % operation
             raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        if in_dynamic_and_static_unify():
-            if not dsl_check_support("tbe.dsl.vcmpsel", lhs.dtype):
-                dict_args = dict()
-                dict_args["errCode"] = "E90002"
-                dict_args["detailed_cause"] = "dynamic tbe.dsl.vcmpsel is not" \
-                                              " supported [%s]!" % (lhs.dtype,)
-                raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_input(lhs, operation)
 
@@ -2576,24 +2546,15 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
             }
             lambda_func = dynamic_cmpvs_lambda_func_dict[operation]
         else:
-            if operation == 'lt':
-                lambda_func = lambda *indice: lhs(*indice) < rhs
-            elif operation == 'gt':
-                lambda_func = lambda *indice: lhs(*indice) > rhs
-            elif operation == 'le':
-                lambda_func = lambda *indice: lhs(*indice) <= rhs
-            elif operation == 'ge':
-                lambda_func = lambda *indice: lhs(*indice) >= rhs
-            elif operation == 'eq':
-                lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
-            elif operation == 'ne':
-                lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
-            else:
-                dict_args = dict()
-                dict_args["errCode"] = "E90002"
-                dict_args["detailed_cause"] = "vcmp do not support the " \
-                                              "input op_name: %s" % operation
-                raise RuntimeError(dict_args, get_error_message(dict_args))
+            cmpvs_lambda_func_dict = {
+                'lt' : lambda *indice: lhs(*indice) < rhs,
+                'gt' : lambda *indice: lhs(*indice) > rhs,
+                'le' : lambda *indice: lhs(*indice) <= rhs,
+                'ge' : lambda *indice: lhs(*indice) >= rhs,
+                'eq' : lambda *indice: tvm.expr.EQ(lhs(*indice), rhs),
+                'ne' : lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
+            }
+            lambda_func = cmpvs_lambda_func_dict[operation]
         return lambda_func
 
     def _get_cmpv_lambda_func(operation, lhs, rhs):
@@ -2608,26 +2569,15 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
             }
             lambda_func = dynamic_cmpv_lambda_func_dict[operation]
         else:
-            if operation == 'lt':
-                lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
-            elif operation == 'gt':
-                lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
-            elif operation == 'le':
-                lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
-            elif operation == 'ge':
-                lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.expr.EQ(lhs(*indice), rhs(*indice))
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.expr.NE(lhs(*indice), rhs(*indice))
-            else:
-                dict_args = dict()
-                dict_args["errCode"] = "E90002"
-                dict_args["detailed_cause"] = "vcmp do not support the " \
-                                              "input op_name: %s" % operation
-                raise RuntimeError(dict_args, get_error_message(dict_args))
+            cmpv_lambda_func_dict = {
+                'lt': lambda *indice: lhs(*indice) < rhs(*indice),
+                'gt': lambda *indice: lhs(*indice) > rhs(*indice),
+                'le': lambda *indice: lhs(*indice) <= rhs(*indice),
+                'ge': lambda *indice: lhs(*indice) >= rhs(*indice),
+                'eq': lambda *indice: tvm.expr.EQ(lhs(*indice), rhs(*indice)),
+                'ne': lambda *indice: tvm.expr.NE(lhs(*indice), rhs(*indice))
+            }
+            lambda_func = cmpv_lambda_func_dict[operation]
         return lambda_func
 
     cmp_op = "elewise_binary_vcmpv_" + operation
@@ -2681,34 +2631,17 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_tsss_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs, slhs, srhs)
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs, slhs, srhs)
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs, slhs, srhs)
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs, slhs, srhs)
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs, slhs, srhs)
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs, slhs, srhs)
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                cmpsel_tsss_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs, slhs, srhs),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs, slhs, srhs),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs, slhs, srhs),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs, slhs, srhs),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs, slhs, srhs),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs, slhs, srhs)
+                }
+                return cmpsel_tsss_lambda_func_dict[operation]
 
-            lambda_func = _get_cmpsel_tsss_lambda_func(operation,
-                                                       lhs, rhs, slhs, srhs)
+            lambda_func = _get_cmpsel_tsss_lambda_func(operation, lhs, rhs, slhs, srhs)
             name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             cmpsel_op = cmpsel_op + "|" + operation
@@ -2748,31 +2681,15 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_ttss_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs(*indice), slhs, srhs)
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs(*indice), slhs, srhs)
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs(*indice), slhs, srhs)
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs(*indice), slhs, srhs)
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs(*indice), slhs, srhs)
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs(*indice), slhs, srhs)
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                cmpsel_ttss_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs(*indice), slhs, srhs),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs(*indice), slhs, srhs),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs(*indice), slhs, srhs),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs(*indice), slhs, srhs),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs(*indice), slhs, srhs),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs(*indice), slhs, srhs)
+                }
+                return cmpsel_ttss_lambda_func_dict[operation]
 
             lambda_func = _get_cmpsel_ttss_lambda_func(operation,
                                                        lhs, rhs, slhs, srhs)
@@ -2815,34 +2732,17 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_tsts_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs, slhs(*indice), srhs)
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs, slhs(*indice), srhs)
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs, slhs(*indice), srhs)
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs, slhs(*indice), srhs)
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs, slhs(*indice), srhs)
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs, slhs(*indice), srhs)
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                cmpsel_tsts_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs, slhs(*indice), srhs),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs, slhs(*indice), srhs),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs, slhs(*indice), srhs),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs, slhs(*indice), srhs),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs, slhs(*indice), srhs),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs, slhs(*indice), srhs)
+                }
+                return cmpsel_tsts_lambda_func_dict[operation]
 
-            lambda_func = _get_cmpsel_tsts_lambda_func(operation,
-                                                       lhs, rhs, slhs, srhs)
+            lambda_func = _get_cmpsel_tsts_lambda_func(operation, lhs, rhs, slhs, srhs)
             name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             cmpsel_op = cmpsel_op + "|" + operation
@@ -2882,31 +2782,15 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_tsst_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs, slhs, srhs(*indice))
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs, slhs, srhs(*indice))
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs, slhs, srhs(*indice))
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs, slhs, srhs(*indice))
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs, slhs, srhs(*indice))
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs, slhs, srhs(*indice))
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                get_cmpsel_tsst_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs, slhs, srhs(*indice)),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs, slhs, srhs(*indice)),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs, slhs, srhs(*indice)),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs, slhs, srhs(*indice)),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs, slhs, srhs(*indice)),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs, slhs, srhs(*indice))
+                }
+                return get_cmpsel_tsst_lambda_func_dict[operation]
 
             lambda_func = _get_cmpsel_tsst_lambda_func(operation,
                                                        lhs, rhs, slhs, srhs)
@@ -2949,34 +2833,17 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_ttts_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs(*indice), slhs(*indice), srhs)
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs(*indice), slhs(*indice), srhs)
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs(*indice), slhs(*indice), srhs)
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs(*indice), slhs(*indice), srhs)
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs(*indice), slhs(*indice), srhs)
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs(*indice), slhs(*indice), srhs)
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                get_cmpsel_ttts_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs(*indice), slhs(*indice), srhs),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs(*indice), slhs(*indice), srhs),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs(*indice), slhs(*indice), srhs),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs(*indice), slhs(*indice), srhs),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs(*indice), slhs(*indice), srhs),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs(*indice), slhs(*indice), srhs)
+                }
+                return get_cmpsel_ttts_lambda_func_dict[operation]
 
-            lambda_func = _get_cmpsel_ttts_lambda_func(operation,
-                                                       lhs, rhs, slhs, srhs)
+            lambda_func = _get_cmpsel_ttts_lambda_func(operation, lhs, rhs, slhs, srhs)
             name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             cmpsel_op = cmpsel_op + "|" + operation
@@ -3016,34 +2883,17 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_ttst_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs(*indice), slhs, srhs(*indice))
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs(*indice), slhs, srhs(*indice))
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs(*indice), slhs, srhs(*indice))
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs(*indice), slhs, srhs(*indice))
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs(*indice), slhs, srhs(*indice))
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs(*indice), slhs, srhs(*indice))
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                get_cmpsel_ttst_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs(*indice), slhs, srhs(*indice)),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs(*indice), slhs, srhs(*indice)),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs(*indice), slhs, srhs(*indice)),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs(*indice), slhs, srhs(*indice)),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs(*indice), slhs, srhs(*indice)),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs(*indice), slhs, srhs(*indice))
+                }
+                return get_cmpsel_ttst_lambda_func_dict[operation]
 
-            lambda_func = _get_cmpsel_ttst_lambda_func(operation,
-                                                       lhs, rhs, slhs, srhs)
+            lambda_func = _get_cmpsel_ttst_lambda_func(operation, lhs, rhs, slhs, srhs)
             name = cmpsel_op.split("_")[-2] + "_" + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             cmpsel_op = cmpsel_op + "|" + operation
@@ -3083,31 +2933,15 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
                 return tmp
 
             def _get_cmpsel_tstt_lambda_func(operation, lhs, rhs, slhs, srhs):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) < rhs, slhs(*indice), srhs(*indice))
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) > rhs, slhs(*indice), srhs(*indice))
-                elif operation == 'le':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) <= rhs, slhs(*indice), srhs(*indice))
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) >= rhs, slhs(*indice), srhs(*indice))
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) == rhs, slhs(*indice), srhs(*indice))
-                elif operation == 'ne':
-                    lambda_func = lambda *indice: \
-                        tvm.select(lhs(*indice) != rhs, slhs(*indice), srhs(*indice))
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90002"
-                    dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                                  "input op_name: %s" % operation
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                return lambda_func
+                get_cmpsel_tstt_lambda_func_dict = {
+                    'lt': lambda *indice: tvm.select(lhs(*indice) < rhs, slhs(*indice), srhs(*indice)),
+                    'gt': lambda *indice: tvm.select(lhs(*indice) > rhs, slhs(*indice), srhs(*indice)),
+                    'le': lambda *indice: tvm.select(lhs(*indice) <= rhs, slhs(*indice), srhs(*indice)),
+                    'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs, slhs(*indice), srhs(*indice)),
+                    'eq': lambda *indice: tvm.select(lhs(*indice) == rhs, slhs(*indice), srhs(*indice)),
+                    'ne': lambda *indice: tvm.select(lhs(*indice) != rhs, slhs(*indice), srhs(*indice))
+                }
+                return get_cmpsel_tstt_lambda_func_dict[operation]
 
             lambda_func = _get_cmpsel_tstt_lambda_func(operation,
                                                        lhs, rhs, slhs, srhs)
@@ -3150,37 +2984,15 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
             return tmp
 
         def _get_cmpsel_tttt_lambda_func(operation, lhs, rhs, slhs, srhs):
-            if operation == 'lt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) < rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'gt':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) > rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'le':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) <= rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'ge':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) >= rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) == rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            elif operation == 'ne':
-                lambda_func = lambda *indice: \
-                    tvm.select(lhs(*indice) != rhs(*indice),
-                               slhs(*indice), srhs(*indice))
-            else:
-                dict_args = dict()
-                dict_args["errCode"] = "E90002"
-                dict_args["detailed_cause"] = "vcmpsel do not support the " \
-                                              "input op_name: %s" % operation
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-            return lambda_func
+            get_cmpsel_tttt_lambda_func_dict = {
+                'lt': lambda *indice: tvm.select(lhs(*indice) < rhs(*indice), slhs(*indice), srhs(*indice)),
+                'gt': lambda *indice: tvm.select(lhs(*indice) > rhs(*indice), slhs(*indice), srhs(*indice)),
+                'le': lambda *indice: tvm.select(lhs(*indice) <= rhs(*indice), slhs(*indice), srhs(*indice)),
+                'ge': lambda *indice: tvm.select(lhs(*indice) >= rhs(*indice), slhs(*indice), srhs(*indice)),
+                'eq': lambda *indice: tvm.select(lhs(*indice) == rhs(*indice), slhs(*indice), srhs(*indice)),
+                'ne': lambda *indice: tvm.select(lhs(*indice) != rhs(*indice), slhs(*indice), srhs(*indice))
+            }
+            return get_cmpsel_tttt_lambda_func_dict[operation]
 
         lambda_func = _get_cmpsel_tttt_lambda_func(operation,
                                                    lhs, rhs, slhs, srhs)

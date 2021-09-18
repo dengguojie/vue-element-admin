@@ -109,15 +109,16 @@ class CalcNormTilingCase(Computation):
 
 def get_block_size(dtype):
     if dtype in ["float32", "fp32", "int32"]:
-        return 8
+        block_size = 8
     elif dtype in ["bool", "int8", "uint8"]:
-        return 32
+        block_size = 32
     elif dtype in ["float16", "fp16"]:
-        return 16
+        block_size = 16
     elif dtype in ["int64"]:
-        return 4
+        block_size = 4
     else:
         _raise_error("[%s] is not support type" % dtype)
+    return block_size
 
 
 def _map_append(input_map, key, value):
@@ -137,7 +138,7 @@ def _map_append(input_map, key, value):
 
 
 def _raise_error(message):
-    dict_args = dict()
+    dict_args = {}
     dict_args["errCode"] = "E90003"
     dict_args["detailed_cause"] = message
     raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -688,7 +689,7 @@ class NormComputeGraphInfo:
             for count_tensor in visited_set:
                 if count_tensor in self.reduce_tensor_set | self.broadcast_tensor_set:
                     return "workspace", visited_set
-                elif count_tensor in self.input_tensor_set:
+                if count_tensor in self.input_tensor_set:
                     workspace_count += 1 * 1.5
                     cache_clone_count += 2 * 1.5
                 else:
@@ -696,8 +697,7 @@ class NormComputeGraphInfo:
                     cache_clone_count += 1 * 2
             if workspace_count > cache_clone_count:
                 return "cache_clone", visited_set
-            else:
-                return "workspace", visited_set
+            return "workspace", visited_set
 
         cross_hierarchy_tensor_set = set()
         # find the cross hierarchy tensors
@@ -921,7 +921,7 @@ class NormComputeGraphInfo:
                 return True
 
         def _refine_coexisting_quantity(_coexisting_quantity, _workspace_tensor):
-            sub_tensor_list = self.workspace_tensor_and_sub_graph_map[_workspace_tensor]["sub_tensor_list"]
+            sub_tensor_list = self.workspace_tensor_and_sub_graph_map.get(_workspace_tensor).get("sub_tensor_list")
             for reduce_tensor in self.reduce_tensor_set:
                 if reduce_tensor in sub_tensor_list:
                     _coexisting_quantity += 1

@@ -141,7 +141,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
     def _greater_one(_value):
         if isinstance(_value, (_expr.IntImm, _expr.UIntImm)):
             return _value.value > 1
-        elif isinstance(_value, int):
+        if isinstance(_value, int):
             return _value > 1
         return False
 
@@ -159,7 +159,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
                     break
         return max_value
 
-    max_dim_length = max([len(list(shape)) for shape in shapes])
+    max_dim_length = max(len(list(shape)) for shape in shapes)
     input_shapes = []
     for shape in shapes:
         input_shapes.append([1] * (max_dim_length - len(shape)) + list(shape))
@@ -413,7 +413,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
             if len(no_one_range) > 0:
                 mied_range = _get_range_intersection(no_one_range)
                 if mied_range is None:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "input shape error, shape range no intersection"
                     raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -431,7 +431,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
         return shapes, ranges
 
     def _get_dim(_i, _shapes):
-        return max([s[_i] for s in _shapes])
+        return max(s[_i] for s in _shapes)
 
     def _extract(_inputs):
         def _complete(_in):
@@ -446,7 +446,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
             return shapes, ranges
 
         if support_broadcast:
-            dim_length = max([len(s["shape"]) for s in _inputs])
+            dim_length = max(len(s["shape"]) for s in _inputs)
             shapes, ranges = _complete(_inputs)
             shapes, ranges = _update_range(shapes, ranges)
             return shapes, ranges
@@ -572,8 +572,7 @@ def _reduce_and_norm_variable_shape(inputs: list):
             if idx in axis:
                 if not len(inputs_after_reduce[0]["shape"]) == len(inputs_before_reduce[0]["shape"]):
                     continue
-                else:
-                    shape_after_reduce.append(1)
+                shape_after_reduce.append(1)
             else:
                 shape_after_reduce.append(shape_before_reduce[idx])
 
@@ -687,11 +686,9 @@ def shape_refine(shape, reduce_axis=None, keep_dims=True):
         # if the reduce axis correspond to shape[axis] is 1,
         # we can not refine the shape,or the reduce axis will be wrong
         if not check_reduce_need_refine(shape, reduce_axis, keep_dims):
-
             if hasattr(reduce_axis, 'index'):
                 return shape, reduce_axis
-            else:
-                return shape, [reduce_axis]
+            return shape, [reduce_axis]
 
         if isinstance(reduce_axis, (tuple, list)):
             res_reduce_axis = reduce_axis[:]
@@ -713,9 +710,7 @@ def shape_refine(shape, reduce_axis=None, keep_dims=True):
                         res_reduce_axis[j] -= 1
 
         return refined_shape, res_reduce_axis
-
-    else:
-        return __refine_shape_no_reduce(shape)
+    return __refine_shape_no_reduce(shape)
 
 
 def refine_axis(axis, shape):
@@ -777,9 +772,8 @@ def axis_check(shape_len, axis):
     if not hasattr(axis, 'index'):
         axis = _axis_value_type_check(shape_len, axis)
         return axis
-    else:
-        for i in range(len(axis)):
-            axis[i] = _axis_value_type_check(shape_len, axis[i])
+    for i in range(len(axis)):
+        axis[i] = _axis_value_type_check(shape_len, axis[i])
 
     axis = list(set(axis))
     axis.sort()

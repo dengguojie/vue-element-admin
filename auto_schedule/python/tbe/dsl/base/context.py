@@ -79,7 +79,7 @@ class OperatorContext:
         op_infos = operation.get_op_context().get_op_info()
         if len(op_infos) == 1:
             return op_infos[0].op_type
-        elif len(op_infos) >= 2:
+        if len(op_infos) >= 2:
             _name = "fusion"
             for value in op_infos:
                 _name += "_" + str(value.op_type)
@@ -146,7 +146,7 @@ class OperatorContext:
         :return:
         """
         if self._current_compute is not None:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Exist not finished compute context."
             raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -161,7 +161,7 @@ class OperatorContext:
         :return:
         """
         if self._current_compute != _compute:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Compute context not match."
             raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -272,7 +272,7 @@ class ComputeContext:
         :return:
         """
         if self._current_schedule is not None:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Exist not finished compute context."
             raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -286,7 +286,7 @@ class ComputeContext:
         :return:
         """
         if self._current_schedule != _schedule:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Schedule context not match."
             raise RuntimeError(dict_args, get_error_message(dict_args))

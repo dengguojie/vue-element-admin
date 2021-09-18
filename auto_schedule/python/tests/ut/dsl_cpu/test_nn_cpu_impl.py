@@ -421,8 +421,9 @@ test_func_list = [
     test_broadcast_cpu_api_var_is_tensor,
     test_broadcast_cpu_api_var_is_not_tensor,
 ]
+support_soc = ["Ascend310", "Ascend910A"]
 for item in test_func_list:
-    ut_case.add_cust_test_func(test_func=item)
+    ut_case.add_cust_test_func(support_soc=support_soc, test_func=item)
 
 
 if __name__ == '__main__':

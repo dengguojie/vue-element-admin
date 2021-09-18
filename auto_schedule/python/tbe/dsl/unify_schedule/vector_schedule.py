@@ -127,10 +127,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
             if self.type == self.PlaceholderType.CACHE_READ_TENSOR or \
                     self.type == self.PlaceholderType.CACHE_WRITE_TENSOR:
                 return getattr(self.key[0], item)
-            elif self.type == self.PlaceholderType.RFACTOR_TENSOR:
+            if self.type == self.PlaceholderType.RFACTOR_TENSOR:
                 return getattr(self.key[0], item)
-            else:
-                raise KeyError("%s does not exist as a valid attribute for %s Placeholder" % (item, self.type))
+            raise KeyError("%s does not exist as a valid attribute for %s Placeholder" % (item, self.type))
 
         def __hash__(self):
             return hash((self.type, self.key))
@@ -474,7 +473,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             if emitinsninfo.attr:
                 # convert extra_space of the special insn to the pass
                 extra_space = emitinsninfo.attr.get("extra_space")
-                stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs=dict(storage_bound=[extra_space]))
+                stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs={"storage_bound":[extra_space]})
             else:
                 stage.emit_insn(emitinsn_itervar, emitinsninfo.insn)
 
@@ -797,11 +796,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
             if iter_var is None:
                 raise RuntimeError("Cannot find true axis %d for tensor %s" % (axis_index, str(real_tensor)))
             return iter_var
-        else:
-            try:
-                return real_stage.all_iter_vars[calibrated_index]
-            except IndexError:
-                raise IndexError("Possible victim of false keepdims, use reduced_indexes to fix this")
+        try:
+            return real_stage.all_iter_vars[calibrated_index]
+        except IndexError:
+            raise IndexError("Possible victim of false keepdims, use reduced_indexes to fix this")
 
     def _get_stage_axis_to_relation_map(self,
                                         tensor: Union[Tensor, Placeholder]) -> Dict[IterVar, Union[Split, Fuse]]:

@@ -22,8 +22,7 @@ from typing import Dict
 from typing import Optional
 import copy
 from functools import reduce
-from enum import Enum
-from enum import auto
+from enum import Enum, auto
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -63,7 +62,7 @@ class BroadcastElewiseClassifier:
 
     def _init(self):
         shapes = [x["shape"] for x in self.ins]
-        self.dim_length = max([len(s) for s in shapes])
+        self.dim_length = max(len(s) for s in shapes)
         operation.get_context().add("_unknown_rank", self.is_unknown_rank)
 
         self.completed_ins = self._complete()
@@ -84,7 +83,7 @@ class BroadcastElewiseClassifier:
         """
         self._init()
         if len(self.completed_shapes) > MAX_BROADCAST_INPUT:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "more than 70 input are not supported"
             raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -104,15 +103,12 @@ class BroadcastElewiseClassifier:
         return [clone_complete(x) for x in self.ins]
 
     def check_update_unknown_rank(self):
-        """
-        check_update_unknown_rank -2
-        """
         is_unknown_rank = False
         for _in in self.ins:
             shapes = list(_in["shape"])
             if UNKNOWN_RANK in shapes:
                 if len(shapes) != 1:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2,)"
                     raise RuntimeError(dict_args, get_error_message(dict_args))
@@ -122,9 +118,6 @@ class BroadcastElewiseClassifier:
         self.is_unknown_rank = is_unknown_rank
 
     def check_update_empty_shape(self):
-        """
-        check_update_empty_shape
-        """
         is_empty_shape = False
         for _in in self.ins:
             shapes, ranges = list(_in["shape"]), list(_in.get("range"))
@@ -395,7 +388,7 @@ class BroadcastElewiseClassifier:
 
         def gen_common_broadcast_common():
             def all_const():
-                return all([i in known_const_index for i in range(left_no_one + 1, right_no_one)])
+                return all(i in known_const_index for i in range(left_no_one + 1, right_no_one))
 
             right_left_no_common = len(known_broadcast_index) > 0 and \
                     (right_no_one <= known_broadcast_index[-1] or left_no_one >= known_broadcast_index[0])
@@ -428,7 +421,7 @@ class BroadcastElewiseClassifier:
             is_legal_pattern = True
             for pattern, _range in zip(pattern_key, ranges):
                 if pattern == 'B' and is_legal_pattern:
-                    is_legal_pattern = any([r0 <= 1 for (r0, _) in _range])
+                    is_legal_pattern = any(r0 <= 1 for (r0, _) in _range)
             return is_legal_pattern
 
         def add_special():
@@ -708,7 +701,7 @@ class SpecialScalarMode:
         :param shape: input shape
         :return:
         """
-        return all([(s == 1 or (s == -1 and r0 <= 1)) for s, (r0, _) in zip(shape, _range)])
+        return all((s == 1 or (s == -1 and r0 <= 1)) for s, (r0, _) in zip(shape, _range))
 
     @classmethod
     def must_all_one(cls, shape):
@@ -717,7 +710,7 @@ class SpecialScalarMode:
         :param shape: input shape
         :return:
         """
-        return all([s == ShapeValueType.ONE for s in shape])
+        return all(s == ShapeValueType.ONE for s in shape)
 
     @classmethod
     def gen_in(cls, shape, pattern):
@@ -832,8 +825,8 @@ class ShapeSimplifier:
         :param state2:
         :return:
         """
-        state1_all_one = all([s == str(ShapeValueType.ONE) for s in state1])
-        state2_all_one = all([s == str(ShapeValueType.ONE) for s in state2])
+        state1_all_one = all(s == str(ShapeValueType.ONE) for s in state1)
+        state2_all_one = all(s == str(ShapeValueType.ONE) for s in state2)
         if state1_all_one or state2_all_one:
             return cls.Operator.FUSED
         dim_diff = 0

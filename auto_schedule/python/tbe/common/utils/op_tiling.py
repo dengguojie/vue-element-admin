@@ -91,7 +91,7 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
                           _TILING_DATA.buf, _TILING_DATA.buf_size, compile_info_hash_c,
                           ctypes.c_void_p())
     if not res:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "Tiling func failed."
         raise RuntimeError(dict_args, get_error_message(dict_args))

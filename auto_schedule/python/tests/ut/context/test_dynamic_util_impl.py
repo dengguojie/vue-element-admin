@@ -223,6 +223,16 @@ def test_get_priority_flag_value2(_):
     return False
 
 
+def test_dtype_check_decorator_concat_not_tensor_exception(_):
+    try:
+        concat(["123", "456"])
+    except RuntimeError as e:
+        if e.args[0].get("errCode") == "E90001":
+            return True
+    return False
+
+
+
 test_func_list = [
     test_dsl_support_dtype_dsl_name_not_str,
     test_dsl_support_dtype_all_support_dtype_none,
@@ -248,7 +258,8 @@ test_func_list = [
     test_util_astype_exception,
     test_util_astype_tvm_var,
     test_get_priority_flag_value,
-    test_get_priority_flag_value2
+    test_get_priority_flag_value2,
+    test_dtype_check_decorator_concat_not_tensor_exception,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
