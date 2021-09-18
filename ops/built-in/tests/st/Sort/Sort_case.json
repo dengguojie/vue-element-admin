@@ -1,5 +1,4 @@
 [
-  
   {
     "op": "Sort",
     "input_desc": [
@@ -11,10 +10,10 @@
           -1
         ],
         "ori_shape": [
-          10,
-          10,
-          10,
-          32
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "format": "ND",
         "ori_format": "ND",

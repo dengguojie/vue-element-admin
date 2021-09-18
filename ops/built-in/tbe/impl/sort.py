@@ -301,7 +301,7 @@ def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, o
     # index % 2048
     tik_instance.vconcat(input_ub[0], idx_ub[0], repeat_times, REM_IDX)
 
-    with tik_instance.if_scope(num < (i + 1) * NUM_BLOCK):
+    if num < (i + 1) * NUM_BLOCK:
         # aline for NUM_BLOCK
         aline = NUM_BLOCK - num % NUM_BLOCK
         if descending:
@@ -310,10 +310,10 @@ def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, o
         else:
             Tmp = tik_instance.Scalar('float16', init_value=MAX_VAL)
         # Add ineffective object for 16 alignment
-        with tik_instance.for_range(0, aline % BLOCK) as j:
+        for j in range(aline % BLOCK):
             input_ub[dest_pos_ub + num % NUM_BLOCK + j].set_as(Tmp)
         # Add ineffective object for NUM_BLOCK alignment
-        with tik_instance.if_scope(aline > BLOCK - 1):
+        if aline > BLOCK - 1:
             tik_instance.vec_dup(BLOCK, input_ub[dest_pos_ub + num % NUM_BLOCK + aline % BLOCK], Tmp,
                                  aline // BLOCK, 1)
 
