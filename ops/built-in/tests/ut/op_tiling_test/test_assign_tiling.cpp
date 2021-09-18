@@ -13,6 +13,7 @@
 
 using namespace std;
 using namespace ge;
+#include "test_common.h"
 
 class AssignTiling : public testing::Test {
  protected:
@@ -25,7 +26,7 @@ class AssignTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int64_t tmp = 0;
@@ -47,26 +48,20 @@ TEST_F(AssignTiling, Assign_tiling1) {
       {4, 4, 4, 4},
       {4, 4, 4, 4},
   };
-  TensorDesc tensor_input1(ge::Shape(input[0]), FORMAT_ND, DT_FLOAT16);
-  auto data1 = op::Data("ref");
-  data1.update_input_desc_x(tensor_input1);
-  data1.update_output_desc_y(tensor_input1);
-  TensorDesc tensor_input2(ge::Shape(input[1]), FORMAT_ND, DT_FLOAT16);
-  auto data2 = op::Data("value");
-  data2.update_input_desc_x(tensor_input2);
-  data2.update_output_desc_y(tensor_input2);
-  
-  opParas.set_input_ref(data1);
-  opParas.set_input_value(data2);
-  std::vector<Operator> inputs{data1, data2};
-  std::vector<Operator> outputs{opParas};
+  TensorDesc tensor_input1(ge::Shape(input[0]), ge::FORMAT_ND, ge::DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input[1]), ge::FORMAT_ND, ge::DT_FLOAT16);
+
+  TENSOR_INPUT(opParas, tensor_input1, ref);
+  TENSOR_INPUT(opParas, tensor_input2, value);
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 256000}}";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
-            "4 4 4 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 4 4 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
-

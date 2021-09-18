@@ -24,10 +24,12 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
-#include "op_tiling.h"
-#include "external/graph/operator.h"
+#include "op_tiling_util.h"
+
 #include "error_log.h"
 #include "securec.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 using namespace ge;
@@ -109,8 +111,8 @@ static int GetAlignNum(int32_t dim_size, int32_t align_size) {
   return align_num;
 }
 
-static void CalTilingParam(TilingParam& param, const ge::Shape& input_shape, const ge::DataType& dtype, int32_t axis,
-                           int32_t ub_ele, int32_t core_num) {
+static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, const ge::DataType& dtype,
+                           int32_t axis, int32_t ub_ele, int32_t core_num) {
   // set block and vector
   int32_t data_each_block = 8;
   int32_t data_each_vector = 64;
@@ -313,7 +315,12 @@ static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, T&
 static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                          utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "ArgOpsTiling running.");
-
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  if (operator_info == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed.");
+    return false;
+  }
+  PROFILING_TILING_INIT(op_type.c_str());
   // get compile info
   int32_t ub_ele = 0;
   int32_t core_num = 1;
@@ -331,28 +338,35 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
     }
     OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
   }
-
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   // check axis value and set to positive value
-  ge::Shape input_shape = op_paras.GetInputDesc(0).GetShape();
+  auto input_desc = operator_info->MutableInputDesc(0);
+  if (input_desc == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed.");
+    return false;
+  }
+  ge::GeShape input_shape = input_desc->MutableShape();
   int64_t input_dims = input_shape.GetDimNum();
+
   if (axis < -input_dims || axis >= input_dims) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%d, dims:%ld", axis, input_dims);
     return false;
   }
   axis = (axis + input_dims) % input_dims;
   OP_LOGD(op_type.c_str(), "ArgOpsTiling", "axis is %d.", axis);
-
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   // calc and set and print tiling param
   TilingParam param;
   memset_s(&param, sizeof(param), 0, sizeof(param));
-  ge::DataType dtype = op_paras.GetInputDesc(0).GetDataType();
+  ge::DataType dtype = input_desc->GetDataType();
   CalTilingParam(param, input_shape, dtype, axis, ub_ele, core_num);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
   SetTilingParam(param, run_info);
   PrintParam(param);
 
   // reserve
   run_info.SetBlockDim(param.act_core_num);
-
+  PROFILING_TILING_END();
   OP_LOGI(op_type.c_str(), "ArgOpsTiling run success.");
   return true;
 }
