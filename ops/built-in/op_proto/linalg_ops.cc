@@ -77,15 +77,27 @@ IMPLEMT_VERIFIER(Ger, GerVerify) {
   DataType x1_type = op.GetInputDesc("x1").GetDataType();
   DataType x2_type = op.GetInputDesc("x2").GetDataType();
   if (x1_type != DT_FLOAT16 && x1_type != DT_FLOAT) {
-    OP_LOGE(op.GetName().c_str(), "Op Ger first input x1's data type should be fp16 or fp32.");
+    std::string err_msg;
+    err_msg = ConcatString(
+      "Op Ger first input x1's data type should be fp16 or fp32,but this type is ", 
+      x1_type, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (x2_type != DT_FLOAT16 && x2_type != DT_FLOAT) {
-    OP_LOGE(op.GetName().c_str(), "Op Ger second input x2's data type should be fp16 or fp32.");
+    std::string err_msg;
+    err_msg = ConcatString(
+      "Op Ger first input x1's data type should be fp16 or fp32,but this type is ", 
+      x2_type, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg); 
     return GRAPH_FAILED;
   }
   if (x1_type != x2_type) {
-    OP_LOGE(op.GetName().c_str(), "Op Ger two inputs' data type doesn't match.");
+    std::string err_msg;
+    err_msg = ConcatString(
+      "Op Ger two inputs' data type doesn't match,but first input x1's data type  is " ,
+      x1_type, "and the second input x1's data type is", x2_type, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -96,7 +108,13 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
   Shape x1_shape = op.GetInputDesc("x1").GetShape();
   Shape x2_shape = op.GetInputDesc("x2").GetShape();
   if (x1_shape.GetDims().size() != 1 || x2_shape.GetDims().size() != 1) {
-    OP_LOGE(op.GetName().c_str(), "The rank of both input should be one dimensional.");
+    std::string err_msg; 
+    err_msg= ConcatString(
+      "The rank of both input should be one dimensional, ",
+      "the first input hape dimensional is ",
+      x1_shape.GetDims().size()," and the second input shape dimensional is ",
+      x2_shape.GetDims().size(), " not same.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

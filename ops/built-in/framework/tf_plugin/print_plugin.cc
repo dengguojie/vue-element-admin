@@ -21,9 +21,15 @@
 #include "register/register.h"
 
 namespace domi {
+Status AutoMappingFnPrint(const google::protobuf::Message* op_src, ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["in"] = pair<string, string>("data", "U");
+  return AutoMappingFnDynamic(op_src, op, value);
+}
+
 REGISTER_CUSTOM_OP("PrintV3")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Print")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnPrint)
     .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

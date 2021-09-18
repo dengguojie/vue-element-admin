@@ -27,9 +27,9 @@ uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  Tensor *input_0 = ctx.Input(kFirstInputIndex);
-  Tensor *input_1 = ctx.Input(kSecondInputIndex);
-  if ((input_0->GetDataSize() == 0) || (input_1->GetDataSize() == 0)) {
+  Tensor *input0 = ctx.Input(kFirstInputIndex);
+  Tensor *input1 = ctx.Input(kSecondInputIndex);
+  if ((input0->GetDataSize() == 0) || (input1->GetDataSize() == 0)) {
     KERNEL_LOG_INFO("[%s] Input is empty tensor.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_OK;
   }
@@ -84,8 +84,8 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
                        "[%s] Get output data failed", ctx.GetOpType().c_str())
 
   KERNEL_LOG_INFO(
-      "[%s] Input[0] data size is [%llu], input[1] data size is [%llu], output "
-      "data size is [%llu].",
+      "[%s] Input[0] data size is [%llu], input[1] data size is [%llu], "
+      "output data size is [%llu].",
       ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
       calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
   
@@ -145,10 +145,10 @@ bool AddCpuKernel::AlignedCheck(const BCalcInfo &calc_info) {
 
 template <int32_t RANK, typename T, int32_t OPTION>
 uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc_info) {
-  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input_0(
+  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input0(
       static_cast<T *>(calc_info.input_0->GetData()),
       calc_info.input_0->GetTensorShape()->NumElements());
-  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input_1(
+  Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input1(
       static_cast<T *>(calc_info.input_1->GetData()),
       calc_info.input_1->GetTensorShape()->NumElements());
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> output(
@@ -158,13 +158,13 @@ uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc
   auto input_shape_1 = calc_info.input_1->GetTensorShape()->GetDimSizes();
   if (input_shape_0.empty()) {
     T v0 = *(reinterpret_cast<const T *>(calc_info.input_0->GetData()));
-    output = v0 + input_1;
+    output = v0 + input1;
     return KERNEL_STATUS_OK;
   }
 
   if (input_shape_1.empty()) {
     T v1 = *(reinterpret_cast<const T *>(calc_info.input_1->GetData()));
-    output = input_0 + v1;
+    output = input0 + v1;
     return KERNEL_STATUS_OK;
   }
 
@@ -182,7 +182,7 @@ uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc
     bcast_1[RANK - i - 1] = calc_info.bcast_1[i];
   }
   output.reshape(shape_out) =
-      input_0.reshape(reshape_0).broadcast(bcast_0) + input_1.reshape(reshape_1).broadcast(bcast_1);
+      input0.reshape(reshape_0).broadcast(bcast_0) + input1.reshape(reshape_1).broadcast(bcast_1);
   return KERNEL_STATUS_OK;
 }
 
