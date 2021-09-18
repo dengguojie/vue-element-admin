@@ -142,7 +142,7 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   out_size_h = output_sizeList[0];
   out_size_w = output_sizeList[1];
   if (in_size_h % out_size_h != 0 || in_size_w % out_size_w != 0){
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Not Fusion, because input_size % output_size not equal 0!");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Not Fusion, because input_size can not be divided by output_size!");
     return NOT_CHANGED;
   }
   std::vector<int> flag_h;
