@@ -1232,14 +1232,14 @@ class BnReduceCustomisedSchedule:
         """
         storage_bound = self.graph_info.max_single_tensor_ub_size
         if self.cast_0 is not None:
-            self._schedule[self.data_ub].set_storage_bound(storage_bound)
-            self._schedule[self.cast_0_ub].set_storage_bound(storage_bound)
+            self._schedule[self.data_ub].set_buffer_size(storage_bound)
+            self._schedule[self.cast_0_ub].set_buffer_size(storage_bound)
         else:
-            self._schedule[self.data_ub].set_storage_bound(storage_bound)
+            self._schedule[self.data_ub].set_buffer_size(storage_bound)
             self.cast_0_ub = None
 
-        self._schedule[self.data_mul_ub].set_storage_bound(storage_bound)
-        self._schedule[self.sum_x].set_storage_bound(storage_bound)
+        self._schedule[self.data_mul_ub].set_buffer_size(storage_bound)
+        self._schedule[self.sum_x].set_buffer_size(storage_bound)
 
     def _calc_tiling(self):
         """
@@ -1317,7 +1317,7 @@ class BnReduceCustomisedSchedule:
         _, sum_x_ub = sch.cache_write([self.square_sum_x, self.sum_x], self._scope)
 
         storage_bound = self.graph_info.max_single_tensor_ub_size
-        sch[sum_x_ub].set_storage_bound(storage_bound)
+        sch[sum_x_ub].set_buffer_size(storage_bound)
 
         sum_x_c1_axis = self.sum_x.op.axis[1]
         sum_x_c0_axis = self.sum_x.op.axis[4]
@@ -1458,7 +1458,7 @@ class BnReduceCustomisedSchedule:
         else:
             sum_x_ub_rf, _ = sch.rfactor(self.sum_x, sum_x_block_outer)
 
-        sch[sum_x_ub_rf].set_storage_bound(self.graph_info.max_single_tensor_ub_size)
+        sch[sum_x_ub_rf].set_buffer_size(self.graph_info.max_single_tensor_ub_size)
         if isinstance(ub_factor, tvm.expr.Var):
             sch.set_constraint(ub_factor > 0)
 
@@ -1466,7 +1466,7 @@ class BnReduceCustomisedSchedule:
         self.sum_x_ub = sum_x_global
         self.sum_square_x_ub = square_sum_x_global
         sch[sum_x_ub_rf].set_scope(self._scope)
-        sch[self.sum_x_ub].set_storage_bound(self.graph_info.max_single_tensor_ub_size)
+        sch[self.sum_x_ub].set_buffer_size(self.graph_info.max_single_tensor_ub_size)
 
         self._out_tensors[0] = sum_x_global
         self._out_tensors[1] = square_sum_x_global
@@ -1535,7 +1535,7 @@ class BnReduceCustomisedSchedule:
 
         sch[sum_x_ub_rf].set_scope(self._scope)
         storage_bound = self.graph_info.max_single_tensor_ub_size
-        sch[sum_x_ub_rf].set_storage_bound(storage_bound)
+        sch[sum_x_ub_rf].set_buffer_size(storage_bound)
 
         ub_split_axis = self._tiling_case.ub_split_axis_index
         split_factor = self._ub_tiling_vars[ub_split_axis]
@@ -2227,19 +2227,19 @@ class BnReduceAtomicSchedule:
 
         for tensor in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[tensor]
-            self._schedule[read_buffer].set_storage_bound(_get_tensor_space(tensor))
+            self._schedule[read_buffer].set_buffer_size(_get_tensor_space(tensor))
 
         for tensor in self._cache_write_tensors_and_buffer_map:
             write_buffer = self._cache_write_tensors_and_buffer_map[tensor]
-            self._schedule[write_buffer].set_storage_bound(_get_tensor_space(tensor))
+            self._schedule[write_buffer].set_buffer_size(_get_tensor_space(tensor))
 
         for tensor in self._mid_output_tensors:
-            self._schedule[tensor].set_storage_bound(_get_tensor_space(tensor))
+            self._schedule[tensor].set_buffer_size(_get_tensor_space(tensor))
 
         # final output must be reduce_shape
         _bound = self.graph_info.tensor_ub_size_after_reduce
-        self._schedule[self._final_out_tensor_ub_rf].set_storage_bound(_bound)
-        self._schedule[self._final_out_tensor_global].set_storage_bound(_bound)
+        self._schedule[self._final_out_tensor_ub_rf].set_buffer_size(_bound)
+        self._schedule[self._final_out_tensor_global].set_buffer_size(_bound)
 
     def _caculate_storage_align(self):
         """

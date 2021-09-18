@@ -2003,80 +2003,80 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         if tensor != barrier_tensor:
             insn = get_emit_insn_map(tensor)
             s[tensor].emit_insn(tensor.op.axis[0], insn)
-            s[tensor].set_storage_bound(SHAPEI)
+            s[tensor].set_buffer_size(SHAPEI)
 
     # set bound
 
     if is_first_round:
         if is_global_init:
-            s[s_state_h_ub].set_storage_bound(SHAPEH)
-            s[s_state_c_ub].set_storage_bound(SHAPEI)
+            s[s_state_h_ub].set_buffer_size(SHAPEH)
+            s[s_state_c_ub].set_buffer_size(SHAPEI)
         else:
-            s[s_state_h_ub].set_storage_bound(SHAPEH)
-            s[s_state_c_ub].set_storage_bound(SHAPEI)
+            s[s_state_h_ub].set_buffer_size(SHAPEH)
+            s[s_state_c_ub].set_buffer_size(SHAPEI)
     else:
-        s[s_state_h_ub].set_storage_bound(SHAPEH)
-        s[s_state_c_ub].set_storage_bound(SHAPEI)
+        s[s_state_h_ub].set_buffer_size(SHAPEH)
+        s[s_state_c_ub].set_buffer_size(SHAPEI)
 
-    s[a_ub_if].set_storage_bound(SHAPEAZBIGZ)
-    s[a_ub_else].set_storage_bound(SHAPEAZBIGZ)
-    s[a_ub_if_else].set_storage_bound(SHAPEAZBIGZ)
+    s[a_ub_if].set_buffer_size(SHAPEAZBIGZ)
+    s[a_ub_else].set_buffer_size(SHAPEAZBIGZ)
+    s[a_ub_if_else].set_buffer_size(SHAPEAZBIGZ)
 
-    s[a_l1].set_storage_bound(SHAPEAZBIGZ)
-    s[b_l1].set_storage_bound(SHAPEB)
-    s[a_l0a].set_storage_bound(SHAPEAZBIGZ)
-    s[b_l0b].set_storage_bound(SHAPEB)
-    s[c_l0c].set_storage_bound(SHAPEC)
-    s[c_ub].set_storage_bound(SHAPEC)
-    s[bias_ub].set_storage_bound(SHAPEBIAS)
+    s[a_l1].set_buffer_size(SHAPEAZBIGZ)
+    s[b_l1].set_buffer_size(SHAPEB)
+    s[a_l0a].set_buffer_size(SHAPEAZBIGZ)
+    s[b_l0b].set_buffer_size(SHAPEB)
+    s[c_l0c].set_buffer_size(SHAPEC)
+    s[c_ub].set_buffer_size(SHAPEC)
+    s[bias_ub].set_buffer_size(SHAPEBIAS)
 
     if fp16_input_output:
-        s[bias_ub_fp32].set_storage_bound(SHAPEBIAS)
+        s[bias_ub_fp32].set_buffer_size(SHAPEBIAS)
 
-    s[bias_bc_ub].set_storage_bound(SHAPEC)
-    s[c_ub_bias].set_storage_bound(SHAPEC)
+    s[bias_bc_ub].set_buffer_size(SHAPEC)
+    s[c_ub_bias].set_buffer_size(SHAPEC)
 
-    s[i_t].set_storage_bound(SHAPEI)
-    s[j_t].set_storage_bound(SHAPEI)
-    s[f_t].set_storage_bound(SHAPEI)
-    s[o_t].set_storage_bound(SHAPEI)
+    s[i_t].set_buffer_size(SHAPEI)
+    s[j_t].set_buffer_size(SHAPEI)
+    s[f_t].set_buffer_size(SHAPEI)
+    s[o_t].set_buffer_size(SHAPEI)
 
-    s[f_t_sigmoid_ub].set_storage_bound(SHAPEI)
-    s[i_t_sigmoid_ub].set_storage_bound(SHAPEI)
-    s[o_t_sigmoid_ub].set_storage_bound(SHAPEI)
-    s[j_t_tanh_ub].set_storage_bound(SHAPEI)
+    s[f_t_sigmoid_ub].set_buffer_size(SHAPEI)
+    s[i_t_sigmoid_ub].set_buffer_size(SHAPEI)
+    s[o_t_sigmoid_ub].set_buffer_size(SHAPEI)
+    s[j_t_tanh_ub].set_buffer_size(SHAPEI)
 
     if is_gate_output:
         if fp16_input_output:
-            s[f_t_sigmoid_fp16].set_storage_bound(SHAPEI)
-            s[i_t_sigmoid_fp16].set_storage_bound(SHAPEI)
-            s[o_t_sigmoid_fp16].set_storage_bound(SHAPEI)
-            s[j_t_tanh_fp16].set_storage_bound(SHAPEI)
+            s[f_t_sigmoid_fp16].set_buffer_size(SHAPEI)
+            s[i_t_sigmoid_fp16].set_buffer_size(SHAPEI)
+            s[o_t_sigmoid_fp16].set_buffer_size(SHAPEI)
+            s[j_t_tanh_fp16].set_buffer_size(SHAPEI)
 
         if fp16_input_output:
-            s[s_state_c_back_fp32].set_storage_bound(SHAPEI)
+            s[s_state_c_back_fp32].set_buffer_size(SHAPEI)
 
     if bias_dtype == 'float16':
-        s[update_c_fp16].set_storage_bound(SHAPEI)
+        s[update_c_fp16].set_buffer_size(SHAPEI)
 
     if bias_dtype == 'float16':
-        s[update_c_fp16_back].set_storage_bound(SHAPEI)
-        s[update_c_fp16_back_fp32].set_storage_bound(SHAPEI)
+        s[update_c_fp16_back].set_buffer_size(SHAPEI)
+        s[update_c_fp16_back_fp32].set_buffer_size(SHAPEI)
     else:
-        s[update_c_fp32_back].set_storage_bound(SHAPEI)
+        s[update_c_fp32_back].set_buffer_size(SHAPEI)
 
-    s[c_t_tanh_ub].set_storage_bound(SHAPEI)
+    s[c_t_tanh_ub].set_buffer_size(SHAPEI)
 
     if is_gate_output:
         if fp16_input_output:
-            s[c_t_tanh_fp16].set_storage_bound(SHAPEI)
+            s[c_t_tanh_fp16].set_buffer_size(SHAPEI)
 
     if fp16_input_output:
-        s[update_h_fp16].set_storage_bound(SHAPEI)
-        s[update_h_gm_as_y_back].set_storage_bound(SHAPEI)
+        s[update_h_fp16].set_buffer_size(SHAPEI)
+        s[update_h_gm_as_y_back].set_buffer_size(SHAPEI)
     else:
-        s[update_h_gm_as_y_back].set_storage_bound(SHAPEI)
-        s[update_h_fp16_cast].set_storage_bound(SHAPEI)
+        s[update_h_gm_as_y_back].set_buffer_size(SHAPEI)
+        s[update_h_fp16_cast].set_buffer_size(SHAPEI)
 
     s[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
 

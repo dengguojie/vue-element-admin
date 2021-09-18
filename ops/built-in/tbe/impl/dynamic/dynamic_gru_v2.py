@@ -1249,7 +1249,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         sch[tensor].compute_at(sch[update_h_gm], update_h_gm_outer)
         insn = _get_emit_insn_map(tensor)
         sch[tensor].emit_insn(tensor.op.axis[0], insn)
-        sch[tensor].set_storage_bound(SHAPE_I)
+        sch[tensor].set_buffer_size(SHAPE_I)
 
     sch[n_t_2].compute_at(sch[update_h_gm], update_h_gm_outer)
     sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_m_inner)
@@ -1263,51 +1263,51 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
             sch[s_state_h_ub_for_element_fp16].compute_at(sch[update_h_gm], update_h_gm_m_inner)
 
     # set bound
-    sch[s_state_h_fp16].set_storage_bound(SHAPE_OUT)
-    sch[s_state_h].set_storage_bound(SHAPE_OUT)
-    sch[a_l1_1].set_storage_bound(SHAPE_A_Z_BIGZ_1)
-    sch[b_l1_1].set_storage_bound(SHAPE_B_1)
-    sch[a_l0a_1].set_storage_bound(SHAPE_A_Z_BIGZ_1)
-    sch[b_l0b_1].set_storage_bound(SHAPE_B_1)
-    sch[c_l0c_1].set_storage_bound(SHAPE_C_1)
-    sch[c_ub_1].set_storage_bound(SHAPE_C_1)
+    sch[s_state_h_fp16].set_buffer_size(SHAPE_OUT)
+    sch[s_state_h].set_buffer_size(SHAPE_OUT)
+    sch[a_l1_1].set_buffer_size(SHAPE_A_Z_BIGZ_1)
+    sch[b_l1_1].set_buffer_size(SHAPE_B_1)
+    sch[a_l0a_1].set_buffer_size(SHAPE_A_Z_BIGZ_1)
+    sch[b_l0b_1].set_buffer_size(SHAPE_B_1)
+    sch[c_l0c_1].set_buffer_size(SHAPE_C_1)
+    sch[c_ub_1].set_buffer_size(SHAPE_C_1)
 
     if bias1 is not None:
-        sch[bias_ub_1].set_storage_bound(SHAPE_BIAS)
+        sch[bias_ub_1].set_buffer_size(SHAPE_BIAS)
         if fp16_input_output:
-            sch[bias_ub_1_fp32].set_storage_bound(SHAPE_BIAS)
-        sch[bias_bc_ub_1].set_storage_bound(SHAPE_C_1)
+            sch[bias_ub_1_fp32].set_buffer_size(SHAPE_BIAS)
+        sch[bias_bc_ub_1].set_buffer_size(SHAPE_C_1)
 
-    sch[a_l1_2].set_storage_bound(SHAPE_A_Z_BIGZ_2)
-    sch[b_l1_2].set_storage_bound(SHAPE_B_2)
-    sch[a_l0a_2].set_storage_bound(SHAPE_A_Z_BIGZ_2)
-    sch[b_l0b_2].set_storage_bound(SHAPE_B_2)
-    sch[c_l0c_2].set_storage_bound(SHAPE_C_2)
-    sch[c_ub_2].set_storage_bound(SHAPE_C_2)
+    sch[a_l1_2].set_buffer_size(SHAPE_A_Z_BIGZ_2)
+    sch[b_l1_2].set_buffer_size(SHAPE_B_2)
+    sch[a_l0a_2].set_buffer_size(SHAPE_A_Z_BIGZ_2)
+    sch[b_l0b_2].set_buffer_size(SHAPE_B_2)
+    sch[c_l0c_2].set_buffer_size(SHAPE_C_2)
+    sch[c_ub_2].set_buffer_size(SHAPE_C_2)
     if bias2 is not None:
-        sch[bias_ub_2].set_storage_bound(SHAPE_BIAS)
+        sch[bias_ub_2].set_buffer_size(SHAPE_BIAS)
         if fp16_input_output:
-            sch[bias_ub_2_fp32].set_storage_bound(SHAPE_BIAS)
-        sch[bias_bc_ub_2].set_storage_bound(SHAPE_C_2)
+            sch[bias_ub_2_fp32].set_buffer_size(SHAPE_BIAS)
+        sch[bias_bc_ub_2].set_buffer_size(SHAPE_C_2)
 
-    sch[r_t_1].set_storage_bound(SHAPE_I)
-    sch[i_t_1].set_storage_bound(SHAPE_I)
-    sch[n_t_1].set_storage_bound(SHAPE_I)
-    sch[r_t_2].set_storage_bound(SHAPE_I)
-    sch[i_t_2].set_storage_bound(SHAPE_I)
-    sch[n_t_2].set_storage_bound(SHAPE_I)
+    sch[r_t_1].set_buffer_size(SHAPE_I)
+    sch[i_t_1].set_buffer_size(SHAPE_I)
+    sch[n_t_1].set_buffer_size(SHAPE_I)
+    sch[r_t_2].set_buffer_size(SHAPE_I)
+    sch[i_t_2].set_buffer_size(SHAPE_I)
+    sch[n_t_2].set_buffer_size(SHAPE_I)
 
     if is_gate_output:
         if fp16_input_output:
-            sch[n_t_2_fp16].set_storage_bound(SHAPE_I)
-            sch[r_t_sigmoid_fp16].set_storage_bound(SHAPE_I)
-            sch[i_t_sigmoid_fp16].set_storage_bound(SHAPE_I)
-            sch[n_t_tanh_fp16].set_storage_bound(SHAPE_I)
+            sch[n_t_2_fp16].set_buffer_size(SHAPE_I)
+            sch[r_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
+            sch[i_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
+            sch[n_t_tanh_fp16].set_buffer_size(SHAPE_I)
     if seq_mask_gm is not None:
-        sch[seq_mask_ub].set_storage_bound(SHAPE_I)
+        sch[seq_mask_ub].set_buffer_size(SHAPE_I)
     if fp16_input_output:
-        sch[update_h_fp16].set_storage_bound(SHAPE_OUT)
-    sch[update_y_gm_back].set_storage_bound(SHAPE_OUT)
+        sch[update_h_fp16].set_buffer_size(SHAPE_OUT)
+    sch[update_y_gm_back].set_buffer_size(SHAPE_OUT)
 
     if reuse_type in [ReuseType.NO_REUSE, ReuseType.REUSE_ALL]:
         sch[update_h_gm].bind(update_h_gm_m_outer, tvm.thread_axis("blockIdx.x"))

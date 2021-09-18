@@ -179,11 +179,11 @@ def _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list, cut
             compute_at_axis = fuse_in_out
             emit_insn_axis = fuse_in_in
 
-            sch[tensor_div_in_ub].set_storage_bound(wo_ub_factor_max * C0)
-            sch[tensor_ub_mul].set_storage_bound(wo_ub_factor_max * C0)
+            sch[tensor_div_in_ub].set_buffer_size(wo_ub_factor_max * C0)
+            sch[tensor_ub_mul].set_buffer_size(wo_ub_factor_max * C0)
             for i in range(ksize - 1):
-                sch[reduce_tensor_list[i]].set_storage_bound(wo_ub_factor_max * C0)
-            sch[tensor_zero].set_storage_bound(wo_ub_factor_max * C0 * (strides + ksize))
+                sch[reduce_tensor_list[i]].set_buffer_size(wo_ub_factor_max * C0)
+            sch[tensor_zero].set_buffer_size(wo_ub_factor_max * C0 * (strides + ksize))
 
     else:
         if cut_wo_for_block:

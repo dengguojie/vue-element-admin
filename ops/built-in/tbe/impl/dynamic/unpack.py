@@ -332,7 +332,7 @@ class Unpack:
             build_list.append(res_tensor)
 
         sch = tvm.create_schedule(self.virtual_node.op)
-        sch.disable_allocate(tbe_platform.scope_ubuf)
+        sch.sequential_malloc(tbe_platform.scope_ubuf)
 
         if self.special_tiling:
             sch[self.gm2ub_tensor].set_scope(tbe_platform.scope_ubuf)
@@ -382,7 +382,7 @@ class Unpack:
 
         for i in range(self.output_num):
             if is_need_align:
-                sch[self.ub_tensor_list[i]].set_storage_bound(self.bound_upper)
+                sch[self.ub_tensor_list[i]].set_buffer_size(self.bound_upper)
                 sch[self.ub_tensor_list[i]].storage_align(self.ub_tensor_list[i].op.axis[0], self.ele_per_block, 0)
             sch[self.ub_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
             sch[self.res_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
@@ -415,7 +415,7 @@ class Unpack:
             build_list.append(res_tensor)
 
         sch = tvm.create_schedule(self.single_out.op)
-        sch.disable_allocate(tbe_platform.scope_ubuf)
+        sch.sequential_malloc(tbe_platform.scope_ubuf)
 
         for tensor in self.ub_tensor_list:
             sch[tensor].set_scope(tbe_platform.scope_ubuf)
