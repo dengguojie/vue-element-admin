@@ -260,6 +260,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/softmax_grad_ext_fusion_pass.cc
   graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.cc
   graph_fusion/ai_core/softmax_transpose_fusion_pass.cc
+  graph_fusion/ai_core/softmax_arg_max_value_onnx_fusion_pass.cc
   graph_fusion/ai_core/softplus_tanh_mul_fusion.cc
   graph_fusion/ai_core/space_to_depth_fusion_pass.cc
   graph_fusion/ai_core/sparse_softmax_cross_entropy_with_logits_fusion_pass.cc
