@@ -494,7 +494,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     def _load_op_func(self):
         try:
             __import__(self.op_module_name)
-        except ImportError as _:
+        except (ImportError, ModuleNotFoundError) as _:
             # custom op and inner op both have parent dir impl，
             # so when python_path contains two impl's parent dir,
             # we need to add either impl dir to python_path
@@ -505,7 +505,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             self.op_module_name = self.op_module_name.replace("impl.", "")
             try:
                 __import__(self.op_module_name)
-            except ImportError as _:
+            except (ImportError, ModuleNotFoundError) as _:
                 err_msg = "Can't import op module, please check you python path"
                 err_msg += ", op module name: %s" % self.op_module_name
                 err_trace = get_trace_info()
