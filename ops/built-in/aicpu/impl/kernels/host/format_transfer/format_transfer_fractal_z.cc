@@ -262,6 +262,12 @@ uint32_t FormatTransferFractalZ::TransFormat(const TransArgs &args,
       VectorToString(args.src_shape).c_str(),
       DTypeStr(args.src_data_type).c_str(),
       VectorToString(args.dst_shape).c_str());
+
+  if (args.groups == 0) {
+    KERNEL_LOG_ERROR("Attr[groups] must not be equal to 0");
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
   std::vector<int64_t> expect_shape;
   auto ret = TransShape(args.src_format, args.src_shape, args.src_data_type,
                         args.dst_format, expect_shape, args.groups);
@@ -270,11 +276,6 @@ uint32_t FormatTransferFractalZ::TransFormat(const TransArgs &args,
   }
 
   if (!IsTransShapeDstCorrect(args, expect_shape)) {
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
-
-  if (args.groups == 0) {
-    KERNEL_LOG_ERROR("Attr[groups] must not be equal to 0");
     return KERNEL_STATUS_PARAM_INVALID;
   }
 

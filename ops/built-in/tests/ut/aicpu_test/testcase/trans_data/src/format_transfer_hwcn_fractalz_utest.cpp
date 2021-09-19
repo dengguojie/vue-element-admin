@@ -30,6 +30,17 @@ class FormatTransferHwcnFz : public testing::Test {
   void TearDown() {}
 };
 
+TEST_F(FormatTransferHwcnFz, fp16_1c_1n_with_groups_0) {
+   uint16_t data[1 * 1 * 1 * 2] = {19, 88};
+   FormatTransferFractalZ transfer;
+   TransArgs args{
+     reinterpret_cast<uint8_t *>(data), FORMAT_HWCN, FORMAT_FRACTAL_Z, std::vector<int64_t>({1, 1, 1, 2}),
+     std::vector<int64_t>({1, 1, 16, 16}), DT_FLOAT16, 0};
+     
+   TransResult result;
+   EXPECT_EQ(transfer.TransFormat(args, result), KERNEL_STATUS_PARAM_INVALID);
+}
+
 TEST_F(FormatTransferHwcnFz, fp16_1c_1n_with_groups) {
    uint16_t data[1 * 1 * 1 * 2] = {19, 88};
    uint16_t ret[1 * 1 * 16 * 16] ={19 , 0, 0, 0 ,0 , 0, 0, 0 , 0 , 0 , 0, 0, 0 , 0 , 0, 0,

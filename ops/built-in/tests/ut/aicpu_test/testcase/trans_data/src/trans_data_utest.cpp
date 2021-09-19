@@ -172,6 +172,27 @@ TEST_F(TRANSDATA_UT, FLOAT_FORMAT_NCDHW) {
   std::cout << "Test TransData end" << std::endl;
 }
 
+TEST_F(TRANSDATA_UT, FLOAT_FORMAT_NCDHW_FAILED) {
+  std::cout << "Test TransData begin" << std::endl;
+  float input_data[16] = {59.2, 62.1, 22.5,  40.5, -97.8, 68.1, 52.3, -50.9,
+                          22.4, 7.2,  -51.3, 63.5, 75.2,  82.3, 37.1, 10.4};
+  auto node_def = CpuKernelUtils::CreateNodeDef();
+  int64_t groups = 0;
+  float output_data[1024];
+  NodeDefBuilder(node_def.get(), "TransData", "TransData")
+      .Input(
+          {"src", DT_FLOAT, {2, 2, 1, 2, 2}, (void*)input_data, FORMAT_NCDHW})
+      .Attr("src_format", DT_STRING)
+      .Attr("dst_format", DT_STRING)
+      .Output({"src",
+               DT_FLOAT,
+               {4, 1, 16, 16},
+               (void*)output_data,
+               FORMAT_FRACTAL_Z_3D})
+      .Attr("groups", groups);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+  std::cout << "Test TransData end" << std::endl;
+}
 
 TEST_F(TRANSDATA_UT, FLOAT_FORMAT_NCHW) {
   std::cout << "Test TransData begin" << std::endl;
