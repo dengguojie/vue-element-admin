@@ -671,7 +671,7 @@ def _matmul_new_mk_kn_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, sh
 
     if tensor_bais is not None:
         tensor_bais_ub = tvm.compute(output_bais,
-                                     lambda *index: tensor_bais(*_get_bias_axis(*index)),
+                                     lambda *index: tensor_bais(_get_bias_axis(*index)),
                                      name="tensor_bais_ub")
     else:
         tensor_bais_ub = None

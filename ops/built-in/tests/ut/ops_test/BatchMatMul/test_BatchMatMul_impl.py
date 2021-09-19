@@ -141,6 +141,15 @@ case10 = {"params": [{"shape": (0, 10), "ori_shape": (0, 10), "dtype": "float16"
          "expect": "success",
          "support_expect": True}
 
+case11 = {"params": [{"shape": (1, 2708, 2708), "dtype": "float32", "format": "ND", "ori_shape": (1, 2708, 2708),"ori_format": "ND"}, #x
+                    {"shape": (1, 2708, 7), "dtype": "float32", "format": "ND", "ori_shape": (1, 2708, 7),"ori_format": "ND"}, #h
+                    {"shape": (7,), "dtype": "float32", "format": "ND", "ori_shape": (7,),"ori_format": "ND"},
+                    {"shape": (1, 2708, 7), "dtype": "float32", "format": "ND", "ori_shape": (1, 2708, 7),"ori_format": "ND"},
+                    False, False,
+                    ],
+         "case_name": "BatchMatmul_v1_11",
+         "expect": "success",
+         "support_expect": True}
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
