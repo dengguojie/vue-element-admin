@@ -281,6 +281,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/tile_fusion_pass.cc
   graph_fusion/ai_core/top_k_fusion_pass.cc
   graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
+  graph_fusion/ai_core/transdata_confusiontransposed_fusion_pass.cc
   graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
   graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
   graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
