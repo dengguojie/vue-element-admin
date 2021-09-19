@@ -103,7 +103,8 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
   int64_t dtype_size = GetSizeByDataType(dtype);
   const int32_t BYTE_BLOCK = 32;
   const int32_t STRIDE_LIMIT = 65535 * BYTE_BLOCK;
-  OP_LOGD(opType.c_str(), "param input/output tensor's data type: %s", dtype, "dtype size: %lld", dtype_size);
+  OP_LOGD(opType.c_str(), "param input/output tensor's data type: %s", to_string(dtype).c_str(), "dtype size: %lld",
+          dtype_size);
   OP_LOGD(opType.c_str(), "param CalVnchwUbSize: %lld", CalVnchwUbSize(ub_size, dtype_size, BYTE_BLOCK));
   int64_t shape_len = parameters.output_shape.size();
 
