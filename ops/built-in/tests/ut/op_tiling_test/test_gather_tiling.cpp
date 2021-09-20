@@ -3,8 +3,12 @@
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "selection_ops.h"
+#include "array_ops.h"
+#include "test_common.h"
 
 using namespace std;
+using namespace ge;
 
 class GatherTiling : public testing::Test {
  protected:
@@ -17,7 +21,7 @@ class GatherTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int64_t tmp = 0;
@@ -31,97 +35,81 @@ static string to_string(const std::stringstream &tiling_data) {
 }
 
 TEST_F(GatherTiling, gather_tiling_0) {
-  using namespace optiling;
   std::string op_name = "Gather";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("Gather");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, "
-                            "\"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2}}";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Gather");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::vector<int64_t> inputA{87552,};
-  std::vector<int64_t> inputB{174,1};
-  std::vector<int64_t> output{174,1};
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, "
+      "\"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2}}";
 
-  TeOpTensor tensor_inputA;
-  tensor_inputA.shape = inputA;
-  tensor_inputA.dtype = "float16";
-  TeOpTensor tensor_inputB;
-  tensor_inputB.shape = inputB;
-  tensor_inputB.ori_shape = inputB;
-  tensor_inputB.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
+  std::vector<int64_t> inputA{
+      87552,
+  };
+  std::vector<int64_t> inputB{174, 1};
+  std::vector<int64_t> output{174, 1};
 
-  TeOpTensorArg tensor_argA;
-  tensor_argA.tensor.push_back(tensor_inputA);
-  tensor_argA.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_argB;
-  tensor_argB.tensor.push_back(tensor_inputB);
-  tensor_argB.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_output);
-  tensor_arg.arg_type = TA_SINGLE;
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputA));
+  tensor_inputA.SetDataType(ge::DT_FLOAT16);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputB));
+  tensor_inputB.SetOriginShape(ge::Shape(inputB));
+  tensor_inputB.SetDataType(ge::DT_INT32);
+  TensorDesc tensor_output;
+  tensor_output.SetShape(ge::Shape(output));
+  tensor_output.SetDataType(ge::DT_FLOAT16);
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_argA);
-  opParas.inputs.push_back(tensor_argB);
-  opParas.outputs.push_back(tensor_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "gather_tiling_0";
-  OpRunInfo runInfo;
+  auto opParas = op::Gather("Gather");
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, indices);
+  TENSOR_OUTPUT(opParas, tensor_output, y);
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "13 1 87552 1 174 0 8 0 21 6 0 32512 21 65024 "
-                                            "32512 0 65024 21 0 87552 0 0 0 0 1 1 0 1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "13 1 87552 1 174 0 8 0 21 6 0 32512 21 65024 "
+            "32512 0 65024 21 0 87552 0 0 0 0 1 1 0 1 ");
+  int64_t num = 100;
+  for (int64_t i = 0; i < num; i++) {
+    iter->second(opParas, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(GatherTiling, gather_tiling_1) {
-  using namespace optiling;
   std::string op_name = "Gather";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("Gather");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Gather");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-                            "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":1}}";
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":1}}";
 
   std::vector<int64_t> inputA{55, 32, 16};
   std::vector<int64_t> inputB{55, 6};
   std::vector<int64_t> output{55, 6, 16};
 
-  TeOpTensor tensor_inputA;
-  tensor_inputA.shape = inputA;
-  tensor_inputA.dtype = "float16";
-  TeOpTensor tensor_inputB;
-  tensor_inputB.shape = inputB;
-  tensor_inputB.ori_shape = inputB;
-  tensor_inputB.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputA));
+  tensor_inputA.SetDataType(ge::DT_FLOAT16);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputB));
+  tensor_inputB.SetOriginShape(ge::Shape(inputB));
+  tensor_inputB.SetDataType(ge::DT_INT32);
+  TensorDesc tensor_output;
+  tensor_output.SetShape(ge::Shape(output));
+  tensor_output.SetDataType(ge::DT_FLOAT16);
 
-  TeOpTensorArg tensor_argA;
-  tensor_argA.tensor.push_back(tensor_inputA);
-  tensor_argA.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_argB;
-  tensor_argB.tensor.push_back(tensor_inputB);
-  tensor_argB.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_output);
-  tensor_arg.arg_type = TA_SINGLE;
+  auto opParas = op::Gather("Gather");
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, indices);
+  TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_argA);
-  opParas.inputs.push_back(tensor_argB);
-  opParas.outputs.push_back(tensor_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "gather_tiling_1";
-  OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "29 1 32 16 330 0 32 0 6 138 0 6 0 "
-                                            "2464 6 0 0 0 0 512 0 0 0 0 6 1 23 55 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "29 1 32 16 330 0 32 0 6 138 0 6 0 "
+            "2464 6 0 0 0 0 512 0 0 0 0 6 1 23 55 ");
 }
