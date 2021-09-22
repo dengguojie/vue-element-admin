@@ -1014,7 +1014,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   // set range
   bool is_dynamic = false;
   // when static op or dynamic op phase_running, is_dynamic == false
-  if (shapeIn.IsUnknownDimNum() && shapeIn.IsUnknownShape()) {
+  if (shapeIn.IsUnknownShape() && (!shapeIn.IsUnknownDimNum())) {
     is_dynamic = true;
   }
   if (is_dynamic) {

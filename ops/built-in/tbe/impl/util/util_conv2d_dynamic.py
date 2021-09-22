@@ -49,11 +49,10 @@ def modify_input_range(in_range_nchw, data_type, idx_h, idx_w, strides, hk_dilat
     '''
     check for not bigger than L1
     '''
-    fmap_w_min = in_range_nchw[W_DIM][0]
-    fmap_w_max = in_range_nchw[W_DIM][1]
+    fmap_w_min = in_range_nchw[idx_w][0]
+    fmap_w_max = in_range_nchw[idx_w][1]
     m_bit_ratio = {"float16": 2, "int8": 1}
     c0 = tbe_platform.CUBE_MKN[data_type]["mac"][1]
-    fmap_w_upper = in_range_nchw[W_DIM][1]
     new_in_range_nchw = list(in_range_nchw)
 
     stride_h = strides[idx_h]
@@ -79,7 +78,7 @@ def modify_input_range(in_range_nchw, data_type, idx_h, idx_w, strides, hk_dilat
         if w_left == fmap_w_max:
             break
     cor_w_range = (fmap_w_min, w_left)
-    new_in_range_nchw[W_DIM] = cor_w_range
+    new_in_range_nchw[idx_w] = cor_w_range
     to_print = "conv2d fmap ori_range changed from {} to {}.".format(in_range_nchw, new_in_range_nchw)
     warnings.warn(to_print)
 

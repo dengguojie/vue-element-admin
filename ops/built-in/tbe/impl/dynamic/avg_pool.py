@@ -39,6 +39,7 @@ from impl.util.util_conv2d_dynamic import correct_input_range
 from impl.util.util_cube_dynamic import BIT_RATIO_DICT
 from tbe.dsl.compute.conv_compute import conv
 from tbe.dsl.compute.conv_compute import ConvParam
+from tbe.common.utils import log
 
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
@@ -928,12 +929,15 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
             input_range[idx] = create_fuzz_range(op_type, x_shape[idx], grade_item)
 
     input_range[idx_c] = [x_shape[idx_c], x_shape[idx_c]]
+    log.debug("avgpool fuzz input range is :%s", input_range)
     # output_h or output_w > 0
     correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh, kw, pads)
+    log.debug("avgpool fuzz input range is corrected for output_w > 0, :%s", input_range)
     # check fmap exceed l1buffer
     if x_shape[idx_w] != DYNAMIC_VALUE:
         check_l1_size(op_type, inputs, kh, kw, strides, pads)
     new_in_range = modify_input_range(input_range, data_type, idx_h, idx_w, strides, kh, kw, pads)
+    log.debug("avgpool fuzz input range is modified for no exceed l1buffer, :%s", new_in_range)
     return new_in_range
 
 @tbe_register.register_param_generalization("AvgPool")

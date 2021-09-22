@@ -19,6 +19,7 @@ import math
 from tbe import tvm
 from tbe.common import register as tbe_register
 from tbe.common.utils import para_check
+from tbe.common.utils import log
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from .conv2d import conv2d
 from .conv2d import conv2d_fusion_compute
@@ -102,12 +103,15 @@ def gen_depthwise_conv2d_range(inputs, weights, strides, pads, dilations):
             input_range[idx] = create_fuzz_range(op_type, x_shape[idx], grade_item)
 
     input_range[idx_c] = [x_shape[idx_c], x_shape[idx_c]]
+    log.debug("depthwise_conv2d fuzz input range is :%s", input_range)
     # output_h or output_w > 0
     correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, kw_dilate, pads)
+    log.debug("depthwise_conv2d fuzz input range is corrected for output_w > 0, :%s", input_range)
     # check fmap exceed l1buffer
     if x_shape[idx_w] != DYNAMIC_VALUE:
         check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads)
     new_in_range = modify_input_range(input_range, data_type, idx_h, idx_w, strides, kh_dilate, kw_dilate, pads)
+    log.debug("depthwise_conv2d fuzz input range is modified for no exceed l1buffer, :%s", new_in_range)
 
     return new_in_range
 

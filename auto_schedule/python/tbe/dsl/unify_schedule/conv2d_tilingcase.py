@@ -27,6 +27,7 @@ from tbe.tvm import schedule as tvm
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import get_context
+from tbe.common.utils import log
 
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_te_var
@@ -385,6 +386,8 @@ def calc_conv2d(outs, option=None):
                 total_info = current_info
                 # <<< end: add new dict info
         # <<< end: gather compile_info process
+    for tiling in tiling_cases:
+        log.debug("dynamic conv2d build tiling is :%s, %s", tiling_dict.get("kernel_name", "conv2d"), tiling)
     return tiling_cases
 
 
