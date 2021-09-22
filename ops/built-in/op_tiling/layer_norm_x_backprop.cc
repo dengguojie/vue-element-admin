@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <iostream>
+
 #include "../op_proto/util/error_util.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
@@ -22,14 +23,14 @@
 
 namespace optiling {
   bool GetLayerNormXBackpropCompileParams(const std::string& op_type, const nlohmann::json& op_info,
-                                          int32_t& core_num, int32_t& ub_size, int32_t& max_dtype) {
+                                          int32_t& core_num, int32_t& ub_size, int32_t& max_dtype)
+  {
     using namespace nlohmann;
     if (op_info == nullptr) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info is null");
       return false;
     }
-    if (op_info.count("CORE_NUM") == 0 || op_info.count("UB_SIZE") == 0 || op_info.count("MAX_DTYPE") == 0)
-    {
+    if (op_info.count("CORE_NUM") == 0 || op_info.count("UB_SIZE") == 0 || op_info.count("MAX_DTYPE") == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CORE_NUM or UB_SIZE or MAX_DTYPE is null");
       return false;
     }
@@ -41,7 +42,8 @@ namespace optiling {
   }
 
   bool LayerNormXBackpropTiling(const std::string &op_type, const TeOpParas &op_paras, const nlohmann::json &op_info,
-                                OpRunInfo &run_info) {
+                                OpRunInfo &run_info)
+  {
     GELOGI("LayerNormXBackpropTiling running.");
     std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
     int32_t fmap_x0 = input_shape[0];
@@ -49,6 +51,7 @@ namespace optiling {
     int32_t core_num = 0;
     int32_t ub_size = 0;
     int32_t max_dtype = 0;
+    int32_t CUT_AXIS_ONE_TILING_KEY = 10000;
 
     bool ret = GetLayerNormXBackpropCompileParams(op_type, op_info, core_num, ub_size, max_dtype);
     if (!ret) {
@@ -60,8 +63,8 @@ namespace optiling {
     ByteBufferPut(run_info.tiling_data, fmap_x0);
     ByteBufferPut(run_info.tiling_data, fmap_x1);
 
-    run_info.block_dim = 32;
-    run_info.tiling_key = 10000;
+    run_info.block_dim = core_num;
+    run_info.tiling_key = CUT_AXIS_ONE_TILING_KEY;
     GELOGI("LayerNormXBackpropTiling end.");
 
     return true;
