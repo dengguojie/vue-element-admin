@@ -109,8 +109,12 @@ const std::map<std::string, DataType> dtype_maps{
 
 bool IsEmptyTensor(Tensor *tensor) {
   auto dims = tensor->GetTensorShape()->GetDimSizes();
-  if (tensor->GetData() == NULL && dims.size() == 1 && dims[0] == 0) {
-    return true;
+  if (tensor->GetData() == NULL) {
+    for (uint32_t i = 0; i < dims.size(); i++) {
+      if (dims[i] == 0) {
+        return true;
+      }
+    }
   }
   return false;
 }
