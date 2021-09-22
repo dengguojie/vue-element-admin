@@ -1738,13 +1738,13 @@ class CceConv3dOp:
                 return al1_m * cin1_g * fmap_c0 * kernel_d
 
         if self.var_map:
-            sch[al1].set_storage_bound(_get_al1_bound())
-            # disable_allocate
-            sch.disable_allocate(tbe_platform_info.scope_cbuf)
-            sch.disable_allocate(tbe_platform_info.scope_ca)
-            sch.disable_allocate(tbe_platform_info.scope_cb)
-            sch.disable_allocate(tbe_platform_info.scope_cc)
-            sch.disable_allocate(tbe_platform_info.scope_ubuf)
+            sch[al1].set_buffer_size(_get_al1_bound())
+            # sequential_malloc
+            sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+            sch.sequential_malloc(tbe_platform_info.scope_ca)
+            sch.sequential_malloc(tbe_platform_info.scope_cb)
+            sch.sequential_malloc(tbe_platform_info.scope_cc)
+            sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
             # mem_unique
             sch[al1].mem_unique()

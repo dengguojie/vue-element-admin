@@ -2400,18 +2400,18 @@ def general_schedule(
                 aub_filling_w = dy_w * stride_w
                 aub_h = aub_tiling_m // stride_h + 1
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
-                sch[a_filling].set_storage_bound(a_filling_bound)
-                sch[dy_vn].set_storage_bound(a_filling_bound)
-                sch[a_zero].set_storage_bound(a_filling_bound)
+                sch[a_filling].set_buffer_size(a_filling_bound)
+                sch[dy_vn].set_buffer_size(a_filling_bound)
+                sch[a_zero].set_buffer_size(a_filling_bound)
                 if "a_avg" in tensor_map:
                     aub_bound = aub_co1 * aub_h * dy_w * aub_co0
-                    sch[a_ub].set_storage_bound(aub_bound)
-                    sch[a_avg].set_storage_bound(aub_bound)
-                    sch[mean_matrix].set_storage_bound(aub_bound)
-                    sch[mean_matrix_fp16].set_storage_bound(aub_bound)
+                    sch[a_ub].set_buffer_size(aub_bound)
+                    sch[a_avg].set_buffer_size(aub_bound)
+                    sch[mean_matrix].set_buffer_size(aub_bound)
+                    sch[mean_matrix_fp16].set_buffer_size(aub_bound)
 
         al1_bound, al1_h, al1_w = _get_al1_bound()
-        sch[a_l1].set_storage_bound(al1_bound)
+        sch[a_l1].set_buffer_size(al1_bound)
         _set_aub_bound()
         if "batch_n" in var_map:
             sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
@@ -2423,11 +2423,11 @@ def general_schedule(
             sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
             sch.set_var_range(output_shape[3], *var_range.get("dx_w"))
 
-        sch.disable_allocate(tbe_platform_info.scope_cbuf)
-        sch.disable_allocate(tbe_platform_info.scope_ca)
-        sch.disable_allocate(tbe_platform_info.scope_cb)
-        sch.disable_allocate(tbe_platform_info.scope_cc)
-        sch.disable_allocate(tbe_platform_info.scope_ubuf)
+        sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+        sch.sequential_malloc(tbe_platform_info.scope_ca)
+        sch.sequential_malloc(tbe_platform_info.scope_cb)
+        sch.sequential_malloc(tbe_platform_info.scope_cc)
+        sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
         sch[a_l1].mem_unique()
         sch[a_col].mem_unique()
@@ -2444,7 +2444,7 @@ def general_schedule(
         else:
             fmap = DeConvPattern.dedy
             if a_l1_full is not None:
-                sch[a_l1_full].set_storage_bound(fmap_l1_valid_size)
+                sch[a_l1_full].set_buffer_size(fmap_l1_valid_size)
                 l1_tensor_map[fmap] = a_l1_full
             elif (
                 l1_fusion_type != -1
@@ -2452,7 +2452,7 @@ def general_schedule(
                 and stride_w == 1
                 and stride_h == 1
             ):
-                sch[a_l1].set_storage_bound(fmap_l1_valid_size)
+                sch[a_l1].set_buffer_size(fmap_l1_valid_size)
                 l1_tensor_map[fmap] = a_l1
             else:
                 l1_tensor_map = None

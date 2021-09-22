@@ -988,7 +988,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     def _set_l1_fusion_workspace_size(input_l1_flag, input_l1_size, tensor_a_l1_workspace):
         if input_l1_flag == 1 and input_l1_size > 0:
-            sch[tensor_a_l1_workspace].set_storage_bound(input_l1_size)
+            sch[tensor_a_l1_workspace].set_buffer_size(input_l1_size)
 
     res_ori = res
     res = res[-1]

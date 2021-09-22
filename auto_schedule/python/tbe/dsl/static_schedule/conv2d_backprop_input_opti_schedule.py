@@ -2552,19 +2552,19 @@ class Conv2dDxOptiSchedule:
         def _get_dilate_ub_bound():
             nc_factor, mc_factor, tiling_m0, tiling_n0 = TILING["CUB_matrix"][:4]
             cub_bound = nc_factor * mc_factor * tiling_m0 * tiling_n0
-            sch[c_ub].set_storage_bound(cub_bound)
+            sch[c_ub].set_buffer_size(cub_bound)
             l0c_bound = (
                 TILING["CL0_matrix"][0] * TILING["CL0_matrix"][1] * tiling_m0 * tiling_n0
             )
-            sch[c_l0c].set_storage_bound(l0c_bound)
+            sch[c_l0c].set_buffer_size(l0c_bound)
             dilate_bound = l0c_factor[1] * nc_factor * tiling_n0
-            sch[dilate_ub].set_storage_bound(dilate_bound)
+            sch[dilate_ub].set_buffer_size(dilate_bound)
             filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
-            sch[filling_zero_ub].set_storage_bound(dilate_bound)
+            sch[filling_zero_ub].set_buffer_size(dilate_bound)
             if fusion_type == FUSION_DX_ADD_DRELU:
-                sch[add_input_ub].set_storage_bound(dilate_bound)
-                sch[add_res_ub].set_storage_bound(dilate_bound)
-                sch[fusion_dx_gm].set_storage_bound(dilate_bound)
+                sch[add_input_ub].set_buffer_size(dilate_bound)
+                sch[add_res_ub].set_buffer_size(dilate_bound)
+                sch[fusion_dx_gm].set_buffer_size(dilate_bound)
 
         def _is_conv1d():
             return (
@@ -2598,15 +2598,15 @@ class Conv2dDxOptiSchedule:
             # set storage bound
             if var_map:
                 al1_bound = _get_al1_bound()
-                sch[a_l1].set_storage_bound(al1_bound)
+                sch[a_l1].set_buffer_size(al1_bound)
             if ("dedy_h" in var_map or "dedy_w" in var_map) and dilate_ub is not None:
                 _get_dilate_ub_bound()
-            # disable_allocate
-            sch.disable_allocate(tbe_platform_info.scope_cbuf)
-            sch.disable_allocate(tbe_platform_info.scope_ca)
-            sch.disable_allocate(tbe_platform_info.scope_cb)
-            sch.disable_allocate(tbe_platform_info.scope_cc)
-            sch.disable_allocate(tbe_platform_info.scope_ubuf)
+            # sequential_malloc
+            sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+            sch.sequential_malloc(tbe_platform_info.scope_ca)
+            sch.sequential_malloc(tbe_platform_info.scope_cb)
+            sch.sequential_malloc(tbe_platform_info.scope_cc)
+            sch.sequential_malloc(tbe_platform_info.scope_ubuf)
             # mem_unique
             sch[a_l1].mem_unique()
             sch[a_l0a].mem_unique()
@@ -2933,7 +2933,7 @@ class Conv2dDxOptiSchedule:
                     self.dx_para.get_para_map("l1_fusion_type") != -1
                     and self.dx_para.get_para_map("input_memory_type")[0] == 0
                 ):
-                    sch[a_l1].set_storage_bound(
+                    sch[a_l1].set_buffer_size(
                         self.dx_para.get_para_map("fmap_l1_valid_size")
                     )
                     l1_tensor_map[fmap] = a_l1

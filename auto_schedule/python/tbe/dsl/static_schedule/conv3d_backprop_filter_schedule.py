@@ -1484,16 +1484,16 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                          (None, None))
 
             # mem management in dynamic mode
-            sch[grads_matrix].set_storage_bound(al1_bound)
-            sch[fmap_l1].set_storage_bound(bl1_bound)
+            sch[grads_matrix].set_buffer_size(al1_bound)
+            sch[fmap_l1].set_buffer_size(bl1_bound)
 
         def _dynamic_memory_management():
-            # disable_allocate
-            sch.disable_allocate(tbe_platform_info.scope_cbuf)
-            sch.disable_allocate(tbe_platform_info.scope_ca)
-            sch.disable_allocate(tbe_platform_info.scope_cb)
-            sch.disable_allocate(tbe_platform_info.scope_cc)
-            sch.disable_allocate(tbe_platform_info.scope_ubuf)
+            # sequential_malloc
+            sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+            sch.sequential_malloc(tbe_platform_info.scope_ca)
+            sch.sequential_malloc(tbe_platform_info.scope_cb)
+            sch.sequential_malloc(tbe_platform_info.scope_cc)
+            sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
             # mem_unique
             sch[fmap_l1].mem_unique()

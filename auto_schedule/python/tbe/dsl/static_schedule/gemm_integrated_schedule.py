@@ -1261,7 +1261,7 @@ class GemmSchedule(object):
 
     def _set_l1_fusion_workspace_size(self, tensor_a_l1_workspace):
         if self.input_l1_flag == 1 and self.input_l1_size > 0:
-            self.sch[tensor_a_l1_workspace].set_storage_bound(self.input_l1_size)
+            self.sch[tensor_a_l1_workspace].set_buffer_size(self.input_l1_size)
 
     def _get_tensor_a_l1_workspace(self, l1_fusion_and_l1_size_0):
         tensor_a_l1_workspace = None
@@ -4021,19 +4021,19 @@ class GemmSchedule(object):
         sch = self.sch
         TENSOR_MAP = self.TENSOR_MAP
         if self.is_dynamic:
-            sch.disable_allocate(tbe_platform_info.scope_cbuf)
-            sch.disable_allocate(tbe_platform_info.scope_ca)
-            sch.disable_allocate(tbe_platform_info.scope_cb)
-            sch.disable_allocate(tbe_platform_info.scope_cc)
-            sch.disable_allocate(tbe_platform_info.scope_ubuf)
+            sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+            sch.sequential_malloc(tbe_platform_info.scope_ca)
+            sch.sequential_malloc(tbe_platform_info.scope_cb)
+            sch.sequential_malloc(tbe_platform_info.scope_cc)
+            sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
             # get l1 bound
             if self.format_a == "ND":
-                sch[TENSOR_MAP.get("a_ub")].set_storage_bound(self._get_aub_bound())
+                sch[TENSOR_MAP.get("a_ub")].set_buffer_size(self._get_aub_bound())
             if self.format_b == "ND":
-                sch[TENSOR_MAP.get("b_ub")].set_storage_bound(self._get_bub_bound())
-            sch[TENSOR_MAP.get("a_l1")].set_storage_bound(self._get_al1_bound())
-            sch[TENSOR_MAP.get("b_l1")].set_storage_bound(self._get_bl1_bound())
+                sch[TENSOR_MAP.get("b_ub")].set_buffer_size(self._get_bub_bound())
+            sch[TENSOR_MAP.get("a_l1")].set_buffer_size(self._get_al1_bound())
+            sch[TENSOR_MAP.get("b_l1")].set_buffer_size(self._get_bl1_bound())
 
             # mem_unique
             sch[TENSOR_MAP.get("a_l1")].mem_unique()

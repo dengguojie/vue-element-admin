@@ -4489,15 +4489,15 @@ class GEMM_Schedule:
                 return bl1_bound
 
             if self.gemm_params.is_dynamic:
-                sch.disable_allocate(tbe_platform_info.scope_cbuf)
-                sch.disable_allocate(tbe_platform_info.scope_ca)
-                sch.disable_allocate(tbe_platform_info.scope_cb)
-                sch.disable_allocate(tbe_platform_info.scope_cc)
-                sch.disable_allocate(tbe_platform_info.scope_ubuf)
+                sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+                sch.sequential_malloc(tbe_platform_info.scope_ca)
+                sch.sequential_malloc(tbe_platform_info.scope_cb)
+                sch.sequential_malloc(tbe_platform_info.scope_cc)
+                sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
                 # get l1 bound
-                sch[a_l1].set_storage_bound(_get_al1_bound())
-                sch[b_l1].set_storage_bound(_get_bl1_bound())
+                sch[a_l1].set_buffer_size(_get_al1_bound())
+                sch[b_l1].set_buffer_size(_get_bl1_bound())
 
                 # mem_unique
                 sch[a_l1].mem_unique()

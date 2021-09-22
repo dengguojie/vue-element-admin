@@ -1398,14 +1398,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0 * d_factor
                 dedy_bound = aub_co1 * aub_h * dy_w * aub_co0 * d_factor
                 if stride_h > 1 or stride_w > 1:
-                    sch[a_zero].set_storage_bound(a_filling_bound)
-                    sch[a_vn].set_storage_bound(a_filling_bound)
+                    sch[a_zero].set_buffer_size(a_filling_bound)
+                    sch[a_vn].set_buffer_size(a_filling_bound)
                 if mean_flag:
-                    sch[mean_matrix_init].set_storage_bound(dedy_bound)
-                    sch[mean_matrix_fp16].set_storage_bound(dedy_bound)
+                    sch[mean_matrix_init].set_buffer_size(dedy_bound)
+                    sch[mean_matrix_fp16].set_buffer_size(dedy_bound)
                     if stride_h > 1 or stride_w > 1:
-                        sch[mean_matrix_mul].set_storage_bound(dedy_bound)
-                sch[a_filling].set_storage_bound(a_filling_bound)
+                        sch[mean_matrix_mul].set_buffer_size(dedy_bound)
+                sch[a_filling].set_buffer_size(a_filling_bound)
 
         al1_bound, al1_h = _get_al1_bound()
         extent_h = tvm.select(tvm.floordiv(al1_h, ho_l1) < 1,
@@ -1417,16 +1417,16 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch.set_var_value(extent_h_var, extent_h)
         sch.set_var_range(extent_h_var, 1, None)
 
-        sch[a_l1].set_storage_bound(al1_bound)
-        sch[b_l1].set_storage_bound(_get_bl1_bound())
-        sch[a_col].set_storage_bound(_get_al0_bound())
+        sch[a_l1].set_buffer_size(al1_bound)
+        sch[b_l1].set_buffer_size(_get_bl1_bound())
+        sch[a_col].set_buffer_size(_get_al0_bound())
         _set_aub_bound(al1_h)
 
-        sch.disable_allocate(tbe_platform_info.scope_cbuf)
-        sch.disable_allocate(tbe_platform_info.scope_ca)
-        sch.disable_allocate(tbe_platform_info.scope_cb)
-        sch.disable_allocate(tbe_platform_info.scope_cc)
-        sch.disable_allocate(tbe_platform_info.scope_ubuf)
+        sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+        sch.sequential_malloc(tbe_platform_info.scope_ca)
+        sch.sequential_malloc(tbe_platform_info.scope_cb)
+        sch.sequential_malloc(tbe_platform_info.scope_cc)
+        sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
         sch[a_l1].mem_unique()
         sch[a_col].mem_unique()

@@ -1817,17 +1817,17 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                         (None, None))
 
             # mem management in dynamic mode
-            sch[grads_matrix].set_storage_bound(al1_bound)
-            sch[fmap_matrix].set_storage_bound(bl1_bound)
+            sch[grads_matrix].set_buffer_size(al1_bound)
+            sch[fmap_matrix].set_buffer_size(bl1_bound)
 
         def _dynamic_memory_management():
-            # disable_allocate
-            sch.disable_allocate(tbe_platform_info.scope_cbuf)
-            sch.disable_allocate(tbe_platform_info.scope_ca)
-            sch.disable_allocate(tbe_platform_info.scope_cb)
-            sch.disable_allocate(tbe_platform_info.scope_cc)
+            # sequential_malloc
+            sch.sequential_malloc(tbe_platform_info.scope_cbuf)
+            sch.sequential_malloc(tbe_platform_info.scope_ca)
+            sch.sequential_malloc(tbe_platform_info.scope_cb)
+            sch.sequential_malloc(tbe_platform_info.scope_cc)
             if not self.cube_vector_split:
-                sch.disable_allocate(tbe_platform_info.scope_ubuf)
+                sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
             # mem_unique
             sch[grads_matrix].mem_unique()
