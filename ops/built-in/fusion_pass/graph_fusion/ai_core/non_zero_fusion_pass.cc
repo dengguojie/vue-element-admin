@@ -68,7 +68,7 @@ Status NonZeroFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   if (castNode->GetOpDesc()->GetOutputDesc(0).GetDataType() != ge::DT_INT32) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "No need change graph.");
-      return FAILED;
+      return NOT_CHANGED;
   }
 
   nonZeroNode->GetOpDesc()->MutableOutputDesc(0)->SetDataType(ge::DT_INT32);
