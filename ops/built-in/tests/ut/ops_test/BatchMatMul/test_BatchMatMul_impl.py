@@ -399,6 +399,27 @@ case15 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": 
          "support_expect": True}
 ut_case.add_case(["Ascend920A"], case15)
 
+
+def test_matmul_api(test_arg):
+    import tbe.dsl as tbe
+    shape_a = [2, 1, 1, 16, 16]
+    shape_b = [1, 1, 1, 16, 16]
+    src_type = 'float16'
+    tensor_a = tvm.placeholder(shape_a, name='tensor_a',
+                                        attrs={'format': 'FRACTAL_NZ', 'ori_shape': [2, 16, 16]},
+                                        dtype=src_type)
+    tensor_b = tvm.placeholder(shape_b, name='tensor_b',
+                                        attrs={'format': 'FRACTAL_NZ', 'ori_shape': [1, 16, 16]},
+                                        dtype=src_type)
+    matmul_attr = {
+        "batch_shape_a": [2],
+        "batch_shape_b": [1],
+        "batch_shape_out": [2]
+    }
+    tbe.matmul(tensor_a, tensor_b, trans_a=True, trans_b=True, format_a="FRACTAL_NZ", format_b="FRACTAL_NZ", attrs=matmul_attr)
+
+ut_case.add_cust_test_func(test_func=test_matmul_api)
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     ut_case.run("Ascend910")

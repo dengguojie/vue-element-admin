@@ -722,6 +722,22 @@ def test_matmul_trans_data_fusion_920_mock(test_args):
             out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
             sch = auto_schedule(out)
 ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock)
+ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+
+def test_matmul_api(test_arg):
+    import tbe.dsl as tbe
+    shape_a = [1, 1, 16, 16]
+    shape_b = [1, 1, 16, 16]
+    src_type = 'float16'
+    tensor_a = tvm.placeholder(shape_a, name='tensor_a',
+                                        attrs={'format': 'FRACTAL_NZ', 'ori_shape': [16, 16]},
+                                        dtype=src_type)
+    tensor_b = tvm.placeholder(shape_b, name='tensor_b',
+                                        attrs={'format': 'FRACTAL_NZ', 'ori_shape': [16, 16]},
+                                        dtype=src_type)
+    tbe.matmul(tensor_a, tensor_b, trans_a=True, trans_b=True, format_a="FRACTAL_NZ", format_b="FRACTAL_NZ")
+
+ut_case.add_cust_test_func(test_func=test_matmul_api)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend920A"])

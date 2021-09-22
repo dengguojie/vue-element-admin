@@ -1392,3 +1392,92 @@ def gemm(tensor_a, tensor_b, para_dict):
     Returns result
     """
     return gemm_compute.gemm(tensor_a, tensor_b, para_dict)
+
+
+def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
+           alpha_num=1.0, beta_num=1.0, dst_dtype="float16", tensor_bias=None,
+           quantize_params=None, format_out=None, compress_index=None,
+           attrs={}, kernel_name="MatMul"):
+    """
+    algorithm: mmad
+    calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
+
+    Parameters:
+    tensor_a : the first tensor a
+        support dtype: float16 and int8
+        support format: fractal and ND
+
+    tensor_b : second tensor b with the same type and shape with a
+        support dtype: float16 and int8
+        support format: fractal and ND
+
+    trans_a : if True, a needs to be transposed
+
+    trans_b : if True, b needs to be transposed
+
+    is_fractal: If type is bool, a and b's format both be fractal or ND,
+                default is ND;
+                If type is list, len must be 2, [0] is is_fractal_a,
+                [1] is is_fractal_b
+
+    alpha_num: scalar used for multiplication, not support now.
+
+    beta_num: scalar used for multiplication, not support now.
+
+    dst_dtype: output data type, support "float16" "float32", default is "float16"
+
+    tensor_bias :the bias with used to init L0C for tensor c
+
+    quantize_params: quantization parameters,
+            not None means enable quantization, it is dictionary structure
+
+        quantize_alg: quantize mode,
+            support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+
+        scale_mode_a: tensor_a inbound quantization mode, not support now.
+        scale_mode_b: tensor_b inbound quantization mode, not support now.
+        scale_mode_out: out tensor quantization mode, support 'SCALAR' and 'VECTOR'
+
+        sqrt_mode_a: tensor_a inbound sqrt mode, not support now.
+        sqrt_mode_b: tensor_b inbound sqrt mode, not support now.
+        sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
+
+        scale_q_a: scale placeholder for tensor_a inbound quantization, not support now.
+        offset_q_a: offset placeholder for tensor_a inbound quantization, not support now.
+        scale_q_b: scale placeholder for tensor_b inbound quantization, not support now.
+        offset_q_b: offset placeholder for tensor_b inbound quantization, not support now.
+
+        scale_drq: scale placeholder for requantization or dequantization
+        offset_drq: scale placeholder for requantization or dequantization, not support now.
+    out_format: output format
+    attrs:
+        offset_x: the offset for fmap
+        offset_w: the offset for w
+
+    compress_index: index for compressed wights, None means not compress wights
+    Returns tensor
+    """
+    offset_x = attrs.get("offset_x", 0)
+    offset_w = attrs.get("offset_w")
+    para_dict = {
+        "trans_a": trans_a,
+        "trans_b": trans_b,
+        "format_a": format_a,
+        "format_b": format_b,
+        "tensor_c": tensor_bias,
+        "dst_dtype": dst_dtype,
+        "format_out": format_out,
+        "offset_a": offset_x,
+        "offset_b": offset_w,
+        "kernel_name": kernel_name
+        }
+    def find_attr_and_add(attr_name):
+        if attr_name in attrs:
+            para_dict[attr_name] = attrs.get(attr_name)
+    find_attr_and_add("impl_mode")
+    find_attr_and_add("batch_shape_a")
+    find_attr_and_add("batch_shape_b")
+    find_attr_and_add("batch_shape_out")
+    find_attr_and_add("quantize_params")
+    find_attr_and_add("compress_index")
+    result = gemm_compute.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
