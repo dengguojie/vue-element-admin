@@ -49,6 +49,7 @@ MODE2 = 2
 # compute big last axis
 MODE3 = 3
 MODE4 = 4
+MODE5 = 5
 # judge how much ub size to fill the tensor
 THRESHOLD_VALUE = 8192
 BLOCK = 32
@@ -136,9 +137,10 @@ class PadV3Init(object):
         self.copy_num = 3200
         self.max_numel_vec_dup_one_loop = None
 
-        self.sync_workspace = self.tik_instance.Tensor(
-            'int64', (4 * self.core_nums,), tik.scope_gm, 'sync_workspace', is_workspace=True,
-            is_atomic_add=True)
+        if self.core_nums > 1:
+            self.sync_workspace = self.tik_instance.Tensor(
+                'int64', (4 * self.core_nums,), tik.scope_gm, 'sync_workspace', is_workspace=True,
+                is_atomic_add=True)
         self.pad_scalar = self.tik_instance.Scalar(dtype=self.x_dtype, name='pad_scalar')
         if self.constant_values:
             self.constant_values_gm = self.tik_instance.Tensor(self.x_dtype, (self.block_num,),
@@ -453,7 +455,8 @@ class PadV3Init(object):
                 else:
                     self.get_pad_scalar()
                 self.fill_gm_output_tensor(core_index)
-                self.tik_instance.block_barrier(self.sync_workspace)
+                if self.core_nums > 1:
+                    self.tik_instance.block_barrier(self.sync_workspace)
             self.do_pad(core_index)
 
 
@@ -1290,30 +1293,107 @@ class PadV3Init(object):
                                                                        self.ub_number * self.ub_number], move_ub, 0, 1,
                                                 align_burst, 0, 0)
 
+    def do_tiling_key_mode_5(self):
+        ranges = self.tik_instance.Scalar(dtype='int64', name='ranges')
+        ranges.set_as(self.tiling_input_dim_2 * self.tiling_input_dim_3)
+        ub_size_second_mode = 2
+        per_ub_size = self.ub_size_bytes // self.inner_bytes_size // ub_size_second_mode
+        input_ele_per_range = self.tik_instance.Scalar(dtype='int64', name='input_ele_per_core')
+        output_ele_per_range = self.tik_instance.Scalar(dtype='int64', name='output_ele_per_core')
+        input_ele_per_range.set_as(self.tiling_input_dim_4 * self.tiling_input_dim_5)
+        output_ele_per_range.set_as(self.tiling_output_dim_4 * self.tiling_output_dim_5)
+        align_tiling_output_dim_5 = self.tik_instance.Scalar(dtype='int64', name='align_tiling_output_dim_5')
+        align_tiling_input_dim_4 = self.tik_instance.Scalar(dtype='int64', name='align_tiling_input_dim_4')
+        align_tiling_input_dim_4.set_as(((self.tiling_input_dim_4 - 1) // self.block_num + 1) * self.block_num)
+        align_tiling_input_dim_5 = self.tik_instance.Scalar(dtype='int64', name='align_tiling_input_dim_5')
+        align_tiling_output_dim_4 = self.tik_instance.Scalar(dtype='int64', name='align_tiling_input_dim_4')
+        align_tiling_output_dim_4.set_as(((self.tiling_output_dim_4 - 1) // self.block_num + 1) * self.block_num)
+        align_tiling_output_dim_5.set_as(((self.tiling_output_dim_5 - 1) // self.block_num + 1) * self.block_num)
+        align_tiling_input_dim_5.set_as(((self.tiling_input_dim_5 - 1) // self.block_num + 1) * self.block_num)
+        time_4 = self.tik_instance.Scalar(dtype='int64', name='time_4')
+        time_5 = self.tik_instance.Scalar(dtype='int64', name='time_5')
+        with self.tik_instance.new_stmt_scope():
+            ping_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='ping_ub_1',
+                                                 scope=tik.scope_ubuf)
+            pang_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='pang_ub_1',
+                                                 scope=tik.scope_ubuf)
+            repeat_time = THRESHOLD_VALUE // self.dump_mask_max_x
+            self.tik_instance.vec_dup(self.dump_mask_max_x, pang_ub_1,
+                                      0, repeat_time, 8)
+            self.tik_instance.vec_dup(self.dump_mask_max_x, ping_ub_1,
+                                      0, repeat_time, 8)
+            with self.tik_instance.for_range(0, ranges) as index:
+                with self.tik_instance.for_range(0, self.tiling_input_dim_4) as i:
+                    self.tik_instance.data_move(ping_ub_1[(i + self.tiling_pading_40) * align_tiling_input_dim_5],
+                                                self.input_gm[index * input_ele_per_range +
+                                                               i * self.tiling_input_dim_5], 0, 1,
+                                                align_tiling_input_dim_5 // self.block_num, 0, 0)
+
+                time_4.set_as(align_tiling_output_dim_4 // self.block_num)
+                time_5.set_as(align_tiling_input_dim_5 // self.block_num)
+                with self.tik_instance.for_range(0, time_4) as i:
+                    with self.tik_instance.for_range(0, time_5) as j:
+                        src_list = []
+                        dst_list = []
+                        for k in range(TRANS_MIN_BLKS):
+                            src_list.append(ping_ub_1[time_5 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * i
+                                                      + TRANS_MIN_BLKS * j + time_5 * TRANS_MIN_BLKS * k])
+                            dst_list.append(pang_ub_1[time_4 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * j
+                                                      + TRANS_MIN_BLKS * i + time_4 * TRANS_MIN_BLKS *
+                                                      (k + self.tiling_pading_50)])
+                        self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
+
+                self.tik_instance.vec_dup(align_tiling_output_dim_4 * self.tiling_pading_51,
+                                          pang_ub_1[time_4 * TRANS_MIN_BLKS *
+                                                      (self.tiling_input_dim_5 + self.tiling_pading_50)],
+                                          0, 1, 8)
+                time_5.set_as(align_tiling_output_dim_5 // self.block_num)
+                with self.tik_instance.for_range(0, time_5) as i:
+                    with self.tik_instance.for_range(0, time_4) as j:
+                        src_list = []
+                        dst_list = []
+                        for k in range(TRANS_MIN_BLKS):
+                            src_list.append(pang_ub_1[time_4 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * j
+                                                      + TRANS_MIN_BLKS * i + time_4 * TRANS_MIN_BLKS * k])
+                            dst_list.append(ping_ub_1[time_5 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * i
+                                                      + TRANS_MIN_BLKS * j + time_5 * TRANS_MIN_BLKS * k])
+                        self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
+
+                with self.tik_instance.for_range(0, self.tiling_output_dim_4) as i:
+                    self.tik_instance.data_move(self.output_gm[index * output_ele_per_range +
+                                                               i * self.tiling_output_dim_5],
+                                                ping_ub_1[i * align_tiling_output_dim_5], 0, 1,
+                                                align_tiling_output_dim_5 // self.block_num, 0, 0)
+
     def do_pad(self, core_index):
         """
         do_pad with different tiling key
         """
-        with self.tik_instance.if_scope(self.tiling_key == MODE0):
-            # use data move to pad_v3, cut by last dim
-            with self.tik_instance.new_stmt_scope():
-                self.do_tiling_key_mode_0()
-        with self.tik_instance.if_scope(self.tiling_key == MODE1):
-            # use data move to pad_v3, cut by 0-4 dims
-            with self.tik_instance.new_stmt_scope():
-                self.do_tiling_key_mode_1()
-        with self.tik_instance.if_scope(self.tiling_key == MODE2):
-            # use vnchw to pad_v3, cut by 0-3 dims
-            with self.tik_instance.new_stmt_scope():
-                self.do_tiling_key_mode_2()
-        with self.tik_instance.if_scope(self.tiling_key == MODE3):
-            # use vnchw to pad_v3, cut by 0-2 dims
-            with self.tik_instance.new_stmt_scope():
-                self.do_tiling_key_mode_3()
+        if self.core_nums > 1:
+            with self.tik_instance.if_scope(self.tiling_key == MODE0):
+                # use data move to pad_v3, cut by last dim
+                with self.tik_instance.new_stmt_scope():
+                    self.do_tiling_key_mode_0()
+            with self.tik_instance.if_scope(self.tiling_key == MODE1):
+                # use data move to pad_v3, cut by 0-4 dims
+                with self.tik_instance.new_stmt_scope():
+                    self.do_tiling_key_mode_1()
+            with self.tik_instance.if_scope(self.tiling_key == MODE2):
+                # use vnchw to pad_v3, cut by 0-3 dims
+                with self.tik_instance.new_stmt_scope():
+                    self.do_tiling_key_mode_2()
+            with self.tik_instance.if_scope(self.tiling_key == MODE3):
+                # use vnchw to pad_v3, cut by 0-2 dims
+                with self.tik_instance.new_stmt_scope():
+                    self.do_tiling_key_mode_3()
         with self.tik_instance.if_scope(self.tiling_key == MODE4):
             # use vnchw to pad_v3, paddings are all 0
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_4(core_index)
+        with self.tik_instance.if_scope(self.tiling_key == MODE5):
+            # use vnchw to pad_v3, paddings are all 0
+            with self.tik_instance.new_stmt_scope():
+                self.do_tiling_key_mode_5()
 
     def pad_compute(self, outer_compile_info=None):
         """

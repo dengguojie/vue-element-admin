@@ -35,6 +35,9 @@ static const int64_t TILING_MODE_1 = 1;
 
 static const int64_t TILING_MODE_2 = 2;
 
+static const int64_t TILING_MODE_4 = 4;
+
+static const int64_t TILING_MODE_5 = 5;
 struct PadV3CompileParams {
   int64_t core_num;
   int64_t ub_size;
@@ -209,33 +212,44 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   auto shape_len = input_shape.size();
   std::vector<int64_t> merge_input_shape_dims;
   std::vector<int64_t> merge_paddings_values;
-  int64_t merge_input_shape_dim = 1;
-  bool pre_dim_pidding_flag = true;
-  for (size_t i = 0; i < shape_len; i++) {
-    auto cu_idx = shape_len - i - 1;
-    auto cu_input_dim = input_shape[cu_idx];
-    auto cu_paddings_value_left = paddings_const_values[cu_idx * 2];
-    auto cu_paddings_value_right = paddings_const_values[cu_idx * 2 + 1];
-    auto cu_output_dim = cu_input_dim + cu_paddings_value_left + cu_paddings_value_right;
-    if (i == shape_len - 1) {
-      merge_input_shape_dims.insert(merge_input_shape_dims.begin(), cu_input_dim * merge_input_shape_dim);
-      merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_right * merge_input_shape_dim);
-      merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_left * merge_input_shape_dim);
-    } else if (cu_output_dim == cu_input_dim) {
-      pre_dim_pidding_flag = false;
-      merge_input_shape_dim = merge_input_shape_dim * cu_input_dim;
-    } else {
-      if (pre_dim_pidding_flag) {
-        merge_input_shape_dims.insert(merge_input_shape_dims.begin(), cu_input_dim);
-        merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_right);
-        merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_left);
-      } else {
+  if (compile_params.core_num == 1) {
+    auto paddings_len = shape_len + shape_len;
+    for (size_t i = 0; i < shape_len; i++) {
+      merge_input_shape_dims.insert(merge_input_shape_dims.end(), input_shape[i]);
+    }
+    for (size_t i = 0; i < paddings_len; i++) {
+      merge_paddings_values.insert(merge_paddings_values.end(), paddings_const_values[i]);
+    }
+  }
+  else {
+    int64_t merge_input_shape_dim = 1;
+    bool pre_dim_pidding_flag = true;
+    for (size_t i = 0; i < shape_len; i++) {
+      auto cu_idx = shape_len - i - 1;
+      auto cu_input_dim = input_shape[cu_idx];
+      auto cu_paddings_value_left = paddings_const_values[cu_idx * 2];
+      auto cu_paddings_value_right = paddings_const_values[cu_idx * 2 + 1];
+      auto cu_output_dim = cu_input_dim + cu_paddings_value_left + cu_paddings_value_right;
+      if (i == shape_len - 1) {
         merge_input_shape_dims.insert(merge_input_shape_dims.begin(), cu_input_dim * merge_input_shape_dim);
         merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_right * merge_input_shape_dim);
         merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_left * merge_input_shape_dim);
-        merge_input_shape_dim = 1;
+      } else if (cu_output_dim == cu_input_dim) {
+        pre_dim_pidding_flag = false;
+        merge_input_shape_dim = merge_input_shape_dim * cu_input_dim;
+      } else {
+        if (pre_dim_pidding_flag) {
+          merge_input_shape_dims.insert(merge_input_shape_dims.begin(), cu_input_dim);
+          merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_right);
+          merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_left);
+        } else {
+          merge_input_shape_dims.insert(merge_input_shape_dims.begin(), cu_input_dim * merge_input_shape_dim);
+          merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_right * merge_input_shape_dim);
+          merge_paddings_values.insert(merge_paddings_values.begin(), cu_paddings_value_left * merge_input_shape_dim);
+          merge_input_shape_dim = 1;
+        }
+        pre_dim_pidding_flag = true;
       }
-      pre_dim_pidding_flag = true;
     }
   }
 
@@ -267,7 +281,23 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 
   auto last_dim_output = tiling_params.tiling_input_dim_5
                          + tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
-  if (last_dim_output < 960) {
+  
+  bool all_zero = true;
+  for (auto ele: merge_paddings_values) {
+    if (ele != 0) {
+      all_zero = false;
+    }
+  }
+
+  if (all_zero) {
+    tiling_params.tiling_key = TILING_MODE_4;
+    tiling_params.tiling_input_dim_cut_axis = -1;
+  }
+  else if (compile_params.core_num == 1) {
+    tiling_params.tiling_key = TILING_MODE_5;
+    tiling_params.tiling_input_dim_cut_axis = -1;
+  }
+  else if (last_dim_output < 960) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;
     if (shape_len == 2 && (tiling_params.tiling_pading_41 + tiling_params.tiling_pading_40 == 0)) {
@@ -284,7 +314,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
       tiling_params.tiling_input_dim_3 = split_dim;
     }
   }
-  if ((shape_len == 2 && last_dim_output > 128 * compile_params.core_num) || shape_len == 1) {
+  else if ((shape_len == 2 && last_dim_output > 128 * compile_params.core_num) || shape_len == 1) {
     tiling_params.tiling_key = TILING_MODE_0;
     tiling_params.tiling_input_dim_cut_axis = 0;
   }
@@ -346,7 +376,9 @@ bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nl
 
     run_info.block_dim = compile_params.core_num;
     std::vector<int64_t> workspace;
-    workspace.push_back(1024);
+    if (compile_params.core_num > 1) {
+        workspace.push_back(compile_params.core_num * 32);
+    }
     run_info.workspaces = workspace;
 
     OP_LOGI(op_type, "end to run tiling, succ!");

@@ -59,7 +59,7 @@ class ReplicationPadV3Init(object):
         :param
         paddings: the list of paddings
         :param
-        constant_values：pad value for constant mode
+        constant_values: pad value for constant mode
         :param
         y: the output of op
         :param
@@ -1182,6 +1182,7 @@ class ReplicationPadV3Init(object):
         wr_compile_info = dict()
         wr_compile_info["core_num"] = self.core_nums
         wr_compile_info["mode"] = self.mode
+        wr_compile_info["padding_contiguous"] = self.padding_contiguous
         if outer_compile_info is not None:
             for key in outer_compile_info.keys():
                 wr_compile_info[key] = outer_compile_info[key]
