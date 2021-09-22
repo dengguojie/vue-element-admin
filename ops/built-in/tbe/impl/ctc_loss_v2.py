@@ -61,6 +61,7 @@ class CTCLossV2(object):
         self.output_size = 2 * self.S + 1
         self.output_size_up = (self.output_size + BLOCK - 1) // BLOCK * BLOCK
         self.alpha_size = self.T * self.output_size
+        self.alpha_size_up = self.T * self.output_size_up
 
         self.log_probs = self.tik_instance.Tensor("float32", [self.T, self.N, self.C], name="log_probs",
                                                   scope=tik.scope_gm)
@@ -70,8 +71,8 @@ class CTCLossV2(object):
 
         self.log_alpha = self.tik_instance.Tensor("float32", [self.N, self.T, self.output_size], name="log_alpha",
                                                   scope=tik.scope_gm)
-        self.log_alpha_ = self.tik_instance.Tensor("float32", [self.N, BLOCK], name="log_alpha_", scope=tik.scope_gm,
-                                                   is_workspace=True)
+        self.log_alpha_ = self.tik_instance.Tensor("float32", [self.N, self.T, self.output_size_up], name="log_alpha_",
+                                                   scope=tik.scope_gm, is_workspace=True)
 
         self.neg_log_likelihood = self.tik_instance.Tensor("float32", [self.N], name="neg_log_likelihood",
                                                            scope=tik.scope_gm)
@@ -290,24 +291,14 @@ class CTCLossV2(object):
                 offset.set_as((s - start_loop) * BLOCK)    
                 log_alpha_ub[output_src + s].set_as(a_ub[offset])
 
-            self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (t - 1) * self.output_size],
+            self.tik_instance.data_move(self.log_alpha_[task_idx * self.alpha_size_up + (t - 1) * self.output_size],
                                         log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
 
             output_src.set_as(output_dst)
             output_dst.set_as(self.output_size_up - output_src)
 
-        with self.tik_instance.if_scope(self.T == t_i):
-            if self.S >= LABEL_MIN:
-                # func: pick res data in log_alpha_
-                self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (t_i - 1) * self.output_size],
-                                            log_alpha_ub[output_dst], 0, 1, self.output_size // BLOCK, 0, 0)
-                self.tik_instance.data_move(self.log_alpha_[task_idx * BLOCK],
-                                            log_alpha_ub[output_dst + self.output_size_up - BLOCK], 0, 1, 1, 0, 0)
-            else:
-                self.tik_instance.data_move(self.log_alpha_[task_idx * BLOCK], log_alpha_ub[output_dst], 0, 1, 1, 0, 0)
-        with self.tik_instance.else_scope():
-            self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (t_i - 1) * self.output_size],
-                                        log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
+        self.tik_instance.data_move(self.log_alpha_[task_idx * self.alpha_size_up + (t_i - 1) * self.output_size],
+                                    log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
 
         a_tmp.set_as(log_alpha_ub[output_dst + 2 * s_i])
         b_tmp.set_as(log_alpha_ub[output_dst + 2 * s_i - 1])
@@ -371,22 +362,20 @@ class CTCLossV2(object):
         """move_out"""
         neg_log_likelihood_ub = self.tik_instance.Tensor("float32", [BLOCK], name="neg_log_likelihood_ub",
                                                          scope=tik.scope_ubuf)
-        log_alpha_ub = self.tik_instance.Tensor("float32", [BLOCK], name="log_alpha_ub", scope=tik.scope_ubuf)
-        tmp_ub = self.tik_instance.Tensor("float32", [BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
+        log_alpha_ub = self.tik_instance.Tensor("float32", [self.output_size_up], name="log_alpha_ub",
+                                                scope=tik.scope_ubuf)
 
-        mask = self.tik_instance.Scalar("int32", init_value=self.output_size % BLOCK)
         with self.tik_instance.for_range(0, self.N) as task_idx:
-            self.tik_instance.data_move(log_alpha_ub, self.log_alpha[(task_idx + 1) * self.alpha_size - mask],
-                                        0, 1, 1, 0, 0)
-            self.tik_instance.data_move(tmp_ub, self.log_alpha_[task_idx * BLOCK], 0, 1, 1, 0, 0)
-            with self.tik_instance.for_range(0, mask) as idx:
-                log_alpha_ub[idx].set_as(tmp_ub[idx])
-            self.tik_instance.data_move(self.log_alpha[(task_idx + 1) * self.alpha_size - mask], log_alpha_ub,
-                                        0, 1, 1, 0, 0)
-
             self.tik_instance.data_move(neg_log_likelihood_ub, self.neg_log_likelihood_[task_idx * BLOCK], 0, 1, 1, 0,
                                         0)
             self.tik_instance.data_move(self.neg_log_likelihood[task_idx], neg_log_likelihood_ub[0], 0, 1, 1, 0, 0)
+            with self.tik_instance.for_range(0, self.T) as task_jdx:
+                self.tik_instance.data_move(log_alpha_ub,
+                                            self.log_alpha_[task_idx * self.alpha_size_up \
+                                                            + task_jdx * self.output_size],
+                                            0, 1, self.output_size_up // BLOCK, 0, 0)
+                self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + task_jdx * self.output_size],
+                                            log_alpha_ub, 0, 1, self.output_size_up // BLOCK, 0, 0)
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
