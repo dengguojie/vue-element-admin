@@ -628,9 +628,11 @@ class ReplicationPadV3GradInit(object):
 
                 with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_3) as i:
                     self.tik_instance.data_move(block_ub,
-                                                self.work_space[core_index * WORK_SIZE + (TRANS_MIN_BLKS + i)
-                                                                * align_input_dim_3 +
-                                                                self.tiling_input_dim_3 - TRANS_MIN_BLKS],
+                                                self.work_space[core_index * WORK_SIZE
+                                                                + (TRANS_MIN_BLKS + i)
+                                                                * align_input_dim_3
+                                                                + self.tiling_input_dim_3
+                                                                - TRANS_MIN_BLKS],
                                                 0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
                     self.tik_instance.data_move(pang_ub_1[(i + self.tiling_output_dim_2 - TRANS_MIN_BLKS +
                                                            self.padding_index_3) * TRANS_MIN_BLKS],
@@ -674,6 +676,11 @@ class ReplicationPadV3GradInit(object):
 
                 burst = self.tik_instance.Scalar('int64', name='burst')
                 burst.set_as((self.tiling_output_dim_3 - (TRANS_MIN_BLKS - self.padding_index_0)) // TRANS_MIN_BLKS)
+                special_offset = self.tik_instance.Scalar(dtype='int64', name='special_offset')
+                special_offset.set_as((TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS
+                                       - (TRANS_MIN_BLKS - ((self.padding_index_1 + self.tiling_output_dim_3)
+                                       - ((TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS))))
+
                 with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_2) as i:
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
                                                                index * self.tiling_output_dim_2 *
@@ -691,6 +698,31 @@ class ReplicationPadV3GradInit(object):
                                                 + TRANS_MIN_BLKS - self.padding_index_0],
                                                 ping_ub_1, 0, 1,
                                                 burst, 0, 0)
+                    with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                       + burst * TRANS_MIN_BLKS)):
+                        new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
+                                                                name='new_block_ub', scope=tik.scope_ubuf)
+                        self.tik_instance.data_move(new_block_ub,
+                                                    self.work_space[WORK_SIZE * core_index + (i + self.padding_index_2)
+                                                                    * align_input_dim_3 + TRANS_MIN_BLKS
+                                                                    + burst * TRANS_MIN_BLKS
+                                                                    - (TRANS_MIN_BLKS
+                                                                    - (special_offset
+                                                                    - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                    + burst * TRANS_MIN_BLKS)))],
+                                                    0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core
+                                                                   + index * self.tiling_output_dim_2
+                                                                   * self.tiling_output_dim_3
+                                                                   + i * self.tiling_output_dim_3
+                                                                   + TRANS_MIN_BLKS - self.padding_index_0
+                                                                   + burst * TRANS_MIN_BLKS
+                                                                   - (TRANS_MIN_BLKS
+                                                                   - (special_offset
+                                                                   - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                   + burst * TRANS_MIN_BLKS)))],
+                                                    new_block_ub,
+                                                    0, 1, 1, 0, 0)
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
                                                                index * self.tiling_output_dim_2 *
                                                                self.tiling_output_dim_3 + i * self.tiling_output_dim_3
@@ -711,8 +743,10 @@ class ReplicationPadV3GradInit(object):
                                                 TRANS_MIN_BLKS // self.block_num, 0, 0)
                     self.tik_instance.data_move(ping_ub_1,
                                                 self.input_gm[core_index * input_ele_per_core
-                                                              + index * self.tiling_input_dim_2 * self.tiling_input_dim_3
-                                                              + (i + self.padding_index_2) * self.tiling_input_dim_3
+                                                              + index * self.tiling_input_dim_2
+                                                              * self.tiling_input_dim_3
+                                                              + (i + self.padding_index_2)
+                                                              * self.tiling_input_dim_3
                                                               + TRANS_MIN_BLKS],
                                                               0, 1, burst, 0, 0)
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
@@ -721,6 +755,36 @@ class ReplicationPadV3GradInit(object):
                                                 + TRANS_MIN_BLKS - self.padding_index_0],
                                                 ping_ub_1, 0, 1,
                                                 burst, 0, 0)
+                    with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                       + burst * TRANS_MIN_BLKS)):
+                        new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
+                                                                name='new_block_ub', scope=tik.scope_ubuf)
+                        self.tik_instance.data_move(new_block_ub,
+                                                    self.input_gm[core_index * input_ele_per_core
+                                                                  + index * self.tiling_input_dim_2
+                                                                  * self.tiling_input_dim_3
+                                                                  + (i + self.padding_index_2)
+                                                                  * self.tiling_input_dim_3
+                                                                  + TRANS_MIN_BLKS
+                                                                  + burst * TRANS_MIN_BLKS
+                                                                  - (TRANS_MIN_BLKS
+                                                                  - (special_offset
+                                                                  - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                  + burst * TRANS_MIN_BLKS)))],
+                                                    0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core
+                                                                   + index * self.tiling_output_dim_2
+                                                                   * self.tiling_output_dim_3
+                                                                   + i * self.tiling_output_dim_3
+                                                                   + TRANS_MIN_BLKS - self.padding_index_0
+                                                                   + burst * TRANS_MIN_BLKS
+                                                                   - (TRANS_MIN_BLKS
+                                                                   - (special_offset
+                                                                   - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                   + burst * TRANS_MIN_BLKS)))],
+                                                    new_block_ub,
+                                                    0, 1, 1, 0, 0)
+
                     self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
                                                                index * self.tiling_output_dim_2 *
                                                                self.tiling_output_dim_3 + i * self.tiling_output_dim_3
@@ -753,13 +817,61 @@ class ReplicationPadV3GradInit(object):
                                                 + TRANS_MIN_BLKS - self.padding_index_0],
                                                 ping_ub_1, 0, 1,
                                                 burst, 0, 0)
+                    with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                       + burst * TRANS_MIN_BLKS)):
+                            new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
+                                                                    name='new_block_ub', scope=tik.scope_ubuf)
+                            self.tik_instance.data_move(new_block_ub,
+                                                        self.work_space[WORK_SIZE * core_index
+                                                                        + (i + TRANS_MIN_BLKS
+                                                                        - (self.tiling_output_dim_2
+                                                                        - (TRANS_MIN_BLKS - self.padding_index_3)))
+                                                                        * align_input_dim_3
+                                                                        + TRANS_MIN_BLKS + burst * TRANS_MIN_BLKS
+                                                                        - (TRANS_MIN_BLKS - (special_offset
+                                                                        - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                        + burst * TRANS_MIN_BLKS)))],
+                                                        0, 1, 1, 0, 0)
+                            self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core
+                                                                       + index * self.tiling_output_dim_2
+                                                                       * self.tiling_output_dim_3
+                                                                       + i * self.tiling_output_dim_3
+                                                                       + TRANS_MIN_BLKS - self.padding_index_0
+                                                                       + burst * TRANS_MIN_BLKS
+                                                                       - (TRANS_MIN_BLKS - (special_offset
+                                                                       - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                       + burst * TRANS_MIN_BLKS)))],
+                                                        new_block_ub,
+                                                        0, 1, 1, 0, 0)
                     with self.tik_instance.if_scope(i == self.tiling_output_dim_2 - 1):
-                        with self.tik_instance.for_range(self.tiling_output_dim_3 - TRANS_MIN_BLKS -
-                                                                 (TRANS_MIN_BLKS - self.padding_index_0),
-                         self.tiling_output_dim_3 - TRANS_MIN_BLKS - (TRANS_MIN_BLKS - self.padding_index_0)
-                                 + self.padding_index_1) as j:
-                            block_ub[j - (self.tiling_output_dim_3 - TRANS_MIN_BLKS -
-                                          (TRANS_MIN_BLKS - self.padding_index_0))].set_as(ping_ub_1[j])
+                        with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                           + burst * TRANS_MIN_BLKS)):
+                            new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
+                                                                    name='new_block_ub', scope=tik.scope_ubuf)
+                            self.tik_instance.data_move(new_block_ub,
+                                                        self.work_space[WORK_SIZE * core_index
+                                                                        + (i + TRANS_MIN_BLKS
+                                                                        - (self.tiling_output_dim_2
+                                                                        - (TRANS_MIN_BLKS - self.padding_index_3)))
+                                                                        * align_input_dim_3
+                                                                        + TRANS_MIN_BLKS
+                                                                        + burst * TRANS_MIN_BLKS
+                                                                        - (TRANS_MIN_BLKS
+                                                                        - (special_offset
+                                                                        - ((TRANS_MIN_BLKS - self.padding_index_0)
+                                                                        + burst * TRANS_MIN_BLKS)))],
+                                                        0, 1, 1, 0, 0)
+                            with self.tik_instance.for_range(TRANS_MIN_BLKS - self.padding_index_0,
+                                                             TRANS_MIN_BLKS) as j:
+                                    block_ub[j - (TRANS_MIN_BLKS - self.padding_index_0)].set_as(new_block_ub[j])
+                        with self.tik_instance.else_scope():
+                            with self.tik_instance.for_range(self.tiling_output_dim_3 - TRANS_MIN_BLKS
+                                                             - (TRANS_MIN_BLKS - self.padding_index_0),
+                                                             self.tiling_output_dim_3 - TRANS_MIN_BLKS
+                                                             - (TRANS_MIN_BLKS - self.padding_index_0)
+                                                             + self.padding_index_1) as j:
+                                block_ub[j - (self.tiling_output_dim_3 - TRANS_MIN_BLKS
+                                           - (TRANS_MIN_BLKS - self.padding_index_0))].set_as(ping_ub_1[j])
                         with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_1) as j:
                             block_ub[j + self.padding_index_1].set_as(pang_ub_1[i * TRANS_MIN_BLKS + j])
                         self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
@@ -785,7 +897,7 @@ class ReplicationPadV3GradInit(object):
         do_pad with different tiling key
         """
         with self.tik_instance.if_scope(self.tiling_key == MODE0):
-            with self.tik_instance.new_stmt_scope(core_index):
+            with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_0(core_index)
         with self.tik_instance.if_scope(self.tiling_key == MODE1):
             with self.tik_instance.new_stmt_scope():

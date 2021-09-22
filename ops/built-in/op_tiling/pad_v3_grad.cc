@@ -203,7 +203,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   int64_t last_core_numel = 0;
   int64_t split = 160;
   int64_t low_split = 48;
-  int64_t high_split = 960;
+  int64_t high_split = 480;
   auto nc_total = input_shape[0] * input_shape[1];
   auto wh_output_total = output_third * output_fourth;
   core_used = get_core_num(input_shape, compile_params.core_num, wh_output_total);
