@@ -135,10 +135,10 @@ TEST_F(TransDataTiling, TransData_tiling1) {
   std::string src_format = "NCHW";
   std::string dst_format = "NC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
-      "1000 63232 0 1 784 784 3952 0 16 1 1 1 784 784 1 784 784 49 16 784 784 1 16 49 49 784 1 0 1 0 1 0 1 0 1 0 1 0 1 "
+      "1001 63232 0 1 784 784 3952 0 16 1 1 1 784 784 1 784 784 49 16 784 784 1 16 49 49 784 1 0 1 0 1 0 1 0 1 0 1 0 1 "
       "1 784 1 1 0 49 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
@@ -151,8 +151,8 @@ TEST_F(TransDataTiling, TransData_tiling2) {
   std::string src_format = "NHWC";
   std::string dst_format = "NC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NHWC\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NHWC\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1010 63232 2 7140 38080 7140 38080 7140 38080 11856 63232 3 0 3952 1 247 16 3 38080 38080 16 3 3 1 0 1 1 10 157 "
       "1 0 1 1 1 1 10 157 1 0 ";
@@ -167,8 +167,8 @@ TEST_F(TransDataTiling, TransData_tiling3) {
   std::string src_format = "ND";
   std::string dst_format = "FRACTAL_NZ";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1010 63232 17 221900 355328 110950 177664 110950 177664 177520 256 11095 0 3952 1 1 16 3952 63232 256 16 7 3952 "
       "2 0 1 1 10 1 3 3191 2 1 1 1 10 1 3 3191 ";
@@ -183,8 +183,8 @@ TEST_F(TransDataTiling, TransData_tiling4) {
   std::string src_format = "NC1HWC0";
   std::string dst_format = "NHWC";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NC1HWC0\", \"dstFormat\": \"NHWC\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NC1HWC0\", \"dstFormat\": \"NHWC\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "2012 63232 0 1 1 16 64 62 1 1 1 0 0 0 1 1 1 0 0 0 1 16 31 16 31 2 1 16 1 32 32 15 2 32 31 64 62 1 1 16 1 1 0 1 "
       "3952 1 ";
@@ -199,10 +199,10 @@ TEST_F(TransDataTiling, TransData_tiling5) {
   std::string src_format = "FRACTAL_NZ";
   std::string dst_format = "ND";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_NZ\", \"dstFormat\": \"ND\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_NZ\", \"dstFormat\": \"ND\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2011 63232 0 7 1 16 86016 71904 2 1 1 25 0 0 2 1 1 25 0 4 82 16 42 1312 3444 3 1 1792 1 5376 48 10 16 5376 4494 "
+      "2011 63232 0 7 1 16 86016 71904 2 1 1 27 0 0 2 1 1 27 0 4 80 16 42 1280 3360 3 1 1792 1 5376 48 10 16 5376 4494 "
       "86016 71904 112 1 16 1 1 0 1 3952 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
@@ -215,8 +215,8 @@ TEST_F(TransDataTiling, TransData_tiling6) {
   std::string src_format = "FRACTAL_Z_3D";
   std::string dst_format = "NDHWC";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NDHWC\", \"dType\": \"float16\", \"ubSize\": "
-      "126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NDHWC\", \"dType\": \"float16\", \"ub_size\": "
+      "126464, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "2011 63232 0 2 0 16 256 25200 1 1 1 0 0 0 1 1 1 0 0 3 25 0 63 0 1575 4 1 2560 1 10240 64 15 16 16 1575 256 "
       "25200 5 1 512 5 5 10240 2 3952 1 ";
@@ -231,11 +231,11 @@ TEST_F(TransDataTiling, TransData_tiling7) {
   std::string src_format = "NC1HWC0";
   std::string dst_format = "NCHW";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NC1HWC0\", \"dstFormat\": \"NCHW\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NC1HWC0\", \"dstFormat\": \"NCHW\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2001 63232 0 2 16 76832 72030 1 2 1 0 0 0 1 2 1 0 0 0 2401 1 1 16 1 38416 2401 30 38416 2401 38416 38416 76832 "
-      "72030 76832 72030 14 1 1 0 1 1 0 2 1 76832 1 1 0 2401 1 16 1 1 0 ";
+      "2001 63232 0 2 16 76832 72030 1 2 1 0 0 0 1 2 1 0 0 0 2401 1 1 3952 16 1 38416 2401 30 38416 2401 38416 38416 1 "
+      "76832 72030 76832 72030 14 1 1 0 1 1 0 2 1 76832 1 1 0 2401 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -247,8 +247,8 @@ TEST_F(TransDataTiling, TransData_tiling8) {
   std::string src_format = "NCDHW";
   std::string dst_format = "NDC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1001 63488 0 8 16384 16384 3968 0 16 1 2 1 16384 16384 1 16384 16384 512 16 8192 4096 1 0 512 512 0 1 0 2 0 1 0 "
       "1 0 2 0 1 0 8 1 16384 1 1 0 256 1 16 2 256 8192 ";
@@ -263,8 +263,8 @@ TEST_F(TransDataTiling, TransData_tiling9) {
   std::string src_format = "DHWCN";
   std::string dst_format = "FRACTAL_Z_3D";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"DHWCN\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": "
-      "126976, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"DHWCN\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ub_size\": "
+      "126976, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1000 63488 0 31 3584 0 3968 0 16 2 1 1 32 0 16 512 0 2 16 32 295936 1 16 2 2 32 7 0 1 0 1 0 7 12 1 0 1 0 1156 1 "
       "256 3 1156 295936 2 1 16 1 1 0 ";
@@ -279,8 +279,8 @@ TEST_F(TransDataTiling, TransData_tiling10) {
   std::string src_format = "HWCN";
   std::string dst_format = "FRACTAL_Z";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"HWCN\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"HWCN\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1000 63488 0 31 148304 106496 3968 7 16 1 1 1 713 512 16 11408 8192 31 16 496 3195392 1 16 31 31 496 13 0 2 7 1 "
       "0 1 1 2 7 1 0 6241 1 512 1 1 0 31 1 16 1 1 0 ";
@@ -404,8 +404,8 @@ TEST_F(TransDataTiling, TransData_tiling11) {
   std::string src_format = "NDHWC";
   std::string dst_format = "FRACTAL_Z_3D";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": "
-      "126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ub_size\": "
+      "126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1011 63232 4 1 3952 0 27104 32 13552 2 3952 3952 247 0 16 30976 30976 16 0 16 1 0 1 0 1 0 1 0 1 106 1 0 121 1 "
       "256 7 121 30976 ";
@@ -420,11 +420,11 @@ TEST_F(TransDataTiling, TransData_tiling12) {
   std::string src_format = "NDHWC";
   std::string dst_format = "NDC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
-      "1010 63232 1 61952 61952 61952 61952 1936 1936 63232 63232 16 1 3952 2 247 16 16 1936 1936 16 0 16 1 0 2 1 1 "
-      "121 1 0 1 7 2 1 1 121 1 0 ";
+      "1010 63232 14 1936 1936 1936 1936 1936 1936 63232 63232 16 5 3952 1 247 16 16 1936 1936 16 0 16 1 0 0 1 1 121 1 "
+      "0 1 0 0 1 1 121 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -436,8 +436,8 @@ TEST_F(TransDataTiling, TransData_tiling13) {
   std::string src_format = "NC1HWC0";
   std::string dst_format = "FRACTAL_Z";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NC1HWC0\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ubSize\": "
-      "126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NC1HWC0\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ub_size\": "
+      "126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1011 63232 32 1 138320 0 69120000 256 4320000 16 3952 3952 247 0 16 138240000 138240000 16 0 16 2 4 35 0 1 0 2 "
       "4 9 29 1 0 270000 1 512 1 270000 138240000 ";
@@ -452,8 +452,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0) {
   std::string src_format = "NCDHW";
   std::string dst_format = "NDC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1001 63488 0 2 13552 30976 3968 7 16 1 2 1 13552 30976 1 13552 30976 1936 16 30976 2816 1 0 1936 1936 0 1 0 1 7 "
       "1 0 1 0 1 7 1 0 2 1 30976 1 1 0 176 1 16 11 176 2816 ";
@@ -468,8 +468,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_C) {
   std::string src_format = "NCDHW";
   std::string dst_format = "NDC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float\", \"ubSize\": 63488, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float\", \"ub_size\": 63488, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1000 31744 1 32 2601984 236544 1984 15 16 1 2 1 82796912 82798848 2 165593824 165597696 1936 16 30976 2816 1 0 "
       "120 120 0 1 0 84 0 17 16 1 0 69 15 17 16 2 1 82798848 1 1 0 176 1 16 11 176 7527168 ";
@@ -484,8 +484,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_Cl) {
   std::string src_format = "NCDHW";
   std::string dst_format = "NDC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"int32\", \"ubSize\": 63488, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"int32\", \"ub_size\": 63488, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1000 31744 0 32 18213888 41631744 1984 7 16 1 2 1 13552 30976 16 216832 495616 1936 16 30976 2816 1 0 120 120 0 "
       "84 0 1 7 17 16 69 15 1 7 17 16 42767 1 30976 1 1 0 176 1 16 11 176 2816 ";
@@ -500,8 +500,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_Cr) {
   std::string src_format = "NCDHW";
   std::string dst_format = "NDC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"int8\", \"ubSize\": 253952, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"int8\", \"ub_size\": 253952, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1001 126976 2 32 238080 0 3968 7 32 1 2 1 52688944 240863744 1 52688944 240863744 7526992 32 240863744 5632 1 0 "
       "3968 3968 0 2 0 1 7 60 0 2 0 1 7 37 3664 2 1 240863744 1 1 0 176 1 32 42767 176 5632 ";
@@ -516,8 +516,8 @@ TEST_F(TransDataTiling, TransData_tiling_HWCN2FRACTALZN) {
   std::string src_format = "HWCN";
   std::string dst_format = "FRACTAL_ZN";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"HWCN\", \"dstFormat\": \"FRACTAL_ZN\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"HWCN\", \"dstFormat\": \"FRACTAL_ZN\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1000 63488 0 31 148304 106496 3968 7 16 1 1 1 713 512 16 11408 8192 31 16 496 3195392 1 16 31 31 496 13 0 2 7 1 "
       "0 1 1 2 7 1 0 6241 1 512 1 1 0 31 1 16 1 1 0 ";
@@ -532,11 +532,11 @@ TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZ_001) {
   std::string src_format = "ND";
   std::string dst_format = "FRACTAL_Z";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "1000 63488 0 29 59072 81920 3968 13 16 1 1 1 923 1280 16 14768 20480 71 16 1136 1280 1 16 71 71 1136 4 0 1 13 1 "
-      "0 2 9 1 13 1 0 1817 1 1280 1 1 0 71 1 16 1 1 0 ";
+      "1001 63488 0 32 52611 72960 3968 13 16 1 1 1 923 1280 1 923 1280 71 16 1136 1280 1 16 71 71 1136 57 0 1 13 1 0 "
+      "50 0 1 13 1 0 1817 1 1280 1 1 0 71 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -548,8 +548,8 @@ TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZN) {
   std::string src_format = "ND";
   std::string dst_format = "FRACTAL_ZN";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_ZN\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_ZN\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1001 63488 2 11 3968 63488 3968 1 16 1 1 1 42767 684288 1 42767 684288 42767 16 684272 684288 1 16 3968 3968 "
       "63488 1 0 1 1 1 0 1 0 1 1 1 3087 1 1 684288 1 1 0 42767 1 16 1 1 0 ";
@@ -564,8 +564,8 @@ TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZ_002) {
   std::string src_format = "ND";
   std::string dst_format = "FRACTAL_Z";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "1001 63488 1 27 61440 61440 3968 0 16 1 1 1 1638400 1638400 1 1638400 1638400 1280 16 20480 20480 1 16 1280 "
       "1280 20480 1 0 3 0 1 0 1 0 2 0 1 0 1 1 1638400 1 1 0 1280 1 16 1 1 0 ";
@@ -580,11 +580,11 @@ TEST_F(TransDataTiling, TransData_tiling_NCHW2FRACTALZ) {
   std::string src_format = "NCHW";
   std::string dst_format = "FRACTAL_Z";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "1000 63488 1 32 166656 213319680 3968 15 16 1 1 0 5303108 16 16 84849728 256 124 16 1984 2539520 1 20480 124 "
-      "124 2539520 80 0 84 0 1 0 80 0 69 15 1 0 1280 1 16 1 1 0 124 1 20480 1 1 0 ";
+      "1001 63488 1 32 166656 213319680 3968 15 16 1 1 0 5303108 16 31 164396348 496 124 16 1984 2539520 1 20480 124 "
+      "124 2539520 42 9 84 0 1 0 42 9 69 15 1 0 1280 1 16 1 1 0 124 1 20480 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -596,11 +596,11 @@ TEST_F(TransDataTiling, TransData_tiling_NCHW2FRACTALZN) {
   std::string src_format = "NCHW";
   std::string dst_format = "FRACTAL_ZN";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"FRACTAL_ZN\", \"dType\": \"float16\", \"ubSize\": 126976, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"FRACTAL_ZN\", \"dType\": \"float16\", \"ub_size\": 126976, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "1000 63488 1 32 166656 213319680 3968 15 16 1 1 0 5303108 16 16 84849728 256 124 16 1984 2539520 1 20480 124 "
-      "124 2539520 80 0 84 0 1 0 80 0 69 15 1 0 1280 1 16 1 1 0 124 1 20480 1 1 0 ";
+      "1001 63488 1 32 166656 213319680 3968 15 16 1 1 0 5303108 16 31 164396348 496 124 16 1984 2539520 1 20480 124 "
+      "124 2539520 42 9 84 0 1 0 42 9 69 15 1 0 1280 1 16 1 1 0 124 1 20480 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -612,11 +612,11 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2FRACTALZ3D) {
   std::string src_format = "NCDHW";
   std::string dst_format = "FRACTAL_Z_3D";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": "
-      "126976, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NCDHW\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ub_size\": "
+      "126976, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "1001 63488 2 31 1736 0 3968 2 16 1 2 0 105896 16 16 1694336 256 52948 16 847168 2539520 1 0 248 248 0 80 0 1 2 "
-      "7 0 80 0 1 2 4 124 1280 1 16 1 1 0 124 1 20480 427 124 2539520 ";
+      "1001 63488 0 32 4235840 640 3968 2 16 1 2 0 105896 16 1 105896 16 52948 16 847168 2539520 1 0 3968 3968 0 40 0 "
+      "1 2 14 1364 40 0 1 2 14 1364 1280 1 16 1 1 0 124 1 20480 427 124 2539520 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -628,11 +628,11 @@ TEST_F(TransDataTiling, TransData_NDC1HWC02NCDHW) {
   std::string src_format = "NDC1HWC0";
   std::string dst_format = "NCDHW";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NDC1HWC0\", \"dstFormat\": \"NCDHW\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NDC1HWC0\", \"dstFormat\": \"NCDHW\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2001 63232 0 3 16 92480 92480 1 2 1 0 2 0 1 2 1 0 2 0 1156 3 1 0 1 0 1156 80 4624 1156 13872 55488 92480 92480 "
-      "92480 92480 0 2 1 0 1 1 0 3 1 92480 1 1 0 289 1 16 4 289 23120 ";
+      "2001 63232 0 3 16 92480 92480 1 2 1 0 2 0 1 2 1 0 2 0 1156 3 1 3952 0 1 0 1156 80 4624 1156 13872 55488 1 92480 "
+      "92480 92480 92480 0 2 1 0 1 1 0 3 1 92480 1 1 0 289 1 16 4 289 23120 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -644,11 +644,11 @@ TEST_F(TransDataTiling, TransData_FRAZ3D2NCDHW) {
   std::string src_format = "FRACTAL_Z_3D";
   std::string dst_format = "NCDHW";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NCDHW\", \"dType\": \"float16\", \"ubSize\": "
-      "126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NCDHW\", \"dType\": \"float16\", \"ub_size\": "
+      "126464, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2001 63232 0 3 16 16 92480 1 2 1 0 2 0 1 2 1 0 2 0 1156 3 1 0 1 0 1156 80 73984 1156 221952 55488 16 92480 16 "
-      "92480 0 2 1 0 1 0 0 3 1 16 1 1 0 289 1 256 4 289 369920 ";
+      "2001 63232 0 3 16 16 92480 1 2 1 0 2 0 1 2 1 0 2 0 1156 3 1 3952 0 1 0 1156 80 73984 1156 221952 55488 1 16 "
+      "92480 16 92480 0 2 1 0 1 0 0 3 1 16 1 1 0 289 1 256 4 289 369920 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -660,11 +660,11 @@ TEST_F(TransDataTiling, TransData_FRAZ2HWCN) {
   std::string src_format = "FRACTAL_Z";
   std::string dst_format = "HWCN";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z\", \"dstFormat\": \"HWCN\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z\", \"dstFormat\": \"HWCN\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2003 63232 0 19 16 4096 3840 1 1 1 0 0 0 1 1 1 0 0 1 3 5 16 16 1 48 3 80 73984 3 369920 240 256 240 4096 3840 0 "
-      "1 1 0 1 1 240 289 1 256 1 1 0 3 1 16 1 1 0 ";
+      "2003 63232 0 19 16 4096 3840 1 1 1 0 0 0 1 1 1 0 0 1 3 5 16 3952 16 1 48 3 80 73984 3 369920 240 1 256 240 4096 "
+      "3840 0 1 1 0 1 1 240 289 1 256 1 1 0 3 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -676,11 +676,11 @@ TEST_F(TransDataTiling, TransData_FRAZ3D2DHWCN) {
   std::string src_format = "FRACTAL_Z_3D";
   std::string dst_format = "DHWCN";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"DHWCN\", \"dType\": \"float16\", \"ubSize\": "
-      "126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"DHWCN\", \"dType\": \"float16\", \"ub_size\": "
+      "126464, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2003 63232 0 25 16 0 11520 1 1 3 0 0 0 1 1 1 0 0 4 3 5 16 16 1 48 3 80 73984 3 369920 240 0 240 0 3840 0 1 2 0 "
-      "1 1 960 289 1 256 4 289 369920 3 1 16 1 1 0 ";
+      "2003 63232 0 25 16 0 11520 1 1 3 0 0 0 1 1 1 0 0 4 3 5 16 3952 16 1 48 3 80 73984 3 369920 240 1 0 240 0 3840 0 "
+      "1 2 0 1 1 960 289 1 256 4 289 369920 3 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -692,11 +692,11 @@ TEST_F(TransDataTiling, TransData_FRAZ2NCHW) {
   std::string src_format = "FRACTAL_Z";
   std::string dst_format = "NCHW";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z\", \"dstFormat\": \"NCHW\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z\", \"dstFormat\": \"NCHW\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2001 63232 0 2 16 32 46240 1 1 1 0 0 0 1 1 1 0 0 1 289 5 2 256 1 73984 289 80 73984 289 369920 23120 16 23120 "
-      "32 46240 0 1 1 0 1 0 23120 3 1 16 1 1 0 289 1 256 1 1 0 ";
+      "2001 63232 0 2 16 32 46240 1 1 1 0 0 0 1 1 1 0 0 1 289 5 2 3952 256 1 73984 289 80 73984 289 369920 23120 1 16 "
+      "23120 32 46240 0 1 1 0 1 0 23120 3 1 16 1 1 0 289 1 256 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -708,11 +708,11 @@ TEST_F(TransDataTiling, TransData_FRAZ2ND) {
   std::string src_format = "FRACTAL_Z";
   std::string dst_format = "ND";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z\", \"dstFormat\": \"ND\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z\", \"dstFormat\": \"ND\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2002 63232 1 8 16 3840 2960 1 1 1 0 0 0 1 1 1 0 0 0 37 5 1 16 1 592 37 640 768 37 3840 2960 30720 23680 30720 "
-      "23680 0 1 1 0 0 1 0 1 1 30720 1 1 0 37 1 16 1 1 0 ";
+      "2002 63232 1 8 16 3840 2960 1 1 1 0 0 0 1 1 1 0 0 0 37 5 1 3952 16 1 592 37 640 768 37 3840 2960 1 30720 23680 "
+      "30720 23680 0 1 1 0 0 1 0 1 1 30720 1 1 0 37 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -724,11 +724,11 @@ TEST_F(TransDataTiling, TransData_NZ2NC1HWC0) {
   std::string src_format = "FRACTAL_NZ";
   std::string dst_format = "NC1HWC0";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_NZ\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": "
-      "126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_NZ\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ub_size\": "
+      "126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
-      "2010 63232 0 1 0 16 560 5040 1 1 1 0 0 0 1 1 1 0 0 0 9 0 16 0 144 1 1 6912 1 6912 16 0 35 16 144 560 5040 9 1 "
-      "768 1 9 6912 2 3952 1 ";
+      "2010 63232 0 18 0 16 32 288 1 1 2 0 0 0 1 1 1 0 0 0 9 0 16 0 144 1 1 6912 1 6912 16 0 1 16 144 16 144 9 1 768 1 "
+      "9 6912 2 3952 1 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -740,8 +740,8 @@ TEST_F(TransDataTiling, TransData_NDC1HWC02NDHWC) {
   std::string src_format = "NDC1HWC0";
   std::string dst_format = "NDHWC";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NDC1HWC0\", \"dstFormat\": \"NDHWC\", \"dType\": \"float16\", \"ubSize\": 126464, "
-      "\"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NDC1HWC0\", \"dstFormat\": \"NDHWC\", \"dType\": \"float16\", \"ub_size\": 126464, "
+      "\"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "2012 63232 0 1 1 16 64 62 1 1 1 0 0 0 1 1 1 0 0 0 1 16 31 16 31 2 1 16 1 32 32 15 2 32 31 64 62 1 1 16 1 1 0 1 "
       "3952 1 ";
@@ -756,10 +756,10 @@ TEST_F(TransDataTiling, TransData_NZ3D_2_NDHWC) {
   std::string src_format = "FRACTAL_Z_3D";
   std::string dst_format = "NDHWC";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NDHWC\", \"dType\": \"float\", \"ubSize\": "
-      "65280, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NDHWC\", \"dType\": \"float\", \"ub_size\": "
+      "65280, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
-      "2011 32640 2 9 0 16 0 1397 1 1 1 0 0 0 1 1 1 8 0 0 127 0 11 0 1397 1 1 32768 1 32768 16 11 10 16 11264 160 "
+      "2011 32640 2 9 0 16 0 1320 1 1 1 0 0 0 1 1 1 64 0 0 120 0 11 0 1320 1 1 32768 1 32768 16 11 10 16 11264 160 "
       "112640 128 1 256 8 128 32768 2 2040 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
@@ -772,8 +772,8 @@ TEST_F(TransDataTiling, TransData_NZ3D_2_NDHWC_1) {
   std::string src_format = "FRACTAL_Z_3D";
   std::string dst_format = "NDHWC";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NDHWC\", \"dType\": \"float16\", \"ubSize\": "
-      "130560, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NDHWC\", \"dType\": \"float16\", \"ub_size\": "
+      "130560, \"block_dim\": 32, \"input_size\": -1, \"hidden_size\": -1, \"group\": 1}}";
   std::string expect_tiling =
       "2010 65280 1 2 0 16 1044480 65280 1 1 1 0 0 0 1 1 1 0 2170 0 1 0 100000 0 100000 4080 0 256 1 1044480 65280 0 1 "
       "16 100000 16 100000 1 1 256 1 1 1600000 2 4080 1 ";
@@ -788,8 +788,8 @@ TEST_F(TransDataTiling, ND_2_NZ) {
   std::string src_format = "ND";
   std::string dst_format = "FRACTAL_NZ";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ubSize\": 130560, "
-      "\"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ub_size\": 130560, "
+      "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1010 65280 20 108864 32256 2073600 2457600 2073600 2457600 54432 16128 54 0 4080 1 63 16 54 2457600 614400 16 6 "
       "54 1 1 1 2 0 63 1 0 1 1 1 1 2 33 1 0 ";
@@ -804,11 +804,11 @@ TEST_F(TransDataTiling, ND_2_NZ_1) {
   std::string src_format = "ND";
   std::string dst_format = "FRACTAL_NZ";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ubSize\": 130560, "
-      "\"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ub_size\": 130560, "
+      "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
-      "1010 65280 3 4080 65280 20000 160000 20000 160000 160000 256 10000 0 4080 1 1 16 4080 65280 256 16 0 4080 1 1 1 "
-      "1 2 1 1 0 1 1 1 1 2 1 1 1840 ";
+      "1010 65280 3 4080 65280 20000 160000 20000 160000 10000 16 10000 5 4080 1 1 1 4080 65280 256 16 0 4080 1 0 0 2 "
+      "0 1 1 0 1 0 0 2 0 1 1 1840 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }
@@ -820,8 +820,8 @@ TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D) {
   std::string src_format = "NDHWC";
   std::string dst_format = "FRACTAL_Z_3D";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": "
-      "130560, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ub_size\": "
+      "130560, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1011 65280 1 0 47 16 47 16 47 1 47 4080 1 0 47 768 256 16 15 47 1 0 1 0 1 0 1 0 1 0 1 0 1 1 256 1 1 768 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
@@ -835,8 +835,8 @@ TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D_1) {
   std::string src_format = "NDHWC";
   std::string dst_format = "FRACTAL_Z_3D";
   std::string compile_info =
-      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": "
-      "130560, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+      "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ub_size\": "
+      "130560, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
       "1011 65280 7 0 752 256 752 256 47 16 47 4080 1 0 47 5376 1792 16 15 47 1 0 1 0 1 0 1 4 1 0 1 0 1 1 1792 1 1 "
       "5376 ";

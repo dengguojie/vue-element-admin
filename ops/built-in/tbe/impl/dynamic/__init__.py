@@ -185,7 +185,6 @@ from .transpose_d import transpose_d
 from .transpose import transpose
 from .as_strided import as_strided
 from .trans_data import trans_data
-from .trans_data_rnn import trans_data_rnn
 from .unpack import unpack
 from .batch_multi_class_non_max_suppression import batch_multi_class_non_max_suppression
 from .top_k_d import top_k_d

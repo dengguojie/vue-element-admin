@@ -131,43 +131,39 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     -------
     None
     """
-    if src_format.upper() == "NC1HWC0" and dst_format.upper() == "NCHW" and \
-            src.get("dtype") == "int8" and src.get("shape")[-1] == 32:
-        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "NHWC" and dst_format.upper() == "NC1HWC0" and \
-            src.get("dtype") == "int8" and dst.get("shape")[-1] == 32:
+    positive_tc_transfer = [("NHWC", "NC1HWC0"), ("NDHWC", "NDC1HWC0"), ("NHWC", "FRACTAL_NZ"), ("ND", "FRACTAL_NZ"),
+                            ("NCHW", "FRACTAL_NZ"), ("NDHWC", "FRACTAL_Z_3D"), ("NC1HWC0", "FRACTAL_Z")]
+    positive_ntc_transfer = [("NCHW","NC1HWC0"), ("NCDHW", "NDC1HWC0"), ("HWCN", "FRACTAL_Z"), ("ND", "FRACTAL_Z"),
+                             ("NCHW", "FRACTAL_Z"), ("DHWCN", "FRACTAL_Z_3D"), ("NCDHW", "FRACTAL_Z_3D")]
+    negative_tc_transfer = [("NC1HWC0", "NHWC"), ("NDC1HWC0", "NDHWC"), ("FRACTAL_NZ", "NHWC"), ("FRACTAL_NZ", "ND"),
+                            ("FRACTAL_NZ", "NCHW"), ("FRACTAL_Z_3D", "NDHWC"), ("FRACTAL_NZ", "NC1HWC0")]
+    negative_ntc_transfer = [("NC1HWC0","NCHW"), ("NDC1HWC0", "NCDHW"), ("FRACTAL_Z", "HWCN"), ("FRACTAL_Z", "ND"),
+                             ("FRACTAL_Z", "NCHW"), ("FRACTAL_Z_3D", "DHWCN"), ("FRACTAL_Z_3D", "NCDHW")]
+
+    if (src_format.upper() in ("NHWC", "NCHW") and dst_format.upper() == "NC1HWC0" and
+            check_whether_2d(src_format.upper(), src)):
+        trans_data_2d(src, dst, src_format, dst_format, kernel_name)
+    elif (src_format.upper() == "NC1HWC0" and dst_format.upper() in ("NHWC", "NCHW") and
+          check_whether_2d(dst_format.upper(), dst)):
+        trans_data_2d(src, dst, src_format, dst_format, kernel_name)
+    elif (src_format.upper(), dst_format.upper()) in positive_tc_transfer:
         trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "NCHW" and dst_format.upper() == "NC1HWC0" and \
-            src.get("dtype") == "int8" and dst.get("shape")[-1] == 32:
+    elif (src_format.upper(), dst_format.upper()) in positive_ntc_transfer and groups == 1:
         trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "HWCN" and dst_format.upper() == "FRACTAL_Z" and \
-            src.get("dtype") == "int8" and dst.get("shape")[-1] == 32 and groups == 1:
-        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "FRACTAL_Z" and dst_format.upper() == "NCHW" and \
-            src.get("dtype") == "int8" and src.get("shape")[-1] == 32 and groups == 1:
-        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() in ("NHWC","ND") and dst_format.upper() in ("NC1HWC0", "FRACTAL_NZ") and \
-            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
-        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() in ("NC1HWC0", "FRACTAL_NZ") and dst_format.upper() in ("NHWC", "ND") and \
-            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
+    elif (src_format.upper(), dst_format.upper()) in negative_tc_transfer:
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "NCHW" and dst_format.upper() == "NC1HWC0" and \
-            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
-        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "NC1HWC0" and dst_format.upper() == "NCHW" and \
-            (src.get("dtype") == "bfloat16" or tbe_platform.api_check_support("tik.vgatherb")):
+    elif (src_format.upper(), dst_format.upper()) in negative_ntc_transfer and groups == 1:
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "HWCN" \
-            and dst_format.upper() == "FRACTAL_Z" and groups > 1 and groups == src.get("shape")[-1]:
+    elif (src_format.upper() == "HWCN" and dst_format.upper() == "FRACTAL_Z" and
+          groups > 1 and groups == src.get("shape")[-1]):
         dst_format = "C1HWNCOC0"
         axis_h, axis_w, axis_c, axis_n = src.get("shape")
         axis_c = axis_c * groups
         axis_n = 1
         src["shape"] = (axis_h, axis_w, axis_c, axis_n)
         depthwise_weight_4d_2_6d(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "FRACTAL_Z" \
-            and dst_format.upper() == "HWCN" and groups > 1 and groups == dst.get("shape")[-1]:
+    elif (src_format.upper() == "FRACTAL_Z" and dst_format.upper() == "HWCN" and
+          groups > 1 and groups == dst.get("shape")[-1]):
         src_format = "C1HWNCOC0"
         axis_h, axis_w, axis_c, axis_n = dst.get("shape")
         axis_c = axis_c * groups
@@ -176,71 +172,24 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         src["shape"] = (axis_c1, axis_h, axis_w, axis_n, 16, 16)
         dst["shape"] = (axis_h, axis_w, axis_c, axis_n)
         depthwise_weight_6d_2_4d(src, dst, src_format, dst_format, kernel_name)
-    elif (src_format.upper() == "NHWC" or src_format.upper() == "NCHW") \
-            and dst_format.upper() == "NC1HWC0":
-        if check_whether_2d(src_format.upper(), src):
-            trans_data_2d(src, dst, src_format, dst_format, kernel_name)
-        else:
-            if src.get("dtype") == "int8" or src.get("dtype") == "bool" \
-                    or src.get("dtype") == "uint8":
-                four_2_five_int8.four_2_five(src, dst, src_format,
-                                             dst_format, kernel_name)
-            else:
-                four_2_five.four_2_five(src, dst, src_format,
-                                        dst_format, kernel_name)
-    elif src_format.upper() == "NC1HWC0" \
-            and (dst_format.upper() == "NHWC" or dst_format.upper() == "NCHW"):
-        if check_whether_2d(dst_format.upper(), dst):
-            trans_data_2d(src, dst, src_format, dst_format, kernel_name)
-        else:
-            if src.get("dtype") == "int8" or src.get("dtype") == "bool" \
-                    or src.get("dtype") == "uint8":
-                five_2_four_int8.five_2_four(src, dst, src_format,
-                                             dst_format, kernel_name)
-            else:
-                five_2_four.five_2_four(src, dst, src_format,
-                                        dst_format, kernel_name)
-    elif src_format.upper() == "NCHW" \
-            and ((dst_format.upper() == "FRACTAL_ZN" or dst_format.upper() == "FRACTAL_Z") and groups == 1):
-        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
     elif src_format.upper() == "NCHW" \
             and ((dst_format.upper() == "FRACTAL_ZN" or dst_format.upper() == "FRACTAL_Z") and groups > 1):
         nchw_2_fractal_z_g.nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name)
-    elif src_format.upper() == "ND" \
-            and (dst_format.upper() == "FRACTAL_ZN"
-                 or dst_format.upper() == "FRACTAL_Z"):
-        nd_2_zn_int8.nd_2_zn_int8(src, dst, src_format,
-                                  dst_format, kernel_name)
-    elif (src_format.upper() == "FRACTAL_ZN"
-          or src_format.upper() == "FRACTAL_Z") \
-            and dst_format.upper() == "NCHW" and groups == 1:
-        zn_2_nchw.zn_2_nchw(src, dst, src_format, dst_format, kernel_name)
     elif (src_format.upper() == "FRACTAL_ZN"
           or src_format.upper() == "FRACTAL_Z") \
             and dst_format.upper() == "NCHW" and groups > 1:
         zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
     elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "DHWCN" and groups > 1:
         zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
-    elif src_format.upper() == "HWCN" \
-            and ((dst_format.upper() == "FRACTAL_ZN"
-                 or dst_format.upper() == "FRACTAL_Z"
-                 or dst_format.upper() == "FRACTAL_ZN_LSTM") and groups == 1):
+    elif src_format.upper() == "HWCN" and dst_format.upper() == "FRACTAL_ZN_LSTM":
         nchw_hwcn_zn.nchw_hwcn_zn(src, dst, src_format, dst_format, kernel_name)
-    elif src_format.upper() == "HWCN" \
-            and ((dst_format.upper() == "FRACTAL_ZN"
-                 or dst_format.upper() == "FRACTAL_Z") and groups > 1):
+    elif src_format.upper() == "HWCN" and dst_format.upper() == "FRACTAL_Z" and groups > 1:
         hwcn_2_fractal_z_g.hwcn_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name)
     elif src_format.upper() == "FRACTAL_ZN_LSTM" and \
             dst_format.upper() == "HWCN":
         zn_2_hwcn_lstm.zn_2_hwcn_lstm(src, dst, src_format,
                                       dst_format, kernel_name)
-    elif (src_format.upper() == "FRACTAL_ZN"
-          or src_format.upper() == "FRACTAL_Z") \
-            and dst_format.upper() == "HWCN" and groups == 1:
-        zn_2_hwcn.zn_2_hwcn(src, dst, src_format, dst_format, kernel_name)
-    elif (src_format.upper() == "FRACTAL_ZN"
-          or src_format.upper() == "FRACTAL_Z") \
-            and dst_format.upper() == "HWCN" and groups > 1:
+    elif src_format.upper() == "FRACTAL_Z" and dst_format.upper() == "HWCN" and groups > 1:
         zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
     elif src_format.upper() == "HWCN" \
             and dst_format.upper() == "C1HWNCOC0":
@@ -248,14 +197,6 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     elif src_format.upper() == "C1HWNCOC0" \
             and dst_format.upper() == "HWCN":
         depthwise_weight_6d_2_4d(src, dst, src_format, dst_format, kernel_name)
-    elif (src_format.upper() == "NHWC" or src_format.upper() == "NCHW"\
-          or src_format.upper() == "ND") and \
-            dst_format.upper() == "FRACTAL_NZ":
-        nd_2_nz.nd_2_nz(src, dst, src_format, dst_format, kernel_name)
-    elif (src_format.upper() == "FRACTAL_NZ" or
-          src_format == "FORMAT_FRACTAL_Nz") and \
-            (dst_format in ("ND", "NHWC", "NCHW")):
-        nz_2_nd.nz_2_nd(src, dst, src_format, dst_format, kernel_name)
     elif src_format.upper() == "NCHW" and dst_format.upper() == "NHWC":
         transpose_d(src, dst, [0, 2, 3, 1], kernel_name)
     elif src_format.upper() == "NCHW" and dst_format.upper() == "HWCN":
@@ -274,64 +215,16 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         transpose_d(src, dst, [3, 1, 2, 0], kernel_name)
     elif src_format.upper() == "CHWN" and dst_format.upper() == "HWCN":
         transpose_d(src, dst, [1, 2, 0, 3], kernel_name)
-    elif src_format.upper() == "NDHWC" and dst_format.upper() == "NDC1HWC0":
-        ndhwc_2_ndc1hwc0.ndhwc_2_ndc1hwc0(src, dst, src_format,
-                                          dst_format, kernel_name)
-    elif src_format.upper() == "NDC1HWC0" and dst_format.upper() == "NDHWC":
-        ndc1hwc0_2_ndhwc.ndc1hwc0_2_ndhwc(src, dst, src_format,
-                                          dst_format, kernel_name)
-    elif src_format.upper() == "NHWC" and \
-            dst_format.upper() == "FRACTAL_Z_C04":
-        nhwc_2_fractal_z_c04.nhwc_2_fractal_z_c04(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "NCHW" and \
-            dst_format.upper() == "FRACTAL_Z_C04":
-        nchw_2_fractal_z_c04.nchw_2_fractal_z_c04(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "HWCN" and \
-            dst_format.upper() == "FRACTAL_Z_C04":
-        hwcn_2_fractal_z_c04.hwcn_2_fractal_z_c04(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif (src_format.upper() in ["NHWC", "NCHW", "HWCN"]) and \
-            dst_format.upper() == "NC1HWC0_C04":
-        four_2_five_c04.four_2_five_c04(src, dst, src_format,
-                                        dst_format, kernel_name)
-    elif src_format.upper() == "DHWCN" and \
-            dst_format.upper() == "FRACTAL_Z_3D":
-        dhwcn_2_fractal_z_3d.dhwcn_2_fractal_z_3d(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "FRACTAL_Z_3D"\
-            and dst_format.upper() == "DHWCN" and groups == 1:
-        fractal_z_3d_2_dhwcn.fractal_z_3d_2_dhwcn(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "NC1HWC0" and \
-            dst_format.upper() == "FRACTAL_Z":
-        nc1hwc0_2_nz.nc1hwc0_2_nz(src, dst, src_format,
-                                  dst_format, kernel_name)
-    elif src_format.upper() == "FRACTAL_NZ"\
-            and dst_format.upper() == "NC1HWC0":
-        fractal_nz_2_nc1hwc0.fractal_nz_2_nc1hwc0(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "NCDHW" and dst_format.upper() == "NDC1HWC0":
-        ncdhw_2_ndc1hwc0.ncdhw_2_ndc1hwc0(src, dst, src_format,
-                                          dst_format, kernel_name)
-    elif src_format.upper() == "NDC1HWC0" and dst_format.upper() == "NCDHW":
-        ndc1hwc0_2_ncdhw.ndc1hwc0_2_ncdhw(src, dst, src_format,
-                                          dst_format, kernel_name)
-    elif src_format.upper() == "NCDHW" and dst_format.upper() == "FRACTAL_Z_3D":
-        ncdhw_2_fractal_z_3d.ncdhw_2_fractal_z_3d(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "NCDHW":
-        fractal_z_3d_2_ncdhw.fractal_z_3d_2_ncdhw(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "NDHWC" and dst_format.upper() == "FRACTAL_Z_3D":
-        ndhwc_2_fractal_z_3d.ndhwc_2_fractal_z_3d(src, dst, src_format,
-                                                  dst_format, kernel_name)
-    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "NDHWC":
-        fractal_z_3d_2_ndhwc.fractal_z_3d_2_ndhwc(src, dst, src_format,
-                                                  dst_format, kernel_name)
+    elif src_format.upper() == "NHWC" and dst_format.upper() == "FRACTAL_Z_C04":
+        nhwc_2_fractal_z_c04.nhwc_2_fractal_z_c04(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "NCHW" and dst_format.upper() == "FRACTAL_Z_C04":
+        nchw_2_fractal_z_c04.nchw_2_fractal_z_c04(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "HWCN" and dst_format.upper() == "FRACTAL_Z_C04":
+        hwcn_2_fractal_z_c04.hwcn_2_fractal_z_c04(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() in ["NHWC", "NCHW", "HWCN"] and dst_format.upper() == "NC1HWC0_C04":
+        four_2_five_c04.four_2_five_c04(src, dst, src_format, dst_format, kernel_name)
     else:
-        raise RuntimeError("not support this kind of format transfer !")
+        error_manager_vector.raise_err_specific_reson("trans_data", "not support the format transfer!")
 
 
 @tbe_platform.fusion_manager.register("trans_data")
@@ -380,7 +273,6 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 name="res_nc1hwc0",
                 attrs={"ori_format": "NHWC", "ori_shape": src.shape},
                 tag="NHWC_trans_5HD")
-
     elif src_format == "NC1HWC0" and dst_format == "NHWC":
         src_n, src_c1, src_hw, src_c0 = tuple(i.value for i in src.shape)
         dst_n, dst_h, dst_w, dst_c = dst.get("shape")
@@ -428,7 +320,6 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             attrs={"ori_format": "NHWC", "ori_shape": src.shape},
             tag="NHWC_trans_FZ"
         )
-
     elif src_format == "ND" and dst_format == "FRACTAL_NZ":
         # transform fotmat ND to Nz, the dst_format is Zz actually when input dtype is fp32
         # for the requirement of load2d_transpose
@@ -464,7 +355,6 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             attrs={"ori_format": "ND", "ori_shape": src.shape, "format": dst_format, "ND_trans_Nz": 1},
             tag="gemm"
         )
-
     elif src_format == "FRACTAL_NZ" and dst_format == "ND":
         src_shape = tuple(i.value for i in src.shape)
         dst_shape = src.op.attrs["ori_shape"]
@@ -478,7 +368,6 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 name="res_nd",
                 attrs={"ori_format": "FRACTAL_NZ",
                        "ori_shape": src.shape, "Nz_trans_ND": 1})
-
     elif src_format == "FRACTAL_Z" and dst_format == "NHWC":
         group, src_fkk, src_n, src_c0 = tuple(i.value for i in src.shape)
         dst_shape = dst.get("shape")
