@@ -1560,7 +1560,8 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
       }
     }
   }
-  auto output_dim0 = all_indices_constant ? (max_index + 1) : (ge::UNKNOWN_DIM);
+  max_index = (max_index == 0) ? (max_index) : (max_index + 1);
+  auto output_dim0 = all_indices_constant ? (max_index) : (ge::UNKNOWN_DIM);
   GeShape output_shape_prefix({output_dim0});
   GeShape output_shape;
   if (Concatenate(output_shape_prefix, last_suffix_shape, output_shape) != GRAPH_SUCCESS) {
