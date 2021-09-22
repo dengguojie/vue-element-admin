@@ -34,7 +34,16 @@ Status ParseParamsDepthToSpace(const Message* op_src, ge::Operator& op_dest) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "blocksize, specifying the size of the spatial block, should be >=2, ");
     return FAILED;
   }
-
+  
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (op_desc == nullptr) {
+    return FAILED;
+  }
+  ge::GeTensorDesc input_desc = op_desc->GetInputDesc(0);
+  input_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  input_desc.SetFormat(ge::FORMAT_NCHW);
+  op_desc->UpdateInputDesc(0, input_desc);
+  
   op_dest.SetAttr("block_size", block_size);
   op_dest.SetAttr("mode", mode);
   // set attr data format to NCHW.
