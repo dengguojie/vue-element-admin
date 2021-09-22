@@ -47,9 +47,9 @@ macro(GEN_OPS_INFO_FILE op_type output_dir output_file_name_prefix)
             set(output_file_name ${output_file_name_prefix}_aicpu_kernel.json)
             if (NOT "x${INI_FILES}" STREQUAL "x")
                 add_custom_command(OUTPUT ${output_file_name}
-                        COMMAND echo "python3.7.5 ${AICPU_INI_2_JSON_PY} ${INI_FILES} ${output_dir}/${output_file_name}"
+                        COMMAND echo "python3 ${AICPU_INI_2_JSON_PY} ${INI_FILES} ${output_dir}/${output_file_name}"
                         COMMAND mkdir -p ${output_dir}
-                        COMMAND python3.7.5 ${AICPU_INI_2_JSON_PY} ${INI_FILES} ${output_dir}/${output_file_name}
+                        COMMAND python3 ${AICPU_INI_2_JSON_PY} ${INI_FILES} ${output_dir}/${output_file_name}
                         COMMENT "generate configure json file")
                 set(OUTPUT_FILES ${OUTPUT_FILES} ${output_file_name})
             else()

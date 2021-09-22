@@ -24,7 +24,7 @@ temp_info_json=$build_path/makepkg/packages/op_impl/custom/cpu/config/temp_cust_
 if [[ -f "$custom_exist_info_json" ]] && [[ -f "$custom_new_info_json" ]]; then
     cp -f $custom_exist_info_json $temp_info_json
     chmod +w $temp_info_json
-    python3.7.5 ${project_path}/cmake/util/insert_op_info.py ${custom_new_info_json} ${temp_info_json}
+    python3 ${project_path}/cmake/util/insert_op_info.py ${custom_new_info_json} ${temp_info_json}
     cp -f $temp_info_json $custom_new_info_json
     rm -f $temp_info_json
 fi

@@ -49,7 +49,7 @@ fi
 
 if [[ -f "${aicore_filter_file}" ]] && [[ -f "${aicpu_filter_file}" ]]; then
     chmod u+w ${aicpu_filter_file}
-    python3.7.5 ${project_path}/cmake/util/insert_op_info.py ${aicore_filter_file} ${aicpu_filter_file}
+    python3 ${project_path}/cmake/util/insert_op_info.py ${aicore_filter_file} ${aicpu_filter_file}
     chmod u-w ${aicpu_filter_file}
     cp $aicpu_filter_file ${build_path}/makepkg/packages/framework/custom/tensorflow
 fi
