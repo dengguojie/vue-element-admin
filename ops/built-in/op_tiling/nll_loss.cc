@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,9 +85,8 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compi
   return true;
 }
 
-bool CheckTensorShape(const std::string& op_type, const vector<int64_t>& x_shape,
-                      const vector<int64_t>& target_shape, const vector<int64_t>& weight_shape) {
-
+bool CheckTensorShape(const std::string& op_type, const vector<int64_t>& x_shape, const vector<int64_t>& target_shape,
+                      const vector<int64_t>& weight_shape) {
   int64_t x_dims = x_shape.size();
 
   if (x_dims <= 0 || x_dims > 2) {
@@ -252,8 +251,8 @@ void NLLLossCommonTiling(int64_t& bytes, int64_t& core_num, int64_t& ub_size, in
                   last_core_size, last_core_loop_cnt, last_core_left_size, min_aligned, is_left_data);
 }
 
-int64_t CalculUbSizeNormWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size,
-                               const int64_t& ub_size, const int64_t& c_size, const int64_t& data_one_block) {
+int64_t CalculUbSizeNormWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size, const int64_t& ub_size,
+                               const int64_t& c_size, const int64_t& data_one_block) {
   int64_t ub_max_line;
   weight_size = GetCeilDiv(c_size, data_one_block) * data_one_block;
   // 4: x, target, valid_x, valid_weight 32byte aligned
@@ -265,8 +264,8 @@ int64_t CalculUbSizeNormWeight(int64_t& x_size, int64_t& target_size, int64_t& w
   return ub_max_line;
 }
 
-int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size,
-                                const int64_t& ub_size, const int64_t& c_size, const int64_t& data_one_block) {
+int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size, const int64_t& ub_size,
+                                const int64_t& c_size, const int64_t& data_one_block) {
   int64_t ub_max_line;
   x_size = data_one_block;
   weight_size = data_one_block;
@@ -357,15 +356,13 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   c_size = x_shape.back();
 
   int64_t data_one_block = GetFloorDiv(BLOCK_SIZE, bytes);
-  ub_max_line = CalculUbSizeNormWeight(x_size, target_size, weight_size,
-                                       ub_size, c_size, data_one_block);
+  ub_max_line = CalculUbSizeNormWeight(x_size, target_size, weight_size, ub_size, c_size, data_one_block);
   // c_size can move into ub
   if (ub_max_line >= 1) {
     tiling_mode = 1;
   } else {
     tiling_mode = 2;
-    ub_max_line = CalculUbSizeLargeWeight(x_size, target_size, weight_size,
-                                          ub_size, c_size, data_one_block);
+    ub_max_line = CalculUbSizeLargeWeight(x_size, target_size, weight_size, ub_size, c_size, data_one_block);
   }
 
   if (reduction == "none") {
@@ -382,8 +379,8 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
           per_core_size, per_core_loop_cnt, per_core_left_size);
   OP_LOGD(op_type.c_str(), "NLLLossTiling: last_core_size=%lld, last_core_loop_cnt=%lld, last_core_left_size=%lld",
           last_core_size, last_core_loop_cnt, last_core_left_size);
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: x_size=%lld, target_size=%lld, weight_size=%lld",
-          x_size, target_size, weight_size);
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: x_size=%lld, target_size=%lld, weight_size=%lld", x_size, target_size,
+          weight_size);
 
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
   // set tiling data

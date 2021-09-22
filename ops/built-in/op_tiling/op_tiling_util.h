@@ -25,6 +25,7 @@
 #include <vector>
 #include "op_tiling.h"
 #include "external/graph/operator.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 using optiling::ByteBuffer;

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,12 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "../op_proto/strided_slice_infer_shape.h"
 #include "op_log.h"
 #include "error_log.h"
 #include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 
@@ -43,6 +44,14 @@ const std::string OP_STRIDED_SLICE_GRAD = "StridedSliceGrad";
 const int64_t SHAPE_C0 = 16;
 
 const int64_t MAX_SHAPE_LEN = 8;
+
+// define a map format with N(D)CHW dim idx vector
+const map<Format, vector<int32_t>>& FORMAT_FOR_NCHW_IDX = {
+    {FORMAT_NCHW, {0, 1, 2, 3}},     {FORMAT_NHWC, {0, 3, 1, 2}},     {FORMAT_HWCN, {3, 2, 0, 1}},
+    {FORMAT_NCDHW, {0, 2, 1, 3, 4}}, {FORMAT_DHWCN, {4, 0, 3, 1, 2}}, {FORMAT_NDHWC, {0, 1, 4, 2, 3}}};
+
+// define a map for special format
+const std::vector<Format> SPECIAL_FORMAT = {FORMAT_NC1HWC0, FORMAT_NDC1HWC0};
 
 struct SliceParameters {
   std::vector<int64_t> input;
@@ -130,36 +139,35 @@ void InitRunningParams(PadTilingParams& params) {
   params.tiling_input_dim_cut_axis = 1;
 }
 
-static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name, const string& dtype,
-                                  vector<int64_t>& values) {
-  values.clear();
-  if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
-    return false;
-  }
-
-  auto size = std::get<1>(paras.const_inputs.at(name));
-  if (dtype == "int64") {
-    int count = size / sizeof(int64_t);
-    const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  } else if (dtype == "int32") {
-    int count = size / sizeof(int32_t);
-    const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  }
-
-  return true;
-}
-
-static bool GetPadCompileParams(const nlohmann::json& compile_info, PadCompileParams& compile_params) {
+static bool GetPadCompileParams(const nlohmann::json& compile_info, const std::string& hash_key,
+                                PadCompileParams& compile_params) {
   using namespace nlohmann;
-  auto allVars = compile_info["vars"];
+  static std::map<std::string, std::vector<int64_t>> pad_compile_info_storage;
+  static RWLock rwlock;
+  rwlock.rdlock();
+  auto found_iterator = pad_compile_info_storage.find(hash_key);
+  rwlock.unlock();
+  if (found_iterator != pad_compile_info_storage.end()) {
+    OP_LOGI(compile_params.op_type, "Get storage from pad_compile_info_storage %s", hash_key.c_str());
+    auto compile_storage = found_iterator->second;
+    if (compile_storage.size() == 8) {
+      compile_params.core_num = compile_storage[0];
+      compile_params.ub_size = compile_storage[1];
+      compile_params.dtype_rate = compile_storage[2];
+      if (compile_params.op_type == OP_STRIDED_SLICE_GRAD) {
+        compile_params.begin_mask = compile_storage[3];
+        compile_params.end_mask = compile_storage[4];
+        compile_params.ellipsis_mask = compile_storage[5];
+        compile_params.new_axis_mask = compile_storage[6];
+        compile_params.shrink_axis_mask = compile_storage[7];
+      }
+      return true;
+    }
+    OP_LOGI(compile_params.op_type, "the storage compile info is invalid, will get from nlohmann::json again");
+    pad_compile_info_storage.erase(found_iterator);
+  }
+
+  const nlohmann::json& allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
     return false;
@@ -208,36 +216,44 @@ static bool GetPadCompileParams(const nlohmann::json& compile_info, PadCompilePa
     }
     compile_params.shrink_axis_mask = allVars["shrink_axis_mask"].get<std::uint64_t>();
   }
+
+  std::vector<int64_t> pad_compile{compile_params.core_num,      compile_params.ub_size,
+                                   compile_params.dtype_rate,    compile_params.begin_mask,
+                                   compile_params.end_mask,      compile_params.ellipsis_mask,
+                                   compile_params.new_axis_mask, compile_params.shrink_axis_mask};
+  rwlock.wrlock();
+  pad_compile_info_storage.emplace(hash_key, pad_compile);
+  rwlock.unlock();
   return true;
 }
 
-void SetRuningParams(const PadTilingParams& params, OpRunInfo& run_info) {
-  ByteBufferPut(run_info.tiling_data, params.tiling_key);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_0);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_1);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_2);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_3);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_4);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_5);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_6);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_7);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_00);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_01);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_10);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_11);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_20);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_21);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_30);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_31);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_40);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_41);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_50);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_51);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_60);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_61);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_70);
-  ByteBufferPut(run_info.tiling_data, params.tiling_pading_71);
-  ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_cut_axis);
+void SetRuningParams(const PadTilingParams& params, utils::OpRunInfo& run_info) {
+  run_info.AddTilingData(params.tiling_key);
+  run_info.AddTilingData(params.tiling_input_dim_0);
+  run_info.AddTilingData(params.tiling_input_dim_1);
+  run_info.AddTilingData(params.tiling_input_dim_2);
+  run_info.AddTilingData(params.tiling_input_dim_3);
+  run_info.AddTilingData(params.tiling_input_dim_4);
+  run_info.AddTilingData(params.tiling_input_dim_5);
+  run_info.AddTilingData(params.tiling_input_dim_6);
+  run_info.AddTilingData(params.tiling_input_dim_7);
+  run_info.AddTilingData(params.tiling_pading_00);
+  run_info.AddTilingData(params.tiling_pading_01);
+  run_info.AddTilingData(params.tiling_pading_10);
+  run_info.AddTilingData(params.tiling_pading_11);
+  run_info.AddTilingData(params.tiling_pading_20);
+  run_info.AddTilingData(params.tiling_pading_21);
+  run_info.AddTilingData(params.tiling_pading_30);
+  run_info.AddTilingData(params.tiling_pading_31);
+  run_info.AddTilingData(params.tiling_pading_40);
+  run_info.AddTilingData(params.tiling_pading_41);
+  run_info.AddTilingData(params.tiling_pading_50);
+  run_info.AddTilingData(params.tiling_pading_51);
+  run_info.AddTilingData(params.tiling_pading_60);
+  run_info.AddTilingData(params.tiling_pading_61);
+  run_info.AddTilingData(params.tiling_pading_70);
+  run_info.AddTilingData(params.tiling_pading_71);
+  run_info.AddTilingData(params.tiling_input_dim_cut_axis);
 }
 
 void PrintTilingParams(const PadTilingParams& params, const std::string& op_type) {
@@ -272,14 +288,12 @@ void PrintTilingParams(const PadTilingParams& params, const std::string& op_type
 void PrintTensorValue(const PadCompileParams& compile_params, const std::vector<int64_t>& in, const std::string& name) {
   using namespace std;
   string vec_str;
-  for (auto item : in) {
-    vec_str += to_string(item);
-    vec_str += ",";
+  for (size_t i = 0; i < in.size(); ++i) {
+    OP_LOGD(compile_params.op_type, "Func[PrintTensorValue] [%s][%ld]: [%ld].", name.c_str(), i, in[i]);
   }
-  OP_LOGD(compile_params.op_type, "Func[PrintTensorValue] [%s]: [%s].", name.c_str(), vec_str.c_str());
 }
 
-static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras, const PadCompileParams& compile_params,
+static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const PadCompileParams& compile_params,
                                             std::vector<int64_t>& paddings_const_values,
                                             std::vector<int64_t>& paddings_input_shape) {
   struct SliceParameters slice_params_output = {};
@@ -302,7 +316,7 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras, const Pad
     auto& name = item.first;
     int index = item.second.first;
     auto& values = item.second.second;
-    if (!GetPaddingsConstValue(op_paras, name, op_paras.inputs[index].tensor[0].dtype, values)) {
+    if (!GetConstValue(op_paras, name, values)) {
       VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "Get %s values failed", name.c_str());
       return false;
     }
@@ -487,71 +501,70 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
   return true;
 }
 
-bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
-               OpRunInfo& run_info) {
-  PROFILING_TILING_INIT(op_type.c_str());
+bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_compile_info,
+               const std::string& hash_key, utils::OpRunInfo& run_info) {
   using namespace ge;
-
   OP_LOGI(op_type, "begin to run tiling.");
-  if (op_compile_info == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadTiling] : op_compile_info json error.");
-    return false;
-  }
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get OpDesc failed."),
+                  return false);
 
-  if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadTiling] : input shape error");
-    return false;
-  }
-
-  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   // begin to get compile data
   PadCompileParams compile_params;
   compile_params.op_type = op_type;
-  if (!GetPadCompileParams(op_compile_info, compile_params)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
-    return false;
-  }
-
+  OP_TILING_CHECK(!GetPadCompileParams(op_compile_info, hash_key, compile_params),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed."),
+                  return false);
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   int64_t pad_input_idx = op_type == OP_STRIDED_SLICE_GRAD ? 4 : 0;
-  const std::vector<int64_t>& input_shape_const = op_paras.inputs[pad_input_idx].tensor[0].shape;
-  auto pad_format = op_paras.inputs[pad_input_idx].tensor[0].format;
-  std::vector<int64_t> input_shape = input_shape_const;
+  auto pad_input_desc = operator_info->MutableInputDesc(pad_input_idx);
+  std::vector<int64_t> input_shape = pad_input_desc->MutableShape().GetDims();
   std::vector<int64_t> paddings_const_values;
   if (op_type == OP_STRIDED_SLICE_GRAD) {
-    CalcuPaddingForStridedSliceGrad(op_paras, compile_params, paddings_const_values, input_shape);
+    OP_TILING_CHECK(!CalcuPaddingForStridedSliceGrad(op_paras, compile_params, paddings_const_values, input_shape),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "calcu paddings const value failed."), return false);
+
   } else {
-    GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values);
+    OP_TILING_CHECK(!GetConstValue(op_paras, "paddings", paddings_const_values),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get paddings const value failed."), return false);
   }
   PrintTensorValue(compile_params, input_shape, "input_shape");
   PrintTensorValue(compile_params, paddings_const_values, "paddings");
+  auto pad_format = pad_input_desc->GetFormat();
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   // end to get compile data
   PadTilingParams run_params;
   InitRunningParams(run_params);
-  const map<string, vector<char>>& format_char = {{"NC1HWC0", {'N', 'C', 'H', 'W'}},
-                                                  {"NDC1HWC0", {'N', 'D', 'C', 'H', 'W'}}};
-  auto find_foramt_it = format_char.find(pad_format);
-  if (find_foramt_it != format_char.end()) {
+  auto special_format_it = find(SPECIAL_FORMAT.begin(), SPECIAL_FORMAT.end(), pad_format);
+  if (special_format_it != SPECIAL_FORMAT.end()) {
     std::vector<int64_t> paddings_new_values(input_shape.size() * 2, 0);
-    auto pad_ori_format = op_paras.inputs[pad_input_idx].tensor[0].ori_format;
-    vector<char> format_char_vec = find_foramt_it->second;
-
-    for (size_t i = 0; i < format_char_vec.size(); i++) {
-      char char_dim = format_char_vec[i];
-      auto char_dim_idx = pad_ori_format.find(char_dim);
-      if (char_dim_idx != string::npos) {
-        paddings_new_values[i * 2] = paddings_const_values[char_dim_idx * 2];
-        paddings_new_values[i * 2 + 1] = paddings_const_values[char_dim_idx * 2 + 1];
-      } else {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "can not get[%c] from ori_foramt[%s] when format is [%s]", char_dim,
-                                        pad_ori_format.c_str(), pad_format.c_str());
-        return false;
-      }
+    auto pad_ori_format = pad_input_desc->GetOriginFormat();
+    OP_LOGD(op_type, "special pad case, format = %s, ori format = %s.", to_string(pad_format).c_str(),
+            to_string(pad_ori_format).c_str());
+    vector<int32_t> format_nchw_idx;
+    auto ori_foramt_it = FORMAT_FOR_NCHW_IDX.find(pad_ori_format);
+    OP_TILING_CHECK(ori_foramt_it == FORMAT_FOR_NCHW_IDX.end(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "do not support ori format(%s) when format is (%s)",
+                                                    to_string(pad_ori_format).c_str(), to_string(pad_format).c_str()),
+                    return false);
+    format_nchw_idx = ori_foramt_it->second;
+    size_t shape_expect = format_nchw_idx.size() + 1;
+    OP_TILING_CHECK(
+        shape_expect != input_shape.size(),
+        VECTOR_INNER_ERR_REPORT_TILIING(
+            op_type, "the len of input_shape(%ld) must be equal with len(%ld) of format. when format is special format",
+            input_shape.size(), shape_expect),
+        return false);
+    for (size_t i = 0; i < format_nchw_idx.size(); i++) {
+      auto dim_idx = format_nchw_idx[i];
+      paddings_new_values[i * 2] = paddings_const_values[dim_idx * 2];
+      paddings_new_values[i * 2 + 1] = paddings_const_values[dim_idx * 2 + 1];
     }
 
     // modify C1 padding = C padding / SHAPE_C0
-    size_t padding_c1_idx = (format_char_vec.size() - 3) * 2;
+    auto padding_c1_idx = (format_nchw_idx.size() - 3) * 2;
     paddings_new_values[padding_c1_idx] = paddings_new_values[padding_c1_idx] / SHAPE_C0;
     paddings_new_values[padding_c1_idx + 1] = paddings_new_values[padding_c1_idx + 1] / SHAPE_C0;
 
@@ -566,16 +579,14 @@ bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
 
   PrintTilingParams(run_params, op_type);
 
-  run_info.block_dim = compile_params.core_num;
-  std::vector<int64_t> workspace;
-  run_info.workspaces = workspace;
+  run_info.SetBlockDim(compile_params.core_num);
 
   OP_LOGI(op_type, "end to run tiling, succ!");
   PROFILING_TILING_END();
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Pad, PadTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_CUSTOM_V2(Pad, PadTiling);
 // register tiling interface of the StridedSliceGrad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(StridedSliceGrad, PadTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_CUSTOM_V2(StridedSliceGrad, PadTiling);
 }  // namespace optiling

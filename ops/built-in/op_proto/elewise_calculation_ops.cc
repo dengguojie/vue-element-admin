@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2018-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,10 @@
 #include "inc/elewise_calculation_ops.h"
 #include <string>
 #include <vector>
-#include "util/util.h"
 #include "op_log.h"
-#include "./util/error_util.h"
+#include "util/util.h"
+#include "util/error_util.h"
+#include "util/vector_proto_profiling.h"
 #include "graph/utils/node_utils.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/debug/ge_attr_define.h"
@@ -2413,61 +2414,77 @@ COMMON_INFER_FUNC_REG(ArgMaxD, ArgMaxDInferShape);
 
 // ----------------------------ArgMaxWithValue----------------------------------
 IMPLEMT_COMMON_INFERFUNC(ArgMaxWithValueInferShape) {
+  PROFILING_PROTO_INIT(op.GetName().c_str());
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();;
+  CHECK(op_info == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
+        return GRAPH_FAILED);
+  auto input_desc = op_info->MutableInputDesc(0);
+  CHECK(input_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid InputDesc.")),
+        return GRAPH_FAILED);
+  const GeShape& input_shape = input_desc->MutableShape();
   auto input_dtype = input_desc->GetDataType();
-  auto indice_desc = op_info->MutableOutputDesc("indice");
-  auto values_desc = op_info->MutableOutputDesc("values");
+
+  // get output desc
+  const int64_t indice_output_idx = 0;
+  const int64_t values_output_idx = 1;
+  auto indice_desc = op_info->MutableOutputDesc(indice_output_idx);
+  CHECK(indice_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OutputDesc.")),
+        return GRAPH_FAILED);
+  auto values_desc = op_info->MutableOutputDesc(values_output_idx);
+  CHECK(values_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OutputDesc.")),
+        return GRAPH_FAILED);
   indice_desc->SetDataType(DT_INT32);
   values_desc->SetDataType(input_dtype);
+  // get attr dimension
+  int64_t dimension;
+  CHECK(GRAPH_SUCCESS != op.GetAttr("dimension", dimension),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("dimension")), return GRAPH_FAILED);
+  // get attr keep_dims
+  bool keep_dims;
+  CHECK(GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("keep_dims")), return GRAPH_FAILED);
 
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
   // if input_shape == -2, set output -2
-  if (IsUnknownRankShape(input_shape)) {
-    indice_desc->SetShape(GeShape(input_shape));
-    values_desc->SetShape(GeShape(input_shape));
+  if (input_shape.IsUnknownDimNum() || input_shape.IsScalar()) {
+    OP_LOGD(op.GetName().c_str(), "input is UnknownDimNum, set the output is UnknownDimNum");
+    indice_desc->SetShape(input_shape);
+    values_desc->SetShape(input_shape);
     return GRAPH_SUCCESS;
   }
 
-  // get dimension
-  int64_t dimension;
-  if (op.GetAttr("dimension", dimension) != GRAPH_SUCCESS) {
-    std::string err_msg = GetInputInvalidErrMsg("dimension");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
   if (dimension < 0) {
-    dimension += input_shape.size();
+    dimension += input_shape.GetDimNum();
   }
-  if (dimension >= static_cast<int64_t>(input_shape.size())) {
-    std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.size()));
+  if (dimension >= static_cast<int64_t>(input_shape.GetDimNum())) {
+    std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.GetDimNum()));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  // get keep_dims
-  bool keep_dims;
-  if (GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-
-  vector<int64_t> output_shape(input_shape);
+  GeShape& output_shape = indice_desc->MutableShape();
   if (keep_dims) {
     // If keepDims is true, current dimesion set to 1
-    output_shape[dimension] = 1;
+    output_shape = input_shape;
+    output_shape.SetDim(dimension, 1);
   } else {
-    output_shape.erase(output_shape.begin() + dimension);
+    output_shape.SetDimNum(input_shape.GetDimNum() - 1);
+    for (int64_t i = 0; i < static_cast<int64_t>(input_shape.GetDimNum()); ++i) {
+      if (i < dimension) {
+        output_shape.SetDim(i, input_shape.GetDim(i));
+      } else if (i > dimension) {
+        output_shape.SetDim(i - 1, input_shape.GetDim(i));
+      }
+    }
   }
-  indice_desc->SetShape(GeShape(output_shape));
-  values_desc->SetShape(GeShape(output_shape));
+  values_desc->SetShape(output_shape);
 
   // when output is dynamic will update range
-  if (IsUnknown(output_shape)) {
+  if (output_shape.IsUnknownShape()) {
+    std::vector<int64_t> input_shape_vec = input_shape.GetDims();
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc->GetShapeRange(input_range);
-    MakeUpShapeRange(input_shape, input_range);
+    MakeUpShapeRange(input_shape_vec, input_range);
     if (keep_dims) {
       input_range[dimension] = {1, 1};
     } else {
@@ -2475,81 +2492,15 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxWithValueInferShape) {
     }
     indice_desc->SetShapeRange(input_range);
     values_desc->SetShapeRange(input_range);
+    return GRAPH_SUCCESS;
   }
+  PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
+  PROFILING_PROTO_END();
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(ArgMaxWithValue, ArgMaxWithValueInferShape);
 // -----------------------------ArgMaxWithValue---------------------------------
-
-// ---------------------------ArgMinWithValue-----------------------------------
-IMPLEMT_COMMON_INFERFUNC(ArgMinWithValueInferShape) {
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();
-  auto input_dtype = input_desc->GetDataType();
-  auto indice_desc = op_info->MutableOutputDesc("indice");
-  auto values_desc = op_info->MutableOutputDesc("values");
-  indice_desc->SetDataType(DT_INT32);
-  values_desc->SetDataType(input_dtype);
-
-  // if input_shape == -2, set output -2
-  if (IsUnknownRankShape(input_shape)) {
-    indice_desc->SetShape(GeShape(input_shape));
-    values_desc->SetShape(GeShape(input_shape));
-    return GRAPH_SUCCESS;
-  }
-
-  // get dimension
-  int64_t dimension;
-  if (op.GetAttr("dimension", dimension) != GRAPH_SUCCESS) {
-    std::string err_msg = GetInputInvalidErrMsg("dimension");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  if (dimension < 0) {
-    dimension += input_shape.size();
-  }
-  if (dimension >= static_cast<int64_t>(input_shape.size())) {
-    std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.size()));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-
-  // get keep_dims
-  bool keep_dims;
-  if (GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-
-  vector<int64_t> output_shape(input_shape);
-  if (keep_dims) {
-    // If keepDims is true, current dimesion set to 1
-    output_shape[dimension] = 1;
-  } else {
-    output_shape.erase(output_shape.begin() + dimension);
-  }
-  indice_desc->SetShape(GeShape(output_shape));
-  values_desc->SetShape(GeShape(output_shape));
-
-  // when output is dynamic will update range
-  if (IsUnknown(output_shape)) {
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    input_desc->GetShapeRange(input_range);
-    MakeUpShapeRange(input_shape, input_range);
-    if (keep_dims) {
-      input_range[dimension] = {1, 1};
-    } else {
-      input_range.erase(input_range.begin() + dimension);
-    }
-    indice_desc->SetShapeRange(input_range);
-    values_desc->SetShapeRange(input_range);
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(ArgMinWithValue, ArgMinWithValueInferShape);
+COMMON_INFER_FUNC_REG(ArgMinWithValue, ArgMaxWithValueInferShape);
 // ---------------------------ArgMinWithValue-----------------------------------
 
 // ----------------Eltwise-------------------

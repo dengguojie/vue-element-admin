@@ -1,13 +1,38 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file test_pad_tiling.cpp
+ * \brief
+ */
 #include <iostream>
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <graph/utils/type_utils.h>
 #include "register/op_tiling_registry.h"
+#include "all_ops.h"
+#include "test_common.h"
+#include "op_tiling/op_tiling_util.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
-
+using namespace ge;
 class PadTiling : public testing::Test {
-  protected:
+ protected:
   static void SetUpTestCase() {
     std::cout << "PadTiling SetUp" << std::endl;
   }
@@ -17,162 +42,70 @@ class PadTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
-  auto data = tiling_data.str();
-  string result;
-  int64_t tmp = 0;
-  for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
-    memcpy(&tmp, data.c_str() + i, sizeof(tmp));
-    result += std::to_string(tmp);
-    result += " ";
-  }
+const int64_t profiling_test_num = 10;
+static void run_case(std::vector<int64_t> input_shape, std::string data_dtype, std::vector<int32_t> const_value,
+                     std::string src_ori_format, std::string src_format, std::string compile_info,
+                     std::string expect_tiling, std::string case_name) {
+  using namespace ut_util;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Pad");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto test_op = op::Pad("Pad");
+  int64_t input_len = input_shape.size();
+  std::vector<int64_t> const_shape{input_len, 2};
 
-  return result;
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_shape, StringToDtype(data_dtype),
+                          TypeUtils::SerialStringToFormat(src_ori_format), {});
+  TransformerOpBaseFormat(test_op, "x", TypeUtils::SerialStringToFormat(src_format));
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, paddings, const_shape, DT_INT32, FORMAT_ND, const_value);
+
+  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info.c_str());
+
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));
+  if (expect_tiling != "") {
+    EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), expect_tiling);
+  }
+  for (int64_t i = 0; i < profiling_test_num; i++) {
+    iter->second(test_op, op_compile_info, runInfo);
+  }
 }
 
 TEST_F(PadTiling, rpad_tiling_0) {
-  using namespace optiling;
-  std::string op_name = "Pad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-
   std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2}}";
 
   std::vector<int64_t> input{64, 64, 64, 64};
   std::vector<int64_t> padding_shape{4, 2};
   std::vector<int32_t> padding_value{0, 0, 0, 0, 0, 0, 0, 0};
   std::vector<int64_t> output{64, 64, 64, 64};
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_padding;
-  tensor_padding.shape = padding_shape;
-  tensor_padding.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_padding_arg;
-  tensor_padding_arg.tensor.push_back(tensor_padding);
-  tensor_padding_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-    (const uint8_t*)padding_value.data(), padding_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_padding_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 33554432 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+  std::string expect_tiling = "0 1 1 1 1 1 1 1 33554432 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ";
+  std::string input_dtype = "float32";
+  std::string format = "ND";
+  run_case(input, input_dtype, padding_value, format, format, compileInfo, expect_tiling, this->test_info_->name());
 }
 
 TEST_F(PadTiling, rpad_tiling_1) {
-  using namespace optiling;
-  std::string op_name = "Pad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-
   std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2}}";
 
   std::vector<int64_t> input{64, 64, 64, 4};
   std::vector<int64_t> padding_shape{4, 2};
   std::vector<int32_t> padding_value{1, 1, 1, 1, 1, 1, 0, 0};
   std::vector<int64_t> output{66, 66, 66, 4};
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_padding;
-  tensor_padding.shape = padding_shape;
-  tensor_padding.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_padding_arg;
-  tensor_padding_arg.tensor.push_back(tensor_padding);
-  tensor_padding_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-    (const uint8_t*)padding_value.data(), padding_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_padding_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 1 1 1 64 64 512 0 0 0 0 0 0 0 0 0 0 1 1 1 1 8 8 2 ");
+  std::string input_dtype = "float32";
+  std::string format = "ND";
+  std::string expect_tiling = "2 1 1 1 1 1 64 64 512 0 0 0 0 0 0 0 0 0 0 1 1 1 1 8 8 2 ";
+  run_case(input, input_dtype, padding_value, format, format, compileInfo, expect_tiling, this->test_info_->name());
 }
-
 TEST_F(PadTiling, rpad_tiling_2) {
-  using namespace optiling;
-  std::string op_name = "Pad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-
   std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2}}";
 
-  std::vector<int64_t> input{64, 4, 64, 4, 16};
+  std::vector<int64_t> ori_input{64, 64, 64, 4};
   std::vector<int64_t> padding_shape{4, 2};
   std::vector<int32_t> padding_value{1, 1, 32, 16, 1, 1, 0, 0};
-  std::vector<int64_t> output{66, 7, 66, 4, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  tensor_input.ori_format = "NCHW";
-  tensor_input.format = "NC1HWC0";
-  TeOpTensor tensor_padding;
-  tensor_padding.shape = padding_shape;
-  tensor_padding.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_padding_arg;
-  tensor_padding_arg.tensor.push_back(tensor_padding);
-  tensor_padding_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-    (const uint8_t*)padding_value.data(), padding_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_padding_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234563";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 1 1 64 4 8192 0 0 0 0 0 0 0 0 0 0 1 1 2 1 128 128 1 ");
+  std::string input_dtype = "float32";
+  std::string input_ori_format = "NCHW";
+  std::string input_format = "NC1HWC0";
+  std::string expect_tiling = "1 1 1 1 1 1 64 4 8192 0 0 0 0 0 0 0 0 0 0 1 1 2 1 128 128 1 ";
+  run_case(ori_input, input_dtype, padding_value, input_ori_format, input_format, compileInfo, expect_tiling,
+           this->test_info_->name());
 }
-

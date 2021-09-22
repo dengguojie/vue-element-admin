@@ -1,8 +1,31 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file test_concat_offset_tilling.cpp
+ * \brief
+ */
 #include <iostream>
 #include <vector>
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "all_ops.h"
+#include "test_common.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 
@@ -17,33 +40,19 @@ class ConcatOffsetTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
-  auto data = tiling_data.str();
-  string result;
-  int64_t tmp = 0;
-  for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
-    memcpy(&tmp, data.c_str() + i, sizeof(tmp));
-    result += std::to_string(tmp);
-    result += " ";
-  }
-
-  return result;
-}
-
 TEST_F(ConcatOffsetTiling, concat_offset_tiling_0) {
-  using namespace optiling;
-  std::string op_name = "ConcatOffset";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ConcatOffset");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  using namespace ut_util;
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatOffset");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32}}";
+  std::string compile_info = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32}}";
+  std::vector<int64_t> input{4};
+  auto test_op = op::ConcatOffset("ConcatOffset");
+  test_op.create_dynamic_input_x(1);
+  TENSOR_DY_INPUT_WITH_SHAPE(test_op, x, 0, input, DT_INT32, FORMAT_ND, {});
 
-  TeOpParas opParas;
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456";
-  OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compile_info.c_str());
+  optiling::utils::OpRunInfo run_info;
+  ASSERT_TRUE(iter->second(test_op, op_compile_info, run_info));
+  EXPECT_EQ(to_string_int64(run_info.GetAllTilingData()), "4 ");
 }
-
