@@ -1481,3 +1481,4 @@ def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", form
     find_attr_and_add("quantize_params")
     find_attr_and_add("compress_index")
     result = gemm_compute.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
+    return result

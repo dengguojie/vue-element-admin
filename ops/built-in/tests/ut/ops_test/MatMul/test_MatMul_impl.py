@@ -724,6 +724,7 @@ def test_matmul_trans_data_fusion_920_mock(test_args):
 ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock)
 ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
 
+
 def test_matmul_api(test_arg):
     import tbe.dsl as tbe
     shape_a = [1, 1, 16, 16]
