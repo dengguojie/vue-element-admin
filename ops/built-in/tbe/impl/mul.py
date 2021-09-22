@@ -125,6 +125,7 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
     -------
     None
     """
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     shape_x1 = x.get("ori_shape")
     shape_x2 = y.get("ori_shape")
 
@@ -145,7 +146,8 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
         dtype_list.remove("uint8")
         dtype_list.remove("int8")
 
-    if len(shape_x2) == 1 and enum_x2 == 1:
+    if (cce_product in ("Ascend910") or (cce_product not in ("Ascend910") and len(shape_x1) == 4)) and len(
+            shape_x2) == 1 and enum_x2 == 1:
         format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
         dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
         format_list_for_non_one = format_list * len(dtype_list)
@@ -544,11 +546,9 @@ def op_select_format(x, y, output, kernel_name="mul"):
         x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
         y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
     """
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Ascend910"):
-        param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
-        if param_dynamic_in_json is not None:
-            return param_dynamic_in_json
+    param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
+    if param_dynamic_in_json is not None:
+        return param_dynamic_in_json
 
     shape_x = x.get("ori_shape")
     shape_y = y.get("ori_shape")
