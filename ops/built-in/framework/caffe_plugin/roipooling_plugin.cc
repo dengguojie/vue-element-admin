@@ -29,8 +29,8 @@ namespace domi {
 Status ParseParams_ROIPooling(const Message* op_origin, ge::Operator& op_dest) {
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
-
-  if (nullptr == layer) {
+  const float DEFAULT_SPATIAL_SCALE = 0.0625;
+  if (layer == nullptr) {
     OP_LOGE("ROIPooling", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -57,8 +57,8 @@ Status ParseParams_ROIPooling(const Message* op_origin, ge::Operator& op_dest) {
     op_dest.SetAttr("spatial_scale_w", static_cast<float>(param.spatial_scale()));
   } else {
     // the default value is 0.0625 of spatial_scale
-    op_dest.SetAttr("spatial_scale_h", static_cast<float>(0.0625));
-    op_dest.SetAttr("spatial_scale_w", static_cast<float>(0.0625));
+    op_dest.SetAttr("spatial_scale_h", static_cast<float>(DEFAULT_SPATIAL_SCALE));
+    op_dest.SetAttr("spatial_scale_w", static_cast<float>(DEFAULT_SPATIAL_SCALE));
   }
 
   return SUCCESS;

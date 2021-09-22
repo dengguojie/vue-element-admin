@@ -22,7 +22,6 @@
 #include "register/register.h"
 
 namespace domi {
-
 Status ParseParamAscendRequantS16(const Message* op_src, ge::Operator& op_dest) {
   // set the default sqrt_mode and relu_flag value for DeQuant,
   // FE  will refresh the value.

@@ -23,7 +23,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 /*
  * parse tile parameters
  * param[in] op_src  source op description

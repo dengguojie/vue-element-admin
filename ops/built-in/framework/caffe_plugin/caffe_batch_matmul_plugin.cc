@@ -26,13 +26,12 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ParseParamBatchMatMul(const Message* op_src, ge::Operator& op_dest) {
   // set the default adj_x1 and adj_x2 value for BatchMatMul,
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   // Ckeck operator parameter's validity
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     CUBE_INNER_ERR_REPORT_PLUGIN(op_dest.GetName().c_str(), "convert src op failed.");
     return FAILED;
   }

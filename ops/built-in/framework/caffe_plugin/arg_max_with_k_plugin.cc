@@ -23,13 +23,12 @@
 #include "op_log.h"
 
 namespace domi {
-
 // #### Set param in attr for transfer
 Status ParseParamsArgMaxWithK(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("ArgMaxWithK", "Start into the ParseParamsArgMaxWithK!");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("ArgMaxWithK", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -70,5 +69,4 @@ REGISTER_CUSTOM_OP("ArgMaxWithK")
     .OriginOpType("ArgMax")                 // name in caffe module
     .ParseParamsFn(ParseParamsArgMaxWithK)  // AutoMappingFn for Tensorflow, ParseParamsFn need to realize for caffe
     .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

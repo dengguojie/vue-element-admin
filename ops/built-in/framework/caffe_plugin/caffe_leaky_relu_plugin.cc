@@ -23,13 +23,12 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ParseParamsLeakyRelu(const Message* op_origin, ge::Operator& op_dest) {
   OP_LOGI("LeakyRelu", "enter into ParseParamsLeakyRelu ------begin!!");
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("LeakyRelu", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

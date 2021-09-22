@@ -27,7 +27,7 @@ namespace domi {
 Status ParseParamsReduction(const Message* op_src, ge::Operator& op_dst) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Reduction", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -55,5 +55,4 @@ REGISTER_CUSTOM_OP("Reduction")
     .OriginOpType("Reduction")            // name in caffe module
     .ParseParamsFn(ParseParamsReduction)  // AutoMappingFn for Tensorflow, ParseParamsFn need to realize for caffe
     .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

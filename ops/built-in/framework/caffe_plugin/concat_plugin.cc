@@ -30,7 +30,7 @@ Status ParseParamsConcat(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("Concat", "[PLUGIN_CONCAT]------------ParseParams Concatstart---------------");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Concat", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

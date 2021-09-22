@@ -23,7 +23,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ParseParamsBNLL(const Message* op_origin, ge::Operator& op_dest) {
   // trans op_src to op_dest
   if (op_origin == nullptr) {

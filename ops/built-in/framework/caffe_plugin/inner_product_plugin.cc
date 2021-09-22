@@ -24,13 +24,12 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
 // #### Set param in attr for transfer
 Status ParseParamsInnerProduct(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("InnerProduct", "Start into the ParseParamsInnerProduct!");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("InnerProduct", "Dynamic cast op_src to LayerParameter failed");
     return FAILED;
   }
@@ -76,5 +75,4 @@ REGISTER_CUSTOM_OP("FullyConnection")
     .OriginOpType("InnerProduct")            // name in caffe module
     .ParseParamsFn(ParseParamsInnerProduct)  // AutoMappingFn for Tensorflow, ParseParamsFn need to realize for caffe
     .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

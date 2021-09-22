@@ -28,7 +28,7 @@ Status ParseParams_PSROIPooling(const Message* op_origin, ge::Operator& op_dest)
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("PSROIPooling", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -54,5 +54,4 @@ REGISTER_CUSTOM_OP("PSROIPooling")
     .OriginOpType("PSROIPooling")  // // Reduction indicates the type name of the operator in the caffe framework.
     .ParseParamsFn(ParseParams_PSROIPooling)  // AutoMappingFn indicates automatic mapping the parameters of op.
     .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

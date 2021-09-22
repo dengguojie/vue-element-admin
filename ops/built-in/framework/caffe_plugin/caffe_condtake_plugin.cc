@@ -27,7 +27,7 @@ namespace domi {
 Status ParseParams_CondTake(const Message* op_origin, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("CondTake", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -51,5 +51,4 @@ REGISTER_CUSTOM_OP("CondTake")
     .OriginOpType("CondTake")  // // Reduction indicates the type name of the operator in the caffe framework.
     .ParseParamsFn(ParseParams_CondTake)  // AutoMappingFn indicates automatic mapping the parameters of op.
     .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

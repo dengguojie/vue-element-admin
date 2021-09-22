@@ -29,7 +29,7 @@ Status ParseParamsCopy(const Message* op_src, ge::Operator& op_dst) {
   OP_LOGI("Copy", "enter into ParseParamsCopy  ------begin!!");
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Copy", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

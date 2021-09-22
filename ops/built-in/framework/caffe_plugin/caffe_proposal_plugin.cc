@@ -30,7 +30,7 @@ Status ParseParamsProposal(const Message* op_origin, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
   // Ckeck operator parameter's validity
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Proposal", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

@@ -28,7 +28,7 @@ Status ParseParamsPower(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("Power", "------------ParseParamsPower  start-------------");
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Power", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

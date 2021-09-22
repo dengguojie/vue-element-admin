@@ -23,7 +23,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ParseParamsAbs(const Message* op_src, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   if (layer == nullptr) {
