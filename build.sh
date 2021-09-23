@@ -639,6 +639,14 @@ compile_mod(){
           fi
           done
       cmake --build . --target repack_tbe -- -j ${THREAD_NUM}
+      
+      if [[ "$related" =~ "CPU" ]]; then
+        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
+        logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+        mk_dir "${CMAKE_DEVICE_PATH}"
+        cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
+        make ${VERBOSE} -j${THREAD_NUM}
+      fi        
 }
 
 # create build path
@@ -673,13 +681,8 @@ build_cann() {
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
   
   computer_arch=`uname -m`
-  if [[ "$UT_MODE" == "FALSE"  ]] && [[ "$CI_MODE" == "TRUE"  ]] && [[ ! "$related" =~ "OTHER_FILE" ]] && [[ ! "$related" =~ "CPU" ]];then
+  if [[ "$UT_MODE" == "FALSE"  ]] && [[ "$CI_MODE" == "TRUE"  ]] && [[ ! "$related" =~ "OTHER_FILE" ]] ;then
       compile_mod
-      CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
-      logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-      mk_dir "${CMAKE_DEVICE_PATH}"
-      cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
-      make ${VERBOSE} -j${THREAD_NUM}   
    else
       if [[ "$ST_TEST" == "FALSE" ]]; then
         mk_dir "${CMAKE_HOST_PATH}"
