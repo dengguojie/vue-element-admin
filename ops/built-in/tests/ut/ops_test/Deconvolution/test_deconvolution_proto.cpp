@@ -507,7 +507,7 @@ TEST_F(DeconvProtoTest, deconvDataSliceTest4) {
     ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
     auto ret = op_desc->InferDataSlice();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 // cannot support cut in block_C
