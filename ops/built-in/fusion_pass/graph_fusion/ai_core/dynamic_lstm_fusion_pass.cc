@@ -151,17 +151,35 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     ge::InDataAnchorPtr inputWxAnchorPtr0 = fusedNode->GetInDataAnchor(inputIndexInfo.wxIndex);
     ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
     ge::NodePtr inputWxNode = constWxAnchorPtr0->GetOwnerNode();
+    bool isExistSubGraph = false;
+    FUSION_PASS_CHECK(inputWxNode == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "weights Wx node is null."),
+                      return nullptr);
+    if (inputWxNode->GetType() == "Data") {
+        ge::NodePtr parentNode = NodeUtils::GetParentInput(inputWxNode);
+        FUSION_PASS_CHECK((parentNode == nullptr) || (parentNode->GetType() != "Const"),
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "weights Wx get parent node failed."),
+                          return nullptr);
+        isExistSubGraph = true;
+        inputWxNode = parentNode;
+    }
     Operator constWxOp = OpDescUtils::CreateOperatorFromNode(inputWxNode);
     bool constAdjustFlag = false;
     vector<ge::GeTensorPtr> weightsWx = ge::OpDescUtils::MutableWeights(inputWxNode);
-    if (weightsWx.empty()) {
-        failStatus = true;
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWx is null, fusion failed.");
-        return nullptr;
-    }
+    FUSION_PASS_CHECK(weightsWx.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weights Wx is null, fusion failed"),
+                       return nullptr);
     ge::GeTensorPtr wxTensorPtr = weightsWx[0];
     constWxOp.GetAttr("const_adjust_flag", constAdjustFlag);
     if (constAdjustFlag) {
+        // Data exist different subgraph, need update data output desc
+        if (isExistSubGraph) {
+            ge::GeTensorDesc wxhTensorDesc = wxTensorPtr->GetTensorDesc();
+            fusedNode->GetInDataAnchor(inputIndexInfo.wxIndex)
+                ->GetPeerOutAnchor()
+                ->GetOwnerNode()
+                ->GetOpDesc()
+                ->UpdateOutputDesc(0, wxhTensorDesc);
+        }
       OP_LOGD(FUSED_OP_TYPE.c_str(), "dynamic LSTM const_adjust_flag is true, no need adjust again.");
       return wxTensorPtr;
     }
@@ -205,7 +223,7 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
         ->GetOpDesc()
         ->UpdateOutputDesc(0, wxhTensorDesc);
     wxTensorPtr->SetTensorDesc(wxhTensorDesc);
-
+    ge::GeTensorPtr weightTensor = nullptr;
     if (dataType == ge::DT_FLOAT16 || dataType == ge::DT_FLOAT) {
         // the wx + wh matrix
         unique_ptr<float[]> wxhMergeData(new (std::nothrow) float[targetCol * wxRow]());
@@ -230,13 +248,18 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
         for (int32_t i = 0; i < whRow * whCol; ++i) {
             *(dstWeight + wxRow * wxCol + i / whCol + whRow * (i % whCol)) = *(whData + i);
         }
-        wxTensorPtr->SetData(reinterpret_cast<uint8_t *>(wxhMergeData.get()), (targetCol * wxRow) * sizeof(float));
+        FUSION_PASS_MAKE_SHARED(
+            (weightTensor = std::make_shared<GeTensor>(wxhTensorDesc, reinterpret_cast<uint8_t*>(wxhMergeData.get()),
+                                                       targetCol * wxRow * sizeof(float))),
+            weightTensor = nullptr;
+            return weightTensor);
+        ge::AttrUtils::SetTensor(inputWxNode->GetOpDesc(), ge::ATTR_NAME_WEIGHTS, weightTensor);
         constWxOp.SetAttr("const_adjust_flag", true);
     } else {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.", fusedDesc->GetName().c_str());
         failStatus = true;
     }
-    return wxTensorPtr;
+    return weightTensor;
 }
 
 Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, const ge::OpDescPtr &formerOpDesc,
@@ -409,6 +432,7 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // process w_xh
     ge::GeTensorPtr wxTensorPtr = ProcessLSTMWxh(fusedNode, failStatus, inputIndexInfo);
     FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wxh fail."), return FAILED);
+    FUSION_PASS_CHECK(wxTensorPtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wxTensorPtr fail."), return FAILED);
 
     // add dynamicLSTM
     ge::OpDescPtr dynamicLSTMOpDesc = nullptr;
