@@ -46,7 +46,7 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       ${SECURE_C_KERNEL}
     )
 
-    link_directories(${AICPU_OPP_ENV}/lib/arch64
+    link_directories(${AICPU_OPP_ENV}/lib/aarch64
                      ${AICPU_OPP_ENV}/lib/x86
                      ${ASCEND_CUSTOM_PATH}/compiler/lib64)
 
