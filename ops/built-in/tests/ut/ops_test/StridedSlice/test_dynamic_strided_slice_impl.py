@@ -29,6 +29,14 @@ def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):
 
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_concat_case((-1, -1), "float16", "case_1", "success"))
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+                 gen_concat_case((-1, -1), "float32", "case_2", "success"))
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+                 gen_concat_case((-1, -1), "int8", "case_3", "success"))
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+                 gen_concat_case((-1, -1), "uint8", "case_4", "success"))
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+                 gen_concat_case((-1, -1), "int32", "case_5", "success"))
 
 def test_op_check_supported_1(test_arg):
     from impl.dynamic.strided_slice import check_supported
@@ -40,8 +48,8 @@ def test_op_check_supported_1(test_arg):
     end = begin
     strides = begin
 
-    if check_supported(input_x, end, strides, input_x) == "Unknown":
-        raise Exception("Failed to call check_supported in stridedslicegrad.")
+    if check_supported(input_x, end, strides, input_x) != "Unknown":
+        raise Exception("Failed to call check_supported in stridedslice.")
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
 if __name__ == '__main__':

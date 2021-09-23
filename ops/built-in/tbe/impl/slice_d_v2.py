@@ -184,8 +184,9 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
             shape_len = len(input_shape)
             tmp_profile = tik.Dprofile()
             block_element = constant.BLOCK_SIZE // dtype_size
-            ub_size_with_vnchwconv = (tmp_profile.get_unified_buffer_size() // dtype_size - block_element) \
-                // 2 // block_element * block_element
+            tiling_ub_size = 382
+            ub_size = tmp_profile.get_unified_buffer_size() - tiling_ub_size
+            ub_size_with_vnchwconv = (ub_size // dtype_size - block_element) // 2 // block_element * block_element
 
             if output_shape[-1] * dtype_size < constant.BLOCK_SIZE:
                 tiling_mode = 1
@@ -204,7 +205,7 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
                     and output_shape[-1] * dtype_size % constant.BLOCK_SIZE == 0 \
                     and input_shape[-1] * dtype_size % constant.BLOCK_SIZE == 0 \
                     and input_shape[:-1] == output_shape[:-1] \
-                    and tmp_profile.get_unified_buffer_size() >= 2 * output_shape[-1] * dtype_size \
+                    and ub_size >= 2 * output_shape[-1] * dtype_size \
                     and (input_shape[-1] - output_shape[-1]) * dtype_size <= date_move_stride_limit:
                 tiling_mode = 4
             return tiling_mode

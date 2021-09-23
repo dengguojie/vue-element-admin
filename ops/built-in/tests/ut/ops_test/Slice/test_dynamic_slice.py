@@ -12,9 +12,9 @@ def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):
                'range': [[1, 100000]] * len(shape)}
 
     offset = {"shape": (len(shape),), "dtype": "int32",
-             "ori_shape": shape,
-             "ori_format": input_format, "format": input_format,
-             'range': [[1, 100000]]}
+              "ori_shape": shape,
+              "ori_format": input_format, "format": input_format,
+              'range': [[1, 100000]]}
     size = offset
 
     return {"params": [input_x,

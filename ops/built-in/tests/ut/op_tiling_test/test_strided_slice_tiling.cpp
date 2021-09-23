@@ -121,7 +121,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_with_mask1) {
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 300 2 300 1 0 0 300 1 1 1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 2 300 2 300 1 0 0 300 1 1 1 ");
 }
 
 TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
@@ -163,7 +163,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 300 2 300 1 0 0 300 1 1 1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 2 300 2 300 1 0 0 300 1 1 1 ");
 }
 
 TEST_F(stried_slice_tiling, stried_slice_no_mask) {
@@ -451,4 +451,189 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_fused_dims) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 3 4 4 16 2 2 8 1 1 4 3 3 12 1 1 1 ");
+}
+
+TEST_F(stried_slice_tiling, stried_slice_tiling_mode_3) {
+   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSlice");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::StridedSlice("StridedSlice");
+  vector<vector<int64_t>> input_shapes = {
+      {1, 5, 5, 5, 424, 35},
+      {6},
+      {6},
+      {6},
+  };
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+  TensorDesc tensorInput3(ge::Shape(input_shapes[3]), ge::FORMAT_ND, dtypes[3]);
+
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  vector<int32_t> begin = {0, 0, 1, 1, 233, 30};
+  vector<int32_t> end = {1, 2, 5, 5, 423, 35};
+  vector<int32_t> strides = {1, 1, 1, 1, 1, 1};
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, begin, (const uint8_t*)begin.data(), begin.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "3 6 1 5 5 5 424 35 1 2 4 4 190 5 0 0 1 1 233 30 1 2 5 5 423 35 1 1 1 1 1 1 ");
+}
+
+TEST_F(stried_slice_tiling, stried_slice_tiling_mode_5) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSlice");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::StridedSlice("StridedSlice");
+  vector<vector<int64_t>> input_shapes = {
+      {800, 800, 9},
+      {3},
+      {3},
+      {3},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+  TensorDesc tensorInput3(ge::Shape(input_shapes[3]), ge::FORMAT_ND, dtypes[3]);
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  vector<int32_t> begin = {0, 0, 1};
+  vector<int32_t> end = {800, 800, 9};
+  vector<int32_t> strides = {1, 1, 1};
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, begin, (const uint8_t*)begin.data(), begin.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 2 640000 9 640000 8 0 1 640000 9 1 1 ");
+}
+
+TEST_F(stried_slice_tiling, stried_slice_tiling_mode_6) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSlice");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::StridedSlice("StridedSlice");
+  vector<vector<int64_t>> input_shapes = {
+      {10, 3944, 792},
+      {3},
+      {3},
+      {3},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+  TensorDesc tensorInput3(ge::Shape(input_shapes[3]), ge::FORMAT_ND, dtypes[3]);
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  vector<int32_t> begin = {0, 0, 1};
+  vector<int32_t> end = {10, 3944, 792};
+  vector<int32_t> strides = {1, 1, 1};
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, begin, (const uint8_t*)begin.data(), begin.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "6 2 39440 792 39440 791 0 1 39440 792 1 1 ");
+}
+
+TEST_F(stried_slice_tiling, stried_slice_tiling_mode_7) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSlice");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::StridedSlice("StridedSlice");
+  vector<vector<int64_t>> input_shapes = {
+      {2, 2, 65536},
+      {3},
+      {3},
+      {3},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+  TensorDesc tensorInput3(ge::Shape(input_shapes[3]), ge::FORMAT_ND, dtypes[3]);
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  vector<int32_t> begin = {0, 0, 0};
+  vector<int32_t> end = {2, 2, 65536};
+  vector<int32_t> strides = {1, 1, 1};
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, begin, (const uint8_t*)begin.data(), begin.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 1 262144 262144 0 262144 1 ");
+}
+
+TEST_F(stried_slice_tiling, stried_slice_tiling_mode_8) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSlice");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::StridedSlice("StridedSlice");
+  vector<vector<int64_t>> input_shapes = {
+      {1, 3193, 264},
+      {3},
+      {3},
+      {3},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+  TensorDesc tensorInput3(ge::Shape(input_shapes[3]), ge::FORMAT_ND, dtypes[3]);
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  vector<int32_t> begin = {0, 0, 0};
+  vector<int32_t> end = {1, 3193, 1};
+  vector<int32_t> strides = {1, 1, 1};
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, begin, (const uint8_t*)begin.data(), begin.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 2 3193 264 3193 1 0 0 3193 1 1 1 ");
 }

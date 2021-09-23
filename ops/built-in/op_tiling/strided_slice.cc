@@ -88,7 +88,7 @@ static int64_t CalVnchwUbSize(int64_t ub_size, int64_t dtype_size, int64_t byte_
   return (ub_size / dtype_size - block_element) / 2 / block_element * block_element;
 }
 
-static bool isShapeEqualExceptLast(const std::vector<int64_t>& input_shape, const std::vector<int64_t>& output_shape,
+static bool IsShapeEqualExceptLast(const std::vector<int64_t>& input_shape, const std::vector<int64_t>& output_shape,
                                    int64_t end) {
   for (int64_t i = 0; i <= end; i++) {
     if (input_shape[i] != output_shape[i]) {
@@ -107,6 +107,7 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
           dtype_size);
   OP_LOGD(opType.c_str(), "param CalVnchwUbSize: %lld", CalVnchwUbSize(ub_size, dtype_size, BYTE_BLOCK));
   int64_t shape_len = parameters.output_shape.size();
+  int64_t float16_type_size = 2;
 
   if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK) {
     parameters.tiling_mode = 1;
@@ -123,11 +124,45 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
 
   if (shape_len >= 2 && parameters.output_shape[shape_len - 1] * dtype_size % BYTE_BLOCK == 0 &&
       parameters.input[shape_len - 1] * dtype_size % BYTE_BLOCK == 0 &&
-      isShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+      IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
       ub_size >= 2 * parameters.output_shape[shape_len - 1] * dtype_size &&
       (parameters.input[shape_len - 1] - parameters.output_shape[shape_len - 1]) * dtype_size <= STRIDE_LIMIT) {
     parameters.tiling_mode = 4;
   }
+
+  if (shape_len == 2 && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+    parameters.output_shape[shape_len - 1] * dtype_size > 32 &&
+    parameters.input[shape_len - 1] * BYTE_BLOCK * 2 <= ub_size &&
+    parameters.input[shape_len - 1] * dtype_size > 32) {
+    parameters.tiling_mode = 6;
+  }
+
+  if (shape_len == 2 && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+    parameters.output_shape[shape_len - 1] == 1 &&
+    BYTE_BLOCK * (parameters.input[shape_len - 1] + 1) < ub_size) {
+    parameters.tiling_mode = 8;
+  }
+
+  int64_t multi_times = dtype_size / float16_type_size;
+  int64_t input_inner_dims = parameters.input[shape_len - 1] * multi_times;
+  int64_t output_inner_dims = parameters.output_shape[shape_len - 1] * multi_times;
+  int64_t output_32bytes_align_rows = BYTE_BLOCK / float16_type_size;
+  if (output_32bytes_align_rows % output_inner_dims == 0) {
+    output_32bytes_align_rows = output_32bytes_align_rows / output_inner_dims;
+  } else if (output_inner_dims % output_32bytes_align_rows == 0) {
+    output_32bytes_align_rows = 1;
+  }
+  int64_t need_ub_size = input_inner_dims * 16 * 2;
+  if (shape_len == 2 && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+      need_ub_size * BYTE_BLOCK / dtype_size * output_32bytes_align_rows < ub_size  &&
+      dtype_size % float16_type_size == 0) {
+    parameters.tiling_mode = 5;
+  }
+
+  if (shape_len == 1 && parameters.stride_list[0] == 1) {
+    parameters.tiling_mode = 7;
+  }
+
   OP_LOGD(opType.c_str(), "parameters.tiling_mode: %lld", parameters.tiling_mode);
 }
 

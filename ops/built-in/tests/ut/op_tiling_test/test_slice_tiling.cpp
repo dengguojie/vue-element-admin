@@ -256,7 +256,7 @@ TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 1 100 100 0 100 1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 1 100 100 0 100 1 ");
 }
 
 TEST_F(slice_tiling, slice_tiling_empty_input) {
