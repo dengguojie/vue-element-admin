@@ -35,7 +35,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyBaseTest) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -60,7 +60,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyfilterTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -81,7 +81,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyfilterTest2) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -102,7 +102,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyInputTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -123,7 +123,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyStrideTest1) {
     //   op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -144,7 +144,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyStrideTest2) {
     op.SetAttr("strides", {1, 1, 2, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -165,7 +165,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyDilationsTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     //   op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -186,7 +186,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyDilationsTest2) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -207,7 +207,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyPadsTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     //   op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -228,7 +228,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyPadsTest2) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -249,7 +249,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyPadsTest3) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, -1});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -270,7 +270,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyOutputpaddingTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     //   op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -291,7 +291,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyOutputpaddingTest2) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -333,7 +333,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferInputSizesTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -352,7 +352,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDVerifyInputSizesTest2) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -372,7 +372,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposDeSplicDataTest0) {
     op.SetAttr("strides", {1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -400,7 +400,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDSplicDataTest1) {
     op.SetAttr("strides", {1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -428,7 +428,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDSplicDataTest2) {
     op.SetAttr("strides", {1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -460,7 +460,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDSplicDataTest3) {
     op.SetAttr("strides", {1, 1, 3, 3});
     op.SetAttr("pads", {1, 1, 1, 1});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -494,7 +494,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxAutoPadSameLower) {
     op.SetAttr("strides", {0, 0, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -529,7 +529,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxAutoPadSameUpper) {
     op.SetAttr("strides", {0, 0, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -564,7 +564,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxOutputShape) {
     op.SetAttr("strides", {0, 0, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -600,7 +600,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferBaseTest1) {
     op.SetAttr("strides", {1, 1, 2, 2});
     // op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -622,7 +622,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferBaseTest2) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
@@ -644,7 +644,7 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDInferBaseTest3) {
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
+    op.SetAttr("groups", 1);
     op.SetAttr("data_format","NCHW");
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
