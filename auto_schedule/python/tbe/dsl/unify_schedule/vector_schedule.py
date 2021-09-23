@@ -293,7 +293,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def _do_storage_bound(self):
         for tensor, storage_bound in self.storage_bound_map.items():
             stage: Stage = self.schedule[self.solve_placeholder(tensor)]
-            stage.set_storage_bound(storage_bound)
+            stage.set_buffer_size(storage_bound)
 
     def _do_tiling(self):
         def get_normal_tiling_parameters(_tiling: VectorSchedule.TilingInfo):

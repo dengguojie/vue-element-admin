@@ -796,7 +796,7 @@ class BaseBroadcastSchedule:
 
         for tensor_i in tensors:
             storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING.get(tensor_i.dtype))
-            sch[tensor_i].set_storage_bound(storage_bound)
+            sch[tensor_i].set_buffer_size(storage_bound)
 
     def _do_compute_inline(self):
         sch = self._schedule

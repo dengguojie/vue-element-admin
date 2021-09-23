@@ -382,7 +382,7 @@ class NormNormalSchedule:
 
         for single_tensor in storage_bound_tensors:
             storage_bound_value = self._graph_info.available_ub_size
-            self._sch[single_tensor].set_storage_bound(storage_bound_value)
+            self._sch[single_tensor].set_buffer_size(storage_bound_value)
 
     def _do_set_constraint(self):
         if self._is_const:
@@ -1001,7 +1001,7 @@ class NormWorkspaceSchedule:
 
         for single_tensor in storage_bound_tensors:
             storage_bound_value = self._graph_info.workspace_available_min_ub_size
-            self._sch[single_tensor].set_storage_bound(storage_bound_value)
+            self._sch[single_tensor].set_buffer_size(storage_bound_value)
 
     def _do_set_constraint(self):
         if self._is_const:

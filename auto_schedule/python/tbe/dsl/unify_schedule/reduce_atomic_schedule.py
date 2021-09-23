@@ -400,7 +400,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 ub_count = self.tiling_case.tensor_ub_size_before_reduce
             else:
                 ub_count = self.tiling_case.tensor_ub_size_after_reduce
-            self.schedule[stage_tensor].set_storage_bound(ub_count)
+            self.schedule[stage_tensor].set_buffer_size(ub_count)
 
     def _do_set_constraint(self):
         if operation.get_context().get("_mode") == CONST:
