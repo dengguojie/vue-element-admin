@@ -57,7 +57,6 @@ bool CheckTensorShape(const std::string& opType, const TeOpParas& opParas, int32
   int32_t varDims = varShape.size();
 
   if (indicesShape[0] != gradShape[0]) {
-
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [SparseApplyFtrlTiling] : "
                                     "grad shape[0] must be equal to indices shape[0]");
     return false;
@@ -195,7 +194,6 @@ bool PrepareTilingData(const std::string& opType, const int32_t& coreNum, const 
                                                  indicesNumRemaining, tilingMode, numMultiRows, indicesStep,
                                                  partialFactor, elemsPerCore, elemsLastCore, elemsCoreLoop,
                                                  elemsCoreRemain, elemsLastCoreLoop, elemsLastCoreRemain);
-
   if (!calculationStatus) {
     return false;
   }
