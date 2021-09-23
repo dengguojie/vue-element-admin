@@ -921,7 +921,7 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
 INFER_FUNC_REG(ExpandDims, ExpandDimsInfer);
 
 template <typename T>
-static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const std::vector<int64_t> &shape_dims,
+static graphStatus ValidateShape(std::vector<int64_t> &x_shape, const std::vector<int64_t> &shape_dims,
                                  const GeTensorPtr &tenosr, int64_t &product, int &unknow_index, GeShape &output,
                                  Operator &op) {
   int64_t dim_num = shape_dims[0];
@@ -963,6 +963,12 @@ static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const std:
       auto dim = shape_data[i];
       if ((allow_zero == 0) && (shape_data[i] == 0)) {
         dim = x_shape[i];
+        if (x_shape[i] == UNKNOWN_DIM) {
+          x_shape[i] = 1;
+          out_dims.push_back(UNKNOWN_DIM);
+          GE_OP_LOGD(op.GetName().c_str(), "x_shape[%ld] = %ld", i, x_shape[i]);
+          continue;
+        }
       }
       if (dim != 0 && product > (INT64_MAX / dim)) {
         string reason = "mul overflow of int64, product=[" + std::to_string(product) +
@@ -1240,7 +1246,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   op_desc->SetOpInferDepends(dep_inputs);
   auto x_desc = op_desc->MutableInputDesc("x");
   auto y_desc = op_desc->MutableOutputDesc("y");
-  auto x_shape = x_desc->GetShape().GetDims();
+  auto x_shape = vector<int64_t>(x_desc->GetShape().GetDims());
 
   int64_t attr_axis = 0;
   op.GetAttr("axis", attr_axis);
@@ -1350,7 +1356,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
     return ret;
   }
 
-  auto input_shape = op_desc->MutableInputDesc("x")->MutableShape();
+  ge::GeShape input_shape = ge::GeShape(x_shape);
   int64_t input_size = input_shape.GetShapeSize();
 
   // If input tensor is scalar,then input_size will return 0, assign to 1, which means convert scalar to vector.
@@ -1393,6 +1399,23 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
     }
     output_shape.SetDim(unknow_index, missing);
   }
+
+  // Process ONNX input dynamic shape and the second input containing 0
+  if (output_shape.GetShapeSize() < 0) {
+    auto td = op_desc->MutableOutputDesc("y");
+    if (td == nullptr) {
+      REPORT_INNER_ERROR("E19999", "[Node:%s] get output y failed", op.GetName().c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Node:%s get output y failed", op.GetName().c_str());
+      return GRAPH_PARAM_INVALID;
+    }
+    td->SetOriginDataType(op_desc->MutableInputDesc("x")->GetDataType());
+    td->SetShape(output_shape);
+    td->SetOriginShape(output_shape);
+    td->SetDataType(op_desc->MutableInputDesc("x")->GetDataType());
+    GE_OP_LOGI(op.GetName().c_str(), "output shape is:%s", output_shape.ToString().c_str());
+    return GRAPH_SUCCESS;
+  }
+
   auto dims = input_shape.GetDims();
   bool is_exist_unknown_shape = false;
   for (auto ele : dims) {
