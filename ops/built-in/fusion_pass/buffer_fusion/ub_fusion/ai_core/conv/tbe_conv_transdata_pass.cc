@@ -18,6 +18,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/util/platform_info.h"
 
 namespace fe {
 using std::vector;
@@ -52,6 +53,17 @@ Status ConvTransdataFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
 
   if (conv_nodes.size() != 1 || transdata_nodes.size() != 1) {
     OP_LOGD(fused_op_type_.c_str(), "conv_nodes or transdata_nodes size is not 1.");
+    return SUCCESS;
+  }
+
+  PlatformInfo platform_info;
+  OptionalInfo opti_compilation_info;
+  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS) {
+    OP_LOGW("Fail to get platform info.");
+  }
+
+  OP_LOGD(fused_op_type_.c_str(), "Get opti_compilation_info.soc_version[%s]", opti_compilation_info.soc_version.c_str());
+  if (opti_compilation_info.soc_version != "SD3403" && opti_compilation_info.soc_version != "Hi3796CV300CS") {
     return SUCCESS;
   }
 
