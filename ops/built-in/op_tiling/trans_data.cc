@@ -100,7 +100,7 @@ bool GetCompileParams(const nlohmann::json& compile_info_json, int64_t& ub_size,
   }
 
   if (all_vars.count("vnc_fp32_flag") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, cannot get vnc_fp32_flag");
+    OP_LOGD(op_type, "Use vnc_fp32_flag default value.");
   } else {
     vnc_fp32_flag = all_vars["vnc_fp32_flag"].get<std::int64_t>();
   }
