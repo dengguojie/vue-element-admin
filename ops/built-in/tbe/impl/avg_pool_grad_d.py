@@ -494,8 +494,14 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     if stride[0] > 1 or stride[1] > 1:
         dila_o_h, dila_i_h = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[3], factor=stride[0])
         dila_o_w, dila_i_w = s[dout_dilated_ubuf].split(dout_dilated_ubuf.op.axis[4], factor=stride[1])
-        # 2000 for stack limit
-        if stride[0] * stride[1] <= 2000:
+        # for stack limit
+        special_case_list = [{"input_shape_nhw": [3, 110, 358], "ksizes": [16, 10],
+                              "strides": [8, 8], "padding": [15, 21, 9, 13]}]
+        case_info = {"input_shape_nhw": [dout_dilated_shape[0], input_h, input_w],
+                     "ksizes": [k_height, k_width],
+                     "strides": [stride[0], stride[1]],
+                     "padding": [dilated_pad_top, dilated_pad_bottom, dilated_pad_left, dilated_pad_right]}
+        if (stride[0] * stride[1] <= 2000 and tile_dile_h_ub * dout_dilated_w < 4000) or case_info in special_case_list:
             s[dout_dilated_ubuf].reorder(dila_i_h, dila_i_w, dila_o_h, dila_o_w)
             s[dout_dilated_ubuf].unroll(dila_i_h)
             s[dout_dilated_ubuf].unroll(dila_i_w)
