@@ -2611,6 +2611,32 @@ COMMON_INFER_FUNC_REG(ScatterAdd, ScatterAddInferShape);
 VERIFY_FUNC_REG(ScatterAdd, ScatterAddVerify);
 // --------------ScatterAdd END------------------
 
+// ------------------ScatterAddWithAxis---------------------
+IMPLEMT_VERIFIER(ScatterAddWithAxis, ScatterAddWithAxisVerify) {
+  if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(ScatterAddWithAxisInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterAddWithAxis, ScatterAddWithAxisInferShape);
+VERIFY_FUNC_REG(ScatterAddWithAxis, ScatterAddWithAxisVerify);
+// --------------ScatterAdd END------------------
+
 // ------------------ScatterDiv---------------------
 IMPLEMT_VERIFIER(ScatterDiv, ScatterDivVerify) {
   if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
