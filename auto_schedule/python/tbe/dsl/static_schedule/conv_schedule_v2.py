@@ -320,7 +320,7 @@ class LxFusion:
                     l1_tensor_map[input_op["dst_buffer"]] = tvm.var("dummy")
                 l1_tensor_map[fmap] = al1
                 if self.fmap_l1_valid_size > 0:
-                    sch[al1].set_storage_bound(self.fmap_l1_valid_size)
+                    sch[al1].set_buffer_size(self.fmap_l1_valid_size)
             else:
                 l1_tensor_map = None
 
@@ -440,11 +440,11 @@ class DynamicShape:
             bl0 = tensor_param["bl0"]
             cl0 = tensor_param["cl0"]
 
-            # disable_allocate
-            sch.disable_allocate(cce.scope_cbuf)
-            sch.disable_allocate(cce.scope_ca)
-            sch.disable_allocate(cce.scope_cb)
-            sch.disable_allocate(cce.scope_cc)
+            # sequential_malloc
+            sch.sequential_malloc(cce.scope_cbuf)
+            sch.sequential_malloc(cce.scope_ca)
+            sch.sequential_malloc(cce.scope_cb)
+            sch.sequential_malloc(cce.scope_cc)
 
             # mem_unique
             sch[al1].mem_unique()
@@ -497,7 +497,7 @@ class DynamicShape:
                 m_al1 = ceil(in_height*in_width, in_c0)
                 al1_bound = m_al1*in_c1*in_c0
 
-            sch[al1].set_storage_bound(al1_bound)
+            sch[al1].set_buffer_size(al1_bound)
 
     def set_cl0_bound(self, sch, cl0, cl0_tiling):
         """
@@ -505,7 +505,7 @@ class DynamicShape:
         to solve the memory allocate problem of using storage_align for CL0.
         """
         if self.flag:
-            sch[cl0].set_storage_bound(reduce((lambda x, y: x*y), cl0_tiling))
+            sch[cl0].set_buffer_size(reduce((lambda x, y: x*y), cl0_tiling))
 
     def res_hw_dynamic_pragma(self, sch, res, res_pragma_axis):
         """
@@ -1692,7 +1692,7 @@ class Conv2dSchedule:
 
         # align cl0 memory allocation when channel merging
         if res.dtype in ("int4", "int8"):
-            sch[cl0].set_storage_bound(reduce((lambda x, y: x*y), cl0_tiling))
+            sch[cl0].set_buffer_size(reduce((lambda x, y: x*y), cl0_tiling))
 
         #=================================lxfusion======================================
         self._lx_fusion.config_l1_tensormap(sch, fmap, al1, self._op_graph)

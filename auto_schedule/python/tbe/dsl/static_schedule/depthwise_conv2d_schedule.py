@@ -2526,7 +2526,7 @@ def _save_workspace(tensor_dict, a_cbuf_nc1hwc0, sch):
         if int(input_mem_type) in (0, 2) and int(l1_fusion_type) in (0, 1):
             l1_tensor_map[tensor_dict["fmap"]] = a_cbuf_nc1hwc0
             if fmap_l1_valid_size > 0:
-                sch[a_cbuf_nc1hwc0].set_storage_bound(fmap_l1_valid_size)
+                sch[a_cbuf_nc1hwc0].set_buffer_size(fmap_l1_valid_size)
         else:
             l1_tensor_map = None
 

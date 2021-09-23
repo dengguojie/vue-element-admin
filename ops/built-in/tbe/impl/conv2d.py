@@ -33,6 +33,7 @@ from impl.util import util_conv2d
 
 DYNAMIC_VALUE = -1
 
+
 @para_check.check_input_type(dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
                              (tuple, list), (tuple, list), (tuple, list), int, str, int, str)
 def check_supported(inputs, weights, bias, offset_w, outputs, strides,

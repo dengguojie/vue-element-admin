@@ -4235,8 +4235,8 @@ class CceConvOp:
             else:
                 # load 2d does not set_fmatrix
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
-            sch[fmap].set_storage_bound(int(int_ceil_div(max_in_row_num, aub_factor[1]) * tail_size))
-            sch[tensor_map['fmap_ub']].set_storage_bound(int(int_ceil_div(max_in_row_num,
+            sch[fmap].set_buffer_size(int(int_ceil_div(max_in_row_num, aub_factor[1]) * tail_size))
+            sch[tensor_map['fmap_ub']].set_buffer_size(int(int_ceil_div(max_in_row_num,
                                                                           aub_factor[1]) * tail_size))
 
         def set_attrs_conv1d_split_w(al1_k_outer, al1_k_inner):
@@ -4343,12 +4343,12 @@ class CceConvOp:
             """
             handle dynamic scope and strorage bound
             """
-            sch[al1].set_storage_bound(get_al1_bound())
-            # disable_allocate
-            sch.disable_allocate(cce.scope_cbuf)
-            sch.disable_allocate(cce.scope_ca)
-            sch.disable_allocate(cce.scope_cb)
-            sch.disable_allocate(cce.scope_cc)
+            sch[al1].set_buffer_size(get_al1_bound())
+            # sequential_malloc
+            sch.sequential_malloc(cce.scope_cbuf)
+            sch.sequential_malloc(cce.scope_ca)
+            sch.sequential_malloc(cce.scope_cb)
+            sch.sequential_malloc(cce.scope_cc)
             ub_storage_bound_size = tiling["CUB_matrix"][0]*tiling["CUB_matrix"][1]*\
                                     tiling["CUB_matrix"][2]*tiling["CUB_matrix"][3]
             for lop in self._op_graph.body_ops:
@@ -4359,7 +4359,7 @@ class CceConvOp:
                     continue
                 if "bias_ub" in lop["op"]:
                     continue
-                #  phony_insn tensor no need set_storage_bound for convbn fusion
+                #  phony_insn tensor no need set_buffer_size for convbn fusion
                 if self._convbn1_flag and "cast1" in lop["op"]:
                     continue
                 # elewise_single_relu is cloud, mini and es
@@ -4367,7 +4367,7 @@ class CceConvOp:
                     continue
                 if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
                     ub_storage_bound_size *= 2
-                sch[lop["dst_buffer"]].set_storage_bound(math.ceil(ub_storage_bound_size))
+                sch[lop["dst_buffer"]].set_buffer_size(math.ceil(ub_storage_bound_size))
 
             # mem_unique
             sch[al1].mem_unique()
@@ -4385,7 +4385,7 @@ class CceConvOp:
                 # hardware must process 16*16 block, cout is 1, so need reserved extras 15*16 ub space
                 storage_bound = c_tiling_factor[1] + 15 * 16 
                 process_tensor = transdata_tensor.op.input_tensors[0]
-                sch[transdata_tensor].set_storage_bound(storage_bound)
+                sch[transdata_tensor].set_buffer_size(storage_bound)
                 sch[transdata_tensor].split(sch[transdata_tensor].op.axis[2], 16)
                 sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "vnchwconv")
                 # need storage_align all tensors between res tensor and c_ub tensor
@@ -5646,7 +5646,7 @@ class CceConvOp:
                 data_one_byte_num = {"uint4": 2, "int4": 2}
                 l1_tensor_map[fmap] = al1
                 if self._fmap_l1_valid_size > 0:
-                    sch[al1].set_storage_bound(int(self._fmap_l1_valid_size*data_one_byte_num.get(weight.dtype, 1)))
+                    sch[al1].set_buffer_size(int(self._fmap_l1_valid_size*data_one_byte_num.get(weight.dtype, 1)))
             else:
                 l1_tensor_map = None
         util.L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
