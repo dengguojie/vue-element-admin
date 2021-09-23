@@ -85,8 +85,7 @@ class _VectorSchedule:
             readers = self.graph_info.tensor_consumers_map[tensor]
             read_buffer = self.schedule.cache_read(tensor, scope_ubuf, readers)
             self.cache_read_tensors_and_buffer_map[tensor] = read_buffer
-            for item in readers:
-                self.update_stage(read_buffer, item, True)
+            self.update_stage(read_buffer, tensor, False)
 
     def _do_set_scope(self):
         for tensor in self.graph_info.mid_tensor_set:
