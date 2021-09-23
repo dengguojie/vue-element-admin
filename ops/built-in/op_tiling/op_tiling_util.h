@@ -79,6 +79,15 @@ std::string to_string(const ge::DataType& type);
  * @return string: format string
  */
 std::string to_string(const ge::Format& format);
+/*
+ * @brief: if shape is empty set {1}
+ * @param [in] shape: std::vector<int64_t>
+ * @return : void
+ */
+inline void ScalarToShape(std::vector<int64_t>& shape)
+{
+  if(shape.empty()) shape.push_back(1);
+}
 
 template <typename T>
 string to_string(const ByteBuffer& tiling_data) {

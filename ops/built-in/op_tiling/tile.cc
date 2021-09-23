@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,124 +23,78 @@
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
 #include "vector_tiling.h"
+#include "op_tiling_util.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 #include <iostream>
 
 namespace optiling {
-bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                OpRunInfo& run_info) {
-    OP_TILING_CHECK((op_info.count("compile_shape") <= 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [compile_shape]"), return false);
-    OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
-                    return false);
-    OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
+bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                utils::OpRunInfo& run_info) {
+  OP_TILING_CHECK((op_info.count("compile_shape") <= 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [compile_shape]"), return false);
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input 0 opdesc failed"),
+                  return false);
+  std::vector<int64_t> x_runtime_shape = input_desc->MutableShape().GetDims();
+  ScalarToShape(x_runtime_shape);
 
-    std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
-    std::vector<int64_t> compile_shape = op_info["compile_shape"].get<std::vector<int64_t>>();
-    std::vector<int64_t> multiples_value;
+  std::vector<int64_t> compile_shape = op_info["compile_shape"].get<std::vector<int64_t>>();
+  std::vector<int64_t> multiples_value;
 
-    OP_TILING_CHECK(op_paras.inputs.size() < 2,
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs's size should be >= 2"), return false);
-    OP_TILING_CHECK(op_paras.inputs[1].tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[1].tensor cannot be empty"),
-                    return false);
-    std::string multiples_dtype = op_paras.inputs[1].tensor[0].dtype;
-    auto pointer = std::get<0>(op_paras.const_inputs.at("multiples"));
-    auto size = std::get<1>(op_paras.const_inputs.at("multiples"));
+  OP_TILING_CHECK(!GetConstValue(op_paras, "multiples", multiples_value),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstValue multiples error!"), return false);
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  OP_TILING_CHECK(x_runtime_shape.size() != compile_shape.size(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input0 shape size must equal to compile shape size!"),
+                  return false);
 
-    uint32_t count =
-      (multiples_dtype == "int64") ? size / sizeof(int64_t) : (multiples_dtype == "int32") ? size / sizeof(int32_t) : 0;
-    OP_TILING_CHECK(!count,
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input multiples shape cannot be empty"),
-                    return false);
-
-    if (multiples_dtype == "int64") {
-        auto* data = (int64_t*)pointer;
-        while (count--) {
-            multiples_value.push_back(*data++);
-        }
-    }
-    if (multiples_dtype == "int32") {
-        auto* data = (int32_t*)pointer;
-        while (count--) {
-            multiples_value.push_back(*data++);
-        }
-    }
-
-
-    std::vector<int64_t> broadcast_input = {};
-    std::vector<int64_t> broadcast_multiples = {};
-    std::vector<int64_t> output_shape = {};
-
-    // align shape for multiples and input shapes
-    uint64_t len_diff = multiples_value.size() - compile_shape.size();
-    OP_TILING_CHECK(
-        (len_diff < 0),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "length of multiples should not be less than input_x's dimension"),
-        return false);
+  // align shape for multiples and input shapes
+  uint64_t last_size = multiples_value.size();
+  int64_t len_diff = last_size - compile_shape.size();
+  OP_TILING_CHECK(
+      (len_diff < 0),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "length of multiples should not be less than input_x's dimension"),
+      return false);
+  if (len_diff > 0) {
     x_runtime_shape.insert(x_runtime_shape.begin(), len_diff, 1);
     compile_shape.insert(compile_shape.begin(), len_diff, 1);
+  }
 
-    std::stringstream debugStr;
-    debugStr << "multiples const value: ";
-    for (size_t i = 0; i < multiples_value.size(); i++) {
-        debugStr << multiples_value[i] << ",";
+  std::vector<int64_t> broadcast_input(last_size * 2, 1);
+  std::vector<int64_t> broadcast_multiples(last_size * 2, 1);
+  int pos = 0;
+  for (uint64_t i = 0; i < last_size; i++) {
+    if (compile_shape[i] != 1) {
+      broadcast_multiples[pos] = multiples_value[i];
+      pos++;
+      broadcast_input[pos] = x_runtime_shape[i];
+      broadcast_multiples[pos] = x_runtime_shape[i];
+      pos++;
+    } else {
+      broadcast_multiples[pos] = multiples_value[i];
+      pos++;
     }
+  }
+  broadcast_input.resize(pos);
+  broadcast_multiples.resize(pos);
 
-    debugStr << " x_runtime_shape :";
-    for (size_t i = 0; i < x_runtime_shape.size(); i++) {
-        debugStr << x_runtime_shape[i] << ",";
-    }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-    debugStr << " compile_shape value :";
-    for (size_t i = 0; i < compile_shape.size(); i++) {
-        debugStr << compile_shape[i] << ",";
-    }
-    GELOGD("print input shapes: %s", debugStr.str().c_str());
+  vector<vector<int64_t>> inputshapes = {broadcast_multiples, broadcast_input};
+  ge::DataType type = input_desc->GetDataType();
+  OpInfo eletwise_info(inputshapes, type);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-
-    for (uint64_t i = 0; i < multiples_value.size(); i++) {
-        if (compile_shape[i] != 1) {
-            broadcast_input.push_back(1);
-            broadcast_input.push_back(x_runtime_shape[i]);
-            broadcast_multiples.push_back(multiples_value[i]);
-            broadcast_multiples.push_back(x_runtime_shape[i]);
-
-            output_shape.push_back(x_runtime_shape[i] * multiples_value[i]);
-        } else {
-            broadcast_input.push_back(1);
-            broadcast_multiples.push_back(multiples_value[i]);
-            output_shape.push_back(multiples_value[i]);
-        }
-    }
-
-    std::stringstream ss;
-    ss << "broadcast_input: ";
-    for (size_t i = 0; i < broadcast_input.size(); i++) {
-        ss << broadcast_input[i] << ",";
-    }
-
-    ss << " broadcast_multiples :";
-    for (size_t i = 0; i < broadcast_multiples.size(); i++) {
-        ss << broadcast_multiples[i] << ",";
-    }
-
-    ss << " output_shape value :";
-    for (size_t i = 0; i < output_shape.size(); i++) {
-        ss << output_shape[i] << ",";
-    }
-    GELOGD("get broadcast_input shape: %s", ss.str().c_str());
-
-    TeOpParas op_paras_tmp = op_paras;
-    // update new shape
-    op_paras_tmp.inputs[0].tensor[0].shape = std::move(broadcast_multiples);
-    op_paras_tmp.inputs[1].tensor[0].shape = std::move(broadcast_input);
-    op_paras_tmp.outputs[0].tensor[0].shape = std::move(output_shape);
-
-    bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
-    return ret;
+  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  PROFILING_TILING_END();
+  return ret;
 }
 
 // register tiling interface of the Tile op.
-REGISTER_OP_TILING_FUNC_BUFFERED(Tile, TileTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Tile, TileTiling);
 }  // namespace optiling

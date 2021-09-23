@@ -15,61 +15,40 @@
 #include <unordered_map>
 #include "error_log.h"
 #include "vector_tiling.h"
+#include "op_tiling_util.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 
-bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                OpRunInfo& run_info) {
-  std::vector<int64_t> shapes;
+bool FillTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
 
-  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
-                  return false);
-  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
+  auto input_desc = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input 1 opdesc failed"), return false);
 
-  std::string dims_dtype = op_paras.inputs[0].tensor[0].dtype;
-  auto pointer = std::get<0>(op_paras.const_inputs.at("dims"));
-  auto size = std::get<1>(op_paras.const_inputs.at("dims"));
-  uint32_t count =
-      (dims_dtype == "int64") ? size / sizeof(int64_t) : (dims_dtype == "int32") ? size / sizeof(int32_t) : 0;
-  OP_TILING_CHECK(!count, VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input dims shape cannot be empty"), return false);
+  auto output_desc = operator_info->MutableOutputDesc(0);
+  OP_TILING_CHECK(output_desc == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get output 0 opdesc failed"), return false);
+  const std::vector<int64_t> input_value_shape = input_desc->MutableShape().GetDims();
+  const std::vector<int64_t> output_shape = output_desc->MutableShape().GetDims();
 
-  if (dims_dtype == "int64") {
-    auto* data = (int64_t*)pointer;
-    while (count--) {
-      shapes.push_back(*data++);
-    }
-  }
-  if (dims_dtype == "int32") {
-    auto* data = (int32_t*)pointer;
-    while (count--) {
-      shapes.push_back(*data++);
-    }
-  }
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1ll, std::multiplies<int64_t>());
-
-  TeOpParas op_paras_tmp = std::move(op_paras);
-  OP_TILING_CHECK(op_paras_tmp.inputs.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs cannot be empty"), return false);
-  OP_TILING_CHECK(op_paras_tmp.inputs[0].tensor.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs[0].tensor cannot be empty"),
-                  return false);
-  op_paras_tmp.inputs[0].tensor[0].shape = {fused_output};
-
-  OP_TILING_CHECK(op_paras_tmp.outputs.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.outputs cannot be empty"), return false);
-  OP_TILING_CHECK(op_paras_tmp.outputs[0].tensor.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.outputs[0].tensor cannot be empty"),
-                  return false);
-  op_paras_tmp.outputs[0].tensor[0].shape.clear();
-  op_paras_tmp.outputs[0].tensor[0].shape.push_back(fused_output);
-  GELOGD("fill get dims fused_output is [%d], and fuse shape size is [%d]", fused_output,
-         op_paras_tmp.outputs[0].tensor[0].shape.size());
-
-  bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
+  std::vector<std::vector<int64_t>> tilingshapes = {output_shape, input_value_shape};
+  ge::DataType type = input_desc->GetDataType();
+  OpInfo eletwise_info(tilingshapes, type);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  PROFILING_TILING_END();
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Fill, FillTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Fill, FillTiling);
 }  // namespace optiling

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@
 #define TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(paras, key, shape, dtype, foramt, const_value) \
   auto tensor_desc_##key = create_desc_shape_range(shape, dtype, foramt, shape, foramt, {});   \
   Tensor tensor_const_##key(tensor_desc_##key);                                                \
+  tensor_desc_##key.SetName(#key);                                                             \
   SetValueToConstTensor(tensor_const_##key, const_value);                                      \
   auto const##key = op::Constant(#key).set_attr_value(tensor_const_##key);                     \
   paras.set_input_##key(const##key);                                                           \

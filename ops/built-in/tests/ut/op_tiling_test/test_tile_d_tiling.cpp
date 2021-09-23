@@ -1,9 +1,23 @@
+/*
+ * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
 #include <iostream>
 #include <fstream>
 #include <vector>
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "selection_ops.h"
+#include "array_ops.h"
 
 using namespace std;
 
@@ -18,7 +32,7 @@ class TileDTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int32_t tmp = 0;
@@ -31,40 +45,34 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+using namespace ge;
+#include "common/utils/ut_op_util.h"
+using namespace ut_util;
+/*
+.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .REQUIRED_ATTR(multiples, ListInt)
+*/
+
 TEST_F(TileDTiling, TileD_tiling1) {
-  using namespace optiling;
   std::string op_name = "TileD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
   // dynamic_tile_d_llt_case_1
-  std::string compileInfo = R"({ "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 4, 32768, 16384]}, "_elewise_vars": {"1":[10200, 20000, 30000], "2":[10200, 20000, 30001], "3":[10200, 20000, 30002], "5": [10200, 20001, 30001], "6":[10200, 20001, 30002], "9":[10200, 20002, 30002]}, "_vars": {"1":["_dim_2_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_2_0", "_block_factor_0", "_ub_factor_1"], "3": ["_dim_2_0", "_block_factor_0", "_ub_factor_2"],  "5": ["_dim_2_0", "_block_factor_1", "_ub_factor_1"], "6": ["_dim_2_0", "_block_factor_1", "_ub_factor_2"], "9": ["_dim_2_0", "_block_factor_2", "_ub_factor_2"]}, "tiling_info": [1, 0, 1, 1, -1, 42763, 16, -1]})";
+  std::string compileInfo =
+      R"({ "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 4, 32768, 16384]}, "_elewise_vars": {"1":[10200, 20000, 30000], "2":[10200, 20000, 30001], "3":[10200, 20000, 30002], "5": [10200, 20001, 30001], "6":[10200, 20001, 30002], "9":[10200, 20002, 30002]}, "_vars": {"1":["_dim_2_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_2_0", "_block_factor_0", "_ub_factor_1"], "3": ["_dim_2_0", "_block_factor_0", "_ub_factor_2"],  "5": ["_dim_2_0", "_block_factor_1", "_ub_factor_1"], "6": ["_dim_2_0", "_block_factor_1", "_ub_factor_2"], "9": ["_dim_2_0", "_block_factor_2", "_ub_factor_2"]}, "tiling_info": [1, 0, 1, 1, -1, 42763, 16, -1]})";
 
   std::vector<int64_t> inputA{777};
   std::vector<int64_t> output{42763, 16, 777};
-  std::string in_dtype = "float32";
-  std::string dtype = "float32";
+  ge::DataType in_dtype = ge::DT_FLOAT;
+  ge::DataType dtype = ge::DT_FLOAT;
 
-  TeOpTensor tensor_inputA;
-  tensor_inputA.shape = inputA;
-  tensor_inputA.dtype = in_dtype;
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = dtype;
-  TeOpTensorArg tensor_argA;
-  tensor_argA.tensor.push_back(tensor_inputA);
-  tensor_argA.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_output);
-  tensor_arg.arg_type = TA_SINGLE;
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_argA);
-  opParas.outputs.push_back(tensor_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "TileD_tiling1";
-  OpRunInfo runInfo;
+  auto opParas = op::TileD("TileD");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, in_dtype, ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtype, ge::FORMAT_ND, {});
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "777 1337 2 ");
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "777 1337 2 ");
 }

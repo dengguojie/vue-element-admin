@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,27 +23,31 @@
 #include <cctype>
 #include "vector_tiling.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
 
-bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                 OpRunInfo& run_info) {
+bool TileDTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                 utils::OpRunInfo& run_info) {
   V_OP_TILING_CHECK((op_info.find("tiling_info") != op_info.end()),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [tiling_info]"),
-                    return false);
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [tiling_info]"), return false);
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input 0 opdesc failed"), return false);
   const std::vector<int64_t>& tiling_info = op_info["tiling_info"];
 
-  V_OP_TILING_CHECK(!op_paras.inputs.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
-                    return false);
-  V_OP_TILING_CHECK(!op_paras.inputs[0].tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"),
-                    return false);
-  std::vector<int64_t> runtime_shape(op_paras.inputs[0].tensor[0].shape);
+  std::vector<int64_t> runtime_shape = input_desc->MutableShape().GetDims();
+  ScalarToShape(runtime_shape);
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   // use assign init vector
-  V_CHECK_GT(tiling_info.size(), 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling_info index out of range"),
+  V_CHECK_GT(tiling_info.size(), 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling_info index out of range"),
              return false);
   size_t shape_size = (tiling_info.size() - tiling_info[0] - 1) / 2;
   std::vector<int64_t> broadcast_input(shape_size);
@@ -60,28 +64,18 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
       break;
     }
   }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  TeOpParas op_paras_tmp = std::move(op_paras);
-  // update new shape
-  V_OP_TILING_CHECK(!op_paras_tmp.inputs.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs cannot be empty"),
-                    return false);
-  V_OP_TILING_CHECK(!op_paras_tmp.inputs[0].tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs[0].tensor cannot be empty"),
-                    return false);
-  op_paras_tmp.inputs[0].tensor[0].shape = std::move(broadcast_input);
+  vector<vector<int64_t>> inputshapes = {broadcast_input, broadcast_multiples};
+  ge::DataType type = input_desc->GetDataType();
+  OpInfo eletwise_info(inputshapes, type);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-  // create other input multiples
-  TeOpTensorArg multiples_input(op_paras_tmp.inputs[0]);
-  V_OP_TILING_CHECK(!multiples_input.tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "multiples_input.tensor cannot be empty"),
-                    return false);
-  multiples_input.tensor[0].shape = std::move(broadcast_multiples);
-  op_paras_tmp.inputs.push_back(multiples_input);
-  bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
+  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  PROFILING_TILING_END();
   return ret;
 }
 
 // register tiling interface of the TileD op.
-REGISTER_OP_TILING_FUNC_BUFFERED(TileD, TileDTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(TileD, TileDTiling);
 }  // namespace optiling
