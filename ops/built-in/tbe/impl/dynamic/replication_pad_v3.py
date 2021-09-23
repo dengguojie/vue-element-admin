@@ -33,6 +33,8 @@ BLOCK_BYTES = 32
 RESERVED_UB = 1024
 # vnchw the minest block
 TRANS_MIN_BLKS = 16
+# vnchw the minest block for float
+TRANS_MIN_BLKS_FP32 = 8
 MODE0 = 0
 MODE1 = 1
 MODE2 = 2
@@ -79,8 +81,9 @@ class ReplicationPadV3Init(object):
         self.x_dtype = x.get("dtype")
         self.inner_dtype = "float16"
         self.paddings_dtype = paddings.get('dtype')
-        self.constant_value_dtype = constant_values.get('dtype')
+        self.constant_values = constant_values
         self.y_dtype = y.get('dtype')
+        self.addtional_dtype = ["float32", "int32"]
         self.mode = mode
         self.padding_contiguous = padding_contiguous
         self.kernel_name = kernel_name
@@ -91,6 +94,9 @@ class ReplicationPadV3Init(object):
         self.input_gm_list = []
         self.output_gm_list = []
         self.input_bytes_size = 0
+        self.rate = 1
+        if self.x_dtype in self.addtional_dtype:
+            self.rate = 2
 
         self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // EIGHT_BIT
         self.block_num = BLOCK_SIZE // self.inner_bytes_size
@@ -124,26 +130,27 @@ class ReplicationPadV3Init(object):
         self.not_last_core_num = self.tik_instance.Scalar(self.tiling_dtype, "not_last_core_num", init_value=0)
         self.last_core_num = self.tik_instance.Scalar(self.tiling_dtype, "last_core_num", init_value=0)
 
-    def tiling_args(self):
+    def tiling_args(self, tiling_ub):
         """
         when input shape is less 6, will. expand to 6
         tiling_input_dim_cut_axis: which dim will be cut
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,),
-                                                 name="tiling_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_NUMS // 4, 0, 0)
             self.tiling_key.set_as(tiling_ub[0])
             self.tiling_input_dim_0.set_as(tiling_ub[1])
             self.tiling_input_dim_1.set_as(tiling_ub[2])
             self.tiling_input_dim_2.set_as(tiling_ub[3])
             self.tiling_input_dim_3.set_as(tiling_ub[4])
+            self.tiling_input_dim_3.set_as(self.tiling_input_dim_3 * self.rate)
             self.tiling_output_dim_0.set_as(tiling_ub[5])
             self.tiling_output_dim_1.set_as(tiling_ub[6])
             self.tiling_output_dim_2.set_as(tiling_ub[7])
             self.tiling_output_dim_3.set_as(tiling_ub[8])
+            self.tiling_output_dim_3.set_as(self.tiling_output_dim_3 * self.rate)
             self.padding_index_0.set_as(tiling_ub[10])
+            self.padding_index_0.set_as(self.padding_index_0 * self.rate)
             self.padding_index_1.set_as(tiling_ub[11])
+            self.padding_index_1.set_as(self.padding_index_1 * self.rate)
             self.padding_index_2.set_as(tiling_ub[12])
             self.padding_index_3.set_as(tiling_ub[13])
             self.not_last_core_num.set_as(tiling_ub[14])
@@ -165,23 +172,22 @@ class ReplicationPadV3Init(object):
         """
         self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
                                                   name="tiling_gm", scope=tik.scope_gm)
-        for i, input_dict in enumerate(input_dict_list):
-            input_dtype = input_dict.get("dtype") if pad_input_idx != i else self.inner_dtype
-            input_gm = self.tik_instance.Tensor(input_dtype, self.unknown_max_shape,
-                                                name="input_gm_" + str(i), scope=tik.scope_gm)
-            self.input_gm_list.append(input_gm)
+        x_dtype = input_dict_list[0].get("dtype")
+        paddings_dtype = input_dict_list[1].get("dtype")
+        x_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="x", scope=tik.scope_gm)
+        paddings_gm = self.tik_instance.Tensor(paddings_dtype, self.unknown_max_shape,
+                                               name="paddings", scope=tik.scope_gm)
 
-        for i, output_dict in enumerate(output_dict_list):
-            output_dtype = output_dict.get("dtype")
-            if pad_outnput_idx == i:
-                # the pad output must will atomic_add to clear the output_gm to all zero
-                output_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
-                self.input_bytes_size = tbe_platform.get_bit_len(output_dtype) // EIGHT_BIT
-            else:
-                output_gm = self.tik_instance.Tensor(output_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
-            self.output_gm_list.append(output_gm)
+        self.input_gm_list.append(x_gm)
+        self.input_gm_list.append(paddings_gm)
+        if self.constant_values:
+            constant_values_gm = self.tik_instance.Tensor(x_dtype, self.unknown_max_shape,
+                                                          name="constant_values", scope=tik.scope_gm)
+            self.input_gm_list.append(constant_values_gm)
+        y_dtype = output_dict_list[0].get("dtype")
+        y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
+        self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // EIGHT_BIT
+        self.output_gm_list.append(y_gm)
 
         self.input_gm = self.input_gm_list[pad_input_idx]
         self.output_gm = self.output_gm_list[pad_outnput_idx]
@@ -196,7 +202,7 @@ class ReplicationPadV3Init(object):
         self.core_used_num.set_as(tiling_ub[9])
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
             with self.tik_instance.if_scope(core_index < self.core_used_num):
-                self.tiling_args()
+                self.tiling_args(tiling_ub)
                 self.do_pad(core_index)
 
     def do_tiling_key_mode_0(self, core_index):
@@ -307,7 +313,8 @@ class ReplicationPadV3Init(object):
 
                 with self.tik_instance.if_scope(time_2 > 1):
                     with self.tik_instance.for_range(0, self.padding_index_0) as i:
-                        self.tik_instance.data_move(ping_ub_2[i * align_output_dim_2], pang_ub_1, 0,
+                        top_offset = i % self.rate * align_output_dim_2
+                        self.tik_instance.data_move(ping_ub_2[i * align_output_dim_2], pang_ub_1[top_offset], 0,
                                                     1,
                                                     2, 0, 0)
                     with self.tik_instance.for_range(0, self.tiling_input_dim_3) as i:
@@ -316,15 +323,18 @@ class ReplicationPadV3Init(object):
                                                     1,
                                                     2, 0, 0)
                     with self.tik_instance.for_range(0, self.padding_index_1) as i:
+                        bottom_offset = self.rate - i % self.rate
                         self.tik_instance.data_move(ping_ub_2[(self.padding_index_0 + self.tiling_input_dim_3 + i) *
                                                               align_output_dim_2],
-                                                    pang_ub_1[(self.tiling_input_dim_3 - 1) * align_output_dim_2], 0,
+                                                    pang_ub_1[(self.tiling_input_dim_3 - bottom_offset)
+                                                              * align_output_dim_2], 0,
                                                     1,
                                                     2, 0, 0)
 
                 with self.tik_instance.if_scope(time_2 == 1):
                     with self.tik_instance.for_range(0, self.padding_index_0) as i:
-                        self.tik_instance.data_move(ping_ub_2[i * TRANS_MIN_BLKS], pang_ub_1, 0,
+                        top_offset = i % self.rate * align_output_dim_2
+                        self.tik_instance.data_move(ping_ub_2[i * TRANS_MIN_BLKS], pang_ub_1[top_offset], 0,
                                                     1,
                                                     1, 0, 0)
                     with self.tik_instance.for_range(0, self.tiling_input_dim_3) as i:
@@ -333,9 +343,11 @@ class ReplicationPadV3Init(object):
                                                     1,
                                                     1, 0, 0)
                     with self.tik_instance.for_range(0, self.padding_index_1) as i:
+                        bottom_offset = self.rate - i % self.rate
                         self.tik_instance.data_move(ping_ub_2[(self.padding_index_0 + self.tiling_input_dim_3 + i) *
                                                               TRANS_MIN_BLKS],
-                                                    pang_ub_1[(self.tiling_input_dim_3 - 1) * align_output_dim_2], 0,
+                                                    pang_ub_1[(self.tiling_input_dim_3 - bottom_offset)
+                                                               * align_output_dim_2], 0,
                                                     1,
                                                     1, 0, 0)
 
@@ -665,8 +677,9 @@ class ReplicationPadV3Init(object):
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_0) as i:
-                    self.tik_instance.data_move(pang_ub_1[i * TRANS_MIN_BLKS * time], pang_ub_1[self.padding_index_0 *
-                                                                                                time * TRANS_MIN_BLKS],
+                    top_offset = i % self.rate
+                    self.tik_instance.data_move(pang_ub_1[i * TRANS_MIN_BLKS * time],
+                                                pang_ub_1[(self.padding_index_0 + top_offset) * time * TRANS_MIN_BLKS],
                                                 0, 1, time, 0, 0)
                 with self.tik_instance.for_range(0, time) as i:
                     src_list = []
@@ -712,8 +725,9 @@ class ReplicationPadV3Init(object):
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_1) as i:
+                    bottom_offset = self.rate - i % self.rate
                     self.tik_instance.data_move(pang_ub_2[time * TRANS_MIN_BLKS * TRANS_MIN_BLKS + i * TRANS_MIN_BLKS
-                                                          * time], pang_ub_2[(TRANS_MIN_BLKS - 1) *
+                                                          * time], pang_ub_2[(TRANS_MIN_BLKS - bottom_offset) *
                                                                              time * TRANS_MIN_BLKS],
                                                 0, 1,
                                                 time, 0, 0)
@@ -918,14 +932,17 @@ class ReplicationPadV3Init(object):
         """pad_col
         """
         with self.tik_instance.for_range(0, self.padding_index_0) as i:
-            self.tik_instance.data_move(pang_ub_1[i * TRANS_MIN_BLKS * time], pang_ub_1[self.padding_index_0 *
-                                                                                        time * TRANS_MIN_BLKS],
+            top_offset = i % self.rate
+            self.tik_instance.data_move(pang_ub_1[i * TRANS_MIN_BLKS * time],
+                                        pang_ub_1[(self.padding_index_0 + top_offset)
+                                        * time * TRANS_MIN_BLKS],
                                         0, 1, time, 0, 0)
         with self.tik_instance.for_range(0, self.padding_index_1) as i:
-            self.tik_instance.data_move(pang_ub_1[(self.padding_index_0 + i + self.tiling_input_dim_3) *
-                                                  TRANS_MIN_BLKS * time], pang_ub_1[(self.padding_index_0 +
-                                                                                     self.tiling_input_dim_3
-                                                                                     - 1) * time * TRANS_MIN_BLKS],
+            bottom_offset = self.rate - i % self.rate
+            self.tik_instance.data_move(pang_ub_1[(self.padding_index_0 + i + self.tiling_input_dim_3)
+                                                  * TRANS_MIN_BLKS * time],
+                                        pang_ub_1[(self.padding_index_0 + self.tiling_input_dim_3
+                                                  - bottom_offset) * time * TRANS_MIN_BLKS],
                                         0, 1, time, 0, 0)
 
     def transpose_col_to_line(self, time, time2, pang_ub_1, ping_ub_1):
@@ -1163,7 +1180,10 @@ class ReplicationPadV3Init(object):
         """
         with self.tik_instance.if_scope(self.tiling_key == MODE0):
             with self.tik_instance.new_stmt_scope():
-                self.do_tiling_key_mode_0(core_index)
+                with self.tik_instance.if_scope(self.tiling_input_dim_3 > TRANS_MIN_BLKS_FP32):
+                    self.do_tiling_key_mode_2(core_index)
+                with self.tik_instance.else_scope():
+                    self.do_tiling_key_mode_0(core_index)
         with self.tik_instance.if_scope(self.tiling_key == MODE1):
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_1(core_index)
@@ -1234,7 +1254,7 @@ def replication_pad_v3(x, paddings, constant_values, y, mode, padding_contiguous
     para_check.check_dtype(x_dtype, x_supported_dtype, param_name="x")
     para_check.check_dtype(paddings_dtype, paddings_supported_dtype, param_name="paddings")
     obj = ReplicationPadV3Init(x, paddings, constant_values, y, mode, padding_contiguous,
-                              kernel_name)
+                               kernel_name)
     obj.init_src_dst_gm((x, paddings, constant_values), (y,), pad_input_idx=0, pad_outnput_idx=0)
     return obj.pad_compute()
 
