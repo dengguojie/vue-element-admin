@@ -1,0 +1,98 @@
+[
+    {
+        "op": "LpNormUpdate",
+        "case_name": "test_LpNormUpdate_000",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [4, 4, 256, 256],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+
+
+
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [4, 4, 256, 256],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "p",
+                "type": "int",
+                "value": 2
+            }
+        ]
+    },
+    {
+        "op": "LpNormUpdate",
+        "case_name": "test_LpNormUpdate_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 32, 32],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [2, 2, 32, 32],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "p",
+                "type": "int",
+                "value": 2
+            }
+        ]
+    },
+    {
+        "op": "LpNormUpdate",
+        "case_name": "test_LpNormUpdate_002",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [4, 4, 256, 256],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [4, 4, 256, 256],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "p",
+                "type": "int",
+                "value": 3
+            }
+        ]
+    }
+]

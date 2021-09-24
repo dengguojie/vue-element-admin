@@ -27,7 +27,6 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
 _CONST_INF = 2147483647
-_CONST_EPSILON_FP16 = 1e-7
 _CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals
@@ -169,8 +168,8 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
 @register_operator("LpNorm")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, 
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_norm"):
+                            para_check.KERNEL_NAME)
+def lp_norm(x, y, p=2, axes=None, keepdim=False, kernel_name="lp_norm"):
     """
     Computes norm for p equals 0, 1, 2, -inf, inf, or other integers.
     Parameters
@@ -190,9 +189,6 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     keepdim: bool
              Whether the output tensors should have dim keeped or not.
              Optional. Default: False
-    epsilon: float
-             The number used for safe considering as norm usually served as denominator.
-             Optional. Default: 1e-7 for fp16, 1e-12 for fp32
     kernel_name: str
                  Kernel name.
                  Optional. Default: "lp_norm".
@@ -239,13 +235,7 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
                 res = lp_norm2_compute(abs_data, x_type, y, axes.get("value"), keepdim, kernel_name)
             else:
                 res = lp_norm_compute(abs_data, x_type, y, p, axes.get("value"), keepdim, kernel_name)
-    
-            if x_type == "float16" and float(epsilon) <= _CONST_EPSILON_FP16:
-                std_no = tvm.const(_CONST_EPSILON_FP16, dtype=x_type)
-            else:
-                std_no = tvm.const(float(epsilon), dtype=x_type)
-            res = tbe.vmaxs(res, std_no)
-            
+     
             tensors.append([input_data, res])
 
         with tvm.target.cce():

@@ -941,9 +941,9 @@ VERIFY_FUNC_REG(LpNorm, LpNormVerify);
 
 // ----------------LpNormReduce Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(LpNormReduceInfer) {
-  Shape x_shape = op.GetInputDescByName("x").GetShape();
-  DataType x_type = op.GetInputDescByName("x").GetDataType();
-  Format x_format = op.GetInputDescByName("x").GetFormat();
+  Shape x_shape = op.GetInputDesc(0).GetShape();
+  DataType x_type = op.GetInputDesc(0).GetDataType();
+  Format x_format = op.GetInputDesc(0).GetFormat();
   size_t dim_num = x_shape.GetDimNum();
   std::vector<int64_t> x_axes = {};
   std::vector<int64_t> new_axes = {};
@@ -976,7 +976,7 @@ IMPLEMT_COMMON_INFERFUNC(LpNormReduceInfer) {
   }
   ge::Shape output_shape(y_vec);
   // update output desc
-  ge::TensorDesc output_desc = op.GetOutputDescByName("y");
+  ge::TensorDesc output_desc = op.GetOutputDesc(0);
   output_desc.SetShape(output_shape);
   if (x_axes.empty()) {
     std::vector<std::pair<int64_t, int64_t>> o_range;
@@ -992,10 +992,10 @@ COMMON_INFER_FUNC_REG(LpNormReduce, LpNormReduceInfer);
 
 // ----------------LpNormUpdate Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(LpNormUpdateInfer) {
-  Shape x_shape =  op.GetInputDescByName("x").GetShape();
-  DataType x_type =  op.GetInputDescByName("x").GetDataType();
+  Shape x_shape =  op.GetInputDesc(0).GetShape();
+  DataType x_type =  op.GetInputDesc(0).GetDataType();
   // update output desc
-  TensorDesc output_desc = op.GetOutputDescByName("y");
+  TensorDesc output_desc = op.GetOutputDesc(0);
   output_desc.SetShape(ge::Shape(x_shape));
   output_desc.SetDataType(x_type);
   (void)op.UpdateOutputDesc("y", output_desc);

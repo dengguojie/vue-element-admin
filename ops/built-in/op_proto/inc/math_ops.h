@@ -919,8 +919,7 @@ REG_OP(ActULQClampMinGrad)
 * @par Attributes:
 * @li p: Int, "inf" or "-inf", default value is 2.
 * @li axes: ListInt, {} means all axes will be computed.
-* @li keepdim: Bool, default is false.
-* @li epsilon: Float, default is 1e-12. \n
+* @li keepdim: Bool, default is false. \n
 
 * @par Outputs:
 * y: An ND tensor of type float16, float32. The shape of y is depending
@@ -935,7 +934,6 @@ REG_OP(LpNorm)
     .ATTR(p, Int, 2)
     .ATTR(axes, ListInt, {})
     .ATTR(keepdim, Bool, false)
-    .ATTR(epsilon, Float, 1e-12)
     .OP_END_FACTORY_REG(LpNorm)
 
 /**
@@ -947,8 +945,7 @@ REG_OP(LpNorm)
 * @par Attributes:
 * @li p: Int, "inf" or "-inf", default value is 2.
 * @li axes: ListInt, {} means all axes will be computed.
-* @li keepdim: Bool, default is false.
-* @li epsilon: Float, default is 1e-12. \n
+* @li keepdim: Bool, default is false. \n
 
 * @par Outputs:
 * y: An ND tensor of type float16, float32. The shape of y is depending
@@ -963,7 +960,6 @@ REG_OP(LpNormReduce)
     .ATTR(p, Int, 2)
     .ATTR(axes, ListInt, {})
     .ATTR(keepdim, Bool, false)
-    .ATTR(epsilon, Float, 1e-12)
     .OP_END_FACTORY_REG(LpNormReduce)
 
 /**
@@ -973,8 +969,7 @@ REG_OP(LpNormReduce)
 * x: An ND tensor of type float16, float32. \n
 *
 * @par Attributes:
-* @li p: Int, "inf" or "-inf", default value is 2.
-* @li epsilon: Float, default is 1e-12. \n
+* @li p: Int, "inf" or "-inf", default value is 2. \n
 
 * @par Outputs:
 * y: An ND tensor of type float16, float32. \n
@@ -986,7 +981,6 @@ REG_OP(LpNormUpdate)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(p, Int, 2)
-    .ATTR(epsilon, Float, 1e-12)
     .OP_END_FACTORY_REG(LpNormUpdate)
 
 /**

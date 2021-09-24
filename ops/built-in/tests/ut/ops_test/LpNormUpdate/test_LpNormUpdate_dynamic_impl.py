@@ -19,41 +19,20 @@ def gen_dynamic_lp_norm_update_case(shape_x, range_x, dtype_val, _format,
             "format_expect": [],
             "support_expect": True}
 
-ut_case.add_case("all",
-                 gen_dynamic_lp_norm_update_case((-1,-1,1),
-                                                      [(1,100),(1,100),(1,1)],
-                                                      "float16", "ND",
-                                                      (-1,-1,1), 2147483647,
-                                                      "dynamic_lp_norm_update_fp16_ND_1",
-                                                      "success"))
 ut_case.add_case(["Ascend910A"],
                  gen_dynamic_lp_norm_update_case((-1,-1,1),
                                                       [(1,100),(1,100),(1,1)],
                                                       "float16", "ND",
                                                       (-1,-1,1), -2147483647,
-                                                      "dynamic_lp_norm_update_fp16_ND_2",
+                                                      "dynamic_lp_norm_update_fp16_ND_1",
                                                       "success"))
 
-ut_case.add_case(["Ascend910A"],
-                 gen_dynamic_lp_norm_update_case((-1,-1,1),
-                                                      [(1,100),(1,100),(1,1)],
-                                                      "float16", "ND",
-                                                      (-1,-1,1), 0,
-                                                      "dynamic_lp_norm_update_fp16_ND_3",
-                                                      "success"))
-ut_case.add_case("all",
-                 gen_dynamic_lp_norm_update_case((-1,-1,1),
-                                                      [(1,100),(1,100),(1,1)],
-                                                      "float16", "ND",
-                                                      (-1,-1,1), 1,
-                                                      "dynamic_lp_norm_update_fp16_ND_4",
-                                                      "success"))
 ut_case.add_case("all",
                  gen_dynamic_lp_norm_update_case((-1,-1,1),
                                                       [(1,100),(1,100),(1,1)],
                                                       "float16", "ND",
                                                       (-1,-1,1), 2,
-                                                      "dynamic_lp_norm_update_fp16_ND_5",
+                                                      "dynamic_lp_norm_update_fp16_ND_2",
                                                       "success"))
 ut_case.add_case("all",
                  gen_dynamic_lp_norm_update_case((-1,-1,1),
