@@ -58,7 +58,7 @@ static void run_case(std::vector<int64_t> input_shape, std::string data_dtype, s
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, end, const_shape, DT_INT32, FORMAT_ND, const_end);
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, strides, const_shape, DT_INT32, FORMAT_ND, const_strides);
 
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));

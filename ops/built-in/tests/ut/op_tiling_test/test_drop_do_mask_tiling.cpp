@@ -68,7 +68,7 @@ TEST_F(DropOutDoMaskTiling, dropout_do_mask_tiling_1) {
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 

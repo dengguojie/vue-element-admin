@@ -51,7 +51,7 @@ TEST_F(ConcatOffsetTiling, concat_offset_tiling_0) {
   test_op.create_dynamic_input_x(1);
   TENSOR_DY_INPUT_WITH_SHAPE(test_op, x, 0, input, DT_INT32, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compile_info.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compile_info);
   optiling::utils::OpRunInfo run_info;
   ASSERT_TRUE(iter->second(test_op, op_compile_info, run_info));
   EXPECT_EQ(to_string_int64(run_info.GetAllTilingData()), "4 ");

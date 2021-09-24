@@ -73,7 +73,7 @@ TEST_F(TileTiling, Tile_tiling1) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, multiples, inputB, ge::DT_INT32, ge::FORMAT_ND, multiples);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 30);
@@ -99,7 +99,7 @@ TEST_F(TileTiling, Tile_tiling2) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, multiples, inputB, ge::DT_INT32, ge::FORMAT_ND, multiples);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 24);
@@ -125,7 +125,7 @@ TEST_F(TileTiling, Tile_tiling3) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, multiples, inputB, ge::DT_INT32, ge::FORMAT_ND, multiples);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);

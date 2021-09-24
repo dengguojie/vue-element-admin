@@ -61,7 +61,7 @@ static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64
   TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis.data(), axis.size() * 4);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(infoKey.c_str(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(infoKey.c_str(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), expectTilingData);

@@ -69,7 +69,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_no_mask) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -116,7 +116,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_with_mask1) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2, "ub_size": 262144}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -158,7 +158,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2, "ub_size": 262144}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -199,7 +199,7 @@ TEST_F(stried_slice_tiling, stried_slice_no_mask) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   EXPECT_FALSE(ret);
@@ -239,7 +239,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_no_inputs) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -280,7 +280,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_too_large_dims) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -321,7 +321,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_get_const_value_failed) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -362,7 +362,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_invalid_stride) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -404,7 +404,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_unsupported_stride) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -445,7 +445,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_fused_dims) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -483,7 +483,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_3) {
   TENSOR_OUTPUT(opParas, tensorOutput, y);
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -521,7 +521,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_5) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -558,7 +558,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_6) {
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -594,7 +594,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_7) {
   TENSOR_OUTPUT(opParas, tensorOutput, y);
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
@@ -630,7 +630,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_8) {
   TENSOR_OUTPUT(opParas, tensorOutput, y);
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);

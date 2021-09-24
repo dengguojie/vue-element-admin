@@ -52,9 +52,11 @@ void TransformerOpBaseFormat(const Operator& op, const std::string& input_name, 
 
   // transfer shape
   transformer::ShapeTransferAccordingToFormat shape_transfer;
-  transformer::ShapeAndFormat shape_and_format_info{shape_dims,     new_shape_dims, format,
-                                                    storage_format, data_type,      transformer::EN_IMPL_HW_TBE};
+  ge::GeShape shape_dims_ge(shape_dims);
+  transformer::ShapeAndFormat shape_and_format_info{shape_dims_ge, format,
+                                                    storage_format, data_type};
   (void)shape_transfer.GetShapeAccordingToFormat(shape_and_format_info);
+  new_shape_dims = shape_dims_ge.GetDims();
   auto new_shape_shape = GeShape(new_shape_dims);
   std::vector<std::pair<int64_t, int64_t>> origin_range;
   std::vector<std::pair<int64_t, int64_t>> output_range;
@@ -62,7 +64,7 @@ void TransformerOpBaseFormat(const Operator& op, const std::string& input_name, 
   // transfer range
   transformer::RangeTransferAccordingToFormat range_transfer;
   transformer::RangeAndFormat range_and_format_info{
-      shape_shape, origin_range, output_range, format, storage_format, data_type, transformer::EN_IMPL_HW_TBE};
+      shape_shape, origin_range, output_range, format, storage_format, data_type};
   (void)range_transfer.GetRangeAccordingToFormat(range_and_format_info);
   tensordesc_input->SetFormat(storage_format);
   tensordesc_input->SetShape(GeShape(new_shape_dims));

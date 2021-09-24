@@ -84,7 +84,7 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_0) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 35 5 128 18 2 1 0 0 0 0 0 128 128 0 0 128 128 0 ");
@@ -116,7 +116,7 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_1) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 35 128 128 5 8 3 1 192 0 0 0 8 0 0 0 3 0 0 ");
@@ -148,7 +148,7 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_2) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 35 96 96 5 8 3 1 248 0 0 0 8 0 0 0 3 0 0 ");
@@ -180,7 +180,7 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_3) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 35 10000 10000 5 8 3 0 0 0 10000 0 8 0 0 0 3 0 0 ");
@@ -212,7 +212,7 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_4) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 35 10000 10000 5 8 3 0 0 1 1808 0 8 0 0 0 3 0 0 ");
@@ -244,7 +244,7 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_5) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("dimension", tensor_input_axis);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");

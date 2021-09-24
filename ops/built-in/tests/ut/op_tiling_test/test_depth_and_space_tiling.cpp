@@ -58,7 +58,7 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
                           TypeUtils::SerialStringToFormat(data_format), {});
   TENSOR_OUTPUT_WITH_SHAPE(test_op, y, output_shape, StringToDtype(data_dtype),
                            TypeUtils::SerialStringToFormat(data_format), {});
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
   const int64_t profiling_test_num = 0;

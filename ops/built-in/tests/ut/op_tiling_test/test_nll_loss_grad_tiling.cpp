@@ -106,7 +106,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling1) {
   std::string compileInfo =
       "{\"vars\": {\"reduction\": \"None\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": 5, "
       "\"ub_size\": 252928, \"block_dim\": 2}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -162,7 +162,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling2) {
       "{\"vars\": {\"reduction\": \"None\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
       "215907, "
       "\"ub_size\": 260096, \"block_dim\": 32}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -218,7 +218,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling3) {
       "{\"vars\": {\"reduction\": \"mean\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
       "-1, "
       "\"ub_size\": 260096, \"block_dim\": 32}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -275,7 +275,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
       "{\"vars\": {\"reduction\": \"sum\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
       "1, "
       "\"ub_size\": 260096, \"block_dim\": 32}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));

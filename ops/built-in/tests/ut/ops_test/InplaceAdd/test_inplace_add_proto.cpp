@@ -3,6 +3,7 @@
 #include "op_proto_test_util.h"
 #include "array_ops.h"
 #include "selection_ops.h"
+#include "common/utils/ut_op_util.h"
 
 // ----------------InplaceAdd-------------------
 class inplace_add : public testing::Test {
@@ -16,13 +17,14 @@ class inplace_add : public testing::Test {
   }
 };
 
+using namespace ut_util;
+
 TEST_F(inplace_add, inplace_add_infershape_diff_test) {
   ge::op::InplaceAdd op;
   op.UpdateInputDesc("x", create_desc({2, 3, 4}, ge::DT_FLOAT16));
   op.UpdateInputDesc("v", create_desc({4, 3, 4}, ge::DT_FLOAT16));
-  ge::op::Constant indices;
-  indices.SetAttr("value", std::vector<int32_t>{0, 1, 2, 3});
-  op.set_input_indices(indices);
+  vector<uint32_t> value = {0, 1, 2, 3};
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(op, indices, vector<int64_t>({4}), ge::DT_INT32, FORMAT_ND, value);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
@@ -35,9 +37,8 @@ TEST_F(inplace_add, inplace_add_test_infershape_same_test) {
   ge::op::InplaceAdd op;
   op.UpdateInputDesc("x", create_desc({2, 5, 6}, ge::DT_FLOAT));
   op.UpdateInputDesc("v", create_desc({2, 5, 6}, ge::DT_FLOAT));
-  ge::op::Constant indices;
-  indices.SetAttr("value", std::vector<int32_t>{0, 0});
-  op.set_input_indices(indices);
+  vector<uint32_t> value = {0, 0};
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(op, indices, vector<int64_t>({2}), ge::DT_INT32, FORMAT_ND, value);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");

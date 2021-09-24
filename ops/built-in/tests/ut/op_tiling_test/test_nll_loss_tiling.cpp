@@ -103,7 +103,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling1) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -157,7 +157,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling2) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -210,7 +210,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling3) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -263,7 +263,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling4) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -316,7 +316,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling5) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -369,7 +369,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling6) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -422,7 +422,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling7) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -475,7 +475,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling8) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -528,7 +528,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling9) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"REDUCTION\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -577,7 +577,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling10) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"CORE\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -626,7 +626,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling11) {
 
   std::string compileInfo =
       "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -675,7 +675,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling12) {
 
   std::string compileInfo =
       "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -724,7 +724,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling13) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -773,7 +773,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling14) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -822,7 +822,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling15) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -872,7 +872,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling16) {
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));

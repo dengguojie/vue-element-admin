@@ -81,7 +81,7 @@ TEST_F(AscendAntiQuantTiling, AscendAntiQuant_tiling_0) {
   vector<Operator> outputs{opParas};
   opParas.UpdateInputDesc("x", tensor_input);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(1, 1);

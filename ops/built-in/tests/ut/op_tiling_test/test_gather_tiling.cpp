@@ -65,7 +65,7 @@ TEST_F(GatherTiling, gather_tiling_0) {
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
@@ -106,7 +106,7 @@ TEST_F(GatherTiling, gather_tiling_1) {
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),

@@ -78,7 +78,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_0) {
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT(opParas, tensor_input, x);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 35 5 128 18 2 1 0 0 0 0 0 128 128 0 0 128 128 0 ");
@@ -102,7 +102,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_1) {
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT(opParas, tensor_input, x);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 35 128 128 3 16 3 1 128 0 0 0 16 0 0 0 3 0 0 ");
@@ -126,7 +126,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_2) {
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT(opParas, tensor_input, x);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 35 96 96 3 16 3 1 240 0 0 0 16 0 0 0 3 0 0 ");
@@ -150,7 +150,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_3) {
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT(opParas, tensor_input, x);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 35 10000 10000 3 16 3 0 0 0 10000 0 16 0 0 0 3 0 0 ");
@@ -174,7 +174,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_4) {
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT(opParas, tensor_input, x);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 35 10000 10000 5 8 3 0 0 1 1808 0 8 0 0 0 3 0 0 ");
@@ -198,7 +198,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT(opParas, tensor_input, x);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");

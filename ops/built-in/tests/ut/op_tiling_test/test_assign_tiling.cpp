@@ -55,7 +55,7 @@ TEST_F(AssignTiling, Assign_tiling1) {
   TENSOR_INPUT(opParas, tensor_input2, value);
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 256000}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));

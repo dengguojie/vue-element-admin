@@ -67,7 +67,7 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_0) {
   TENSOR_INPUT(opParas, tensor_input, grads);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "111000 16 1 1000 1000 1000 1000 16 1 2 ");
@@ -101,7 +101,7 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_2) {
   TENSOR_INPUT(opParas, tensor_input, grads);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 16 1 1000 1000 999 1001 2 4 4 ");
@@ -134,7 +134,7 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_3) {
 
   TENSOR_INPUT(opParas, tensor_input, grads);
   TENSOR_OUTPUT(opParas, tensor_output, y);
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "101000 16 1 1000 1000 999 2000 2 4 4 ");
@@ -168,7 +168,7 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_4) {
   TENSOR_INPUT(opParas, tensor_input, grads);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100010 16 1 1000 1000 999 22 2 4 4 ");
@@ -202,7 +202,7 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_5) {
   TENSOR_INPUT(opParas, tensor_input, grads);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 16 1 1000 1000 999 20 1 1 20 ");

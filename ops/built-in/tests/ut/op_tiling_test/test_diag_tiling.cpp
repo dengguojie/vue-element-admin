@@ -54,7 +54,7 @@ TEST_F(DiagTiling, Diag_tiling1) {
   auto opParas = op::Diag("Diag");
   TENSOR_INPUT(opParas, tensor_inputA, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16384 32 512 512 ");

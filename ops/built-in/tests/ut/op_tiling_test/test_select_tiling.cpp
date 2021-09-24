@@ -73,7 +73,7 @@ TEST_F(SelectTiling, Select_tiling1) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[2], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
       R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -99,7 +99,7 @@ TEST_F(SelectTiling, Select_tiling2) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[2], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
       R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -125,7 +125,7 @@ TEST_F(SelectTiling, Select_tiling3) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[2], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
       R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": [1,1,1]})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));

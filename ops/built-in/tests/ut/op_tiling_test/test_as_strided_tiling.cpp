@@ -41,7 +41,7 @@ TEST_F(AsStridedTiling, tiling1) {
   tensorOutput.SetDataType(ge::DT_FLOAT16);
   TENSOR_OUTPUT(opParas, tensorOutput, y);
   std::string compileInfo = "{\"vars\": {\"ub_size\": 196608, \"core_num\" : 96, \"dtype\": \"int32\"}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   EXPECT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }

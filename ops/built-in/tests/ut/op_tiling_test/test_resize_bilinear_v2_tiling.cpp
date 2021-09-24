@@ -67,7 +67,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_0) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 4096 1 7 7 33 33 4 7 1 ");
@@ -104,7 +104,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_2) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 16 1 1000 1000 999 999 2 4 4 ");
@@ -138,7 +138,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_3) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "999999 16000000 1 1 1 1 1 32 1 1 ");
@@ -173,7 +173,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_4) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "999999 16000000 1 1 1 1 1 32 1 1 ");
@@ -206,7 +206,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_5) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 16 1 1000 1000 999 999 2 16 1 ");
@@ -239,7 +239,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_6) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 4096 1 7 7 33 33 3 2 5 ");
@@ -272,7 +272,7 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_7) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 4096 1 7 7 33 33 4 7 1 ");

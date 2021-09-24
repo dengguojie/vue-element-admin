@@ -54,7 +54,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling1) {
   opParas.SetAttr("concat_dim", -1);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":0, \"input_size\":3}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -82,7 +82,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling2) {
   opParas.SetAttr("concat_dim", -1);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":1, \"input_size\":3}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -164,7 +164,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling3) {
   opParas.SetAttr("concat_dim", -1);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":30}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
@@ -195,7 +195,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling4) {
   opParas.SetAttr("concat_dim", -1);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -222,7 +222,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling5) {
   opParas.SetAttr("concat_dim", -1);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
@@ -249,7 +249,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling6) {
   opParas.SetAttr("concat_dim", -1);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));

@@ -116,7 +116,7 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   add_input_desc_by_idx(test_op, 0, input_shape, input_shape, data_dtype, src_format, src_format);
   add_output_desc_by_idx(test_op, 0, output_shape, output_shape, data_dtype, dst_format, dst_format);
 
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));

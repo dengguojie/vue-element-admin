@@ -40,7 +40,7 @@ static void run_case(std::vector<int64_t> input_shape_0, std::string data_dtype_
                           TypeUtils::SerialStringToFormat(src_ori_format), {});
   TransformerOpBaseFormat(test_op, "indices", TypeUtils::SerialStringToFormat(src_format));
 
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));

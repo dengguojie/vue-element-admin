@@ -1547,7 +1547,7 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   TENSOR_INPUT_WITH_SHAPE(test_op, x, input_shape, StringToDtype(data_dtype), FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, perm, const_shape, DT_INT64, FORMAT_ND, const_value);
   TENSOR_OUTPUT_WITH_SHAPE(test_op, y, output_shape, StringToDtype(data_dtype), FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));

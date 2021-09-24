@@ -80,7 +80,7 @@ auto opParas = op::IsFinite("IsFinite");
 opParas.set_input_x(data);
 opParas.UpdateInputDesc("x", tensor_input);
 
-optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
 ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
@@ -109,7 +109,7 @@ auto opParas = op::IsFinite("IsFinite");
 opParas.set_input_x(data);
 opParas.UpdateInputDesc("x", tensor_input);
 
-optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
 ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
@@ -138,7 +138,7 @@ auto opParas = op::IsFinite("IsFinite");
 opParas.set_input_x(data);
 opParas.UpdateInputDesc("x", tensor_input);
 
-optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
 ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
@@ -167,7 +167,7 @@ auto opParas = op::IsFinite("IsFinite");
 opParas.set_input_x(data);
 opParas.UpdateInputDesc("x", tensor_input);
 
-optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
 ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
@@ -196,7 +196,7 @@ auto opParas = op::IsFinite("IsFinite");
 opParas.set_input_x(data);
 opParas.UpdateInputDesc("x", tensor_input);
 
-optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
 ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
@@ -225,7 +225,7 @@ auto opParas = op::IsFinite("IsFinite");
 opParas.set_input_x(data);
 opParas.UpdateInputDesc("x", tensor_input);
 
-optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
 ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 EXPECT_EQ(

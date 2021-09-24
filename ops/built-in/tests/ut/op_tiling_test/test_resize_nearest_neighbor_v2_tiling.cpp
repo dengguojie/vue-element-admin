@@ -66,7 +66,7 @@ TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_0) {
 
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "113000 16 1 1000 1000 1000 1000 16 1 2 ");
@@ -100,7 +100,7 @@ TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_2) {
   TENSOR_INPUT(opParas, tensor_input, x);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 16 1 1000 1000 999 999 2 4 4 ");
