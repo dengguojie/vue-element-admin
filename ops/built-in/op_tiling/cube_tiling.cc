@@ -1,5 +1,5 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,12 @@
 #include "../op_proto/util/error_util.h"
 
 namespace {
+  constexpr int32_t kRangeDivShape = 2;
   constexpr int32_t kConv3dDimSizeLimit = 6;
   constexpr int32_t kConv3dVarDimSizeLimit = 4;
+  const string kCompileRepoSeeds = "repo_seeds";
+  const string kCompileRepoRange = "repo_range";
+  const string kCompileCostRange = "cost_range";
   const std::vector<int32_t> kConv3DDynamicShapeDims = {0, 1, 3, 4}; // format: NDC1HWC0
   const std::vector<int32_t> kConv3DDynamicRangeDims = {0, 1, 2, 3}; // foramt: NDHW
 
@@ -57,7 +61,7 @@ namespace {
     for (int32_t i = 0; i < kConv3dVarDimSizeLimit; ++i) {
       int32_t shape_index = kConv3DDynamicShapeDims[i];
       int32_t range_index = kConv3DDynamicRangeDims[i];
-      if (shape[shape_index] < range[range_index * 2] || shape[shape_index] > range[(range_index * 2) + 1]) {
+      if (shape[shape_index] < range[range_index * kRangeDivShape] || shape[shape_index] > range[(range_index * kRangeDivShape) + 1]) {
         return false;
       }
     }
@@ -70,11 +74,11 @@ namespace {
     const std::vector<int32_t> range_dim = {0, 1, 2, 3, 4, 5};
     if (range.size() == range_dim.size()) {
       for (size_t i = 0; i < shape_dim.size(); ++i) {
-        if (shape[shape_dim[i]] < range[range_dim[i * 2]] || shape[shape_dim[i]] > range[range_dim[i * 2 + 1]]) {
+        if (shape[shape_dim[i]] < range[range_dim[i * kRangeDivShape]] || shape[shape_dim[i]] > range[range_dim[i * kRangeDivShape + 1]]) {
           return false;
         }
       }
-    } else if (range.size() == 2) {
+    } else if (range.size() == kRangeDivShape) {
       if (shape[shape_dim[0]] < range[0] || shape[shape_dim[0]] > range[1]) {
         return false;
       }
@@ -129,13 +133,13 @@ namespace {
   std::string get_conv3D_ndhw_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                                   const nlohmann::json& compile_info) {
     std::string tiling_id;
-    if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
+    if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
       return tiling_id;
     }
 
-    auto& tiling_seeds = compile_info.at("repo_seeds");
-    auto& repo_range = compile_info.at("repo_range");
+    auto& tiling_seeds = compile_info.at(kCompileRepoSeeds);
+    auto& repo_range = compile_info.at(kCompileRepoRange);
     int64_t min_dist = std::numeric_limits<int64_t>::max();
     for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {
       std::vector<int64_t> seed = it.value().get<std::vector<int64_t>>();
@@ -150,12 +154,12 @@ namespace {
     }
 
     if (tiling_id.empty()) {
-      if (!compile_info.contains("cost_range")) {
+      if (!compile_info.contains(kCompileCostRange)) {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
         return tiling_id;
       }
 
-      auto& costRange = compile_info.at("cost_range");
+      auto& costRange = compile_info.at(kCompileCostRange);
       for (auto it = costRange.begin(); it != costRange.end(); it++) {
         auto& range = it.value();
         if (is_shape_in_range(cur_shape, range)) {
@@ -211,7 +215,7 @@ namespace {
 
   string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                        const nlohmann::json& compile_info, string tiling_id) {
-    if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
+    if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
         return tiling_id;
     }
@@ -221,8 +225,8 @@ namespace {
     int32_t hDim = 2;
     int32_t wDim = 3;
 
-    auto& repo_range = compile_info.at("repo_range");
-    auto& tiling_seeds = compile_info.at("repo_seeds");
+    auto& repo_range = compile_info.at(kCompileRepoRange);
+    auto& tiling_seeds = compile_info.at(kCompileRepoSeeds);
     int64_t min_dist = std::numeric_limits<int64_t>::max();
     for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {
       std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
@@ -237,12 +241,12 @@ namespace {
       }
     }
     if (tiling_id.empty()) {
-      if (!compile_info.contains("cost_range")) {
+      if (!compile_info.contains(kCompileCostRange)) {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
         return tiling_id;
       }
 
-      auto& cost_range = compile_info.at("cost_range");
+      auto& cost_range = compile_info.at(kCompileCostRange);
       for (auto it = cost_range.begin(); it != cost_range.end(); it++) {
         auto& range = it.value();
         if (is_shape_in_range_cube(cur_shape, range)) {
@@ -252,6 +256,28 @@ namespace {
       }
     }
     return tiling_id;
+  }
+
+  void deal_with_compile_info_array(const nlohmann::json& compile_info, nlohmann::json &opInfo) {
+    nlohmann::json item;
+    opInfo = compile_info[0];
+    for (size_t i = 1; i < compile_info.size(); i++) {
+      item = compile_info[i];
+      std::vector<std::string> key_list = {kCompileRepoSeeds, kCompileRepoRange, kCompileCostRange};
+      for (auto key : key_list) {
+        if (item[key].is_object() && !item[key].empty()) {
+          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
+          opInfo[key][item[key].begin().key()] = list_value;
+        }
+      }
+      std::vector<std::string> key_int = {"block_dim"};
+      for (auto key: key_int) {
+        if (item[key].is_object() && !item[key].empty()) {
+          int32_t int_value = item[key].begin().value().get<int32_t>();
+          opInfo[key][item[key].begin().key()] = int_value;
+        }
+      }
+    }
   }
 }
 
@@ -326,25 +352,7 @@ namespace optiling {
     if (compile_info.is_object()) {
       opInfo = compile_info;
     } else if (compile_info.is_array()) {
-      nlohmann::json item;
-      opInfo = compile_info[0];
-      for (size_t i = 1; i < compile_info.size(); i++) {
-        item = compile_info[i];
-        std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
-        for (auto key : key_list) {
-          if (item[key].is_object() && !item[key].empty()) {
-            std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
-            opInfo[key][item[key].begin().key()] = list_value;
-          }
-        }
-        std::vector<std::string> key_int = {"block_dim"};
-        for (auto key: key_int) {
-          if (item[key].is_object() && !item[key].empty()) {
-            int32_t int_value = item[key].begin().value().get<int32_t>();
-            opInfo[key][item[key].begin().key()] = int_value;
-          }
-        }
-      }
+      deal_with_compile_info_array(compile_info, opInfo);
     }
   }
 
@@ -392,11 +400,9 @@ namespace optiling {
       }
 
       if (tiling_id.empty()) {
-        if (op_type == "Conv3D") {
-          if (compile_info["correct_range_flag"]) {
-            CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
-                                "new range is generated during op compile, but the shape is not covered by new range");
-          }
+        if (op_type == "Conv3D" && compile_info["correct_range_flag"]) {
+          CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
+                              "new range is generated during op compile, but the shape is not covered by new range");
         }
         CUBE_INNER_ERR_REPORT(op_type.c_str(), 
             "This shape is not covered by any tiling, please modify range and recompile");

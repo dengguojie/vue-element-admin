@@ -1,5 +1,5 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,13 +57,24 @@ static const int64_t CIN32 = 32;
 const int32_t INDEX_CO_avg = 1;
 const int32_t INDEX_CI_avg = 0;
 static const fp16_t FP16_NUM_ZERO = 0;
+const int32_t N_DIM = 0;
+const int32_t C_DIM = 1;
+const int32_t H_DIM = 2;
+const int32_t W_DIM = 3;
+const int32_t SHAPE_LENTH = 4;
+const std::vector<ge::Format> kFormatList = {FORMAT_NHWC, FORMAT_NCHW, FORMAT_HWCN};
+const std::map<ge::Format, std::vector<int32_t>> kFormatInNchwDimMap = {
+  {FORMAT_NCHW, {0, 1, 2, 3}},
+  {FORMAT_NHWC, {0, 3, 1, 2}},
+  {FORMAT_HWCN, {3, 2, 0, 1}}
+};
 
-Status GenerateConstFP16Dynamic(const vector<int64_t> shape, const float areaFactor, float& output1) {
+Status GenerateConstFP16Dynamic(const vector<int64_t>& shape, const float areaFactor, float& output1) {
   float* output = &output1;
   float area_factor = static_cast<float>(areaFactor);
-  for (int64_t i = 0; i < shape[0]; i++) {
-    for (int64_t k = 0; (k < shape[2] && k < shape[3]); k++) {
-      output[i * (shape[2] * shape[3]) + k * shape[3] + k] = area_factor;
+  for (int64_t i = 0; i < shape[N_DIM]; i++) {
+    for (int64_t k = 0; (k < shape[H_DIM] && k < shape[W_DIM]); k++) {
+      output[i * (shape[H_DIM] * shape[W_DIM]) + k * shape[W_DIM] + k] = area_factor;
     }
   }
   return SUCCESS;
@@ -86,7 +97,9 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   // creat a antiquant node
   std::shared_ptr<ge::OpDesc> mul_desc = nullptr;
   mul_desc = std::make_shared<ge::OpDesc>(depthwise_dw_node->GetName() + "_mul_layer", "Mul");
-  FUSION_PASS_CHECK(mul_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_desc is null, mul failed."), return nullptr);
+  FUSION_PASS_CHECK(mul_desc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_desc is null, mul failed."),
+                    return nullptr);
 
   // add input
   ge::GeTensorDesc input_desc = depthwise_dw_node->GetOpDesc()->GetOutputDesc(0);
@@ -94,24 +107,16 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   ge::Format mul_format = input_desc.GetFormat();
   vector<int64_t> dim_mul = mul_shape.GetDims();
 
+  vector<int32_t> dim_map;
   if (dim_mul.size() != 0) {
-    if (input_origin_format == FORMAT_NHWC) {
-      mul_n = dim_mul[0];
-      mul_h = dim_mul[1];
-      mul_w = dim_mul[2];
-      mul_c = dim_mul[3];
-    } else if (input_origin_format == FORMAT_NCHW){
-      mul_n = dim_mul[0];
-      mul_h = dim_mul[2];
-      mul_w = dim_mul[3];
-      mul_c = dim_mul[1];
-    } else if (input_origin_format == FORMAT_HWCN){
-      mul_n = dim_mul[3];
-      mul_h = dim_mul[0];
-      mul_w = dim_mul[1];
-      mul_c = dim_mul[2];
+    if (std::find(kFormatList.begin(), kFormatList.end(), input_origin_format) !=  kFormatList.end()) {
+      dim_map = kFormatInNchwDimMap.at(input_origin_format);
+      mul_n = dim_mul[dim_map[N_DIM]];
+      mul_c = dim_mul[dim_map[C_DIM]];
+      mul_h = dim_mul[dim_map[H_DIM]];
+      mul_w = dim_mul[dim_map[W_DIM]];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "input_origin_format only support NHWC and NCHW");
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "input_origin_format only support NHWC, NCHW and HWCN");
       return nullptr;
     }
   } else {
@@ -202,28 +207,21 @@ Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& 
   ge::Format input_desc0_origin_format = input_desc0.GetOriginFormat();
   vector<int64_t> out_dim_info = input_desc0.GetOriginShape().GetDims();
   OP_LOGI("in AddCoffe get variable");
-  if (out_dim_info.size() == 4) {
-    if (input_desc0_origin_format == FORMAT_NHWC) {
-      output_n = out_dim_info[0];
-      output_h = out_dim_info[1];
-      output_w = out_dim_info[2];
-      output_c = out_dim_info[3];
-    } else if (input_desc0_origin_format == FORMAT_NCHW) {
-      output_n = out_dim_info[0];
-      output_h = out_dim_info[2];
-      output_w = out_dim_info[3];
-      output_c = out_dim_info[1];
-    } else if (input_desc0_origin_format == FORMAT_HWCN) {
-      output_n = out_dim_info[3];
-      output_h = out_dim_info[0];
-      output_w = out_dim_info[1];
-      output_c = out_dim_info[2];
+  vector<int32_t> dim_map;
+  if (out_dim_info.size() == SHAPE_LENTH) {
+    if (std::find(kFormatList.begin(), kFormatList.end(), input_desc0_origin_format) !=  kFormatList.end()) {
+      dim_map = kFormatInNchwDimMap.at(input_desc0_origin_format);
+      output_n = out_dim_info[dim_map[N_DIM]];
+      output_c = out_dim_info[dim_map[C_DIM]];
+      output_h = out_dim_info[dim_map[H_DIM]];
+      output_w = out_dim_info[dim_map[W_DIM]];
     }
   } else {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "dim_info is not right, please check!");
     return NOT_CHANGED;
   }
   OP_LOGI("in AddCoffe get output n, H, W, C");
+
   ge::GeTensorPtr coffe_ptr = nullptr;
   int64_t coffe_size = matrix_size;
   FUSION_PASS_CHECK(coffe_size <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "coffe_size is Invalid"), return PARAM_INVALID);
@@ -302,8 +300,8 @@ Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& 
   }
   const_input->GetOpDesc()->SetType(CONSTANTOP);
 
-  return SUCCESS;
   OP_LOGI("Leave DepthwiseDwMulFusionPass::AddCoffe");
+  return SUCCESS;
 }
 
 vector<FusionPattern*> DepthwiseDwMulFusionPass::DefinePatterns() {
@@ -348,7 +346,7 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   bool is_dynamic = false;
   bool is_fuzz_build = false;
   std::vector<int64_t> filter_size;
-  std::vector<int64_t> filter_size_reset(4);
+  std::vector<int64_t> filter_size_reset(SHAPE_LENTH);
   ge::AttrUtils::GetBool(depthwise_dw_desc, ge::ATTR_NAME_FUZZ_BUILD, is_fuzz_build);
   is_dynamic = (dim_info.size() == 1 && dim_info[0] == -2) || 
                 std::find(dim_info.begin(), dim_info.end(), -1) != dim_info.end() || is_fuzz_build;
@@ -372,34 +370,18 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   int64_t filter_w = 0;
   int64_t groups = 0;
   int64_t multiplier = 0;
-  if (out_dim_info.size() == 4 && filter_size.size() == 4) {
-    if (output_origin_format == FORMAT_NHWC) {
-      output_n = out_dim_info[0];
-      output_h = out_dim_info[1];
-      output_w = out_dim_info[2];
-      output_c = out_dim_info[3];
-      filter_size_reset[0] = filter_size[0] * filter_size[3];
-      filter_size_reset[1] = filter_size[1];
-      filter_size_reset[2] = filter_size[2];
-      filter_size_reset[3] = 1;
-    } else if (output_origin_format == FORMAT_NCHW) {
-      output_n = out_dim_info[0];
-      output_h = out_dim_info[2];
-      output_w = out_dim_info[3];
-      output_c = out_dim_info[1];
-      filter_size_reset[0] = filter_size[0] * filter_size[1];
-      filter_size_reset[2] = filter_size[2];
-      filter_size_reset[3] = filter_size[3];
-      filter_size_reset[1] = 1;
-    } else if (output_origin_format == FORMAT_HWCN) {
-      output_n = out_dim_info[3];
-      output_h = out_dim_info[0];
-      output_w = out_dim_info[1];
-      output_c = out_dim_info[2];
-      filter_size_reset[3] = filter_size[3] * filter_size[2];
-      filter_size_reset[0] = filter_size[0];
-      filter_size_reset[1] = filter_size[1];
-      filter_size_reset[2] = 1;
+  vector<int32_t> dim_map;
+  if (out_dim_info.size() == SHAPE_LENTH && filter_size.size() == SHAPE_LENTH) {
+    if (std::find(kFormatList.begin(), kFormatList.end(), output_origin_format) !=  kFormatList.end()) {
+      dim_map = kFormatInNchwDimMap.at(output_origin_format);
+      output_n = out_dim_info[dim_map[N_DIM]];
+      output_c = out_dim_info[dim_map[C_DIM]];
+      output_h = out_dim_info[dim_map[H_DIM]];
+      output_w = out_dim_info[dim_map[W_DIM]];
+      filter_size_reset[dim_map[N_DIM]] = filter_size[dim_map[N_DIM]] * filter_size[dim_map[C_DIM]];
+      filter_size_reset[dim_map[C_DIM]] = 1;
+      filter_size_reset[dim_map[H_DIM]] = filter_size[dim_map[H_DIM]];
+      filter_size_reset[dim_map[W_DIM]] = filter_size[dim_map[W_DIM]];
     }
   } else {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "dim_info is not right, please check!");
