@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,13 @@
  */
 #include <vector>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
 #include "error_log.h"
+#include "graph/utils/op_desc_utils.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 
@@ -124,21 +126,21 @@ void InitTilingParams(CleanTilingParams& params) {
   params.repeat_time_last_part_last_core_input_scalar = 0;
 }
 
-void WriteTilingParams(const CleanTilingParams& params, OpRunInfo& run_info) {
-  ByteBufferPut(run_info.tiling_data, params.select_key_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ele_num_full_mask_full_repeat_time_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.burst_len_full_mask_full_repeat_time_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ele_num_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.init_times_full_mask_full_repeat_time_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ele_num_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.burst_len_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.repeat_time_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ele_num_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.init_times_full_mask_full_repeat_time_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ele_num_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.burst_len_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.repeat_time_last_part_last_core_input_scalar);
+void WriteTilingParams(const CleanTilingParams& params, utils::OpRunInfo& run_info) {
+  run_info.AddTilingData(params.select_key_input_scalar);
+  run_info.AddTilingData(params.need_core_num_input_scalar);
+  run_info.AddTilingData(params.ele_num_full_mask_full_repeat_time_input_scalar);
+  run_info.AddTilingData(params.burst_len_full_mask_full_repeat_time_input_scalar);
+  run_info.AddTilingData(params.ele_num_front_core_input_scalar);
+  run_info.AddTilingData(params.init_times_full_mask_full_repeat_time_front_core_input_scalar);
+  run_info.AddTilingData(params.ele_num_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.burst_len_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.repeat_time_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.ele_num_last_core_input_scalar);
+  run_info.AddTilingData(params.init_times_full_mask_full_repeat_time_last_core_input_scalar);
+  run_info.AddTilingData(params.ele_num_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.burst_len_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.repeat_time_last_part_last_core_input_scalar);
 }
 
 void PrintTilingParams(const std::string& op_type, const CleanTilingParams& params) {
@@ -152,8 +154,8 @@ void PrintTilingParams(const std::string& op_type, const CleanTilingParams& para
           params.burst_len_full_mask_full_repeat_time_input_scalar);
   OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_front_core_input_scalar=%d", op_type.c_str(),
           params.ele_num_front_core_input_scalar);
-  OP_LOGD(op_type.c_str(), "op [%s] : params.init_times_full_mask_full_repeat_time_front_core_input_scalar=%d", op_type.c_str(),
-          params.init_times_full_mask_full_repeat_time_front_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.init_times_full_mask_full_repeat_time_front_core_input_scalar=%d",
+          op_type.c_str(), params.init_times_full_mask_full_repeat_time_front_core_input_scalar);
   OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_front_part_front_core_input_scalar=%d", op_type.c_str(),
           params.ele_num_front_part_front_core_input_scalar);
   OP_LOGD(op_type.c_str(), "op [%s] : params.burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
@@ -162,8 +164,8 @@ void PrintTilingParams(const std::string& op_type, const CleanTilingParams& para
           params.repeat_time_last_part_front_core_input_scalar);
   OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_last_core_input_scalar=%d", op_type.c_str(),
           params.ele_num_last_core_input_scalar);
-  OP_LOGD(op_type.c_str(), "op [%s] : params.init_times_full_mask_full_repeat_time_last_core_input_scalar=%d", op_type.c_str(),
-          params.init_times_full_mask_full_repeat_time_last_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.init_times_full_mask_full_repeat_time_last_core_input_scalar=%d",
+          op_type.c_str(), params.init_times_full_mask_full_repeat_time_last_core_input_scalar);
   OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_front_part_last_core_input_scalar=%d", op_type.c_str(),
           params.ele_num_front_part_last_core_input_scalar);
   OP_LOGD(op_type.c_str(), "op [%s] : params.burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
@@ -185,9 +187,12 @@ bool CheckSize(const std::string& op_type, const uint32_t& size) {
 }
 
 // tiling function
-bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& op_paras,
-                                  const nlohmann::json& opCompileInfoJson, OpRunInfo& run_info) {
+bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const ge::Operator& op_paras,
+                                  const nlohmann::json& opCompileInfoJson, utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "op[%s] op tiling begin.", op_type.c_str());
+
+  PROFILING_TILING_INIT(op_type.c_str());
+
   std::vector<int64_t> workspace_size_list;
   uint32_t workspace_num = 1;
   uint32_t core_num = 1;
@@ -198,24 +203,18 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed");
     return false;
   }
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   OP_LOGI(op_type.c_str(), "op[%s] GetCompileParams success.", op_type.c_str());
   if (opCompileInfoJson.find("_workspace_size_list") == opCompileInfoJson.end()) {
-    OP_LOGW(op_type.c_str(), "key _workspace_size_list not exists.");
-    if (op_paras.const_inputs.find("workspace_size") == op_paras.const_inputs.end()) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: workspace_size not exists");
-      return false;
-    }
-    for (size_t i = 0; i < workspace_num; i++) {
-      int64_t addr_tensor_size = std::get<1>(op_paras.const_inputs.at("workspace_size"));
-      workspace_size_list.push_back(addr_tensor_size);
-      OP_LOGD(op_type.c_str(), "op: addr_tensor_size=%d", addr_tensor_size);
-    }
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "key _workspace_size_list not exists.");
+    return false;
   } else {
     const auto& workspace_size_list_1 = opCompileInfoJson["_workspace_size_list"];
     for (auto iter = workspace_size_list_1.begin(); iter != workspace_size_list_1.end(); iter++) {
       workspace_size_list.push_back((int64_t)*iter);
     }
   }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   auto size_count = workspace_size_list.size();
   for (size_t i = 0; i < size_count; i++) {
     int64_t addr_tensor_size = workspace_size_list[i];
@@ -223,7 +222,7 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
     if (!flag) {
       return false;
     }
-    OP_LOGD(op_type.c_str(), "op: addr_tensor_size=%d",  addr_tensor_size);
+    OP_LOGD(op_type.c_str(), "op: addr_tensor_size=%d", addr_tensor_size);
     uint32_t ele_num_fp32 = addr_tensor_size / BYTE_FP32;
     CleanTilingParams params;
     // init tiling params
@@ -242,52 +241,47 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
     if (params.need_core_num_input_scalar == 1) {
       // use one core
       params.ele_num_front_core_input_scalar = ele_num_fp32;
-      ComputeParamsOneCore(params.ele_num_front_core_input_scalar,
-                           params.ele_num_full_mask_full_repeat_time_input_scalar,
-                           params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
-                           params.ele_num_front_part_front_core_input_scalar,
-                           params.burst_len_last_part_front_core_input_scalar,
-                           params.repeat_time_last_part_front_core_input_scalar);
+      ComputeParamsOneCore(
+          params.ele_num_front_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
+          params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
+          params.ele_num_front_part_front_core_input_scalar, params.burst_len_last_part_front_core_input_scalar,
+          params.repeat_time_last_part_front_core_input_scalar);
 
       params.ele_num_last_core_input_scalar = params.ele_num_front_core_input_scalar;
-      ComputeParamsOneCore(params.ele_num_last_core_input_scalar,
-                           params.ele_num_full_mask_full_repeat_time_input_scalar,
-                           params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
-                           params.ele_num_front_part_last_core_input_scalar,
-                           params.burst_len_last_part_last_core_input_scalar,
-                           params.repeat_time_last_part_last_core_input_scalar);
+      ComputeParamsOneCore(
+          params.ele_num_last_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
+          params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
+          params.ele_num_front_part_last_core_input_scalar, params.burst_len_last_part_last_core_input_scalar,
+          params.repeat_time_last_part_last_core_input_scalar);
     } else if (params.need_core_num_input_scalar > 1) {
       // use all core
       // front core
       params.ele_num_front_core_input_scalar = ele_num_fp32 / params.need_core_num_input_scalar;
-      ComputeParamsOneCore(params.ele_num_front_core_input_scalar,
-                           params.ele_num_full_mask_full_repeat_time_input_scalar,
-                           params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
-                           params.ele_num_front_part_front_core_input_scalar,
-                           params.burst_len_last_part_front_core_input_scalar,
-                           params.repeat_time_last_part_front_core_input_scalar);
+      ComputeParamsOneCore(
+          params.ele_num_front_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
+          params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
+          params.ele_num_front_part_front_core_input_scalar, params.burst_len_last_part_front_core_input_scalar,
+          params.repeat_time_last_part_front_core_input_scalar);
       // last core
       params.ele_num_last_core_input_scalar =
           ele_num_fp32 - params.ele_num_front_core_input_scalar * (params.need_core_num_input_scalar - 1);
-      ComputeParamsOneCore(params.ele_num_last_core_input_scalar,
-                           params.ele_num_full_mask_full_repeat_time_input_scalar,
-                           params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
-                           params.ele_num_front_part_last_core_input_scalar,
-                           params.burst_len_last_part_last_core_input_scalar,
-                           params.repeat_time_last_part_last_core_input_scalar);
+      ComputeParamsOneCore(
+          params.ele_num_last_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
+          params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
+          params.ele_num_front_part_last_core_input_scalar, params.burst_len_last_part_last_core_input_scalar,
+          params.repeat_time_last_part_last_core_input_scalar);
     }
     // write tiling params to run_info
     WriteTilingParams(params, run_info);
+    PROFILING_TILING_AFTER_CALCU_TILING_REG();
     // print tiling params
     PrintTilingParams(op_type, params);
     // block_dim, core num used in tik op
-    run_info.block_dim = params.need_core_num_input_scalar;
-    // workspace, null for tik op
-    std::vector<int64_t> workspace;
-    run_info.workspaces = workspace;
+    run_info.SetBlockDim(params.need_core_num_input_scalar);
+    PROFILING_TILING_END();
   }
   OP_LOGI(op_type.c_str(), "op[%s] op tiling success", op_type.c_str());
   return true;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling);
 }  // namespace optiling
