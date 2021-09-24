@@ -256,6 +256,7 @@ IMPLEMT_VERIFIER(Add, AddVerify) {
 INFER_DATA_SLICE_FUNC_REG(Add, ElewiseTwoInputInferDataSlice);
 COMMON_INFER_FUNC_REG(Add, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Add, AddVerify);
+INFER_VALUE_RANGE_DEFAULT_REG(Add);
 // ---------------------Add END------------------------
 
 // ---------------------FusedMulAdd--------------------
