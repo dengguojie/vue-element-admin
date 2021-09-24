@@ -24,6 +24,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "tbe_fusion_pass_util.h"
+#include "tbe_ops_pass_util.h"
 #include "external/graph/operator_factory.h"
 
 using namespace ge;
@@ -466,6 +467,9 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
     // update stride input desc of slice op
     op.SetAttr("axis", new_axes);
     fuse_desc->SetType("ReverseV2D");
+    std::map<string, uint32_t> name_index_map = {{"x", 0}};
+    fuse_desc->UpdateInputName(name_index_map);
+    ClearOpInferDepends(fused_node);
   } else if (need_to_cpu) {
     // construct const tensor : begin, end, strides
     MakeConstNode(fused_node, fuse_desc);
@@ -479,6 +483,10 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
     fuse_desc->DelAttr("end");
     fuse_desc->DelAttr("strides");
     fuse_desc->SetType("StridedSlice");  // AICPU Operator
+    std::map<string, uint32_t> name_index_map = {{"x", 0}, {"begin", 1}, {"end", 2}, {"strides", 3}};
+    fuse_desc->UpdateInputName(name_index_map);
+    vector<string> infer_depends_vec = {"begin", "end", "strides"};
+    fuse_desc->SetOpInferDepends(infer_depends_vec);
   } else {
     // remove input node as index descend
     for (int32_t index = 4; index > 0; index--) {
@@ -489,6 +497,9 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
           return GRAPH_FAILED);
     }
     fuse_desc->SetType("StridedSliceD");  // AICORE Operator
+    std::map<string, uint32_t> name_index_map = {{"x", 0}};
+    fuse_desc->UpdateInputName(name_index_map);
+    ClearOpInferDepends(fused_node);
   }
   OP_LOGD(FUSEDNODE.c_str(), "SetType to [ %s ]", fuse_desc->GetType().c_str());
   fusion_node.push_back(fused_node);
