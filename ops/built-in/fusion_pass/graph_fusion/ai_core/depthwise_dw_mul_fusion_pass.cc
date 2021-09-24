@@ -104,7 +104,6 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   // add input
   ge::GeTensorDesc input_desc = depthwise_dw_node->GetOpDesc()->GetOutputDesc(0);
   ge::GeShape mul_shape = input_desc.GetShape();
-  ge::Format mul_format = input_desc.GetFormat();
   vector<int64_t> dim_mul = mul_shape.GetDims();
 
   vector<int32_t> dim_map;
@@ -337,7 +336,6 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // get shape
   ge::GeShape depthwise_dw_input_shape = depthwise_dw_input_tensor.GetShape();
   ge::GeShape depthwise_dw_output_shape = depthwise_dw_output_tensor.GetShape();
-  ge::Format input_origin_format = depthwise_dw_input_tensor.GetOriginFormat();
   ge::Format output_origin_format = depthwise_dw_output_tensor.GetOriginFormat();
   // GESHAPE->vector
   OP_LOGD("After get depthwise_dw_input_shape, depthwise_dw_output_shape, input_origin_format, output_origin_format");
@@ -364,10 +362,6 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   int64_t output_c = 0;
   int64_t output_h = 0;
   int64_t output_w = 0;
-  int64_t filter_n = 0;
-  int64_t filter_c = 0;
-  int64_t filter_h = 0;
-  int64_t filter_w = 0;
   int64_t groups = 0;
   int64_t multiplier = 0;
   vector<int32_t> dim_map;
@@ -390,11 +384,10 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // when static op or dynamic op phase_running, is_dynamic = false
   OP_LOGD("After get output n, H, W, C");
   vector<int64_t> dim_info2;
-  graphStatus ret_res;
   ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
   depthwise_dw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
   depthwise_dw_output_tensor.SetShape(ge::GeShape(filter_size_reset));
-  ret_res = depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
+  depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
   dim_info2 = depthwise_dw_output_tensor.GetOriginShape().GetDims();
   OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0],
       (int)dim_info2[1], (int)dim_info2[2], (int)dim_info2[3]);

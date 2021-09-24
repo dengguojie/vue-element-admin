@@ -1,0 +1,37 @@
+[
+    {
+        "op": "Dilation",
+        "input_desc": [
+            {
+                "dtype": "float16",
+                "format": "ND",
+                "shape": [8, 10, 3]
+            }
+        ],
+        "output_desc": [
+            {
+                "dtype": "float16",
+                "format": "ND",
+                "shape": [22, 46, 3]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dilations",
+                "value": [3, 5, 1],
+                "type": "list_int"
+            },
+            {
+                "name": "pads",
+                "value": [0, 0, 0],
+                "type": "list_int"
+            },
+            {
+                "name": "padding_value",
+                "value": 0,
+                "type": "int"
+            }
+        ]
+
+    }
+]

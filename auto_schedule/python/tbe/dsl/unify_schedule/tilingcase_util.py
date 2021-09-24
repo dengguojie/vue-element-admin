@@ -161,13 +161,11 @@ class Conv2dBackpropParaProcess():
         def _get_lower_input(y_in, k_size, pads, stride, dilation):
             if not y_in:
                 return y_in
-            # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
 
         def _get_higher_input(y_in, k_size, pads, stride, dilation):
             if not y_in:
                 return y_in
-            # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1] + stride - 1
 
         def _get_output(x_in, k_size, pads, stride, dilation):
@@ -300,11 +298,9 @@ class Conv2dBackpropParaProcess():
         def _get_lower_input(y_in, k_size, pads, stride, dilation):
             if not y_in:
                 return y_in
-            # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
 
         def _get_higher_input(y_in, k_size, pads, stride, dilation):
-            # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1] + stride - 1
 
         correct_range_flag = False

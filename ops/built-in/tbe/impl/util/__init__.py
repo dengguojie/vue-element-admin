@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# Copyright 2019-2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,5 @@
 # limitations under the License.
 # ============================================================================
 """
-conv2d backprop filter tiling case
+__init__.py
 """
-import warnings
-
-
-def calc_conv2dbp_filter(outs, option=None):
-    warnings.warn("te.lang.dynamic.schedule.conv2d_bp_filter_tilingcase is expired, "
-        "please replace it with the func tbe.dsl.unify_schedule.conv2d_bp_filter_tilingcase",
-        DeprecationWarning)
-    from tbe.dsl.unify_schedule.conv2d_bp_filter_tilingcase import calc_conv2dbp_filter
-    if option:
-        return calc_conv2dbp_filter(outs, option)
-    else:
-        return calc_conv2dbp_filter(outs)

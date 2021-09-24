@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +18,11 @@
 dilation
 """
 from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 
-# pylint: disable=invalid-name,unused-argument,too-many-arguments
+
 def _param_check(x, dilations):
     shape_x = x.get("shape")
     if shape_x is None:
@@ -46,15 +49,12 @@ def _param_check(x, dilations):
             args_dict,
             error_manager_util.get_error_message(args_dict)
         )
-    if not all(list(value > 0 and type(value) == int for value in dilations)):
-        args_dict = {
-            "errCode": "E60038",
-            "desc": "Elements in dilations should be positive integer"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
+    for value in dilations:
+        if not isinstance(value, int) or value <= 0:
+            error_manager_cube.raise_err_specific(
+                "Dilation",
+                "Elements in dilations should be positive integer"
+                )
     dtype = x.get("dtype")
     if dtype not in ("int8", "float16", "float32"):
         args_dict = {
