@@ -137,6 +137,211 @@ COMMON_INFER_FUNC_REG(Yolo, YoloInferShape);
 VERIFY_FUNC_REG(Yolo, YoloVerify);
 // ----------------Yolo-------------------
 
+// ----------------YoloPreDetection-------------------
+int64_t YoloV5CeilX(int64_t size, int64_t alignSize) {
+  return (size + alignSize - 1) / alignSize * alignSize;
+}
+IMPLEMT_COMMON_INFERFUNC(YoloPreDetectionInferShape) {
+  // get input depth
+  OP_LOGI("yolo_pre_detection", "infer shape begin---");
+  auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
+  CHECK(inputShape.size() < 4,
+        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
+        return GRAPH_FAILED);
+  int64_t batchNum = (int64_t)inputShape[0];
+  int64_t hwSize = (int64_t)(inputShape[2] * inputShape[3]);
+  DataType inputType = op.GetInputDesc("x").GetDataType();
+  std::int64_t boxNum = 0;
+  std::int64_t coordNum = 0;
+  std::int64_t classNum = 0;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("boxes", boxNum)) {
+    boxNum = 3;
+  }
+  if (ge::GRAPH_SUCCESS != op.GetAttr("coords", coordNum)) {
+    coordNum = 4;
+  }
+  if (ge::GRAPH_SUCCESS != op.GetAttr("classes", classNum)) {
+    classNum = 80;
+  }
+  std::vector<int64_t> coord_dim_vector;
+  coord_dim_vector.push_back(batchNum);
+  coord_dim_vector.push_back(boxNum * coordNum);
+  coord_dim_vector.push_back(YoloV5CeilX(hwSize * 2 + 32, 32) / 2);
+  Shape coordsOutShape(coord_dim_vector);
+  TensorDesc coordsDesc = op.GetOutputDesc("coord_data");
+  coordsDesc.SetShape(coordsOutShape);
+  coordsDesc.SetDataType(inputType);
+  std::vector<int64_t> obj_dim_vector;
+  obj_dim_vector.push_back(batchNum);
+  obj_dim_vector.push_back(YoloV5CeilX(boxNum * hwSize * 2 + 32, 32) / 2);
+  Shape objOutShape(obj_dim_vector);
+  TensorDesc objDesc = op.GetOutputDesc("obj_prob");
+  objDesc.SetShape(objOutShape);
+  objDesc.SetDataType(inputType);
+  std::vector<int64_t> class_dim_vector;
+  class_dim_vector.push_back(batchNum);
+  class_dim_vector.push_back(classNum);
+  class_dim_vector.push_back(YoloV5CeilX(boxNum * hwSize * 2 + 32, 32) / 2);
+  Shape classesOutShape(class_dim_vector);
+  TensorDesc classesDesc = op.GetOutputDesc("classes_prob");
+  classesDesc.SetShape(classesOutShape);
+  classesDesc.SetDataType(inputType);
+  (void)op.UpdateOutputDesc("coord_data", coordsDesc);
+  (void)op.UpdateOutputDesc("obj_prob", objDesc);
+  (void)op.UpdateOutputDesc("classes_prob", classesDesc);
+  OP_LOGI("yolo_pre_detection", "infer shape end---");
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(YoloPreDetection, YoloPreDetectionVerify) {
+  int64_t boxNum = 0;
+  int64_t coordNum = 0;
+  int64_t classNum = 0;
+  auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
+  CHECK(inputShape.size() < 2,
+        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
+        return GRAPH_FAILED);
+  int64_t channelNum = (int64_t)inputShape[1];
+
+  if (ge::GRAPH_SUCCESS != op.GetAttr("boxes", boxNum)) {
+    boxNum = 3;
+  }
+  if (ge::GRAPH_SUCCESS != op.GetAttr("coords", coordNum)) {
+    coordNum = 4;
+  }
+  if (ge::GRAPH_SUCCESS != op.GetAttr("classes", classNum)) {
+    classNum = 80;
+  }
+  if (boxNum < 1) {
+    std::string err_msg = GetAttrValueErrMsg("boxNum", ConcatString(boxNum), ConcatString("greater than 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (coordNum != 4) {
+    std::string err_msg = GetAttrValueErrMsg("coordNum", ConcatString(coordNum), ConcatString("equal to 4"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (classNum < 1 || classNum > 1024) {
+    std::string err_msg = GetParamOutRangeErrMsg("", ConcatString("[1, 1024]"), ConcatString(classNum));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (boxNum * (1 + coordNum + classNum) != channelNum) {
+    std::string err_msg = GetAttrValueErrMsg("channels", ConcatString(channelNum), ConcatString("equal with boxes*(1+coords+classes)"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(YoloPreDetection, YoloPreDetectionInferShape);
+VERIFY_FUNC_REG(YoloPreDetection, YoloPreDetectionVerify);
+// ----------------YoloPreDetection-------------------
+
+// ----------------YoloV5DetectionOutput------------------
+IMPLEMT_VERIFIER(YoloV5DetectionOutput, YoloV5DetectionOutputVerify) {
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_COMMON_INFERFUNC(YoloV5DetectionOutputInferShape) {
+  OP_LOGI(op.GetName().c_str(), "infer shape begin---");
+  auto coord_shape = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+  if (coord_shape.empty()) {
+    std::string err_msg = OtherErrMsg("input shape is NULL!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  int64_t batch = coord_shape[0];
+  DataType input_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+  std::int64_t maxNum = 0;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
+    std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> dim_vector;
+  dim_vector.push_back(batch);
+  std::int64_t outBoxDim = 3;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("out_box_dim", outBoxDim)) {
+    std::string err_msg = GetInputInvalidErrMsg("out_box_dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (outBoxDim == 2) {
+    dim_vector.push_back(6 * maxNum);
+  } else if (outBoxDim == 3) {
+    dim_vector.push_back(6);
+    dim_vector.push_back(maxNum);
+  }
+  Shape out_shape_bbox(dim_vector);
+  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  bbox_desc.SetShape(out_shape_bbox);
+  bbox_desc.SetDataType(input_dtype);
+  Shape out_shape_bbox_out_num({batch, 8});
+  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  num_desc.SetShape(out_shape_bbox_out_num);
+  num_desc.SetDataType(ge::DT_INT32);
+  (void)op.UpdateOutputDesc("box_out", bbox_desc);
+  (void)op.UpdateOutputDesc("box_out_num", num_desc);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(YoloV5DetectionOutput, YoloV5DetectionOutputInferShape);
+// ----------------YoloV5DetectionOutput------------------
+
+// ----------------YoloV5DetectionOutputD------------------
+IMPLEMT_VERIFIER(YoloV5DetectionOutputD, YoloV5DetectionOutputDVerify) {
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_COMMON_INFERFUNC(YoloV5DetectionOutputDInferShape) {
+  OP_LOGI(op.GetName().c_str(), "infer shape begin---");
+  auto coord_shape = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+  if (coord_shape.empty()) {
+    std::string err_msg = OtherErrMsg("input shape is NULL!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  int64_t batch = coord_shape[0];
+  DataType input_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+  std::int64_t maxNum = 0;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
+    std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> dim_vector;
+  dim_vector.push_back(batch);
+  std::int64_t outBoxDim = 3;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("out_box_dim", outBoxDim)) {
+    std::string err_msg = GetInputInvalidErrMsg("out_box_dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (outBoxDim == 2) {
+    dim_vector.push_back(6 * maxNum);
+  } else if (outBoxDim == 3) {
+    dim_vector.push_back(6);
+    dim_vector.push_back(maxNum);
+  }
+  Shape out_shape_bbox(dim_vector);
+  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  bbox_desc.SetShape(out_shape_bbox);
+  bbox_desc.SetDataType(input_dtype);
+  Shape out_shape_bbox_out_num({batch, 8});
+  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  num_desc.SetShape(out_shape_bbox_out_num);
+  num_desc.SetDataType(ge::DT_INT32);
+  (void)op.UpdateOutputDesc("box_out", bbox_desc);
+  (void)op.UpdateOutputDesc("box_out_num", num_desc);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(YoloV5DetectionOutputD, YoloV5DetectionOutputDInferShape);
+// ----------------YoloV5DetectionOutputD------------------
+
 // ----------------YoloV2DetectionOutput-------------------
 IMPLEMT_VERIFIER(YoloV2DetectionOutput, YoloV2DetectionOutputVerify) {
   return GRAPH_SUCCESS;

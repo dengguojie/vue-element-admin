@@ -1,0 +1,514 @@
+[
+  {
+    "case_name": "test_YoloV5DetectionOutputD_001",
+    "op": "YoloV5DetectionOutputD",
+    "input_desc": [
+      {
+        "name": "x0",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          2,
+          4,
+          36
+        ],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x1",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          2,
+          4,
+          36
+        ],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x2",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          2,
+          4,
+          36
+        ],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x3",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x4",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x5",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x6",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x7",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x8",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x9",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x10",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [6, 6],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x11",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [6, 6],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x12",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [6, 6],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x13",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [6, 6],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x14",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [6, 6],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x15",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [6, 6],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "box_out",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          12320
+        ]
+      },
+      {
+        "name": "box_out_num",
+        "format": ["NCHW"],
+        "type": ["int32"],
+        "shape": [
+          96
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "biases",
+        "value": [
+            116.0,
+            90.0,
+            156.0,
+            198.0,
+            373.0,
+            326.0,
+            30.0,
+            61.0,
+            62.0,
+            45.0,
+            59.0,
+            119.0,
+            10.0,
+            13.0,
+            16.0,
+            30.0,
+            33.0,
+            23.0
+        ],
+        "type": "list_float"
+      },
+      {
+        "name": "boxes",
+        "value": 3,
+        "type": "int"
+      },
+      {
+        "name": "coords",
+        "value": 4,
+        "type": "int"
+      },
+      {
+        "name": "classes",
+        "value": 80,
+        "type": "int"
+      },
+      {
+        "name": "relative",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "obj_threshold",
+        "value": 0.5,
+        "type": "float"
+      },
+      {
+        "name": "post_nms_topn",
+        "value": 512,
+        "type": "int"
+      },
+      {
+        "name": "score_threshold",
+        "value": 0.5,
+        "type": "float"
+      },
+      {
+        "name": "iou_threshold",
+        "value": 0.45,
+        "type": "float"
+      },
+      {
+        "name": "pre_nms_topn",
+        "value": 512,
+        "type": "int"
+      },
+      {
+        "name": "N",
+        "value": 10,
+        "type": "int"
+      },
+      {
+        "name": "resize_origin_img_to_net",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "out_box_dim",
+        "value": 3,
+        "type": "int"
+      },
+      {
+        "name": "alpha",
+        "value": 2.0,
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "case_name": "test_YoloV5DetectionOutputD_002",
+    "op": "YoloV5DetectionOutputD",
+    "input_desc": [
+      {
+        "name": "x0",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          1,
+          12,
+          6416
+        ],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x1",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          1,
+          12,
+          1616
+        ],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x2",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          1,
+          12,
+          416
+        ],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x3",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 19216],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x4",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 4816],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x5",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 1216],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x6",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 80, 19216],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x7",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 80, 4816],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x8",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 80, 1216],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x9",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [1, 4],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x10",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [80, 80, 1, 1],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x11",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [40, 40, 1, 1],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x12",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [20, 20, 1, 1],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x13",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [80, 80, 1, 1],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x14",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [40, 40, 1, 1],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      },
+      {
+        "name": "x15",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [20, 20, 1, 1],
+        "value_range":[[0.1, 1.0]],
+        "data_distribute":["uniform"]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "box_out",
+        "format": ["NCHW"],
+        "type": ["float16"],
+        "shape": [
+          1,
+          6144
+        ]
+      },
+      {
+        "name": "box_out_num",
+        "format": ["NCHW"],
+        "type": ["int32"],
+        "shape": [
+          1,
+          8
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "biases",
+        "value": [
+            10.0,
+            13.0,
+            16.0,
+            30.0,
+            33.0,
+            23.0,
+            30.0,
+            61.0,
+            62.0,
+            45.0,
+            59.0,
+            119.0,
+            116.0,
+            90.0,
+            156.0,
+            198.0,
+            373.0,
+            326.0
+        ],
+        "type": "list_float"
+      },
+      {
+        "name": "boxes",
+        "value": 3,
+        "type": "int"
+      },
+      {
+        "name": "coords",
+        "value": 4,
+        "type": "int"
+      },
+      {
+        "name": "classes",
+        "value": 80,
+        "type": "int"
+      },
+      {
+        "name": "relative",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "obj_threshold",
+        "value": 0.4,
+        "type": "float"
+      },
+      {
+        "name": "post_nms_topn",
+        "value": 1024,
+        "type": "int"
+      },
+      {
+        "name": "score_threshold",
+        "value": 0.4,
+        "type": "float"
+      },
+      {
+        "name": "iou_threshold",
+        "value": 0.5,
+        "type": "float"
+      },
+      {
+        "name": "pre_nms_topn",
+        "value": 1024,
+        "type": "int"
+      },
+      {
+        "name": "N",
+        "value": 10,
+        "type": "int"
+      },
+      {
+        "name": "resize_origin_img_to_net",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "out_box_dim",
+        "value": 2,
+        "type": "int"
+      },
+      {
+        "name": "alpha",
+        "value": 2.0,
+        "type": "float"
+      }
+    ]
+  }
+]
