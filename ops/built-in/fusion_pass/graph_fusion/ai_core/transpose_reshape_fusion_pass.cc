@@ -45,7 +45,8 @@ vector<FusionPattern*> TransposeReshapeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TransposeReshapeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_TRANSPOSE, {"TransposeD"})
@@ -60,12 +61,29 @@ vector<FusionPattern*> TransposeReshapeFusionPass::DefinePatterns() {
 
 Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr transNode = GetNodeFromMapping(PATTERN_TRANSPOSE, mapping);
-  FUSION_PASS_CHECK(transNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeNode is null, fusion failed."),
+  FUSION_PASS_CHECK(transNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr transDesc = transNode->GetOpDesc();
-  FUSION_PASS_CHECK(transDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeNode's OpDesc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      transDesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeNode's OpDesc is null, fusion failed."),
+      return PARAM_INVALID);
+
+  // Remove the edge between Reshape and Const node
+  if (transNode->GetOutControlAnchor()) {
+    for (auto inControlAnchor : transNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
+      string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(inControlAnchor->GetOwnerNode());
+      if ((nodeType == CONSTANTOP) || (nodeType == CONSTANT)) {
+        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(transNode->GetOutControlAnchor(), inControlAnchor),
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                            "Remove edge from fused node: %s's output control failed.",
+                            transNode->GetName().c_str()),
+                          return FAILED);
+      }
+    }
+  }
+
   // TransposeD should only have one output anchor
   if (transNode->GetAllOutAnchors().size() != 1) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The TransposeD node should only have 1 output anchor.");
@@ -80,12 +98,14 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     return NOT_CHANGED;
   }
   ge::NodePtr reshapeNode = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
-  FUSION_PASS_CHECK(reshapeNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeNode is null, fusion failed."),
+  FUSION_PASS_CHECK(reshapeNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr reshapeDesc = reshapeNode->GetOpDesc();
-  FUSION_PASS_CHECK(reshapeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeNode's OpDesc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      reshapeDesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeNode's OpDesc is null, fusion failed."),
+      return PARAM_INVALID);
   if (reshapeNode->GetAllInDataAnchors().size() != 2) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The Reshape node should only have 2 input anchor.");
     return NOT_CHANGED;
@@ -107,7 +127,8 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       PatternFusionUtil::IsUnknownShape(transposeDimInfo[0]) ||
       PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 1]) ||
       PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 2])) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeReshapeFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "TransposeReshapeFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 
@@ -170,11 +191,12 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
         reshapeNode->GetInControlAnchor() != nullptr) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "The PeerOutControlAnchors of fused node[%s] input control anchor is empty.",
               transNode->GetName().c_str());
-      for (OutControlAnchorPtr &outCtrlAnchorPtr : transNode->GetInControlAnchor()->GetPeerOutControlAnchors()) {
-        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(outCtrlAnchorPtr, reshapeNode->GetInControlAnchor()),
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add input control edge for fusion node:%s.",
-                                  reshapeNode->GetName().c_str()),
-                          return FAILED);
+      for (OutControlAnchorPtr& outCtrlAnchorPtr : transNode->GetInControlAnchor()->GetPeerOutControlAnchors()) {
+        FUSION_PASS_CHECK(
+            SUCCESS != ge::GraphUtils::AddEdge(outCtrlAnchorPtr, reshapeNode->GetInControlAnchor()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add input control edge for fusion node:%s.",
+                                           reshapeNode->GetName().c_str()),
+            return FAILED);
       }
     }
     transNode->GetInControlAnchor()->UnlinkAll();
@@ -185,11 +207,12 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
         reshapeNode->GetOutControlAnchor() != nullptr) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "The PeerInControlAnchors of fused node[%s] output control anchor is empty.",
               transNode->GetName().c_str());
-      for (InControlAnchorPtr &inCtrlAnchorPtr : transNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
-        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(reshapeNode->GetOutControlAnchor(), inCtrlAnchorPtr),
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add output control edge for fusion node:%s.",
-                                  reshapeNode->GetName().c_str()),
-                          return FAILED);
+      for (InControlAnchorPtr& inCtrlAnchorPtr : transNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
+        FUSION_PASS_CHECK(
+            SUCCESS != ge::GraphUtils::AddEdge(reshapeNode->GetOutControlAnchor(), inCtrlAnchorPtr),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add output control edge for fusion node:%s.",
+                                           reshapeNode->GetName().c_str()),
+            return FAILED);
       }
     }
     transNode->GetOutControlAnchor()->UnlinkAll();
@@ -201,25 +224,27 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   }
   InDataAnchorPtr inAnchorPtr = reshapeNode->GetInDataAnchor(0);
   inAnchorPtr->UnlinkAll();
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(transNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inAnchorPtr),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s to fusion node:%s failed.",
-                            transNode->GetName().c_str(), reshapeNode->GetName().c_str()),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(transNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inAnchorPtr),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s to fusion node:%s failed.",
+                                     transNode->GetName().c_str(), reshapeNode->GetName().c_str()),
+      return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s to fusion node:%s.", transNode->GetName().c_str(),
           reshapeNode->GetName().c_str());
-  for (auto &inAnchorPtr : transNode->GetAllInDataAnchors()) {
+  for (auto& inAnchorPtr : transNode->GetAllInDataAnchors()) {
     if (inAnchorPtr != nullptr) {
       inAnchorPtr->UnlinkAll();
     }
   }
-  for (auto &outAnchorPtr : transNode->GetAllOutDataAnchors()) {
+  for (auto& outAnchorPtr : transNode->GetAllOutDataAnchors()) {
     if (outAnchorPtr != nullptr) {
       outAnchorPtr->UnlinkAll();
     }
   }
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(transNode),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.", transDesc->GetName().c_str()),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(transNode),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.", transDesc->GetName().c_str()),
+      return FAILED);
 
   ge::NodePtr confusionTransposeD = nullptr;
   std::string fusionOpType = "ConfusionTransposeD";

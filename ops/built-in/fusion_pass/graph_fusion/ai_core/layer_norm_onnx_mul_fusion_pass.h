@@ -31,10 +31,11 @@ class LayerNormONNXMULFusionPass : public PatternFusionBasePass {
 
  private:
   bool with_affine = true;
+  bool with_pow = false;
   const string FUSED_OP_TYPE = "LayerNorm";
   std::vector<int64_t> axes;
 
-  template<class T>
+  template <class T>
   Status CreatNode(ge::ComputeGraph& graph, const ge::NodePtr& previous_node, ge::NodePtr& cur_node, std::string opname,
                    std::string optype, T value, vector<ge::NodePtr>& fusionNodes);
   Status CreateMulAndAddNode(ge::ComputeGraph& graph, const ge::NodePtr div0_node, ge::NodePtr& mul0_node,

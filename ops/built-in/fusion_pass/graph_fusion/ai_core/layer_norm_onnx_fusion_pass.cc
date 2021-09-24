@@ -39,7 +39,8 @@ static const char* CAST = "Cast";
 static const char* POW = "Pow";
 static const char* ADD = "Add";
 static const char* SQRT = "Sqrt";
-static const char* DIV = "RealDiv";
+static const char* REALDIV = "RealDiv";
+static const char* DIV = "Div";
 static const char* MUL = "Mul";
 static const std::string PATTERN_INPUT = "Input0";
 static const std::string PATTERN_REDUCEMEAN0 = "FusedNodeReduceMean0";
@@ -100,7 +101,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
-      .AddOpDesc(PATTERN_DIV0, {DIV})
+      .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
       .AddOpDesc(PATTERN_MUL0, {MUL})
       .AddOpDesc(PATTERN_ADD1, {ADD})
       .SetInputs(PATTERN_REDUCEMEAN0, {PATTERN_INPUT})
@@ -123,7 +124,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
-      .AddOpDesc(PATTERN_DIV0, {DIV})
+      .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
       .SetInputs(PATTERN_REDUCEMEAN0, {PATTERN_INPUT})
       .SetInputs(PATTERN_SUB0, {PATTERN_INPUT, PATTERN_REDUCEMEAN0})
       .SetInputs(PATTERN_POW0, {PATTERN_SUB0})
@@ -143,7 +144,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
-      .AddOpDesc(PATTERN_DIV0, {DIV})
+      .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
       .AddOpDesc(PATTERN_MUL0, {MUL})
       .AddOpDesc(PATTERN_ADD1, {ADD})
       .SetInputs(PATTERN_REDUCEMEAN0, {PATTERN_INPUT})
@@ -168,7 +169,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
-      .AddOpDesc(PATTERN_DIV0, {DIV})
+      .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
       .SetInputs(PATTERN_REDUCEMEAN0, {PATTERN_INPUT})
       .SetInputs(PATTERN_SUB0, {PATTERN_INPUT, PATTERN_REDUCEMEAN0})
       .SetInputs(PATTERN_CAST0, {PATTERN_SUB0})
@@ -196,7 +197,7 @@ Status LayerNormONNXFusionPass::AddEdge(const ge::NodePtr& pre_node, int pre_idx
   return SUCCESS;
 }
 
-template<class T>
+template <class T>
 Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::NodePtr& previous_node,
                                           ge::NodePtr& cur_node, std::string opname, std::string optype, T value,
                                           vector<ge::NodePtr>& fusionNodes) {
@@ -229,11 +230,10 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
   // create const node and set weights
   ge::GeTensorPtr const_desc_ptr = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-      (const_desc_ptr = std::make_shared<ge::GeTensor>(input_descs, reinterpret_cast<uint8_t*>(const_array.get()),
-                                                       const_numel * sizeof(T))),
-      const_desc_ptr = nullptr;
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "const_desc_ptr failed."); return PARAM_INVALID);
+  FUSION_PASS_MAKE_SHARED((const_desc_ptr = std::make_shared<ge::GeTensor>(
+                               input_descs, reinterpret_cast<uint8_t*>(const_array.get()), const_numel * sizeof(T))),
+                          const_desc_ptr = nullptr;
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_desc_ptr failed."); return PARAM_INVALID);
   ge::OpDescUtils::SetWeights(cur_node, {const_desc_ptr});
   auto const_nodes = OpDescUtils::GetConstInputs(cur_node);
   FUSION_PASS_CHECK(const_nodes.size() < 1, OP_LOGE(FUSED_OP_TYPE.c_str(), " const node size less than 1."),
@@ -254,7 +254,7 @@ Status LayerNormONNXFusionPass::CreateMulAndAddNode(ge::ComputeGraph& graph, con
                                                     vector<ge::NodePtr>& fusionNodes) {
   // step 1: create isolated mul and add op
   DataType dtype = div0_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
-  if (dtype == ge::DT_FLOAT16){
+  if (dtype == ge::DT_FLOAT16) {
     uint16_t mul0_value = 1;
     Status ret =
         CreatNode<uint16_t>(graph, div0_node, mul0_node, div0_node->GetName() + "/Mul", "Mul", mul0_value, fusionNodes);
@@ -503,10 +503,10 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
 
   // step3: check the connection relationship and value of attr or const node
-  FUSION_PASS_CHECK(CheckEdges(nodes_map) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(),
-                            "The internal connection relationship is not as expected, fusion failed."),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(
+      CheckEdges(nodes_map) != SUCCESS,
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "The internal connection relationship is not as expected, fusion failed."),
+      return NOT_CHANGED);
   FUSION_PASS_CHECK(CheckValue(nodes_map) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "The shape of const input or the value of attribute is not as expected, fusion failed."),
@@ -515,7 +515,7 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // step4: creat mul and add op, convert the without affine scene into the with affine scene.
   if (!with_affine) {
     FUSION_PASS_CHECK(SUCCESS != CreateMulAndAddNode(graph, nodes_map[PATTERN_DIV0], nodes_map[PATTERN_MUL0],
-                                                      nodes_map[PATTERN_ADD1], fusionNodes),
+                                                     nodes_map[PATTERN_ADD1], fusionNodes),
                       OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to create mul0_node and add1_node, fusion failed."),
                       return NOT_CHANGED);
   }
