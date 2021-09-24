@@ -135,7 +135,8 @@ REG_OP(CheckValid)
 * the value "4" refers to "x0", "x1", "y0", and "y1" . \n
 
 *@par Attributes:
-*mode: Computation mode, a character string with the value range of [iou, iof] . \n
+*@li mode: Computation mode, a character string with the value range of [iou, iof]
+*@li eps: An optional float, prevent division by 0, default value is 1.0 . \n
 
 *@par Outputs:
 *overlap: A 2D Tensor of type float16 or float32 with shape [M, N], specifying
@@ -150,6 +151,7 @@ REG_OP(Iou)
     .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(overlap, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(mode, String, "iou")
+    .ATTR(eps, Float, 1.0)
     .OP_END_FACTORY_REG(Iou)
 
 /**

@@ -90,7 +90,7 @@ class Iou:
     """
 
     # pylint: disable=too-many-statements
-    def __init__(self, bboxes, gtboxes, mode):
+    def __init__(self, bboxes, gtboxes, mode, eps):
         """
         init Iou parameters
 
@@ -109,6 +109,9 @@ class Iou:
             ('iou','iof')
             iou : the output is inter_area / total_area
             iof : the output is inter_area / gtboxes_area
+        eps : float
+            prevent division by 0
+            default value is 1.0
 
         Returns
         -------
@@ -119,6 +122,7 @@ class Iou:
         self.gtboxes_shape = gtboxes.get("shape")
         self.gtboxes_dtype = gtboxes.get("dtype").lower()
         self.dtype = self.bboxes_dtype
+        self.eps = eps
         self.mode = mode.lower()
         self.tik_instance = tik.Tik()
         self.full_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
@@ -710,12 +714,20 @@ class Iou:
                                y1_ub,
                                y0_ub, repeat_time, 1,
                                1, 1, 8, 8, 8)
-        if inter_mode is False:
+        if self.eps < 1.0:
+            if inter_mode is False:
+                self.tik_instance.vadds(self.max_eliments, area_ub,
+                                        area_ub, self.eps, repeat_time, 1, 1, 8,
+                                        8)
+                self.tik_instance.vadds(self.max_eliments, self.area_y1_y0,
+                                        self.area_y1_y0, self.eps, repeat_time, 1, 1, 8,
+                                        8)
+        else:
             self.tik_instance.vadds(self.max_eliments, area_ub,
-                                    area_ub, 0.01, repeat_time, 1, 1, 8,
+                                    area_ub, 1, repeat_time, 1, 1, 8,
                                     8)
             self.tik_instance.vadds(self.max_eliments, self.area_y1_y0,
-                                    self.area_y1_y0, 0.01, repeat_time, 1, 1, 8,
+                                    self.area_y1_y0, 1, repeat_time, 1, 1, 8,
                                     8)
         # vmuls 0.2 to evade fp16 overflows
         self.tik_instance.vmuls(self.max_eliments, area_ub,
@@ -737,11 +749,12 @@ class Iou:
                                1, 1, 8, 8, 8)
 
 
+# pylint: disable = unused-argument
 @register_operator("Iou")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
-                            para_check.KERNEL_NAME)
-def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+def iou(bboxes, gtboxes, overlap, mode="iou", eps=1.0, kernel_name="iou"):
     """
     calculating data
 
@@ -761,7 +774,10 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     mode :  str
         ('iou','iof')
         iou : the output is gtbox and bbox iou
-        iof :
+        iof : the output is inter_area / gtboxes_area
+    eps : float
+        prevent division by 0
+        default value is 1.0
     kernel_name : str
         kernel name, default value is "iou"
 
@@ -785,6 +801,6 @@ def iou(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou"):
     if mode not in check_list:
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "mode", "iou,iof", mode)
 
-    res = Iou(bboxes, gtboxes, mode).run_tik(kernel_name)
+    res = Iou(bboxes, gtboxes, mode, eps).run_tik(kernel_name)
 
     return res

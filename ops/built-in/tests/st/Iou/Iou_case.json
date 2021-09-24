@@ -1,0 +1,126 @@
+[
+    {
+        "op": "Iou",
+        "case_name": "test_iou_000",
+        "input_desc": [
+            {
+                "shape": [
+                    1,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    1,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float16"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    16,
+                    1
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    1
+                  ],
+                  "ori_format": "ND",
+                  "name": "overlap",
+                  "type": "float16"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            },
+            {
+                "name": "eps",
+                "value": 1.0,
+                "type": "float"
+            }			
+        ]
+    },
+    {
+        "op": "Iou",
+        "case_name": "test_iou_001",
+        "input_desc": [
+            {
+                "shape": [
+                    1,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    1,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float16"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    16,
+                    1
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    1
+                  ],
+                  "ori_format": "ND",
+                  "name": "overlap",
+                  "type": "float16"
+            }
+        ],
+        "attr": [
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            },
+            {
+                "name": "eps",
+                "value": 0.01,
+                "type": "float"
+            }			
+        ]
+    }
+]
