@@ -218,6 +218,8 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
   std::map<string, uint32_t> input_name_id = {{"x", 0}};
   gelu_node->GetOpDesc()->UpdateInputName(input_name_id);
+  std::map<string, uint32_t> output_name_id = {{"y", 0}};
+  gelu_node->GetOpDesc()->UpdateOutputName(output_name_id);
 
   // delete fused nodes
   FUSION_PASS_CHECK(graph.RemoveNode(pow0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow0_node failed."),
