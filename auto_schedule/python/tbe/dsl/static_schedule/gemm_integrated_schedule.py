@@ -142,6 +142,21 @@ class GemmSchedule(object):
     ]
 
     THRESHOLD_DATA_NUM = 64
+    ND_M_INDEX = -2
+    ND_N_INDEX = -1
+    FRACTAL_NZ_M_INDEX = -3
+    FRACTAL_NZ_N_INDEX = -4
+    FRACTAL_NZ_M0_INDEX = -2
+    FRACTAL_NZ_N0_INDEX = -1
+    FRACTAL_Z_M_INDEX = -4
+    FRACTAL_Z_N_INDEX = -3
+    FRACTAL_Z_KA_INDEX = -3
+    BLOCK_BATCH_DIM_INDEX = 0
+    BLOCK_N_DIM_INDEX = 1
+    BLOCK_M_DIM_INDEX = 2
+    ALLOCATE_OFF = 0
+    ALLOCATE_HALF = 1
+    ALLOCATE_FULL = 2
 
     is_dynamic = False
 
@@ -237,6 +252,7 @@ class GemmSchedule(object):
         self.storage_ka_bound_change = False
         self.storage_kb_bound_change = False
         self.storage_n_bound_change = False
+        self.l1_fusion_type = 0
 
     @staticmethod
     def _get_all_tags(res):
@@ -364,7 +380,7 @@ class GemmSchedule(object):
         self._print_ir_matmul("after data layout", self.sch)
         self._get_batch_info()
         self._set_buffer_reuse_dict()
-        self._tiling_process()
+        over_head_flag = self._tiling_process()
         self.sch_agent = ScheduleAgent(self.sch)
         self._tiling_l0_process()
         self._tiling_l1_process()
@@ -380,8 +396,9 @@ class GemmSchedule(object):
         self.sch_agent.apply()
         self._do_buffer_align()
         self._solve_bank_conflict()
-        a_run_once, b_run_once = False, False
+        a_run_once, b_run_once = self._allocate_axis(over_head_flag)
         self._double_buffer(a_run_once, b_run_once)
+        self._reorder_axis(over_head_flag, a_run_once, b_run_once)
         self._do_compute_inline()
         self._mem_process()
         self._print_ir_matmul("finial", self.sch)
@@ -1170,11 +1187,11 @@ class GemmSchedule(object):
         is_fractal_a = len(tensor_a.shape) in (4, 5)
         is_fractal_b = len(tensor_b.shape) in (4, 5)
         self.in_addr_type = self._get_addr_type(tensor_a)
-        l1_fusion_type = self._get_l1_fusion_type(tensor_a)
+        self.l1_fusion_type = self._get_l1_fusion_type(tensor_a)
         self.input_l1_flag, self.input_l1_size = self._get_input_l1_paras(tensor_a)
         self._check_placeholders_shared(tensor_a, tensor_b, self.res)
 
-        l1_fusion_and_l1_size_0 = self._get_l1_fusion_and_l1_size_0_flag(l1_fusion_type)
+        l1_fusion_and_l1_size_0 = self._get_l1_fusion_and_l1_size_0_flag(self.l1_fusion_type)
         self.l1_fusion_and_l1_size_0 = l1_fusion_and_l1_size_0
         tensor_a_l1_workspace = self._get_tensor_a_l1_workspace(l1_fusion_and_l1_size_0)
         self._set_l1_fusion_workspace_tensor(tensor_a, tensor_a_l1_workspace)
@@ -1635,10 +1652,12 @@ class GemmSchedule(object):
             "kernel_name": self.kernel_name
         }
         self._print_debug(info_dict, "info_dict")
+        over_head_flag = False
         if self.is_dynamic:
             tiling = self.dynamic_para.get("tiling_strategy")
         else:
             tiling = get_tiling(info_dict)
+            over_head_flag = bool(tiling.get("A_overhead_opt_flag"))
         tiling = self._no_solution_tiling(tiling)
         tiling = self._gemv_tiling(tiling)
         tiling = self._check_k_full_load(tiling)
@@ -1651,6 +1670,7 @@ class GemmSchedule(object):
             raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         self.tiling = tiling
         self._print_debug(tiling, "auto tiling result")
+        return over_head_flag
 
     def _check_k_full_load(self, tiling):
         if not self.is_dynamic:
@@ -2873,9 +2893,11 @@ class GemmSchedule(object):
     def _double_buffer(self, a_run_once, b_run_once):
         tiling = self.tiling
         sch = self.sch
-        if tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == 2 and not a_run_once:
+        if (tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == 2
+            and (a_run_once == self.ALLOCATE_OFF)):
             sch[self.TENSOR_MAP.get("a_l1")].double_buffer()
-        if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == 2 and not b_run_once:
+        if (tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == 2
+            and (b_run_once == self.ALLOCATE_OFF)):
             sch[self.TENSOR_MAP.get("b_l1")].double_buffer()
         if tiling.get("manual_pingpong_buffer").get("AL0_pbuffer") == 2:
             sch[self.TENSOR_MAP.get("a_l0a")].double_buffer()
@@ -3223,140 +3245,158 @@ class GemmSchedule(object):
                 else:
                     self.sch[bereused_tensor].reused_by(tensor)
 
-    def _compute_run_once_flag(self):
-        # 0: not run_once
-        # 1: run_once on c_l0c
-        # 2: run_once on c_gm
-        run_once_flag, both_not_run_once, c_l0c_aparts, core_inner, data_size = self._init_run_once_flag()
-        a_run_once, b_run_once = run_once_flag
-        c_l0c_aparts_a, c_l0c_aparts_b = c_l0c_aparts
-        core_inner_n, core_inner_m = core_inner
-        al1_data_size, bl1_data_size = data_size
-        if self.al1_attach_status == "c_l0c" and self.bl1_attach_status == "c_l0c":
-            # if true b reload more, if false a reload more
-            reload_flag = (al1_data_size * c_l0c_aparts_b) < (bl1_data_size * c_l0c_aparts_a)
-            if both_not_run_once:
-                a_run_once = 0 if reload_flag else a_run_once
-                b_run_once = b_run_once if reload_flag else 0
-        elif self.al1_attach_status == "c_gm" and self.bl1_attach_status == "c_gm":
-            # if true b reload more, if false a reload more
-            reload_flag = (al1_data_size * core_inner_n) < (bl1_data_size * core_inner_m)
-            if both_not_run_once:
-                a_run_once = 0 if reload_flag else a_run_once
-                b_run_once = b_run_once if reload_flag else 0
-        else:
-            a_run_once, b_run_once = self._diff_compute_at_only_open_one(a_run_once, b_run_once)
-
-        return a_run_once, b_run_once
-
-    def _diff_compute_at_only_open_one(self, a_run_once, b_run_once):
-        if self.al1_attach_status == "c_l0c" and self.bl1_attach_status == "c_gm":
-            b_run_once = 0
-        elif self.al1_attach_status == "c_gm" and self.bl1_attach_status == "c_l0c":
-            a_run_once = 0
-        return a_run_once, b_run_once
-
     def _init_run_once_flag(self):
-
-        block_in = self.block_in
-        block_out = self.block_out
-        block_reduce = self.block_reduce
+        a_run_once, b_run_once = self.ALLOCATE_OFF, self.ALLOCATE_OFF
 
         dtype_byte = self.DTYPE_WIDTH_MAP.get(self.TENSOR_MAP.get("a_l1").dtype) * 2
-        size = tbe_platform_info.get_soc_spec("L1_SIZE") // dtype_byte
-        a_l1_db = self.tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
-        b_l1_db = self.tiling.get("manual_pingpong_buffer").get("BL1_pbuffer")
-        c_l0c = self.TENSOR_MAP.get("c_l0c")
-        orgin_k = self.TENSOR_MAP.get("a_l0a").shape[1].value * block_reduce
-        orgin_m = self.TENSOR_MAP.get("a_l0a").shape[0].value * block_in
-        orgin_n = self.TENSOR_MAP.get("b_l0b").shape[1].value * block_out
-        cl0_tiling_nc, cl0_tiling_mc = self.cl0_tiling_nc, self.cl0_tiling_mc
-        al1_tiling_m, al1_tiling_k = self.al1_tiling_m, self.al1_tiling_k
-        bl1_tiling_n, bl1_tiling_k = self.bl1_tiling_n, self.bl1_tiling_k
-        tiling_k0 = self.al0_tiling_k0
-
-        c_l0c_aparts_b = self._int_ceil_div(cl0_tiling_nc, bl1_tiling_n)
-        c_l0c_aparts_a = self._int_ceil_div(cl0_tiling_mc, al1_tiling_m)
-        al1_data_size = al1_tiling_m * block_in * al1_tiling_k * a_l1_db
-        bl1_data_size = bl1_tiling_n * block_out * bl1_tiling_k * b_l1_db
-        al1_run_once_size_in_cl0 = orgin_k * cl0_tiling_mc * block_in
-        bl1_run_once_size_in_cl0 = orgin_k * cl0_tiling_nc * block_out
+        size = tbe_platform_info.get_soc_spec("L1_SIZE") // dtype_byte // 2
         block_dim = self.tiling.get("block_dim")
-        core_inner_m = self._int_ceil_div(orgin_m, block_dim[2])
-        core_inner_n = self._int_ceil_div(orgin_n, block_dim[1])
-        al1_run_once_size_in_cgm = orgin_k * core_inner_m
-        bl1_run_once_size_in_cgm = orgin_k * core_inner_n
 
-        a_run_once = 2 if ((al1_run_once_size_in_cgm + bl1_data_size) < size) else 0
-        a_run_once = 1 if ((a_run_once == 0) and ((al1_run_once_size_in_cl0 + bl1_data_size) < size)) else 0
-        b_run_once = 2 if ((bl1_run_once_size_in_cgm + al1_data_size) < size) else 0
-        b_run_once = 1 if ((b_run_once == 0) and ((bl1_run_once_size_in_cl0 + al1_data_size) < size)) else 0
+        core_inner_m = self._int_ceil_div(
+            self.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_M_INDEX].value * self.block_in,
+            block_dim[self.BLOCK_M_DIM_INDEX])
+        core_inner_n = self._int_ceil_div(
+            self.TENSOR_MAP.get("b_l0b").shape[self.FRACTAL_Z_N_INDEX].value * self.block_out,
+            block_dim[self.BLOCK_N_DIM_INDEX])
+        k_shape = self.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_KA_INDEX].value * self.block_reduce
 
-        both_not_run_once = (a_run_once != 0) and (b_run_once != 0)
-        if self.al1_attach_status == "c_gm" and self.bl1_attach_status == "c_gm":
-            c_l0c_aparts_b, c_l0c_aparts_a = core_inner_n, core_inner_m
-        run_once_flag = [a_run_once, b_run_once]
-        c_l0c_aparts = [c_l0c_aparts_a, c_l0c_aparts_b]
-        core_inner = [core_inner_n, core_inner_m]
-        data_size = [al1_data_size, bl1_data_size]
-        return [run_once_flag, both_not_run_once, c_l0c_aparts, core_inner, data_size]
+        m_l1_shape, n_l1_shape = self.al1_tiling_m * self.block_in, self.bl1_tiling_n * self.block_out
+        m_max_num = self._int_ceil_div(core_inner_m, m_l1_shape) * m_l1_shape
+        n_max_num = self._int_ceil_div(core_inner_n, n_l1_shape) * n_l1_shape
 
-    def _allocate_axis(self):
-        a_run_once = False
-        b_run_once = False
-        if self.format_a == "ND" or self.format_b == "ND" or self.is_dynamic:
-            return a_run_once, b_run_once
-        sch = self.sch
-        c_l0c = self.TENSOR_MAP.get("c_l0c")
-        outer_axis_l0c = self.sch_agent[c_l0c].get_active_scopes()
-        n_outer_l0c = outer_axis_l0c[0]
-        m_outer_l0c = outer_axis_l0c[1]
+        tensor_a_num = m_max_num * k_shape
+        tensor_b_num = n_max_num * k_shape
+        if m_max_num * k_shape <= size:
+            a_run_once = self.ALLOCATE_FULL
+        elif m_l1_shape * k_shape <= size:
+            a_run_once = self.ALLOCATE_HALF
 
-        outer_axis_c_gm = self.sch_agent[self.res].get_active_scopes()
-        m_outer_cgm = outer_axis_c_gm[0]
-        n_outer_cgm = outer_axis_c_gm[1]
-        if self.format_out != "ND":
-            m_outer_cgm, n_outer_cgm = n_outer_cgm, m_outer_cgm
+        if n_max_num * k_shape <= size:
+            b_run_once = self.ALLOCATE_FULL
+        elif n_l1_shape * k_shape <= size:
+            b_run_once = self.ALLOCATE_HALF
 
-        a_run_once_base = (self.in_addr_type == 0
-                            and (not self.l1_fusion_and_l1_size_0)
-                            and self.input_l1_flag != 1
-                            and self.al1_attach_status != "full_load")
+        if a_run_once == self.ALLOCATE_HALF and b_run_once == self.ALLOCATE_HALF:
+            aprts_a = core_inner_m // m_l1_shape
+            aprts_b = core_inner_n // n_l1_shape
+            if tensor_a_num * aprts_b < tensor_b_num * aprts_a:
+                a_run_once = self.ALLOCATE_OFF
+            else:
+                b_run_once = self.ALLOCATE_OFF
 
-        tensor_a_reuse_local, tensor_b_reuse_local = self._compute_run_once_flag()
-        a_run_once_cgm = ((tensor_a_reuse_local == 2)
-            and a_run_once_base
-            and (not (self.al1_attach_status == "c_l0c" and self.c_l0c_attach_status == "full_load")))
-        a_run_once_cl0c = (tensor_a_reuse_local == 1
-                           and a_run_once_base
-                           and self.al1_attach_status == "c_l0c")
-        tensor_a_l1 = self.TENSOR_MAP.get("a_l1") if self.mmad_mode != "gemv" else self.TENSOR_MAP.get("b_l1")
+        batch = 0
+        if self.have_batch:
+            batch = self.TENSOR_MAP.get("c_l0c").shape[0].value
+        batch_double = False
+        if batch > 1:
+            if tensor_a_num <= size and tensor_b_num <= size:
+                batch_double = True
 
-        if a_run_once_cgm:
-            sch[tensor_a_l1].allocate_at(sch[self.res], n_outer_cgm, run_once_axes=[n_outer_cgm])
-            sch[tensor_a_l1].mem_unique()
-        elif a_run_once_cl0c:
-            sch[tensor_a_l1].allocate_at(sch[c_l0c], n_outer_l0c, run_once_axes=[n_outer_l0c])
-            sch[tensor_a_l1].mem_unique()
+        double_once = self.ALLOCATE_OFF
+        if core_inner_m != m_l1_shape and core_inner_n != n_l1_shape:
+            double_once = self.ALLOCATE_HALF
 
-        b_run_once_base = (not self.l1_fusion_and_l1_size_0) and (self.bl1_attach_status != "full_load")
-        b_run_once_cgm = ((tensor_b_reuse_local == 2)
-            and b_run_once_base
-            and (not (self.bl1_attach_status == "c_l0c" and self.c_l0c_attach_status == "full_load")))
-        b_run_once_cl0c = (tensor_b_reuse_local == 1
-                           and b_run_once_base
-                           and self.bl1_attach_status == "c_l0c")
+        return a_run_once, b_run_once, batch_double, double_once
 
-        tensor_b_l1 = self.TENSOR_MAP.get("b_l1") if self.mmad_mode != "gemv" else self.TENSOR_MAP.get("a_l1")
-        if b_run_once_cgm:
-            sch[tensor_b_l1].allocate_at(sch[self.res], m_outer_cgm, run_once_axes=[m_outer_cgm])
-            sch[tensor_b_l1].mem_unique()
-        elif b_run_once_cl0c:
-            sch[tensor_b_l1].allocate_at(sch[c_l0c], m_outer_l0c, run_once_axes=[m_outer_l0c])
-            sch[tensor_b_l1].mem_unique()
-        a_run_once = a_run_once_cgm or a_run_once_cl0c
-        b_run_once = b_run_once_cgm or b_run_once_cl0c
+    def _allocate_axis(self, enable_nbuffer):
+        if not enable_nbuffer or self.is_dynamic:
+            return self.ALLOCATE_OFF, self.ALLOCATE_OFF
+        a_run_once, b_run_once, batch_double, double_once = self._init_run_once_flag()
+        axis_outer = self.sch_agent[self.res].get_active_scopes()
+        if self.format_out == "FRACTAL_NZ":
+            m_outer = axis_outer[self.FRACTAL_NZ_M_INDEX]
+            n_outer = axis_outer[self.FRACTAL_NZ_N_INDEX]
+        else:
+            m_outer = axis_outer[self.ND_M_INDEX]
+            n_outer = axis_outer[self.ND_N_INDEX]
+        m_outer, n_outer = (n_outer, m_outer) if self.mmad_mode == "gemv" else (m_outer, n_outer)
+        out_axis = [m_outer, n_outer]
+        if (self.al1_attach_status == "full_load"
+            or (self.al1_attach_status == "c_l0c" and self.c_l0c_attach_status == "full_load")):
+            a_run_once = self.ALLOCATE_OFF
+        if (self.bl1_attach_status == "full_load"
+            or (self.bl1_attach_status == "c_l0c" and self.c_l0c_attach_status == "full_load")):
+            b_run_once = self.ALLOCATE_OFF
+        if batch_double:
+            if double_once != self.ALLOCATE_OFF:
+                a_run_once, b_run_once = self._do_allocate_axis(a_run_once, b_run_once, out_axis)
+        else:
+            a_run_once, b_run_once = self._do_allocate_axis(a_run_once, b_run_once, out_axis)
+
         return a_run_once, b_run_once
+
+    def _do_allocate_axis(self, a_run_once, b_run_once, out_axis):
+        sch = self.sch
+        res = self.res
+        m_outer, n_outer = out_axis
+        al1_ddr_to_l1_flag = (self.in_addr_type == 0 and (not self.l1_fusion_and_l1_size_0) and self.input_l1_flag != 1)
+        if a_run_once != self.ALLOCATE_OFF and al1_ddr_to_l1_flag:
+            tensor_a_l1 = self.TENSOR_MAP.get("a_l1")
+            sch[tensor_a_l1].allocate_at(sch[res], n_outer, run_once_axes=[n_outer])
+            sch[tensor_a_l1].mem_unique()
+        else:
+            a_run_once = self.ALLOCATE_OFF
+        if b_run_once != self.ALLOCATE_OFF and (not self.l1_fusion_and_l1_size_0):
+            tensor_b_l1 = self.TENSOR_MAP.get("b_l1")
+            sch[tensor_b_l1].allocate_at(sch[res], m_outer, run_once_axes=[m_outer])
+            sch[tensor_b_l1].mem_unique()
+        else:
+            b_run_once = self.ALLOCATE_OFF
+        return a_run_once, b_run_once
+
+    def _reorder_axis(self, enable_nbuffer, tensor_a_reuse_local, tensor_b_reuse_local):
+        not_need_nbuffer = (tensor_a_reuse_local == self.ALLOCATE_OFF) and (tensor_b_reuse_local == self.ALLOCATE_OFF)
+        if not enable_nbuffer or not_need_nbuffer:
+            return
+        axis_outer = self.sch_agent[self.res].get_active_scopes()
+        if self.format_out == "FRACTAL_NZ":
+            m_outer = axis_outer[self.FRACTAL_NZ_M_INDEX]
+            n_outer = axis_outer[self.FRACTAL_NZ_N_INDEX]
+            l1_reuse_axis_outter = n_outer
+            l1_reuse_axis_inner = m_outer
+        else:
+            m_outer = axis_outer[self.ND_M_INDEX]
+            n_outer = axis_outer[self.ND_N_INDEX]
+            l1_reuse_axis_outter = m_outer
+            l1_reuse_axis_inner = n_outer
+        if tensor_a_reuse_local == self.ALLOCATE_HALF and tensor_b_reuse_local != self.ALLOCATE_HALF:
+            l1_reuse_axis_outter = m_outer
+            l1_reuse_axis_inner = n_outer
+        elif tensor_a_reuse_local != self.ALLOCATE_HALF and tensor_b_reuse_local == self.ALLOCATE_HALF:
+            l1_reuse_axis_outter = n_outer
+            l1_reuse_axis_inner = m_outer
+        elif tensor_a_reuse_local == self.ALLOCATE_HALF and tensor_b_reuse_local == self.ALLOCATE_HALF:
+            l1_reuse_axis_outter = m_outer
+            l1_reuse_axis_inner = n_outer
+        
+        self._do_reorder_axis(l1_reuse_axis_outter, l1_reuse_axis_inner)
+
+    def _do_reorder_axis(self, outer_axis, inner_axis):
+        axis_outer = self.sch_agent[self.res].get_active_scopes()
+        reorder_list = [outer_axis, inner_axis]
+        if self.format_out == "FRACTAL_NZ":
+            reorder_list.append(axis_outer[self.FRACTAL_NZ_M0_INDEX])
+            reorder_list.append(axis_outer[self.FRACTAL_NZ_N0_INDEX])
+        if self.have_batch:
+            reorder_list.insert(0, axis_outer[0])
+        self.sch[self.res].reorder(*reorder_list)
+
+        if self.format_out == "ND":
+            tensor_at_res_stage = list()
+            attach_dict = self.sch_agent.get_attach_dict()
+            for i, j in attach_dict.items():
+                if j.op.name == self.root_tensor.op.name:
+                    tensor_at_res_stage.append(i)
+            tensor_at_res = list()
+            for tensor_stage in tensor_at_res_stage:
+                for tensor in self.TENSOR_MAP.values():
+                    if tensor is None:
+                        continue
+                    if tensor_stage.op.name == tensor.op.name:
+                        tensor_at_res.append(tensor)
+                        break
+            for i in tensor_at_res:
+                self.sch[i].compute_at(self.sch[self.res], inner_axis)
 
     def _get_a_max_k_bound(self):
         """

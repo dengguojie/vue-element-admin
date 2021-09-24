@@ -6,6 +6,13 @@ from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 from matmul_cpu_dsl import matmul_cpu_validation
 
+from te import tvm
+from te.tvm.target import cce
+from te.lang.cce import cce_build_code
+from impl.mat_mul import mat_mul_compute
+from topi.generic import auto_schedule
+from tbe.common.tiling.tiling_helper import TILING_INSTANCE
+
 ut_case = OpUT("MatMul", None, None)
 
 
@@ -443,6 +450,136 @@ ut_case.add_cust_test_func(test_func=test_check_support)
 
 ut_case.add_case(["Ascend310"], not_align_bias_case1)
 ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+
+def test_nbuffer_case1(test_arg):
+    tiling_params = {
+        'op_type': 'matmul', 'A_shape': [16, 4, 64, 16, 16], 'B_shape': [64, 32, 1, 1, 16],
+        'C_shape': None, 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float16',
+        'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
+        "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
+        'group': 1, 'bias_flag': False, 'fused_double_operand_num': 0, 'shape_a_align': 1,
+        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1"}
+    tiling_dict = {
+        "matmul_nbuffer_case1": {
+            'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [16, 1, 1, 1], 'AUB_channel_wise_flag': None,
+            'AUB_shape': None, 'A_overhead_opt_flag': 1,
+            'BL0_matrix': [1, 16, 16, 16, 1, 1], 'BL1_shape': [16, 1, 1, 1], 'BUB_channel_wise_flag': None,
+            'BUB_shape': None, 'B_overhead_opt_flag': 1,
+            'CL0_matrix': [16, 2, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [16, 2, 16, 16, 1, 1],
+            'batch_bef_group_flag': 0, 'block_dim': [2, 1, 1, 1],
+            'manual_pingpong_buffer': {
+                'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2,
+                'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
+            },
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0
+        }
+    }
+
+    with cce():
+        x1 = tvm.placeholder((16, 4, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 1024, 64)}, dtype="float16")
+        x2 = tvm.placeholder((16, 32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 64, 512)}, dtype="float16")
+        output_y = {"shape": (16, 32, 64, 16, 16), "dtype": "float16", "ori_shape": (16, 1024, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nbuffer_case1")
+        tensor_list = [x1, x2, matmul_out]
+        TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+        sch = auto_schedule(matmul_out)
+        TILING_INSTANCE.instance_refresh("auto_tiling", tiling_params, {})
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_nbuffer_case1",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+
+def test_nbuffer_case2(test_arg):
+    tiling_params = {
+        'op_type': 'matmul', 'A_shape': [1, 4, 64, 16, 16], 'B_shape': [64, 32, 1, 1, 16],
+        'C_shape': None, 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float16',
+        'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
+        "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
+        'group': 1, 'bias_flag': False, 'fused_double_operand_num': 0, 'shape_a_align': 1,
+        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1"}
+    tiling_dict = {
+        "matmul_nbuffer_case2": {
+            'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [16, 1, 1, 1], 'AUB_channel_wise_flag': None,
+            'AUB_shape': None, 'A_overhead_opt_flag': 1,
+            'BL0_matrix': [1, 16, 16, 16, 1, 1], 'BL1_shape': [16, 1, 1, 1], 'BUB_channel_wise_flag': None,
+            'BUB_shape': None, 'B_overhead_opt_flag': 1,
+            'CL0_matrix': [16, 2, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [16, 2, 16, 16, 1, 1],
+            'batch_bef_group_flag': 0, 'block_dim': [1, 1, 2, 1],
+            'manual_pingpong_buffer': {
+                'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2,
+                'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
+            },
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0
+        }
+    }
+
+    with cce():
+        x1 = tvm.placeholder((4, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 64)}, dtype="float16")
+        x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
+        output_y = {"shape": (32, 64, 16, 16), "dtype": "float16", "ori_shape": (1024, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nbuffer_case2")
+        tensor_list = [x1, x2, matmul_out]
+        TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+        sch = auto_schedule(matmul_out)
+        TILING_INSTANCE.instance_refresh("auto_tiling", tiling_params, {})
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_nbuffer_case2",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+
+def test_nbuffer_case3(test_arg):
+    tiling_params = {
+        'op_type': 'matmul', 'A_shape': [1, 4, 64, 16, 16], 'B_shape': [64, 32, 1, 1, 16],
+        'C_shape': None, 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float16',
+        'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
+        "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
+        'group': 1, 'bias_flag': False, 'fused_double_operand_num': 1, 'shape_a_align': 1,
+        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1"}
+    tiling_dict = {
+        "matmul_nbuffer_case3": {
+            'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [16, 1, 1, 1], 'AUB_channel_wise_flag': None,
+            'AUB_shape': None, 'A_overhead_opt_flag': 1,
+            'BL0_matrix': [1, 16, 16, 16, 1, 1], 'BL1_shape': [16, 1, 1, 1], 'BUB_channel_wise_flag': None,
+            'BUB_shape': None, 'B_overhead_opt_flag': 1,
+            'CL0_matrix': [16, 2, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [16, 2, 16, 16, 1, 1],
+            'batch_bef_group_flag': 0, 'block_dim': [1, 1, 2, 1],
+            'manual_pingpong_buffer': {
+                'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2,
+                'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
+            },
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0
+        }
+    }
+
+    with cce():
+        x1 = tvm.placeholder((4, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 64)}, dtype="float16")
+        x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
+        output_y = {"shape": (32, 64, 16, 16), "dtype": "float16", "ori_shape": (1024, 512), "format": "ND", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nbuffer_case3")
+        tensor_list = [x1, x2, matmul_out]
+        cur_tiling_type = TILING_INSTANCE.get_tiling_type()
+        TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+        sch = auto_schedule(matmul_out)
+        TILING_INSTANCE.instance_refresh(cur_tiling_type, tiling_params, {})
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_nbuffer_case3",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
+ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
+ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}
