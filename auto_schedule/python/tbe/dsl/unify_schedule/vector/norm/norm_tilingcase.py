@@ -905,7 +905,7 @@ class NormComputeGraphInfo:
             for _tensor_i in sub_tensor_producers_map[_tensor]:
                 _need_space.append(_r_coexisting_sub_graph(_tensor_i))
 
-            _current_space = _calc_current_space(_tensor)
+            _current_space = _calc_current_space(_tensor, True)
 
             # correct ub size in vcmp or vsel or vcmpsel
             _correct_ub_size_by_cmp_sel(_tensor)
