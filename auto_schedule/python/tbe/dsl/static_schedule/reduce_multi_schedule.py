@@ -1053,7 +1053,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             return
         axis_index = -2
         if self._op_type == OpSpecTypes.MVN:
-            axis_index = self._tiling_barrier[0] - 1
+            axis_index = self._tiling_barrier[-1]
         # if allow non last axis, align axis should be reconsidered
         for i in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[i]
