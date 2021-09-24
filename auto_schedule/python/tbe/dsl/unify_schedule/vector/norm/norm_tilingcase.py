@@ -61,7 +61,8 @@ VCMPSEL_INPUT_NUMBER = 4
 
 # temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
-
+# temp space for last axis broadcast use vnchwconv
+VNCHWCONV_TEMP_SPACE = 1024
 
 class CalcNormTilingCase(Computation):
     def __init__(self, outs, option):
@@ -834,7 +835,24 @@ class NormComputeGraphInfo:
                 else:
                     raise RuntimeError("Unknown reduce_insn is %s" % tag)
 
-        def _calc_current_space(_tensor):
+        def _calc_current_space(_tensor, _is_workspace=False):
+            def __get_broadcast_axis_info(_broadcast_tensor):
+                _dst_shape = util.shape_to_list(_broadcast_tensor.shape)
+                if not hasattr(_broadcast_tensor.op, "input_tensors") or not _broadcast_tensor.op.input_tensors:
+                    return len(_dst_shape), True
+                _src_shape = util.shape_to_list(_broadcast_tensor.op.input_tensors[0].shape)
+                if len(_src_shape) < len(_dst_shape):
+                    _src_shape = [1] * (len(_dst_shape) - len(_src_shape)) + _src_shape
+                _is_last_broadcast = False
+                _broadcast_num = 0
+                for _idx in range(len(_dst_shape)):
+                    if not util.expr_equal(_src_shape[_idx], _dst_shape[_idx]):
+                        _broadcast_num += 1
+                        if _idx == len(_dst_shape) - 1:
+                            _is_last_broadcast = True
+
+                return _broadcast_num, _is_last_broadcast
+
             # one of the input of the ternary instruction must be reused with the output
             if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
                 _current_space = len(dependent_map)
@@ -842,9 +860,15 @@ class NormComputeGraphInfo:
                 _current_space = len(dependent_map) + 1
             if util.need_extent_node(_tensor):
                 _current_space += 1
-            if util.is_unified_broadcast(_tensor) and self.reduce_axis_len > 1 and\
-                    not (self.reduce_axis_len == len(self.tensors_before_reduce[0].shape)):
-                _current_space += 1
+            # num of broadcast axis > 1 or float16 and last broadcast(normal sch or workspace sch but not AR)
+            if util.is_unified_broadcast(_tensor):
+                broadcast_num, is_last_broadcast = __get_broadcast_axis_info(_tensor)
+                if _tensor.dtype == "float16" and is_last_broadcast and \
+                        (not _is_workspace or (_is_workspace and not broadcast_num == 1)):
+                    _current_space += 1
+                    self.temp_ub_size += VNCHWCONV_TEMP_SPACE
+                elif broadcast_num > 1:
+                    _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self.temp_ub_size += BLOCK_SIZE_BYTE
             return _current_space
@@ -966,7 +990,7 @@ class NormComputeGraphInfo:
                 coexisting_quantities.append(_r_coexisting_sub_graph(tensor_i))
             if util.is_vtranspose_broadcast(workspace_tensor):
                 self.temp_ub_size += VTRANSPOSE_TEMP_SPACE
-            _local_current_space = _calc_current_space(workspace_tensor)
+            _local_current_space = _calc_current_space(workspace_tensor, True)
             _correct_ub_size_by_cmp_sel(workspace_tensor)
             _correct_ub_size_by_reduce(workspace_tensor)
             coexisting_quantities.append(_local_current_space)

@@ -33,6 +33,7 @@ BLOCK_IDX = "blockIdx.x"
 LOCAL_UB = "local.UB"
 NO_OVERLAP = "no_overlap"
 STORAGE_BOUND = "storage_bound"
+ENABLE_VNCHWCONV = "enable_vnchwconv"
 
 
 def _get_insn(tensor):
@@ -449,6 +450,10 @@ class NormNormalSchedule:
 
         for source, target in self._cache_write_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], _get_insn(target)]
+
+        for single_tensor, param in self._emit_insn_map.items():
+            if param[1] == "vector_broadcast":
+                param.append({ENABLE_VNCHWCONV: True})
 
     def _do_emit_insn(self):
         for single_tensor, param in self._emit_insn_map.items():
@@ -1226,6 +1231,11 @@ class NormWorkspaceSchedule:
             if self._tiling_case.block_split_axis_index > self._tiling_case.ub_split_axis_index:
                 self._emit_insn_map[self._res_tensor] =\
                     [self._block_split_result[self._res_tensor]["inner_itervar"], "dma_copy"]
+
+        for single_tensor, param in self._emit_insn_map.items():
+            if param[1] == "vector_broadcast":
+                param.append({ENABLE_VNCHWCONV: True})
+
 
     def _do_emit_insn(self):
         for single_tensor, param in self._emit_insn_map.items():
