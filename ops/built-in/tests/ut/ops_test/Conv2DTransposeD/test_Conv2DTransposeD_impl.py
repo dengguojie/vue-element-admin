@@ -186,7 +186,6 @@ def test_op_compute_int8(test_arg):
         print(e)
         pass
 
-
 _gen_conv2d_transpose_op_case()
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_split_transposed)

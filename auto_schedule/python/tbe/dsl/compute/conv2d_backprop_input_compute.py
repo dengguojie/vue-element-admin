@@ -704,11 +704,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     def _is_switch_to_general_scheme():
         if (tensor_bias is not None and filters.dtype == "int8" and out_backprop.dtype == "int8"
                 and (strides[0] > 1 or strides[1] > 1)):
-            opti_strategy = (1 + strides[0] * strides[1]) * cube_util.shape_to_list(
-                out_backprop.shape)[3] * tbe_platform.CUBE_MKN[res_dtype]["mac"][2] * BIT_RATIO_DICT[res_dtype]
-            if (caller_name.endswith("_compute") or is_fusion_flag) or \
-                    opti_strategy > tbe_platform_info.get_soc_spec("UB_SIZE"):
-                return True
+            return True
         return False
 
     def _check_l0a_dma_flag():
