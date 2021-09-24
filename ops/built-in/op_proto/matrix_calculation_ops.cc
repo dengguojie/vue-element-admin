@@ -602,13 +602,13 @@ class MatMulInferShapeHelper {
   const GeShape &shape_b;
   vector<std::pair<int64_t, int64_t>> &range_a;
   vector<std::pair<int64_t, int64_t>> &range_b;
-  ConstGeTensorDescPtr tensordesc_bias;
-  GeShape shape_bias;
-  vector<std::pair<int64_t, int64_t>> range_bias;
   bool trans_a;
   bool trans_b;
   GeShape &shape_out;
   vector<std::pair<int64_t, int64_t>> &range_out;
+  ConstGeTensorDescPtr tensordesc_bias;
+  GeShape shape_bias;
+  vector<std::pair<int64_t, int64_t>> range_bias;
 
   std::array<int64_t, BASE_LEN> infer_shape_a;
   std::array<int64_t, BASE_LEN> infer_shape_b;
@@ -953,13 +953,13 @@ class InferShapeBatchMatMul {
   const GeShape& shape_b;
   vector<std::pair<int64_t, int64_t>>& range_a;
   vector<std::pair<int64_t, int64_t>>& range_b;
-  ConstGeTensorDescPtr tensordesc_bias;
-  GeShape shape_bias;
-  vector<std::pair<int64_t, int64_t>> range_bias;
   bool trans_a;
   bool trans_b;
   GeShape& shape_out;
   vector<std::pair<int64_t, int64_t>>& range_out;
+  ConstGeTensorDescPtr tensordesc_bias;
+  GeShape shape_bias;
+  vector<std::pair<int64_t, int64_t>> range_bias;
 
   std::array<std::pair<int64_t, int64_t>, BASE_LEN> infer_range_a;
   std::array<std::pair<int64_t, int64_t>, BASE_LEN> infer_range_b;

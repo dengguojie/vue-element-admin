@@ -519,91 +519,6 @@ static map<int, std::string> dtype2str = {
     {ge::DT_UINT64, "UINT64"}};
 
 /*!
-  * Simply get value range in grade list.
-  */
-static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
-                          const int64_t& value, int64_t& low, int64_t& high) {
-  size_t min_size = 2;
-  CHECK_INFO(grade.size() < min_size, return false, "input grade size smaller then %u", min_size);
-  // grade is in ascending order
-  size_t last = grade.size() - 1;
-  CHECK_INFO(value > grade[last], return false, "input value %lld is out the range of %lld", value, grade[last]);
-  // if it is the right boundary value, use the right closed interval
-  if (value == grade[last]) {
-    low = grade[last - 1] + 1;
-    high = grade[last];
-    return true;
-  }
-  for (auto n : grade) {
-    if (value > n) {
-      low = n + 1;
-    }
-    if (value <= n) {
-      high = n;
-      break;
-    }
-  }
-  return true;
-}
-
-/*!
-  * Generate NHW shape range
-  */
-static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
-                                std::vector<std::pair<int64_t, int64_t>>& input_range) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
-  auto x_shape = x_tensor->MutableShape().GetDims();
-  // only support 4D shape
-  auto x_format = x_tensor->GetFormat();
-  size_t idx_n = 0;
-  size_t idx_h = 0;
-  size_t idx_w = 0;
-  size_t idx_c = 0;
-  if (x_format == FORMAT_NHWC) {
-    idx_h = kHDimNHWCIdx;
-    idx_w = kWDimNHWCIdx;
-    idx_c = kCDimNHWCIdx;
-  } else {
-    idx_c = kCDimNCHWIdx;
-    idx_h = kHDimNCHWIdx;
-    idx_w = kWDimNCHWIdx;
-  }
-  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, MAX_RANGE};
-  std::vector<int64_t> grade_w = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
-  std::vector<int64_t> grade_h = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
-  // init empty range
-  // shape -1 without set range call "GetShapeRange" will return [1,-1]
-  input_range = {{}, {}, {}, {}};
-  std::vector<std::pair<int64_t, int64_t>> range_set;
-  x_tensor->GetShapeRange(range_set);
-  std::map<size_t, std::vector<int64_t>> grade_map;
-  grade_map[idx_n] = grade_n;
-  grade_map[idx_h] = grade_h;
-  grade_map[idx_w] = grade_w;
-  for (auto item: grade_map) {
-    // allow shape -1 with range
-    if (x_shape[item.first] == -1) {
-      if (range_set.size() > item.first) {
-        input_range[item.first] = range_set[item.first];
-      } else {
-        OP_LOGE(op_name.GetString(), "cant't get input index %zu range", item.first);
-        return false;
-      }
-    } else {
-      int64_t low = 1;
-      int64_t high = 1;
-      CHECK_INFO(!GetSingleRange(op, item.second, x_shape[item.first], low, high), return false,
-                  "failed to get the %zu range", item.first);
-      input_range[item.first] = std::make_pair(low, high);
-    }
-  }
-  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
-  return true;
-}
-
-/*!
   * Make sure that output shape is larger than 0
   */
 bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
@@ -804,10 +719,10 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
-  PROFILING_PROTO_INIT(op.GetName().c_str());
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
   OP_LOGI(op_name.GetString(), "Enter op_proto inferfunction!");
+  PROFILING_PROTO_INIT(op_name.GetString());
 
   int64_t nPosition = 0;
   int64_t cPosition = 0;
@@ -980,16 +895,16 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   }
   // fuzz_build switch
   bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  op.GetAttr((ge::ATTR_NAME_FUZZ_BUILD).c_str(), fuzz_build);
   // fuzz build
   if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    OP_LOGD(op_name.GetString(), "start fuzz build.");
     // change pads to -1 when padding is SAME
     std::string pad_str;
     op.GetAttr("padding", pad_str);
     if (pad_str == "SAME") {
       op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build.");
+      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build.");
     }
   }
 
@@ -2992,10 +2907,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     is_dynamic = true;
   }
   std::string filterFormatStr;
-  int32_t fh_position;
-  int32_t fw_position;
-  int64_t filter_h;
-  int64_t filter_w;
   if (!is_input_size_const) {
     // get shape for output from input_size
     std::string pad_str;
@@ -3567,8 +3478,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   std::string filter_format_str = format2str[filter_format];
   int32_t filter_co_position = filter_format_str.find("N");
   int32_t filter_ci_position = filter_format_str.find("C");
-  int32_t filter_h_position = filter_format_str.find("H");
-  int32_t filter_w_position = filter_format_str.find("W");
   bool is_filter_size_const = false;
   Tensor filter_sizes_tensor;
   if (GRAPH_SUCCESS == op.GetInputConstData("filter_size", filter_sizes_tensor)) {
@@ -4203,9 +4112,9 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   * @return Status The processing flow result.
   */
 IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
-  PROFILING_PROTO_INIT(op.GetName().c_str());
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  PROFILING_PROTO_INIT(op_name.GetString());
 
   OP_LOGD(op_name.GetString(), "Enter Conv2DInfer.");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -4482,7 +4391,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
   // fuzz build allow shape dim -1 with range
   if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    OP_LOGD(op_name.GetString(), "start fuzz build.");
     // change pad to -1 when padding is SAME
     std::string pad_str;
     op.GetAttr("padding", pad_str);
@@ -4954,17 +4863,19 @@ IMPLEMT_VERIFIER(Conv2DCompress, Conv2DCompressVerify) {
  * @return Status The processing flow result.
  */
 IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter Conv2DCompress InferDataSlice");
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  OP_LOGD(op_name.GetString(), "Enter Conv2DCompress InferDataSlice");
   // get input h/w, filter h/w, pad_h, pad_w, stride_h, stride_w, dilation_h, dilation_w
-  auto x_tensor = op.GetInputDesc("x");
-  auto w_tensor = op.GetInputDesc("filter_compress");
+  auto x_tensor = op.GetInputDescByName("x");
+  auto w_tensor = op.GetInputDescByName("filter_compress");
   auto x_shape = x_tensor.GetOriginShape().GetDims();
   auto w_shape = w_tensor.GetOriginShape().GetDims();
 
   static uint32_t TENSOR_SHAPE_SIZE = 4;
   static uint32_t ATTR_SHAPE_SIZE = 4;
   bool bRet = x_shape.size() < TENSOR_SHAPE_SIZE || w_shape.size() < TENSOR_SHAPE_SIZE;
-  CHECK(bRet, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "tensor size less then 4."), return GRAPH_FAILED);
+  CHECK(bRet, CUBE_INNER_ERR_REPORT(op_name.GetString(), "tensor size less then 4."), return GRAPH_FAILED);
 
   auto x_format = x_tensor.GetOriginFormat();
   auto w_format = w_tensor.GetOriginFormat();
@@ -4975,11 +4886,11 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
   bRet = op.GetAttr("strides", stride_list) != GRAPH_SUCCESS || \
          op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS || \
          op.GetAttr("pads", pad_list) != GRAPH_SUCCESS;
-  CHECK(bRet, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attr failed."), return GRAPH_FAILED);
+  CHECK(bRet, CUBE_INNER_ERR_REPORT(op_name.GetString(), "get attr failed."), return GRAPH_FAILED);
   bRet = stride_list.size() < ATTR_SHAPE_SIZE || \
          dilation_list.size() < ATTR_SHAPE_SIZE || \
          pad_list.size() < ATTR_SHAPE_SIZE;
-  CHECK(bRet, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "attrs size less then 4."), return GRAPH_FAILED);
+  CHECK(bRet, CUBE_INNER_ERR_REPORT(op_name.GetString(), "attrs size less then 4."), return GRAPH_FAILED);
 
   int32_t ih = 0;
   int32_t iw = 0;
@@ -5007,7 +4918,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
     dilh = dilation_list[1];
     dilw = dilation_list[2];
   } else {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "x format is valid, the error x format is: %d", x_format);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "x format is valid, the error x format is: %d", x_format);
     return GRAPH_FAILED;
   }
 
@@ -5021,7 +4932,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
     kh = w_shape[0];
     kw = w_shape[1];
   } else {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "weight format is valid, the error w format is: %d", w_format);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "weight format is valid, the error w format is: %d", w_format);
     return GRAPH_FAILED;
   }
 
@@ -5031,7 +4942,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
   vector<vector<int64_t>> y_data_slice;
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
     return GRAPH_FAILED;
   }
   bool have_slice = false;
@@ -5044,7 +4955,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
         bool top_add_pad = false;
         bool bom_add_pad = false;
         InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
-        OP_LOGD(op.GetName().c_str(), "conv2d h axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
+        OP_LOGD(op_name.GetString(), "conv2d h axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
         if (!top_add_pad) {
           new_pad_lists[0] = 0;
@@ -5058,7 +4969,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
         bool left_add_pad = false;
         bool right_add_pad = false;
         InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
-        OP_LOGD(op.GetName().c_str(), "conv2d w axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
+        OP_LOGD(op_name.GetString(), "conv2d w axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
         if (!left_add_pad) {
           new_pad_lists[2] = 0;
@@ -5074,7 +4985,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
   }
 
   op.SetAttr("pads", new_pad_lists);
-  OP_LOGD(op.GetName().c_str(), "Conv2DCompress new pad lists is [%d, %d, %d, %d]", new_pad_lists[0],
+  OP_LOGD(op_name.GetString(), "Conv2DCompress new pad lists is [%d, %d, %d, %d]", new_pad_lists[0],
           new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
 
   if (have_slice == false) {
@@ -5083,7 +4994,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
   if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
     return GRAPH_FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "Calc Conv2DCompress InferDataSlice end!");
+  OP_LOGD(op_name.GetString(), "Calc Conv2DCompress InferDataSlice end!");
   return GRAPH_SUCCESS;
 }
 
@@ -9500,7 +9411,6 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   auto y_format = y_tensor.GetOriginFormat();
   auto x_shape = x_tensor.GetOriginShape().GetDims();
   auto w_shape = w_tensor.GetOriginShape().GetDims();
-  auto x_dtype = x_tensor.GetDataType();
 
   vector<int32_t> stride_list;
   if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
@@ -9663,10 +9573,6 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   }
 
   std::string filterFormatStr;
-  int32_t fh_position;
-  int32_t fw_position;
-  int64_t filter_h;
-  int64_t filter_w;
   isDynamic = isDynamic || (!isInputSizeConst && unknownRank);
   if (isDynamic) {
     // update pads list by padding[SAME,VALID]
