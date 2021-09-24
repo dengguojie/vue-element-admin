@@ -90,7 +90,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul) {
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "BatchMatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb", "repo_seeds": {"10000": [1, 3, 3, 2]}, "repo_range": {"10000": [1, 3, 1, 3, 1, 4]}, "cost_range": {}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": true, "transpose_b": true}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "BatchMatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb", "repo_seeds": {"10000": [1, 3, 3, 2]}, "repo_range": {"10000": [1, 3, 1, 3, 1, 4, 1, 4]}, "cost_range": {}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": true, "transpose_b": true}})";
 
   ge::Graph graph("batchmatmul_op_tiling_test_0");
 

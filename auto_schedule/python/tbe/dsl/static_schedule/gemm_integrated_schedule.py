@@ -428,7 +428,7 @@ class GemmSchedule(object):
         # user self.placeholder_name to avoid the inconsistency of placeholder names
         # in the fusion scene and the single operator scene
         if self.is_dynamic:
-            self.need_init_bias = True if self.have_bias else False
+            self.need_init_bias = False
         else:
             self.need_init_bias = ori_tensors[self.placeholder_name['bias'].value].op.attrs[
                 "ori_shape"][-1].value % 16 != 0 if self.have_bias else False

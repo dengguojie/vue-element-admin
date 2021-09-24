@@ -1343,8 +1343,8 @@ class GEMMCompute(FormatCompute):
 
         def index_bias_of_fractal_nz(indices):
             return [0]*(len(bias_shape) - 1) + [indices[-4]*block_out + indices[-1]]
-
-        if not in_dynamic() and ori_shape[-1] % 16 == 0:
+        # dynamic mode only support bias align to 16
+        if in_dynamic() or ori_shape[-1] % 16 == 0:
             tensor_bias_ub = tvm.compute(
                 bias_shape, lambda *indices: tensor_bias(*index_bias_of_ori_shape(indices)), name="tensor_bias_ub")
         else:

@@ -204,6 +204,9 @@ std::string CheckTilingInRepo(const std::string &op_type, const json &compile_in
     auto in_range = range[kIdxMLow] <= params.m && params.m <= range[kIdxMHigh] &&
                     range[kIdxKLow] <= params.k && params.k <= range[kIdxKHigh] &&
                     range[kIdxNLow] <= params.n && params.n <= range[kIdxNHigh];
+    if (isBatchMatmulMode) {
+      in_range = in_range && range[kIdxBLow] <= params.batch && params.batch <= range[kIdxBHigh];
+    }
     BatchmatmulParas seed_params;
     seed_params.m = seed[kIdxM];
     seed_params.k = seed[kIdxK];
