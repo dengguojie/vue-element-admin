@@ -184,7 +184,14 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     input_idx++;
   }
 
+  int64_t num_N_new = fusedInputNodes.size();
+  OP_LOGD(FUSED_OP_TYPE.c_str(),"Node:%s's has %ld inputs.", fusedConcatv2dOpDesc->GetName().c_str(),
+          num_N_new);
+  ge::AttrUtils::SetInt(fusedConcatv2dOpDesc, "N", num_N_new);
+
   ge::NodePtr fusedConcatv2dNode = graph.AddNode(fusedConcatv2dOpDesc);
+  std::map<string, uint32_t> output_name_id = {{"y", 0}};
+  fusedConcatv2dNode->GetOpDesc()->UpdateOutputName(output_name_id);
 
   index = 0;
   for (auto inputNode : fusedInputNodes) {
