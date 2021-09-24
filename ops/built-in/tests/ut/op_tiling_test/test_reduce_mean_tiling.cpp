@@ -69,7 +69,7 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling1) {
   auto opParas = op::ReduceMeanD("ReduceMeanD");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
@@ -90,7 +90,7 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling2) {
   auto opParas = op::ReduceMeanD("ReduceMeanD");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
@@ -111,7 +111,7 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling3) {
   auto opParas = op::ReduceMeanD("ReduceMeanD");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
@@ -135,7 +135,7 @@ TEST_F(ReduceMeanTiling, ReduceTiling4) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axes, input_axis, ge::DT_INT64, FORMAT_ND, axis);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
@@ -157,7 +157,7 @@ TEST_F(ReduceMeanTiling, ReduceTiling5) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axes, input_axis, ge::DT_INT64, FORMAT_ND, axis);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
@@ -179,7 +179,7 @@ TEST_F(ReduceMeanTiling, ReduceTiling7) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axes, input_axis, ge::DT_INT64, FORMAT_ND, axis);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo.c_str());
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
