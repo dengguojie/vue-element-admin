@@ -3,7 +3,7 @@
 from op_test_frame.ut import OpUT
 import numpy as np
 from te import tvm
-from impl.prelu import prelu_compute
+from impl.prelu import reshape
 
 
 def gen_prelu_case(shape, weight_shape, case_name, dtype="float32"):
@@ -106,19 +106,13 @@ ut_case.add_case(platform, gen_prelu_5HD_case((3, 2, 4, 5, 16), (2, 1, 1, 16), (
 ut_case.add_case(platform, gen_prelu_4D_case((32, 1, 4, 16), (1, 16), "prelu_14"))
 ut_case.add_case(platform, gen_prelu_nz_case((6, 1, 1, 16, 16), (1, 1, 1, 16, 16), (6, 19, 20), (1, 19, 20),  "prelu_15"))
 ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (512, 1, 16), (10, 1, 512, 1, 512, 16), (512, 1, 16),  "prelu_16"))
-ut_case.add_case(platform, gen_prelu_nz_nd_case((1, 1, 16, 16), (10, ), (3, 10), (10, ),  "prelu_17"))
 
 
 def test_prelu_compute(test_arg):
-    data_input = tvm.placeholder(
-        (1, 1, 16, 16), name="data_input", dtype="float16")
-    data_input.op.attrs["format"] = "FRACTAL_NZ"
     weight_input = tvm.placeholder(
-        (1, 1, 1, 10), name="weight_input", dtype="float16")
-    weight_input.op.attrs["format"] = "ND"
-    output_y = tvm.placeholder(
-        (1, 1, 16, 16), name="output_y", dtype="float16")
-    res = prelu_compute(data_input, weight_input, output_y)
+        (10, ), name="weight_input", dtype="float16")
+    new_shape = [1, 1, 1, 1]
+    res = reshape(weight_input, new_shape)
 
 def calc_expect_func(input_x, weight, output_y):
     data = input_x["value"]

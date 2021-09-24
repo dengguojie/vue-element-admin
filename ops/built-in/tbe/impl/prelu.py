@@ -104,7 +104,7 @@ def reshape(tensor_in, new_shape):
 
     def _nd2nz_compute(tensor, indices):
         axis_0, axis_1, axis_2, axis_3 = indices
-        return tensor(1, 1, 1, axis_0 * 16 + axis_3)
+        return tensor(axis_0 * 16 + axis_3)
 
     return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
 
@@ -145,7 +145,6 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
                 target_shape[0] = shape_x[0]
                 target_shape[-1] = shape_x[-1]
             weight_input = reshape(weight_input, target_shape)
-            shape_weight = shape_util.shape_to_list(weight_input.shape)
     if list(shape_x) != list(shape_weight):
         shape_list = shape_util.broadcast_shapes(shape_x, shape_weight, param_name_input1="input_x",
                                                  param_name_input2="weight_input")
