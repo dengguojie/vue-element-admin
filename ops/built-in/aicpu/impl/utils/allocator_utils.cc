@@ -113,6 +113,9 @@ uint32_t CpuKernelAllocatorUtils::UpdateOutputDataTensor(
   result_summary->shape_data_size = shape_buffer_size;
   result_summary->shape_data_ptr = reinterpret_cast<uint64_t>(output_shape_ptr);
 
+  KERNEL_LOG_INFO("raw_data_ptr [%lld]", output_data_ptr);
+  KERNEL_LOG_INFO("shape_data_ptr [%lld]", output_shape_ptr);
+
   (void)g_allocated_ptr.insert(result_summary->raw_data_ptr);
   (void)g_allocated_ptr.insert(result_summary->shape_data_ptr);
   KERNEL_LOG_INFO("UpdateOutputDataTensor :: END!!");
@@ -123,7 +126,7 @@ uint32_t CpuKernelAllocatorUtils::UpdateOutputDataTensor(
 uint32_t CpuKernelAllocatorUtils::CheckOutputDataPtr(const uint64_t data_ptr) {
   auto find_data_ptr = g_allocated_ptr.find(data_ptr);
   if ((find_data_ptr == g_allocated_ptr.end())) {
-    KERNEL_LOG_ERROR("CheckOutputDataPtrr invalid [%llu].",data_ptr);
+    KERNEL_LOG_ERROR("CheckOutputDataPtr invalid [%llu].",data_ptr);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -131,12 +134,15 @@ uint32_t CpuKernelAllocatorUtils::CheckOutputDataPtr(const uint64_t data_ptr) {
 }
 
 uint32_t CpuKernelAllocatorUtils::DeleteOutputDataPtr(const uint64_t data_ptr) {
+  KERNEL_LOG_INFO("DeleteOutputDataPtr [%lld]", data_ptr);
   auto find_data_ptr = g_allocated_ptr.find(data_ptr);
   if (find_data_ptr != g_allocated_ptr.end()) {
     free(reinterpret_cast<void*>(data_ptr));
     g_allocated_ptr.erase(find_data_ptr);
+  } else {
+    KERNEL_LOG_EVENT("DeleteOutputDataPtr invalid [%llu].",data_ptr);
   }
-  KERNEL_LOG_EVENT("DeleteOutputDataPtr invalid [%llu].",data_ptr);
+  
   return KERNEL_STATUS_OK;
 }
 }  // namespace aicpu
