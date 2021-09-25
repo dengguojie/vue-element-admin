@@ -112,21 +112,21 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
     # sum
     var = tbe.sum(var_muls, axis=axis_dim, keepdims=keepdim)
 
-    # calculate the square root
-    y = tbe.vsqrt(var)
-
     # Determine invert: If the value is false, the variance is output.
     # If the value is true, the inverse of the variance is output.
     if not invert:
+        # calculate the square root
+        y = tbe.vsqrt(var)
+
         if y.dtype != x_type:
             y = tbe.cast_to(y, dtype=x_type)
 
         # return variance
         return y
     else:
-        epsilon_value = tvm.const(epsilon, dtype=y.dtype)
-        y_epsilon = tbe.vadds(y, epsilon_value)
-        y_invert = tbe.vrec(y_epsilon)
+        epsilon_value = tvm.const(epsilon, dtype=var.dtype)
+        var_epsilon = tbe.vadds(var, epsilon_value)
+        y_invert = tbe.vrsqrt(var_epsilon)
         if y_invert.dtype != x_type:
             y_invert = tbe.cast_to(y_invert, dtype=x_type)
 
