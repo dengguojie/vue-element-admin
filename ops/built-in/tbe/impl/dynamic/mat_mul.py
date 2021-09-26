@@ -116,8 +116,7 @@ def base_op_select_format(src_fp16_flag):
 
     base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "FRACTAL_NZ"))]
 
-    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int32", "FRACTAL_NZ")),
-                                (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
+    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int32", "FRACTAL_NZ"))]
 
     quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
                            (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
