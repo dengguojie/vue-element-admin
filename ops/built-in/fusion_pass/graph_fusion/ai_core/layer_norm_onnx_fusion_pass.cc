@@ -457,6 +457,41 @@ Status LayerNormONNXFusionPass::CheckValue(std::map<std::string, ge::NodePtr>& n
   return SUCCESS;
 }
 
+// check the same input of sub0 and reducemean0, div0 and (pow0 or cast0)
+static Status CheckNodeInputSame(std::map<std::string, ge::NodePtr>& nodes_map) {
+  bool check_nodes_not_null = nodes_map[PATTERN_DIV0] != nullptr && nodes_map[PATTERN_SUB0] != nullptr;
+  if (check_nodes_not_null && nodes_map[PATTERN_CAST0] != nullptr) {
+    if (nodes_map[PATTERN_DIV0]->GetInDataAnchor(0) != nullptr &&
+        nodes_map[PATTERN_CAST0]->GetInDataAnchor(0) != nullptr) {
+      FUSION_PASS_CHECK(nodes_map[PATTERN_DIV0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
+                        nodes_map[PATTERN_CAST0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
+                        OP_LOGD("LayerNorm", "The input of div0 and cast0 is not same"),
+      return NOT_CHANGED);
+    }
+  } else if (check_nodes_not_null) {
+    if (nodes_map[PATTERN_DIV0]->GetInDataAnchor(0) != nullptr &&
+        nodes_map[PATTERN_POW0]->GetInDataAnchor(0) != nullptr) {
+      FUSION_PASS_CHECK(nodes_map[PATTERN_DIV0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
+                        nodes_map[PATTERN_POW0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
+                        OP_LOGD("LayerNorm", "The input of div0 and cast0 is not same"),
+      return NOT_CHANGED);
+    }
+  } else {
+    return SUCCESS;
+  }
+
+  bool check_indata_not_null = nodes_map[PATTERN_REDUCEMEAN0] != nullptr &&
+                               nodes_map[PATTERN_REDUCEMEAN0]->GetInDataAnchor(0) != nullptr &&
+                               nodes_map[PATTERN_SUB0]->GetInDataAnchor(0) != nullptr;
+  if (check_indata_not_null) {
+    FUSION_PASS_CHECK(nodes_map[PATTERN_SUB0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
+                      nodes_map[PATTERN_REDUCEMEAN0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
+                      OP_LOGD("LayerNorm", "The input of sub0 and reducemean0 is not same"),
+    return NOT_CHANGED);
+  }
+  return SUCCESS;
+}
+
 Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "start running in LayerNormONNX fusion pass");
 
@@ -476,6 +511,12 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     }
     it.second = node;
   }
+
+  FUSION_PASS_CHECK(CheckNodeInputSame(nodes_map) != SUCCESS,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
+                            "The input of sub0 and reducemean0, div0 and (pow0 or cast0) have different input node,\
+                           fusion failed."),
+  return NOT_CHANGED);
 
   // step2: get axes from reducemean0, which is used by CreateMulAndAddNode and CheckValue
   ge::Operator op_reducemean0 = ge::OpDescUtils::CreateOperatorFromNode(nodes_map[PATTERN_REDUCEMEAN0]);
