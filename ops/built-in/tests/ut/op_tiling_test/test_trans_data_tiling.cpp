@@ -423,8 +423,8 @@ TEST_F(TransDataTiling, TransData_tiling12) {
       "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"NDC1HWC0\", \"dType\": \"float16\", \"ub_size\": 126464, "
       "\"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}";
   std::string expect_tiling =
-      "1010 63232 14 1936 1936 1936 1936 1936 1936 63232 63232 16 5 3952 1 247 16 16 1936 1936 16 0 16 1 0 0 1 1 121 1 "
-      "0 1 0 0 1 1 121 1 0 ";
+      "1010 63232 1 61952 61952 61952 61952 1936 1936 63232 63232 16 3 3952 32 247 16 16 1936 1936 16 0 16 1 0 14 1 1 "
+      "121 1 0 1 14 14 1 1 121 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
 }

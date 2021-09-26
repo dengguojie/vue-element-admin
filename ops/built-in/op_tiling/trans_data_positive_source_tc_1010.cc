@@ -234,10 +234,10 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   if ((axis_c_size % c0_len == 0 && GetCeilDiv(params.c_lp_unit, block_elem_cnt) % C0_16 != 0) ||
       (axis_c_size % c0_len == 0 && params.pln_dst_cr_size % 2 == 0)) {
     // move in cl_cr_c in together
-    if (params.c_lp_unit == axis_c_size && per_vnc_dst_cr_cnt == axis_dst_cr_size) {
+    if (params.c_lp_unit == axis_c_size && per_vnc_dst_cr_cnt >= axis_dst_cr_size) {
       params.nc_le_vcol = 3;
       per_vnc_dst_cl_cnt = GetFloorDiv(params.vnc_line_size * VNC_LINES, axis_c_size * axis_dst_cr_size);
-    } else if (params.c_lp_unit == axis_c_size and per_vnc_dst_cr_cnt < axis_dst_cr_size) {
+    } else if (params.c_lp_unit == axis_c_size) {
       // move in cr_c in together
       params.nc_le_vcol = 4;
       per_vnc_dst_cl_cnt = 1;
