@@ -19,7 +19,14 @@
 #include <vector>
 
 #include "cpu_kernel.h"
+#include "utils/eigen_tensor.h"
 namespace aicpu {
+#if (defined __ARM_ARCH) || (defined PLANTFORM_AARCH64)
+#include "arm_fp16.h"
+#define FP16 float16_t
+#else
+#define FP16 Eigen::half
+#endif
 class TopKPQDistanceCpuKernel : public CpuKernel {
  public:
   TopKPQDistanceCpuKernel() = default;
@@ -52,7 +59,9 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
     }
     T **getPtr() const { return data_ptr_; }
 
-    T getv(const int32_t grp, const int32_t grpi) const { return data_ptr_[grp][grpi]; }
+    T getv(const int32_t grp, const int32_t grpi) const {
+      return data_ptr_[grp][grpi];
+    }
   };
 
   template <typename T>
@@ -81,6 +90,11 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
                          Item<T> topk_ptr[]);
 
   template <typename T>
+  void InitTopKHeap(int &cnt, int &cntk, Item<T> topk_ptr[],
+                    const Item<T> grp_extreme_ptr[],
+                    const InputsData<T> &inputs_data);
+
+  template <typename T>
   uint32_t GetDistanceTopKHeap(Item<T> topk_ptr[],
                                const Item<T> grp_extreme_ptr[],
                                const InputsData<T> &inputs_data);
@@ -96,7 +110,7 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
   void PopHeap(Item<T> arr_ptr[], const int32_t n, Item<T> *const res);
 
   template <typename T>
-  void HeapFixdown(Item<T> a[], const int32_t index, const int32_t n);
+  inline void HeapFixdown(Item<T> a[], const int32_t index, const int32_t n);
 
   template <typename T>
   void SortHeap(Item<T> arr_ptr[], const int32_t n);

@@ -189,7 +189,6 @@ IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
     return GRAPH_FAILED;
   }
 
-  int32_t extremeDistanceSum = 0;
   for (int32_t i = 0; i < inputSize / INPUT_N; i++) {
     std::vector<int64_t> pqDistanceDims = op.GetDynamicInputDesc("pq_distance", i).GetShape().GetDims();
     std::vector<int64_t> pqIvfDims = op.GetDynamicInputDesc("pq_ivf", i).GetShape().GetDims();
@@ -207,21 +206,13 @@ IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
         op.GetDynamicInputDesc("grouped_extreme_distance", i).GetShape().GetDims();
     OP_LOGI(op.GetName().c_str(), "extremeDistanceDims shape:[%s]", DebugString(extremeDistanceDims).c_str());
 
-    if (extremeDistanceDims.size() > 0) {
-      extremeDistanceSum += extremeDistanceDims[0];
-    } else {
+    if (extremeDistanceDims.size() <= 0) {
       std::string err_msg = OtherErrMsg("extremeDistanceDims is empty");
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
-  if (k > extremeDistanceSum) {
-        string msg = ConcatString("extremeDistanceSum:", extremeDistanceSum, "k is:",k ,
-                                  "extremeDistanceDims[0] must greater than or equal to k.");
-        std::string err_msg = OtherErrMsg(msg);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-        return GRAPH_FAILED;
-  }
+
   OP_LOGI(op.GetName().c_str(), "TopKPQDistanceVerify end");
   return GRAPH_SUCCESS;
 }

@@ -156,10 +156,11 @@ if(BUILD_OPEN_PROJECT)
     target_compile_options(cpu_kernels PRIVATE
       -O2
       -std=c++14
-      -ftrapv
       -fstack-protector-all
       -fvisibility-inlines-hidden
       -fvisibility=hidden
+      -frename-registers
+      -fpeel-loops
     )
 
     target_link_options(cpu_kernels PRIVATE
@@ -293,10 +294,11 @@ target_compile_definitions(cpu_kernels PRIVATE
 target_compile_options(cpu_kernels PRIVATE
     -O2
     -std=c++14
-    -ftrapv
     -fstack-protector-all
     -fvisibility-inlines-hidden
     -fvisibility=hidden
+    -frename-registers
+    -fpeel-loops
 )
 
 target_link_options(cpu_kernels PRIVATE
