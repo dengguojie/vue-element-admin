@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 
-"""CorrectionMul op"""
+"""CusCorrectionMul op"""
 import tbe.dsl as tbe
 from tbe import tvm
 from te.platform.fusion_manager import fusion_manager
@@ -25,12 +25,12 @@ from mindspore.ops.op_info_register import DataType
 
 SHAPE_SIZE_LIMIT = 2147483648
 
-correction_mul_op_info = TBERegOp("CorrectionMul") \
+cus_correction_mul_op_info = TBERegOp("CusCorrectionMul") \
     .fusion_type("ELEMWISE") \
     .async_flag(False) \
-    .binfile_name("correction_mul.so") \
+    .binfile_name("cus_correction_mul.so") \
     .compute_cost(10) \
-    .kernel_name("correction_mul") \
+    .kernel_name("cus_correction_mul") \
     .partial_flag(True) \
     .attr("channel_axis", "optional", "int", "all") \
     .input(0, "x", None, "required", None) \
@@ -44,15 +44,15 @@ correction_mul_op_info = TBERegOp("CorrectionMul") \
     .get_op_info()
 
 
-@op_info_register(correction_mul_op_info)
+@op_info_register(cus_correction_mul_op_info)
 def _correction_mul_tbe():
-    """CorrectionMul TBE register"""
+    """CusCorrectionMul TBE register"""
     return
 
 
-@fusion_manager.register("correction_mul")
-def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mul"):
-    """CorrectionMul compute"""
+@fusion_manager.register("cus_correction_mul")
+def correction_mul_compute(x, batch_std, running_std, kernel_name="cus_correction_mul"):
+    """CusCorrectionMul compute"""
     shape_x = shape_util.shape_to_list(x.shape)
     factor = tbe.vdiv(batch_std, running_std)
     factor_b = tbe.broadcast(factor, shape_x)
@@ -61,7 +61,7 @@ def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mu
 
 
 @para_check.check_input_type(dict, dict, dict, dict, int, str)
-def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correction_mul"):
+def cus_correction_mul(x, batch_std, running_std, y, channel, kernel_name="cus_correction_mul"):
     """CorrectionMul op"""
     shape = x.get("shape")
     data_format = x.get("format")

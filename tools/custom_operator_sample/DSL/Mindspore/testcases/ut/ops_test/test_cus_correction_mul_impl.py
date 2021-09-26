@@ -2,7 +2,7 @@
 import numpy as np
 from op_test_frame.ut import BroadcastOpUT
 
-ut_case = BroadcastOpUT("correction_mul_impl", op_func_name="correction_mul")
+ut_case = BroadcastOpUT("cus_correction_mul_impl", op_func_name="cus_correction_mul")
 
 
 # pylint: disable=unused-argument

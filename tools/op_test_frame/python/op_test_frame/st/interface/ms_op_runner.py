@@ -35,7 +35,7 @@ class MsOpRunner:
             line = ms_process.stdout.readline()
             line = line.strip()
             if line:
-                utils.print_info_log(line)
+                print(line)
         if ms_process.returncode != 0:
             utils.print_error_log('Failed to execute command: %s' % cmd)
             raise utils.OpTestGenException(

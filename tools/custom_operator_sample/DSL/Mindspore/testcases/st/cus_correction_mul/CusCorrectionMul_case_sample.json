@@ -1,7 +1,7 @@
 [{
-    "case_name": "Test_CorrectionMul_001",
+    "case_name": "Test_CusCorrectionMul_001",
     "st_mode": "ms_python_train",
-    "op": "CorrectionMul",
+    "op": "CusCorrectionMul",
     "calc_expect_func_file": "",
     "input_desc": [
         {

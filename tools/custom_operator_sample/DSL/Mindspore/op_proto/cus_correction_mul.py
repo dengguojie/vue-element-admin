@@ -8,7 +8,7 @@ from mindspore.ops import prim_attr_register
 from mindspore.ops import PrimitiveWithInfer
 
 
-class CorrectionMul(PrimitiveWithInfer):
+class CusCorrectionMul(PrimitiveWithInfer):
     """
     Scales the weights with a correction factor to the long term statistics
     prior to quantization. This ensures that there is no jitter in the quantized weights
@@ -23,18 +23,18 @@ class CorrectionMul(PrimitiveWithInfer):
         - **out** (Tensor) - Tensor has the same shape as x.
 
     Examples:
-        >>> correction_mul = CorrectionMul()
+        >>> cus_correction_mul = CusCorrectionMul()
         >>> input_x = Tensor(np.random.randint(-8, 12, (3, 4)), mindspore.float32)
         >>> batch_std = Tensor(np.array([1.5, 3, 2]), mindspore.float32)
         >>> running_std = Tensor(np.array([2, 1.2, 0.5]), mindspore.float32)
-        >>> out = correction_mul(input_x, batch_std, running_std)
+        >>> out = cus_correction_mul(input_x, batch_std, running_std)
     """
 
     @prim_attr_register
     def __init__(self, channel_axis=0):
         """Initialize correction mul layer"""
         if context.get_context('device_target') == "Ascend":
-            from correction_mul_impl import correction_mul
+            from cus_correction_mul_impl import cus_correction_mul
         self.channel_axis = channel_axis
         self.init_prim_io_names(inputs=['x', 'batch_std', 'running_std'],
                                 outputs=['out'])
