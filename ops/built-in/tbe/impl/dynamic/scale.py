@@ -426,7 +426,7 @@ def _fused_scale_bias_compute(x, scale, bias):
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@register_operator_compute("Scale", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Scale", op_mode="dynamic", support_fusion=False)
 def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob, kernel_name="scale"):
     """
     algorithm: Scale

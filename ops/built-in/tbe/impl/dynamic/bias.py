@@ -245,7 +245,7 @@ def _check_dtype(dtype_x, dtype_bias):
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-@register_operator_compute("bias", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("bias", op_mode="dynamic", support_fusion=False)
 def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias"):
     """
     calculating data

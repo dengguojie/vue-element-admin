@@ -199,7 +199,7 @@ def reshape(tensor_in, new_shape):
 
 
 # pylint: disable=unused-argument
-@register_operator_compute("PRelu", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("PRelu", op_mode="dynamic", support_fusion=False)
 def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     """
     calculating data

@@ -27,7 +27,7 @@ from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@register_operator_compute("BroadcastTo", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BroadcastTo", op_mode="dynamic", support_fusion=False)
 def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     """
     TVM calculation process, used for fusion operation.

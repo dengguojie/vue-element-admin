@@ -38,7 +38,7 @@ NoneType = type(None)
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals
-@register_operator_compute("BinaryCrossEntropyGrad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BinaryCrossEntropyGrad", op_mode="dynamic", support_fusion=False)
 def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
                                       reduction, kernel_name):
     """

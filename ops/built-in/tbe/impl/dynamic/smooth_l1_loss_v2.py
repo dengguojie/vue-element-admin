@@ -28,7 +28,7 @@ from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=redefined-builtin,too-many-locals,too-many-arguments
-@register_operator_compute("SmoothL1LossV2", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("SmoothL1LossV2", op_mode="dynamic", support_fusion=False)
 def smooth_l1_loss_v2_compute(input_predict,
                               input_label,
                               input_axis,

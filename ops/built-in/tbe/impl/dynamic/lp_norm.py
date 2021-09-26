@@ -131,7 +131,7 @@ def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals
-@register_operator_compute("LpNorm", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("LpNorm", op_mode="dynamic", support_fusion=False)
 def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
     Compute norm for p >= 3.

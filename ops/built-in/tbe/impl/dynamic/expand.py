@@ -27,7 +27,7 @@ from impl.util.platform_adapter import OpPatternMode
 
  
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@register_operator_compute("Expand", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Expand", op_mode="dynamic", support_fusion=False)
 def expand_compute(x, shape):
     """
     TVM calculation process, used for fusion operation.

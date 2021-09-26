@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,invalid-name
-@register_operator_compute("BitwiseOr", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BitwiseOr", op_mode="dynamic", support_fusion=False)
 def bitwise_or_compute(x1, x2, y, kernel_name="bitwise_or"):
     """
     calculating data's element_or, c = a | b

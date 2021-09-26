@@ -32,7 +32,7 @@ from impl.util.platform_adapter import OpImplMode
 
 # pylint: disable=too-many-branches,too-many-arguments,too-many-locals
 # pylint: disable=unused-argument,invalid-name
-@register_operator_compute("ReduceMean", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("ReduceMean", op_mode="dynamic", support_fusion=False)
 def reduce_mean_compute(x,
                         axes,
                         y,

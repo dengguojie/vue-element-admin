@@ -31,7 +31,7 @@ from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=too-many-arguments,unused-argument,consider-using-in,len-as-condition,too-many-locals
-@register_operator_compute("MseLossGrad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("MseLossGrad", op_mode="dynamic", support_fusion=False)
 def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_name="mse_loss_grad"):
     """
     calculating data

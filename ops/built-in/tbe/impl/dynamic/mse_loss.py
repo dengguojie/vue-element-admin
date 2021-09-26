@@ -29,7 +29,7 @@ from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals
-@register_operator_compute("MseLoss", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("MseLoss", op_mode="dynamic", support_fusion=False)
 def mse_loss_compute(predict, label, y, axis, reduction='mean', kernel_name="mse_loss"):
     """
     calculating mse_loss

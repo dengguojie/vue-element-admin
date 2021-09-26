@@ -171,7 +171,7 @@ def _fused_compute(x, mean, variance):
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
-@register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=False)
 def bninference_d_compute(x, mean, variance, scale, bias, y,
                           momentum, epsilon, use_global_stats, mode):
     """
