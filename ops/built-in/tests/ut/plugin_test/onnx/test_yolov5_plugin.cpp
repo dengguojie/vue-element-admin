@@ -31,3 +31,18 @@ TEST_F(yolov5_onnx_plugin_test, yolov5_onnx_plugin_test_case_1) {
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
   EXPECT_EQ(nodes.size(), 2);
 }
+
+TEST_F(yolov5_onnx_plugin_test, yolov5_onnx_plugin_test_case_2) {
+  CleanGlobal();
+  ge::Graph graph;
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string modelFile = caseDir + "/test_yolov5_V11_fail.onnx";
+  std::map<ge::AscendString, ge::AscendString> parser_params;
+
+  auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

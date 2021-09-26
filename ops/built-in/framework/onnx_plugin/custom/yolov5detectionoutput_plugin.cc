@@ -84,7 +84,7 @@ Status ParseParamsYoloV5DetectionOutput(const Message* op_src, ge::Operator& op_
   }
 
   if (v_biases.empty()) {
-    ONNX_PLUGIN_LOGE("Yolov3detectionoutputv2", "The attr of biases is required.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "The attr of biases is required.");
     return FAILED;
   }
 
