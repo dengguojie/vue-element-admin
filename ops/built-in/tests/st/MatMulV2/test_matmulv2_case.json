@@ -82,7 +82,7 @@
   },
   {
     "op": "MatMulV2",
-    "case_name": "test_MatMulV2_002",
+    "case_name": "test_MatMulV2_003",
     "input_desc": [
       {
         "format": "ND",

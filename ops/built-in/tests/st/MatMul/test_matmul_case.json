@@ -142,5 +142,93 @@
         "type": "int"
       }
     ]
+  },
+  {
+    "op": "MatMul",
+    "case_name": "test_MatMul_003",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          -1
+        ],
+        "type": "float16",
+        "typical_shape": [
+          16384,
+          512
+        ],
+        "shape_range": [
+          [16369, 17000],
+          [497, 1008]
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          -1, -1
+        ],
+        "type": "float16",
+        "typical_shape": [
+          512, 512
+        ],
+        "shape_range": [
+          [497, 1008],
+          [497, 1008]      
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          -1
+        ],
+        "typical_shape": [
+          16384,
+          512
+        ],
+        "shape_range": [
+          [16369, 17000],
+          [497, 1008]
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
   }
 ]
