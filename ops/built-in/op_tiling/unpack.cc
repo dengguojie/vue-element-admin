@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +27,8 @@
 
 namespace optiling {
 constexpr int32_t kBlockSize{32};
+constexpr int32_t kCalcMemSize{1024};
+constexpr int32_t RightIndex{2};
 enum TilingStrategy { SINGLE_OUTPUT = 0, SMALL_SHAPE, BIG_SHAPE, LESS_32B, LAST_DIM_SMALL };
 
 // compile info
@@ -123,20 +124,16 @@ bool GetCompileParams(const nlohmann::json& op_info, CompileInfo& compile_info) 
 void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
                                  std::unordered_map<std::string, int32_t>& var_names, TilingStrategy& key,
                                  int32_t& actual_block_num) {
-  int64_t calc_size = std::accumulate(output_reshape.begin(), output_reshape.end(), (int64_t)1, std::multiplies<int64_t>());
-  // Minimum memory size processed by each core
-  constexpr int32_t kCalcMemSize{1024};
+  int64_t calc_size = std::accumulate(output_reshape.begin(), output_reshape.end(), (int64_t)1,
+                                      std::multiplies<int64_t>());
   int32_t split_factor = 1;
   int32_t right_dim_in = 1;
   int32_t ub_limit = ((compile_info.ub_size / kBlockSize) * kBlockSize) / compile_info.dtype_size;
-
   actual_block_num = std::ceil(calc_size * compile_info.dtype_size * 1.0 / kCalcMemSize);
-
   if (actual_block_num >= compile_info.core_num) {
     actual_block_num = compile_info.core_num;
   }
   right_dim_in = std::ceil(calc_size * 1.0 / actual_block_num);
-
   if (right_dim_in <= ub_limit) {
     split_factor = right_dim_in;
   } else {
@@ -148,30 +145,37 @@ void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, con
   var_names["left_dim_out"] = actual_block_num;
 }
 
+int32_t GetSplitFactor(const int32_t ub_limit, const int64_t ori_last_ele, const int32_t ele_per_block) {
+  int32_t split_factor = 1;
+  for (int j = ub_limit; j > 0; j--) {
+    if (ori_last_ele % j >= ele_per_block || ori_last_ele % j == 0) {
+      split_factor = j;
+      break;
+    }
+  }
+  return split_factor; 
+}
+
 void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, const int32_t dtype_size,
                  int32_t& split_axis, int32_t& split_factor) {
   int32_t ele_per_block = kBlockSize / dtype_size;
-  int64_t ori_last_ele = output_reshape[2];
+  int64_t ori_last_ele = output_reshape[RightIndex];
 
-  if (output_reshape[2] % ele_per_block != 0) {
-    output_reshape[2] = std::ceil(output_reshape[2] * 1.0 / ele_per_block) * ele_per_block;
+  if (output_reshape[RightIndex] % ele_per_block != 0) {
+    output_reshape[RightIndex] = std::ceil(output_reshape[RightIndex] * 1.0 / ele_per_block) * ele_per_block;
   }
   int32_t len = static_cast<int32_t>(output_reshape.size()) - 1;
   for (int i = 0; i < len; i++) {
-    int64_t ele_cnt = std::accumulate(output_reshape.begin() + i, output_reshape.end(), (int64_t)1, std::multiplies<int64_t>());
+    int64_t ele_cnt = std::accumulate(output_reshape.begin() + i, output_reshape.end(), (int64_t)1,
+                                      std::multiplies<int64_t>());
     if (ele_cnt <= ub_limit) {
       split_axis = i - 1;
       split_factor = ub_limit / ele_cnt;
       break;
     } else if (i == len - 1) {
       split_axis = i;
-      if (0 < ori_last_ele % ub_limit < ele_per_block) {
-        for (int j = ub_limit; j > 0; j--) {
-          if (ori_last_ele % j >= ele_per_block || ori_last_ele % j == 0) {
-            split_factor = j;
-            break;
-          }
-        }
+      if (0 < ori_last_ele % ub_limit && ori_last_ele % ub_limit < ele_per_block) {
+        split_factor = GetSplitFactor(ub_limit, ori_last_ele, ele_per_block);
       } else {
         split_factor = ub_limit;
       }
@@ -186,9 +190,12 @@ void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, c
 
 void GetLeftDimOutForRightDimLess32B(int32_t left_dim, int32_t right_dim, int32_t dtype_size, int32_t& new_left_dim,
                                      int32_t& left_dim_out) {
-  if (left_dim * right_dim * dtype_size >= 32) {
-    while (right_dim * new_left_dim * dtype_size < 32) {
+  if (left_dim * right_dim * dtype_size >= kBlockSize) {
+    while (right_dim * new_left_dim * dtype_size < kBlockSize) {
       left_dim_out--;
+      if (left_dim_out == 0) {
+        left_dim_out = 1;
+      }
       new_left_dim = std::ceil(left_dim * 1.0 / left_dim_out);
       if (left_dim_out == 1) {
         break;
@@ -205,7 +212,7 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
                                 int32_t& actual_block_num, TilingStrategy& key,
                                 std::unordered_map<std::string, int32_t>& var_names) {
   int32_t left_dim = static_cast<int32_t>(output_reshape[0]);
-  int32_t right_dim = static_cast<int32_t>(output_reshape[2]);
+  int32_t right_dim = static_cast<int32_t>(output_reshape[RightIndex]);
   int32_t core_num = compile_info.core_num;
   int32_t left_dim_out = 1;
   int32_t right_dim_in = 1;
@@ -213,8 +220,6 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
   int32_t split_axis = 1;
   vector<int64_t> new_shape(output_reshape);
   int32_t ele_per_block = kBlockSize / compile_info.dtype_size;
-  // Minimum memory size processed by each core
-  constexpr int32_t kCalcMemSize{1024};
   int32_t ub_limit = ((compile_info.ub_size / kBlockSize) * kBlockSize) / compile_info.dtype_size;
 
   if (left_dim <= core_num && right_dim * left_dim > kCalcMemSize / compile_info.dtype_size * core_num) {
@@ -222,17 +227,14 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
     right_dim_in = std::ceil(right_dim * 1.0 / right_dim_out);
     left_dim_out = left_dim;
     if (right_dim % ele_per_block == 0) {
-      while (right_dim_in % ele_per_block > 0) {
+      while (right_dim_in % ele_per_block > 0 && right_dim_out > 1) {
         right_dim_out--;
         right_dim_in = std::ceil(right_dim * 1.0 / right_dim_out);
-        if (right_dim_out == 1) {
-          break;
-        }
       }
     }
     actual_block_num = left_dim_out * right_dim_out;
     new_shape[0] = 1;
-    new_shape[2] = right_dim_in;
+    new_shape[RightIndex] = right_dim_in;
   } else {
     left_dim_out = (left_dim > core_num) ? core_num : left_dim;
     right_dim_in = right_dim;
@@ -246,7 +248,7 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
   }
 
   GetUbTiling(new_shape, ub_limit, compile_info.dtype_size, split_axis, split_factor);
-  if (split_axis == 0 && right_dim_in * split_factor * compile_info.dtype_size < 32) {
+  if (split_axis == 0 && right_dim_in * split_factor * compile_info.dtype_size < kBlockSize) {
     var_names["left_dim_out"] = 1;
     var_names["right_dim_in"] = right_dim_in;
     var_names["split_factor"] = split_factor;
@@ -260,6 +262,28 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
   var_names["right_dim_in"] = right_dim_in;
   var_names["left_dim_out"] = left_dim_out;
   var_names["split_factor"] = split_factor;
+}
+
+bool CheckRet(CompileInfo &compile_info, const TeOpParas &op_paras, const nlohmann::json &op_info,
+              const int32_t input_dims) {
+  if (kDtypeSizeMap.count(op_paras.inputs[0].tensor[0].dtype) == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Invalid input dtype.");
+    return false;
+  }
+  compile_info.dtype_size = kDtypeSizeMap.at(op_paras.inputs[0].tensor[0].dtype);
+  bool ret = GetCompileParams(op_info, compile_info);
+  if (!ret) {
+    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Get Compile info failed.");
+    return ret;
+  }
+
+  // check op input and output params
+  ret = CheckOpParams(op_paras, input_dims, compile_info.axis);
+  if (!ret) {
+    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Check op params failed.");
+    return ret;
+  }
+  return true;
 }
 
 /*
@@ -278,21 +302,8 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   int32_t input_dims = input_shape.size();
   std::unordered_map<std::string, int32_t> var_names;
   CompileInfo compile_info;
-  if (kDtypeSizeMap.count(op_paras.inputs[0].tensor[0].dtype) == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Invalid input dtype");
-    return false;
-  }
-  compile_info.dtype_size = kDtypeSizeMap.at(op_paras.inputs[0].tensor[0].dtype);
-  bool ret = GetCompileParams(op_info, compile_info);
+  bool ret = CheckRet(compile_info, op_paras, op_info, input_dims);
   if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Get Compile info failed.");
-    return ret;
-  }
-
-  // check op input and output params
-  ret = CheckOpParams(op_paras, input_dims, compile_info.axis);
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Check op params failed.");
     return ret;
   }
 
