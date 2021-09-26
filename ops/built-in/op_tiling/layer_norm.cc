@@ -1,5 +1,5 @@
 /* Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,10 +11,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-/*!
- * \file layer_norm.cc
- * \brief dynamic shape tiling of layer_norm
  */
 #include <algorithm>
 #include <cmath>
@@ -91,12 +87,9 @@ bool IsInVector(std::vector<int32_t> input, const int32_t value) {
   return false;
 }
 
-int32_t CalcPatternKey(std::vector<int64_t> input,
-                       std::vector<int32_t> reduce_axis,
-                       const int32_t block_split_axis,
-                       const int32_t ub_split_axis_index_reduce,
-                       const int32_t ub_split_axis, bool is_normal,
-                       const bool is_fuse_axis) {
+int32_t CalcPatternKey(std::vector<int64_t> input, const std::vector<int32_t> &reduce_axis,
+                       const int32_t block_split_axis, const int32_t ub_split_axis_index_reduce,
+                       const int32_t ub_split_axis, bool is_normal, const bool is_fuse_axis) {
   int32_t pattern = 0;
 
   for (size_t i = 0; i < input.size(); i++) {
@@ -107,8 +100,7 @@ int32_t CalcPatternKey(std::vector<int64_t> input,
     }
   }
 
-  pattern += block_split_axis * NUM_BSA + ub_split_axis * NUM_USA +
-             ub_split_axis_index_reduce;
+  pattern += block_split_axis * NUM_BSA + ub_split_axis * NUM_USA + ub_split_axis_index_reduce;
 
   if (!is_normal) {
     pattern = pattern * NUM_TW;
@@ -120,9 +112,8 @@ int32_t CalcPatternKey(std::vector<int64_t> input,
   return pattern;
 }
 
-int32_t CalcTilingKey(CompileInfo &commoninfo, std::vector<int64_t> input_x,
-                      TilingParams tilingparams,
-                      std::vector<int32_t> reduce_axis) {
+int32_t CalcTilingKey(CompileInfo &commoninfo, std::vector<int64_t> input_x, TilingParams tilingparams,
+                      const std::vector<int32_t> &reduce_axis) {
   int32_t key = 0;
   int32_t block_split_axis = tilingparams.block_tiling_axis;
   int32_t block_split_axis_1 = tilingparams.block_tiling_axis_1;
@@ -151,14 +142,12 @@ int32_t CalcTilingKey(CompileInfo &commoninfo, std::vector<int64_t> input_x,
   return key + range_key;
 }
 
-bool GetCompileInfo(const string &op_type, const nlohmann::json &op_info,
-                    CompileInfo &compileinfo, std::vector<int32_t> reduce_axis,
-                    std::vector<int64_t> input_shape, OpRunInfo &run_info) {
+bool GetCompileInfo(const string &op_type, const nlohmann::json &op_info, CompileInfo &compileinfo,
+                    const std::vector<int32_t> &reduce_axis, std::vector<int64_t> input_shape, OpRunInfo &run_info) {
   std::vector<int32_t> common_info;
 
   OP_TILING_CHECK((op_info.find("common_info") == op_info.end()),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [common_info]"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [common_info]"), return false);
   common_info = op_info.at("common_info").get<std::vector<int32_t>>();
 
   compileinfo.core_num = common_info[CI_CORE_NUM_INDEX];
@@ -166,15 +155,14 @@ bool GetCompileInfo(const string &op_type, const nlohmann::json &op_info,
   compileinfo.min_block_size = common_info[CI_MIN_BLOCK_SIZE];
   compileinfo.atomic = (bool)common_info[CI_ATOMIC];
 
-  V_OP_TILING_CHECK(compileinfo.min_block_size > 0,
-                    VECTOR_INNER_ERR_REPORT_TILIING(
-                        op_type, "min_block_size is %d that is illegal", compileinfo.min_block_size),
-                    return false);
-
   V_OP_TILING_CHECK(
-      compileinfo.core_num > 0,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileinfo.core_num),
+      compileinfo.min_block_size > 0,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal", compileinfo.min_block_size),
       return false);
+
+  V_OP_TILING_CHECK(compileinfo.core_num > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileinfo.core_num),
+                    return false);
 
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
     float reduce_mean_cof = 1.0;
@@ -194,8 +182,7 @@ bool GetCompileInfo(const string &op_type, const nlohmann::json &op_info,
   return true;
 }
 
-bool CheckWorkspaceCase(std::vector<int64_t> input_x,
-                        std::vector<int32_t> reduce_axis,
+bool CheckWorkspaceCase(std::vector<int64_t> input_x, const std::vector<int32_t> &reduce_axis,
                         const int32_t max_ub_size) {
   int32_t reduce_shape_size = 1;
   // add last dim is not reduce axis judge NCHW->5HD NC1HWC0 reduce_axis[3]
@@ -211,9 +198,8 @@ bool CheckWorkspaceCase(std::vector<int64_t> input_x,
     return false;
   }
 
-  int32_t reduce_index = 0;
   for (size_t j = 0; j < reduce_axis.size(); j++) {
-    reduce_index = reduce_axis[j];
+    int32_t reduce_index = reduce_axis[j];
     reduce_shape_size *= input_x[reduce_index];
   }
   if (reduce_shape_size > max_ub_size) {
@@ -224,8 +210,7 @@ bool CheckWorkspaceCase(std::vector<int64_t> input_x,
   return false;
 }
 
-bool CheckExceedUbSize(const int32_t block_inner, std::vector<int64_t> input_x,
-                       size_t i, const int32_t max_ub_size) {
+bool CheckExceedUbSize(const int32_t block_inner, std::vector<int64_t> input_x, size_t i, const int32_t max_ub_size) {
   // judge exceed ub_size  and do workspace
   int32_t shape_size = block_inner;
   for (size_t j = i + 1; j < input_x.size(); j++) {
@@ -239,8 +224,7 @@ bool CheckExceedUbSize(const int32_t block_inner, std::vector<int64_t> input_x,
   return false;
 }
 
-void CalcUbFactor(const int32_t ub_mul_num, const int32_t block,
-                  const int32_t split_num, int32_t &ub_factor,
+void CalcUbFactor(const int32_t ub_mul_num, const int32_t block, const int32_t split_num, int32_t &ub_factor,
                   bool &is_open_multi_core) {
   int32_t min_uf = (block + ub_mul_num - 1) / ub_mul_num;
   for (int32_t uf = ub_factor; uf >= min_uf; uf--) {
@@ -254,11 +238,9 @@ void CalcUbFactor(const int32_t ub_mul_num, const int32_t block,
   }
 }
 
-std::vector<int32_t> GetUbTilingData(const int32_t block_inner, size_t i,
-                                std::vector<int64_t> input_x,
-                                const int32_t max_ub_size,
-                                std::vector<int32_t> reduce_axis,
-                                const int32_t block) {
+std::vector<int32_t> GetUbTilingData(const int32_t block_inner, size_t i, std::vector<int64_t> input_x,
+                                     const int32_t max_ub_size, const std::vector<int32_t> &reduce_axis,
+                                     const int32_t block) {
   int32_t x_size = 1;
   int32_t ub_tiling_axis = i;
   int32_t ub_factor = 1;
@@ -311,19 +293,14 @@ std::vector<int32_t> GetUbTilingData(const int32_t block_inner, size_t i,
       CalcUbFactor(ub_mul_num, block, split_num, ub_factor, is_open_multi_core);
     }
   }
-  ub_outer = input_x[ub_tiling_axis] % ub_factor == 0
-                 ? input_x[ub_tiling_axis] / ub_factor
-                 : (input_x[ub_tiling_axis] + ub_factor) / ub_factor;
+  ub_outer = input_x[ub_tiling_axis] % ub_factor == 0 ? input_x[ub_tiling_axis] / ub_factor
+                                                      : (input_x[ub_tiling_axis] + ub_factor) / ub_factor;
   std::vector<int32_t> res = {ub_tiling_axis, ub_factor, is_workspacecase, is_open_multi_core, ub_outer};
   return res;
 }
 
-void GetUbTilingDataAfterFuse(const int32_t block_axis_1,
-                              const int32_t block_factor_1,
-                              const int32_t ub_tiling_axis,
-                              std::vector<int64_t> input_x,
-                              const int32_t ub_factor,
-                              TilingParams &tilingparams) {
+void GetUbTilingDataAfterFuse(const int32_t block_axis_1, const int32_t block_factor_1, const int32_t ub_tiling_axis,
+                              std::vector<int64_t> input_x, const int32_t ub_factor, TilingParams &tilingparams) {
   if (block_axis_1 == ub_tiling_axis) {
     int32_t new_ub_factor = (input_x[block_axis_1] + block_factor_1 - 1) / block_factor_1;
     if (new_ub_factor < ub_factor) {
@@ -332,9 +309,8 @@ void GetUbTilingDataAfterFuse(const int32_t block_axis_1,
   }
 }
 
-int32_t GetUbReduceAxis(std::vector<int64_t> input_x,
-                        const int32_t max_ub_size,
-                        std::vector<int32_t> reduce_axis) {
+int32_t GetUbReduceAxis(std::vector<int64_t> input_x, const int32_t max_ub_size,
+                        const std::vector<int32_t> &reduce_axis) {
   int32_t reduce_shape_size = 1;
   // add last dim is not reduce axis judge
   for (int32_t j = static_cast<int32_t>(input_x.size() - 1); j >= 0; j--) {
@@ -351,13 +327,12 @@ int32_t GetUbReduceAxis(std::vector<int64_t> input_x,
     }
   }
   OP_LOGI("In workspace case, ub axis must be reduce axis--> false");
-  
+
   return 0;
 }
 
-int32_t GetUnblockAxisOutputMul(const int32_t block_axis,
-                                std::vector<int64_t> input_x,
-                                std::vector<int32_t> reduce_axis) {
+int32_t GetUnblockAxisOutputMul(const int32_t block_axis, std::vector<int64_t> input_x,
+                                const std::vector<int32_t> &reduce_axis) {
   int32_t mul_num = 1;
   for (size_t i = 0; i < input_x.size(); i++) {
     if (!IsInVector(reduce_axis, i) && (static_cast<size_t>(block_axis) != i)) {
@@ -367,11 +342,9 @@ int32_t GetUnblockAxisOutputMul(const int32_t block_axis,
   return mul_num;
 }
 
-std::vector<int32_t>
-GetBlockTilingData(const int32_t block_axis, int32_t block_factor,
-                   const int32_t ub_tiling_axis, const int32_t ub_outer,
-                   std::vector<int64_t> input_x,
-                   std::vector<int32_t> reduce_axis, const int32_t core_num) {
+std::vector<int32_t> GetBlockTilingData(const int32_t block_axis, int32_t block_factor, const int32_t ub_tiling_axis,
+                                        const int32_t ub_outer, std::vector<int64_t> input_x,
+                                        const std::vector<int32_t> &reduce_axis, const int32_t core_num) {
   int32_t block_axis_1 = block_axis + 1;
   block_factor = input_x[block_axis];
   int32_t block_factor_1 = ub_outer;
@@ -386,8 +359,7 @@ GetBlockTilingData(const int32_t block_axis, int32_t block_factor,
   }
   cm_core_num_list.push_back(1);
   // fuse only consecutive axis, so |block_axis - block_axis_1|=1
-  if (IsInVector(reduce_axis, block_axis_1) ||
-      (block_axis_1 > ub_tiling_axis)) {
+  if (IsInVector(reduce_axis, block_axis_1) || (block_axis_1 > ub_tiling_axis)) {
     std::vector<int32_t> res = {block_axis, block_factor, block_axis_1, block_factor_1};
     return res;
   }
@@ -417,10 +389,8 @@ GetBlockTilingData(const int32_t block_axis, int32_t block_factor,
   return res;
 }
 
-void GetTilingDataAllReduceAxis(std::vector<int64_t> input_x,
-                                TilingParams &tilingparams,
-                                std::vector<int32_t> reduce_axis,
-                                const int32_t max_ub_size,
+void GetTilingDataAllReduceAxis(std::vector<int64_t> input_x, TilingParams &tilingparams,
+                                const std::vector<int32_t> &reduce_axis, const int32_t max_ub_size,
                                 CompileInfo &compileinfo, const int32_t block) {
   // all_reduce
   tilingparams.block_dim = 1;
@@ -449,9 +419,8 @@ void GetTilingDataAllReduceAxis(std::vector<int64_t> input_x,
   }
 }
 
-void CalcUbFuseFactor(const int32_t block_axis, std::vector<int64_t> input_x,
-                      TilingParams &tilingparams, const int32_t core_num,
-                      const int32_t max_ub_size, const int32_t block,
+void CalcUbFuseFactor(const int32_t block_axis, std::vector<int64_t> input_x, TilingParams &tilingparams,
+                      const int32_t core_num, const int32_t max_ub_size, const int32_t block,
                       const int32_t block_inner) {
   /***
    * ub_fuse_factor condition:
@@ -467,8 +436,7 @@ void CalcUbFuseFactor(const int32_t block_axis, std::vector<int64_t> input_x,
    * ub_fuse_factor = 0
    ***/
   tilingparams.ub_fuse_factor = block_inner;
-  if ((block_inner < input_x[block_axis]) && (block_inner > block) &&
-      (input_x[block_axis] > core_num)) {
+  if ((block_inner < input_x[block_axis]) && (block_inner > block) && (input_x[block_axis] > core_num)) {
     for (int32_t n = block_inner; n > block; n--) {
       if (n < max_ub_size && block_inner % n > block) {
         tilingparams.ub_fuse_factor = n;
@@ -478,15 +446,13 @@ void CalcUbFuseFactor(const int32_t block_axis, std::vector<int64_t> input_x,
   }
 }
 
-void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
-                         std::vector<int64_t> input_x,
-                         TilingParams &tilingparams,
-                         std::vector<int32_t> reduce_axis,
-                         const int32_t core_num, const int32_t max_ub_size,
-                         CompileInfo &compileinfo, const int32_t block,
+void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis, std::vector<int64_t> input_x,
+                         TilingParams &tilingparams, const std::vector<int32_t> &reduce_axis, const int32_t core_num,
+                         const int32_t max_ub_size, CompileInfo &compileinfo, const int32_t block,
                          const int32_t block_inner) {
   // open multi-core block and split ub axis
-  std::vector<int32_t> ubtilingdata = GetUbTilingData(ub_block_inner, block_axis, input_x, max_ub_size, reduce_axis, block);
+  std::vector<int32_t> ubtilingdata =
+      GetUbTilingData(ub_block_inner, block_axis, input_x, max_ub_size, reduce_axis, block);
   tilingparams.ub_tiling_axis = ubtilingdata[0];
   tilingparams.ub_factor = ubtilingdata[1];
   bool normal2workspace = ubtilingdata[2];
@@ -502,8 +468,7 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
       tilingparams.block_tiling_axis_1 = block_axis;
       tilingparams.block_factor_1 = 1;
       tilingparams.block_factor = input_x[block_axis];
-    } else if (tilingparams.ub_tiling_axis !=
-               static_cast<int32_t>(block_axis)) {
+    } else if (tilingparams.ub_tiling_axis != static_cast<int32_t>(block_axis)) {
       std::vector<int32_t> blocktilingdata =
           GetBlockTilingData(block_axis, block_inner, ubtilingdata[0], ubtilingdata[4], input_x, reduce_axis, core_num);
       tilingparams.block_dim = blocktilingdata[1] * blocktilingdata[3];
@@ -511,8 +476,7 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
       tilingparams.block_tiling_axis_1 = blocktilingdata[2];
       tilingparams.block_factor = blocktilingdata[1];
       tilingparams.block_factor_1 = blocktilingdata[3];
-      GetUbTilingDataAfterFuse(blocktilingdata[2], blocktilingdata[3],
-                               ubtilingdata[0], input_x, ubtilingdata[1],
+      GetUbTilingDataAfterFuse(blocktilingdata[2], blocktilingdata[3], ubtilingdata[0], input_x, ubtilingdata[1],
                                tilingparams);
     }
     tilingparams.ub_tiling_axis_reduce = 0;
@@ -521,13 +485,9 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
   }
 }
 
-void TilingCommonGenerate(const int32_t block_axis,
-                          std::vector<int64_t> input_x,
-                          TilingParams &tilingparams,
-                          std::vector<int32_t> reduce_axis,
-                          const int32_t core_num, const int32_t max_ub_size,
-                          CompileInfo &compileinfo, const int32_t block,
-                          const int32_t block_inner) {
+void TilingCommonGenerate(const int32_t block_axis, std::vector<int64_t> input_x, TilingParams &tilingparams,
+                          const std::vector<int32_t> &reduce_axis, const int32_t core_num, const int32_t max_ub_size,
+                          CompileInfo &compileinfo, const int32_t block, const int32_t block_inner) {
   // judge exceed ub_size and do workspace
   int32_t ub_block_inner = (input_x[block_axis] > core_num) ? block_inner : block;
   bool isworkspace = CheckWorkspaceCase(input_x, reduce_axis, max_ub_size);
@@ -535,8 +495,8 @@ void TilingCommonGenerate(const int32_t block_axis,
   if (isworkspace && isexceedub) {
     // workspace
     // not open and open multi-core block
-    std::vector<int32_t> ubtilingdata = GetUbTilingData(
-        ub_block_inner, block_axis, input_x, max_ub_size, reduce_axis, block);
+    std::vector<int32_t> ubtilingdata =
+        GetUbTilingData(ub_block_inner, block_axis, input_x, max_ub_size, reduce_axis, block);
     tilingparams.ub_tiling_axis = ubtilingdata[0];
     tilingparams.ub_factor = ubtilingdata[1];
     int32_t ub_tiling_axis_reduce = GetUbReduceAxis(input_x, max_ub_size, reduce_axis);
@@ -546,9 +506,8 @@ void TilingCommonGenerate(const int32_t block_axis,
     compileinfo.is_normal = false;
   } else if (isexceedub && !isworkspace) {
     // open multi-core block and split ub axis
-    TilingCommonSplitUB(ub_block_inner, block_axis, input_x, tilingparams,
-                        reduce_axis, core_num, max_ub_size, compileinfo, block,
-                        block_inner);
+    TilingCommonSplitUB(ub_block_inner, block_axis, input_x, tilingparams, reduce_axis, core_num, max_ub_size,
+                        compileinfo, block, block_inner);
   } else {
     // normal case
     tilingparams.ub_tiling_axis = block_axis;
@@ -559,12 +518,10 @@ void TilingCommonGenerate(const int32_t block_axis,
   }
 }
 
-void GetTilingDataNonAllReduceND(
-    std::vector<int64_t> input_x, TilingParams &tilingparams,
-    std::vector<int32_t> reduce_axis, const int32_t core_num,
-    const int32_t max_ub_size, CompileInfo &compileinfo, const int32_t block) {
+void GetTilingDataNonAllReduceND(std::vector<int64_t> input_x, TilingParams &tilingparams,
+                                 const std::vector<int32_t> &reduce_axis, const int32_t core_num,
+                                 const int32_t max_ub_size, CompileInfo &compileinfo, const int32_t block) {
   int32_t block_inner_core;
-  int32_t min_block_inner_core;
   for (size_t i = 0; i < input_x.size(); i++) {
     if (IsInVector(reduce_axis, i)) {
       continue;
@@ -579,19 +536,16 @@ void GetTilingDataNonAllReduceND(
     int32_t block_inner = block_inner_core;
     tilingparams.block_tiling_axis = i;
     tilingparams.block_factor = block_inner;
-    tilingparams.block_dim = (input_x[i] % block_inner == 0)
-                                 ? input_x[i] / block_inner
-                                 : (input_x[i] + block_inner - 1) / block_inner;
-    TilingCommonGenerate(i, input_x, tilingparams, reduce_axis, core_num,
-                         max_ub_size, compileinfo, block, block_inner);
+    tilingparams.block_dim =
+        (input_x[i] % block_inner == 0) ? input_x[i] / block_inner : (input_x[i] + block_inner - 1) / block_inner;
+    TilingCommonGenerate(i, input_x, tilingparams, reduce_axis, core_num, max_ub_size, compileinfo, block, block_inner);
     break;
   }
 }
 
-void GetTilingDataNonAllReduceNZ(
-    std::vector<int64_t> input_x, TilingParams &tilingparams,
-    std::vector<int32_t> reduce_axis, const int32_t core_num,
-    const int32_t max_ub_size, CompileInfo &compileinfo, const int32_t block) {
+void GetTilingDataNonAllReduceNZ(std::vector<int64_t> input_x, TilingParams &tilingparams,
+                                 const std::vector<int32_t> &reduce_axis, const int32_t core_num,
+                                 const int32_t max_ub_size, CompileInfo &compileinfo, const int32_t block) {
   // reorder input_x : set reduce axis together
   std::vector<int64_t> new_input_x;
   std::vector<int32_t> new_reduce_axis;
@@ -622,7 +576,8 @@ void GetTilingDataNonAllReduceNZ(
   int32_t nz_block_dim = tilingparams.block_dim;
   int32_t nz_block_factor = tilingparams.block_factor;
   if (abs(nz_block_tiling_axis - nz_block_tiling_axis_1) > 1) {
-    if (tilingparams.block_tiling_axis_1 && (abs(tilingparams.block_tiling_axis - tilingparams.block_tiling_axis_1) == 1)) {
+    if (tilingparams.block_tiling_axis_1 &&
+        (abs(tilingparams.block_tiling_axis - tilingparams.block_tiling_axis_1) == 1)) {
       nz_block_dim = (nz_block_factor < core_num) ? input_x[nz_block_tiling_axis] : nz_block_factor;
       nz_block_factor = input_x[nz_block_tiling_axis] / nz_block_dim;
     }
@@ -636,10 +591,9 @@ void GetTilingDataNonAllReduceNZ(
   tilingparams.block_dim = nz_block_dim;
 }
 
-void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
-                   std::vector<int32_t> reduce_axis, const int32_t core_num,
-                   const int32_t max_ub_size, CompileInfo &compileinfo,
-                   const string input_dtype, const string input_format) {
+void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams, const std::vector<int32_t> &reduce_axis,
+                   const int32_t core_num, const int32_t max_ub_size, CompileInfo &compileinfo,
+                   const string &input_dtype, const string &input_format) {
   // std::vector<int32_t> tiling_params;
   int32_t block = 1;
   if (input_dtype == "float32") {
@@ -659,9 +613,8 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
   }
 }
 
-void WriteByteBuffer(const string mode, const int32_t tiling_key,
-                     const int32_t workspace_sub1, TilingParams &tilingparams,
-                     CompileInfo &compileinfo, OpRunInfo &run_info) {
+void WriteByteBuffer(const string &mode, const int32_t tiling_key, const int32_t workspace_sub1,
+                     TilingParams &tilingparams, CompileInfo &compileinfo, OpRunInfo &run_info) {
   std::vector<int64_t> workspaces = {workspace_sub1};
   run_info.workspaces = workspaces;
   run_info.block_dim = tilingparams.block_dim;
@@ -689,8 +642,8 @@ void WriteByteBuffer(const string mode, const int32_t tiling_key,
   }
 }
 
-bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras,
-                     const nlohmann::json &op_info, OpRunInfo &run_info) {
+bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras, const nlohmann::json &op_info,
+                     OpRunInfo &run_info) {
   OP_LOGI(op_type.c_str(), "LayerNormTiling running.");
   std::vector<int64_t> input_x = op_paras.inputs[0].tensor[0].shape;
   const string input_dtype = op_paras.inputs[0].tensor[0].dtype;
@@ -731,8 +684,7 @@ bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras,
 
   TilingParams tilingparams;
   CompileInfo compileinfo;
-  bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis,
-                                    input_x, run_info);
+  bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, input_x, run_info);
   if (!compileflag) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
   }
@@ -754,4 +706,4 @@ bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras,
 
 // register tiling interface of LayerNorm op.
 REGISTER_OP_TILING_FUNC_BUFFERED(LayerNorm, LayerNormTiling);
-} // namespace optiling
+}  // namespace optiling

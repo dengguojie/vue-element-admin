@@ -521,6 +521,8 @@ COMMON_INFER_FUNC_REG(LayerNormGrad, LayerNormGradInferShape);
 IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_x = op_desc -> GetInputDescPtr(0);
+  auto input_gamma = op_desc -> GetInputDescPtr(1);
+  auto input_beta = op_desc -> GetInputDescPtr(2);
   auto output_y = op_desc -> MutableOutputDesc(0);
   auto output_mean = op_desc -> MutableOutputDesc(1);
   auto output_var = op_desc -> MutableOutputDesc(2);
@@ -562,10 +564,9 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
     }
     output_y_shape.SetDim(i, output_shape1.GetDim(i));
   }
-
   output_y -> SetDataType(input_x -> GetDataType());
-  output_mean -> SetDataType(input_x -> GetDataType());
-  output_var -> SetDataType(input_x -> GetDataType());
+  output_mean -> SetDataType(input_gamma -> GetDataType());
+  output_var -> SetDataType(input_beta -> GetDataType());
 
   return GRAPH_SUCCESS;
 }
