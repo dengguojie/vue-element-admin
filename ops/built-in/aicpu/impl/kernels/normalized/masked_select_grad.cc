@@ -41,7 +41,7 @@ uint32_t MaskedSelectGradCpuKernel::Compute(CpuKernelContext &ctx) {
   auto data_type1 =
       static_cast<DataType>(ctx.Input(kSecondInputIndex)->GetDataType());
   auto data_type2 =
-      static_cast<DataType>(ctx.Input(kFirstOutputIndex)->GetDataType());
+      static_cast<DataType>(ctx.Input(2)->GetDataType());
   if (data_type1 != DT_BOOL) {
       KERNEL_LOG_ERROR("[%s] Data type of mask requires bool, but got data type [%s].",
                        ctx.GetOpType().c_str(), DTypeStr(data_type1).c_str());
@@ -105,6 +105,10 @@ uint32_t MaskedSelectGradCpuKernel::MaskedSelectGradCompute(CpuKernelContext &ct
   int64_t tensor_size = 1;
   for (const int64_t &d : output_shape) {
     tensor_size *= d;
+  }
+  const T NUM_ZERO = static_cast<T>(0);
+  for (int k = 0; k < tensor_size; ++k) {
+    dx[k] = NUM_ZERO;
   }
   int64_t j = 0;
   BroadcastIterator iter(input_shape_a, input_shape_b, output_shape);
