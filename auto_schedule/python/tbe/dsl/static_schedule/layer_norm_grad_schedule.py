@@ -669,14 +669,7 @@ def schedule_cut_nlstaxis_twice(sch_list, res, shape_x,
     block = tvm.thread_axis("blockIdx.x")
     sch[final_out_tensor_global].bind(final_out_tensor_global.op.reduce_axis[0], block)
 
-    if ub_split_axis >= reduce_axis_idx:
-        sch[final_out_tensor_ub_rf].emit_insn(
-            final_out_tensor_ub_rf.op.reduce_axis[1],
-            "vector_reduce_sum")
-    else:
-        sch[final_out_tensor_ub_rf].emit_insn(
-            final_out_tensor_ub_rf.op.reduce_axis[0],
-            "vector_reduce_sum")
+    sch[final_out_tensor_ub_rf].emit_insn(final_out_tensor_ub_rf.op.axis[-1], "vector_reduce_sum")
 
     _do_emit_insn(sch_list, input_tensor_buffer_map,
                   mid_out_read_buffer_map, mid_tensor_buffer_map,
