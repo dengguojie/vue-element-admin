@@ -415,8 +415,8 @@ class TilingSelection:
             for seed in gear_repo_seeds:
                 if self.op.check_tiling_special_value(seed["tiling"]):
                     seed_range = self.op.get_tiling_range(seed["tiling"], gear_shape)
-                    seed_gear_range = self.op._get_gear_tiling_range(gear_repo_shapes, gear_shape)
-                    seed_range += seed_gear_range[-2:]
+                    batch_range = [gear_shape[-1], gear_shape[-1]]
+                    seed_range += batch_range
                     seed["tiling"]["attach_same_to_static"] = True
                     candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], gear_shape]
                 seed_gear_range = self.op._get_gear_tiling_range(gear_repo_shapes, gear_shape)

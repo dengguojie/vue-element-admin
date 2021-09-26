@@ -23,7 +23,8 @@ matmul_case = [
     # range error
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_errorcase5", "x1_range"),
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_errorcase6", "x2_range"),
-    (((1, 2), ), (63, 66), (1, 2), (4, 7), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_errorcase7")
+    (((1, 2), ), (63, 66), (1, 2), (4, 7), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_errorcase7"),
+    (((32, 2048), ), (1, 8), (1, 12), (1, 12), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_success1")
 ]
 
 
