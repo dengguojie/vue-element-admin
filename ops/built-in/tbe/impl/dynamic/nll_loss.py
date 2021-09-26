@@ -16,6 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 nll_loss
 """
 
+from impl.util import util_common
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -37,6 +38,65 @@ REPEAT_LIMIT = 255
 MAX_INT64_VALUE = 2 ** 64 - 1
 # parameters for moving tiling data
 TILING_CTRL_PARAM = ("int64", 64, 4)
+
+
+# pylint: disable=unused-argument
+def check_supported(x, target, weight, y, total_weight, reduction="mean", ignore_index=-100, kernel_name="nll_loss"):
+    """
+    check nllloss supported
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input x, the length of shape should be two or one.
+    target : dict
+        shape and dtype of input target, the length of shape only support one.
+    weight : dict
+        shape and dtype of input weight, the length of shape only support one.
+    y:dict
+        shape and dtype of output y.
+        it's a tensor with shape(minibatch, ) when reduction == 'none' and
+        the input is 2D. Otherwise, the output is a scalar.
+    total_weight:
+        shape and dtype of output total_weight, should be same type as weight.
+        the output is scalar.
+    reduction: str
+        default value is "mean"
+    ignore_index: int
+        default value is -100
+    kernel_name : str
+        kernel name, default value is "nll_loss"
+
+    Returns
+    -------
+    (is_supported, description)
+    """
+    x_shape = x.get("ori_shape")
+
+    if util_common.is_unknown([x, target, weight]):
+        return True, ""
+
+    if _dynamic_static_union(x_shape, reduction):
+        return True, ""
+
+    return False, ""
+
+
+def _dynamic_static_union(shape, reduction):
+    """
+    for dynamic and static union fully verified
+    """
+    white_list_dict = {"none": [],
+                       "sum": []}
+
+    if reduction not in white_list_dict:
+        return False
+
+    x_shape = list(shape)
+    if x_shape in white_list_dict[reduction]:
+        return True
+
+    return False
 
 
 # pylint: disable=invalid-name
@@ -662,12 +722,13 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
 
     nll_loss_compute(tik_inst, tensor_list, reduction)
 
-    tik_inst.BuildCCE(kernel_name=kernel_name,
-                      inputs=[data_x, data_target, data_weight], outputs=[data_y, data_total_weight],
-                      flowtable=[data_tiling])
-
     ub_size = _get_max_element_in_ub(x_dtype, 1)
     tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size, "core_num": CORE_NUM,
                                                         "reduction": reduction, "ignore_index": ignore_index})
+
+    opt_config = {"enable_const_fold": True}
+    tik_inst.BuildCCE(kernel_name=kernel_name,
+                      inputs=[data_x, data_target, data_weight], outputs=[data_y, data_total_weight],
+                      flowtable=[data_tiling], config=opt_config)
 
     return {"compile_info": tbe_context.get_context().get_compile_info()}

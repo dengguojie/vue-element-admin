@@ -30,6 +30,41 @@ MAXREPEAT = 255
 NUM_SIXTYFOUR = MASK64
 
 
+# pylint: disable=unused-argument
+def check_supported(x, target, weight, y, total_weight, reduction="mean",
+                    ignore_index=-100, kernel_name="nll_loss"):
+    """
+    check nllloss supported
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input x, the length of shape should be two or one.
+    target : dict
+        shape and dtype of input target, the length of shape only support one.
+    weight : dict
+        shape and dtype of input weight, the length of shape only support one.
+    y:dict
+        shape and dtype of output y.
+        it's a tensor with shape(minibatch, ) when reduction == 'none' and
+        the input is 2D. Otherwise, the output is a scalar.
+    total_weight:
+        shape and dtype of output total_weight, should be same type as weight.
+        the output is scalar.
+    reduction: str
+        default value is "mean"
+    ignore_index: int
+        default value is -100
+    kernel_name : str
+        kernel name, default value is "nll_loss"
+
+    Returns
+    -------
+    (is_supported, description)
+    """
+    return True, ""
+
+
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 def _shape_and_dtype_check(x, target, weight, kernel_name):
     x_shape = x.get("shape")

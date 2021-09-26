@@ -8,8 +8,8 @@
           -1
         ],
         "ori_shape": [
-          2,
-          16
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "format": "ND",
@@ -118,8 +118,8 @@
     "output_desc": [
       {
         "shape": [
-          -1,
-          -1
+          2,
+          16 
         ],
         "ori_shape": [
           2,
@@ -129,16 +129,6 @@
         "format": "ND",
         "name": "x_grad",
         "type": "float",
-        "shape_range": [
-          [
-            1,
-            200000000
-          ],
-          [
-            1,
-            200000000
-          ]
-        ],
         "typical_shape": [
           2,
           16
