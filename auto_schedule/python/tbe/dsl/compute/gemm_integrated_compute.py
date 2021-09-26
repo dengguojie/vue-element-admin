@@ -35,10 +35,6 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.tvm.tensor import Tensor
 from .gemm_compute_util import FormatCompute
 
-# if K_DIM is  equal or larger than GEVM_MODE_K_DIM_LIMIT in gevm/gemv mode, use gemm mode.
-# K_DIM is k * k0
-GEVM_MODE_K_DIM_LIMIT = 9216
-
 @para_check.check_input_type(Tensor, Tensor, dict)
 def gemm(tensor_a, tensor_b, para_dict):
     """
@@ -202,7 +198,11 @@ class GEMMCompute(FormatCompute):
         "uint8": "uint8",
         "int4": "int4"
     }
-
+    # if K_DIM is  equal or larger than GEVM_MODE_K_DIM_LIMIT in gevm/gemv mode, use gemm mode.
+    # K_DIM is k * k0
+    GEVM_MODE_K_DIM_LIMIT = 9216
+    # if (K_DIM, N_DIM) in GEVM_MODE_LIMIT_LIST, use gemm mode. N_DIM is n*n0
+    GEVM_MODE_LIMIT_LIST = [(4096, 4096),]
     def __init__(self, tensor_a, tensor_b, para_dict):
         super(GEMMCompute, self).__init__()
         self.para_dict = para_dict
@@ -444,6 +444,7 @@ class GEMMCompute(FormatCompute):
         m_shape = a_shape[m_index]
         n_shape = b_shape[n_index]
         gevm_mode_flag, self.only_use_gevm_gemv_flow = self._get_gevm_flag(m0_shape_dict, trans_dict, a_shape, m_index)
+        gevm_mode_flag = self._cancel_gevm_mode(gevm_mode_flag, a_shape[trans_dict.get(m_index)], n_shape)
         gemv_mode_flag = self._get_gemv_flag(n0_shape_dict, trans_dict, b_shape, n_index)
         both_fractal = self.format_a != "ND" and self.format_b != "ND"
         self._check_and_renew_block(gevm_mode_flag, gemv_mode_flag, both_fractal, self.only_use_gevm_gemv_flow)
@@ -478,13 +479,22 @@ class GEMMCompute(FormatCompute):
                 gevm_mode_flag = (a_shape[m_index] == 1)
                 only_use_gevm_gemv_flow = (a_shape[m_index] == 1
                     and (a_shape[trans_dict.get(m_index)] % (self.block_in * self.block_reduce) != 0))
-        if gevm_mode_flag and (not only_use_gevm_gemv_flow):
-            multi = 1
-            if self.format_a != "ND":
-                multi = self.block_reduce
-            if (a_shape[trans_dict.get(m_index)] * multi) >= GEVM_MODE_K_DIM_LIMIT:
-                gevm_mode_flag = False
         return gevm_mode_flag, only_use_gevm_gemv_flow
+
+    def _cancel_gevm_mode(self, gevm_mode_flag, ka_shape, n_shape):
+        """The performance of gemm mode is better than gevm in some cases"""
+        if not gevm_mode_flag or self.only_use_gevm_gemv_flow:
+            return gevm_mode_flag
+        multi_ka = 1
+        if self.format_a != "ND":
+            multi_ka = self.block_reduce
+        multi_nb = 1
+        if self.format_b != "ND":
+            multi_nb = self.block_out
+        if (((ka_shape * multi_ka) >= self.GEVM_MODE_K_DIM_LIMIT)
+            or ((ka_shape * multi_ka, n_shape * multi_nb) in self.GEVM_MODE_LIMIT_LIST)):
+            gevm_mode_flag = False
+        return gevm_mode_flag
 
     def _get_gemv_flag(self, n0_shape_dict, trans_dict, b_shape, n_index):
         if self.format_b != "ND":
