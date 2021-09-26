@@ -124,9 +124,9 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilo
         # return variance
         return y
     else:
-        epsilon_value = tvm.const(epsilon, dtype=var.dtype)
-        var_epsilon = tbe.vadds(var, epsilon_value)
-        y_invert = tbe.vrsqrt(var_epsilon)
+        var_epsilon = tbe.vadds(var, tvm.const(epsilon, dtype=var.dtype))
+        y = tbe.vrec(var_epsilon, "high_precision")
+        y_invert = tbe.vsqrt(y)
         if y_invert.dtype != x_type:
             y_invert = tbe.cast_to(y_invert, dtype=x_type)
 
