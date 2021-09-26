@@ -129,8 +129,8 @@ def lp_norm_reduce_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
 @register_operator("LpNormReduce")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
-                            para_check.KERNEL_NAME)
-def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, kernel_name="lp_norm_reduce"):
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_norm_reduce"):
     """
     Computes norm for p equals 0, 1, 2, -inf, inf, or other integers.
     Parameters
@@ -150,6 +150,9 @@ def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, kernel_name="lp_norm_red
     keepdim: bool
              Whether the output tensors should have dim keeped or not.
              Optional. Default: False
+    epsilon: float
+             The number used for safe considering as norm usually served as denominator.
+             Optional. Default: 1e-7 for fp16, 1e-12 for fp32
     kernel_name: str
                  Kernel name.
                  Optional. Default: "lp_norm_reduce".

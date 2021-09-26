@@ -22,9 +22,12 @@ import te.platform as tbe_platform
 from te.utils import para_check
 
 _CONST_INF = 2147483647
+_CONST_EPSILON_FP16 = 1e-7
 _CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
 
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("lp_norm")
 def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
@@ -61,6 +64,8 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     return res
 
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
 def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 0.
@@ -84,6 +89,8 @@ def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
 def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 1.
@@ -105,6 +112,8 @@ def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
 def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 2.
@@ -127,6 +136,8 @@ def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
 def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
     Compute norm for p >= 3.
@@ -160,7 +171,9 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     return exp_div_x
 
 
-def lp_norm(x, y, p=2, axes=None, keepdim=False, kernel_name="lp_norm"):
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=unused-variable
+def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_norm"):
     """
     Computes norm for p equals 0, 1, 2, -inf, inf, or other integers.
     Parameters
@@ -180,6 +193,9 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, kernel_name="lp_norm"):
     keepdim: bool
              Whether the output tensors should have dim keeped or not.
              Optional. Default: False
+    epsilon: float
+             The number used for safe considering as norm usually served as denominator.
+             Optional. Default: 1e-7 for fp16, 1e-12 for fp32
     kernel_name: str
                  Kernel name.
                  Optional. Default: "lp_norm".
@@ -214,6 +230,15 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, kernel_name="lp_norm"):
         res = lp_norm2_compute(abs_data, x_type, y, axes, keepdim, kernel_name)
     else:
         res = lp_norm_compute(abs_data, x_type, y, p, axes, keepdim, kernel_name)
+
+    if x_type == "float16" and float(epsilon) <= _CONST_EPSILON_FP16:
+        if epsilon == 0.0:
+            std_no = tvm.const(0.0, dtype=x_type)
+        else:
+            std_no = tvm.const(_CONST_EPSILON_FP16, dtype=x_type)
+    else:
+        std_no = tvm.const(float(epsilon), dtype=x_type)
+    res = tbe.vmaxs(res, std_no)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)

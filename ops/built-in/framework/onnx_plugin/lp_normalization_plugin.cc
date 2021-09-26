@@ -72,6 +72,7 @@ Status parse_op_to_graph_lp_normalization(const Operator& op, Graph& graph) {
   lp_norm_op.set_attr_p(p_num);
   lp_norm_op.set_attr_axes({axis});
   lp_norm_op.set_attr_keepdim(true);
+  lp_norm_op.set_attr_epsilon(0);
 
   std::vector<Operator> inputs{data0_op};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
