@@ -244,7 +244,7 @@ class WorkspaceLayerNormSchedule:
         for stage_tensor in tensor_storage_bound_set:
             if self.forward_compute_graph_map.get(stage_tensor) and stage_tensor in self.graph_info.input_tensor_set:
                 continue
-            self.schedule[stage_tensor].set_storage_bound(self.max_ub_size)
+            self.schedule[stage_tensor].set_buffer_size(self.max_ub_size)
 
     def _do_storage_align(self):
         case = self.tiling_case

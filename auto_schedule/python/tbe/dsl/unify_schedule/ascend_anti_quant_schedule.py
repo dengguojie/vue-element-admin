@@ -45,6 +45,7 @@ def schedule(outs, tiling_case):
 
     return AscendAntiQuantSchedule(outs, tiling_case).do_schedule()
 
+
 class AscendAntiQuantSchedule:
     def __init__(self, outs, tiling_case):
         self._scope = scope_ubuf
@@ -110,7 +111,7 @@ class AscendAntiQuantSchedule:
 
         for _, stage in self._tensor_map.items():
             storage_bound = self._max_ub_size // DTYPE_BYTE_MAPPING[stage.dtype]
-            self._schedule[stage].set_storage_bound(storage_bound)
+            self._schedule[stage].set_buffer_size(storage_bound)
 
     def _do_tiling(self):
         case = self._tiling_case
@@ -214,4 +215,3 @@ class AscendAntiQuantSchedule:
         self._set_buffer_emit_insn()
 
         return self._schedule
-

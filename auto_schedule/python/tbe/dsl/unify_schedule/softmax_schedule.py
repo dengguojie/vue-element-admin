@@ -33,6 +33,7 @@ from te.platform import cce_emitinsn_params
 BLOCK_SIZE_BYTE = 32
 EXTRA_UB_SIZE = 10240
 
+
 def get_reduce_axis_num(reduce_tensor):
     """
     get reduce axis num
@@ -52,6 +53,7 @@ def get_reduce_axis_num(reduce_tensor):
 
     return axis_num
 
+
 def get_align_factor(dtype):
     """
     get_align_factor
@@ -69,6 +71,7 @@ def get_align_factor(dtype):
         align_factor = 8
         dtype_bytes = 4
     return align_factor, dtype_bytes
+
 
 def get_bits_of(dtype):
     """
@@ -90,6 +93,7 @@ def get_bits_of(dtype):
         index += 1
     return int(dtype[index:])
 
+
 # the byte of dtype
 DTYPE_BYTE_WIDTH_MAP = {"float16": 2,
                         "float32": 4,
@@ -100,6 +104,7 @@ DTYPE_BYTE_WIDTH_MAP = {"float16": 2,
                         "uint8": 1,
                         "bool": 1}
 
+
 @register_schedule(pattern=Pattern.SOFTMAX)
 def schedule(outs, tiling_case):
     """
@@ -109,10 +114,12 @@ def schedule(outs, tiling_case):
     """
     return SoftmaxSchedule(outs, tiling_case).do_schedule()
 
+
 class SoftmaxSchedule:
     """
     SoftmaxSchedule
     """
+
     def __init__(self, outs, tiling_case):
         self._scope = cce.scope_ubuf
         self._core_dim = cce.get_soc_spec("CORE_NUM")
@@ -279,7 +286,6 @@ class SoftmaxSchedule:
             sch = self._do_schedule_last_noalign_storagealign()
         return sch
 
-
     def _construct_compute_graph(self):
         """
         record relate context imformations of operations
@@ -332,7 +338,6 @@ class SoftmaxSchedule:
 
         return True
 
-
     def __gen_reversed_subgraph_list(self, tensor, tensor_list, visited_list):
         """traverse tensors by Depth-First-Search
 
@@ -379,8 +384,8 @@ class SoftmaxSchedule:
             self.__gen_reversed_subgraph_list(in_tensor, tensor_list, visited_list)
             tensor_list.append(in_tensor)
 
-
     # pylint: disable=no-self-use
+
     def __get_tensor_op(self, tensor):
         """
         Split the tensor and construct map
@@ -405,7 +410,6 @@ class SoftmaxSchedule:
 
         return tmp_op
 
-
     def _map_apend(self, input_map, key, value):
         if input_map.get(key):
             if isinstance(value, list):
@@ -421,8 +425,8 @@ class SoftmaxSchedule:
             else:
                 input_map[key] = [value]
 
-
     # pylint: disable=no-self-use
+
     def _is_reduce_ops(self, tensor):
         """
         reduce_ops
@@ -431,8 +435,8 @@ class SoftmaxSchedule:
             return True
         return False
 
-
     # pylint: disable=no-self-use
+
     def _is_broadcast_ops(self, tensor):
         """
         broadcast
@@ -440,7 +444,6 @@ class SoftmaxSchedule:
         if tensor.op.tag.find("broadcast") != -1:  # broadcast_for_tensor
             return True
         return False
-
 
     def _is_after_reduce_bc_ops(self, tensor):
         """
@@ -452,7 +455,6 @@ class SoftmaxSchedule:
             if self._is_reduce_ops(in_tensor) or self._is_broadcast_ops(in_tensor):
                 return True
         return False
-
 
     def _get_max_ub_count_and_try_double_buffer(self):
         shape = shape_to_list(self._res.shape)
@@ -482,7 +484,6 @@ class SoftmaxSchedule:
             self._max_ub_count = tmp_max_ub_count
 
         return True
-
 
     def _get_total_width(self):
         """
@@ -554,7 +555,6 @@ class SoftmaxSchedule:
             live_width -= _op_width(op_node)
         return max_width
 
-
     def _get_max_ub_count(self, total_size, align_factor=32, reduce_rows=1):
         """
         caculate the max element num loaded in UB buffer
@@ -575,8 +575,8 @@ class SoftmaxSchedule:
 
         return max_ub_count
 
-
     # pylint: disable=no-self-use
+
     def _get_data_alignment(self, tensor_list):
         """calculate the unified buffer data alignment
         1. enable multi-core needs to be larger than 32B,
@@ -596,7 +596,6 @@ class SoftmaxSchedule:
         align_factor_256byte = 256*8//bits
         return align_factor_32byte, align_factor_256byte
 
-
     def _do_storage_align_last(self):
         if not self._is_last_reduce_axis:
             return
@@ -615,7 +614,6 @@ class SoftmaxSchedule:
                 self._schedule[write_buffer].storage_align(write_buffer.op.axis[at_axis],
                                                            align_factor, 0)
 
-
     def _do_storage_align_nlst(self):
         if self._is_last_reduce_axis:
             return
@@ -633,7 +631,6 @@ class SoftmaxSchedule:
             if write_buffer not in self._compute_inline_buffer:
                 self._schedule[write_buffer].storage_align(write_buffer.op.axis[at_axis],
                                                            align_factor, 0)
-
 
     def _do_schedule_nlst_axis(self):
         self._do_cache_read()
@@ -656,7 +653,6 @@ class SoftmaxSchedule:
 
         return sch
 
-
     def _do_schedule_last_noalign_storagealign(self):
         self._do_cache_read()
         self._do_cache_write()
@@ -672,7 +668,6 @@ class SoftmaxSchedule:
         sch = self._schedule
 
         return sch
-
 
     def _do_reorder(self):
         if self._is_last_reduce_axis:
@@ -727,7 +722,6 @@ class SoftmaxSchedule:
                 factor=self._ub_tiling_vars[u_idx])
             self._schedule[write_buffer].reorder(outer, write_buffer.op.reduce_axis[0], inner)
 
-
     def _do_tiling_last_noalign_storagealign(self):
         b_i = self._tiling_case["block_tiling_axis"]
         u_i = self._tiling_case["ub_tiling_axis"]
@@ -760,7 +754,6 @@ class SoftmaxSchedule:
         self._tiling_result = {"block_tiling": block_tiling_result,
                                "ub_tiling": ub_tiling_result}
 
-
     def _do_cache_read(self):
         """
         cache read operations
@@ -782,7 +775,6 @@ class SoftmaxSchedule:
 
             self._double_buffer_tensors.append(read_buffer)
 
-
     def _do_cache_write(self):
         """
         cache write operations
@@ -798,7 +790,6 @@ class SoftmaxSchedule:
         for i in self._cache_write_tensors:
             write_buffer = self._schedule.cache_write(i, self._scope)
             self._cache_write_tensors_and_buffer_map[i] = write_buffer
-
 
     def _calculate_compute_inline(self):
         """
@@ -818,7 +809,6 @@ class SoftmaxSchedule:
                 write_buffer = self._cache_write_tensors_and_buffer_map[i]
                 self._compute_inline_buffer.append(write_buffer)
 
-
     def _do_compute_inline(self):
         """
         compute inline operations
@@ -827,7 +817,6 @@ class SoftmaxSchedule:
             self._schedule[i].compute_inline()
         for i in self._compute_inline_buffer:
             self._schedule[i].compute_inline()
-
 
     def _calculate_compute_at(self):
         """
@@ -853,7 +842,6 @@ class SoftmaxSchedule:
             scope_iter_var = self._compute_at_map[stage]["scope"]
             if scope_iter_var is not None:
                 self._schedule[stage].compute_at(parent_stage, scope_iter_var)
-
 
     def _calculate_emit_insn_last(self):
         """
@@ -915,7 +903,6 @@ class SoftmaxSchedule:
 
             self._emit_insn_map[write_buffer] = insn_para
 
-
     def _calculate_emit_insn_nlst(self):
         """
         Calculate the instruction map of tensor
@@ -970,7 +957,6 @@ class SoftmaxSchedule:
 
             self._emit_insn_map[write_buffer] = insn_para
 
-
     def _do_emit_insn(self):
         softmax_compile_info = get_compile_info()
         self._coexisting_quantity = 4
@@ -990,11 +976,12 @@ class SoftmaxSchedule:
                 if is_log:
                     self._schedule[stage].emit_insn(scope_iter_var, instruction, attrs=dict(storage_bound=[2048]))
                 else:
-                    self._schedule[stage].emit_insn(scope_iter_var, instruction, attrs=dict(storage_bound=[self._tensor_space]))
+                    self._schedule[stage].emit_insn(scope_iter_var, instruction,
+                                                    attrs=dict(storage_bound=[self._tensor_space]))
             else:
                 self._schedule[stage].emit_insn(scope_iter_var, instruction)
             storage_bound = self._tensor_space // DTYPE_BYTE_MAPPING[stage.dtype]
-            self._schedule[stage].set_storage_bound(storage_bound)
+            self._schedule[stage].set_buffer_size(storage_bound)
 
         # res dma_copy, if self._is_multi_core and >=32B:
         ub_inner = self._tiling_result["ub_tiling"]["inner_itervar"]
@@ -1004,7 +991,6 @@ class SoftmaxSchedule:
             ub_inner = self._res.op.axis[self._reduce_axis_num]
         self._schedule[self._res].emit_insn(ub_inner, 'dma_copy', {"no_overlap": 1})
 
-
     def _do_double_buffer(self):
         """
         double buffer operations
@@ -1013,7 +999,6 @@ class SoftmaxSchedule:
         if self._is_double_buffer:
             for i in self._double_buffer_tensors:
                 self._schedule[i].double_buffer()
-
 
     def _get_instruction(self, tensor):
         """
@@ -1037,8 +1022,8 @@ class SoftmaxSchedule:
         insn = self._reg_insn_map.get(str_list[0])
         return insn
 
-
     # pylint: disable=no-self-use
+
     def _check_cast_support(self, tensor):
         """
         Judge if tensor supports cast instruction operations,

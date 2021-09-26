@@ -936,7 +936,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                 if pooling_mode == "GAP" and fp32_ability:
                     # fp16 will cast to fp32 compute
                     tensor_in_ub_size = ci_factor * hi_factor * in_size_w * c_block_size * \
-                                        (SIZE_OF_FP32 + SIZE_OF_FP16)
+                        (SIZE_OF_FP32 + SIZE_OF_FP16)
                     result_in_ub_size = ci_factor * ((c_block_size + 128 - 1) // 128) * 128 * SIZE_OF_FP32
                 else:
                     tensor_in_ub_size = ci_factor * hi_factor * in_size_w * c_block_size * SIZE_OF_FP16
@@ -1534,7 +1534,7 @@ def pooling2d_schedule(res, sch_list):
 
             if input_l1_flag == 1:
                 util.L1CommonParam.l1_fusion_tensors_map = {input_tensor: l1_tensor_to_be_map}
-                sch[l1_tensor_to_be_map].set_storage_bound(l1_valid_size)
+                sch[l1_tensor_to_be_map].set_buffer_size(l1_valid_size)
             elif input_l1_flag == 0:
                 util.L1CommonParam.l1_fusion_tensors_map = {input_tensor: tvm.var("dummy")}
 

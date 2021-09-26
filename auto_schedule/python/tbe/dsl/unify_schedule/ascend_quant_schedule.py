@@ -151,7 +151,7 @@ class AscendQuantSchedule:
 
         for _, stage in self._tensor_map.items():
             storage_bound = self._max_ub_size // DTYPE_BYTE_MAPPING[stage.dtype]
-            self._schedule[stage].set_storage_bound(storage_bound)
+            self._schedule[stage].set_buffer_size(storage_bound)
 
     def _do_tiling(self):
         """

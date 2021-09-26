@@ -35,6 +35,7 @@ VTRANSPOSE_TEMP_SPACE = 8192
 FP_32 = 8
 FP_16 = 16
 
+
 @register_schedule(pattern=Pattern.LAYER_NORM_X_BACKPROP)
 def schedule(outs, tiling_case):
     """
@@ -42,6 +43,7 @@ def schedule(outs, tiling_case):
     """
 
     return LayerNormXBackpropSchedule(outs, tiling_case).do_schedule()
+
 
 class LayerNormXBackpropSchedule:
     """
@@ -94,7 +96,6 @@ class LayerNormXBackpropSchedule:
         self._inner_shape = []
 
         self._emit_insn_map = {}
-
 
     def do_schedule(self):
         """
@@ -282,7 +283,7 @@ class LayerNormXBackpropSchedule:
 
         for tensor_i in tensors:
             self.storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
-            self._schedule[tensor_i].set_storage_bound(self.storage_bound)
+            self._schedule[tensor_i].set_buffer_size(self.storage_bound)
 
     def _calc_tiling(self):
         funcs = {TilingStrategy.NONE_CUT: self._calc_tiling_none_cut}
@@ -401,7 +402,7 @@ class LayerNormXBackpropSchedule:
     def _do_emit_insn(self):
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
-            if tensor_i.op.name in ["broadcast_tensor_0", "broadcast_tensor_1", "broadcast_tensor_2", 
+            if tensor_i.op.name in ["broadcast_tensor_0", "broadcast_tensor_1", "broadcast_tensor_2",
                                     "broadcast_tensor_3", "broadcast_tensor_4"]:
                 sch[tensor_i].emit_insn(tensor_i.op.axis[1], param[1])
                 continue

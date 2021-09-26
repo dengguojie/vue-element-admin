@@ -38,6 +38,7 @@ class LayerNormBetaGammaSchedule:
     """
     LayerNormBetaGammaBackpropSchedule
     """
+
     def __init__(self, outs, tiling_case):
         self._insn_map = {"elewise_single_cast": "vector_conv",
                           "elewise_single_VS_max": "vector_maxs",
@@ -136,14 +137,14 @@ class LayerNormBetaGammaSchedule:
         sch[rf_ub].set_scope(tbe_platform.scope_ubuf)
         if isinstance(normal_dim, tvm.expr.Var):
             unknown_normal = True
-            sch[rf_ub].set_storage_bound(self._max_last_factor)
+            sch[rf_ub].set_buffer_size(self._max_last_factor)
         else:
             unknown_normal = False
             normal_dim = int(res.shape[-1])
             if normal_dim <= self._max_last_factor:
-                sch[rf_ub].set_storage_bound(normal_dim)
+                sch[rf_ub].set_buffer_size(normal_dim)
             else:
-                sch[rf_ub].set_storage_bound(self._max_last_factor)
+                sch[rf_ub].set_buffer_size(self._max_last_factor)
         res_gm_list = sch.cache_write(outs, "")
         res_gm = res_gm_list[0]
         sch[res_gm].remove_init()
@@ -161,7 +162,7 @@ class LayerNormBetaGammaSchedule:
                 sch.set_var_range(normal_dim, 1, self._max_last_factor)
                 bound = self.calc_storage_bound()
                 for tensor, _ in emit_insn_list:
-                    sch[tensor].set_storage_bound(bound)
+                    sch[tensor].set_buffer_size(bound)
         else:
             # (reduce_o, [reduce_i,] 1, normal)
             rf_reduce_i = rf_ub.op.reduce_axis[0]
@@ -190,7 +191,7 @@ class LayerNormBetaGammaSchedule:
                     sch.set_var_range(normal_dim, self._max_last_factor + 1, None)
                     bound = self.calc_storage_bound()
                     for tensor, _ in emit_insn_list:
-                        sch[tensor].set_storage_bound(bound)
+                        sch[tensor].set_buffer_size(bound)
                 else:
                     sch[rf_ub].reorder(rf_reduce_o, rf_reduce_i, _, rf_normal)
                     sch[res_gm].reorder(res_gm_reduce_o, res_, res_gm_normal)
@@ -199,7 +200,7 @@ class LayerNormBetaGammaSchedule:
                     sch.set_var_range(normal_dim, 1, self._max_last_factor)
                     bound = self.calc_storage_bound()
                     for tensor, _ in emit_insn_list:
-                        sch[tensor].set_storage_bound(bound)
+                        sch[tensor].set_buffer_size(bound)
 
         sch[res_gm].bind(res_gm.op.reduce_axis[0], self.block)
 
@@ -316,7 +317,7 @@ class LayerNormBetaGammaSchedule:
         bytes_fp16 = 2
 
         # 4 fp32 tensor
-        bytes_independent = self._max_last_factor * 2 * bytes_fp32 + 1024 # 1024 for tmp ub
+        bytes_independent = self._max_last_factor * 2 * bytes_fp32 + 1024  # 1024 for tmp ub
         bytes_remain = ub_bytes - bytes_independent
         if self._dy_type == "float32":
             # 3 tensor ub but one resued so devided by 2
@@ -397,4 +398,3 @@ class LayerNormBetaGammaSchedule:
         else:
             raise RuntimeError("LayerNormBetaGammaBackpropV2 tiling key error.")
         return sch
-

@@ -151,7 +151,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             self.op_module_name = "impl." + _default_lower_op_type()
         else:
             self.op_module_name = op_module_name
-        if "_dynamic_" in self.op_module_name:
+        if "_dynamic_" in self.op_module_name or ".dynamic." in self.op_module_name:
             self.imply_type = OpImplyType.DYNAMIC_SHAPE
         else:
             self.imply_type = OpImplyType.STATIC_SHAPE

@@ -31,6 +31,7 @@ from .confusion_softmax_grad_tilingcase import TilingStrategy
 from tbe.common.utils import shape_to_list
 from tbe.common.platform.platform_info import get_soc_spec
 
+
 @register_schedule("ConfusionSoftmaxGrad")
 def schedule(outs, tiling_case):
 
@@ -38,6 +39,7 @@ def schedule(outs, tiling_case):
     real_schedule = confusion_softmax_grad_sch.do_schedule()
 
     return real_schedule
+
 
 class ConfusionSoftmaxGradSchedule:
 
@@ -119,15 +121,15 @@ class ConfusionSoftmaxGradSchedule:
     def _construct_compute_graph(self):
         def match_scalar_scene(tensor_):
             if len(tensor_.op.input_tensors) != 0 and \
-                   util.get_tensor_size(tensor_.op.input_tensors[0]) != 1:
+                    util.get_tensor_size(tensor_.op.input_tensors[0]) != 1:
                 return False
             if tensor_ in self._out_tensors:
                 return False
-            if all(util.support_scalar(tensor_o) for tensor_o in 
+            if all(util.support_scalar(tensor_o) for tensor_o in
                    self._in_out_map.get(tensor_)):
                 return True
             return False
-        
+
         self._out_tensors = set(self._outs)
 
         visited_tensors = set()
@@ -148,7 +150,7 @@ class ConfusionSoftmaxGradSchedule:
         for tensor_i in self._broadcast_tensors:
             if match_scalar_scene(tensor_i):
                 self._absorbable_broadcast_tensors.add(tensor_i)
-    
+
     def __dfs_sub_graph(self, out, visited_tensors: set):
         for tensor_i in out.op.input_tensors:
             util.merge_value(self._in_out_map, tensor_i, out)
@@ -162,14 +164,14 @@ class ConfusionSoftmaxGradSchedule:
                     self._broadcast_tensors.add(tensor_i)
                 if util.is_reduce_tensor(tensor_i):
                     self._reduce_tensors.add(tensor_i)
-            
+
             if tensor_i in visited_tensors:
                 continue
-            
+
             visited_tensors.add(tensor_i)
 
             self.__dfs_sub_graph(tensor_i, visited_tensors)
-    
+
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._input_tensors)
 
@@ -183,7 +185,7 @@ class ConfusionSoftmaxGradSchedule:
     def _calc_cache_write(self):
         self._cache_write_tensors.update(self._out_tensors)
         self._cache_write_tensors.update(self._pure_middle_tensors)
-    
+
     def _do_cache_write(self):
         for tensor_i in self._cache_write_tensors:
             buffer_tensor = self._schedule.cache_write(tensor_i, self._scope)
@@ -200,10 +202,10 @@ class ConfusionSoftmaxGradSchedule:
             TilingStrategy.ONE_CUT: self._calc_tiling_one_cut
         }
         funcs[self._tiling_strategy]()
-    
+
     def _calc_tiling_none_cut(self):
         pass
-    
+
     def _calc_tiling_one_cut(self):
         res = self._out
         shape = shape_to_list(res.shape)
@@ -213,14 +215,14 @@ class ConfusionSoftmaxGradSchedule:
         u_bound = (1, None)
         self._block_tiling_vars[b_i] = var("block_factor", b_bound)
         self._ub_tiling_vars[u_i] = var("ub_factor", u_bound)
-    
+
     def _do_tiling(self):
         func = {
             TilingStrategy.NONE_CUT: self._do_tiling_none_cut,
             TilingStrategy.ONE_CUT: self._do_tiling_one_cut
         }
         func[self._tiling_strategy]()
-    
+
     def _do_tiling_none_cut(self):
         res = self._out
         shape = shape_to_list(res.shape)
@@ -228,7 +230,7 @@ class ConfusionSoftmaxGradSchedule:
             self._ir_axes.append([_x, _i])
             self._inner_shape.append([shape[_i], _i])
         self._emit_insn_axis = res.op.axis[0]
-    
+
     def _do_tiling_one_cut(self):
         sch = self._schedule
         res = self._out
@@ -262,13 +264,13 @@ class ConfusionSoftmaxGradSchedule:
         for i in range(u_idx + 1, len(res.op.axis)):
             inner_axes.append([res.op.axis[i], i])
             self._inner_shape.append([shape[i], i])
-        
+
         self._ir_axes = block_axes + ub_axes + inner_axes
         self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
         self._compute_at_axis = ub_axes[-1][0]
         self._compute_at_axis_idx = ub_axes[-1][1]
         self._emit_insn_axis = inner_axes[0][0]
-    
+
     def _calc_multi_core(self):
         if self._tiling_strategy == TilingStrategy.NONE_CUT:
             self._block_bind_axis = None
@@ -285,23 +287,23 @@ class ConfusionSoftmaxGradSchedule:
         sch = self._schedule
         for tensor_i in self._compute_inline_tensors:
             sch[tensor_i].compute_inline()
-    
+
     def _calc_compute_at(self):
         if self._tiling_strategy == TilingStrategy.NONE_CUT:
             self._compute_at_map.clear()
             return
-        
+
         for tensor_i in self._cache_read_buffer_tensor_map:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
-        
+
         for tensor_i in self._cache_write_buffer_tensor_map:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
-    
+
     def _do_compute_at(self):
         sch = self._schedule
         for tensor_i, param in self._compute_at_map.items():
             sch[tensor_i].compute_at(sch[param[0]], param[1])
-    
+
     def _calc_emit_insn(self):
         def get_insn(tensor_):
             tag = tensor_.op.tag
@@ -310,17 +312,17 @@ class ConfusionSoftmaxGradSchedule:
             else:
                 insn = tag
             return INSN_MAPPING.get(insn)
-        
+
         for source, target in self._cache_read_buffer_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], "dma_copy"]
-        
+
         for source, target in self._cache_write_buffer_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
             if target in self._compute_inline_broadcast:
                 self._emit_insn_map[source].append("phony_insn")
 
         self._emit_insn_map[self._out] = [self._emit_insn_axis, "dma_copy"]
-    
+
     def _do_emit_insn(self):
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
@@ -342,15 +344,15 @@ class ConfusionSoftmaxGradSchedule:
                 sch[tensor_i].emit_insn(param[0], param[2])
             else:
                 sch[tensor_i].emit_insn(param[0], param[1])
-    
+
     def _calc_storage_bound(self):
         pass
-    
+
     def _do_storage_bound(self):
         sch = self._schedule
         tensors = set(self._cache_read_buffer_tensor_map.keys()) \
-           .union(set(self._cache_write_buffer_tensor_map.keys()))
-        
+            .union(set(self._cache_write_buffer_tensor_map.keys()))
+
         storage_bound = int(1024*15)
         for tensor_i in tensors:
-            sch[tensor_i].set_storage_bound(storage_bound)
+            sch[tensor_i].set_buffer_size(storage_bound)

@@ -37,6 +37,7 @@ BLOCK_SIZE_BYTE = 32
 # temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
 
+
 @register_schedule(pattern=Pattern.LAYER_NORM_X_BACKPROP_V2)
 def schedule(outs, tiling_case):
     """
@@ -90,7 +91,6 @@ class LayerNormXBackpropScheduleV2:
         self.sum_x_block_outer = None
 
         self._emit_insn_map = {}
-
 
     def do_schedule(self):
         """
@@ -192,7 +192,7 @@ class LayerNormXBackpropScheduleV2:
 
         for tensor_i in tensors:
             storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
-            sch[tensor_i].set_storage_bound(storage_bound)
+            sch[tensor_i].set_buffer_size(storage_bound)
 
     def _do_tiling(self):
         funcs = {TilingStrategy.NONE_CUT: self._do_tiling_none_cut}
