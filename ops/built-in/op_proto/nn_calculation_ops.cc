@@ -2934,7 +2934,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   // set shape of output desc, input_size should match the format of y
   if (input_sizes.size() == kConv2dDimSizeLimit) {
     std::vector<int64_t> y_shape = input_sizes;
-    if (!is_input_size_const && !IsUnKnownShape(dy_sizes) && !IsUnKnownShape(input_sizes)) {
+    bool is_force_dynamic = !is_input_size_const && !IsUnKnownShape(dy_sizes) && !IsUnKnownShape(input_sizes);
+    if (is_force_dynamic) {
       OP_LOGI(op_name.GetString(), "input_sizes is Data but all tensors have no -1, so force to set HW in y to -1.");
       CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return GRAPH_FAILED);
       std::string dx_format_str(format2str[input_format]);
@@ -2957,7 +2958,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     return GRAPH_FAILED;
   }
   // update pads list by padding[SAME,VALID]
-  if (!is_dynamic && is_input_size_const) {
+  bool is_set_pad = !is_dynamic && is_input_size_const;
+  if (is_set_pad) {
     if (false == SetPadListByPaddingConv2dbp(op, dx_shape, input_format, filter_sizes, filter_format)) {
       OP_LOGE(op_name.GetString(), "update pads list by padding failed.");
       map<std::string, std::string> err_map;
@@ -9710,9 +9712,10 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
   }
 
   // dynamic shape scenario, no need process
-  if (CheckVectorLessZero(x_sizes) || CheckVectorLessZero(filter_sizes) ||
-      CheckVectorLessZero(output_shape_list) || CheckVectorLessZero(stride_list) ||
-      CheckVectorLessZero(dilations_list)) {
+  bool dynamic_scene = CheckVectorLessZero(x_sizes) || CheckVectorLessZero(filter_sizes) ||
+                       CheckVectorLessZero(output_shape_list) || CheckVectorLessZero(stride_list) ||
+                       CheckVectorLessZero(dilations_list);
+  if (dynamic_scene) {
     OP_LOGD(op_name.GetString(), "no need process with dynamic shape scenario.");
     return;
   }
@@ -9795,7 +9798,8 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
     output_padding_list[h_input_position] = output_padding_h;
     output_padding_list[w_input_position] = output_padding_w;
     op.SetAttr("output_padding", output_padding_list);
-    if (auto_pad == "VALID" || auto_pad == "SAME_LOWER") {
+    bool not_same_upper_padding = auto_pad == "VALID" || auto_pad == "SAME_LOWER";
+    if (not_same_upper_padding) {
       // up, down, left, right
       pads_list[kConv2dPadUpIdx] = pad_h >> 1;
       pads_list[kConv2dPadDownIdx] = pad_h - (pad_h >> 1);
