@@ -162,7 +162,7 @@ def base_op_select_format(src_fp16_flag):
     return dyn_case_scenario_list, full_case_scenario_list
 
 
-def gen_op_select_format_params(scenario_combinations, is_batch_matmul_v2=False):
+def gen_op_select_format_params(scenario_combinations, support_offset_w=False):
     """
     """
     input0 = util_select_op_base.gen_param(classify="input0", name="x1",
@@ -178,7 +178,7 @@ def gen_op_select_format_params(scenario_combinations, is_batch_matmul_v2=False)
                                             datatype=','.join(
                                                 x[2][0] for x in scenario_combinations),
                                             format=','.join(x[2][1] for x in scenario_combinations))
-    if is_batch_matmul_v2:
+    if support_offset_w:
         input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
                                                 datatype=','.join(
                                                     x[3][0] for x in scenario_combinations),
@@ -206,7 +206,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     src_fp16_flag = True if src_dtype == "float16" else False
     scenario_combinations, _ = base_op_select_format(src_fp16_flag)
 
-    param_list = gen_op_select_format_params(scenario_combinations, is_batch_matmul_v2=True)
+    param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json

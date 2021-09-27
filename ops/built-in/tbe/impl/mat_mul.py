@@ -48,7 +48,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     src_fp16_flag = True if src_dtype == "float16" else False
     _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
 
-    param_list = gen_op_select_format_params(full_case_senario_combinations, is_batch_matmul_v2=False)
+    param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json

@@ -112,23 +112,23 @@ def base_op_select_format(src_fp16_flag):
     dyn_case_scenario_list = []
     full_case_scenario_list = []
     # The order from left to right is input1, input2, input3(bias), output
-    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
+    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
 
-    base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "FRACTAL_NZ"))]
+    base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ"))]
 
-    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int32", "FRACTAL_NZ"))]
+    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ"))]
 
-    quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
-                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
-                           (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC")),
-                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND")),]
+    quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
+                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
+                           (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
+                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND")),]
 
     # ND input and output scenario
-    nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("float16", "ND")),
-                        (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "ND"))]
+    nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
+                        (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND"))]
     nd_case_scenario = []
-    nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("float", "ND")),
-                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "ND")),]
+    nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
+                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),]
     nd_fp32out_scenario = []
 
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
@@ -151,7 +151,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     src_fp16_flag = True if src_dtype == "float16" else False
     scenario_combinations, _ = base_op_select_format(src_fp16_flag)
 
-    param_list = gen_op_select_format_params(scenario_combinations, is_batch_matmul_v2=False)
+    param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
