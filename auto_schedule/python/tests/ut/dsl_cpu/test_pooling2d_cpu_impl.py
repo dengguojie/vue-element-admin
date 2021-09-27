@@ -266,6 +266,7 @@ def test_pooling2d_cpu_api_gmp_windows_lt_nine(_):
 
 
 test_func_list = [
+    test_pooling2d_cpu_api_avg,
     test_pooling2d_cpu_api_gap,
     test_pooling2d_cpu_api_gmp,
     test_pooling2d_cpu_api_max,
@@ -282,4 +283,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
