@@ -36,6 +36,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util import util_frac_z as fz
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import is_vgatherb
 
 
 # General limitation of the size for input shape: 2**31
@@ -214,7 +215,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float16,float",
                                                         format="FRACTAL_NZ,NC1HWC0,ND,ND")
-            if tbe_product in ("Ascend910", "Ascend310", "Ascend920",):
+            if tbe_product in ("Ascend910", "Ascend310") or is_vgatherb:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16,float,float",
                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
@@ -236,7 +237,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float",
                                                         format="NC1HWC0,ND,ND")
-            if tbe_product in ("Ascend910", "Ascend310", "Ascend920",):
+            if tbe_product in ("Ascend910", "Ascend310") or is_vgatherb:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float,float",
                                                        format="NC1HWC0,ND,ND,NC1HWC0")
@@ -258,7 +259,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16,float",
                                                     format="NC1HWC0,NDC1HWC0,ND,ND")
-        if tbe_product in ("Ascend910", "Ascend920",):
+        if tbe_product in ("Ascend910",) or is_vgatherb:
             if check_axis_is_last(shape_x_ori, axis):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                     datatype="float16,float16,float,float,\
@@ -321,7 +322,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float,float16,float16,float,float16",
                                                     format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
-        if tbe_product in ("Ascend910", "Ascend310", "Ascend920",):
+        if tbe_product in ("Ascend910", "Ascend310") or is_vgatherb:
             input0 = \
                 util_select_op_base.gen_param(classify="input0", name="x",
                                               datatype="float16,float,float16,float16,float,float,float16,float",
@@ -428,7 +429,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if use_tail_block:
         data_expsum = _broadcast_nz(data_expsum, shape)
         output = te.lang.cce.vdiv(data_exp, data_expsum)
-    elif tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710", "Ascend920",) and \
+    elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or is_vgatherb) and \
        output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
         data_expsum = _broadcast_nz(data_expsum, shape)

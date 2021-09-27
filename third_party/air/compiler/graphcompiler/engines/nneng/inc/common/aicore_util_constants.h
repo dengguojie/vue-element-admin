@@ -64,7 +64,6 @@ static const std::string SOC_VERSION_ASCEND910A = "Ascend910A";
 static const std::string SOC_VERSION_ASCEND910B = "Ascend910B";
 static const std::string SOC_VERSION_ASCEND910PROA = "Ascend910ProA";
 static const std::string SOC_VERSION_ASCEND910PROB = "Ascend910ProB";
-static const std::string SOC_VERSION_ASCEND920A = "Ascend920A";
 static const std::string SOC_VERSION_ASCEND910PREMIUMA = "Ascend910PremiumA";
 static const std::string SOC_VERSION_HI3796CV300ES = "Hi3796CV300ES";
 static const std::string SOC_VERSION_HI3796CV300CS = "Hi3796CV300CS";

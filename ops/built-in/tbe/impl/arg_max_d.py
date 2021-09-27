@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import is_vgatherb
 
 # define a scalar, value = -(2**16 - 1)
 SCALAR_MIN_FP16 = -(2**16 - 1)
@@ -181,8 +182,6 @@ class ArgmaxBase(object):
         """
         self.product_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.tik_instance = tik.Tik()
-        self.soc_version = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.SOC_VERSION)
-        self.soc_flag = self.soc_version in ("Ascend920", "Ascend920A")
 
 
 # pylint: disable=too-many-instance-attributes
@@ -735,7 +734,7 @@ class Argmax(ArgmaxBase):
             compute_fuction = self.compute_argmax_last_axis_copy_one_time
             if self.c_align_ubsize <= self.data_each_vector * 2:
                 compute_fuction = self.compute_argmax_last_axis_fp16_more_dims
-        if self.soc_flag and self.dtype_x == "float16" and self.c_align_ubsize > self.data_each_vector * 2:
+        if is_vgatherb and self.dtype_x == "float16" and self.c_align_ubsize > self.data_each_vector * 2:
             compute_fuction = self.compute_argmax_last_axis
 
         # calcu core policy
@@ -791,8 +790,8 @@ class Argmax(ArgmaxBase):
                 self.result_int32.set_as(0)
                 self.result_out_scalar = self.tik_instance.Scalar(self.dtype_x)
                 if self.dtype_x == "float16":
-                    if self.soc_flag:
-                        argmax_func = self.do_argmax_last_axis_fp16_ascend920
+                    if is_vgatherb:
+                        argmax_func = self.do_argmax_last_axis_fp16_a100
                     else:
                         argmax_func = self.do_argmax_last_axis_fp16_default
                     self.result_out_scalar.set_as(SCALAR_MIN_FP16)
@@ -820,9 +819,9 @@ class Argmax(ArgmaxBase):
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
 
-    def do_argmax_last_axis_fp16_ascend920(self, ub_buf_size, loop, n_i):
+    def do_argmax_last_axis_fp16_a100(self, ub_buf_size, loop, n_i):
         """
-        do arg in one segment for float16 and ascend920
+        do arg in one segment for float16 and a100
 
         Parameters
         ----------

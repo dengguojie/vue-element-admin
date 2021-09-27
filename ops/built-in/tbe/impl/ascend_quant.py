@@ -24,6 +24,7 @@ from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
+from impl.util.platform_adapter import is_vgatherb
 
 
 def _is_lhisi_version():
@@ -37,17 +38,17 @@ def _is_lhisi_version():
 
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
-def is_support_v220():
+def is_support_a100():
     """
-    Check if Ascend920A version.
+    Check if a100 version.
 
     Returns
     -------
-    True: Ascend920A version.
+    True: a100 version.
     False: other version.
     """
     soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version == "Ascend920":
+    if is_vgatherb:
         return True
     return False
 
@@ -373,7 +374,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     -------
     None
     """
-    if is_support_v220() and x.op.name == "res_conv2d":
+    if is_support_a100() and x.op.name == "res_conv2d":
         scale_exp = tvm.const(scale, "float32")
         offset_exp = tvm.const(offset, "float32")
 

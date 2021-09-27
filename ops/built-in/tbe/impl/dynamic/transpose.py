@@ -1250,7 +1250,7 @@ class Transpose(object):
         if UB_SIZE == 248 * 1024:
             return 3968 - 16  # 310
         if UB_SIZE == 192 * 1024:
-            return 2848  # cs & 920
+            return 2848  # cs & a100
         if UB_SIZE == 128 * 1024:
             return 1861  # es
         return 3968 - 16
@@ -1261,7 +1261,7 @@ class Transpose(object):
         if UB_SIZE == 248 * 1024:
             return 245  # 310, 245 to avoid bank conflict
         if UB_SIZE == 192 * 1024:
-            return 191 # cs & 920
+            return 191 # cs & a100
         if UB_SIZE == 128 * 1024:
             return 123 # es
         return 247

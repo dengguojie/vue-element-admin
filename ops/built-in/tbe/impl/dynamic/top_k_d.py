@@ -596,7 +596,7 @@ def set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
 
 
 # pylint: disable=too-many-locals
-def set_tensor_more_4096_1981(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype):
+def set_tensor_more_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype):
     """
     Set UB when tensor bigger than 4096
     """
@@ -686,7 +686,7 @@ def set_tensor_less_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
 
 
 # pylint: disable=too-many-arguments,too-many-locals
-def set_tensor_less_4096_1981(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype):
+def set_tensor_less_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype):
     """
     Set UB when tensor less than 4096
     """
@@ -878,7 +878,7 @@ class GlobalVarFunction(object):
                 tik_instance.vadds(vadds_len, self.indices_out_final_ub[indices_per_part * i],
                                    self.indices_out_final_ub,
                                    indices_per_part * i, indices_per_part // vadds_len, 1, 1, 8, 8)
-            self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
+            self.sort_region_a100(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
         else:
             # indices_ub is used to store multiplier
             indices_block_num = indices_ub.buffer_size * _get_dtype_byte(
@@ -911,7 +911,7 @@ class GlobalVarFunction(object):
             if SUPPORT_VBITSORT32:
                 tik_instance.vadds(vadds_len, indices_out_final_ub, indices_out_final_ub, cols_per_part,
                                    cols_per_part // vadds_len, 1, 1, 8, 8)
-                self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
+                self.sort_region_a100(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
             else:
                 multiplier_scalar.set_as(offset_ub[i + 1])
                 tik_instance.vector_dup(indices_block_num, indices_ub, multiplier_scalar,
@@ -968,7 +968,7 @@ class GlobalVarFunction(object):
         if SUPPORT_VBITSORT32:
             tik_instance.vadds(vadds_len, indices_out_final_ub, indices_out_final_ub, cols_per_part,
                                cols_per_part // vadds_len, 1, 1, 8, 8)
-            self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1,
+            self.sort_region_a100(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1,
                                   last_part_cols_padding)
         else:
             multiplier_scalar.set_as(offset_ub[part_cnt - 1])
@@ -1115,7 +1115,7 @@ class GlobalVarFunction(object):
                                      self.indices_out_final_ub[i * self.cols_padding + offset],
                                      self.indices_out_final_ub[offset], 0, 1,
                                      part_len // indices_out_final_ub_C0, 0, 0))
-            self.sort_region_1981(tik_instance, self.region_sorted_ub.reinterpret_cast_to(self.data_ub.dtype),
+            self.sort_region_a100(tik_instance, self.region_sorted_ub.reinterpret_cast_to(self.data_ub.dtype),
                                   self.data_ub,
                                   self.indices_out_final_ub, rows, self.cols_padding)
             tik_instance.vreduce(rows * self.cols_padding * SORT_REGION_BYTE // _get_dtype_byte(self.data_ub.dtype),
@@ -1284,7 +1284,7 @@ class GlobalVarFunction(object):
         with tik_instance.if_scope(cols > SORT_ONCE_NUM):
             self.merge_region(tik_instance, dst=src, src=dst, rows=rows, cols=cols)
 
-    def sort_region_1981(self, tik_instance, dst, score, index, rows, cols):
+    def sort_region_a100(self, tik_instance, dst, score, index, rows, cols):
         """
         sort_region
         """
@@ -1650,7 +1650,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
             with tik_instance.if_scope(cols > obj_tiling.mode_threshold):
                 if (isinstance(cols, int) and cols > obj_tiling.mode_threshold) or not isinstance(cols, int):
                     if SUPPORT_VBITSORT32:
-                        set_tensor_more_4096_1981(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype)
+                        set_tensor_more_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype)
                     else:
                         set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs)
                     obj_func = GlobalVarFunction(obj_gm, obj_tiling, obj_ub)
@@ -1658,7 +1658,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
             with tik_instance.else_scope():
                 if (isinstance(cols, int) and cols <= obj_tiling.mode_threshold) or not isinstance(cols, int):
                     if SUPPORT_VBITSORT32:
-                        set_tensor_less_4096_1981(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype)
+                        set_tensor_less_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype)
                     else:
                         set_tensor_less_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs)
                     obj_func = GlobalVarFunction(obj_gm, obj_tiling, obj_ub)

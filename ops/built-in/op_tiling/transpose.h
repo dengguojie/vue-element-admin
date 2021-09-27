@@ -104,7 +104,7 @@ enum TransposeScenario {
   SCENARIO_5 = 5,    // borrow axis scenario with last axis transposed
   SCENARIO_6 = 6,    // small shape
   SCENARIO_7 = 7,    // last axis transpose
-  SCENARIO_8 = 8,    // 920A verifaction
+  SCENARIO_8 = 8,    // a100 verifaction
   SCENARIO_9 = 9,    // last axis block aligned and not transpose
   SCENARIO_10 = 10,  // last two axis: block aligned & transpose & not huge
 };

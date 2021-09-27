@@ -24,20 +24,21 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
+from impl.util.platform_adapter import is_vgatherb
 
 
 # pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
-def is_support_v220():
+def is_support_a100():
     """
-    Check if Ascend920A version.
+    Check if a100 version.
 
     Returns
     -------
-    True: Ascend920A version.
+    True: a100 version.
     False: other version.
     """
     soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version == "Ascend920":
+    if is_vgatherb:
         return True
     return False
 
@@ -154,7 +155,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
 
     res_shape[-2] = x.shape[-2]
     if conv_flag:
-        if not is_support_v220() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+        if not is_support_a100() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
             res_shape[-2] = res_shape[-2]//2
             res_ub_reform = tvm.compute(res_shape,
                                         lambda batch, cout1, howo, cout0:
@@ -205,7 +206,7 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
                 new_indice[1] = cout1
 
             if tensor_flag:
-                if is_support_v220():
+                if is_support_a100():
                     return tvm.vdeq_cast(
                         x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                               batch,
@@ -221,7 +222,7 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
                         req_scale(*new_indice), "int8", do_relu=relu_flag),
                     tvm.const(0, dtype="int8"))
 
-            if is_support_v220():
+            if is_support_a100():
                 return tvm.deq_cast(
                     x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                           batch,
@@ -245,7 +246,7 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
             if tensor_flag:
                 new_indice[4] = indice[c0_index]
                 new_indice[1] = indice[c1_index]
-            if is_support_v220() and tensor_flag:
+            if is_support_a100() and tensor_flag:
                 return tvm.vdeq_cast(x(*indice), req_scale(*new_indice), "int8", do_relu=relu_flag)
             if tensor_flag:
                 return tvm.select(indice[c1_index] < x_shape_list[c1_index],

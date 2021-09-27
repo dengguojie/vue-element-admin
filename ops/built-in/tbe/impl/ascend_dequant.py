@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from impl import ascend_quant_util
+from impl.util.platform_adapter import is_vgatherb
 
 
 # pylint: disable=locally-disabled,too-many-arguments, unused-argument
@@ -77,14 +78,13 @@ def _is_support_v200_instruction():
                                                              "Ascend610",
                                                              "Ascend615",
                                                              "Hi3796CV300CS",
-                                                             "SD3403",
-                                                             "Ascend920"):
+                                                             "SD3403") or is_vgatherb:
         return True
     return False
 
 
-def _is_support_v220_instruction():
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend920":
+def _is_support_a100_instruction():
+    if is_vgatherb:
         return True
     return False
 
@@ -305,7 +305,7 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
     dequant for vector in v200
     """
     if conv_flag:
-        invalid_data_rm_flag = int(x.op.attrs["invalid_data_rm_flag"]) if not _is_support_v220_instruction() else False
+        invalid_data_rm_flag = int(x.op.attrs["invalid_data_rm_flag"]) if not _is_support_a100_instruction() else False
         group = x.op.input_tensors[0].shape[0].value
         cout1_opt = x.op.input_tensors[0].shape[2].value
         res_shape_nchw_after_removepad = x.op.attrs["conv_shape"]
@@ -320,7 +320,7 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
                         deq_scale(0, cout1, 0, 0, cout0), dtype="float16", do_relu=relu_flag),
             name="dequant", tag="dequant_vector")
 
-        if not _is_support_v220_instruction() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+        if not _is_support_a100_instruction() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
             remove_padded_column_shape = align_shape
             remove_padded_column_shape[-2] = res_shape_nchw_after_removepad[-2].value//2 # remove padded column and pad
             res_shape_nchw_after_removepad = x.op.attrs["true_conv_shape"]
@@ -613,12 +613,12 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
         return res
 
     if tensor_flag:
-        if _is_support_v200_instruction() or _is_support_v220_instruction():
+        if _is_support_v200_instruction() or _is_support_a100_instruction():
             res = _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_flag)
         else:
             res = _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode, conv_flag)
     else:
-        if _is_support_v200_instruction() or _is_support_v220_instruction():
+        if _is_support_v200_instruction() or _is_support_a100_instruction():
             res = _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag)
         else:
             res = _scalar_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mode, conv_flag)

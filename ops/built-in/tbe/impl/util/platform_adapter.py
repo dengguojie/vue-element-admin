@@ -189,7 +189,6 @@ class PlatformApi:
     ASCEND_710 = platform.ASCEND_710
     ASCEND_615 = platform.ASCEND_615
     ASCEND_710P = platform.ASCEND_710P
-    ASCEND_920A = platform.ASCEND_920A
     ASCEND_SD = platform.ASCEND_SD
     AIC_710 = platform.AIC_710
     VEC_710 = platform.VEC_710
@@ -200,8 +199,6 @@ class PlatformApi:
     HI3796CV300ESAIC = platform.HI3796CV300ESAIC
     HI3796CV300CSAIC = platform.HI3796CV300CSAIC
     SD3403AIC = platform.SD3403AIC
-    ASCEND_920AIC = platform.ASCEND_920AIC
-    ASCEND_920VEC = platform.ASCEND_920VEC
     ASCEND_SD_AIC = platform.ASCEND_SD_AIC
     scope_cbuf = platform.scope_cbuf
     scope_ubuf = platform.scope_ubuf
@@ -278,3 +275,5 @@ log = tbe_log
 # pylint: disable=invalid-name
 tbe_platform = PlatformApi
 tuple_sum = te_tuple_sum
+# a100
+is_vgatherb = tbe_platform.api_check_support("tik.vgatherb")

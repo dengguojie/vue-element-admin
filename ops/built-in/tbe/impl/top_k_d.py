@@ -29,6 +29,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.dynamic.top_k_d import top_k_d as top_k_template
+from impl.util.platform_adapter import is_vgatherb
 
 FP16_MINIMUM = -65520
 
@@ -1132,7 +1133,7 @@ def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_
     _add(tvm_ir, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, rows, cols_padding)
 
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610", "Ascend920A"):
+    if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610") or is_vgatherb:
         _copy_ubuf_to_gm_k_less_16(tvm_ir,
                                    'float16',
                                    data_gm_out,
@@ -1324,7 +1325,7 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
 
 
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610", "Ascend920A"):
+    if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610") or is_vgatherb:
         _copy_ubuf_to_gm_k_less_16(tvm_ir,
                                    'float16',
                                    data_gm_out,
@@ -1425,7 +1426,7 @@ def _kernel_ir(ins, outs, k, largest):
     rows_cores, turn, batch = _tiling(rows, cols)
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
-    if k < 16 and soc_version not in ("Ascend710", "Ascend610", "Ascend920A"):
+    if k < 16 and soc_version not in ("Ascend710", "Ascend610") or is_vgatherb:
         rows_cores = [rows]
         turn = 1
         multi_core = False
@@ -1665,11 +1666,11 @@ def check_supported(input_tensor,
     # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
     if sorted is not True:
         return True, ""
-    # When input_size > 32768 and k < 16 and soc version is not ["Ascend710", "Ascend610", "Ascend920A"],
+    # When input_size > 32768 and k < 16 and soc version is not ["Ascend710", "Ascend610"] or is_vgatherb,
     # the AICPU performance is better than the AICore performance.
     # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if input_size > 32768 and k > 0 and k < 16 and soc_version not in ("Ascend710", "Ascend610", "Ascend920A"):
+    if input_size > 32768 and k > 0 and k < 16 and soc_version not in ("Ascend710", "Ascend610") or is_vgatherb:
         reason = "input_size is too big, and k is in (0-16), input_size:%s, k:%s"\
                   % (input_size, k)
         return False, reason
@@ -1782,6 +1783,6 @@ def top_k_d(input_tensor,
     with tbe_platform.build_config:
         tvm.build(sch, [data_input, indices, res, indices_out], 'cce', name=kernel_name)
         soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610", "Ascend920A"):
+        if k >= 8 and k < 16 and soc_version in ("Ascend710", "Ascend610") or is_vgatherb:
             parameters_dict = {"parameters": [0, 0, 1, 0]}
             write_code(parameters_dict, kernel_name)
