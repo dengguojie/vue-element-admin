@@ -80,6 +80,7 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(sumNode->GetOpDesc()->GetInputsSize() < 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "sumNode input size small than 2"),
                     return PARAM_INVALID);
+  NOT_CHANGED_WITH_DYNAMIC_NODE({sumNode}); // dynamic not changed
   ge::GeTensorDesc tensor_input = sumNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc axis_input = sumNode->GetOpDesc()->GetInputDesc(1);
 

@@ -1083,6 +1083,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ConcatV2, ConcatV2InferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ConcatV2);
 // ----------------ConcatV2 OP End-------------------
 
 // ----------------Pack OP Begin-------------------
