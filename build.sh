@@ -641,6 +641,11 @@ compile_mod(){
       cmake --build . --target repack_tbe -- -j ${THREAD_NUM}
       
       if [[ "$related" =~ "CPU" ]]; then
+        cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
+        for lib in constant_folding_ops aicpu_ops_json_info cpu_kernels_static
+            do
+                cmake --build . --target $lib -- -j ${THREAD_NUM}
+            done 
         CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
         logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
         mk_dir "${CMAKE_DEVICE_PATH}"
