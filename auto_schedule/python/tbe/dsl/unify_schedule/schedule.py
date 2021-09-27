@@ -24,10 +24,7 @@ from typing import Any
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base import operation
-from tbe.dsl.base.operation import register_schedule
 from tbe.tvm.schedule import Schedule as TVM_Schedule
-
-from .constants import Pattern
 
 DEFAULT = "default"
 
@@ -39,6 +36,7 @@ class Schedule(abc.ABC):
 
     def __init_subclass__(cls, **kwargs):
         ScheduleManager.add_schedule(cls)
+        operation.add_schedule(cls.get_supported_pattern(), _schedule)
 
     @abc.abstractmethod
     def do_schedule(self):
@@ -140,13 +138,17 @@ def _listize(_x):
     return list(_x) if isinstance(_x, (list, tuple)) else [_x]
 
 
-@register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST, Pattern.REDUCE, Pattern.NORM))
 def _schedule(outs, tiling_case):
     cpt = operation.get_context().get_current_compute()
     sub_pattern = cpt.get_sub_pattern()
     pattern = cpt.get_pattern()
     soc = get_soc_spec(SOC_VERSION)
-    sch = ScheduleManager.get_schedule(soc, pattern, sub_pattern)
+
+    if isinstance(sub_pattern, (list, tuple)):
+        sch_idx = cpt.get_current_schedule().get("_sch_idx")
+        sch = ScheduleManager.get_schedule(soc, pattern, sub_pattern[sch_idx])
+    else:
+        sch = ScheduleManager.get_schedule(soc, pattern, sub_pattern)
     instance = sch.get_instance(outs, tiling_case)
 
     return instance.do_schedule()

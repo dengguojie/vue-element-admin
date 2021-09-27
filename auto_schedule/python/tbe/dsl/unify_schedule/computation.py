@@ -24,9 +24,6 @@ from typing import Any
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base import operation
-from tbe.dsl.base.operation import register_tiling_case
-
-from .constants import Pattern
 
 DEFAULT = "default"
 
@@ -38,6 +35,7 @@ class Computation(abc.ABC):
 
     def __init_subclass__(cls, **kwargs):
         ComputationManager.add_computation(cls)
+        operation.add_tiling_case(cls.get_supported_pattern(), _tiling_case)
 
     @abc.abstractmethod
     def do_tiling_case(self):
@@ -109,21 +107,21 @@ class ComputationManager:
         :param pattern:
         :return:
         """
-        def _match_soc(sch, target_soc):
+        def _match_soc(cpt, target_soc):
             # type: (Computation, str) -> bool
-            socs = _listize(sch.get_supported_soc())
+            socs = _listize(cpt.get_supported_soc())
             return target_soc in socs
 
-        def _match_pattern(sch, target_pattern):
+        def _match_pattern(cpt, target_pattern):
             # type: (Computation, str) -> bool
-            patterns = _listize(sch.get_supported_pattern())
+            patterns = _listize(cpt.get_supported_pattern())
             return target_pattern in patterns
 
-        computations = filter(lambda sch: _match_soc(sch, soc), cls._computations)
-        default_computations = filter(lambda sch: _match_soc(sch, DEFAULT), cls._computations)
+        computations = filter(lambda cpt: _match_soc(cpt, soc), cls._computations)
+        default_computations = filter(lambda cpt: _match_soc(cpt, DEFAULT), cls._computations)
         computations = itertools.chain(computations, default_computations)
 
-        computations = filter(lambda sch: _match_pattern(sch, pattern), computations)
+        computations = filter(lambda cpt: _match_pattern(cpt, pattern), computations)
 
         return next(computations, None)
 
@@ -132,7 +130,6 @@ def _listize(_x):
     return list(_x) if isinstance(_x, (list, tuple)) else [_x]
 
 
-@register_tiling_case(pattern=[Pattern.ELEMWISE, Pattern.BROADCAST, Pattern.REDUCE, Pattern.NORM])
 def _tiling_case(outs, option=None):
     cpt = operation.get_context().get_current_compute()
     pattern = cpt.get_pattern()

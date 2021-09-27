@@ -84,9 +84,10 @@ def schedule_cce(outs, option=None):
 
     schedules = []
     schedule_func = operation.get_schedule(pattern)
-    for tiling_case in tiling_case_ret:
+    for i, tiling_case in enumerate(tiling_case_ret):
         param_outs = original_outs.copy()
         with operation.schedule() as context:
+            context.add("_sch_idx", i)
             if Pattern.CONV2D == pattern:
                 sch, real_outs = schedule_func(param_outs, tiling_case)
                 ori_outs = real_outs

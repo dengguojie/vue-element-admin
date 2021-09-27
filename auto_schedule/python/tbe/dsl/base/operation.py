@@ -19,9 +19,10 @@ operation
 """
 import functools
 import re
-import threading
+from typing import Callable
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 from tbe.common.context import op_context
@@ -68,6 +69,23 @@ def get_schedule(pattern):
     return _schedules.get(pattern)
 
 
+def add_schedule(pattern, func):
+    # type: (Union(str, List, Tuple), Callable) -> None
+    """
+    :param pattern:
+    :param func:
+    :return:
+    """
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    if isinstance(pattern, (tuple, list)):
+        for p in pattern:
+            _schedules[p] = wrapper
+    else:
+        _schedules[pattern] = wrapper
+
+
 def register_tiling_case(pattern):
     """
     :param pattern:
@@ -96,6 +114,23 @@ def get_tiling_case(pattern):
     :return:
     """
     return _tiling_cases.get(pattern)
+
+
+def add_tiling_case(pattern, func):
+    # type: (Union(str, List, Tuple), Callable) -> None
+    """
+    :param pattern:
+    :param func:
+    :return:
+    """
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    if isinstance(pattern, (tuple, list)):
+        for p in pattern:
+            _tiling_cases[p] = wrapper
+    else:
+        _tiling_cases[pattern] = wrapper
 
 
 def register_build_pointcut(pattern):
