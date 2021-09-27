@@ -1503,18 +1503,32 @@ def compute_padding_fp32(tensor_in, shape, pad_param, impl_mode):
         op_list += [res_sub]
         instruction_list += ['vector_sub']
 
-    # exp
-    res_exp = tvm.compute(shape, lambda *i: tvm.exp(res_sub(*i)), name="res_exp")
-    op_list += [res_exp]
-    instruction_list += ['vector_exp']
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+        # vcov fp16tofp32
+        res_sub_fp32 = te.lang.cce.cast_to(res_sub, "float32")
+        res_sub_fp32 = tvm.compute(shape,
+                                   lambda *i: topi.cast(res_sub(*i), "float32"),
+                                   name='res_vonv_exp')
+        op_list += [res_sub_fp32]
+        instruction_list += ['vector_conv']
 
-    # vcov fp16tofp32
-    res_exp_fp32 = te.lang.cce.cast_to(res_exp, "float32")
-    res_exp_fp32 = tvm.compute(shape,
-                               lambda *i: topi.cast(res_exp(*i), "float32"),
-                               name='res_vonv_exp')
-    op_list += [res_exp_fp32]
-    instruction_list += ['vector_conv']
+        # exp
+        res_exp_fp32 = tvm.compute(shape, lambda *i: tvm.exp(res_sub_fp32(*i)), name="res_exp")
+        op_list += [res_exp_fp32]
+        instruction_list += ['vector_exp']
+    else:
+        # exp
+        res_exp = tvm.compute(shape, lambda *i: tvm.exp(res_sub(*i)), name="res_exp")
+        op_list += [res_exp]
+        instruction_list += ['vector_exp']
+
+        # vcov fp16tofp32
+        res_exp_fp32 = te.lang.cce.cast_to(res_exp, "float32")
+        res_exp_fp32 = tvm.compute(shape,
+                                   lambda *i: topi.cast(res_exp(*i), "float32"),
+                                   name='res_vonv_exp')
+        op_list += [res_exp_fp32]
+        instruction_list += ['vector_conv']
 
     if shape[1] == pad_c1:
         if pad_c0 != 15:
