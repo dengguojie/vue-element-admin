@@ -253,7 +253,7 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
     None
     """
     dst_tensor = None
-    c0_dict = {"float32": 8, "float16": 16, "int8": 32, "int4": 64}
+    c0_dict = {"float32": 8, "float16": 16, "int8": 32, "int4": 64, "bfloat16": 16}
     fractal_n0 = 16 # the third params of fractal_nz(d // d0, n // n0, n0, d0)
     def _ceil_div(dividend, divisor):
         if divisor == 0:

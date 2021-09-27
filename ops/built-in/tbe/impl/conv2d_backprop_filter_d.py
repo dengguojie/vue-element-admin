@@ -16,11 +16,13 @@
 conv2d_backprop_filter_d
 """
 from impl.util import util_select_op_base
+from impl.util import util_deconv_comm
 from impl.util.platform_adapter import error_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import error_manager_cube
 
 # the dim of shape in conv_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -1127,3 +1129,105 @@ def _conv2d_backprop_filter_cce(
     config = {"name": kernel_name, "tensor_list": tensor_list}
 
     tbe.build(sch, config)
+
+
+@tbe_platform.fusion_manager.register("conv2d_backprop_filter_d")
+def conv2d_backprop_filter_compute(
+    x,
+    out_backprop,
+    y,
+    filter_size,
+    strides,
+    pads,
+    dilations=(1,1,1,1),
+    groups=1,
+    data_format="NHWC",
+    kernel_name="conv2d_backprop_filter"
+):
+    def _calc_input_and_out_shape(origin_format_x,
+                                  origin_shape_x,
+                                  origin_format_res,
+                                  origin_shape_res):
+        if origin_format_x == "NHWC":
+            x_shape = (origin_shape_x[0], origin_shape_x[3], origin_shape_x[1], origin_shape_x[2])
+        elif origin_format_x == "NCHW":
+            x_shape = origin_shape_x
+        else:
+            error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "x", 
+                                                              "[NCHW, NHWC]", origin_format_x)
+        if origin_format_res == "NCHW":
+            shape_res = origin_shape_res
+        elif origin_format_res == "NHWC":
+            shape_res = (
+                origin_shape_res[0],
+                origin_shape_res[3],
+                origin_shape_res[1],
+                origin_shape_res[2]
+            )
+        elif origin_format_res == "HWCN":
+            shape_res = (
+                origin_shape_res[3],
+                origin_shape_res[2],
+                origin_shape_res[0],
+                origin_shape_res[1]
+            )
+        else:
+            error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "y", 
+                                                            "[NCHW, NHWC, HWCN]", origin_format_res)
+        return x_shape, shape_res
+    
+    origin_format_x = x.op.attrs["ori_format"]
+    origin_shape_x = tuple(i.value for i in x.op.attrs["ori_shape"])
+    res_dtype = y["dtype"]
+    origin_shape_res = y["ori_shape"]
+    origin_format_res = y["ori_format"]
+    shape_x, shape_res = _calc_input_and_out_shape(origin_format_x,
+                                                   origin_shape_x,
+                                                   origin_format_res,
+                                                   origin_shape_res)
+    
+    if len(strides) == 4:
+        h_index = data_format.find("H")
+        w_index = data_format.find("W")
+        strides = [strides[h_index], strides[w_index]]
+    if data_format == "NCHW":
+        dilations = dilations
+    elif data_format == "NHWC":
+        dilations = (dilations[0], dilations[3], dilations[1], dilations[2])
+    
+    _, _, fmap_h, fmap_w = shape_x
+    _, _, filter_h, filter_w = shape_res
+    stride_h, stride_w = strides
+    _, _, dilation_h, dilation_w = dilations
+    filter_h_dilation = (filter_h - 1) * dilation_h + 1
+    filter_w_dilation = (filter_w - 1) * dilation_w + 1
+    
+    #pads calculate
+    if pads == "SAME":
+        pad_w = _align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
+        pad_w = max(pad_w, 0)
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        pad_h = _align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
+        pad_h = max(pad_h, 0)
+        pad_up = pad_h // 2
+        pad_down = pad_h - pad_up
+        pads = [pad_up, pad_down, pad_left, pad_right]
+    elif pads == "VALID":
+        pads = PADDING_VAILD
+    pads = list(pads)
+    
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "groups": groups,
+        "res_dtype": res_dtype,
+        "kernel_name": kernel_name
+    }
+    
+    dedw = tbe.conv2d_backprop_filter(input_x=x,
+                                      out_backprop=out_backprop,
+                                      filter_sizes=shape_res,
+                                      para_dict=para_dict)
+    return dedw

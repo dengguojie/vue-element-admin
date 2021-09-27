@@ -263,10 +263,34 @@ def _gen_conv2d_bp_input_920A_case_mock(test_arg):
             sch = auto_schedule(out)
 
 
+def _test_conv2d_bp_input_bf16_case_1(test_arg):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
+            with cce():
+                x = tvm.placeholder((2, 7, 7, 32), name="x", dtype="bfloat16",
+                                    attrs={
+                                        "ori_shape": (2, 7, 7, 32), "format": "NHWC", 
+                                        "ori_format": "NHWC"
+                                    })
+                x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
+                weight = tvm.placeholder((18, 2, 16, 16), name="filter", dtype="bfloat16",
+                                         attrs={
+                                             "ori_shape": (3, 3, 32, 32),
+                                             "format": "FRACTAL_Z",
+                                             "ori_format": "HWCN"
+                                         })
+                y = {"shape": (2, 2, 14, 14, 16), "ori_shape": (2, 14, 14, 32), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "bfloat16"}
+                dx = conv2d_backprop_input_d_compute(weight, x_5hd, y, (2, 14, 14, 32), (1, 2, 2, 1), (0, 1, 0, 1))
+                trans_out = {"shape": (2, 14, 14, 32), "ori_shape": (2, 14, 14, 32), "format": "NHWC", "ori_format": "NHWC", "dtype": "bfloat16"}
+                out = trans_data_compute(dx,trans_out, "NC1HWC0", "NHWC")
+                sch = auto_schedule(out)
+
+
 _gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
 ut_case.add_cust_test_func(test_func=_gen_conv2d_bp_input_920A_case_mock)
 #_gen_conv2d_bp_input_920A_case()
+ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_bf16_case_1)
 
 
 if __name__ == "__main__":

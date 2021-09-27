@@ -78,7 +78,8 @@ BIT_RATIO_DICT = {
     "uint8": 1,
     "int8": 1,
     "uint4": 0.5,
-    "int4": 0.5
+    "int4": 0.5,
+    "bfloat16": 2
 }
 # same as (2**63-1)
 DATA_SIZE_MAX = 9223372036854775807
@@ -338,7 +339,11 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     valid_dtype_dict["filter"] = ("float16", "int8")
     valid_dtype_dict["dedy"] = ("float16", "int8")
     valid_dtype_dict["dx"] = ("float16", "float32", "int32")
-
+    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+    if cube_vector_split:
+        valid_dtype_dict["filter"] += ("bfloat16",)
+        valid_dtype_dict["dedy"] += ("bfloat16",)
+        valid_dtype_dict["dx"] += ("bfloat16",)
     _check_dtype(valid_dtype_dict)
     _check_shape()
 

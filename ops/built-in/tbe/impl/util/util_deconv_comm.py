@@ -21,10 +21,11 @@ from __future__ import absolute_import
 from te.tvm import api as tvm
 from te.platform import get_soc_spec
 from te.platform import cce_params
-from te.utils import para_check
 from te.utils.error_manager import error_manager_util as err_man
 from te.utils.error_manager import error_manager_cube as err_man_cube
 from te.lang.cce.te_compute.cube_util import shape_to_list
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import para_check
 
 
 # the dim of shape in conv_backprop must be 4
@@ -68,7 +69,7 @@ DEFAULT_MAX_SHAPE_NUM = 1000000
 
 # the bytes length of several dtype
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
-                  "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
+                  "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5, "bfloat16": 2}
 # same as (2**63-1)
 DATA_SIZE_MAX = 9223372036854775807
 
@@ -251,7 +252,7 @@ def calculate_group(out_backprop, input_size, w_shape_nchw, groups, filter_dtype
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     c0_size = cce_params.C0_SIZE
-    c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
+    c0_size_k = tbe_platform.CUBE_MKN[filter_dtype]['mac'][1]
     #groups in w's N and dx's C, so dx_c_ori is filter_c, dy_c_ori is filter_N/groups.
     check_equal_rule(out_backprop[1],
                      w_shape_nchw[0],
@@ -567,7 +568,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         if shape_out_backprop[W_DIM] == DYNAMIC_FLAG:
             return
         c0_size = cce_params.C0_SIZE
-        c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
+        c0_size_k = tbe_platform.CUBE_MKN[filter_dtype]['mac'][1]
         w_value = dedy_w * stride_w
         h_value_max = 1
         if fmap_w % c0_size != 0:
@@ -703,7 +704,11 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     valid_filter_dtype = ("float16", "int8")
     valid_dedy_dtype = ("float16", "int8")
     valid_res_dtype = ("float16", "float32", "int32")
-
+    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
+    if cube_vector_split:
+        valid_filter_dtype += ("bfloat16",)
+        valid_dedy_dtype += ("bfloat16",)
+        valid_res_dtype += ("bfloat16",)
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()

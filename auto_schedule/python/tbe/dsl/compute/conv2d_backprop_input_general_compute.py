@@ -534,6 +534,8 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             output_dtype = "int32"
 
         if self._cube_vector_split_flag:
+            if w_col.dtype == "bfloat16" and dy_col.dtype == "bfloat16":
+                output_dtype = "bfloat16"
             dx_ddr = tvm.compute(
                 out_shape,
                 lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_col[dx_cin1_idx // self._cin1_g,

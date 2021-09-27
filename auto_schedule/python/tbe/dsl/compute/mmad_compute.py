@@ -4393,7 +4393,7 @@ class MatMulCompute:
             # [(batch), K, N] or [(batch), N, K]
             self.kn_shape = self.tensor_b.shape[-1].value if self.trans_b else self.tensor_b.shape[-2].value
             self.n_shape = self.tensor_b.shape[-2].value if self.trans_b else self.tensor_b.shape[-1].value
-        if self.tensor_a.dtype == "float32":
+        if self.tensor_a.dtype == "float32" and "ND_trans_Nz" in self.tensor_a.op.attrs:
             # format on L1 is Zz when dtype is fp32, but km_shape and m_shape are obtained from
             # index of Nz, we need to exchange the value of them
             self.km_shape, self.m_shape = self.m_shape, self.km_shape

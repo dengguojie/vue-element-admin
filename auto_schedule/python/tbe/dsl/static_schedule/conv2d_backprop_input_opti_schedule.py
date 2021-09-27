@@ -39,7 +39,7 @@ DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 DEBUG_MODE = 0
 CONST_L1_SHAPE_DIM = 4
 OUT_OF_ORDER_SHIFT_BIT = 13
-DTYPE_BYTE_MAP = {"float16": 2, "float32": 4, "int8": 1, "int32": 4}
+DTYPE_BYTE_MAP = {"float16": 2, "float32": 4, "int8": 1, "int32": 4, "bfloat16": 2}
 CUB_BUFFER_LIMIT = 4096
 TENSOR_MAP = {}
 TILING = {}
@@ -546,7 +546,8 @@ class Conv2dDxOptiSchedule:
                 "float32": 16,
                 "int32": 16,
                 "float16": 16,
-                "int8": 32
+                "int8": 32,
+                "bfloat16": 16
             }
             if atype in bit_dir.keys():
                 k_al1 = bit_dir[atype]

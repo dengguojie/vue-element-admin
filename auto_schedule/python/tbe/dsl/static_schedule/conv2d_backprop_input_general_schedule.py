@@ -46,7 +46,8 @@ DTYPE_SIZE = {
     "float32": 4,
     "float16": 2,
     "int32": 4,
-    "int8": 1}
+    "int8": 1,
+    "bfloat16": 2}
 
 def _get_all_tensors(res):
     """
@@ -854,7 +855,8 @@ def general_schedule(
                 "float32": 16,
                 "int32": 16,
                 "float16": 16,
-                "int8": 32
+                "int8": 32,
+                "bfloat16": 16
             }
             if atype in bit_dir.keys():
                 k_0 = bit_dir[atype]

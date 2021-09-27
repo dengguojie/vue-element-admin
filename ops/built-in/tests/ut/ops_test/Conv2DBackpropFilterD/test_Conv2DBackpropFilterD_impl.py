@@ -6,11 +6,13 @@ import conv2d_bp_filter_ut_testcase
 import util_for_conv2d_bp_filter as util
 from op_test_frame.ut import OpUT
 from impl.conv2d_backprop_filter_d import get_op_support_info
+from impl.conv2d_backprop_filter_d import conv2d_backprop_filter_compute
 from te import tvm
 from impl.util.platform_adapter import tbe
 from te.platform.cce_conf import te_set_version
 from impl.trans_data import trans_data_compute
 from impl.trans_data import _ceil_and_divide
+from tbe.common.context import op_context
 
 
 ut_case = OpUT(
@@ -150,6 +152,7 @@ def _test_get_op_support_info(test_arg):
 
 
 def _gen_conv2d_bp_filter_op_case():
+    
     for test_case in conv2d_bp_filter_ut_testcase.conv2d_bp_filter_op_testcase:
         ut_case.add_case(["Ascend910A"], _gen_trans_data_case(*test_case))
     ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
@@ -202,11 +205,46 @@ def _gen_conv2d_bp_filter_nd2nz_format():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format)
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_err1)
 
+def _test_conv2d_backprop_filter_compute(test_args):
+    def __build_dw_compute(test_case):
+        params = test_case["params"]
+        with op_context.OpContext():
+            with tvm.target.cce():
+                fm = tvm.placeholder(params[0]["shape"], name="fmap", dtype="float16", attrs={
+                    "ori_shape": params[0]["ori_shape"],
+                    "ori_format": params[0]["ori_format"]
+                })
+                out_backprop = tvm.placeholder(util.shape_4d_to_5hd(params[1]["shape"], "float16", params[1]["ori_format"]),
+                                               name="out_backprop", dtype="float16", attrs={
+                                                   "ori_shape": params[1]["ori_shape"],
+                                                   "ori_format": params[1]["ori_format"]})
+                y = params[2]
+                filter_size = params[3]
+                strides = params[4]
+                padding = params[5]
+                dilations = params[6]
+                groups = 1
+                data_format = params[8]
+                dedw = conv2d_backprop_filter_compute(fm, out_backprop, y, filter_size, strides, padding,
+                                                      dilations, groups, data_format, "conv2d_backprop_filter")
+                sch = tbe.auto_schedule(dedw)
+                tensor_list = [fm, out_backprop, dedw]
+                config = {
+                    "name": "conv2d_backprop_filter",
+                    "tensor_list": tensor_list
+                }
+                tbe.build(sch, config)
+        
+    for test_case in conv2d_bp_filter_ut_testcase.conv2d_bp_filter_compute_testcase:
+        formatted_case = _gen_trans_data_case(*test_case)
+        formatted_case["params"][5] = test_case[11]
+        __build_dw_compute(formatted_case)
+        
 
 _gen_conv2d_bp_filter_op_case()
 _gen_conv2d_bp_filter_check_support_case()
 _gen_conv2d_bp_filter_nd2nz_format()
-
+ut_case.add_cust_test_func(test_func=_test_conv2d_backprop_filter_compute)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
