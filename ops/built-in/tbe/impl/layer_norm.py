@@ -871,6 +871,7 @@ def layer_norm(input_x, input_gamma, input_beta,
 
         config = {"print_ir": False,
                   "name": kernel_name,
+                  "forbid_inplace_due_to_pipe_conflict": True,
                   "tensor_list": [data_x, data_gamma,
                                   data_beta, res, mean, variance]}
 
