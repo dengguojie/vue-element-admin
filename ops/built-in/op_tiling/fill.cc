@@ -37,11 +37,12 @@ bool FillTiling(const std::string& op_type, const ge::Operator& op_paras, const 
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get output 0 opdesc failed"), return false);
   const std::vector<int64_t> input_value_shape = input_desc->MutableShape().GetDims();
   const std::vector<int64_t> output_shape = output_desc->MutableShape().GetDims();
+  int64_t fused_output = std::accumulate(output_shape.begin(), output_shape.end(), 1ll, std::multiplies<int64_t>());
 
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  std::vector<std::vector<int64_t>> tilingshapes = {output_shape, input_value_shape};
+  std::vector<std::vector<int64_t>> tilingshapes = {{fused_output}, input_value_shape};
   ge::DataType type = input_desc->GetDataType();
   OpInfo eletwise_info(tilingshapes, type);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();

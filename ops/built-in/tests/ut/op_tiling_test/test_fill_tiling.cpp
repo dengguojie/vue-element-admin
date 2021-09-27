@@ -79,5 +79,5 @@ TEST_F(FillTiling, fill_tiling_test_1) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "15 1 ");
 }
