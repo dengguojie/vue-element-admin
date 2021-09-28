@@ -1625,13 +1625,15 @@ class GemmSchedule(object):
         a_shape, b_shape = self._get_tiling_param()
         a_ub_fuse_num, b_ub_fuse_num, fused_num = self._compute_buffer_used_multi()
 
-        not_count_list = []
-        for tensor_item in self.compute_inline_list:
-            if tensor_item not in self.placeholder_tensors:
-                not_count_list.append(tensor_item)
-        multi_ub = CalculateMultiUB(self.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
-        ub_res = multi_ub.calculate_start()
-        new_fused_num = ub_res / (self.DTYPE_WIDTH_MAP[c_type] * 2) - 1
+        new_fused_num = fused_num
+        if not self.is_dynamic:
+            not_count_list = []
+            for tensor_item in self.compute_inline_list:
+                if tensor_item not in self.placeholder_tensors:
+                    not_count_list.append(tensor_item)
+            multi_ub = CalculateMultiUB(self.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
+            ub_res = multi_ub.calculate_start()
+            new_fused_num = ub_res / (self.DTYPE_WIDTH_MAP[c_type] * 2) - 1
 
         self.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, fused_num]
         mad_type = self.MAD_TYPE.get(str(self.ops_data_flow_mode))
