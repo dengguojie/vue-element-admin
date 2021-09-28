@@ -209,8 +209,8 @@ VERIFY_FUNC_REG(LSTM, LSTMVerify);
 // Obtains the value of the constant tensor.
 
 static void InferHWDepthwiseConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
-                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
-                          bool& start_add_pad, bool& end_add_pad) {
+                                   int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
+                                   bool& start_add_pad, bool& end_add_pad) {
   // calc start rule: (i_start + pad_h)/stride_h = output_start
   int64_t i_start = output_slice[0] * stride - pad;
   if (i_start < 0) {
@@ -610,7 +610,7 @@ static bool GetDimInFormat(const std::string& opName, const std::string& formatS
   dimPosition = formatStr.find(dimName);
   if (dimPosition < 0) {
     CUBE_INNER_ERR_REPORT(opName.c_str(), "Position(%s) is invalid: %d, which format is %s.",
-      dimName.c_str(), (int)dimPosition, formatStr.c_str());
+                          dimName.c_str(), (int)dimPosition, formatStr.c_str());
     return false;
   }
   return true;
@@ -1218,8 +1218,8 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, std::str
   bool dy_range_invalid = dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank;
   if (dy_range_invalid) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(),
-      "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
-      dy_range.size(), dy_sizes.size());
+                          "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
+                          dy_range.size(), dy_sizes.size());
     return false;
   }
   bool dy_range_empty = dy_range.size() == 0 && !unknown_rank;
@@ -1329,11 +1329,11 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, std::str
 }
 
 static bool check_conv2d_backprop_input_pads(ge::Operator& op,
-                                            const std::vector<int64_t>& dy_sizes,
-                                            Format dy_format,
-                                            const std::vector<int64_t>& filter_sizes, Format filter_format,
-                                            const std::vector<int64_t>& dx_sizes, Format dx_format,
-                                            const std::vector<int64_t>& attr_params) {
+                                             const std::vector<int64_t>& dy_sizes,
+                                             Format dy_format,
+                                             const std::vector<int64_t>& filter_sizes, Format filter_format,
+                                             const std::vector<int64_t>& dx_sizes, Format dx_format,
+                                             const std::vector<int64_t>& attr_params) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
 
@@ -2271,7 +2271,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
 
 template <typename T1, typename T2>
 static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format input_format,
-                              std::vector<T2>& filter_sizes, Format filter_format) {
+                          std::vector<T2>& filter_sizes, Format filter_format) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
 
@@ -2508,7 +2508,7 @@ static graphStatus VerifyConv2dbpInputCommon(const ge::Operator& op) {
 }
 
 static void InferHWConv2DbpInput(int32_t kernel, int32_t dilation, int32_t stride, vector<int32_t>& pads,
-                           vector<int64_t>& output, vector<int64_t>& input, int32_t index, int32_t input_max) {
+                                 vector<int64_t>& output, vector<int64_t>& input, int32_t index, int32_t input_max) {
   int32_t dilate_kernel = (kernel - 1) * dilation + 1;
   int32_t pad_out = kernel - pads[index] - 1;
   int32_t start = std::ceil(static_cast<float>(output[0] - pad_out) / stride);
@@ -7454,9 +7454,9 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
 
 static void ResetConv3dBpInputOutShape(ge::Operator& op,
                                        Format dy_format,
-                                      const std::vector<int64_t>&dy_sizes,
-                                      Format input_format,
-                                      std::vector<int64_t>& input_sizes) {
+                                       const std::vector<int64_t>&dy_sizes,
+                                       Format input_format,
+                                       std::vector<int64_t>& input_sizes) {
   CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return);
   std::string dx_format_str = format2str[input_format];
   int32_t n_input_position = dx_format_str.find("N");
@@ -7537,8 +7537,8 @@ static void InferHWConv3dBackpropInput(int32_t kernel,
   if (input_size > 0) {
     input[0] = std::min(std::max(static_cast<int64_t>(
                                  std::ceil(
-                                  static_cast<float>(output[0] - pad_out) /
-                                  static_cast<float>(stride))),
+                                     static_cast<float>(output[0] - pad_out) /
+                                     static_cast<float>(stride))),
                                  0L),
                         static_cast<int64_t>(input_size - 1));
     input[1] = std::min((output[1] + kernel_size - 1 - pad_out) / static_cast<int64_t>(stride),
@@ -7551,7 +7551,7 @@ static void InferHWConv3dBackpropInput(int32_t kernel,
                                         input[0] * stride + pad_out - output[0]) - 1;
     pad_list[pad_idx + 1] = std::max(stride * (ih - 1) + kernel_size -
                                         oh - pad_list[pad_idx],
-                                    0);
+                                     0);
   } else {
     input[0] = -1;
     input[1] = -1;
@@ -8776,8 +8776,8 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
     x_data_slice[kDDimNDC1HWC0Idx].clear();
     x_data_slice[kDDimNDC1HWC0Idx].resize(kDataSliceLen);
     InferHWConv3dBackpropInput(kd, dild, strd, id,
-                           y_data_slice[kDDimNDC1HWC0Idx], x_data_slice[kDDimNDC1HWC0Idx],
-                           pad_list, kConv3dPadHeadIdx);
+                               y_data_slice[kDDimNDC1HWC0Idx], x_data_slice[kDDimNDC1HWC0Idx],
+                               pad_list, kConv3dPadHeadIdx);
     needUpdateX = true;
   }
 
@@ -8786,8 +8786,8 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
     x_data_slice[kHDimNDC1HWC0Idx].clear();
     x_data_slice[kHDimNDC1HWC0Idx].resize(kDataSliceLen);
     InferHWConv3dBackpropInput(kh, dilh, strh, ih,
-                           y_data_slice[kHDimNDC1HWC0Idx], x_data_slice[kHDimNDC1HWC0Idx],
-                           pad_list, kConv3dPadUpIdx);
+                               y_data_slice[kHDimNDC1HWC0Idx], x_data_slice[kHDimNDC1HWC0Idx],
+                               pad_list, kConv3dPadUpIdx);
     needUpdateX = true;
   }
 
@@ -8796,8 +8796,8 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
     x_data_slice[kWDimNDC1HWC0Idx].clear();
     x_data_slice[kWDimNDC1HWC0Idx].resize(kDataSliceLen);
     InferHWConv3dBackpropInput(kw, dilw, strw, iw,
-                           y_data_slice[kWDimNDC1HWC0Idx], x_data_slice[kWDimNDC1HWC0Idx],
-                           pad_list, kConv3dPadLeftIdx);
+                               y_data_slice[kWDimNDC1HWC0Idx], x_data_slice[kWDimNDC1HWC0Idx],
+                               pad_list, kConv3dPadLeftIdx);
     needUpdateX = true;
   }
 
