@@ -42,6 +42,7 @@ BATCH_NZ_LENGTH = 5
 BATCH_ND_LENGTH = 3
 ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
+MKN_MIN = 1
 
 
 from enum import Enum
@@ -338,6 +339,8 @@ def _get_matmul_unrank_shape_and_range(input_x1, input_x2):
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1)
         range_x2 = range_nd if format_x2 == "ND" else range_nz
+    range_x1 = tuple([dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1])
+    range_x2 = tuple([dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2])
     return [shape_x1, range_x1, shape_x2, range_x2]
 
 def _get_batch_matmul_unrank_shape_and_range(input_x1, input_x2):
