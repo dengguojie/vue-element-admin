@@ -343,6 +343,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/cast_remove_fusion_pass.cc
   graph_fusion/ai_core/strided_slice_remove_fusion_pass.cc
   graph_fusion/ai_core/yolo_v5_detection_output_fusion_pass.cc
+  graph_fusion/ai_core/transdata_reshape_transdata_transpose.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

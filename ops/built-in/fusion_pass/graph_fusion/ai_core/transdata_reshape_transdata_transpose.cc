@@ -61,13 +61,13 @@ namespace fe {
 vector<FusionPattern*> TransdataTransposeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TransdataReshapeTransdata");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_TRANSDATA1, {"TransData"})
       .AddOpDesc(PATTERN_TRANSDATA2, {"TransData"})
       .AddOpDesc(PATTERN_RESHAPE, {"Reshape"})
-      .AddOpDesc(PATTERN_REFORMAT1, {"Reformat"})
-      .AddOpDesc(PATTERN_REFORMAT2, {"Reformat"})
+      .AddOpDesc(PATTERN_REFORMAT1, {"ReFormat"})
+      .AddOpDesc(PATTERN_REFORMAT2, {"ReFormat"})
       .SetInputs(PATTERN_REFORMAT1, {PATTERN_TRANSDATA1})
       .SetInputs(PATTERN_RESHAPE, {PATTERN_REFORMAT1})
       .SetInputs(PATTERN_REFORMAT2, {PATTERN_RESHAPE})
@@ -139,7 +139,7 @@ Status TransdataTransposeFusionPass::UnlinkFusedNodeEdge(ge::NodePtr transdata1_
   // transdata1 input->transpose input
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(transdata1_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                        transpose_node->GetInDataAnchor(0)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Add transdata node in data edge failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add transdata node in data edge failed."),
                     return FAILED);
   for (auto& inAnchorPtr : transdata1_node->GetAllInDataAnchors()) {
     if (inAnchorPtr != nullptr) {
@@ -286,13 +286,11 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Dtype of input is not supported in transpose.");
     return NOT_CHANGED;
   }
-  vector<int64_t> transpose_out_shape(5);
   ge::NodePtr transpose_node = nullptr;
   if (reshapediminfo == trans_after_reshape_cond1) {
     FUSION_PASS_CHECK(GenerateTransposeNode(&graph, transdatainputtensor1, datatype2, permValue_cond1,
                                             transpose_out_shape1, &transpose_node, transdata_node1) != SUCCESS,
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to generate transpose node B"), return FAILED);
-    fusionNodes.push_back(transpose_node);
     FUSION_PASS_CHECK(UnlinkFusedNodeEdge(transdata_node1, reshape_node, transdata_node2, transpose_node) != SUCCESS,
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to unlink edge"), return FAILED);
     FUSION_PASS_CHECK(graph.RemoveNode(transdata_node1) != SUCCESS,
@@ -304,6 +302,13 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     FUSION_PASS_CHECK(graph.RemoveNode(reshape_node) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
                       return FAILED);
+    FUSION_PASS_CHECK(graph.RemoveNode(reformat_node1) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
+                      return FAILED);
+    FUSION_PASS_CHECK(graph.RemoveNode(reformat_node2) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
+                      return FAILED);
+
     fusionNodes.push_back(transpose_node);
     OP_LOGD("TransdataTransposeFusionPass success.");
     return SUCCESS;
@@ -323,6 +328,12 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     FUSION_PASS_CHECK(graph.RemoveNode(reshape_node) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
                       return FAILED);
+    FUSION_PASS_CHECK(graph.RemoveNode(reformat_node1) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
+                      return FAILED);
+    FUSION_PASS_CHECK(graph.RemoveNode(reformat_node2) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
+                      return FAILED);
     OP_LOGD("TransdataTransposeFusionPass success.");
     fusionNodes.push_back(transpose_node);
     return SUCCESS;
@@ -340,6 +351,12 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove transdata2 node failed."),
                       return FAILED);
     FUSION_PASS_CHECK(graph.RemoveNode(reshape_node) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
+                      return FAILED);
+    FUSION_PASS_CHECK(graph.RemoveNode(reformat_node1) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
+                      return FAILED);
+    FUSION_PASS_CHECK(graph.RemoveNode(reformat_node2) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reshape node failed."),
                       return FAILED);
     fusionNodes.push_back(transpose_node);
