@@ -712,16 +712,17 @@ def _bias_add(in_tensor0, in_tensor1, attrs={}):
     """
     dim_map = {}
     dim_map["out_img_shape"] = tbe_utils.shape_util.shape_to_list(in_tensor0.shape)
+    bias_align_shape = tbe_utils.shape_util.shape_to_list(in_tensor1.shape)
     _NAME_INDEX[0] += 1
 
     with tvm.tag_scope('conv_vector_bias_add'):
         c_add_vector = tvm.compute(
             dim_map["out_img_shape"],
             lambda ub_batch_dout, ub_cout_1, ub_howo, ub_cout_0:
-            in_tensor0(ub_batch_dout, ub_cout_1, ub_howo, ub_cout_0)
-            + in_tensor1(ub_cout_1
-            * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2]
-            + ub_cout_0),
+            tvm.select(ub_cout_1 * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2] + ub_cout_0 < bias_align_shape[0],
+                in_tensor0(ub_batch_dout, ub_cout_1, ub_howo, ub_cout_0)
+                    + in_tensor1(ub_cout_1 * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2] + ub_cout_0),
+                tvm.const(0)),
             name='bias_add_vector' + "_cc_" + str(_NAME_INDEX[0]),
             attrs=attrs)
     _TENSOR_MAP['bias_add_tensor'] = c_add_vector

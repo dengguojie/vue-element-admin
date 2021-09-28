@@ -58,6 +58,10 @@ _FMAP_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
 _FILTER_TARGET_FORMAT = "NCDHW"
 _FILTER_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC", "DHWCN"]
 
+_DTYPE_SIZE = {"float16": 2, "float32": 4}
+_ALIGN_BYTE = 32
+_DEFAULT_FP16_SIZE = 2
+
 def _transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
     # input format is not expected
     if ((src_format not in format_white_list) or
@@ -325,7 +329,9 @@ def _conv3d_compute(shape_fm,
 
     bias_tensor = None
     if bias is not None:
-        bias_tensor = tvm.placeholder((cout_ori,),
+        align_mod = _ALIGN_BYTE // _DTYPE_SIZE.get(res_dtype, _DEFAULT_FP16_SIZE)
+        bias_align_shape = (cout_ori + align_mod - 1) // align_mod * align_mod
+        bias_tensor = tvm.placeholder((bias_align_shape,),
                                       name='bias_tensor',
                                       dtype=res_dtype)
     para_dict = {
