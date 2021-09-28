@@ -17,6 +17,9 @@
 """
 gemm schedule
 """
+import os
+import functools
+from queue import Queue
 from enum import Enum
 from collections.abc import Iterable
 
@@ -26,6 +29,8 @@ from tbe.common.buildcfg import build_config
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.tiling import get_tiling_type
+from tbe.common.tiling import set_tiling_type
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import in_dynamic
 from tbe.dsl.boost_schedule_kit import Compare
@@ -194,6 +199,7 @@ class GemmSchedule(object):
         self.fusion_ele = list()
         self.tensor_fusion_list = list()
         self.compute_inline_list = list()
+        self.elewise_compute_inline_list = list()
         self.fusion_tensor_cub = list()
         self.fuse_num_group = list()
         self.gm_ub = None
@@ -891,7 +897,7 @@ class GemmSchedule(object):
                     if ten_i == parent:
                         axpy_and_parent[index][1] = ele_ub
                 tensor_ele_ub.append(ele_ub)
-                self._add_tensor_to_list(ten_i, [self.compute_inline_list])
+                self._add_tensor_to_list(ten_i, [self.elewise_compute_inline_list])
         if axpy_and_parent:
             return dict(axpy_and_parent)
         return dict()
@@ -1619,6 +1625,14 @@ class GemmSchedule(object):
         a_shape, b_shape = self._get_tiling_param()
         a_ub_fuse_num, b_ub_fuse_num, fused_num = self._compute_buffer_used_multi()
 
+        not_count_list = []
+        for tensor_item in self.compute_inline_list:
+            if tensor_item not in self.placeholder_tensors:
+                not_count_list.append(tensor_item)
+        multi_ub = CalculateMultiUB(self.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
+        ub_res = multi_ub.calculate_start()
+        new_fused_num = ub_res / (self.DTYPE_WIDTH_MAP[c_type] * 2) - 1
+
         self.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, fused_num]
         mad_type = self.MAD_TYPE.get(str(self.ops_data_flow_mode))
         bias_flag = self.TENSOR_MAP.get("c_add_bias") is not None
@@ -1656,7 +1670,7 @@ class GemmSchedule(object):
         if self.is_dynamic:
             tiling = self.dynamic_para.get("tiling_strategy")
         else:
-            tiling = get_tiling(info_dict)
+            tiling = self._get_tiling_after_cmp(info_dict, new_fused_num)
             over_head_flag = bool(tiling.get("A_overhead_opt_flag"))
         tiling = self._no_solution_tiling(tiling)
         tiling = self._gemv_tiling(tiling)
@@ -1671,6 +1685,28 @@ class GemmSchedule(object):
         self.tiling = tiling
         self._print_debug(tiling, "auto tiling result")
         return over_head_flag
+
+    @staticmethod
+    def _get_zero_tiling(tiling_dict):
+        if all(value == 0 for value in tiling_dict['AL0_matrix']):
+            return True
+        return False
+
+    def _get_tiling_after_cmp(self, info_dict, new_fused_num):
+        tiling_res = None
+        current_tiling_type = get_tiling_type()
+        repeat_tune_mode = os.environ.get("REPEAT_TUNE", False)
+        if current_tiling_type == "auto_tiling" and (not repeat_tune_mode):
+            set_tiling_type("repository_tiling")
+            tiling_res = get_tiling(info_dict)
+            set_tiling_type(current_tiling_type)
+
+            if not self._get_zero_tiling(tiling_res):
+                return tiling_res
+
+        info_dict["fused_double_operand_num"] = new_fused_num
+        tiling_res = get_tiling(info_dict)
+        return tiling_res
 
     def _check_k_full_load(self, tiling):
         if not self.is_dynamic:
@@ -3633,7 +3669,8 @@ class GemmSchedule(object):
             self.tiling["block_dim"] = [1, 1, 1, 1]
 
     def _do_compute_inline(self):
-        for tensor in self.compute_inline_list:
+        self.elewise_compute_inline_list += self.compute_inline_list
+        for tensor in self.elewise_compute_inline_list:
             self.sch[tensor].compute_inline()
 
     def _set_requant_transfer_buffer_align(self):
@@ -3892,7 +3929,7 @@ class GemmSchedule(object):
             not_need_conuted_tensor_list = list()
             fused_num = 0
             for tensor in tensor_list:
-                if tensor in self.compute_inline_list:
+                if tensor in self.elewise_compute_inline_list + self.compute_inline_list:
                     continue
                 if tensor in buffer_reuse_dict:
                     anthor_tensor = buffer_reuse_dict.get(tensor)
@@ -4228,3 +4265,90 @@ class GemmSchedule(object):
         if self.have_batch and (batch_range is not None):
             batch_shape = self.TENSOR_MAP.get("c_l0c").shape[0]
             self.sch.set_var_range(batch_shape, *batch_range)
+
+
+class CalculateMultiUB(object):
+
+    BYTES_DTYPE = {"uint64": 8, "float16": 2, "float32": 4, "int32": 4,
+                    "int16": 2, "uint16": 2, "int8": 1, "uint8": 1,
+                    "int4": 0.5}
+
+    def __init__(self, start_tensor, end_tensor, not_count_list):
+        self.start_tensor = start_tensor
+        self.end_tensor = end_tensor
+        self.not_count_list = not_count_list
+        self.tensor_occur_times = dict()
+        self.ub_res = 0
+
+    def calculate_start(self):
+        self._calculate_multi_ub_auto()
+        return self.ub_res
+
+    def _calculate_multi_ub_auto(self):
+        tensor_q = Queue()
+        tensor_q.put(self.end_tensor)
+        while not tensor_q.empty():
+            tensor_out = tensor_q.get()
+            if tensor_out == self.start_tensor:
+                self._compute_result(tensor_out)
+                continue
+            merge_flag = False
+            input_tensors = list(tensor_out.op.input_tensors)
+            for tensor_in in input_tensors:
+                if tensor_in in self.tensor_occur_times.keys():
+                    continue
+                if tensor_in in self.not_count_list:
+                    if tensor_in != self.start_tensor:
+                        self._merge_compute_inline(tensor_in, input_tensors)
+                    continue
+                tensor_q.put(tensor_in)
+                self.tensor_occur_times[tensor_in] = 1
+                if merge_flag:
+                    continue
+                if self._can_merge(tensor_out, tensor_in):
+                    merge_flag = True
+            if not merge_flag:
+                self._compute_result(tensor_out)
+        return
+
+    def _get_shape_value(self, shape_object):
+        shape_object_value = int(functools.reduce(lambda x, y: x*y, shape_object))
+        return shape_object.value if hasattr(shape_object, "value") else shape_object_value
+
+    def _merge_compute_inline(self, tensor, input_tensors):
+        tensor_not_count_q = Queue()
+        tensor_not_count_q.put(tensor)
+        while not tensor_not_count_q.empty():
+            cur_tensor = tensor_not_count_q.get()
+            for next_tensor in list(cur_tensor.op.input_tensors):
+                if next_tensor in self.not_count_list:
+                    if next_tensor != self.start_tensor:
+                        tensor_not_count_q.put(next_tensor)
+                else:
+                    input_tensors.append(next_tensor)
+        return
+
+    def _can_merge(self, tensor_out, tensor_in):
+        tensor_out_dtype = tensor_out.dtype
+        tensor_out_shape = self._get_shape_value(tensor_out.shape)
+        tensor_in_dtype = tensor_in.dtype
+        tensor_in_shape = self._get_shape_value(tensor_in.shape)
+
+        if self._not_count(tensor_in):
+            return False
+        can_merge = (tensor_out_dtype == tensor_in_dtype) and (tensor_out_shape == tensor_in_shape)
+        return can_merge
+
+    def _compute_result(self, tensor):
+        if self._not_count(tensor):
+            return
+        self.ub_res += self.BYTES_DTYPE[tensor.dtype]
+        return
+
+    def _not_count(self, tensor):
+        if tensor in self.not_count_list:
+            return True
+        shape_size = self._get_shape_value(tensor.shape)
+        if shape_size == 1:
+            return True
+        return False
