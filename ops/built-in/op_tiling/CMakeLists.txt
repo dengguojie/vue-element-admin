@@ -35,6 +35,7 @@ set(_optiling_files
   ascend_anti_quant.cc
   bias.cc
   bias_add.cc
+  diag_part.cc
   bn_reduce.cc
   max_pool_grad.cc
   bninference_d.cc

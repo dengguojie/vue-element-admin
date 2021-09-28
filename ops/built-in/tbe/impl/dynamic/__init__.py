@@ -40,6 +40,7 @@ from .softsign import softsign
 from .diag import diag
 from .softplus_grad import softplus_grad
 from .softplus import softplus
+from .diag_part import diag_part
 from .unsorted_segment_sum import unsorted_segment_sum
 from .fused_mul_add import fused_mul_add
 from .div_no_nan import div_no_nan

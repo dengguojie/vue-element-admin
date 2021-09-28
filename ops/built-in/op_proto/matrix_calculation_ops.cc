@@ -2267,17 +2267,47 @@ COMMON_INFER_FUNC_REG(L2Loss, L2LossInferShape);
 
 // ----------------DiagPart-------------------
 IMPLEMT_COMMON_INFERFUNC(DiagPartInferShape) {
-  Shape shape = op.GetInputDescByName("x").GetShape();
-  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
-  std::vector<int64_t> dim_vector;
-  for (size_t i = 0; i < shape.GetDimNum() / 2; i++) {
-    dim_vector.push_back(shape.GetDim(i));
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    std::string err_msg = GetInputInvalidErrMsg("op_desc");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
-  Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDescByName("y");
-  td.SetShape(output_shape);
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", td);
+  ge::ConstGeTensorDescPtr input_x_desc = op_desc->GetInputDescPtr(0);
+  if (input_x_desc == nullptr) {
+    std::string err_msg = GetInputInvalidErrMsg("x");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  const GeShape &input_shape = input_x_desc->GetShape();
+  int64_t output_shape_len = input_shape.GetDimNum() / 2;
+  ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
+  GeShape &output_shape = output_desc->MutableShape();
+  DataType input_dtype = input_x_desc->GetDataType();
+
+  if (input_shape.IsUnknownDimNum()) {
+    output_desc->SetShape(input_shape);
+  }else {
+    output_shape.SetDimNum(output_shape_len);
+    for (size_t i = 0; i < output_shape_len; i++) {
+      output_shape.SetDim(i, input_shape.GetDim(i));
+    }
+  }
+  if (input_shape.IsUnknownShape()) {
+    std::vector<std::pair<int64_t, int64_t>> shape_range;
+    input_x_desc->GetShapeRange(shape_range);
+    for (int i = 0; i < shape_range.size(); i++) {
+      if(shape_range[i].first > 0) {
+        shape_range[i].first = shape_range[i].first;
+      }
+      if(shape_range[i].second > 0) {
+        shape_range[i].second = shape_range[i].second;
+      }
+    }
+    output_desc->SetShapeRange(shape_range);
+  }
+  output_desc->SetShape(output_shape);
+  output_desc->SetDataType(input_dtype);
   return GRAPH_SUCCESS;
 }
 

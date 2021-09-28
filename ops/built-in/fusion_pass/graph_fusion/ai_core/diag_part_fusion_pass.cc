@@ -115,6 +115,15 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   // get the data type
   DataType dataType = diagpartInputTensor.GetDataType();
 
+  // dynamic diag_part fusion
+  auto x_input_shape = diagpartInputShape.GetDims();
+  auto x_dim = x_input_shape.size();
+  for (size_t i = 0; i < x_dim; i++) {
+    FUSION_PASS_CHECK((x_input_shape[i] < 0),
+                      OP_LOGI(FUSED_OP_TYPE, "Node:dynamic diag_part does not need fusion."),
+                      return NOT_CHANGED);
+  }
+
   // multipies of half dims
   int64_t dimNums = 1;
   for (size_t j = 0; j < diagpartInputShape.GetDimNum() / 2; ++j) {
