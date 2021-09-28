@@ -20,23 +20,26 @@
 
 
 namespace optiling {
-enum tiling_key { NO_REDUCE = 400,
-                  ALL_DYNAMIC_NO_SPLIT = 200,
-                  ALL_DYNAMIC_SPLIT_NORMAL = 201,
-                  ALL_DYNAMIC_SPLIT_REDUCE = 202,
-                  ALL_DYNAMIC_SPLIT_REDUCE_SPLIT_NORMAL = 203,
-                  ALL_DYNAMIC_SPLIT_REDUCE_I = 204,
-                  DYNAMIC_REDUCE_NO_SPLIT = 100,
-                  DYNAMIC_REDUCE_SPLIT_REDUCE = 101,
-                  DYNAMIC_REDUCE_SPLIT_REDUCE_I = 102,
-                  DYNAMIC_NORMAL_NO_SPLIT = 300,
-                  DYNAMIC_NORMAL_SPLIT_NORMAL = 301,
-                  DYNAMIC_NORMAL_SPLIT_REDUCE = 302,
-                  DYNAMIC_NORMAL_SPLIT_REDUCE_SPLIT_NORMAL = 303,
-                  DYNAMIC_NORMAL_SPLIT_REDUCE_I = 304};
+enum tiling_key {
+  NO_REDUCE = 400,
+  ALL_DYNAMIC_NO_SPLIT = 200,
+  ALL_DYNAMIC_SPLIT_NORMAL = 201,
+  ALL_DYNAMIC_SPLIT_REDUCE = 202,
+  ALL_DYNAMIC_SPLIT_REDUCE_SPLIT_NORMAL = 203,
+  ALL_DYNAMIC_SPLIT_REDUCE_I = 204,
+  DYNAMIC_REDUCE_NO_SPLIT = 100,
+  DYNAMIC_REDUCE_SPLIT_REDUCE = 101,
+  DYNAMIC_REDUCE_SPLIT_REDUCE_I = 102,
+  DYNAMIC_NORMAL_NO_SPLIT = 300,
+  DYNAMIC_NORMAL_SPLIT_NORMAL = 301,
+  DYNAMIC_NORMAL_SPLIT_REDUCE = 302,
+  DYNAMIC_NORMAL_SPLIT_REDUCE_SPLIT_NORMAL = 303,
+  DYNAMIC_NORMAL_SPLIT_REDUCE_I = 304,
+};
 
 bool LayerNormBetaGammaBackpropTiling(const std::string& op_type, const TeOpParas& op_paras,
-                                      const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
+                                      const nlohmann::json& op_compile_info_json, OpRunInfo& run_info)
+{
   GELOGI("LayerNormBetaGammaBackprop Tiling running.");
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   if (input_shape.size() < 2) {
@@ -55,7 +58,8 @@ bool LayerNormBetaGammaBackpropTiling(const std::string& op_type, const TeOpPara
   return true;
 }
 
-void NoReduceTiling(int32_t fused_dim, int32_t core_num, OpRunInfo& run_info) {
+void NoReduceTiling(int32_t fused_dim, int32_t core_num, OpRunInfo& run_info)
+{
   int32_t block_factor;
   int32_t ub_factor;
   int32_t block_dim = 1;
@@ -75,7 +79,8 @@ void NoReduceTiling(int32_t fused_dim, int32_t core_num, OpRunInfo& run_info) {
 }
 
 void AllDynamicTiling(int32_t reduce_dim, int32_t normal_dim, int32_t core_num, int32_t max_reduce_factor,
-                      int32_t max_last_factor, OpRunInfo& run_info) {
+                      int32_t max_last_factor, OpRunInfo& run_info)
+{
   ByteBufferPut(run_info.tiling_data, reduce_dim);
   ByteBufferPut(run_info.tiling_data, normal_dim);
   if (reduce_dim <= core_num) {
@@ -110,7 +115,8 @@ void AllDynamicTiling(int32_t reduce_dim, int32_t normal_dim, int32_t core_num, 
 }
 
 void DynamicReduceTiling(int32_t reduce_dim, int32_t normal_dim, int32_t core_num, int32_t max_reduce_factor,
-                         int32_t max_last_factor, OpRunInfo& run_info) {
+                         int32_t max_last_factor, OpRunInfo& run_info)
+{
   int32_t factor = (reduce_dim + core_num - 1) / core_num;
   ByteBufferPut(run_info.tiling_data, reduce_dim);
   if (reduce_dim <= core_num) {
@@ -128,7 +134,8 @@ void DynamicReduceTiling(int32_t reduce_dim, int32_t normal_dim, int32_t core_nu
 }
 
 void DynamicNormalTiling(int32_t reduce_dim, int32_t normal_dim, int32_t core_num, int32_t max_reduce_factor,
-                         int32_t max_last_factor, OpRunInfo& run_info) {
+                         int32_t max_last_factor, OpRunInfo& run_info)
+{
   ByteBufferPut(run_info.tiling_data, normal_dim);
   int32_t factor = (reduce_dim + core_num - 1) / core_num;
   if (reduce_dim <= core_num) {
@@ -153,7 +160,8 @@ void DynamicNormalTiling(int32_t reduce_dim, int32_t normal_dim, int32_t core_nu
 }
 
 bool LayerNormBetaGammaBackpropV2Tiling(const std::string& op_type, const TeOpParas& op_paras,
-                                        const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
+                                        const nlohmann::json& op_compile_info_json, OpRunInfo& run_info)
+{
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   std::vector<int64_t> shape_gamma = op_compile_info_json["shape_gamma"].get<std::vector<int64_t>>();
   int32_t core_num = op_compile_info_json["core_num"].get<int32_t>();
@@ -164,6 +172,10 @@ bool LayerNormBetaGammaBackpropV2Tiling(const std::string& op_type, const TeOpPa
   int32_t normal_dim = 1;
   int32_t reduce_dim = 1;
   int32_t i;
+  if (core_num <= 0) {
+    GELOGE(ge::FAILED, "Get invalid core_num.");
+    return false;
+  }
   for (i = 0; i < input_shape.size() - shape_gamma.size(); i++) {
     reduce_dim *= input_shape[i];
   }

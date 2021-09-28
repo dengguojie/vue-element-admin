@@ -457,3 +457,32 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_14) {
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
 
+TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_15) {
+    std::cout<<"tiling15 start."<<std::endl;
+    using namespace optiling;
+    std::string op_name = "LayerNormBetaGammaBackpropV2";
+    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+    std::string compileInfo = "{\"core_num\": 0, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[32,100,512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
+
+    std::vector<int64_t> input_tensor_shape{32,100,512};
+
+    TeOpTensor input_tensor;
+    input_tensor.shape = input_tensor_shape;
+    input_tensor.dtype = "float16";
+
+    TeOpTensorArg tensor_argA;
+    tensor_argA.tensor.push_back(input_tensor);
+    tensor_argA.arg_type = TA_SINGLE;
+
+    TeOpParas opParas;
+    opParas.inputs.push_back(tensor_argA);
+    opParas.op_type = op_name;
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "aa15";
+    OpRunInfo runInfo;
+    ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
