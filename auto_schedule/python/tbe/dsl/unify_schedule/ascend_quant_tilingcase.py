@@ -22,13 +22,12 @@ from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from te.platform.cce_conf import get_soc_spec
 from .constants import Pattern
-from .vector_tilingcase import TilingCaseBase
 from .util import shape_to_list
 from ...common.utils.errormgr import get_error_message
 
 
 # pylint: disable=unidiomatic-typecheck,unused-argument,too-many-instance-attributes,too-many-arguments
-class QuantTilingCase(TilingCaseBase):
+class QuantTilingCase():
     """
     quant tiling info
     """

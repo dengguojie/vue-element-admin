@@ -23,11 +23,10 @@ from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from te.platform.cce_conf import get_soc_spec
-from .vector_tilingcase import TilingCaseBase
 from ...common.utils.errormgr import get_error_message
 
 
-class AntiQuantTilingCase(TilingCaseBase):
+class AntiQuantTilingCase():
     def __init__(self):
         self.block_tiling_axis = None
         self.ub_tiling_axis = None
