@@ -174,7 +174,7 @@ void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, c
       break;
     } else if (i == len - 1) {
       split_axis = i;
-      if (0 < ori_last_ele % ub_limit && ori_last_ele % ub_limit < ele_per_block) {
+      if (ori_last_ele % ub_limit > 0 && ori_last_ele % ub_limit < ele_per_block) {
         split_factor = GetSplitFactor(ub_limit, ori_last_ele, ele_per_block);
       } else {
         split_factor = ub_limit;
