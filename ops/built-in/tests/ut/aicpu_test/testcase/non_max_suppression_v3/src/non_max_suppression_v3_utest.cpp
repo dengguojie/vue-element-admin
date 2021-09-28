@@ -144,6 +144,29 @@ class TEST_NON_MAX_SUPPRESSION_V3_UT : public testing::Test {};
     free(shape_buffer);                                                 \
   }
 
+#define ADD_MEMCOPY_CASE_INVALID_PTR(base_type, aicpu_type)          \
+  TEST_F(TEST_NON_MAX_SUPPRESSION_V3_UT,                             \
+         TestNonMaxSuppressionV3_memcopy_invalid_ptr##aicpu_type) {  \
+    vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_UINT64,  \
+                                   DT_UINT64};                       \
+    vector<vector<int64_t>> shapes = {{2}, {2}, {2}, {2}};           \
+    uint64_t release_flag[2] = {1, 1};                               \
+    uint64_t data_size[2] = {0x100, 0x100};                          \
+    uint64_t src_pt[2] = {0x80, 0x81};                               \
+    uint64_t raw_shape_size = 0x100;                                 \
+    uint64_t raw_data_size = 0x100;                                  \
+    void *data_buffer = malloc(raw_data_size);                       \
+    void *shape_buffer = malloc(raw_shape_size);                     \
+    uint64_t dst_ptr[2] = {reinterpret_cast<uint64_t>(shape_buffer), \
+                           reinterpret_cast<uint64_t>(data_buffer)}; \
+    vector<void *> datas = {(void *)release_flag, (void *)data_size, \
+                            (void *)src_pt, (void *)dst_ptr};        \
+    CREATE_NODEDEF_MEMCOPY(shapes, data_types, datas);               \
+    RUN_KERNEL(memcpy_node_def, HOST, KERNEL_STATUS_INNER_ERROR);    \
+    free(data_buffer);                                               \
+    free(shape_buffer);                                              \
+  }
+
 #define ADD_MEMCOPY_NULL_CASE(base_type, aicpu_type)                 \
   TEST_F(TEST_NON_MAX_SUPPRESSION_V3_UT,                             \
          TestNonMaxSuppressionV3_memcopy_null) {                     \
@@ -172,3 +195,4 @@ ADD_CASE(float, DT_FLOAT)
 ADD_MEMCOPY_CASE(float, DT_FLOAT)
 ADD_NULL_CASE(float, DT_FLOAT)
 ADD_MEMCOPY_NULL_CASE(float, DT_FLOAT)
+ADD_MEMCOPY_CASE_INVALID_PTR(float, DT_FLOAT)

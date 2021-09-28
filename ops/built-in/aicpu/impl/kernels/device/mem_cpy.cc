@@ -84,53 +84,50 @@ uint32_t MemCpyCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(dst_ptr_value, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] dst_ptr nullptr", ctx.GetOpType().c_str())
 
-  std::atomic<bool> task_flag(true);
-  auto task = [&](size_t start, size_t end) {
-    for (size_t i = start; i < end; i++) {
-      uintptr_t input_addr = static_cast<uintptr_t>(src_ptr_value[i]);
-      void *input_ptr = reinterpret_cast<void*>(input_addr);
+  bool false_flag = false;
+  for (int64_t i = 0; i < num; i++) {
+    uintptr_t input_addr = static_cast<uintptr_t>(src_ptr_value[i]);
+    void *input_ptr = reinterpret_cast<void *>(input_addr);
 
-      uintptr_t output_addr = static_cast<uintptr_t>(dst_ptr_value[i]);
-      void *output_ptr = reinterpret_cast<void*>(output_addr);
+    uintptr_t output_addr = static_cast<uintptr_t>(dst_ptr_value[i]);
+    void *output_ptr = reinterpret_cast<void *>(output_addr);
 
-      if (data_size_value[i] == 0 || input_ptr == nullptr ||
-          output_ptr == nullptr) {
-        KERNEL_LOG_EVENT(
-            "[MemCopy]: index: [%d], data_size_value: [%llu], input_ptr: [%p] "
-            "output_ptr: [%p]",
-            i, data_size_value[i], input_ptr, output_ptr);
-        continue;
-      }
+    if (data_size_value[i] == 0 || input_ptr == nullptr ||
+        output_ptr == nullptr) {
+      KERNEL_LOG_EVENT(
+          "[MemCopy]: index: [%d], data_size_value: [%llu], input_ptr: [%p] "
+          "output_ptr: [%p]",
+          i, data_size_value[i], input_ptr, output_ptr);
+      continue;
+    }
 
-      uint32_t ret =
-          CpuKernelAllocatorUtils::CheckOutputDataPtr(src_ptr_value[i]);
+    uint32_t ret =
+        CpuKernelAllocatorUtils::CheckOutputDataPtr(src_ptr_value[i]);
+    if (ret != KERNEL_STATUS_OK) {
+      KERNEL_LOG_EVENT("[MemCopy]:input src data ptr invaild.");
+      false_flag = true;
+      continue;
+    }
+
+    auto mem_ret =
+        memcpy_s(output_ptr, data_size_value[i], input_ptr, data_size_value[i]);
+    if (mem_ret != EOK) {
+      KERNEL_LOG_ERROR("[MemCopy]:Failed to memcpy output data ret [%d].",
+                       mem_ret);
+      false_flag = true;
+    }
+
+    if (release_flag_value[i]) {
+      ret = CpuKernelAllocatorUtils::DeleteOutputDataPtr(src_ptr_value[i]);
       if (ret != KERNEL_STATUS_OK) {
-        KERNEL_LOG_EVENT("[MemCopy]:input src data ptr invaild.");
-        task_flag.store(false);
-        continue;
-      }
-
-      auto mem_ret = memcpy_s(output_ptr, data_size_value[i], input_ptr,
-                              data_size_value[i]);
-      if (mem_ret != EOK) {
-        KERNEL_LOG_ERROR("[MemCopy]:Failed to memcpy output data ret [%d].",
-                         mem_ret);
-        task_flag.store(false);
-      }
-
-      if (release_flag_value[i]) {
-        ret = CpuKernelAllocatorUtils::DeleteOutputDataPtr(src_ptr_value[i]);
-        if (ret != KERNEL_STATUS_OK) {
-          KERNEL_LOG_ERROR("[MemCopy]:input src data ptr invaild.");
-          task_flag.store(false);
-        }
+        KERNEL_LOG_ERROR("[MemCopy]:input src data ptr invaild.");
+        false_flag = true;
       }
     }
-  };
+  }
 
-  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, num, 1, task);
-  if ((ret != KERNEL_STATUS_OK) || (!task_flag.load())) {
-    KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed.");
+  if (false_flag) {
+    KERNEL_LOG_ERROR("CpuKernelUtils::MemCpy failed.");
     return KERNEL_STATUS_INNER_ERROR;
   }
 
