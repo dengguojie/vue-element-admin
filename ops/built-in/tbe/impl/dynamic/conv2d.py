@@ -51,6 +51,7 @@ SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
 DYNAMIC_VALUE = -1
 
+
 def gen_conv2d_range(inputs, weights, strides, pads, dilations):
     """
     fuzz input range

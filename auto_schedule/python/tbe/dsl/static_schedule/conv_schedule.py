@@ -4237,7 +4237,7 @@ class CceConvOp:
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
             sch[fmap].set_buffer_size(int(int_ceil_div(max_in_row_num, aub_factor[1]) * tail_size))
             sch[tensor_map['fmap_ub']].set_buffer_size(int(int_ceil_div(max_in_row_num,
-                                                                          aub_factor[1]) * tail_size))
+                                                                        aub_factor[1]) * tail_size))
 
         def set_attrs_conv1d_split_w(al1_k_outer, al1_k_inner):
             """
@@ -4435,6 +4435,24 @@ class CceConvOp:
                     tensor_map["bias_virtual_add"].op.axis[0], "phony_insn")
                 sch[tensor_map["bias_virtual_add"]].reused_by(
                     tensor_map["bias_init_align_dim_ub"], tensor_map["bias_ub"])
+
+        def _handle_inner_batch_flag():
+            """
+            set inner_batch flag
+            """
+            tiling["al1_batch"] = 1
+            if (len(tiling["AL1_shape"]) > 2) and (tiling["AL1_shape"][2] > 1):
+                tiling["al1_batch"] = tiling["AL1_shape"][2]
+                if self._convbn1_flag:
+                    self._l0b_first_flag = True
+            if len(tiling["CL0_matrix"]) > 4 and tiling["CL0_matrix"][4] > 1:
+                if tiling["BL1_shape"] is None:
+                    tiling["al1_batch"] = tiling["CL0_matrix"][4]
+                    self._l0b_first_flag = True
+
+            # dynamic dont't support inner_batch
+            if self._dynamic_flag:
+                self._l0b_first_flag = False
 
         self_init()
 
@@ -4686,15 +4704,8 @@ class CceConvOp:
             pooling_padding = self._max_pool_tensor_map["pooling_padding"]
             conv_w = self._max_pool_tensor_map["conv_width"]
             cube_m, al1_facter_pooling = _tiling_of_pooling()
-        tiling["al1_batch"] = 1
-        if (len(tiling["AL1_shape"]) > 2) and (tiling["AL1_shape"][2] > 1):
-            tiling["al1_batch"] = tiling["AL1_shape"][2]
-            if self._convbn1_flag:
-                self._l0b_first_flag = True
-        if len(tiling["CL0_matrix"]) > 4 and tiling["CL0_matrix"][4] > 1:
-            if tiling["BL1_shape"] is None:
-                tiling["al1_batch"] = tiling["CL0_matrix"][4]
-                self._l0b_first_flag = True
+
+        _handle_inner_batch_flag()
 
         filter_matrix = list(dim_map["filter_matrix_dim"])
         filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
@@ -4800,10 +4811,8 @@ class CceConvOp:
         factor_m = tiling["AL0_matrix"][0]
         factor_k = tiling["AL0_matrix"][1]
 
-        a1_axis, a3_axis = sch[fmap_col].split(
-            sch[fmap_col].op.axis[2], factor_m)
-        a2_axis, a4_axis = sch[fmap_col].split(
-            sch[fmap_col].op.axis[3], factor_k)
+        a1_axis, a3_axis = sch[fmap_col].split(sch[fmap_col].op.axis[2], factor_m)
+        a2_axis, a4_axis = sch[fmap_col].split(sch[fmap_col].op.axis[3], factor_k)
 
         # split N begin
         fmap_col_no, fmap_col_ni = sch[fmap_col].split(sch[fmap_col].op.axis[1], 1)
@@ -5191,8 +5200,7 @@ class CceConvOp:
         axis_sequence = check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim)
         self.overload_flag = check_feature_map(tiling, al1_factor, axis_sequence)
         if not self._dynamic_flag:
-            set_overload_flag(self.overload_flag,
-                              self._schedule[res], noi)
+            set_overload_flag(self.overload_flag, self._schedule[res], noi)
 
         # ========= handle conv + Pooling fusion========
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
@@ -5254,8 +5262,7 @@ class CceConvOp:
         elif self._lhisi_data_flow_type:
             handle_lhisi_fuse_compute_at()
             for buffer_eltwise in v100_cache_buffer:
-                sch[buffer_eltwise].compute_at(
-                    self._schedule[res_c], c_slice_axis)
+                sch[buffer_eltwise].compute_at(self._schedule[res_c], c_slice_axis)
 
         if self._l0b_first_flag:
             sch[c_ub].reorder(c_ub.op.axis[1], c_ub.op.axis[0],
@@ -5295,22 +5302,19 @@ class CceConvOp:
             m_axis_num = self._m_part_nums * config["mac"][0]
         else:
             m_axis_num = tiling['AL0_matrix'][0]*config["mac"][0]
-        boo, boi = sch[c_col].split(new_c_col_axis[2],
-                                    m_axis_num)
+        boo, boi = sch[c_col].split(new_c_col_axis[2], m_axis_num)
 
         if tiling['BL0_matrix'] == []:
             coo, coi = sch[c_col].split(new_c_col_axis[1], nparts=1)
         else:
-            coo, coi = sch[c_col].split(new_c_col_axis[1],
-                                        tiling['BL0_matrix'][1])
+            coo, coi = sch[c_col].split(new_c_col_axis[1], tiling['BL0_matrix'][1])
 
         if tiling["CL0_matrix"][5] > 1 and (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
             ccol_g_o, ccol_g_i = sch[c_col].split(c_col.op.axis[0], factor=tiling["BL0_matrix"][5])
         # for reduce axis, al0 and bl0 should be the same
         k_outer_outer, k_outer_inner = sch[c_col].split(
             c_col.op.reduce_axis[0], tiling['AL0_matrix'][1])
-        k_outer_outer_size = c_col.op.reduce_axis[0].dom.extent // \
-            tiling['AL0_matrix'][1]
+        k_outer_outer_size = c_col.op.reduce_axis[0].dom.extent // tiling['AL0_matrix'][1]
         if int(al1_factor[0]) > int(bl1_factor[0]):
             k_outer_outer_inner_size = int(k_outer_outer_size // al1_factor[0])
         else:
@@ -5653,10 +5657,10 @@ class CceConvOp:
 
         _conv_pooling_optm()
         _remove_padded_column()
+        _handle_transdata_ubfusion()
         if self._dynamic_flag:
             _handle_dynamic_scope()
             return True
-        _handle_transdata_ubfusion()
 
         tensor_map.clear()
         dim_map.clear()
