@@ -776,6 +776,7 @@ class CceConvOp:
         self._l1_size = get_soc_spec("L1_SIZE")
         self._corenum = get_soc_spec("CORE_NUM")
         self._ub_size = get_soc_spec("UB_SIZE")
+        self._al1_preload_flag = True if get_soc_spec("SOC_VERSION") in ("SD3403") else False
         self.unzip_parameters = {"weight_zip_flag": False,
                                  "max_block_size": 32*1024,
                                  "compact_mode_index_size": 8,
@@ -1918,7 +1919,7 @@ class CceConvOp:
                 # al1
                 if double_buffer_flag["AL1_pbuffer"] == 2:
                     sch[al1].double_buffer()
-                    if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
+                    if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag or self._al1_preload_flag:
                         sch[al1].preload()
                 # aub
                 if self._pre_relu_fused_flag and double_buffer_flag["AUB_pbuffer"] == 2:
