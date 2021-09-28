@@ -176,6 +176,7 @@ set(_optiling_files
   non_zero.cc
   scan_pq_codes.cc
   strided_slice_v3.cc
+  vector_tiling.cc
 )
 
 set(_op_tiling_include

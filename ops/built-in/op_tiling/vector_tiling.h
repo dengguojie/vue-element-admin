@@ -33,7 +33,7 @@ class OpInfo {
 public:
     explicit OpInfo(const std::vector<std::vector<int64_t>>& _op_input_shapes,
                     const ge::DataType& _op_in_type,
-                    const std::vector<std::vector<int32_t>> _op_reduce_axes={}) :
+                    const std::vector<std::vector<int32_t>>& _op_reduce_axes = dummy_variable) :
             op_input_shapes (_op_input_shapes),
             op_in_type (_op_in_type),
             op_reduce_axes (_op_reduce_axes){
@@ -53,8 +53,9 @@ public:
 
 private:
     const std::vector<std::vector<int64_t>>& op_input_shapes;
-    const std::vector<std::vector<int32_t>> op_reduce_axes;
     const ge::DataType& op_in_type;
+    const std::vector<std::vector<int32_t>>& op_reduce_axes;
+    static const std::vector<std::vector<int32_t>> dummy_variable;
 };
 
 /*
