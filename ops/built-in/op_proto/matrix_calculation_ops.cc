@@ -113,8 +113,8 @@ bool InferFC5HD2NZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>
 }
 
 bool InferFCNZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
-              vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w,
-              const int64_t axis) {
+               vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w,
+               const int64_t axis) {
   for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() <= 0) {
       continue;
@@ -196,13 +196,13 @@ bool InferFullyConnectionDataSlice(ge::Operator& op) {
   }
 
   if (infer_x == 1) {
-    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
       return false;
     }
     OP_LOGI(opName.GetString(), "infer input x success");
   }
   if (infer_w == 1) {
-    if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
+    if (!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
       return false;
     }
     num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[kWeightIndexH];
@@ -259,14 +259,14 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   if (wShape.size() == 2) {
     if (!transpose) {
       if (kShape != wShape[1]) {
-        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[1]:",wShape[1]);
+        string err_msg1 = ConcatString("weight K must equal to input K! kShape:", kShape, ", wShape[1]:", wShape[1]);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
         return GRAPH_FAILED;
       }
     } else {
       if (kShape != wShape[0]) {
-        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[0]:",wShape[0]);
+        string err_msg1 = ConcatString("weight K must equal to input K! kShape:", kShape, ", wShape[0]:", wShape[0]);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
         return GRAPH_FAILED;
@@ -577,16 +577,16 @@ static const int64_t INFINITE_RANGE = -1;
 
 class MatMulInferShapeHelper {
  public:
-  MatMulInferShapeHelper(const AscendString &op_name, 
-                        const GeShape &shape_a, 
+  MatMulInferShapeHelper(const AscendString &op_name,
+                        const GeShape &shape_a,
                         const GeShape &shape_b,
-                        vector<std::pair<int64_t, int64_t>> &range_a, 
+                        vector<std::pair<int64_t, int64_t>> &range_a,
                         vector<std::pair<int64_t, int64_t>> &range_b,
-                        bool trans_a, 
+                        bool trans_a,
                         bool trans_b,
-                        GeShape &shape_out, 
+                        GeShape &shape_out,
                         vector<std::pair<int64_t, int64_t>> &range_out,
-                        ConstGeTensorDescPtr tensordesc_bias=nullptr) :
+                        ConstGeTensorDescPtr tensordesc_bias = nullptr) :
       op_name(op_name),
       shape_a(shape_a),
       shape_b(shape_b),
@@ -606,9 +606,9 @@ class MatMulInferShapeHelper {
   ~MatMulInferShapeHelper() {}
 
   static graphStatus VerifyInputs(const Operator &op);
-  static bool IsRangeValid(const GeShape &shape, 
+  static bool IsRangeValid(const GeShape &shape,
                           const std::vector<std::pair<int64_t, int64_t>> &range);
-  static void SimplifyShapeAndRange(GeShape& shape_out, 
+  static void SimplifyShapeAndRange(GeShape& shape_out,
                                     vector<std::pair<int64_t, int64_t>>& range_out);
 
   bool InferShape();
@@ -620,8 +620,8 @@ class MatMulInferShapeHelper {
                               const vector<std::pair<int64_t, int64_t>>& range,
                               std::array<int64_t, BASE_LEN>& infer_shape,
                               std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range);
-  bool InferMKN();
-  bool InferBias();
+  bool InferMKN() const;
+  bool InferBias() const;
 
   const AscendString& op_name;
   const GeShape &shape_a;
@@ -654,9 +654,9 @@ bool MatMulInferShapeHelper::IsRangeValid(const GeShape &shape, const std::vecto
 
     for (size_t i = 0; i < range.size(); ++i) {
       CHECK(shape.GetDim(i) < UNKNOWN_DIM, OP_LOGE("", "Invalid dim size"), return false);
-      CHECK(shape.GetDim(i) == UNKNOWN_DIM && range[i].second != INFINITE_RANGE && range[i].first > range[i].second, 
+      CHECK(shape.GetDim(i) == UNKNOWN_DIM && range[i].second != INFINITE_RANGE && range[i].first > range[i].second,
             OP_LOGE("", "Invalid dim size"), return false);
-      CHECK(shape.GetDim(i) == UNKNOWN_DIM && range[i].second == INFINITE_RANGE && range[i].first == INFINITE_RANGE, 
+      CHECK(shape.GetDim(i) == UNKNOWN_DIM && range[i].second == INFINITE_RANGE && range[i].first == INFINITE_RANGE,
             OP_LOGE("", "Invalid dim size"), return false);
     }
   }
@@ -680,9 +680,9 @@ graphStatus MatMulInferShapeHelper::VerifyInputs(const Operator &op) {
   tensordesc_x1->GetShapeRange(shape_range_x1);
   tensordesc_x2->GetShapeRange(shape_range_x2);
 
-  CHECK(!IsRangeValid(shape_x1, shape_range_x1), 
+  CHECK(!IsRangeValid(shape_x1, shape_range_x1),
         OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
-  CHECK(!IsRangeValid(shape_x2, shape_range_x2), 
+  CHECK(!IsRangeValid(shape_x2, shape_range_x2),
         OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
 
   ge::ConstGeTensorDescPtr tensordesc_bias = op_desc->GetInputDescPtr(kMatMulInputBiasIndex);
@@ -690,7 +690,7 @@ graphStatus MatMulInferShapeHelper::VerifyInputs(const Operator &op) {
     const GeShape& shape_bias = tensordesc_bias->GetShape();
     std::vector<std::pair<int64_t, int64_t>> shape_range_bias;
     tensordesc_bias->GetShapeRange(shape_range_bias);
-    CHECK(!IsRangeValid(shape_bias, shape_range_bias), 
+    CHECK(!IsRangeValid(shape_bias, shape_range_bias),
         OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
   }
 
@@ -710,7 +710,7 @@ void MatMulInferShapeHelper::SimplifyShapeAndRange(GeShape& shape_out, vector<st
   }
 }
 
-bool MatMulInferShapeHelper::InferBias() {
+bool MatMulInferShapeHelper::InferBias() const {
   // --------------------------------------------------------------------------------------
   // | bias \ n       |      {-2}      |          -1, (y1, y2)              |     y       |
   // | -------------- | --------------------------------------------------- | ----------- |
@@ -781,14 +781,14 @@ bool MatMulInferShapeHelper::InferBias() {
     return false;
   }
 
-  CHECK(shape_bias.GetDim(bias_dim - 1) != shape_out.GetDim(1), OP_LOGE(op_name.GetString(), 
-      "[InferShape] The dimension of n [%lld] and bias [%lld] tensors must be the same", 
+  CHECK(shape_bias.GetDim(bias_dim - 1) != shape_out.GetDim(1), OP_LOGE(op_name.GetString(),
+      "[InferShape] The dimension of n [%lld] and bias [%lld] tensors must be the same",
       shape_out.GetDim(1), shape_bias.GetDim(bias_dim - 1)), return false);
 
   return true;
 }
 
-bool MatMulInferShapeHelper::InferMKN() {
+bool MatMulInferShapeHelper::InferMKN() const {
   int64_t idx_m = trans_a ? 1 : 0;
   int64_t idx_k_a = trans_a ? 0 : 1;
   int64_t idx_k_b = trans_b ? 1 : 0;
@@ -842,9 +842,9 @@ bool MatMulInferShapeHelper::InferMKN() {
 }
 
 bool MatMulInferShapeHelper::InitializeShapeAndRange(const GeShape& shape,
-                                                    const vector<std::pair<int64_t, int64_t>>& range,
-                                                    std::array<int64_t, BASE_LEN>& infer_shape,
-                                                    std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range) {
+                                                     const vector<std::pair<int64_t, int64_t>>& range,
+                                                     std::array<int64_t, BASE_LEN>& infer_shape,
+                                                     std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range) {
   // Dynamic shape: {-2}
   // infer_shape: {-1, ..., -1}; infer_range: {{1, MAX}, ..., {1, MAX}}
   if (shape.IsUnknownDimNum()) {
@@ -973,9 +973,9 @@ class InferShapeBatchMatMul {
   int64_t num_dim_bias;
   bool InitializeShapeAndRange(const GeShape& shape, const vector<std::pair<int64_t, int64_t>>& range,
                                std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range);
-  bool InferBatchStatic();
-  bool InferBatch();
-  bool InferMKN();
+  bool InferBatchStatic() const;
+  bool InferBatch() const;
+  bool InferMKN() const;
   bool InferBias();
 
   const AscendString& op_name;
@@ -996,7 +996,7 @@ class InferShapeBatchMatMul {
   std::array<std::pair<int64_t, int64_t>, BASE_LEN> infer_range_bias;
 };
 
-bool InferShapeBatchMatMul::InferMKN() {
+bool InferShapeBatchMatMul::InferMKN() const {
   // use index - 2 to get m_dim
   int64_t idx_m = num_dima - 2;
   // use index - 1 to get k_dim of a
@@ -1073,7 +1073,7 @@ void CopyOutShapeFromInputShape(const GeShape& shape_in, GeShape& shape_out, int
   }
 }
 
-bool InferShapeBatchMatMul::InferBatchStatic() {
+bool InferShapeBatchMatMul::InferBatchStatic() const {
   auto valid_offset = num_dim - std::min(num_dima, num_dimb);
   const GeShape& shape_long = num_dima < num_dimb ? shape_b : shape_a;
   const GeShape& shape_short = num_dima < num_dimb ? shape_a : shape_b;
@@ -1209,7 +1209,7 @@ bool BroadcastBatchDimAndRange(const AscendString& op_name, const int64_t dim_a,
   return true;
 }
 
-bool InferShapeBatchMatMul::InferBatch() {
+bool InferShapeBatchMatMul::InferBatch() const {
   auto valid_offset = num_dim - std::min(num_dima, num_dimb);
   int64_t shape_value_out;
 
@@ -1422,7 +1422,7 @@ bool InferMatmulInputNZ(const Operator &op,
   vector<vector<int64_t> > x2_data_slice = {{}, {}, {}, {}};
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
-  for(size_t i = 0; i < output.size(); i++) {
+  for (size_t i = 0; i < output.size(); i++) {
     if (output[i].size() <= 1) {
       continue;
     }
@@ -1432,7 +1432,7 @@ bool InferMatmulInputNZ(const Operator &op,
       } else {
         x2_data_slice[0] = output[i];
       }
-      if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+      if (!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
         return false;
       }
       OP_LOGD(opName.GetString(), "infer input in N success");
@@ -1467,7 +1467,7 @@ bool InferMatmulInputND(const Operator &op,
   vector<vector<int64_t> > x2_data_slice = {{}, {}};
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
-  for(size_t i = 0; i < output.size(); i++) {
+  for (size_t i = 0; i < output.size(); i++) {
     if (output[i].size() <= 1) {
       continue;
     }
@@ -1538,11 +1538,11 @@ bool InferMatmul(const Operator &op) {
   }
 
   if (x1_format == FORMAT_FRACTAL_NZ) {
-    if(!InferMatmulInputNZ(op, y_data_slice, trans_a, trans_b)) {
+    if (!InferMatmulInputNZ(op, y_data_slice, trans_a, trans_b)) {
       return false;
     }
   } else {
-    if(!InferMatmulInputND(op, y_data_slice, trans_a, trans_b)) {
+    if (!InferMatmulInputND(op, y_data_slice, trans_a, trans_b)) {
       return false;
     }
   }
@@ -1563,7 +1563,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
-  for(size_t i = 0; i < y_dims; i++) {
+  for (size_t i = 0; i < y_dims; i++) {
     if (output[i].size() <= 1) {
       continue;
     }
@@ -1590,7 +1590,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
         // using index -3 to get m_dim of x1
         x1_data_slice[x1_dims - 3] = output[i];
       }
-      if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+      if (!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
         return false;
       }
       OP_LOGI(opName.GetString(), "infer input in M success");
@@ -1632,7 +1632,7 @@ bool InferBatchMatmulInputND(const Operator &op,
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
-  for(size_t i = 0; i < y_dims; i++) {
+  for (size_t i = 0; i < y_dims; i++) {
     if (output[i].size() <= 1) {
       continue;
     }
@@ -1724,12 +1724,12 @@ bool InferBatchMatmul(const Operator &op) {
   }
 
   if (x1_format == FORMAT_FRACTAL_NZ) {
-    if(!InferBatchMatmulInputNZ(op, y_data_slice, trans_a, trans_b, x1_dims, x2_dims)) {
+    if (!InferBatchMatmulInputNZ(op, y_data_slice, trans_a, trans_b, x1_dims, x2_dims)) {
       return false;
     }
     return true;
   } else {
-    if(!InferBatchMatmulInputND(op, y_data_slice, trans_a, trans_b, x1_dims, x2_dims)) {
+    if (!InferBatchMatmulInputND(op, y_data_slice, trans_a, trans_b, x1_dims, x2_dims)) {
       return false;
     }
     return true;
@@ -2355,10 +2355,10 @@ IMPLEMT_COMMON_INFERFUNC(DiagPartInferShape) {
     std::vector<std::pair<int64_t, int64_t>> shape_range;
     input_x_desc->GetShapeRange(shape_range);
     for (int i = 0; i < shape_range.size(); i++) {
-      if(shape_range[i].first > 0) {
+      if (shape_range[i].first > 0) {
         shape_range[i].first = shape_range[i].first;
       }
-      if(shape_range[i].second > 0) {
+      if (shape_range[i].second > 0) {
         shape_range[i].second = shape_range[i].second;
       }
     }
@@ -2464,7 +2464,7 @@ IMPLEMT_VERIFIER(MatrixDiagD, MatrixDiagDVerify) {
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
     string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",
-      input_diagonal_dtype, ", input_diagonal_dtype:",input_diagonal_dtype);
+      input_diagonal_dtype, ", input_diagonal_dtype:", input_diagonal_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
@@ -2553,7 +2553,7 @@ IMPLEMT_VERIFIER(MatrixDiagPartD, MatrixDiagPartDVerify) {
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
     string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",
-      input_diagonal_dtype, ", input_help_dtype:",input_help_dtype);
+      input_diagonal_dtype, ", input_help_dtype:", input_help_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
@@ -3251,7 +3251,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
           AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), ConcatString(
             "failed to call WithRankAtMost function, ",
             "input[diagonal] rank must be at most ",
-            input_rank,"D, but got rank[",
+            input_rank, "D, but got rank[",
             diagonal_tensor_desc.GetShape().GetDimNum(), "]")),
           return GRAPH_FAILED);
       }
@@ -3414,7 +3414,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), ConcatString(
         "the number of rows of [diagonal] doesn't match the number of ",
         "diagonals implied from [d_lower] and [d_upper].",
-        " num_diags is [" , num_diags, "], d_lower is [", lower_diag_index,
+        " num_diags is [", num_diags, "], d_lower is [", lower_diag_index,
         "], d_upper is [", upper_diag_index, "], other_dim is [", other_dim, "]")),
       return GRAPH_PARAM_INVALID);
   }
@@ -3685,18 +3685,18 @@ bool is_ellispis(std::string ori_str, std::string target) {
 void trim_whitespace(std::string &s)
 {
     size_t index = 0;
-    if(!s.empty()) {
-        while((index = s.find(' ',index)) != string::npos) {
-            s.erase(index,1);
+    if (!s.empty()) {
+        while ((index = s.find(' ', index)) != string::npos) {
+            s.erase(index, 1);
         }
     }
 }
 
 //  cut the string in half
-void split_equ(std::string eqn,std::string &in_equ,std::string &out_equ) {
+void split_equ(std::string eqn, std::string &in_equ, std::string &out_equ) {
     size_t pos = 0;
     if ((pos = eqn.find("->")) != std::string::npos) {
-        in_equ = eqn.substr(0,pos);
+        in_equ = eqn.substr(0, pos);
         // add 2 to get start index of out_equ
         out_equ = eqn.substr(pos + 2);
     } else {
@@ -3704,7 +3704,7 @@ void split_equ(std::string eqn,std::string &in_equ,std::string &out_equ) {
     }
 }
 // gets an array of input strings
-void get_in_equ_list(std::string in_equ,vector<std::string> &in_equ_list) {
+void get_in_equ_list(std::string in_equ, vector<std::string> &in_equ_list) {
     std::stringstream equ_stream(in_equ);
     std::string term;
     while (! equ_stream.eof()) {
@@ -3714,9 +3714,9 @@ void get_in_equ_list(std::string in_equ,vector<std::string> &in_equ_list) {
 }
 
 // Scenes with ellipses
-void map_with_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
-                        map<std::string, int64_t> &equ_map,
-                        map<std::string, vector<int64_t>> &ellipsis_map) {
+void map_with_ellipsis(std::string equ_temp, vector<int64_t> equ_tensor_temp,
+                       map<std::string, int64_t> &equ_map,
+                       map<std::string, vector<int64_t>> &ellipsis_map) {
     int64_t equ_temp_size = equ_temp.size();
     int64_t equ_tensor_temp_size = equ_tensor_temp.size();
     int64_t ell_size = equ_tensor_temp_size + kEinsumOffsetLength - equ_temp_size;
@@ -3748,7 +3748,7 @@ void map_with_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
             equ_key[0] = equ_temp[i];
             equ_map[equ_key] = equ_tensor_temp[i];
         }
-        for (int64_t j = 0; j < (start_index+ell_size-start_index); j++) {
+        for (int64_t j = 0; j < (start_index + ell_size - start_index); j++) {
             ell_list.push_back(equ_tensor_temp[j + start_index]);
             ellipsis_map[dot] = ell_list;
         }
@@ -3760,8 +3760,8 @@ void map_with_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
 }
 
 // Scenes without ellipses
-void map_without_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
-                        map<std::string, int64_t> &equ_map) {
+void map_without_ellipsis(std::string equ_temp, vector<int64_t> equ_tensor_temp,
+                          map<std::string, int64_t> &equ_map) {
     int64_t equ_temp_size = equ_temp.size();
     int64_t equ_tensor_temp_size = equ_tensor_temp.size();
     if (equ_temp_size != equ_tensor_temp_size) {
@@ -3774,9 +3774,9 @@ void map_without_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
 }
 
 // Output shape with ellipsis
-void output_with_ellipsis(vector<int64_t> &output_shape,std::string out_equ,
-                            map<std::string, int64_t> equ_map,
-                            map<std::string, vector<int64_t>> ellipsis_map) {
+void output_with_ellipsis(vector<int64_t> &output_shape, std::string out_equ,
+                          map<std::string, int64_t> equ_map,
+                          map<std::string, vector<int64_t>> ellipsis_map) {
     int64_t out_equ_size = out_equ.size();
     std::string dot = "...";
     vector<int64_t> ell_list;
@@ -3816,8 +3816,8 @@ void output_with_ellipsis(vector<int64_t> &output_shape,std::string out_equ,
 }
 
 // Output shape without ellipsis
-void output_without_ellipsis(vector<int64_t> &output_shape,std::string out_equ,
-                            map<std::string, int64_t> equ_map) {
+void output_without_ellipsis(vector<int64_t> &output_shape, std::string out_equ,
+                             map<std::string, int64_t> equ_map) {
     int64_t out_equ_size = out_equ.size();
     int64_t val;
     std::string equ_key = "A";
@@ -3829,7 +3829,7 @@ void output_without_ellipsis(vector<int64_t> &output_shape,std::string out_equ,
 }
 
 // einsum infer shape
-void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list,vector<int64_t> &output_shape) {
+void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list, vector<int64_t> &output_shape) {
     trim_whitespace(eqn);
     int64_t tensor_size = tensor_list.size();
 // define two maps to hold the corresponding characters
@@ -3838,10 +3838,10 @@ void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list,vec
     std::string in_equ;
     std::string out_equ;
 // Split string
-    split_equ(eqn,in_equ,out_equ);
+    split_equ(eqn,in_equ, out_equ);
 // gets a list of input strings
     vector<std::string> in_equ_list;
-    get_in_equ_list(in_equ,in_equ_list);
+    get_in_equ_list(in_equ, in_equ_list);
 
     int64_t in_equ_size = in_equ_list.size();
     if (in_equ_size != tensor_size) {
@@ -3855,16 +3855,16 @@ void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list,vec
         equ_temp = in_equ_list[i];
         equ_tensor_temp = tensor_list[i];
         if (is_ellispis(equ_temp, targets)) {
-            map_with_ellipsis(equ_temp,equ_tensor_temp,equ_map,ellipsis_map);
+            map_with_ellipsis(equ_temp,equ_tensor_temp, equ_map, ellipsis_map);
         } else {
-            map_without_ellipsis(equ_temp,equ_tensor_temp,equ_map);
+            map_without_ellipsis(equ_temp, equ_tensor_temp, equ_map);
         }
     }
     if (out_equ.size() == 0) {
         return;
     } else {
-        if (is_ellispis(out_equ,targets)) {
-            output_with_ellipsis(output_shape, out_equ, equ_map,ellipsis_map);
+        if (is_ellispis(out_equ, targets)) {
+            output_with_ellipsis(output_shape, out_equ, equ_map, ellipsis_map);
         } else {
             output_without_ellipsis(output_shape, out_equ, equ_map);
         }
@@ -3887,12 +3887,12 @@ IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
         tensor_list.push_back(xi_dims);
     }
     vector<int64_t> output_shape;
-    einsum_infer_shape(equation,tensor_list,output_shape);
+    einsum_infer_shape(equation, tensor_list, output_shape);
     // updata output shape and dtype
     TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetShape(ge::Shape(output_shape));
     output_desc.SetDataType(x0_type);
-    CHECK(op.UpdateOutputDesc("y",output_desc) != GRAPH_SUCCESS,
+    CHECK(op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS,
          OP_LOGE(opName.GetString(), "UpdateOutputDesc failed."),
          return GRAPH_FAILED);
     return GRAPH_SUCCESS;
