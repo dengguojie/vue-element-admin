@@ -300,6 +300,8 @@ class SplitNotEqual():
                 return False
             if self.last_dim > 128:
                 return False
+            if self.first_dim < 256:
+                return False
             if size >= self.block_ele:
                 return False
             if self.size_splits[-1] % self.block_ele != 0:

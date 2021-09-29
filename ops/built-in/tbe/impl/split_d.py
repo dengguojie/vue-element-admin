@@ -650,7 +650,7 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
         return
 
     list_shape = list(shape)
-    supported_shapes = [[4, 300, 257, 600], [8, 46, 46, 63]]
+    supported_shapes = [[4, 300, 257, 600], [8, 46, 46, 63], [8, 46, 46, 84]]
     if list_shape in supported_shapes:
         split_equal = SplitEqual(new_shape, dtype_lower, new_split_dim, new_size_splits, kernel_name)
         if split_equal.check_support():
