@@ -16,7 +16,7 @@ protected:
 
 TEST_F(LRUCacheV2Test, lru_cache_v2_test_case_1) {
     ge::op::LRUCacheV2 lru_cache_v2_op;
-    lru_cache_v2_op.UpdateInputDesc("index_list", create_desc_with_ori({32}, ge::DT_INT32, ge::FORMAT_ND, {32}, ge::FORMAT_ND));
+    lru_cache_v2_op.UpdateInputDesc("index_list", create_desc_with_ori({-1}, ge::DT_INT32, ge::FORMAT_ND, {-1}, ge::FORMAT_ND));
     lru_cache_v2_op.UpdateInputDesc("data", create_desc_with_ori({100, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {100, 4}, ge::FORMAT_ND));
     lru_cache_v2_op.UpdateInputDesc("cache", create_desc_with_ori({2048}, ge::DT_FLOAT, ge::FORMAT_ND, {2048}, ge::FORMAT_ND));
     lru_cache_v2_op.UpdateInputDesc("tag", create_desc_with_ori({512}, ge::DT_INT32, ge::FORMAT_ND, {512}, ge::FORMAT_ND));
@@ -34,8 +34,8 @@ TEST_F(LRUCacheV2Test, lru_cache_v2_test_case_1) {
     std::vector<int64_t> expected_output_0_shape = {100, 4};
     std::vector<int64_t> expected_output_1_shape = {2048};
     std::vector<int64_t> expected_output_2_shape = {512};
-    std::vector<int64_t> expected_output_3_shape = {32};
-    std::vector<int64_t> expected_output_4_shape = {32};
+    std::vector<int64_t> expected_output_3_shape = {-1};
+    std::vector<int64_t> expected_output_4_shape = {-1};
     std::vector<int64_t> expected_output_5_shape = {1};
     EXPECT_EQ(output_0_desc.GetDataType(), ge::DT_FLOAT);
     EXPECT_EQ(output_1_desc.GetDataType(), ge::DT_FLOAT);

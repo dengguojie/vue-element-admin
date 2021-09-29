@@ -2611,27 +2611,24 @@ COMMON_INFER_FUNC_REG(LruCache, LruCacheInferShape);
 // ----------------LRUCacheV2 Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(LRUCacheV2InferShape) {
   OP_LOGD("OP[LRUCacheV2]", "LRUCacheV2InferShape Begin.");
-
-  // first get the ivf_cur_count const
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto index_list_desc = op_info->MutableInputDesc("index_list");
-  auto data_desc = op_info->MutableInputDesc("data");
-  auto tag_desc = op_info->MutableInputDesc("tag");
-  auto cache_desc = op_info->MutableInputDesc("cache");
-  auto data_shape = data_desc->GetShape();
-  auto index_list_shape = index_list_desc->GetShape();
-  auto tag_shape = tag_desc->GetShape();
-  auto cache_shape = cache_desc->GetShape();
+  auto index_list_desc = op_info->MutableInputDesc(0);
+  auto data_desc = op_info->MutableInputDesc(1);
+  auto cache_desc = op_info->MutableInputDesc(2);
+  auto tag_desc = op_info->MutableInputDesc(3);
+  const GeShape& data_shape = data_desc->MutableShape();
+  const GeShape& index_list_shape = index_list_desc->MutableShape();
+  const GeShape& tag_shape = tag_desc->MutableShape();
+  const GeShape& cache_shape = cache_desc->MutableShape();
   DataType index_list_dtype = index_list_desc->GetDataType();
   DataType data_dtype = data_desc->GetDataType();
   DataType tag_dtype = tag_desc->GetDataType();
-  auto output_desc_data = op_info->MutableOutputDesc("data");
-  auto output_desc_cache = op_info->MutableOutputDesc("cache");
-  auto output_desc_tag = op_info->MutableOutputDesc("tag");
-  auto output_desc_index_offset_list = op_info->MutableOutputDesc("index_offset_list");
-  auto output_desc_not_in_cache_index_list = op_info->MutableOutputDesc("not_in_cache_index_list");
-  auto output_desc_not_in_cache_number = op_info->MutableOutputDesc("not_in_cache_number");
+  auto output_desc_data = op_info->MutableOutputDesc(0);
+  auto output_desc_cache = op_info->MutableOutputDesc(1);
+  auto output_desc_tag = op_info->MutableOutputDesc(2);
+  auto output_desc_index_offset_list = op_info->MutableOutputDesc(3);
+  auto output_desc_not_in_cache_index_list = op_info->MutableOutputDesc(4);
+  auto output_desc_not_in_cache_number = op_info->MutableOutputDesc(5);
   output_desc_data->SetDataType(data_dtype);
   output_desc_cache->SetDataType(data_dtype);
   output_desc_tag->SetDataType(tag_dtype);
@@ -2643,8 +2640,14 @@ IMPLEMT_COMMON_INFERFUNC(LRUCacheV2InferShape) {
   output_desc_tag->SetShape(tag_shape);
   output_desc_index_offset_list->SetShape(index_list_shape);
   output_desc_not_in_cache_index_list->SetShape(index_list_shape);
-  vector<int64_t> out_scalar_shape={1};
+  vector<int64_t> out_scalar_shape = {1};
   output_desc_not_in_cache_number->SetShape(GeShape(out_scalar_shape));
+  if (IsUnknown(index_list_shape.GetDims())) {
+    std::vector<std::pair<int64_t, int64_t>> input_shape_range;
+    index_list_desc->GetShapeRange(input_shape_range);
+    output_desc_index_offset_list->SetShapeRange(input_shape_range);
+    output_desc_not_in_cache_index_list->SetShapeRange(input_shape_range);
+  }
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(LRUCacheV2, LRUCacheV2InferShape);

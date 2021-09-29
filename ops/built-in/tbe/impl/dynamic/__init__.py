@@ -135,6 +135,7 @@ from .adam_apply_one_with_decay import adam_apply_one_with_decay
 from .adam_apply_one_with_decay_assign import adam_apply_one_with_decay_assign
 from .add_n import add_n
 from .rsqrt import rsqrt
+from .lru_cache_v2 import lru_cache_v2
 from .greater_equal import greater_equal
 from .apply_gradient_descent import apply_gradient_descent
 from .layer_norm_beta_gamma_backprop import layer_norm_beta_gamma_backprop

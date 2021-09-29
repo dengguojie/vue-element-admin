@@ -178,6 +178,7 @@ set(_optiling_files
   scan_pq_codes.cc
   strided_slice_v3.cc
   vector_tiling.cc
+  lru_cache_v2.cc
 )
 
 set(_op_tiling_include
