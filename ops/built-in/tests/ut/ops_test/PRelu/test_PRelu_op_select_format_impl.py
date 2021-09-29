@@ -99,6 +99,13 @@ case6 = {
     "support_expect": True
 }
 
+case7 = {
+    "params": get_input((128, 1, 1, 16), (1,), "float16", "NCHW"),
+    "case_name": "prelu_op_select_format_5hd_and_1d",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
 
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case2)
@@ -106,6 +113,7 @@ ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case7)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")
