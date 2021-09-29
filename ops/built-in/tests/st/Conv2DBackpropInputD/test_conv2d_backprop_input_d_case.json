@@ -385,6 +385,134 @@
   },
   {
     "op": "Conv2DBackpropInputD",
+    "case_name": "test_dx_load3d_special_case",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          19,
+          2,
+          4,
+          2
+        ],
+        "ori_shape": [
+          19,
+          2,
+          4,
+          2
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          19,
+          321,
+          1
+        ],
+        "ori_shape": [
+          1,
+          19,
+          321,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          38,
+          961,
+          1
+        ],
+        "ori_shape": [
+          1,
+          38,
+          961,
+          1
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "input_size",
+        "value": [
+          1,
+          38,
+          961,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          3,
+          46
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          1,
+          2,
+          0,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 19,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropInputD",
     "case_name": "test_dx_default_tiling_001",
     "input_desc": [
       {

@@ -92,6 +92,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.pooling_mode = pooling_mode
         self.l0a_dma_flag = l0a_dma_flag
+        self.load3d_special_multiply = 1
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -410,6 +411,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             self._cou1_g,
             self._var_map)
 
+        self.load3d_special_multiply = pat_conv.load3d_special_multiply
         return dy_col
 
     def generate_b(self, kernels):
@@ -562,7 +564,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             dx_ddr = tvm.compute(
                 out_shape,
                 lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_ub[
-                    dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx
+                    dx_batch_idx, dx_cin1_idx, self.load3d_special_multiply * dx_hw_idx, dx_cin0_idx
                 ],
                 name="c_ddr",
                 tag="conv2d_backprop_input",

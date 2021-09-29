@@ -333,6 +333,7 @@ def general_schedule(
             tensor_attr["dilations"] = dilations
             tensor_attr["l0a_dma_flag"] = False
             tensor_attr["a_filling_in_ub_flag"] = False
+            tensor_attr["load3d_special_multiply"] = 1
 
             def _fill_a_tensormap_dynamic():
                 a_l1 = a_col_before.op.input_tensors[0]
@@ -505,6 +506,7 @@ def general_schedule(
                 al1_tag = a_col_before.op.input_tensors[0].op.tag
                 l0a_dma_flag = a_col_before.op.attrs["l0a_dma_flag"].value
                 tensor_attr["l0a_dma_flag"] = l0a_dma_flag
+                tensor_attr["load3d_special_multiply"] = a_col_before.op.attrs["load3d_special_multiply"].value
 
                 # -----------------------------------------------------------------
                 #     tag         | stride | pad | l0_dma_flag | tensor
@@ -962,6 +964,7 @@ def general_schedule(
     group_dict = tensor_attr.get("group_dict")
     dma_pad = tensor_attr.get("dma_pad")
     l0a_dma_flag = tensor_attr.get("l0a_dma_flag")
+    load3d_special_multiply = tensor_attr.get("load3d_special_multiply")
 
     g_after = group_dict[cube_util.GroupDictKeys.g_extend].value
     cin1_g = group_dict[cube_util.GroupDictKeys.dx_c1_extend].value
@@ -1470,7 +1473,7 @@ def general_schedule(
                 1,
                 1,
                 int(c_ub_nc_factor * cub_tiling_g / 2),
-                cub_tiling_mc_factor * cub_tiling_m0,
+                cub_tiling_mc_factor * cub_tiling_m0 // load3d_special_multiply,
                 cub_tiling_n0 * 2
             )
             if deconv_res.op.tag == "quant":
@@ -1481,7 +1484,7 @@ def general_schedule(
                 1,
                 1,
                 c_ub_nc_factor,
-                cub_tiling_mc_factor * cub_tiling_m0,
+                cub_tiling_mc_factor * cub_tiling_m0 // load3d_special_multiply,
                 cub_tiling_n0
             )
 
@@ -1511,13 +1514,15 @@ def general_schedule(
             affine_l0c = (1,
                           1,
                           int(cl0_tiling_nc * cl0_tiling_g / 2),
-                          cl0_tiling_mc * cl0_tiling_m0,
+                          cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,
                           cl0_tiling_n0 * 2)
         else:
             if tensor_attr.get("5HD_TRANS_NHWC"):
-                affine_l0c = 1, 1, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0 * cl0_tiling_nc
+                affine_l0c = 1, 1, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
+                             cl0_tiling_n0 * cl0_tiling_nc
             else:
-                affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
+                affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
+                             cl0_tiling_n0
 
         if cube_vector_split:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)

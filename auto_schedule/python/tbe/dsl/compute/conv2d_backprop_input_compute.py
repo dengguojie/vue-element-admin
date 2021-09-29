@@ -316,7 +316,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         # only Ascend310/Hi3796CS/SD3403 can support
         # in dx, out is fmap
         if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]
-            and dx_h != 1 and dx_w == 1):
+            and not tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT") \
+            and dx_h != 1 and dx_w == 1 and var_map):
             return True
         return False
 

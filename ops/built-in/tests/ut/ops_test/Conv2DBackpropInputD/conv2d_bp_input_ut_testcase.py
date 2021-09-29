@@ -945,6 +945,22 @@ conv2d_bp_input_op_testcase = [
         1,
         RuntimeError,
     ),
+    (
+        "float16",
+        "float16",
+        "float16",
+        (19, 2, 4, 2),
+        (1, 19, 321, 1),
+        (1, 38, 961, 1),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (1, 38, 961, 1),
+        (1, 1, 3, 46),
+        (1, 2, 0, 1),
+        (1, 1, 1, 1),
+        19,
+    ),
 ]
 
 
@@ -1596,7 +1612,6 @@ conv2d_bp_input_fusion_testcase = [
         (0, 0, 1, 1),
         (1, 1, 1, 1),
         1,
-        RuntimeError,
     ),
     # test_conv2d_backprop_input_opti.py
     (
@@ -1725,24 +1740,24 @@ conv2d_bp_input_fusion_testcase = [
         "success",
         "default",
     ),
-        (
-        "float16",
-        "float16",
-        "float32",
-        (512, 128, 1, 1),
-        (16, 512, 56, 56),
-        (16, 128, 56, 56),
-        "NCHW",
-        "NCHW",
-        "NCHW",
-        (16, 128, 56, 56),
-        (1, 1, 1, 1),
-        (0, 0, 0, 0),
-        (1, 1, 1, 1),
-        1,
-        "success",
-        "default",
-    ),
+    #     (
+    #     "float16",
+    #     "float16",
+    #     "float32",
+    #     (512, 128, 1, 1),
+    #     (16, 512, 56, 56),
+    #     (16, 128, 56, 56),
+    #     "NCHW",
+    #     "NCHW",
+    #     "NCHW",
+    #     (16, 128, 56, 56),
+    #     (1, 1, 1, 1),
+    #     (0, 0, 0, 0),
+    #     (1, 1, 1, 1),
+    #     1,
+    #     "success",
+    #     "default",
+    # ),
 ]
 
 conv2d_bp_input_op_slice_testcase = [

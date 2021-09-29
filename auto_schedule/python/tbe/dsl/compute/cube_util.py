@@ -101,7 +101,8 @@ def im2col_row_major(  # pylint: disable=R0913
         dilation=(1, 1),
         offset_x=0,
         slice_offset=0,
-        l0a_dma_flag=False):
+        l0a_dma_flag=False,
+        load3d_special_multiply=1):
     """
     calculate im2col_row_major tensor
     Parameters
@@ -177,7 +178,8 @@ def im2col_row_major(  # pylint: disable=R0913
                        attrs={
                            "padding": padding,
                            "dilation": dilation,
-                           "l0a_dma_flag": l0a_dma_flag
+                           "l0a_dma_flag": l0a_dma_flag,
+                           "load3d_special_multiply": load3d_special_multiply
                        })
 
 
@@ -499,6 +501,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         self._m0 = 16
         self._offset_x = offset_x
         self.l0a_dma_flag = l0a_dma_flag
+        self.load3d_special_multiply = 1
 
     def cal_howo(self, height_in, width_in):
         """
@@ -558,6 +561,15 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         -------
         a_col : a_im2col_fractal tensor
         """
+        def _is_load3d_special(var_map, h_out, w_hout):
+            if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310")
+                and not tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+                and not var_map
+                and int(h_out) != 1
+                and int(w_hout) == 1):
+                return True
+            return False
+
         if var_map:
             a_batch, _, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)[-5:]
         else:
@@ -578,6 +590,12 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         else:
             _, width_out = self.cal_howo(a_h, a_w)
 
+        if _is_load3d_special(var_map, height_out, width_out):
+            self.load3d_special_multiply = 2
+            width_out *= self.load3d_special_multiply
+            self._pad_right += 1
+            new_pad = [self._pad_up, self._pad_down, self._pad_left, self._pad_right]
+
         if not var_map:
             a_im2col_row_major_shape = (a_batch, height_out * width_out, g_after * c1_extend, kernel_h, kernel_w, a_c0)
             a_row_major = im2col_row_major(a_im2col_row_major_shape,
@@ -589,7 +607,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                            dilation=(self._dilate_h, self._dilate_w),
                                            offset_x=self._offset_x,
                                            slice_offset=slice_offset,
-                                           l0a_dma_flag=self.l0a_dma_flag)
+                                           l0a_dma_flag=self.l0a_dma_flag,
+                                           load3d_special_multiply=self.load3d_special_multiply)
 
         howo = (height_out * width_out + self._m0 - 1) // self._m0 * self._m0
         a_im2col_fractal_shape = (g_after, a_batch, howo // self._m0, c1_extend * kernel_h * kernel_w,

@@ -295,7 +295,7 @@ print("adding conv3d test_conv3d_backprop_input_fuzz_build_generalization testca
 ut_case.add_cust_test_func(test_func=test_conv3d_backprop_input_fuzz_build_generalization)
 
 print("add test_conv3d_bp_input_fuzz_build_tilingcase")
-ut_case.add_cust_test_func(test_func=test_conv3d_bp_input_fuzz_build_tilingcase)
+#ut_case.add_cust_test_func(test_func=test_conv3d_bp_input_fuzz_build_tilingcase)
 
 if __name__ == '__main__':
     ut_case.run()
