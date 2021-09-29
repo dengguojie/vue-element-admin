@@ -40,6 +40,7 @@ using namespace ge;
 namespace fe {
 
 static const char* FUSED_NODE = "GatherV2";
+static const char CAST[] = "Cast";
 
 static const std::string PATTERN_FUSEDNODE = "FusedNodeGatherV2";
 
@@ -47,7 +48,8 @@ vector<FusionPattern*> ConstToAttrGatherV2Pass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConstToAttrGatherV2Fusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -64,13 +66,53 @@ Status ConstToAttrGatherV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   gather_v2AttrInfo.push_back(axis);
 
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(
-      fusedDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
-      return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return PARAM_INVALID);
+
+  if ((fusedNode->GetInDataAnchor(1) != nullptr) && (fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor() != nullptr)) {
+    if ((fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() != nullptr) &&
+        (fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetType() == CAST)) {
+      ge::NodePtr cast_node = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
+      ge::OpDescPtr castDesc = cast_node->GetOpDesc();
+      FUSION_PASS_CHECK(
+          castDesc == nullptr,
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
+                                         cast_node->GetName().c_str()),
+          return PARAM_INVALID);
+      ge::OutDataAnchorPtr inAnchorOfCast = cast_node->GetInDataAnchor(0)->GetPeerOutAnchor();
+      ge::OutDataAnchorPtr outAnchorOfCast = cast_node->GetOutDataAnchor(0);
+      if ((castDesc->GetInputDesc(0).GetDataType() == ge::DT_INT64) &&
+          (castDesc->GetOutputDesc(0).GetDataType() == ge::DT_INT32)) {
+        // remove cast output edge
+        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outAnchorOfCast, fusedNode->GetInDataAnchor(1)) != SUCCESS,
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast output edge failed."),
+                          return FAILED);
+        // add edge
+        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(cast_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                  fusedNode->GetInDataAnchor(1)) != SUCCESS,
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge failed."), return FAILED);
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "start to remove cast node.");
+        if (cast_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().empty()) {
+          // remove cast input edge
+          FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(inAnchorOfCast, cast_node->GetInDataAnchor(0)) != SUCCESS,
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast input edge failed."),
+                            return FAILED);
+          FUSION_PASS_CHECK(graph.RemoveNode(cast_node) != SUCCESS,
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast node failed."),
+                            return FAILED);
+          OP_LOGI(FUSED_OP_TYPE.c_str(), "remove cast node success.");
+        }
+        fusedDesc->MutableInputDesc(1)->SetDataType(ge::DT_INT64);
+        fusedDesc->MutableInputDesc(1)->SetOriginDataType(ge::DT_INT64);
+      }
+    }
+  }
 
   // check op support for dynamic gather_v2
   FUSION_PASS_CHECK(CheckOpSupported(fusedDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Gatherv2 Supported."),
