@@ -499,7 +499,7 @@ class TilingSelection:
 
         range_area = tuple(target_area[0] + target_area[1] + target_area[2])
 
-        compile_time = self.op._get_compile_time(target_area[0:3])
+        compile_time = self.op._get_compile_time(target_area)
         if compile_time > self.op.DEFAULT_COMPILE_TIME and self.op.dynamic_mode in ("dynamic_mkn", "dynamic_mknb"):
             tiling_cases, _, _ = self._calc_gear_matmul(target_area)
             return tiling_cases

@@ -616,6 +616,7 @@ def _get_real_trans(format_a, format_b, trans_a, trans_b):
         trans_b = not trans_b
     return [trans_a, trans_b]
 
+
 def batch_matmul_compute(input_x1, input_x2, bias, offset_w, output_z, trans_a, trans_b, offset_x, kernel_name, op_type="BatchMatMulV2"):
     """
     batch_matmul computer
