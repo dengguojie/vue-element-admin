@@ -7,21 +7,33 @@ ut_case = OpUT("Deconvolution", "impl.dynamic.deconvolution",
                "deconvolution")
 
 dynamic_deconvolution_testcase = [ 
-    ((192, 192, 5, 5), (1, 192, -1, 28), (1, 192, -1, 28), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2], "success"),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1], "success"),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1, 3], "success"),
-    ((16, 16, 3, 3), (2, 32, 1, 1), (2, 16, 4, 3), (2, 1), (0, 0, 0, 0), "NCHW", 1, [1, 2], "success"),
-    ((96, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0, 3], "success"),
-    ((256, 256, 3, 3), (2, 256, 34, 32), (2, 256, 36, 34), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 2, 3], "success"),
-    ((240, 240, 5, 5), (2, 240, 1, 1), (2, 240, 2, 1), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2, 3], "success"),   
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], "success"),
-    ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], "success"),
-    ((32, 32, 1, 1), (1, 32, 28, 55), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NCHW", 1, [2, 3], "success"), 
-    ((16, 16, 3, 3), [-2], (1, 16, 3, 3), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 1, 2, 3], "success"),
-    ((10, 64, 7, 6), [-2], (1, 64, 1, 1), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], "success"),
-    
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], RuntimeError),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1], RuntimeError),
+    ((192, 192, 5, 5), (1, 192, -1, 28), (1, 192, -1, 28), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2], None, "success", None),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1], None, "success", None),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1, 3], None, "success", None),
+    ((16, 16, 3, 3), (2, 32, 1, 1), (2, 16, 4, 3), (2, 1), (0, 0, 0, 0), "NCHW", 1, [1, 2], None, "success", None),
+    ((96, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0, 3], None, "success", None),
+    ((256, 256, 3, 3), (2, 256, 34, 32), (2, 256, 36, 34), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 2, 3], None, "success", None),
+    ((240, 240, 5, 5), (2, 240, 1, 1), (2, 240, 2, 1), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2, 3], None, "success", None),   
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], None, "success", None),
+    ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], None, "success", None),
+    ((32, 32, 1, 1), (1, 32, 28, 55), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NCHW", 1, [2, 3], None, "success", None), 
+    ((16, 16, 3, 3), [-2], (1, 16, 3, 3), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 1, 2, 3], None, "success", None),
+    ((10, 64, 7, 6), [-2], (1, 64, 1, 1), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], None, "success", None),
+
+    ((16, 16, 3, 3), (2, 16, 2500, 16), (2, 16, 5000, 16), (2, 1), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], 
+     [[(1, 10), (1, 1), (2000, 2500), (1, 16), (16, 16)], [(1, 10), (1, 1), (4000, 5000), (1, 16), (16, 16)]], "success", 
+     "deconvolution_dynamic_fix_large_h"),
+    ((16, 16, 3, 3), (2, 16, 16, 2500), (2, 16, 16, 5000), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], 
+     [[(1, 10), (1, 1), (1, 16), (2000, 2500), (16, 16)], [(1, 10), (1, 1), (1, 16), (4000, 5000), (16, 16)]], "success", 
+     "deconvolution_dynamic_fix_large_w"),
+    ((16, 16, 2, 2), (2, 16, 1, 3), (2, 16, 1, 3), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], 
+     [[(1, 10), (1, 1), (1, 16), (1, 16), (16, 16)], [(1, 10), (1, 1), (1, 16), (1, 16), (16, 16)]], "success", 
+     "deconvolution_dynamic_fix_small_hw"),
+
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", 1, [0, 1], None, RuntimeError, None),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (0, 2, 0, 2), "NCHW", 1, [0, 1], None, RuntimeError, None),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], None, RuntimeError, None),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1], None, RuntimeError, None),
 ]
 
 def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads):
@@ -56,7 +68,9 @@ def _shape_to_C1HWNCoC0(shape, data_format, dtype):
     return (c1, h, w, n, c0, c0)
 
 
-def _get_range_from_shape(shape, dynamic_dim=None):
+def _get_range_from_shape(shape, dynamic_dim=None, dynamic_range=None):
+    if dynamic_range:
+        return dynamic_range
     ori_range = [(dim, dim) for dim in shape]
     if dynamic_dim:
         for dim in dynamic_dim:
@@ -95,7 +109,8 @@ def _trans_dynamic_shape(shape, format, dynamic_dim, tran_flag=False):
 
 
 def _gen_trans_data_case(param):
-    filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, data_format, group, dynamic_dim, expect_result = param
+    (filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, 
+     data_format, group, dynamic_dim, dynamic_range, expect_result, kernel_name) = param
 
     dilations = (1, 1, 1, 1)
     dtype = "float16"
@@ -122,25 +137,28 @@ def _gen_trans_data_case(param):
             "dtype": dtype,
             "range": _get_range_from_shape(filter_shape)
         }
+        out_backprop_range = None if not dynamic_range else dynamic_range[0]
         out_backprop = {
             "shape": _trans_dynamic_shape(out_backprop_shape, "NC1HWC0", dynamic_dim, True),
             "format": "NC1HWC0",
             "ori_shape": _trans_dynamic_shape(out_backprop_ori_shape, data_format, dynamic_dim, True),
             "ori_format": data_format,
             "dtype": dtype,
-            "range": _get_range_from_shape(out_backprop_shape, dynamic_dim)
+            "range": _get_range_from_shape(out_backprop_shape, dynamic_dim, out_backprop_range)
         }
+        dx_range = None if not dynamic_range else dynamic_range[1]
         dx = {
             "shape": _trans_dynamic_shape(dx_shape, "NC1HWC0", dynamic_dim),
             "format": "NC1HWC0",
             "ori_shape": _trans_dynamic_shape(input_size, data_format, dynamic_dim),
             "ori_format": data_format,
             "dtype": dtype,
-            "range": _get_range_from_shape(dx_shape, dynamic_dim)
+            "range": _get_range_from_shape(dx_shape, dynamic_dim, dx_range)
         }
     bias = None
     offset_w = None
-    kernel_name = _get_kernel_name(filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads)
+    if not kernel_name:
+        kernel_name = _get_kernel_name(filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads)
 
     return {
         "params": [out_backprop, filter, bias, offset_w, dx, strides, pads, dilations, group, data_format],

@@ -140,7 +140,6 @@ def _gen_trans_data_case(param):
     stride_h, stride_w = strides
     strides = [1, stride_h, stride_w, 1] if data_format == "NHWC" else [1, 1, stride_h, stride_w]
 
-    print(x, filter, out_backprop, dx)
     return {
         "params": [x, filter, out_backprop, dx, strides, pads, dilations, group, data_format],
         "case_name": case_name,
@@ -220,6 +219,39 @@ def test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed(test_ar
     conv2d_backprop_input_generalization(*input_list)
 
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed)
+
+def test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_0(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'NCHW',
+            'format': 'NCHW',
+            'dtype': 'int32',
+            'const_value': (50, 2, 35, 3200)
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 26, 3191, 16),
+            'ori_shape': (50, 2, 26, 3191),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'shape': (50, 1, 35, 3200, 16),
+            'ori_shape': (50, 2, 35, 3200),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_0']
+    conv2d_backprop_input_generalization(*input_list)
+
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_0)
 
 def conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_1(test_arg):
     from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
