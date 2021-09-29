@@ -80,7 +80,8 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     int32_t ub_split_axis = 0;
     int32_t ub_split_inner = 0;
 
-    if (max_ub_count / (h*w*c0) >= 2 && ((c1 >= core_num && c1 % core_num == 0) || 
+    const int DB = 2;
+    if (max_ub_count / (h*w*c0) >= DB && ((c1 >= core_num && c1 % core_num == 0) || 
         (n >= core_num && n % core_num == 0))) {
         ub_split_axis = 0;
         ub_split_inner = 1;
@@ -245,21 +246,26 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     int32_t outer_loop = input_shape[ub_tiling_axis] / ub_tiling_factor;
 
     if (c1 >= core_num) {
+        // enter schedule_cut_c1
         block_tiling_axis = 1;
     } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) && 
                 outer_loop >= core_num &&
                 input_shape[ub_tiling_axis] % core_num == 0) {
         inner_loop = input_shape[ub_tiling_axis] / core_num;
+        // enter schedule_cut_h_or_w_twice
         block_tiling_axis = 2;
     } else if (ub_tiling_axis == 2 && 
                input_shape[ub_tiling_axis] >= half_core_num &&
                input_shape[ub_tiling_axis] % half_core_num == 0 &&
                input_shape[0] < core_num) {
         inner_loop = input_shape[ub_tiling_axis] / half_core_num;
+        // enter schedule_fuse_h_n
         block_tiling_axis = 5;
     } else if (n >= core_num) {
+        // enter schedule_cut_batch
         block_tiling_axis = 0;
     } else {
+        // enter schedule_cut_general
         block_tiling_axis = 6;
     }
 
