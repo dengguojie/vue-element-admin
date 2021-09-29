@@ -637,3 +637,39 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_8) {
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 2 3193 264 3193 1 0 0 3193 1 1 1 ");
 }
+
+TEST_F(stried_slice_tiling, stried_slice_outshape_0) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSlice");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::StridedSlice("StridedSlice");
+  vector<vector<int64_t>> input_shapes = {
+      {38, 38},
+      {2},
+      {2},
+      {2},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+  TensorDesc tensorInput3(ge::Shape(input_shapes[3]), ge::FORMAT_ND, dtypes[3]);
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT16);
+  vector<int32_t> begin = {1, 1};
+  vector<int32_t> end = {1, 1};
+  vector<int32_t> strides = {1, 1};
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, begin, (const uint8_t*)begin.data(), begin.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+  std::string compileInfo =
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+
+  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  ASSERT_TRUE(ret);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 38 38 0 0 1 1 1 1 1 1 ");
+}

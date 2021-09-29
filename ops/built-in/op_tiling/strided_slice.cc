@@ -147,7 +147,7 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
   int64_t input_inner_dims = parameters.input[shape_len - 1] * multi_times;
   int64_t output_inner_dims = parameters.output_shape[shape_len - 1] * multi_times;
   int64_t output_32bytes_align_rows = BYTE_BLOCK / float16_type_size;
-  if (output_32bytes_align_rows % output_inner_dims == 0) {
+  if (output_inner_dims > 0 && output_32bytes_align_rows % output_inner_dims == 0) {
     output_32bytes_align_rows = output_32bytes_align_rows / output_inner_dims;
   } else if (output_inner_dims % output_32bytes_align_rows == 0) {
     output_32bytes_align_rows = 1;
