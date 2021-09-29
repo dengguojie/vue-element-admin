@@ -44,5 +44,40 @@
           "type": "int"
          }
      ]
+  },
+  {
+    "op": "SplitD",
+    "case_name" : "test_split_d_002",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [8, 46, 46, 63],
+         "type": "float16",
+         "value_range": [[0, 100]],
+         "data_distribute" : "uniform",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [8, 46, 46, 63],
+         "type": "float16",
+         "name": "y1"
+       }
+     ],
+     "attr": [
+         {
+          "name": "split_dim",
+          "value": 3,
+          "type": "int"
+         },
+         {
+          "name": "num_split",
+          "value": 1,
+          "type": "int"
+         }
+     ]
   }
 ]
+
