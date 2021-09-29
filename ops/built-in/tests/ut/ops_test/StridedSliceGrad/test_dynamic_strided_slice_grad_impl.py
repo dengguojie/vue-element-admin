@@ -67,8 +67,21 @@ def test_op_check_supported_2(test_arg):
     if check_supported(shape, begin, end, strides, dy, output, new_axis_mask=3, shrink_axis_mask=3) == False:
         raise Exception("Failed to call check_supported in stridedslicegrad.")
 
+def test_op_check_supported_3(test_arg):
+    from impl.dynamic.strided_slice_grad import check_supported
+    shape = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    begin = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    end = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    strides = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16', "const_value": (1, 1, 1, 3)}
+    dy = {'ori_shape': (-1, -1, -1, -1), 'shape': (32, 32, 32, 256), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    output = {'ori_shape': (-1, -1, -1, -1), 'shape': (32, 32, 32, 768), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    if check_supported(shape, begin, end, strides, dy, output, new_axis_mask=0, shrink_axis_mask=0) == False:
+        raise Exception("Failed to call check_supported in stridedslicegrad.")
+
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_2)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_3)
 
 ut_case.add_case(["Ascend910A"],
                  gen_ssg_case((1, 300, 25), (2, 1), (5, 3), (1, 1), (1, 300, 2), "float16", "case_1",

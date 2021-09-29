@@ -29,6 +29,11 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
     """
     verify the types of cast supported by tbe
     """
+    strides_value = strides.get("const_value")
+    if strides_value:
+        for i in strides_value:
+            if i != 1:
+                return False, "strides has not 1 value."
     check_result = True, ""
 
     if (new_axis_mask != 0) or (shrink_axis_mask != 0 and

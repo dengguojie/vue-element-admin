@@ -1,0 +1,85 @@
+[
+    {
+        "op": "StridedSliceGrad",
+        "case_name": "test_strided_slice_grad_tiling_mode_001",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 300, 25],
+                "name": "shape"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [2, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [5, 3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1],
+                "name": "strides"
+            },
+            {
+                "format": "ND",
+                "shape": [-1, 300, 2],
+                "typical_shape": [1, 300, 2],
+                "shape_range": [[1, 1000000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "dy"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [1, 300, 25],
+                "type": "float16",
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 0,
+                "type": "int"
+            }
+        ]
+    }
+]
