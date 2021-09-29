@@ -5605,7 +5605,6 @@ class CceConvOp:
         _pragma_for_convbn()
         _handle_bias_align_init_compute_at()
         _handle_bias_compute_at()
-        _handle_reluv2_buffer_align()
 
         self._flag_dict["addrelu_flag"] = False
         if set_biasrelu_optim_flag():
