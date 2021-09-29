@@ -197,7 +197,7 @@ namespace optiling {
         }
 
         ge::Shape input_shape = op_paras.GetInputDesc(0).GetShape();
-        for (int64_t axis = 0; axis < input_shape.GetDimNum(); axis++) {
+        for (size_t axis = 0; axis < input_shape.GetDimNum(); axis++) {
             total_element_size *= input_shape.GetDim(axis);
         }
 

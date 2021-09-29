@@ -42,7 +42,7 @@ namespace optiling
     {
         int32_t numel = 1;
         auto length = tensor_shape.GetDimNum();
-        for (auto i = 0; i < length; i++)
+        for (size_t i = 0; i < length; i++)
         {
             numel *= tensor_shape.GetDim(i);
         }

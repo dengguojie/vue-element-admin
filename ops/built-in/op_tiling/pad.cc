@@ -314,7 +314,6 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
   // Get Const Input
   for (auto& item : const_params) {
     auto& name = item.first;
-    int index = item.second.first;
     auto& values = item.second.second;
     if (!GetConstValue(op_paras, name, values)) {
       VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "Get %s values failed", name.c_str());

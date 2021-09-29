@@ -74,7 +74,7 @@ bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, con
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstValue %s error!",axes_name.c_str()), return false);
     // clear reduce_axis_ori when shape of input axis is (0, )
     reduce_axis_ori.resize(values.size());
-    for (int i = 0; i < values.size(); i++) {
+    for (size_t i = 0; i < values.size(); i++) {
       reduce_axis_ori[i] = values[i];
     }
   } else {

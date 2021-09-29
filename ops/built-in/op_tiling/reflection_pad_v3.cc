@@ -271,7 +271,7 @@ bool ReflectionPadV3Tiling(const std::string& op_type, const TeOpParas& op_paras
   // change paddings format for onnx 9 version
   if (!padding_contiguous) {
       auto rank = input_shape_const.size();
-      for (auto i = 0; i < rank;  i++) {
+      for (size_t i = 0; i < rank;  i++) {
           paddings_const_values.push_back(paddings_const_values_origin[i]);
           paddings_const_values.push_back(paddings_const_values_origin[i + rank]);
       }

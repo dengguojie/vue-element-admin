@@ -77,7 +77,6 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const n
 
   for (auto& item : const_params) {
     auto& name = item.first;
-    int index = item.second.first;
     auto& values = item.second.second;
     if (!GetConstValue(opParas, name, values)) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get %s values failed", name.c_str());

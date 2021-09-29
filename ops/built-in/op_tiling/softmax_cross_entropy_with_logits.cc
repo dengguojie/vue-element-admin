@@ -74,11 +74,6 @@ bool WriteTilingData(const std::string& op_type,
 
   run_info.block_dim = tiling_info.block_nparts;
 
-  const int32_t& dim_var_0_0 = op_info["ori_shape"]["features_shape0"];
-  const int32_t& dim_var_0_1 = op_info["ori_shape"]["features_shape1"];
-  const int32_t& dim_var_1_0 = op_info["ori_shape"]["labels_shape0"];
-  const int32_t& dim_var_1_1 = op_info["ori_shape"]["labels_shape1"];
-
   int32_t tiling_key = static_cast<int32_t>(tiling_info.key);
   run_info.tiling_key = tiling_key;
 
@@ -167,7 +162,6 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
                 std::string& out_type,
                 std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGI("op [%s]: DoTiling func running", op_type.c_str());
-  bool need_multi_core = true;
   int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
   int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
   int32_t ub_axis = 0;
