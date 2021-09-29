@@ -3090,17 +3090,26 @@ VERIFY_FUNC_REG(Cummax, CummaxVerify);
 // ----------------Cummax END----------------------
 
 // ----------------InplaceUpdate-------------------
-IMPLEMT_COMMON_INFERFUNC(InplaceUpdateInferShape) {
-  auto output_desc = op.GetInputDesc("x");
-  auto output_shape_dims = output_desc.GetShape().GetDims();
-  Shape output_shape(output_shape_dims);
-  output_desc.SetShape(output_shape);
-
-  (void)op.UpdateOutputDesc("y", output_desc);
+IMPLEMT_VERIFIER(InplaceUpdate, InplaceUpdateVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x", "v")) {
+    std::string err_msg = OtherErrMsg("the dtype of x and v should be same!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_COMMON_INFERFUNC(InplaceUpdateInferShape) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {input_x_idx})) {
+    return GRAPH_SUCCESS;
+  }
+  VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("InplaceUpdate OneInOneOutDynamicInfer failed"));
+  return GRAPH_FAILED;
+}
 COMMON_INFER_FUNC_REG(InplaceUpdate, InplaceUpdateInferShape);
+VERIFY_FUNC_REG(InplaceUpdate, InplaceUpdateVerify);
 // ----------------InplaceUpdate END-------------------
 
 // ----------------InplaceUpdateD-------------------

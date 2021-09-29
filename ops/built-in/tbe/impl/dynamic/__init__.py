@@ -54,6 +54,7 @@ from .gather_v2 import gather_v2
 from .gather_elements import gather_elements
 from .max_pool_grad import max_pool_grad
 from .kl_div import kl_div
+from .inplace_update import inplace_update
 from .add_mat_mat_elements import add_mat_mat_elements
 from .tile_with_axis import tile_with_axis
 from .bias import bias
