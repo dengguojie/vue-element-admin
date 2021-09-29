@@ -180,6 +180,8 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
   std::map<string, uint32_t> input_name_id = {{"x", 0}, {"shape", 1}};
   sumNode->GetOpDesc()->UpdateInputName(input_name_id);
+  std::vector<string> dep_inputs = {"shape"};
+  sumNode->GetOpDesc()->SetOpInferDepends(dep_inputs);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceSumFusionPass fusion end");
 
