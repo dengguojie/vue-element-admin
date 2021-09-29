@@ -15,6 +15,8 @@
 # ============================================================================
 
 set -e
+#export http_proxy=http//$username:$escape_pass@${proxy:-proxy}.huawei.com:8080/
+#export https_proxy=$http_proxy
 export BASE_PATH=$(cd "$(dirname $0)"; pwd)
 export BUILD_PATH="${BASE_PATH}/build"
 RELEASE_PATH="${BASE_PATH}/output"
@@ -40,6 +42,8 @@ UT_VERSION="protoc,secure_c,c_sec,eigen,protobuf_static_build,external_protobuf,
 }
 
 create_lib(){
+  echo $dotted_line
+  echo "If you're in the yellow zone of Huawei.Method of proxy configuration. cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
   git submodule init &&git submodule update
   down_third_libs
   if [ ! -d "${CMAKE_HOST_PATH}" ];then
@@ -295,6 +299,7 @@ usage() {
   echo "    bash build.sh [-h] [-j[n]] [-u] [-s] [-v] [-g]"
   echo ""
   echo "If you are using it for the first time, it needs to be executed "
+  echo "If you're in the yellow zone of Huawei.Method of proxy configuration. cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
   echo "./build.sh --down_and_check_third_libs "
   echo "./build.sh --set_env_gitee or ./build.sh --set_env_ascend . These two commands can help you set environment variables automatically"
   echo "./build.sh --install_python_libs"
