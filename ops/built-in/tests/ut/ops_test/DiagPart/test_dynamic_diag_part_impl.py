@@ -25,9 +25,9 @@ case2 = {"params": [{"shape": (-1, -1), "dtype": "int32", "format": "ND", "ori_s
          "expect": "success",
          "support_expect": True}
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend710",
-                  "Ascend920", "HI3796CV300CS", "Hi3796CV300ES"], case1)
+                  "HI3796CV300CS", "Hi3796CV300ES"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend710",
-                  "Ascend920", "HI3796CV300CS", "Hi3796CV300ES"], case2)
+                  "HI3796CV300CS", "Hi3796CV300ES"], case2)
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend710",
-                 "Ascend920", "HI3796CV300CS", "Hi3796CV300ES"])
+                 "HI3796CV300CS", "Hi3796CV300ES"])
