@@ -399,9 +399,8 @@ class TilingSelection:
             seed_n_value = seed["B_shape"][1]
             seed_shape_info = (seed_m_value, seed_k_value, seed_n_value, seed_batch_value)
             if seed_shape_info not in gear_repo_shapes:
-                seed_range = self.op._get_gear_tiling_range(gear_repo_shapes, seed_shape_info)
                 seed["tiling"]["attach_same_to_static"] = True
-                candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
+                candidates[next(self.seed_cnt)] = self.op.get_repo_candidate(seed, target_area)
 
         for gear_shape in gear_repo_shapes:
             key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
@@ -492,11 +491,6 @@ class TilingSelection:
         if fuzzy_build:
             return self._calc_matmul_fuzzy(target_area)
 
-        def _correct_seed_range(seed_area):
-            # dynamic_mknb or dynamic_mkn only compare m, k, n value
-            funcs = (max, min, max, min, max, min)
-            return [func(ta, sa) for func, ta, sa in zip(funcs, range_area, seed_area)]
-
         range_area = tuple(target_area[0] + target_area[1] + target_area[2])
 
         compile_time = self.op._get_compile_time(target_area)
@@ -509,15 +503,7 @@ class TilingSelection:
 
         for seed in repo_seeds:
             seed["tiling"]["attach_same_to_static"] = False
-            seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
-            seed_n_value = seed["B_shape"][1]
-            seed_shape_info = [seed_m_value, seed_k_value, seed_n_value]
-            seed_range = self.op.get_tiling_range(seed["tiling"], seed_shape_info)
-            seed_range = _correct_seed_range(seed_range)
-            if self.op.dynamic_mode == "dynamic_mknb":
-                seed_range += target_area[3]
-                seed_shape_info += [seed_batch_value]
-            candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
+            candidates[next(self.seed_cnt)] = self.op.get_repo_candidate(seed, target_area)
 
         cost_cases = self._select_tiling_mkn(range_area, candidates)
         tiling_cases = [

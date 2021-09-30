@@ -756,6 +756,28 @@ class MatmulTiling(CubeTilingOp):
         perf_range = m_range + k_range + n_range
         return perf_range
 
+    def get_repo_candidate(self, seed, target_area):
+        """
+        updata repository with tiling range
+        """
+
+        def _correct_seed_range():
+            # dynamic_mknb or dynamic_mkn only compare m, k, n value
+            funcs = (max, min, max, min, max, min)
+            return [func(ta, sa) for func, ta, sa in zip(funcs, range_area, seed_range_ori)]
+
+        range_area = tuple(target_area[0] + target_area[1] + target_area[2])
+        seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
+        seed_n_value = seed["B_shape"][1]
+        seed_shape_info = [seed_m_value, seed_k_value, seed_n_value]
+        seed_range_ori = self.get_tiling_range(seed["tiling"], seed_shape_info)
+        seed_range = _correct_seed_range()
+        if self.dynamic_mode == "dynamic_mknb":
+            seed_range += target_area[3]
+            seed_shape_info += [seed_batch_value]
+        candidate = [seed_range, seed["tiling"], seed_shape_info]
+        return candidate
+
     def assembly_case(self, m_k_n_shape, tiling, coverage, cnt):
         """
         get the covered info of a tiling

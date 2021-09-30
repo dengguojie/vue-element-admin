@@ -124,6 +124,7 @@ def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=N
 
     return op_cal_info_in_json
 
+
 def base_op_select_format(src_fp16_flag):
     """
     provide dynamic format to FE(Base processing)
