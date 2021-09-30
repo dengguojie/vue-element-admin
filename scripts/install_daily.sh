@@ -72,6 +72,9 @@ download_run(){
     network_test $res_net $test_net_addr
     #<tr><td class="link"><a href="202107/" title="202107">202107/</a></td><td class="size">-</td><td class="date">2021-Jul-29 00:35</td></tr>
     month=`cat index.html  | grep title |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}'`
+    if [[ "$appoint_day" =~ "20" ]];then
+      month=${appoint_day:0:6}
+    fi
     rm -rf index.html
     
     eval net=$(echo ${net_addr}${month}/)

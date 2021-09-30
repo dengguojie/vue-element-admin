@@ -492,11 +492,15 @@ if(ENABLE_TEST STREQUAL "")
   target_include_directories(ops_all_plugin PRIVATE
     ${_ops_plugin_include}
   )
-
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O2)
+  endif()
   target_compile_options(ops_all_plugin PRIVATE
     "-fno-common"
     "-fno-strict-aliasing"
-    -O2
+    ${compile_opt_mode}
     -Werror
     -Wno-deprecated-declarations
     -Dgoogle=ascend_private

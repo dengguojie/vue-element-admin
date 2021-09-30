@@ -211,8 +211,13 @@ if(ENABLE_TEST STREQUAL "")
   target_include_directories(optiling PRIVATE
     ${_op_tiling_include}
   )
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O2)
+  endif()
   target_compile_options(optiling PRIVATE
-    -O2
+    ${compile_opt_mode}
     -Dgoogle=ascend_private
     # TODO: Fix warnings
     # -Werror

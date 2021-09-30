@@ -373,12 +373,16 @@ if(ENABLE_TEST STREQUAL "")
     $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:cce_headers>>
     ${_common_fusion_pass_dep}
   )
-
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O2)
+  endif()
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(ops_fusion_pass_aicore PRIVATE
     "-fno-strict-aliasing"
     "-fno-common"
-    -O2
+    ${compile_opt_mode}
     -Dgoogle=ascend_private
     # TODO: Fix warnings
     # -Werror
@@ -419,11 +423,15 @@ if(ENABLE_TEST STREQUAL "")
     $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:cce_headers>>
     ${_common_fusion_pass_dep}
   )
-
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O2)
+  endif()
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(ops_fusion_pass_vectorcore PRIVATE
     "-fno-strict-aliasing"
-    -O2
+    ${compile_opt_mode}
     -Werror
     -Wno-deprecated-declarations
     -Dgoogle=ascend_private
