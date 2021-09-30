@@ -75,7 +75,6 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   ge::GeTensorDesc inputTensorDesc = fusedDesc->GetInputDesc(xStaticIndex);
   DataType dataType = inputTensorDesc.GetDataType();
-
   // create the OpDescPtr for InnerProduct
   ge::OpDescPtr innerProductStaticDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
@@ -91,20 +90,34 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   ge::GeShape inputXShape(dimsInputXShape);
   inputTensorDesc.SetShape(inputXShape);
   innerProductStaticDesc->AddInputDesc("x", inputTensorDesc);
-
   ge::InDataAnchorPtr inputWAnchorPtr0 = fusedNode->GetInDataAnchor(wxStaticIndex);
   ge::OutDataAnchorPtr constAnchorPtr0 = inputWAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWNode = constAnchorPtr0->GetOwnerNode();
+  bool isExistSubGraph = false;
+
+  FUSION_PASS_CHECK(inputWNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "weights Wx node is null."),
+                    failStatus = true; return inputTensorDesc);
+  if (inputWNode->GetType() == "Data") {
+    ge::NodePtr parentNode = NodeUtils::GetParentInput(inputWNode);
+    isExistSubGraph = true;
+    inputWNode = parentNode;
+  }
+  FUSION_PASS_CHECK(inputWNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "weights Wx node is null."),
+                    failStatus = true; return inputTensorDesc);
   Operator constWxStaticOp = OpDescUtils::CreateOperatorFromNode(inputWNode);
   bool constAdjustFlag = false;
   vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(inputWNode);
-  if (weights.empty()) {
-    failStatus = true;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weights is null, fusion failed.");
-    return inputTensorDesc;
-  }
-  ge::GeTensorPtr inputWConstGeTensor = weights[0];
 
+  FUSION_PASS_CHECK(weights.empty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "LSTM weights is null, fusion failed."),
+                    failStatus = true; return inputTensorDesc);
+
+  ge::GeTensorPtr inputWConstGeTensor = weights[0];
   ge::GeTensorDesc inputWTensorDesc = inputWConstGeTensor->GetTensorDesc();
   constWxStaticOp.GetAttr("const_adjust_flag", constAdjustFlag);
   if (!constAdjustFlag) {
@@ -133,6 +146,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
     inputWTensorDesc.SetOriginShape(dimsInputWShape);
     inputWTensorDesc.SetFormat(ge::FORMAT_NCHW);
     inputWTensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
+
     fusedNode->GetInDataAnchor(wxStaticIndex)
       ->GetPeerOutAnchor()
       ->GetOwnerNode()
@@ -156,14 +170,20 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
     }
     inputWConstGeTensor->SetData(reinterpret_cast<uint8_t*>(wStaticPaddData.get()), (destWCol * destWRow) * sizeof(float));
   }
-
+  if (isExistSubGraph) {
+    ge::GeTensorDesc wxStaticTensorDesc = inputWConstGeTensor->GetTensorDesc();
+    fusedNode->GetInDataAnchor(wxStaticIndex)
+             ->GetPeerOutAnchor()
+             ->GetOwnerNode()
+             ->GetOpDesc()
+             ->UpdateOutputDesc(0, wxStaticTensorDesc);
+  }
   innerProductStaticDesc->AddInputDesc("w", inputWTensorDesc);
   inputWConstGeTensor->SetTensorDesc(inputWTensorDesc);
 
   // output todo shape   product output
   ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_NCHW, dataType);
   std::vector<int64_t> dimsY;
-
   dimsY.push_back(inputTensorDesc.GetShape().GetDim(0));
 
   dimsY.push_back(inputWTensorDesc.GetShape().GetDim(0));
@@ -217,17 +237,43 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
   ge::InDataAnchorPtr inputWxAnchorPtr0 = fusedNode->GetInDataAnchor(wxIndex);
   ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWxNode = constWxAnchorPtr0->GetOwnerNode();
+
+  bool isExistSubGraph = false;
+  FUSION_PASS_CHECK(inputWxNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "weights static node is null."),
+                    return nullptr);
+  if (inputWxNode->GetType() == "Data") {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Process weight data, the weight input is data.");
+    ge::NodePtr parentNode = NodeUtils::GetParentInput(inputWxNode);
+    FUSION_PASS_CHECK((parentNode == nullptr) || (parentNode->GetType() != "Const"),
+                       OP_LOGE(FUSED_OP_TYPE.c_str(), "weights static get parent node failed."),
+                       return nullptr);
+    isExistSubGraph = true;
+    inputWxNode = parentNode;
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Process weight data, get the parent node.");
+  }
+
   Operator constWxOp = OpDescUtils::CreateOperatorFromNode(inputWxNode);
   bool constAdjustFlag = false;
   vector<ge::GeTensorPtr> weightsWx = ge::OpDescUtils::MutableWeights(inputWxNode);
-  if (weightsWx.empty()) {
-    failStatus = true;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWx is null, fusion failed.");
-    return nullptr;
-  }
+
+  FUSION_PASS_CHECK(weightsWx.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weights Wx is null, fusion failed"),
+                    failStatus = true;
+                    return nullptr);
+
   ge::GeTensorPtr wxTensorPtr = weightsWx[0];
   constWxOp.GetAttr("const_adjust_flag", constAdjustFlag);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Judge the constAdjustFlag is true.");
   if (constAdjustFlag) {
+    if (isExistSubGraph) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Process weight data, update the weight data input desc.");
+      ge::GeTensorDesc wxhTensorDesc = wxTensorPtr->GetTensorDesc();
+      fusedNode->GetInDataAnchor(wxIndex)
+               ->GetPeerOutAnchor()
+               ->GetOwnerNode()
+               ->GetOpDesc()
+               ->UpdateOutputDesc(0, wxhTensorDesc);
+    }
     OP_LOGD(FUSED_OP_TYPE.c_str(), "LSTM const_adjust_flag is true, no need adjust again.");
     return wxTensorPtr;
   }
@@ -235,11 +281,10 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
   ge::OutDataAnchorPtr constWhAnchorPtr0 = inputWhAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWhNode = constWhAnchorPtr0->GetOwnerNode();
   vector<ge::GeTensorPtr> weightsWh = ge::OpDescUtils::MutableWeights(inputWhNode);
-  if (weightsWh.empty()) {
-    failStatus = true;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWh is null, fusion failed.");
-    return nullptr;
-  }
+  FUSION_PASS_CHECK(weightsWh.empty(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWh is null, fusion failed."),
+                    failStatus = true; return nullptr);
+
   ge::GeTensorPtr whTensorPtr = weightsWh[0];
 
   ge::GeTensorDesc wxConstTensorDesc = wxTensorPtr->GetTensorDesc();
@@ -279,7 +324,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
   fusedNode->GetInDataAnchor(wxIndex)->GetPeerOutAnchor()->GetOwnerNode()->GetOpDesc()->UpdateOutputDesc(0,
                                                                                                          wxhTensorDesc);
   wxTensorPtr->SetTensorDesc(wxhTensorDesc);
-
+  ge::GeTensorPtr weightTensor = nullptr;
   if (dataType == ge::DT_FLOAT16 || dataType == ge::DT_FLOAT) {
     unique_ptr<float[]> wxhPaddData(new (std::nothrow) float[targetRow * destWhCol]());
     float* wxData = (float*)wxTensorPtr->GetData().data();
@@ -315,8 +360,12 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
         }
       }
     }
-
-    wxTensorPtr->SetData(reinterpret_cast<uint8_t*>(wxhPaddData.get()), (targetRow * destWhCol) * sizeof(float));
+    FUSION_PASS_MAKE_SHARED((weightTensor = std::make_shared<GeTensor>(wxhTensorDesc,
+                                                                       reinterpret_cast<uint8_t*>(wxhPaddData.get()),
+                                                                       destWhCol * targetRow * sizeof(float))),
+                            weightTensor = nullptr;
+                            return weightTensor);
+    ge::AttrUtils::SetTensor(inputWxNode->GetOpDesc(), ge::ATTR_NAME_WEIGHTS, weightTensor);
     constWxOp.SetAttr("const_adjust_flag", true);
 
   } else {
@@ -325,7 +374,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
     failStatus = true;
   }
 
-  return wxTensorPtr;
+  return weightTensor;
 }
 
 vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge::ComputeGraph& graph,
@@ -642,15 +691,10 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::NodePtr dequantNode;
   ge::GeTensorDesc outInnerProductTensorDesc;
 
-  // check shape handle by dynamic_lstm_v2
   ge::GeTensorDesc wxDesc = fusedDesc->GetInputDesc(wxIndex);
   ge::GeShape wxShape = wxDesc.GetShape();
   ge::GeTensorDesc whDesc = fusedDesc->GetInputDesc(whIndex);
   ge::GeShape whShape = whDesc.GetShape();
-  if((wxShape.GetDim(1) % 16 == 0) && (whShape.GetDim(1) % 16 == 0)) {
-    return SUCCESS;
-  }
-  // end check shape handle by dynamic_lstm_v2
 
   bool failStatus = false;
   if (has_static) {
@@ -658,8 +702,8 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                                               failStatus, xStaticIndex, wxStaticIndex);
     FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessStatic:check failed, fusion failed."),
                       return PARAM_INVALID);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Finash process static data.");
   }
-
   // create the OpDescPtr for SplitVD x
   ge::GeTensorDesc inputTensorDesc0 = fusedDesc->GetInputDesc(0);
   int32_t numSplitX = inputTensorDesc0.GetShape().GetDim(0);
@@ -689,7 +733,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   outputDim0.push_back(nDim);
   outputDim0.push_back(outputDim);
   ge::GeShape outputShape(outputDim0);
-
   std::vector<int64_t> outputDim2;
   outputDim2.push_back(tSize);
   outputDim2.push_back(nDim);
@@ -706,7 +749,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   for (int64_t i = 0; i < numSplitX; i++) {
     spiltStaticDesc->AddOutputDesc("output_data" + std::to_string(i + 1), inputTensorDesc0);
   }
-
   std::vector<int64_t> sizeSplitsX = {};
   for (int64_t i = 0; i < numSplitX; i++) {
     sizeSplitsX.push_back(1);
@@ -724,6 +766,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
 
   // create the OpDescPtr for SplitVD cont
   ge::GeTensorDesc inputContTensorDesc = fusedDesc->GetInputDesc(1);
+
   int32_t numSplitCont = inputContTensorDesc.GetShape().GetDim(0);
   ge::OpDescPtr spiltContStaticDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
@@ -740,7 +783,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   for (int64_t i = 0; i < numSplitCont; i++) {
     spiltContStaticDesc->AddOutputDesc("output_data" + std::to_string(i + 1), splitInputDesc);
   }
-
   std::vector<int64_t> sizeSplitsCont = {};
   for (int64_t i = 0; i < numSplitCont; i++) {
     sizeSplitsCont.push_back(1);
@@ -756,12 +798,13 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", spiltContStaticDesc->GetName().c_str()),
       return PARAM_INVALID);
   newNodes.push_back(splitContNode);
-
   // process w_xh
   ge::GeTensorPtr wxTensorPtr = ProcessWxh(fusedNode, failStatus, wxIndex, whIndex, c0Index);
   FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessWxh:check failed, fusion failed."),
                     return FAILED);
-
+  FUSION_PASS_CHECK(wxTensorPtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wxTensorPtr fail."),
+                    return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Finash process weight data.");
   std::vector<int64_t> dimsTShape;
   int32_t hDim1 = (inputTensorDesc0.GetShape().GetDim(1) + 15) / 16 * 16;
   int32_t hDim2 = (outputDim + 15) / 16 * 16;
@@ -779,7 +822,11 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   vector<ge::NodePtr> lstmCellV2Node =
       ProcessLstmCellV2(fusedNode, graph, outInnerProductTensorDesc, wxTensorPtr->GetTensorDesc(), hTensorDesc,
                         newNodes, failStatus, biasIndex, has_static);
-
+  FUSION_PASS_CHECK(
+      lstmCellV2Node.empty(),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "basiclstm Op build failed."),
+      return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Finash build basiclstm op.");
   // create the OpDescPtr for concat
   ge::OpDescPtr concatStaticDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
@@ -808,7 +855,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   concatStaticDesc->AddOutputDesc("output_data", totalOutput);
   ge::AttrUtils::SetInt(concatStaticDesc, "concat_dim", 0);
   ge::AttrUtils::SetInt(concatStaticDesc, "N", numSplitX);
-
   // add the sub operators to the graph
   ge::NodePtr concatNode = graph.AddNode(concatStaticDesc);
   FUSION_PASS_CHECK(
@@ -817,7 +863,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       return PARAM_INVALID);
   newNodes.push_back(concatNode);
   string opType = GetPeerNodeOptype(fusedNode);
-
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Finash add concat node.");
   // process edge
   if (has_static) {
     // connect input0
@@ -855,7 +901,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
               fusedNode->GetName().c_str(), 0, dequantNode->GetName().c_str(), 0);
     }
   }
-
   FUSION_PASS_CHECK(
       SUCCESS !=
           ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(), splitXNode->GetInDataAnchor(0)),
@@ -915,7 +960,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       }
       index = index + 1;
     }
-
     if (i == 0 && expose_hidden) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(h0Index)->GetPeerOutAnchor(),
                                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
@@ -953,7 +997,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
               lstmCellV2Node[i - 1]->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0);
       index = index + 1;
     }
-
     // connect the wxh constOpNode
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(wxIndex)->GetPeerOutAnchor(),
@@ -964,7 +1007,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d].",
             fusedNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 1);
     index = index + 1;
-
     // concat node
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(lstmCellV2Node[i]->GetOutDataAnchor(0), concatNode->GetInDataAnchor(i)),
@@ -973,7 +1015,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
             concatNode->GetName().c_str(), 0, concatNode->GetName().c_str(), 0);
-
     // bias
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor(),
@@ -984,7 +1025,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
             fusedNode->GetName().c_str(), 0, fusedNode->GetName().c_str(), 0);
     index = index + 1;
-
     // w_xh_deqscale
     if (opType == "AscendQuant") {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(9)->GetPeerOutAnchor(),
@@ -998,7 +1038,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       index = index + 1;
     }
   }
-
   if (fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The fanout size of lstmNode is [%d].",
             fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
@@ -1013,7 +1052,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
               concatNode->GetName().c_str(), fusedNode->GetName().c_str());
     }
   }
-
   if (fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The fanout size of lstmNode is [%d].",
             fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size());
@@ -1029,7 +1067,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
               lstmCellV2Node[numSplitX - 1]->GetName().c_str(), fusedNode->GetName().c_str());
     }
   }
-
   if (fusedNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The fanout size of lstmNode is [%d].",
             fusedNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().size());
@@ -1045,7 +1082,6 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
               lstmCellV2Node[numSplitX - 1]->GetName().c_str(), fusedNode->GetName().c_str());
     }
   }
-
   // unlink all control input of LSTMD
   if (fusedNode->GetInControlAnchor() != nullptr) {
     fusedNode->GetInControlAnchor()->UnlinkAll();
