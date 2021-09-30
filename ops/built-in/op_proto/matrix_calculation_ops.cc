@@ -2326,17 +2326,13 @@ COMMON_INFER_FUNC_REG(L2Loss, L2LossInferShape);
 // ----------------DiagPart-------------------
 IMPLEMT_COMMON_INFERFUNC(DiagPartInferShape) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (op_desc == nullptr) {
-    std::string err_msg = GetInputInvalidErrMsg("op_desc");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
+  CHECK(op_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DiagPart", GetInputInvalidErrMsg("op_desc")),
+        return GRAPH_FAILED);
   ge::ConstGeTensorDescPtr input_x_desc = op_desc->GetInputDescPtr(0);
-  if (input_x_desc == nullptr) {
-    std::string err_msg = GetInputInvalidErrMsg("x");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
+  CHECK(input_x_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DiagPart", GetInputInvalidErrMsg("x")),
+        return GRAPH_FAILED);
   const GeShape &input_shape = input_x_desc->GetShape();
   int64_t output_shape_len = input_shape.GetDimNum() / 2;
   ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
@@ -2347,14 +2343,14 @@ IMPLEMT_COMMON_INFERFUNC(DiagPartInferShape) {
     output_desc->SetShape(input_shape);
   }else {
     output_shape.SetDimNum(output_shape_len);
-    for (size_t i = 0; i < output_shape_len; i++) {
+    for (int64_t i = 0; i < output_shape_len; i++) {
       output_shape.SetDim(i, input_shape.GetDim(i));
     }
   }
   if (input_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> shape_range;
     input_x_desc->GetShapeRange(shape_range);
-    for (int i = 0; i < shape_range.size(); i++) {
+    for (unsigned i = 0; i < shape_range.size(); i++) {
       if (shape_range[i].first > 0) {
         shape_range[i].first = shape_range[i].first;
       }

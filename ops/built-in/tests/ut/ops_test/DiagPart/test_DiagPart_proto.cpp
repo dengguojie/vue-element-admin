@@ -55,7 +55,7 @@ TEST_F(DiagPart, diag_part_infer_shape_fp16) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {
-      {4, 4096},
+    {4, 4096},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
