@@ -33,13 +33,17 @@
 namespace optiling {
 // Mode0 support all case
 const int64_t TILING_MODE_0 = 0;
+// use 8 cores all time
+const int64_t BLOCKDIM = 8;
 
 struct LRUCacheV2CompileParams {
-  int64_t core_num;
+  int64_t set_num;
+  int64_t time_stamp_wsp_size;
+  int64_t miss_index_bytes;
   std::string op_type;
 };
 
-struct LRUCacheV2TilingParams { 
+struct LRUCacheV2TilingParams {
   int64_t tiling_key;
   // input dim num
   int64_t tiling_index_list_len;
@@ -53,11 +57,21 @@ void InitRunningParams(LRUCacheV2TilingParams& params) {
 static bool GetLRUCacheV2CompileParams(const nlohmann::json& compile_info, LRUCacheV2CompileParams& compile_params) {
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
+  if (allVars.count("set_num") == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get set_num error");
     return false;
   }
-  compile_params.core_num = allVars["core_num"].get<std::int64_t>();
+  if (allVars.count("time_stamp_wsp_size") == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get time_stamp_wsp_size error");
+    return false;
+  }
+  if (allVars.count("miss_index_bytes") == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get miss_index_bytes error");
+    return false;
+  }
+  compile_params.set_num = allVars["set_num"].get<std::int64_t>();
+  compile_params.time_stamp_wsp_size = allVars["time_stamp_wsp_size"].get<std::int64_t>();
+  compile_params.miss_index_bytes = allVars["miss_index_bytes"].get<std::int64_t>();
   return true;
 }
 
@@ -137,7 +151,14 @@ bool LRUCacheV2Tiling(const std::string& op_type, const ge::Operator& op_paras, 
   GetTilingParam(input_shape, compile_params, run_params);
   SetRuningParams(run_params, run_info);
   PrintTilingParams(run_params, op_type);
-  run_info.SetBlockDim(compile_params.core_num);
+  run_info.SetBlockDim(BLOCKDIM);
+  //add miss_index workspace size
+  auto miss_index_wsp_size = run_params.tiling_index_list_len*compile_params.set_num*compile_params.miss_index_bytes;
+  run_info.AddWorkspace(miss_index_wsp_size);
+  //add time_stamp workspace size
+  run_info.AddWorkspace(compile_params.time_stamp_wsp_size);
+  OP_LOGD(op_type, "miss_index workspace size=%ld.", miss_index_wsp_size);
+  OP_LOGD(op_type, "time_stamp workspace size=%ld.", compile_params.time_stamp_wsp_size);
   PROFILING_TILING_END();
   OP_LOGI(op_type, "end to run tiling, success!");
 

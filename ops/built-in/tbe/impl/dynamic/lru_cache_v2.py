@@ -105,8 +105,9 @@ class LRU(OpBase):
         self.remain_ub_size = self.total_ub - self.index_list_size
         self.tag_set_nums_per_loop = 0
         self.tag_rate_int32 = tbe_platform.get_bit_len(self.tag_dtype) // 32
-        self.index_list_bytes = tbe_platform.get_bit_len(self.index_list_dtype) // 8
-        self.time_stamp_bytes = tbe_platform.get_bit_len(self.time_stamp_dtype) // 8
+        self.index_list_bytes = tbe_platform.get_bit_len(self.index_list_dtype) // BYTE_BITS
+        self.time_stamp_bytes = tbe_platform.get_bit_len(self.time_stamp_dtype) // BYTE_BITS
+        self.tag_bytes = tbe_platform.get_bit_len(self.tag_dtype) // BYTE_BITS
         # The number of elements to be calculated in each loop
         self.vector_mask_max = 0
         self.blk_stride = 0
@@ -320,7 +321,9 @@ class LRU(OpBase):
                         self.index_list_process_each_loop(self.index_list_offset, index_list_len, core_id)
                     self.after_process(core_id)
         wr_compile_info = dict()
-        wr_compile_info["core_num"] = self.aicore_num
+        wr_compile_info["set_num"] = self.set_number
+        wr_compile_info["time_stamp_wsp_size"] = self.time_stamp_bytes * (self.set_number * self.way_number + 1)
+        wr_compile_info["miss_index_bytes"] = self.tag_bytes
         tbe_context.get_context().add_compile_info("global_variable_link", True)
         tbe_context.get_context().add_compile_info("vars", wr_compile_info)
         self.op_build_cce()
