@@ -32,7 +32,10 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
   bool CheckFormatOfTransData(const ge::NodePtr node_ptr_transdata, const string& expect_src_format,
                               const string& expect_dst_format);
+  bool IsAligned();
+  bool IsLinkRelationshipCorrect();
   bool IsNumOfNodesCorrect(const ge::ComputeGraph& graph);
+  bool IsStaticShape();
   bool NeedFusion(const ge::ComputeGraph& graph);
   vector<FusionPattern*> DefinePatterns() override;
   void RestoreOriginalValues();

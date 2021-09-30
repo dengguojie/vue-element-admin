@@ -18,6 +18,7 @@
  * \file a_a_matmul_nd_to_nd_fusion_pass.cc
  * \brief
  * support dtype: float16
+ * unsupported scene: cube_vector_split; one of m,k,n is not divisible by 16(float16)
  * Data(ND)         Data(ND)   Data(ND,optional)                 Data(ND)         Data(ND)   Data(ND,optional)
  *     \              /          /                                   \                /        /
  *   TransData   TransData      /                                     \              /        /
@@ -33,6 +34,7 @@
 #include <string>
 #include <vector>
 
+#include "common/util/platform_info.h"
 #include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
@@ -42,6 +44,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 namespace fe {
 
@@ -59,24 +62,26 @@ static const string kFormatNd = "ND";
 static const string kFormatFractalNz = "FRACTAL_NZ";
 
 static const int kNumDataNodes = 2;
+static const int kNumAlignHalf = 16;
+static const int kRIdxLast = -1;
+static const int kRIdxLastSecond = -2;
 
 static const vector<string> whitelist_op_type = {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul,
                                                  kOpTypeBatchMatMulV2};
 
 vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern(AAMatMulNzToNdFusionPass::kNameFusionPass);
-  FUSION_PASS_CHECK(
-      (pattern == nullptr),
-      OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "pattern is nullptr, Create pattern not success!"),
-      return patterns);
+  FusionPattern* pattern = new (std::nothrow) FusionPattern(kNameFusionPass);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    OP_LOGW(kNameFusionPass.c_str(), "pattern is nullptr, Create pattern not success!"),
+                    return patterns);
 
-  OP_LOGD(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Start to define pattern.");
+  OP_LOGD(kNameFusionPass.c_str(), "Start to define pattern.");
 
   pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
       .SetOutput(kDescMatMul);
   patterns.push_back(pattern);
-  OP_LOGD(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "End to define pattern.");
+  OP_LOGD(kNameFusionPass.c_str(), "End to define pattern.");
   return patterns;
 }
 
@@ -85,12 +90,10 @@ bool AAMatMulNzToNdFusionPass::CheckFormatOfTransData(const NodePtr node_ptr_tra
   string src_format;
   string dst_format;
   FUSION_PASS_CHECK(!AttrUtils::GetStr(node_ptr_transdata->GetOpDesc(), "src_format", src_format),
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Unable to get the attribute src_format from TransData."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Unable to get the attribute src_format from TransData."),
                     return false);
   FUSION_PASS_CHECK(!AttrUtils::GetStr(node_ptr_transdata->GetOpDesc(), "dst_format", dst_format),
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Unable to get the attribute dst_format from TransData."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Unable to get the attribute dst_format from TransData."),
                     return false);
   if (src_format != expect_src_format || dst_format != expect_dst_format) {
     return false;
@@ -122,71 +125,108 @@ bool AAMatMulNzToNdFusionPass::IsNumOfNodesCorrect(const ge::ComputeGraph& graph
   return true;
 }
 
-bool AAMatMulNzToNdFusionPass::NeedFusion(const ge::ComputeGraph& graph) {
-  if (!IsNumOfNodesCorrect(graph)) {
-    return false;
+bool AAMatMulNzToNdFusionPass::IsStaticShape() {
+  return !HasUnKnowShape(node_ptr_data_0) && !HasUnKnowShape(node_ptr_data_1);
+}
+
+bool AAMatMulNzToNdFusionPass::IsAligned() {
+  auto shape_data_0 = node_ptr_data_0->GetOpDesc()->MutableOutputDesc(0)->GetShape();
+  auto shape_data_1 = node_ptr_data_1->GetOpDesc()->MutableOutputDesc(0)->GetShape();
+
+  auto len_shape_data_0 = shape_data_0.GetDimNum();
+  auto len_shape_data_1 = shape_data_1.GetDimNum();
+
+  if (shape_data_0.GetDim(len_shape_data_0 + kRIdxLast) % kNumAlignHalf == 0 &&
+      shape_data_0.GetDim(len_shape_data_0 + kRIdxLastSecond) % kNumAlignHalf == 0 &&
+      shape_data_1.GetDim(len_shape_data_1 + kRIdxLast) % kNumAlignHalf == 0 &&
+      shape_data_1.GetDim(len_shape_data_1 + kRIdxLastSecond) % kNumAlignHalf == 0) {
+    return true;
   }
 
-  FUSION_PASS_CHECK(
-      (node_ptr_matmul->GetOutDataNodes().size() != 1),
-      OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "MatMul node should only have 1 output, actual %zu.",
-              node_ptr_matmul->GetOutDataNodes().size()),
-      return false);
+  return false;
+}
+
+bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect() {
+  FUSION_PASS_CHECK((node_ptr_matmul->GetOutDataNodes().size() != 1),
+                    OP_LOGW(kNameFusionPass.c_str(), "MatMul node should only have 1 output, actual %zu.",
+                            node_ptr_matmul->GetOutDataNodes().size()),
+                    return false);
   node_ptr_transdata_out = node_ptr_matmul->GetOutDataNodes().at(0);
-  if (node_ptr_transdata_out->GetType() != kOpTypeTransData ||
-      !CheckFormatOfTransData(node_ptr_transdata_out, kFormatFractalNz, kFormatNd)) {
-    return false;
-  }
-  FUSION_PASS_CHECK((node_ptr_transdata_out->GetOutDataNodes().size() != 1),
-                    OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "TransData after MatMul node should only have 1 output, actual %zu.",
-                            node_ptr_transdata_out->GetOutDataNodes().size()),
-                    return false);
-  node_ptr_netoutput = node_ptr_transdata_out->GetOutDataNodes().at(0);
-  if (node_ptr_netoutput->GetType() != kOpTypeNetOutput) {
-    return false;
-  }
+  FUSION_PASS_CHECK(node_ptr_transdata_out->GetType() != kOpTypeTransData ||
+                        !CheckFormatOfTransData(node_ptr_transdata_out, kFormatFractalNz, kFormatNd),
+                    OP_LOGW(kNameFusionPass.c_str(), "TransData operator after MatMul does not match."), return false);
 
   FUSION_PASS_CHECK(
-      node_ptr_matmul->GetInDataNodes().size() < kNumDataNodes,
-      OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-              "MatMul node should have at least 2 inputs, actual %zu.", node_ptr_matmul->GetInDataNodes().size()),
+      node_ptr_transdata_out->GetOutDataNodes().size() != 1,
+      OP_LOGW(kNameFusionPass.c_str(), "TransData after MatMul node should only have 1 output, actual %zu.",
+              node_ptr_transdata_out->GetOutDataNodes().size()),
       return false);
-  node_ptr_transdata_0 = node_ptr_matmul->GetInDataNodes().at(0);
-  if (node_ptr_transdata_0->GetType() != kOpTypeTransData ||
-      !CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz)) {
-    return false;
-  }
-  FUSION_PASS_CHECK(node_ptr_transdata_0->GetInDataNodes().size() != 1,
-                    OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "TransData(idx:0) before MatMul node should only have 1 input, actual %zu.",
-                            node_ptr_transdata_0->GetInDataNodes().size()),
+  node_ptr_netoutput = node_ptr_transdata_out->GetOutDataNodes().at(0);
+  FUSION_PASS_CHECK(node_ptr_netoutput->GetType() != kOpTypeNetOutput,
+                    OP_LOGW(kNameFusionPass.c_str(), "The NetOutput operator does not match."), return false);
+
+  FUSION_PASS_CHECK(node_ptr_matmul->GetInDataNodes().size() < kNumDataNodes,
+                    OP_LOGW(kNameFusionPass.c_str(), "MatMul node should have at least 2 inputs, actual %zu.",
+                            node_ptr_matmul->GetInDataNodes().size()),
                     return false);
+  node_ptr_transdata_0 = node_ptr_matmul->GetInDataNodes().at(0);
+  FUSION_PASS_CHECK(node_ptr_transdata_0->GetType() != kOpTypeTransData ||
+                        !CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz),
+                    OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:0) before MatMul node does not match."),
+                    return false);
+  FUSION_PASS_CHECK(
+      node_ptr_transdata_0->GetInDataNodes().size() != 1,
+      OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:0) before MatMul node should only have 1 input, actual %zu.",
+              node_ptr_transdata_0->GetInDataNodes().size()),
+      return false);
   node_ptr_data_0 = node_ptr_transdata_0->GetInDataNodes().at(0);
-  if (node_ptr_data_0->GetType() != kOpTypeData) {
-    return false;
-  }
+  FUSION_PASS_CHECK(node_ptr_data_0->GetType() != kOpTypeData,
+                    OP_LOGW(kNameFusionPass.c_str(), "Data(idx:0) before Matmul node does not match."), return false);
 
   node_ptr_transdata_1 = node_ptr_matmul->GetInDataNodes().at(1);
-  if (node_ptr_transdata_1->GetType() != kOpTypeTransData ||
-      !CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz)) {
-    return false;
-  }
-  FUSION_PASS_CHECK(node_ptr_transdata_1->GetInDataNodes().size() != 1,
-                    OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "TransData(idx:1) before MatMul node should only have 1 input, actual %zu.",
-                            node_ptr_transdata_1->GetInDataNodes().size()),
+  FUSION_PASS_CHECK(node_ptr_transdata_1->GetType() != kOpTypeTransData ||
+                        !CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz),
+                    OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:1) before Matmul node does not match."),
                     return false);
+  FUSION_PASS_CHECK(
+      node_ptr_transdata_1->GetInDataNodes().size() != 1,
+      OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:1) before MatMul node should only have 1 input, actual %zu.",
+              node_ptr_transdata_1->GetInDataNodes().size()),
+      return false);
   node_ptr_data_1 = node_ptr_transdata_1->GetInDataNodes().at(0);
-  if (node_ptr_data_1->GetType() != kOpTypeData) {
-    return false;
-  }
+  FUSION_PASS_CHECK(node_ptr_data_1->GetType() != kOpTypeData,
+                    OP_LOGW(kNameFusionPass.c_str(), "Data(idx:1) before Matmul node does not match."), return false);
+
+  return true;
+}
+
+bool AAMatMulNzToNdFusionPass::NeedFusion(const ge::ComputeGraph& graph) {
+  // Not support: cube_vector_split
+  PlatformInfo platform_info;
+  OptionalInfo opti_compilation_info;
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
+      OP_LOGE(kNameFusionPass.c_str(), "Get platform_info failed."), return false);
+  bool cube_vector_split_flag = platform_info.ai_core_spec.cube_vector_split;
+  FUSION_PASS_CHECK(cube_vector_split_flag,
+                    OP_LOGW(kNameFusionPass.c_str(), "Scenario where cube and vector are separated is not supported."),
+                    return false);
+
+  FUSION_PASS_CHECK(!IsNumOfNodesCorrect(graph),
+                    OP_LOGW(kNameFusionPass.c_str(), "The number of nodes does not meet expectations."), return false);
+
+  FUSION_PASS_CHECK(!IsLinkRelationshipCorrect(),
+                    OP_LOGW(kNameFusionPass.c_str(), "The connection relationship does not meet expectations."),
+                    return false);
 
   FUSION_PASS_CHECK(node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->GetDataType() != DT_FLOAT16 ||
                         node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->GetDataType() != DT_FLOAT16 ||
                         node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->GetDataType() != DT_FLOAT16,
-                    OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Only support input and output data types as float16."),
+                    OP_LOGW(kNameFusionPass.c_str(), "Only support input and output data types as float16."),
+                    return false);
+
+  FUSION_PASS_CHECK(IsStaticShape() && !IsAligned(),
+                    OP_LOGW(kNameFusionPass.c_str(), "Static shape and unaligned scenes are not supported."),
                     return false);
 
   return true;
@@ -199,18 +239,13 @@ void AAMatMulNzToNdFusionPass::RestoreOriginalValues() {
 
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShapeRange(in_range_matmul_0) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-              "Failed to restore first input shape range of matmul."),
-      return );
+      OP_LOGE(kNameFusionPass.c_str(), "Failed to restore first input shape range of matmul."), return );
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShapeRange(in_range_matmul_1) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-              "Failed to restore second input shape range of matmul."),
-      return );
+      OP_LOGE(kNameFusionPass.c_str(), "Failed to restore second input shape range of matmul."), return );
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->SetShapeRange(out_range_matmul_0) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to restore output shape range of matmul."),
-      return );
+      OP_LOGE(kNameFusionPass.c_str(), "Failed to restore output shape range of matmul."), return );
 
   node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetFormat(FORMAT_FRACTAL_NZ);
   node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetFormat(FORMAT_FRACTAL_NZ);
@@ -224,56 +259,47 @@ Status AAMatMulNzToNdFusionPass::DoFusion(ge::ComputeGraph& graph) {
   out_shape_matmul_0 = node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->GetShape();
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->GetShapeRange(in_range_matmul_0) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to get first input shape range of matmul."),
-      return fe::FAILED);
+      OP_LOGE(kNameFusionPass.c_str(), "Failed to get first input shape range of matmul."), return fe::FAILED);
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->GetShapeRange(in_range_matmul_1) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to get second input shape range of matmul."),
-      return fe::FAILED);
+      OP_LOGE(kNameFusionPass.c_str(), "Failed to get second input shape range of matmul."), return fe::FAILED);
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->GetShapeRange(out_range_matmul_0) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to get output shape range of matmul."),
-      return fe::FAILED);
+      OP_LOGE(kNameFusionPass.c_str(), "Failed to get output shape range of matmul."), return fe::FAILED);
 
   // step1: update shape, range, format
   vector<pair<int64_t, int64_t>> range_data_0;
   auto out_desc_data_0 = node_ptr_data_0->GetOpDesc()->MutableOutputDesc(0);
   node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShape(out_desc_data_0->GetShape());
   FUSION_PASS_CHECK(out_desc_data_0->GetShapeRange(range_data_0) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to get shape range of data0."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to get shape range of data0."), RestoreOriginalValues();
+                    return fe::FAILED);
+  FUSION_PASS_CHECK(node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShapeRange(range_data_0) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to set first shape range of MatMul."),
                     RestoreOriginalValues();
                     return fe::FAILED);
-  FUSION_PASS_CHECK(
-      node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShapeRange(range_data_0) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to set first shape range of MatMul."),
-      RestoreOriginalValues();
-      return fe::FAILED);
 
   vector<pair<int64_t, int64_t>> range_data_1;
   auto out_desc_data_1 = node_ptr_data_1->GetOpDesc()->MutableOutputDesc(0);
   node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShape(out_desc_data_1->GetShape());
   FUSION_PASS_CHECK(out_desc_data_1->GetShapeRange(range_data_1) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to get shape range of data1."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to get shape range of data1."), RestoreOriginalValues();
+                    return fe::FAILED);
+  FUSION_PASS_CHECK(node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShapeRange(range_data_1) == ge::GRAPH_FAILED,
+                    OP_LOGW(kNameFusionPass.c_str(), "Failed to set second shape range of MatMul."),
                     RestoreOriginalValues();
                     return fe::FAILED);
-  FUSION_PASS_CHECK(
-      node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShapeRange(range_data_1) == ge::GRAPH_FAILED,
-      OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to set second shape range of MatMul."),
-      RestoreOriginalValues();
-      return fe::FAILED);
 
   vector<pair<int64_t, int64_t>> range_netoutput;
   auto out_desc_netoutput = node_ptr_netoutput->GetOpDesc()->MutableInputDesc(0);
   node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->SetShape(out_desc_netoutput->GetShape());
-  FUSION_PASS_CHECK(
-      out_desc_netoutput->GetShapeRange(range_netoutput) == ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to get shape range of NetOutput."),
-      RestoreOriginalValues();
-      return fe::FAILED);
+  FUSION_PASS_CHECK(out_desc_netoutput->GetShapeRange(range_netoutput) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to get shape range of NetOutput."),
+                    RestoreOriginalValues();
+                    return fe::FAILED);
   FUSION_PASS_CHECK(
       node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->SetShapeRange(range_netoutput) == ge::GRAPH_FAILED,
-      OP_LOGW(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to set output shape range of MatMul."),
-      RestoreOriginalValues();
+      OP_LOGW(kNameFusionPass.c_str(), "Failed to set output shape range of MatMul."), RestoreOriginalValues();
       return fe::FAILED);
 
   node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetFormat(FORMAT_ND);
@@ -281,75 +307,63 @@ Status AAMatMulNzToNdFusionPass::DoFusion(ge::ComputeGraph& graph) {
   node_ptr_matmul->GetOpDesc()->MutableOutputDesc(0)->SetFormat(FORMAT_ND);
 
   // step2: relink
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::RemoveEdge(node_ptr_data_0->GetOutDataAnchor(0), node_ptr_transdata_0->GetInDataAnchor(0)) ==
-          ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to remove edge between data0 and transdata0."),
-      RestoreOriginalValues();
-      return fe::FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_data_0->GetOutDataAnchor(0),
+                                               node_ptr_transdata_0->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove edge between data0 and transdata0."),
+                    RestoreOriginalValues();
+                    return fe::FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_0->GetOutDataAnchor(0),
                                                node_ptr_matmul->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Failed to remove edge between transdata0 and matmul."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove edge between transdata0 and matmul."),
                     RestoreOriginalValues();
                     return fe::FAILED);
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(node_ptr_data_0->GetOutDataAnchor(0), node_ptr_matmul->GetInDataAnchor(0)) ==
-          ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to add edge between data0 and matmul."),
-      RestoreOriginalValues();
-      return fe::FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_data_0->GetOutDataAnchor(0),
+                                            node_ptr_matmul->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to add edge between data0 and matmul."),
+                    RestoreOriginalValues();
+                    return fe::FAILED);
 
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::RemoveEdge(node_ptr_data_1->GetOutDataAnchor(0), node_ptr_transdata_1->GetInDataAnchor(0)) ==
-          ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to remove edge between data1 and transdata1."),
-      RestoreOriginalValues();
-      return fe::FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_data_1->GetOutDataAnchor(0),
+                                               node_ptr_transdata_1->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove edge between data1 and transdata1."),
+                    RestoreOriginalValues();
+                    return fe::FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_1->GetOutDataAnchor(0),
                                                node_ptr_matmul->GetInDataAnchor(1)) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Failed to remove edge between transdata1 and matmul."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove edge between transdata1 and matmul."),
                     RestoreOriginalValues();
                     return fe::FAILED);
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(node_ptr_data_1->GetOutDataAnchor(0), node_ptr_matmul->GetInDataAnchor(1)) ==
-          ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to add edge between data1 and matmul."),
-      RestoreOriginalValues();
-      return fe::FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_data_1->GetOutDataAnchor(0),
+                                            node_ptr_matmul->GetInDataAnchor(1)) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to add edge between data1 and matmul."),
+                    RestoreOriginalValues();
+                    return fe::FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_matmul->GetOutDataAnchor(0),
                                                node_ptr_transdata_out->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Failed to remove edge between matmul and transdata_out."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove edge between matmul and transdata_out."),
                     RestoreOriginalValues();
                     return fe::FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_out->GetOutDataAnchor(0),
                                                node_ptr_netoutput->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(),
-                            "Failed to remove edge between transdata_out and netoutput."),
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove edge between transdata_out and netoutput."),
                     RestoreOriginalValues();
                     return fe::FAILED);
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(node_ptr_matmul->GetOutDataAnchor(0), node_ptr_netoutput->GetInDataAnchor(0)) ==
-          ge::GRAPH_FAILED,
-      OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to add edge between matmul and netoutput."),
-      RestoreOriginalValues();
-      return fe::FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_matmul->GetOutDataAnchor(0),
+                                            node_ptr_netoutput->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to add edge between matmul and netoutput."),
+                    RestoreOriginalValues();
+                    return fe::FAILED);
 
   // step3: remove transdata
   FUSION_PASS_CHECK(graph.RemoveNode(node_ptr_transdata_0) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to remove transdata0."),
-                    RestoreOriginalValues();
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove transdata0."), RestoreOriginalValues();
                     return fe::FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(node_ptr_transdata_1) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to remove transdata1."),
-                    RestoreOriginalValues();
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove transdata1."), RestoreOriginalValues();
                     return fe::FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(node_ptr_transdata_out) == ge::GRAPH_FAILED,
-                    OP_LOGE(AAMatMulNzToNdFusionPass::kNameFusionPass.c_str(), "Failed to remove transdata_out."),
-                    RestoreOriginalValues();
+                    OP_LOGE(kNameFusionPass.c_str(), "Failed to remove transdata_out."), RestoreOriginalValues();
                     return fe::FAILED);
 
   return fe::SUCCESS;

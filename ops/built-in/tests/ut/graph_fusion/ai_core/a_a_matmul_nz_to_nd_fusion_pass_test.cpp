@@ -11,7 +11,7 @@
 #define protected public
 #include "fusion_pass_test_utils.h"
 #include "fusion_pass_test_slice_utils.h"
-
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -39,6 +39,34 @@ protected:
     ge::GeTensorDesc desc_##name(shape_out, format_out, dtype); \
     desc_##name.SetOriginFormat(format_in);                \
     desc_##name.SetOriginShape(shape_in)
+
+void SetCubeVectorSplit() {
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.ai_core_spec.cube_vector_split = true;
+    opti_compilation_info.soc_version = "soc_version";
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+}
+
+void UnsetCubeVectorSplit() {
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.ai_core_spec.cube_vector_split = false;
+    opti_compilation_info.soc_version = "soc_version";
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+}
+
+bool ExecuteCorrectly(ge::ComputeGraphPtr compute_graph_ptr) {
+    bool res = true;
+    for (auto node : compute_graph_ptr->GetAllNodes()) {
+      if (node->GetType() == "TransData") {
+        res = false;
+      }
+    }
+    return res;
+}
 
 TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, batchmatmul_without_bias) {
     ge::Graph graph("batchmatmul_without_bias");
@@ -98,14 +126,17 @@ TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, batchmatmul_without_bias) {
     ge::GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), trans_c_node->GetInDataAnchor(0));
     ge::GraphUtils::AddEdge(trans_c_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
 
-    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-    bool res = true;
-    for (auto node : compute_graph_ptr->GetAllNodes()) {
-      if (node->GetType() == "TransData") {
-        res = false;
-      }
-    }
-    EXPECT_EQ(res, true);
+    SetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), false);
+
+    UnsetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), true);
 }
 
 TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, matmul_without_bias) {
@@ -166,14 +197,15 @@ TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, matmul_without_bias) {
     ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), trans_c_node->GetInDataAnchor(0));
     ge::GraphUtils::AddEdge(trans_c_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
 
-    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-    bool res = true;
-    for (auto node : compute_graph_ptr->GetAllNodes()) {
-      if (node->GetType() == "TransData") {
-        res = false;
-      }
-    }
-    EXPECT_EQ(res, true);
+    SetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), false);
+
+    UnsetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), true);
 }
 
 TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, batchmatmul_v2_without_bias) {
@@ -234,14 +266,15 @@ TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, batchmatmul_v2_without_bias) {
     ge::GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), trans_c_node->GetInDataAnchor(0));
     ge::GraphUtils::AddEdge(trans_c_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
 
-    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-    bool res = true;
-    for (auto node : compute_graph_ptr->GetAllNodes()) {
-      if (node->GetType() == "TransData") {
-        res = false;
-      }
-    }
-    EXPECT_EQ(res, true);
+    SetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), false);
+
+    UnsetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), true);
 }
 
 TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, matmul_v2_without_bias) {
@@ -302,12 +335,13 @@ TEST_F(a_a_matmul_nz_to_nd_fusion_pass_test, matmul_v2_without_bias) {
     ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), trans_c_node->GetInDataAnchor(0));
     ge::GraphUtils::AddEdge(trans_c_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
 
-    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-    bool res = true;
-    for (auto node : compute_graph_ptr->GetAllNodes()) {
-      if (node->GetType() == "TransData") {
-        res = false;
-      }
-    }
-    EXPECT_EQ(res, true);
+    SetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), false);
+
+    UnsetCubeVectorSplit();
+    fe::FusionPassTestUtils::RunGraphFusionPass("AAMatMulNzToNdFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+    EXPECT_EQ(ExecuteCorrectly(compute_graph_ptr), true);
 }
