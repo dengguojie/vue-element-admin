@@ -872,7 +872,7 @@ void Broadcast::CheckUpdateUbTiling() {
 
 void Broadcast::CalcKey() {
   int64_t base_key = 0;
-  int64_t doubleBufferKey = 10000;
+  const int64_t doubleBufferKey = 10000;
   if (s_pattern != Pattern::ORIGINAL) {
     base_key = 200000000 + static_cast<int64_t>(s_pattern) * 100000;
   }

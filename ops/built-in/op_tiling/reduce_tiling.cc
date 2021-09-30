@@ -546,7 +546,7 @@ bool Reduce::GetAtomicBlockTilingInfo() {
 }
 
 void Reduce::GetNotMulCoreBlockTiling() {
-  if (input_shape.size() <= 0) {
+  if (input_shape.size() == 0) {
     return;
   }
   tilingInfo.block_tiling_axis = 0;
@@ -813,7 +813,7 @@ bool Reduce::FineTuning() {
       return true;
     }
     int loop = blk_factor / ub_factor + 1;
-    ub_factor = blk_factor % loop ? blk_factor / loop + 1 : blk_factor / loop;
+    ub_factor = (blk_factor % loop) ? (blk_factor / loop + 1) : (blk_factor / loop);
     tilingInfo.ub_tiling_factor = ub_factor;
     return true;
   }

@@ -1122,7 +1122,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
   GetInvalidPart(params.ho, params.wo, params.h, params.w, true_false, ksize, strides, params.ho, params.wo,
                  params.hi_invalid, params.wi_invalid);
   int64_t core_branch = 0;
-  std::vector<int64_t> list_data = {};
+  std::vector<int64_t> list_data;
 
   list_data = SplitPore(params.n, params.c1, core_num_ys, ksize, strides, params.ho, params.wo, params.h, params.w);
   params.total_num = list_data[0];

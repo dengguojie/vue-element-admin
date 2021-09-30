@@ -431,7 +431,7 @@ namespace optiling {
         int32_t output_w = CalOutPutW(compile_info, input_shape);
         int32_t output_h = CalOutPutH(compile_info, input_shape);
         int32_t output_wh = output_w * output_h;
-        int32_t fmap_h = output_w * output_h;
+        int32_t fmap_h = output_wh;
         int32_t fmap_h_num = Ceildiv(fmap_h, 16);
         int32_t mask_tmp = fmap_h_num * 16 - fmap_h;
         int32_t need_cut = 0;
