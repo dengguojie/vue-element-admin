@@ -685,7 +685,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
 
 def is_support_nz_non_aligned(ori_shape_x, begin_params_axis, impl_mode):
     if ori_shape_x[-1] % SIZE_SIXTEEN != 0:
-        if begin_params_axis != 0 and impl_mode == "high_performance":
+        if begin_params_axis != 0:
             return True
 
     return False
