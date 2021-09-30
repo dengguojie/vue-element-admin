@@ -1417,13 +1417,17 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
       return false;
     }
   }
+  if (input_size == 0 || ids_size == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input_size or ids_size is 0, not support");
+    return false;
+  }
   int32_t e_size = input_size / ids_size;
   GELOGD("op[%s] e_size is %d",op_type.c_str(), e_size);
   const std::string& input_dtype = op_paras.inputs[0].tensor[0].dtype;
   const std::string& ids_dtype = op_paras.inputs[1].tensor[0].dtype;
   bool flag = false;
   // get input dtype
-  EleByte input_ele_byte;
+  EleByte input_ele_byte = FP32_BYTE;
   flag = GetEleDtype(input_dtype, input_ele_byte);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_ele_byte failed.");
@@ -1434,7 +1438,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
   int32_t output_ub_ele_num_one_row = BYTE_BLOCK / output_ele_byte;
   GELOGD("op[%s] output_ub_ele_num_one_row is %d",op_type.c_str(), output_ub_ele_num_one_row);
   // get ids dtype
-  EleByte ids_ele_byte;
+  EleByte ids_ele_byte = FP32_BYTE;
   flag = GetEleDtype(ids_dtype, ids_ele_byte);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get ids_ele_byte failed.");

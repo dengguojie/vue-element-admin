@@ -318,5 +318,62 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_4) {
   std::cout << "#####4" << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 32 44 1 6 6 44 44 1 1 1 6 6 44 44 1 1 660 1 83 83 660 660 15 15 1 83 83 660 660 15 15 44 1 5 40 1 4 46 1 1 1 1 1 1 15 1 2 2 15 15 1 1 1 1 2 1 2 1 40 48 4 0 1 1 1 1 2 1 2 1 ");
 }
+TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_5) {
+  using namespace optiling;
+  std::string op_name = "UnsortedSegmentSum";
+  std::cout << "#####unsortedsegmentsum_tiling_5" << std::endl;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
+  std::vector<int64_t> inputA{0,44};
+  std::vector<int64_t> inputB{0};
+  std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments{100,};
+  std::vector<int64_t> output{100,44};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "int32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.const_inputs["num_segments"] =
+            std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)num_segments.data(), num_segments.size() * 4, ge::Tensor());
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "aa";
+  OpRunInfo runInfo;
+  std::cout << "#####5" << std::endl;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  std::cout << "#####END" << std::endl;
+
+}
 
