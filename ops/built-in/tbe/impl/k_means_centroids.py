@@ -15,12 +15,12 @@
 """
 k_means_centroids
 """
-from functools import reduce as functools_reduce
+import functools
 
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
-from tbe.common.platform import get_soc_spec
+from impl.util.platform_adapter import tbe_platform
 
 FP16_TYPE = 2
 FP32_TYPE = 4
@@ -31,6 +31,7 @@ VECTOR_REPEAT_MAX = 255
 FP32_MASK = 64
 INPUT_LENGTH = 2
 VECTOR_LENGTH = 128
+EXTEND_LENGTH = 2
 INDEX_DTYPE = "int32"
 MASK_DTYPE = "uint64"
 
@@ -49,7 +50,7 @@ class KMeansCentroids(object):
     """
     def __init__(self, x, y, sum_square_x, sum_square_y,
                  segment_sum, segment_count, total_distance,
-                 use_actual_distance, kernel_name="k_means_centroids"):
+                 use_actual_distance, kernel_name, impl_mode):
         """
         init input, output, platform,
             tik instance, tiling and tensor
@@ -63,9 +64,11 @@ class KMeansCentroids(object):
         self.output_y3 = total_distance
         self.use_actual_distance = use_actual_distance
         self.kernel_name = kernel_name
+        self.high_perf = True if impl_mode == "high_performance" else False
+        self.vcmin_fp32_supported = tbe_platform.api_check_support("tik.vcmin", "float32")
         self._get_platform_info()
         self.tik_instance = tik.Tik()
-        self._default_tiling()
+        self._get_tiling()
         self._tiling_process()
         self._init_tensor()
 
@@ -80,28 +83,129 @@ class KMeansCentroids(object):
     def _elecnt_of_shape(shape):
         """ calculate reduce shape
         """
-        return functools_reduce(lambda x, y: x * y, shape)
+        return functools.reduce(lambda x, y: x * y, shape)
+
+    @staticmethod
+    def _get_factors(num):
+        factor_list = []
+        upper = num // 2 + 1
+        for facotr in range(1, upper):
+            if num % facotr == 0:
+                factor_list.append(facotr)
+        factor_list.append(num)
+        return factor_list
 
     def _get_platform_info(self):
-        self.soc_version = get_soc_spec("SOC_VERSION")
-        self.aic_cnt = get_soc_spec("CORE_NUM")
+        self.aic_cnt = tbe_platform.get_soc_spec("CORE_NUM")
 
-    def _default_tiling(self):
+    def _get_tiling(self):
+        shape_x1 = self.input_x1.get("shape")
+        shape_x2 = self.input_x2.get("shape")
+        m_dim, k_dim = shape_x1
+        n_dim, _ = shape_x2
+        self.tiling_para = {
+            "l0_m": 1,
+            "l0_n": 1,
+            "aub_m": 1,
+            "bub_n": 1,
+            "cub_n": 1,
+            "k1": k_dim // 16,
+            "block_dim_m": 1
+        }
+
+        # network case 1: k = 128, N = 1048576
+        # network case 2: k = 32, N = 1048576
+        # network case 3: k = 32, N = 10000000
+        default_case_1 = (128, 1048576)
+        default_case_2 = (32, 1048576)
+        default_case_3 = (32, 10000000)
+        default_cases = [default_case_1, default_case_2, default_case_3]
+        target_case = (k_dim, n_dim)
+        self.cube_unit = 16
+        if target_case in default_cases:
+            self._default_tiling(k_dim)
+        else:
+            self._formula_tiling(m_dim, k_dim, n_dim)
+        self._fillin_tiling()
+
+    def _default_tiling(self, k_dim):
         """ default tiling
         """
+        self.tiling_para = {
+            "l0_m": 16,
+            "l0_n": 8,
+            "aub_m": 16,
+            "bub_n": 8,
+            "cub_n": 4,
+            "k1": k_dim // 16,
+            "block_dim_m": 1
+        }
+        if not self.vcmin_fp32_supported and not self.high_perf:
+            if k_dim == 128:
+                self.tiling_para = {
+                    "l0_m": 16,
+                    "l0_n": 14,
+                    "aub_m": 16,
+                    "bub_n": 14,
+                    "cub_n": 7,
+                    "k1": k_dim // 16,
+                    "block_dim_m": 1
+                }
+            elif k_dim == 32:
+                self.tiling_para = {
+                    "l0_m": 4,
+                    "l0_n": 30,
+                    "aub_m": 4,
+                    "bub_n": 30,
+                    "cub_n": 30,
+                    "k1": k_dim // 16,
+                    "block_dim_m": 1
+                }
+
+    def _formula_tiling(self, m_dim, k_dim, n_dim):
+        self.fp16_byte = 2
+        self.fp32_byte = 4
+        m_div_16 = m_dim // self.cube_unit
+        k_div_16 = k_dim // self.cube_unit
+        n_div_16 = n_dim // self.cube_unit
+        block_dim_m = m_div_16 if m_div_16 < self.aic_cnt else self.aic_cnt
+        single_core_m = self._ceil(m_div_16, block_dim_m) * self.cube_unit
+        mkn_single_core = single_core_m // self.cube_unit, k_div_16, n_div_16
+        l0_m, l0_n = self._get_l0_tiling(mkn_single_core)
+        aub_m, bub_n, cub_n = self._get_mkn_ub(l0_m, l0_n, k_div_16)
+        self.tiling_para = {
+            "l0_m": l0_m,
+            "l0_n": l0_n,
+            "aub_m": aub_m,
+            "bub_n": bub_n,
+            "cub_n": cub_n,
+            "k1": k_div_16,
+            "block_dim_m": 1
+        }
+
+    def _fillin_tiling(self):
+        l0_m = self.tiling_para.get('l0_m')
+        l0_n = self.tiling_para.get('l0_n')
+        aub_m = self.tiling_para.get('aub_m')
+        bub_n = self.tiling_para.get('bub_n')
+        cub_n = self.tiling_para.get('cub_n')
+        k1 = self.tiling_para.get('k1')
+        block_dim_m = self.tiling_para.get('block_dim_m')
+        if l0_n > bub_n:
+            l0_n = bub_n
         self.tiling = {
-            "block_dim": [1, 1, 1, 1],  # [batch,n,m,group]
-            "AUB_shape": [128, 256, 1, 1],  # [kAUB,mAUB,batch,group]
-            "BUB_shape": [128, 128, 1, 1],  # [kBUB,nBUB,batch,group]
-            "AL1_shape": [128, 1, 1, 1],  # [k,multi_m,batch,group]
-            "BL1_shape": [128, 1, 1, 1],  # [k,multi_n,batch,group]
-            "AL0_matrix": [16, 8, 16, 16, 1, 1],  # [ma,ka,m0,k0,batch,group]
-            "BL0_matrix": [8, 8, 16, 16, 1, 1],  # [kb,nb,n0,k0,batch,group]
-            "CL0_matrix": [8, 16, 16, 16, 1, 1],  # [nc,mc,m0,n0,batch,group]
-            "CUB_matrix": [4, 16, 16, 16, 1, 1],  # [nc_factor,mc_factor,m0,n0,batch,group]
+            "block_dim": [1, 1, block_dim_m, 1],
+            "AUB_shape": [k1 * self.cube_unit, aub_m * self.cube_unit, 1, 1],
+            "BUB_shape": [k1 * self.cube_unit, bub_n * self.cube_unit, 1, 1],
+            "AL1_shape": [k1 * self.cube_unit, 1, 1, 1],
+            "BL1_shape": [k1 * self.cube_unit, 1, 1, 1],
+            "AL0_matrix": [l0_m, k1, 16, 16, 1, 1],
+            "BL0_matrix": [k1, l0_n, 16, 16, 1, 1],
+            "CL0_matrix": [l0_n, l0_m, 16, 16, 1, 1],
+            "CUB_matrix": [cub_n, l0_m, 16, 16, 1, 1],
             "manual_pingpong_buffer": {
-                "AUB_pbuffer": 8,
-                "BUB_pbuffer": 8,
+                "AUB_pbuffer": 1,
+                "BUB_pbuffer": 1,
                 "AL1_pbuffer": 1,
                 "BL1_pbuffer": 1,
                 "AL0_pbuffer": 1,
@@ -112,19 +216,88 @@ class KMeansCentroids(object):
             }
         }
 
+    def _get_l0_tiling(self, mkn_single_core):
+        sgcore_m, sgcore_k, sgcore_n = mkn_single_core
+        l0a_buffer_size = tbe_platform.get_soc_spec("L0A_SIZE")
+        l0c_buffer_size = tbe_platform.get_soc_spec("L0C_SIZE")
+        l0a_m_max = l0a_buffer_size // self.fp16_byte // sgcore_k // self.cube_unit // self.cube_unit
+        l0b_n_max = l0a_m_max
+        min_cost = float('inf')
+        bandwidth = 22.17
+        target_mn = []
+        for l0_m in range(1, l0a_m_max + 1):
+            l0c_n_max = l0c_buffer_size // self.fp32_byte // l0_m // self.cube_unit // self.cube_unit
+            m_loop = self._ceil(sgcore_m, l0_m)
+            for l0_n in range(1, min(l0b_n_max, l0c_n_max) + 1):
+                n_loop = self._ceil(sgcore_n, l0_n)
+                n_one_loop_cost = self._calc_n_one_loop_cost(l0_m, l0_n)
+                a_load_size = l0_m * sgcore_k * self.cube_unit * self.cube_unit * self.fp32_byte
+                b_load_size = l0_n * sgcore_k * self.cube_unit * self.cube_unit * self.fp32_byte
+                a_load_time = a_load_size / bandwidth
+                b_load_time = b_load_size / bandwidth
+                cur_cost = m_loop * (a_load_time + b_load_time + n_loop * n_one_loop_cost)
+                if cur_cost < min_cost:
+                    min_cost = cur_cost
+                    target_mn = [l0_m, l0_n]
+        return target_mn
+
+    def _get_mkn_ub(self, l0_m, l0_n, k_div_16):
+        ub_buffer_size = tbe_platform.get_soc_spec("UB_SIZE")
+        global_ub = l0_m * self.cube_unit * 2 * self.fp32_byte
+        global_ub += 8 * 2 * self.fp32_byte
+        bub_size = ub_buffer_size - global_ub
+        l0_m_factor_lis = sorted(self._get_factors(l0_m), reverse=True)
+        l0_n_factor_lis = sorted(self._get_factors(l0_n), reverse=True)
+        aub_m = 1
+        bub_n = 1
+        cub_n = 1
+
+        for aub_m in l0_m_factor_lis:
+            aub_tensor_count = 4
+            tensor_size = aub_m * k_div_16 * aub_tensor_count * self.cube_unit * self.cube_unit * self.fp16_byte
+            if tensor_size <= ub_buffer_size:
+                break
+
+        for bub_n in l0_n_factor_lis:
+            bub_tensor_count = 4
+            tensor_size = bub_n * k_div_16 * bub_tensor_count * self.cube_unit * self.cube_unit * self.fp16_byte
+            if tensor_size <= bub_size:
+                break
+
+        for cub_n in l0_n_factor_lis:
+            matmul_tensor_count = 2
+            matmul_out = matmul_tensor_count * self.fp32_byte * cub_n * l0_m * self.cube_unit * self.cube_unit
+            local_tensor_count = 4
+            local_size = local_tensor_count * self.fp32_byte * l0_m * self.cube_unit
+            sum_square_y_size = cub_n * self.cube_unit * self.fp32_byte
+            tensor_size = matmul_out + local_size + sum_square_y_size + global_ub
+            if tensor_size <= ub_buffer_size:
+                break
+
+        return aub_m, bub_n, cub_n
+
+    def _calc_n_one_loop_cost(self, l0_m, l0_n):
+        fp32_parallelism = 64
+        mn_cost = self._ceil(l0_m * l0_n, fp32_parallelism)
+        if self.vcmin_fp32_supported or self.high_perf:
+            mn_count = 4
+            m_cost = self._ceil(l0_m, fp32_parallelism)
+            m_count = 7
+            sum_cost = mn_cost * mn_count + m_cost * m_count
+            return sum_cost
+        else:
+            one_loop_unit = 8
+            mn_count = 3
+            get_min_loop = (l0_m * self.cube_unit) // one_loop_unit
+            cmpare_cost = 433
+            sum_cost = mn_cost * mn_count + get_min_loop * cmpare_cost
+            return sum_cost
+
     def _tiling_process(self):
         """
         process tiling in multi-core level,
             one-core level and buffer level
         """
-        if self.soc_version.find("Ascend910") != -1:
-            self.tiling["BUB_shape"][1] = 224
-            self.tiling["BL0_matrix"][1] = 14
-            self.tiling["CL0_matrix"][0] = 14
-            self.tiling["CUB_matrix"][0] = 7
-            self.tiling["manual_pingpong_buffer"]["AUB_pbuffer"] = 1
-            self.tiling["manual_pingpong_buffer"]["BUB_pbuffer"] = 1
-
         self._tiling_multi_core()
         self._tiling_one_core_matmul()
         self._tiling_one_core_argmin()
@@ -143,13 +316,20 @@ class KMeansCentroids(object):
             self.tiling["AUB_shape"][1] = shape_x1[0]
             self.tiling["AL0_matrix"][0] = self._ceil(shape_x1[0], 16)
             self.tiling["CL0_matrix"][1] = self._ceil(shape_x1[0], 16)
-            self.tiling["CUB_matrix"][1] = self._ceil(shape_x1[0], 16)
+            if self._ceil(shape_x1[0], 16) < self.tiling["CUB_matrix"][1]:
+                self.tiling["CUB_matrix"][1] = self._ceil(shape_x1[0], 16)
+            else:
+                self.tiling["CUB_matrix"][1] = min(self.tiling["CUB_matrix"][1],
+                                                   self._ceil(shape_x1[0], 16) // 2)
         if shape_x2[0] < self.tiling["BUB_shape"][1]:
             self.tiling["BUB_shape"][1] = shape_x2[0]
             self.tiling["BL0_matrix"][1] = self._ceil(shape_x2[0], 16)
             self.tiling["CL0_matrix"][0] = self._ceil(shape_x2[0], 16)
-            if shape_x2[0] < self.tiling["CUB_matrix"][0] * self.tiling["CUB_matrix"][3]:
+            if self._ceil(shape_x2[0], 16) < self.tiling["CUB_matrix"][0]:
                 self.tiling["CUB_matrix"][0] = self._ceil(shape_x2[0], 16)
+            else:
+                self.tiling["CUB_matrix"][0] = min(self.tiling["CUB_matrix"][0],
+                                                   self._ceil(shape_x2[0], 16) // 2)
 
         m_dim = self.tiling["block_dim"][2]
         n_dim = self.tiling["block_dim"][1]
@@ -182,6 +362,7 @@ class KMeansCentroids(object):
         self.n_tiling_loop = self.n_each_core // n_bub
         self.n_tiling_left = self.n_each_core % n_bub
 
+        self.m_tiling_ub_loop = mc // mc_factor
         self.n_tiling_ub_loop = nc // nc_factor
         self.n_tiling_cub_loop = 0
         self.n_tiling_cub_left = 0
@@ -201,6 +382,7 @@ class KMeansCentroids(object):
         self.shape_z_l0c = (nc, mc * m0, n0)
 
         self.shape_z_ub = (nc_factor, mc_factor * m0, n0)
+        self.shape_z_ub_extend = (nc_factor, mc_factor * m0 + 1, n0)
         self.shape_z_ub_nd = (mc_factor * m0, nc_factor * n0)
 
     def _tiling_one_core_argmin(self):
@@ -212,7 +394,8 @@ class KMeansCentroids(object):
         self.shape_input_3_ub = (self.m_tiling, 1)
         self.shape_input_4_ub = (1, self.n_tiling)
         self.shape_broadcast_ub = (self.m_tiling, self.n_tiling)
-        self.shape_global_min_distance_ub = (self.m_tiling,)
+        self.shape_broadcast_ub_extend = (self.m_tiling + 1, self.n_tiling)
+        self.shape_global_min_distance_ub = (self.m_tiling * self.m_tiling_ub_loop,)
         self.shape_total_distance = (1,)
 
     def _init_tensor(self):
@@ -336,21 +519,23 @@ class KMeansCentroids(object):
     def _init_tensor_ub(self):
         """ init tensor_c of matmul, normal tensor of argmin and scalar
         """
-        self.matmul_output_ub = self.tik_instance.Tensor(self.input_dtype, self.shape_z_ub,
+        self.matmul_output_ub = self.tik_instance.Tensor(self.input_dtype, self.shape_z_ub_extend,
                                                          name="matmul_output_ub", scope=tik.scope_ubuf)
         self.matmul_output_ub_nd = self.tik_instance.Tensor(self.input_dtype, self.shape_z_ub_nd,
                                                             name="matmul_output_ub_nd", scope=tik.scope_ubuf)
 
-        if self.soc_version.find("Ascend710") != -1:
+        if self.vcmin_fp32_supported or self.high_perf:
             self.min_distance_ub = self.tik_instance.Tensor(self.input_dtype, (self.m_tiling, 2),
                                                             name="min_distance_ub_fp32", scope=tik.scope_ubuf)
-            self.local_min_distance_ub = self.tik_instance.Tensor(self.input_dtype, (self.m_tiling,),
+            self.local_min_distance_ub = self.tik_instance.Tensor(self.input_dtype, (self.m_tiling, 1),
                                                                   name="local_min_distance_ub", scope=tik.scope_ubuf)
             self.local_min_index_ub = self.tik_instance.Tensor(self.input_dtype, (self.m_tiling,),
                                                                name="local_min_index_ub", scope=tik.scope_ubuf)
         else:
-            self.ub_min_8 = self.tik_instance.Tensor(self.input_dtype, (8, 8), name="ub_min_8", scope=tik.scope_ubuf)
-            self.cmp_mask_ub = self.tik_instance.Tensor(MASK_DTYPE, (64,), name="cmp_mask_ub", scope=tik.scope_ubuf)
+            self.ub_min_8 = self.tik_instance.Tensor(self.input_dtype, (8, 8),
+                                                     name="ub_min_8", scope=tik.scope_ubuf)
+            self.cmp_mask_ub = self.tik_instance.Tensor(MASK_DTYPE, (self.n_tiling,),
+                                                        name="cmp_mask_ub", scope=tik.scope_ubuf)
             self.ub_index_int32 = self.tik_instance.Tensor(INDEX_DTYPE, (8, 8),
                                                            name="ub_index_int32", scope=tik.scope_ubuf)
 
@@ -362,7 +547,7 @@ class KMeansCentroids(object):
     def _init_tensor_ub_global(self):
         """ init tensor of global domain in ub buffer
         """
-        if self.soc_version.find("Ascend710") != -1:
+        if self.vcmin_fp32_supported or self.high_perf:
             self.global_index_dtype = self.input_dtype
         else:
             self.global_index_dtype = INDEX_DTYPE
@@ -378,6 +563,34 @@ class KMeansCentroids(object):
         self.scalar_max_fp32 = self.tik_instance.Scalar(dtype=self.input_dtype, init_value=SCALAR_MAX_FP32)
         self.scalar_zero = self.tik_instance.Scalar(dtype=self.input_dtype, init_value=0)
         self.scalar_one = self.tik_instance.Scalar(dtype=self.input_dtype, init_value=1)
+
+    def _init_tensor_high_perf(self):
+        high_perf_dtype = "float16"
+        self.vcmin_input_fp16 = \
+            self.tik_instance.Tensor(high_perf_dtype, self.shape_broadcast_ub,
+                                     name="vcmin_input_fp16", scope=tik.scope_ubuf)
+        self.vcmin_output_fp16 = \
+            self.tik_instance.Tensor(high_perf_dtype, (self.m_tiling, 2),
+                                     name="vcmin_output_fp16", scope=tik.scope_ubuf)
+        self.local_min_distance_ub_fp16 = \
+            self.tik_instance.Tensor(high_perf_dtype, (self.m_tiling, 1),
+                                     name="local_min_distance_ub_fp16", scope=tik.scope_ubuf)
+        self.vcmin_output_trans1 = \
+            self.tik_instance.Tensor(high_perf_dtype, (2, self.m_tiling),
+                                     name="vcmin_output_trans1", scope=tik.scope_ubuf)
+        self.vcmin_output_trans2 = \
+            self.tik_instance.Tensor(high_perf_dtype, (2, self.m_tiling),
+                                     name="vcmin_output_trans2", scope=tik.scope_ubuf)
+        self.index_double = \
+            self.tik_instance.Tensor(high_perf_dtype, (2 * self.m_tiling,),
+                                     name="index_double", scope=tik.scope_ubuf)
+        self.index_trans_to_int32 = \
+            self.tik_instance.Tensor(high_perf_dtype, (2 * self.m_tiling,),
+                                     name="index_trans_to_int32", scope=tik.scope_ubuf)
+        self.tensor_index_offset_int32 = \
+            self.tik_instance.Tensor(INDEX_DTYPE, (self.m_tiling,),
+                                     name="tensor_index_offset_int32", scope=tik.scope_ubuf)
+        self.scalar_zero_fp16 = self.tik_instance.Scalar(dtype=high_perf_dtype, init_value=0)
 
     def k_means_centroids_compute(self):
         """
@@ -459,20 +672,25 @@ class KMeansCentroids(object):
         None
         """
         self._init_tensor_ub_global()
-        vdup_rpt = self.m_tiling // FP32_MASK
-        self.tik_instance.vector_dup(FP32_MASK, self.global_min_distance_ub, self.scalar_max_fp32,
-                                     vdup_rpt, 1, 8)
+        vdup_rpt = self.m_tiling * self.m_tiling_ub_loop // FP32_MASK
+        vdup_mask_left = self.m_tiling * self.m_tiling_ub_loop % FP32_MASK
+        if vdup_rpt > 0:
+            self.tik_instance.vector_dup(FP32_MASK, self.global_min_distance_ub, self.scalar_max_fp32,
+                                         vdup_rpt, 1, 8)
+        if vdup_mask_left > 0:
+            self.tik_instance.vector_dup(vdup_mask_left, self.global_min_distance_ub[vdup_rpt * FP32_MASK],
+                                         self.scalar_max_fp32, 1, 1, 8)
 
         n_bub = self.tiling["BUB_shape"][1]
         if self.n_tiling_loop > 0:
             with self.tik_instance.for_range(0, self.n_tiling_loop) as nt_idx:
                 start_gm = nt_idx * n_bub
                 self._matmul_gm_to_l0b_db(self.data_input_gm_2[start_gm:(start_gm + n_bub), :])
-                self._mmad(start_gm)
+                self._mmad(start_gm, is_last_core=is_last_core, is_m_tail=is_m_tail)
         if self.n_tiling_left > 0:
             start_gm = self.n_tiling_loop * n_bub
             self._matmul_gm_to_l0b_tail(self.data_input_gm_2[start_gm:, :])
-            self._mmad(start_gm, is_n_tail=True)
+            self._mmad(start_gm, is_last_core=is_last_core, is_m_tail=is_m_tail, is_n_tail=True)
 
         self._unsorted_segment_sum(m_gm_idx, is_last_core=is_last_core, is_m_tail=is_m_tail)
 
@@ -491,16 +709,16 @@ class KMeansCentroids(object):
         # release ub buffer of tensor_a when tensor_a moves to l1
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             self._init_matmul_tensor_a_ub()
+            mv_burst_len = self._elecnt_of_shape(self.shape_x_ub) * FP32_TYPE // UB_BLOCK_SIZE
             self.tik_instance.data_move(self.data_input_ub_1, tensor_a_gm,
-                                        0, 1, self._elecnt_of_shape(self.shape_x_ub) * FP32_TYPE // UB_BLOCK_SIZE, 0, 0)
+                                        0, 1, mv_burst_len, 0, 0)
 
             self.vconv(self.data_input_ub_1_fp16, self.data_input_ub_1, self.shape_x_ub)
 
             self.nd_to_zn_3d(self.data_input_ub_1_trans, self.data_input_ub_1_fp16, self.shape_x_ub_trans)
-
+            mv_burst_len = self._elecnt_of_shape(self.shape_x_ub_trans) * FP16_TYPE // UB_BLOCK_SIZE
             self.tik_instance.data_move(self.data_input_l1_1, self.data_input_ub_1_trans,
-                                        0, 1, self._elecnt_of_shape(self.shape_x_ub_trans) * FP16_TYPE // UB_BLOCK_SIZE,
-                                        0, 0)
+                                        0, 1, mv_burst_len, 0, 0)
 
         self.zn_to_zz(self.data_input_l0a, self.data_input_l1_1, self.shape_x_l0a)
 
@@ -657,7 +875,7 @@ class KMeansCentroids(object):
 
         self.nz_to_zn(self.data_input_l0b, self.data_input_l1_2, self.shape_y_l0b)
 
-    def _mmad(self, n_gm_idx, is_n_tail=False):
+    def _mmad(self, n_gm_idx, is_last_core=False, is_m_tail=False, is_n_tail=False):
         """
         mmad: A x B = C
 
@@ -683,27 +901,31 @@ class KMeansCentroids(object):
                 with self.tik_instance.for_range(0, self.n_tiling_cub_loop) as ntc_idx:
                     start_gm = n_gm_idx + ntc_idx * nc_factor * n0
                     start_l0c = ntc_idx * nc_factor
-                    self._matmul_l0c_to_ub(start_l0c, self.shape_z_ub)
-                    self._argmin(start_gm)
+                    self._matmul_l0c_to_ub(0, start_l0c, self.shape_z_ub)
+                    self._argmin(start_gm, 0, is_last_core=is_last_core, is_m_tail=is_m_tail)
             if self.n_tiling_cub_left > 0:
                 start_gm = n_gm_idx + self.n_tiling_cub_loop * nc_factor * n0
                 start_l0c = self.n_tiling_cub_loop * nc_factor
                 shape_z_ub = (self._ceil(self.n_tiling_cub_left, n0), mc_factor * m0, n0)
-                self._matmul_l0c_to_ub(start_l0c, shape_z_ub, is_n_tail=True)
-                self._argmin(start_gm, is_n_tail=True)
+                self._matmul_l0c_to_ub(0, start_l0c, shape_z_ub, is_n_tail=True)
+                self._argmin(start_gm, 0, is_last_core=is_last_core, is_m_tail=is_m_tail,
+                             is_n_tail=True)
         else:
-            with self.tik_instance.for_range(0, self.n_tiling_ub_loop) as ntu_idx:
-                start_gm = n_gm_idx + ntu_idx * nc_factor * n0
-                start_l0c = ntu_idx * nc_factor
-                self._matmul_l0c_to_ub(start_l0c, self.shape_z_ub)
-                self._argmin(start_gm)
+            with self.tik_instance.for_range(0, self.m_tiling_ub_loop) as mtu_idx:
+                m_l0c_idx = mtu_idx * mc_factor * m0
+                with self.tik_instance.for_range(0, self.n_tiling_ub_loop) as ntu_idx:
+                    start_gm = n_gm_idx + ntu_idx * nc_factor * n0
+                    start_l0c = ntu_idx * nc_factor
+                    self._matmul_l0c_to_ub(m_l0c_idx, start_l0c, self.shape_z_ub)
+                    self._argmin(start_gm, m_l0c_idx, is_last_core=is_last_core, is_m_tail=is_m_tail)
 
-    def _matmul_l0c_to_ub(self, n_l0c_idx, shape_z_ub, is_n_tail=False):
+    def _matmul_l0c_to_ub(self, m_l0c_idx, n_l0c_idx, shape_z_ub, is_n_tail=False):
         """
         move tensor_c: l0c -> ub
 
         Parameters:
         -------------
+        m_l0c_idx: local index of axis m in l0c, expr
         n_l0c_idx: local index of axis n1 in l0c, expr
         shape_z_ub: input shape of tensor_c, tuple
         is_n_tail: whether axis n has tail in cub, bool
@@ -712,163 +934,382 @@ class KMeansCentroids(object):
         -------------
         None
         """
-        nc_factor, _, n0 = shape_z_ub
-        self.tik_instance.data_move(self.matmul_output_ub, self.data_output_l0c[n_l0c_idx, 0, 0],
-                                    0, 1, self._elecnt_of_shape(shape_z_ub) * FP32_TYPE // L0C_BLOCK_SIZE, 0, 0)
+        nc_factor, mc_ub, n0 = shape_z_ub
+        # bank conflict issue
+        # read-write conflict in the same bank: set large tensor shape of matmul_output_ub and matmul_output_ub_nd,
+        # for the sake of buffer neighbors of these two tensors.
+        # read-read conflict in the same bank group: insert fake data between each [m, n0] of shape [n1, m, n0],
+        # which is the meaning of parameter EXTEND_LENGTH
+        burst_len = mc_ub * n0 * FP32_TYPE // L0C_BLOCK_SIZE
+        self.tik_instance.data_move(self.matmul_output_ub, self.data_output_l0c[n_l0c_idx, m_l0c_idx, 0],
+                                    0, nc_factor, burst_len, (self.m_tiling_ub_loop - 1) * burst_len,
+                                    EXTEND_LENGTH)
         self._nz_to_nd(self.matmul_output_ub_nd[:, :nc_factor * n0],
                        self.matmul_output_ub[:nc_factor, :, :], shape_z_ub, is_n_tail=is_n_tail)
 
-    def _argmin(self, n_gm_idx, is_n_tail=False):
+    def _argmin(self, n_gm_idx, m_l0c_idx, is_last_core=False, is_m_tail=False, is_n_tail=False):
         """
         compute argmin in ub buffer
 
         Parameters:
         -------------
-        n_gm_idx: global index of n axis in gm, expr
+        n_gm_idx: global index of axis n in gm, expr
+        m_l0c_idx: local index of axis m in l0c, expr
+        is_last_core: whether is last core,bool
+        is_m_tail: whether axis m has tail in each core, bool
         is_n_tail: whether axis n has tail in cub, bool
 
         Returns:
         -------------
         None
         """
-        self.data_input_ub_4_broadcast = self.matmul_output_ub.reshape(self.shape_broadcast_ub)
+        m_tiling = self.m_tiling
+        n_tiling = self.n_tiling
+        if is_m_tail:
+            if is_last_core:
+                m_tiling = self.m_last_tiling_left
+            else:
+                m_tiling = self.m_tiling_left
+        if is_n_tail:
+            n_tiling = self.n_tiling_cub_left
+
+        self.data_input_ub_4_broadcast = self.matmul_output_ub.reshape(self.shape_broadcast_ub_extend)
+        self.data_input_ub_4_broadcast = self.data_input_ub_4_broadcast[:self.m_tiling, :]
         self.data_input_ub_4 = self.tik_instance.Tensor(self.input_dtype, (1, self.n_tiling),
                                                         name="data_input_ub_4", scope=tik.scope_ubuf)
         self.scalar_index_offset.set_as(n_gm_idx)
         # move sum_square_centroid from gm to ub
-        mv_burst = self.tik_instance.Scalar(INDEX_DTYPE)
-        if is_n_tail:
-            n_tail = self.n_tiling_cub_left
-            mv_burst.set_as(n_tail // self.ub_min_num)
-        else:
-            mv_burst.set_as(self.n_tiling // self.ub_min_num)
+        mv_burst = n_tiling // self.ub_min_num
         with self.tik_instance.if_scope(mv_burst > 0):
             self.tik_instance.data_move(self.data_input_ub_4, self.data_input_gm_4[0, n_gm_idx],
                                         0, 1, mv_burst, 0, 0)
 
-        self._broadcast()
+        self._broadcast(m_tiling, n_tiling)
 
         self._monocular_operator(self.matmul_output_ub_nd, self.matmul_output_ub_nd, self.scalar_two, "vmuls")
 
         self._binary_operator(self.data_input_ub_4_broadcast, self.data_input_ub_4_broadcast,
                               self.matmul_output_ub_nd, "vsub")
 
-        if self.soc_version.find("Ascend710") != -1:
-            self._vcmin_v200()
+        if self.vcmin_fp32_supported:
+            # ntiling belongs to [1, 64] for vcmin
+            n_vcmin_loop = n_tiling // FP32_MASK
+            n_vcmin_left = n_tiling % FP32_MASK
+            if n_vcmin_loop > 0:
+                for nvl_idx in range(n_vcmin_loop):
+                    n_cub_idx = nvl_idx * FP32_MASK
+                    self._calc_min_distance_perf_fp32(m_tiling, FP32_MASK, m_l0c_idx, n_cub_idx)
+            if n_vcmin_left > 0:
+                n_cub_idx = n_vcmin_loop * FP32_MASK
+                self._calc_min_distance_perf_fp32(m_tiling, n_vcmin_left, m_l0c_idx, n_cub_idx)
+        elif self.high_perf:
+            self._calc_min_distance_perf(m_tiling, n_tiling, 0, 0)
         else:
-            self._vcmin(is_n_tail=is_n_tail)
+            self._calc_min_distance(m_tiling, n_tiling)
 
-    def _broadcast(self):
-        """ broadcast sum_square_sample from (1, n) to (m, n)
+    def _broadcast(self, m_tiling, n_tiling):
         """
-        vadds_repeat = min(VECTOR_REPEAT_MAX, self.m_tiling)
-        vadds_repeat_tail = self.m_tiling - VECTOR_REPEAT_MAX
-        mask = min(self.n_tiling, FP32_MASK)
-        mask_tail = self.n_tiling - FP32_MASK
-        vadds_dst_rpt_stride = self.n_tiling // 8
+        broadcast sum_square_sample from (1, n) to (m, n)
 
-        self.tik_instance.vadds(mask, self.data_input_ub_4_broadcast, self.data_input_ub_4,
-                                self.scalar_zero, vadds_repeat, 1, 1, vadds_dst_rpt_stride, 0)
-        if mask_tail > 0:
-            self.tik_instance.vadds(mask_tail, self.data_input_ub_4_broadcast[0, mask], self.data_input_ub_4[0, mask],
-                                    self.scalar_zero, vadds_repeat, 1, 1, vadds_dst_rpt_stride, 0)
+        Paramters
+        --------------
+        m_tiling: valid data length of axis m, number
+        n_tiling: valid data length of axis n, number
+
+        Returns:
+        --------------
+        None
+        """
+        vadds_repeat_loop = m_tiling // VECTOR_REPEAT_MAX
+        vadds_repeat_tail = m_tiling % VECTOR_REPEAT_MAX
+        mask_loop = n_tiling // FP32_MASK
+        mask_tail = n_tiling % FP32_MASK
+
+        if vadds_repeat_loop > 0:
+            with self.tik_instance.for_range(0, vadds_repeat_loop) as vrl_idx:
+                self._broadcast_sub_func(mask_loop, mask_tail, vrl_idx, VECTOR_REPEAT_MAX)
         if vadds_repeat_tail > 0:
-            self.tik_instance.vadds(mask, self.data_input_ub_4_broadcast[VECTOR_REPEAT_MAX, 0],
-                                    self.data_input_ub_4, self.scalar_zero, vadds_repeat_tail, 1, 1,
-                                    vadds_dst_rpt_stride, 0)
-            if mask_tail > 0:
-                self.tik_instance.vadds(mask_tail, self.data_input_ub_4_broadcast[VECTOR_REPEAT_MAX, mask],
-                                        self.data_input_ub_4[0, mask], self.scalar_zero, vadds_repeat_tail, 1, 1,
-                                        vadds_dst_rpt_stride, 0)
+            self._broadcast_sub_func(mask_loop, mask_tail, vadds_repeat_loop, vadds_repeat_tail)
 
-    def _vcmin_v200(self):
-        """ optimized vcmin v200
+    def _broadcast_sub_func(self, mask_loop, mask_tail, repeat_offset, repeat):
+        """
+        broadcast sum_square_sample from (1, n) to (m, n)
+
+        Paramters
+        --------------
+        mask_loop: loop in the n_tiling
+        mask_tail: tail in the n_tiling
+        repeat_offset: offset in dst tensor
+        repeat: repeat of vadds
+
+        Returns:
+        --------------
+        None
+        """
+        vadds_dst_rpt_stride = self.n_tiling // self.ub_min_num
+        if mask_loop > 0:
+            with self.tik_instance.for_range(0, mask_loop) as ml_idx:
+                dst = self.data_input_ub_4_broadcast[repeat_offset * VECTOR_REPEAT_MAX, ml_idx * FP32_MASK]
+                src = self.data_input_ub_4[0, ml_idx * FP32_MASK]
+                self.tik_instance.vadds(FP32_MASK, dst, src, self.scalar_zero,
+                                        repeat, 1, 1, vadds_dst_rpt_stride, 0)
+        if mask_tail > 0:
+            dst_tail = self.data_input_ub_4_broadcast[repeat_offset * VECTOR_REPEAT_MAX, mask_loop * FP32_MASK]
+            src_tail = self.data_input_ub_4[0, mask_loop * FP32_MASK]
+            self.tik_instance.vadds(mask_tail, dst_tail, src_tail, self.scalar_zero,
+                                    repeat, 1, 1, vadds_dst_rpt_stride, 0)
+
+    def _calc_min_distance_perf_fp32(self, m_tiling, n_tiling, m_l0c_idx, n_cub_idx):
+        """
+        Calculate minimum distance from samples to centroids using optimized vcmin fp32
+
+        Parameters:
+        -------------
+        m_tiling: valid data length of axis m, number
+        n_tiling: valid data length of axis n, number
+        m_l0c_idx: local index of axis m in l0c, expr
+        n_cub_idx: local index of axis n in src_tensor, expr
+
+        Returns:
+        -------------
+        None
         """
         # Use vcmin to get the minimum value of each row in m_tiling rows
-        vcmin_repeat = min(VECTOR_REPEAT_MAX, self.m_tiling)
-        vcmin_repeat_tail = self.m_tiling - VECTOR_REPEAT_MAX
-        vcmin_src_rpt_stride = self.n_tiling // self.ub_min_num
-        self.tik_instance.vcmin(self.n_tiling, self.min_distance_ub, self.data_input_ub_4_broadcast[0, 0],
-                                vcmin_repeat, 1, 1, vcmin_src_rpt_stride)
-
-        if vcmin_repeat_tail > 0:
-            self.tik_instance.vcmin(self.n_tiling, self.min_distance_ub[VECTOR_REPEAT_MAX, 0],
-                                    self.data_input_ub_4_broadcast[VECTOR_REPEAT_MAX, 0],
-                                    vcmin_repeat_tail, 1, 1, vcmin_src_rpt_stride)
+        self._vcmin(self.min_distance_ub, self.data_input_ub_4_broadcast, m_tiling, n_tiling, n_cub_idx)
         # Obtain the minimum and minimum indexes from the results of vcmin, respectively
-        vr_repeat = (self.m_tiling * 2) // FP32_MASK
-        self.tik_instance.vreduce(FP32_MASK, self.local_min_distance_ub, self.min_distance_ub,
-                                  1, vr_repeat, 1, 8, 8, 0, None, "normal")
-        self.tik_instance.vreduce(FP32_MASK, self.local_min_index_ub, self.min_distance_ub,
-                                  2, vr_repeat, 1, 8, 8, 0, None, "normal")
+        vr_loop = (m_tiling * 2) // FP32_MASK
+        vr_tail = (m_tiling * 2) % FP32_MASK
+        if vr_loop > 0:
+            self.tik_instance.vreduce(FP32_MASK, self.local_min_distance_ub, self.min_distance_ub,
+                                      1, vr_loop, 1, 8, 8, 0, None, "normal")
+            self.tik_instance.vreduce(FP32_MASK, self.local_min_index_ub, self.min_distance_ub,
+                                      2, vr_loop, 1, 8, 8, 0, None, "normal")
+        if vr_tail > 0:
+            self.tik_instance.vreduce(vr_tail, self.local_min_distance_ub[vr_loop * FP32_MASK // 2:, :],
+                                      self.min_distance_ub[vr_loop * FP32_MASK // 2:, :],
+                                      1, 1, 1, 0, 0, 0, None, "counter")
+            self.tik_instance.vreduce(vr_tail, self.local_min_index_ub[vr_loop * FP32_MASK // 2],
+                                      self.min_distance_ub[vr_loop * FP32_MASK // 2:, :],
+                                      2, 1, 1, 0, 0, 0, None, "counter")
         # Compare local and global minimums and update
-        vmin_repeat = (self.m_tiling) // FP32_MASK
-        self.tik_instance.vmin(FP32_MASK, self.global_min_distance_ub, self.local_min_distance_ub,
-                               self.global_min_distance_ub, vmin_repeat, 1, 1, 1, 8, 8, 8)
-        local_min_index_ub_int32 = self.local_min_index_ub.reinterpret_cast_to(INDEX_DTYPE)
-        # Local minimum index adds tiling offset
-        vadds_rpt = (self.m_tiling) // FP32_MASK
-        self.tik_instance.vadds(FP32_MASK, local_min_index_ub_int32, local_min_index_ub_int32,
-                                self.scalar_index_offset, vadds_rpt, 1, 1, 8, 8)
-        self.local_min_index_ub = local_min_index_ub_int32.reinterpret_cast_to("float32")
-        # Update the global minimum index
-        update_loop = (self.m_tiling) // FP32_MASK
-        with self.tik_instance.for_range(0, update_loop) as u_idx:
-            cmp_mask = self.tik_instance.vcmp_eq(FP32_MASK, self.global_min_distance_ub[u_idx * FP32_MASK],
-                                                 self.local_min_distance_ub[u_idx * FP32_MASK], 1, 1)
-            self.tik_instance.vsel(FP32_MASK, 0, self.global_min_index_ub[u_idx * FP32_MASK], cmp_mask,
-                                   self.local_min_index_ub[u_idx * FP32_MASK],
-                                   self.global_min_index_ub[u_idx * FP32_MASK],
+        vmin_loop = m_tiling // FP32_MASK
+        vmin_tail = m_tiling % FP32_MASK
+        if vmin_loop > 0:
+            self.tik_instance.vmin(FP32_MASK, self.global_min_distance_ub[m_l0c_idx], self.local_min_distance_ub,
+                                self.global_min_distance_ub[m_l0c_idx], vmin_loop, 1, 1, 1, 8, 8, 8)
+        if vmin_tail > 0:
+            self.tik_instance.vmin(vmin_tail, self.global_min_distance_ub[m_l0c_idx + vmin_loop * FP32_MASK],
+                                   self.local_min_distance_ub[vmin_loop * FP32_MASK],
+                                   self.global_min_distance_ub[m_l0c_idx + vmin_loop * FP32_MASK],
                                    1, 1, 1, 1, 8, 8, 8)
 
-    def _vcmin(self, is_n_tail=False):
-        """ optimized vcmin
+        local_min_index_ub_int32 = self.local_min_index_ub.reinterpret_cast_to(INDEX_DTYPE)
+        # Local minimum index adds tiling offset
+        vadds_loop = m_tiling // FP32_MASK
+        vadds_tail = m_tiling % FP32_MASK
+        scalar_index_offset =  self.scalar_index_offset
+        if n_cub_idx > 0:
+            s_64 = self.tik_instance.Scalar(dtype="int32", init_value=n_cub_idx)
+            scalar_index_offset.set_as(self.scalar_index_offset + s_64)
+        if vadds_loop > 0:
+            self.tik_instance.vadds(FP32_MASK, local_min_index_ub_int32, local_min_index_ub_int32,
+                                    scalar_index_offset, vadds_loop, 1, 1, 8, 8)
+        if vadds_tail > 0:
+            self.tik_instance.vadds(vadds_tail, local_min_index_ub_int32[vadds_loop * FP32_MASK],
+                                    local_min_index_ub_int32[vadds_loop * FP32_MASK],
+                                    scalar_index_offset, 1, 1, 1, 8, 8)
+        self.local_min_index_ub = local_min_index_ub_int32.reinterpret_cast_to("float32")
+        # Update the global minimum index
+        self._update_global_index(m_tiling, m_l0c_idx)
+
+    def _calc_min_distance(self, m_tiling, n_tiling):
+        """
+        Calculate minimum distance from samples to centroids using vmin
+
+        Parameters:
+        -------------
+        m_tiling: valid data length of axis m, number
+        n_tiling: valid data length of axis n, number
+
+        Returns:
+        -------------
+        None
         """
         vmin_rpt = self.tik_instance.Scalar(INDEX_DTYPE)
         # The number of rows processed at one time is 8
         row_batch = 8
         # The number of cols processed at one time is 8
         col_batch = 8
-        get_min_loop = self.m_tiling // row_batch
+        get_min_loop = m_tiling // row_batch
         with self.tik_instance.for_range(0, get_min_loop) as m_idx:
             self.tik_instance.vector_dup(FP32_MASK, self.ub_min_8, SCALAR_MAX_FP32, 1, 1, 8)
-            if is_n_tail:
-                n_tail = self.n_tiling_cub_left
-                vmin_rpt.set_as(n_tail // col_batch)
-            else:
-                vmin_rpt.set_as(self.n_tiling // col_batch)
+            vmin_rpt.set_as(n_tiling // col_batch)
             vmin_blk_stride = self.n_tiling // col_batch
             # Get the minimum 8 values in each of 8 rows at a time
             self.tik_instance.vmin(FP32_MASK, self.ub_min_8, self.data_input_ub_4_broadcast[m_idx * row_batch, 0],
                                    self.ub_min_8, vmin_rpt, 1, vmin_blk_stride, 1, 0, 1, 0)
             self._set_init_index(m_idx, row_batch, vmin_rpt, vmin_blk_stride)
             # Get the minimum value and the minimum index of the eight values in the 8 rows
-            min_value = self.tik_instance.Scalar(self.input_dtype)
-            min_index = self.tik_instance.Scalar(INDEX_DTYPE)
+            self.min_value = self.tik_instance.Scalar(self.input_dtype)
+            self.min_index = self.tik_instance.Scalar(INDEX_DTYPE)
             with self.tik_instance.for_range(0, row_batch) as r_idx:
-                min_value.set_as(self.ub_min_8[r_idx, 0])
-                min_index.set_as(self.ub_index_int32[r_idx, 0])
+                self.min_value.set_as(self.ub_min_8[r_idx, 0])
+                self.min_index.set_as(self.ub_index_int32[r_idx, 0])
                 # Get the minimum value and the minimum index of the eight values in 1 row
                 with self.tik_instance.for_range(1, col_batch) as c_idx:
-                    min_cmp_value = self.tik_instance.Scalar(self.input_dtype)
-                    min_cmp_index = self.tik_instance.Scalar(INDEX_DTYPE)
-                    min_cmp_value.set_as(self.ub_min_8[r_idx, c_idx])
-                    min_cmp_index.set_as(self.ub_index_int32[r_idx, c_idx])
-                    with self.tik_instance.if_scope(min_cmp_value < min_value):
-                        min_value.set_as(self.ub_min_8[r_idx, c_idx])
-                        min_index.set_as(min_cmp_index + c_idx)
-                    with self.tik_instance.if_scope(tik.all(min_cmp_value == min_value,
-                                                            min_cmp_index + c_idx < min_index)):
-                        min_value.set_as(self.ub_min_8[r_idx, c_idx])
-                        min_index.set_as(min_cmp_index + c_idx)
+                    self._cmp_value(r_idx, c_idx)
                 # Compare local and global minimums and update
                 global_value = self.tik_instance.Scalar(self.input_dtype)
                 global_index = self.tik_instance.Scalar(INDEX_DTYPE)
                 global_value.set_as(self.global_min_distance_ub[m_idx * 8 + r_idx])
                 global_index.set_as(self.global_min_index_ub[m_idx * 8 + r_idx])
-                with self.tik_instance.if_scope(min_value < global_value):
-                    self.global_min_distance_ub[m_idx * 8 + r_idx].set_as(min_value)
-                    self.global_min_index_ub[m_idx * 8 + r_idx].set_as(min_index + self.scalar_index_offset)
+                with self.tik_instance.if_scope(self.min_value < global_value):
+                    self.global_min_distance_ub[m_idx * 8 + r_idx].set_as(self.min_value)
+                    self.global_min_index_ub[m_idx * 8 + r_idx].set_as(self.min_index + self.scalar_index_offset)
+
+    def _cmp_value(self, r_idx, c_idx):
+        """
+        Calculate minimum distance and index from one row
+
+        Parameters:
+        -------------
+        r_idx: row index in 8 * 8 minimum matrix
+        c_idx: col index in 8 * 8 minimum matrix
+
+        Returns:
+        -------------
+        None
+        """
+        min_cmp_value = self.tik_instance.Scalar(self.input_dtype)
+        min_cmp_index = self.tik_instance.Scalar(INDEX_DTYPE)
+        min_cmp_value.set_as(self.ub_min_8[r_idx, c_idx])
+        min_cmp_index.set_as(self.ub_index_int32[r_idx, c_idx])
+        with self.tik_instance.if_scope(min_cmp_value < self.min_value):
+            self.min_value.set_as(self.ub_min_8[r_idx, c_idx])
+            self.min_index.set_as(min_cmp_index + c_idx)
+        with self.tik_instance.if_scope(tik.all(min_cmp_value == self.min_value,
+                                                min_cmp_index + c_idx < self.min_index)):
+            self.min_value.set_as(self.ub_min_8[r_idx, c_idx])
+            self.min_index.set_as(min_cmp_index + c_idx)
+
+    def _calc_min_distance_perf(self, m_tiling, n_tiling, m_l0c_idx, n_cub_idx):
+        """
+        Calculate minimum distance from samples to centroids using optimized vcmin
+
+        Parameters:
+        -------------
+        m_tiling: valid data length of axis m, number
+        n_tiling: valid data length of axis n, number
+        m_l0c_idx: local index of axis m in l0c, expr
+        n_cub_idx: local index of axis n in src_tensor, expr
+
+        Returns:
+        -------------
+        None
+        """
+        self._init_tensor_high_perf()
+        self.vconv(self.vcmin_input_fp16, self.data_input_ub_4_broadcast, self.shape_broadcast_ub,
+                   src_dtype="float32")
+        self._vcmin(self.vcmin_output_fp16, self.vcmin_input_fp16, m_tiling, n_tiling, n_cub_idx)
+        # Obtain the minimum and minimum index from results of vcmin, respectively
+        trans_1_dst_list = [self.vcmin_output_trans1[16 * i] for i in range(16)]
+        trans_1_src_list = [self.vcmin_output_fp16[32 * i] for i in range(16)]
+        self.tik_instance.vnchwconv(False, False, trans_1_dst_list, trans_1_src_list, 2, 16, 1)
+
+        trans_2_dst_list = [self.vcmin_output_trans2[16 * i] for i in range(16)]
+        trans_2_src_list = [self.vcmin_output_trans1[32 * i] for i in range(16)]
+        self.tik_instance.vnchwconv(False, False, trans_2_dst_list, trans_2_src_list, 2, 16, 1)
+
+        self.tik_instance.data_move(self.local_min_distance_ub_fp16, self.vcmin_output_trans2,
+                                    0, 1, m_tiling // 16, 0, 0)
+        self.vconv(self.local_min_distance_ub, self.local_min_distance_ub_fp16, (m_tiling, 1),
+                   src_dtype="float16")
+        fp16_mask = 128
+        self.tik_instance.vector_dup(fp16_mask, self.index_double, 0, 4, 1, 8)
+        self.tik_instance.vadds(fp16_mask, self.index_double, self.vcmin_output_trans1[0, 16],
+                                self.scalar_zero_fp16, 2, 2, 2, 16, 16)
+
+        index_trans_2_dst_list = [self.index_trans_to_int32[32 * i] for i in range(16)]
+        index_trans_2_src_list = [self.index_double[16 * i] for i in range(16)]
+        self.tik_instance.vnchwconv(False, False, index_trans_2_dst_list, index_trans_2_src_list, 2, 1, 16)
+
+        # compare local and global minimums and update
+        vmin_repeat = m_tiling // FP32_MASK
+        self.tik_instance.vmin(FP32_MASK, self.global_min_distance_ub, self.local_min_distance_ub,
+                               self.global_min_distance_ub, vmin_repeat, 1, 1, 1, 8, 8, 8)
+        # Local minimum index adds tiling offset
+        local_min_index_ub_int32 = self.index_trans_to_int32.reinterpret_cast_to("int32")
+        vadd_rpt = m_tiling // FP32_MASK
+        self.tik_instance.vector_dup(FP32_MASK, self.tensor_index_offset_int32, self.scalar_index_offset,
+                                     vadd_rpt, 1, 8)
+        self.tik_instance.vadd(FP32_MASK, local_min_index_ub_int32, local_min_index_ub_int32,
+                               self.tensor_index_offset_int32, vadd_rpt, 1, 1, 1, 8, 8, 8)
+        self.local_min_index_ub = local_min_index_ub_int32.reinterpret_cast_to("float32")
+        # Update the global minimum index
+        self._update_global_index(m_tiling, 0)
+
+    def _vcmin(self, dst_tensor, src_tensor, m_tiling, n_tiling, n_cub_idx):
+        """
+        Use vcmin to get the minimum value of each row in m_tiling rows
+
+        Parameters:
+        -------------
+        dst_tensor: min_distance_ub
+        src_tensor: data_input_ub_4_broadcast
+        m_tiling: valid data length of axis m, number
+        n_tiling: valid data length of axis n, number
+        n_cub_idx: local index of axis n in src_tensor, expr
+
+        Returns:
+        -------------
+        None
+        """
+        ub_min_num = 8 if src_tensor.dtype == "float32" else 16
+        vcmin_loop = m_tiling // VECTOR_REPEAT_MAX
+        vcmin_tail = m_tiling % VECTOR_REPEAT_MAX
+        vcmin_src_rpt_stride = self.n_tiling // ub_min_num
+        if vcmin_loop > 0:
+            with self.tik_instance.for_range(0, vcmin_loop) as vl_idx:
+                self.tik_instance.vcmin(n_tiling, dst_tensor[vl_idx * VECTOR_REPEAT_MAX, 0],
+                                        src_tensor[vl_idx * VECTOR_REPEAT_MAX, n_cub_idx],
+                                        VECTOR_REPEAT_MAX, 1, 1, vcmin_src_rpt_stride)
+        if vcmin_tail > 0:
+            self.tik_instance.vcmin(n_tiling, dst_tensor[vcmin_loop * VECTOR_REPEAT_MAX, 0],
+                                    src_tensor[vcmin_loop * VECTOR_REPEAT_MAX, n_cub_idx],
+                                    vcmin_tail, 1, 1, vcmin_src_rpt_stride)
+
+    def _update_global_index(self, m_tiling, m_l0c_idx):
+        """
+        update global index of minimum distance
+
+        Parameters:
+        -------------
+        m_tiling: valid data length of axis m, number
+        m_l0c_idx: local index of axis m in l0c, expr
+
+        Returns:
+        -------------
+        None
+        """
+        update_loop = m_tiling // FP32_MASK
+        update_tail = m_tiling % FP32_MASK
+
+        with self.tik_instance.for_range(0, update_loop) as u_idx:
+            dst_offset = m_l0c_idx + u_idx * FP32_MASK
+            cmp_mask = self.tik_instance.vcmp_eq(FP32_MASK, self.global_min_distance_ub[dst_offset],
+                                                 self.local_min_distance_ub[u_idx * FP32_MASK], 1, 1)
+            self.tik_instance.vsel(FP32_MASK, 0, self.global_min_index_ub[dst_offset], cmp_mask,
+                                self.local_min_index_ub[u_idx * FP32_MASK],
+                                self.global_min_index_ub[dst_offset],
+                                1, 1, 1, 1, 8, 8, 8)
+        if update_tail > 0:
+            dst_offset = m_l0c_idx + update_loop * FP32_MASK
+            cmp_mask_left = self.tik_instance.vcmp_eq(update_tail, self.global_min_distance_ub[dst_offset],
+                                                 self.local_min_distance_ub[update_loop * FP32_MASK], 1, 1)
+            self.tik_instance.vsel(update_tail, 0, self.global_min_index_ub[dst_offset], cmp_mask_left,
+                                self.local_min_index_ub[update_loop * FP32_MASK],
+                                self.global_min_index_ub[dst_offset],
+                                1, 1, 1, 1, 8, 8, 8)
 
     def _set_init_index(self, m_idx, row_batch, rpt, blk_stride):
         """
@@ -886,8 +1327,8 @@ class KMeansCentroids(object):
         None
         """
         self.tik_instance.vcmpv_eq(self.cmp_mask_ub, self.ub_min_8,
-                                    self.data_input_ub_4_broadcast[m_idx * row_batch, 0],
-                                    rpt, 1, blk_stride, 0, 1)
+                                   self.data_input_ub_4_broadcast[m_idx * row_batch, 0],
+                                   rpt, 1, blk_stride, 0, 1)
         self.tik_instance.vector_dup(FP32_MASK, self.ub_index_int32, 0, 1, 1, 8)
         with self.tik_instance.for_range(0, rpt) as update_idx:
             index = rpt - 1 - update_idx
@@ -897,7 +1338,7 @@ class KMeansCentroids(object):
             mask_h.set_as(0)
             with self.tik_instance.if_scope(mask_l != 0):
                 self.tik_instance.vector_dup([mask_h, mask_l], self.ub_index_int32,
-                                                index * 8, 1, 1, 8)
+                                              index * 8, 1, 1, 8)
 
     def _unsorted_segment_sum(self, m_gm_idx, is_last_core=False, is_m_tail=False):
         """
@@ -916,7 +1357,7 @@ class KMeansCentroids(object):
         """
         shape_x1 = self.input_x1.get("shape")
         d_gm = shape_x1[1]
-        cur_m = self.m_tiling
+        cur_m = self.m_tiling * self.m_tiling_ub_loop
         if is_m_tail:
             if is_last_core:
                 cur_m = self.m_last_tiling_left
@@ -934,7 +1375,7 @@ class KMeansCentroids(object):
         self._output_loss(cur_m)
 
         min_index_to_gm = self.tik_instance.Scalar(dtype=INDEX_DTYPE)
-        if self.soc_version.find("Ascend710") != -1:
+        if self.vcmin_fp32_supported:
             global_min_index_ub_int32 = self.global_min_index_ub.reinterpret_cast_to("int32")
             once_m = cur_m
             once_sample_dma_burst = (d_gm * once_m) // self.ub_min_num
@@ -949,7 +1390,7 @@ class KMeansCentroids(object):
         once_sample_out_dma_burst = d_gm // self.ub_min_num
         with self.tik_instance.for_range(0, cur_m) as m_idx:
             min_index_to_gm.set_as(global_min_index_ub_int32[m_idx])
-            if self.soc_version.find("Ascend710") != -1:
+            if self.vcmin_fp32_supported:
                 self.tik_instance.data_move(self.data_output_gm_1[min_index_to_gm, 0], once_sample[m_idx, 0],
                                             0, 1, once_sample_out_dma_burst, 0, 0)
             else:
@@ -1087,6 +1528,9 @@ class KMeansCentroids(object):
         repeat_times = self._elecnt_of_shape(shape_x_trans) // m1 // 256
         dst_rep_stride = 16
         src_rep_stride = 1
+        if k <= 16:
+            dst_rep_stride = 0
+            src_rep_stride = 0
         with self.tik_instance.for_range(0, m1) as m1_idx:
             dst_list = [dst[m1_idx * repeat_times * 256 + 16 * i] for i in range(16)]
             src_list = [src[m1_idx * k * 16 + k * i] for i in range(16)]
@@ -1113,7 +1557,8 @@ class KMeansCentroids(object):
         src_stride = 1
         sid = 0
         if_transpose = True
-        if self.soc_version.find("Ascend710") != -1:
+        load2dv2_supported = tbe_platform.api_check_support("tik.load2dv2")
+        if load2dv2_supported:
             self.tik_instance.load2dv2(dst, src, index, repeat_times,
                                        dst_gap, src_stride, sid, if_transpose)
         else:
@@ -1140,7 +1585,8 @@ class KMeansCentroids(object):
         src_stride = k1
         sid = 0
         if_transpose = True
-        if self.soc_version.find("Ascend710") != -1:
+        load2dv2_supported = tbe_platform.api_check_support("tik.load2dv2")
+        if load2dv2_supported:
             with self.tik_instance.for_range(0, k1) as index:
                 self.tik_instance.load2dv2(dst[index, :, :, :], src,
                                            index, repeat_times, dst_gap, src_stride, sid, if_transpose)
@@ -1168,30 +1614,49 @@ class KMeansCentroids(object):
         # mask belongs to [1,64] when data type is fp32
         repeat_loop = n1 * 16 // FP32_MASK
         repeat_left = n1 * 16 % FP32_MASK
+        nz_to_nd_para = {
+            "shape_z_ub": shape_z_ub,
+            "is_n_tail": is_n_tail
+        }
+        if repeat_loop > 0:
+            with self.tik_instance.for_range(0, repeat_loop) as rpt_idx:
+                nz_to_nd_para["mask"] = 32
+                nz_to_nd_para["rpt_idx"] = rpt_idx
+                self._nz_to_nd_sub_func(dst, src, nz_to_nd_para)
+        if repeat_left > 0:
+            nz_to_nd_para["mask"] = repeat_left // 2
+            nz_to_nd_para["rpt_idx"] = repeat_loop
+            self._nz_to_nd_sub_func(dst, src, nz_to_nd_para)
+
+    def _nz_to_nd_sub_func(self, dst, src, nz_to_nd_para):
+        """
+        reshape tensor_c from format Nz to ND in ub buffer using vadds
+
+        Parameters:
+        -------------
+        dst: tensor (m, n), fp32
+        src: tensor (n1, m, n0), fp32
+        nz_to_nd_para: dict of parameter
+
+        Returns:
+        -------------
+        None
+        """
+        shape_z_ub = nz_to_nd_para.get("shape_z_ub")
         # repeat_times belongs to [1,255]
         m1_255 = shape_z_ub[1] // VECTOR_REPEAT_MAX
         m1_255_left = shape_z_ub[1] % VECTOR_REPEAT_MAX
+        if m1_255 > 0:
+            with self.tik_instance.for_range(0, m1_255) as m1_255_idx:
+                nz_to_nd_para['m1_255_idx'] = m1_255_idx
+                nz_to_nd_para['repeat_times'] = VECTOR_REPEAT_MAX
+                self._vadds(dst, src, nz_to_nd_para)
+        if m1_255_left > 0:
+            nz_to_nd_para['m1_255_idx'] = m1_255
+            nz_to_nd_para['repeat_times'] = m1_255_left
+            self._vadds(dst, src, nz_to_nd_para)
 
-        if repeat_loop > 0:
-            with self.tik_instance.for_range(0, repeat_loop) as rpt_idx:
-                if m1_255 > 0:
-                    with self.tik_instance.for_range(0, m1_255) as m1_255_idx:
-                        self._vadds(dst, src, 32, m1_255_idx, rpt_idx,
-                                    VECTOR_REPEAT_MAX, shape_z_ub, is_n_tail=is_n_tail)
-                if m1_255_left > 0:
-                    self._vadds(dst, src, 32, m1_255, rpt_idx,
-                                m1_255_left, shape_z_ub, is_n_tail=is_n_tail)
-        if repeat_left > 0:
-            if m1_255 > 0:
-                with self.tik_instance.for_range(0, m1_255) as m1_255_idx:
-                    self._vadds(dst, src, repeat_left // 2, m1_255_idx, repeat_loop,
-                                VECTOR_REPEAT_MAX, shape_z_ub, is_n_tail=is_n_tail)
-            if m1_255_left > 0:
-                self._vadds(dst, src, repeat_left // 2, m1_255, repeat_loop,
-                            m1_255_left, shape_z_ub, is_n_tail=is_n_tail)
-
-    def _vadds(self, dst, src, mask, m1_255_idx, rpt_idx,
-               repeat_times, shape_z_ub, is_n_tail=False):
+    def _vadds(self, dst, src, nz_to_nd_para):
         """
         vadds entity
 
@@ -1199,21 +1664,22 @@ class KMeansCentroids(object):
         -------------
         dst: tensor (m, n), fp32
         src: tensor (n1, m, n0), fp32
-        mask: numbers of one order, int, max 64 for fp32
-        m1_255_idx: start index in m1 axis, expr, max 255
-        rpt_idx: start index of repeat loop, expr
-        repeat_times: repeat times, int
-        shape_z_ub: input shape, tuple
-        is_n_tail: whether axis n has tail in cub, bool
+        nz_to_nd_para: dict of parameter
 
         Returns:
         -------------
         None
         """
         # default params
+        m1_255_idx = nz_to_nd_para.get('m1_255_idx')
+        rpt_idx = nz_to_nd_para.get('rpt_idx')
+        mask = nz_to_nd_para.get('mask')
+        repeat_times = nz_to_nd_para.get('repeat_times')
+        shape_z_ub = nz_to_nd_para.get("shape_z_ub")
+        is_n_tail = nz_to_nd_para.get("is_n_tail")
         scalar = 0
         dst_blk_stride = 2
-        src_blk_stride = shape_z_ub[1] * 2
+        src_blk_stride = shape_z_ub[1] * 2 + EXTEND_LENGTH
         dst_rep_stride = shape_z_ub[0] * 2
         if is_n_tail:
             dst_rep_stride = self.shape_z_ub[0] * 2
@@ -1376,14 +1842,6 @@ def _shape_check(
         error_manager_cube.raise_err_message_cube("k_means_centroids",
                                                   "Shape length of sum_square_y must be equal to 2, " +
                                                   "but recently is %d." % len_shape_x4)
-    if shape_x1[1] != VECTOR_LENGTH:
-        error_manager_cube.raise_err_message_cube("k_means_centroids",
-                                                  "Dimension of each sample must be 128, " +
-                                                  "but recently is %d." % shape_x1[1])
-    if shape_x2[1] != VECTOR_LENGTH:
-        error_manager_cube.raise_err_message_cube("k_means_centroids",
-                                                  "Dimension of each centroid must be 128, " +
-                                                  "but recently is %d." % shape_x2[1])
 
     support_dtype = ("float32",)
     input1_dtype = x.get("dtype")
@@ -1447,6 +1905,7 @@ def k_means_centroids(
     kmean_total_sum,
     use_actual_distance=False,
     kernel_name="k_means_centroids",
+    impl_mode="high_performance"
 ):
     """
     algorithm k_means_centroids
@@ -1479,6 +1938,9 @@ def k_means_centroids(
 
     kernel_name: str
 
+    impl_mode : str
+        assign high_performance or high_precision
+
     Returns:
     -------------
     tik_instance: tik instance
@@ -1487,7 +1949,7 @@ def k_means_centroids(
                  kmean_total_sum)
 
     kmeans = KMeansCentroids(x, y, sum_square_x, sum_square_y, segment_sum, segment_count,
-                             kmean_total_sum, use_actual_distance, kernel_name)
+                             kmean_total_sum, use_actual_distance, kernel_name, impl_mode)
 
     tik_instance = kmeans.k_means_centroids_compute()
 
