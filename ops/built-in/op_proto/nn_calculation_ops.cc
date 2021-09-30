@@ -1161,7 +1161,8 @@ static void set_conv2d_backprop_input_dim_range(const std::string& pad_str,
 }
 
 static bool set_conv2d_backprop_input_out_range(ge::Operator& op, const vector<int32_t>& dy_position,
-                                                const vector<int32_t>& input_position, const vector<int64_t>& k_value,
+                                                const vector<int32_t>& input_position,
+                                                const vector<int64_t>& k_value,
                                                 const vector<int32_t>& stride_value,
                                                 std::vector<std::pair<int64_t, int64_t>>& dx_range,
                                                 std::vector<std::pair<int64_t, int64_t>>& dy_range,

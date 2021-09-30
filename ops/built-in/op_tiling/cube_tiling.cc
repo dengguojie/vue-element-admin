@@ -46,13 +46,15 @@ namespace {
     {"AvgPool3DGrad", kAvgPool3DGradVarNames}
   };
 
-  void get_var_names(const std::string &op_type, std::vector<std::string> &vars) {
-    if (kOpVarNamesMap.count(op_type) > 0){
+  void get_var_names(const std::string &op_type, std::vector<std::string> &vars)
+  {
+    if (kOpVarNamesMap.count(op_type) > 0) {
       vars = kOpVarNamesMap.at(op_type);
     }
   }
 
-  static bool is_shape_in_range(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
+  static bool is_shape_in_range(const std::vector<int64_t> &shape, const std::vector<int64_t> &range)
+  {
     // shape: NDHWC, range: NDHW
     if (shape.size() < kConv3dDimSizeLimit || range.size() < (kConv3dVarDimSizeLimit * 2)) {
       return false;
@@ -61,7 +63,8 @@ namespace {
     for (int32_t i = 0; i < kConv3dVarDimSizeLimit; ++i) {
       int32_t shape_index = kConv3DDynamicShapeDims[i];
       int32_t range_index = kConv3DDynamicRangeDims[i];
-      if (shape[shape_index] < range[range_index * kRangeDivShape] || shape[shape_index] > range[(range_index * kRangeDivShape) + 1]) {
+      if (shape[shape_index] < range[range_index * kRangeDivShape] ||
+          shape[shape_index] > range[(range_index * kRangeDivShape) + 1]) {
         return false;
       }
     }
@@ -74,7 +77,8 @@ namespace {
     const std::vector<int32_t> range_dim = {0, 1, 2, 3, 4, 5};
     if (range.size() == range_dim.size()) {
       for (size_t i = 0; i < shape_dim.size(); ++i) {
-        if (shape[shape_dim[i]] < range[range_dim[i * kRangeDivShape]] || shape[shape_dim[i]] > range[range_dim[i * kRangeDivShape + 1]]) {
+        if (shape[shape_dim[i]] < range[range_dim[i * kRangeDivShape]] ||
+            shape[shape_dim[i]] > range[range_dim[i * kRangeDivShape + 1]]) {
           return false;
         }
       }
@@ -119,7 +123,7 @@ namespace {
     }
 
     int64_t batch = cur_shape[0];
-    auto& tiling_case = compile_info.at("tiling_range");
+    const auto& tiling_case = compile_info.at("tiling_range");
     for (auto it = tiling_case.begin(); it != tiling_case.end(); ++it) {
       auto& range = it.value();
       if (batch >= range[0] && batch <= range[1]) {
@@ -139,7 +143,7 @@ namespace {
     }
 
     auto& tiling_seeds = compile_info.at(kCompileRepoSeeds);
-    auto& repo_range = compile_info.at(kCompileRepoRange);
+    const auto& repo_range = compile_info.at(kCompileRepoRange);
     int64_t min_dist = std::numeric_limits<int64_t>::max();
     for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {
       std::vector<int64_t> seed = it.value().get<std::vector<int64_t>>();
@@ -203,10 +207,10 @@ namespace {
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "no tiling_range in compile info json");
       return tiling_id;
     }
-    auto& tiling_range = compile_info.at("tiling_range");
+    const auto& tiling_range = compile_info.at("tiling_range");
     for (auto it = tiling_range.begin(); it != tiling_range.end(); it++) {
       auto& range = it.value();
-      if (is_shape_in_range_cube(cur_shape, range)){
+      if (is_shape_in_range_cube(cur_shape, range)) {
         tiling_id = it.key();
       }
     }
@@ -225,7 +229,7 @@ namespace {
     int32_t hDim = 2;
     int32_t wDim = 3;
 
-    auto& repo_range = compile_info.at(kCompileRepoRange);
+    const auto& repo_range = compile_info.at(kCompileRepoRange);
     auto& tiling_seeds = compile_info.at(kCompileRepoSeeds);
     int64_t min_dist = std::numeric_limits<int64_t>::max();
     for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {
