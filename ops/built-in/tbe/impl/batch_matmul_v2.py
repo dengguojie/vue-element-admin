@@ -328,10 +328,13 @@ def _check_batch_range(input_x, input_y):
 
     range_x1 = input_x.get("range")
     range_x2 = input_y.get("range")
-    if not range_x1 or len(shape_a) <= ND_LENGTH:
+    if (range_x1 is None) or (len(shape_a) <= ND_LENGTH):
         return False
-    if not range_x2 or len(shape_b) < ND_LENGTH:
+    if (range_x2 is None) or (len(shape_b) < ND_LENGTH):
         return False
+
+    if (not range_x1) or (not range_x2):
+        return True
 
     batch_range_x1 = range_x1[:(len(shape_a) - ND_LENGTH)]
     batch_range_x2 = range_x2[:(len(shape_b) - ND_LENGTH)]

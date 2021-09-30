@@ -112,6 +112,11 @@ def test_op_check_supported(test_arg):
     input_x2 = {"ori_shape": (2, 16, 16), "shape": (2, 1, 1, 16, 16),"dtype": 'float16'}
     check_supported(input_x1, input_x2)
 
+def test_op_check_supported_empty_range(test_arg):
+    from impl.batch_matmul_v2 import check_supported
+    input_x1_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (2,3), (3,5)), "dtype": 'float16'}
+    input_x2_dynamic = {"ori_shape": (2, 16, 16), "shape": (2, 1, 1, 16, 16), "range": (), "dtype": 'float16'}
+    check_supported(input_x1_dynamic, input_x2_dynamic)
 
 for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
@@ -181,6 +186,7 @@ for case in normal_case:
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_empty_range)
 
 def test_get_op_support_info_dynamic_batchmatmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1, 16, 16), "ori_shape": (-1, -1, -1),
