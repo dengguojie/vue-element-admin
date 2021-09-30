@@ -115,8 +115,14 @@ enum SubScenarioLastAxisTrans {
   LAST_AXIS_TR_T2F = 2,  // thin 2 fat
 };
 
-struct PermInfo {
-  int64_t perm[UB_REORDER_NUM + 1][BORROW_MAX_AXIS_NUM_LT];  // 1 : for init status
+enum MteMode {
+  MTE_MODE_NULL = 0,  //default
+  MTE_MODE_DST = 1,   // dst contiguous
+  MTE_MODE_SRC = 2    // src contiguous
+};
+
+struct PermInfo{
+    int64_t perm[UB_REORDER_NUM + 1][BORROW_MAX_AXIS_NUM_LT]; // 1 : for init status
 };
 
 struct SplitParam {
@@ -198,6 +204,7 @@ struct ShapeInfo {
   bool isLastAxisHuge;
   bool isLastTwoAlignedAndTrans;
   TransposeScenario scenario;
+  MteMode mteMode;
 
   ShapeInfo() : reducedPermGrad(TRANSPOSE_MAX_AXIS_NUM, 0) {
     dim = 0;
@@ -213,6 +220,7 @@ struct ShapeInfo {
     isLastAxisHuge = false;
     isLastTwoAlignedAndTrans = false;
     scenario = SCENARIO_0;
+    mteMode = MTE_MODE_NULL;
   }
 };
 
@@ -717,6 +725,7 @@ struct RuntimeInfo {
   int64_t lastAxisElementNumAligned;
   int64_t srcStrideLogic;
   int64_t srcStride;
+  int64_t dstStride;
   int64_t backNum;
   int64_t skipEle;
   std::vector<std::pair<int64_t, int64_t>> initRanges;
@@ -800,6 +809,7 @@ struct RuntimeInfo {
     lastAxisElementNumAligned = 0;
     srcStrideLogic = 0;
     srcStride = 0;
+    dstStride = 0;
     backNum = 0;
     skipEle = 0;
     nJumpAxisNum = 0;

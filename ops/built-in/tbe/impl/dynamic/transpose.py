@@ -145,8 +145,14 @@ def _by_dynamic_static_union_version(shape, core_num):
                          [195, 128, 32, 61], [128, 32, 195, 61], [1, 64, 2, 2, 114, 114], [24, 128, 64, 131],
                          [24, 131, 64, 128], [195, 128], [192, 16, 8, 1, 64],
                          [1, 512, 1, 2], [1, 256, 1, 2], [1, 128, 1, 2], [1, 64, 1, 2], [1, 128, 1, 2, 4], [1, 64, 1, 2, 4],
-                         [16, 512, 1, 2], [16, 256, 1, 2], [16, 128, 1, 2], [16, 64, 1, 2], [16, 128, 1, 2, 4], [16, 64, 1, 2, 4],
-                         [1000, 5, 64, 64], [1000, 12, 48, 32]
+                         [16, 512, 1, 2], [16, 256, 1, 2], [16, 128, 1, 2], [16, 64, 1, 2], [16, 128, 1, 2, 4],
+                         [16, 64, 1, 2, 4], [24, 131, 64, 128], [16, 3, 72, 72, 85], [16, 3, 68, 68, 85],
+                         [16, 3, 52, 52, 85], [16, 3, 48, 48, 85], [16, 3, 44, 44, 85], [16, 3, 36, 36, 85],
+                         [16, 3, 34, 34, 85], [16, 3, 26, 26, 85], [16, 3, 24, 24, 85], [16, 3, 22, 22, 85],
+                         [16, 3, 18, 18, 85], [16, 3, 17, 17, 85], [16, 3, 13, 13, 85], [16, 3, 12, 12, 85],
+                         [16, 3, 11, 11, 85], [16, 3, 85, 72, 72], [16, 3, 85, 68, 68], [16, 3, 85, 48, 48],
+                         [16, 3, 85, 34, 34], [16, 3, 85, 24, 24], [16, 3, 85, 18, 18], [1000, 5, 64, 64], [1000, 12, 48, 32],
+                         [16, 2, 4, 4, 32, 32], [16, 1, 4, 4, 32, 32], [16, 1, 32, 4, 32, 4], [16, 2, 32, 4, 32, 4]
                        ]
     shape_t = list(shape)
     if shape_t in white_list_shape:
@@ -169,7 +175,8 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     x_shape = input_x.get("ori_shape")
     x_dtype = input_x.get("dtype")
 
-    check_list = ["int8", "uint8", "bool", "float", "float32", "int32", "uint32", "int16", "uint16", "float16"]
+    check_list = ["int8", "uint8", "bool", "float", "float32", "int32", "uint32", "int16", "uint16", "float16", "int64",
+                  "uint64"]
     if x_dtype not in check_list:
         reason = "x_dtype [%s] not in %s" % (x_dtype, str(check_list))
         return False, reason
@@ -277,14 +284,11 @@ class Transpose(object):
                 self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 0 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 1 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + 2 * self.trans_axis_num])
 
             # part 3 : percore
             ub_offset.set_as(0)
@@ -355,16 +359,12 @@ class Transpose(object):
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
                 self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 1 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + 2 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor_mod[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_factor_mod[i].set_as(ub_input_64_t[ub_offset + i + 3 * self.trans_axis_num])
 
             # part 3 : percore
             ub_offset.set_as(0)
@@ -459,14 +459,11 @@ class Transpose(object):
                 self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 0 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 1 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + 2 * self.trans_axis_num])
 
             # part 3 : percore
             ub_offset.set_as(0)
@@ -901,32 +898,29 @@ class Transpose(object):
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
                 self.n_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_jump_stride_in[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
-
+                self.n_jump_stride_in[i].set_as(ub_input_64_t[ub_offset + i + \
+                                                              1 * self.n_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_jump_stride_out[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
-
+                self.n_jump_stride_out[i].set_as(ub_input_64_t[ub_offset + i + \
+                                                               2 * self.n_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.dst_axis_num)
-
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + \
+                                                             3 * self.n_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.dst_axis_num)
-
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + \
+                                                             3 * self.n_axis_num + \
+                                                             1 * self.dst_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.src_axis_num)
-
+                self.src_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + \
+                                                             3 * self.n_axis_num + \
+                                                             2 * self.dst_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.src_axis_num)
-
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + \
+                                                             3 * self.n_axis_num + \
+                                                             2 * self.dst_axis_num + \
+                                                             1 * self.src_axis_num])
 
             # part 3: per core
             per_core_front = 11
@@ -965,25 +959,23 @@ class Transpose(object):
                 self.tail_src_tuple.append(tiling_reg_list[reg_base + i * cycle + 4])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.init_n_tuple[i].set_as(ub_input_64[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
+                self.init_n_tuple[i].set_as(ub_input_64[ub_offset + 0 * self.n_axis_num + i])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.init_dst_tuple[i].set_as(ub_input_64[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.dst_axis_num)
+                self.init_dst_tuple[i].set_as(ub_input_64[i + ub_offset + self.n_axis_num + 0 * self.dst_axis_num])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.tail_dst_tuple[i].set_as(ub_input_64[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.dst_axis_num)
+                self.tail_dst_tuple[i].set_as(ub_input_64[i + ub_offset + self.n_axis_num + 1 * self.dst_axis_num])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.init_src_tuple[i].set_as(ub_input_64[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.src_axis_num)
+                self.init_src_tuple[i].set_as(ub_input_64[i + ub_offset + self.n_axis_num + \
+                                                          2 * self.dst_axis_num + \
+                                                          0 * self.src_axis_num])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.tail_src_tuple[i].set_as(ub_input_64[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.src_axis_num)
-
+                self.tail_src_tuple[i].set_as(ub_input_64[i + ub_offset + self.n_axis_num + \
+                                                          2 * self.dst_axis_num + \
+                                                          1 * self.src_axis_num])
 
             # part 4: variable
             self.rt_n_tuple = []
@@ -1032,7 +1024,7 @@ class Transpose(object):
             # part 2: fixed
             ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 
-            for i in range(7):
+            for i in range(8):
                 tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
             self.core_num = tiling_reg_list[0]
             self.ub_size = tiling_reg_list[1]
@@ -1041,27 +1033,29 @@ class Transpose(object):
             self.trans_axis_num = tiling_reg_list[4]
             self.repeat = tiling_reg_list[5]
             self.src_repeat_stride = tiling_reg_list[6]
+            self.dst_repeat_stride = tiling_reg_list[7]
 
-            reg_base = 7
+            reg_base = 8
             ub_offset.set_as(TILING_HEAD_LEN + reg_base)
-            cycle = 3
+            cycle = 4
             self.src_jump_stride = []
             self.dst_jump_stride = []
+            self.src_jump_factor = []
             self.dst_jump_factor = []
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
                 self.src_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 0])
                 self.dst_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 1])
-                self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
+                self.src_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
+                self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 3])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 0 * self.trans_axis_num])
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
-            for i in range(TRANSPOSE_MAX_AXIS_NUM - 1):
-                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.trans_axis_num)
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 1 * self.trans_axis_num])
+            for i in range(TRANSPOSE_MAX_AXIS_NUM):
+                self.src_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + 2 * self.trans_axis_num])
+            for i in range(TRANSPOSE_MAX_AXIS_NUM):
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + 3 * self.trans_axis_num])
 
             # part 3 : percore
             ub_offset.set_as(0)
@@ -1132,16 +1126,13 @@ class Transpose(object):
                 self.n_dst_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 2])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
+                self.n_jump_factor[i].set_as(ub_input_64_t[ub_offset + i + 0 * self.n_axis_num])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
+                self.n_src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 1 * self.n_axis_num])
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
-            ub_offset.set_as(ub_offset + self.n_axis_num)
+                self.n_dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 2 * self.n_axis_num])
 
             # part 3: per core
             per_core_front = 8
@@ -1404,7 +1395,7 @@ class Transpose(object):
             self.tik_inst.data_move(self.data_out[tp.dst_addr + loop * tp.last_axis_len],
                                     ub_input[loop * burst_len * self.ele_per_block], 0, 1, burst_len, 0, 0)
 
-    def _copy_in_s1_aggregate_n_aligned(self, tp, ub_input, burst_len, ub_offset):
+    def _copy_in_s1_aggregate_n_aligned(self, tp, ub_input, burst_len):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, tp.aggregate_loop_unit) as loop:
                 self._get_src_addr_s1(tp)
@@ -1431,7 +1422,7 @@ class Transpose(object):
         self._get_src_addr_s1(tp)
         self.tik_inst.data_move(ub_input, self.data_in[tp.src_addr], 0, 1, burst_len, 0, 0)
 
-    def _copy_out_s1(self, tp, ub_input, burst_len, ub_offset):
+    def _copy_out_s1(self, tp, ub_input, burst_len):
         self._get_dst_addr_s1(tp)
         self.tik_inst.data_move(self.data_out[tp.dst_addr], ub_input, 0, 1, burst_len, 0, 0)
 
@@ -1460,23 +1451,23 @@ class Transpose(object):
 
                 with self.tik_inst.for_range(0, tp.aggregate_loop_tail):
                     self._copy_in_s1(tp, ub_input, tp.last_axis_burst_len)
-                    self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len, ub_offset)
+                    self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len)
                     self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor)
 
             with self.tik_inst.else_scope():
 
                 with self.tik_inst.for_range(0, tp.aggregate_loop_num):
                     self._get_dst_addr_s1(tp)
-                    self._copy_in_s1_aggregate_n_aligned(tp, ub_input, tp.last_axis_burst_len, ub_offset)
+                    self._copy_in_s1_aggregate_n_aligned(tp, ub_input, tp.last_axis_burst_len)
                     self._copy_out_s1_aggregate_n_aligned(tp, ub_input, tp.last_axis_burst_len)
 
                 with self.tik_inst.for_range(0, tp.aggregate_loop_tail):
                     self._copy_in_s1(tp, ub_input, tp.last_axis_burst_len)
-                    self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len, ub_offset)
+                    self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len)
                     self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor)
 
                 self._copy_in_s1(tp, ub_input, tp.last_axis_burst_len)
-                self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len - 1, ub_offset)
+                self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len - 1)
                 self._copy_anti_overlap_s1(tp, ub_input)
 
     # -------------------------------------------------------------------------------------------------
@@ -2467,7 +2458,10 @@ class Transpose(object):
             src_ele_num_in_b16 = self._get_src_size() # avoid bank conflict
             src_list = [ub_input_b16[tp.offset_a * self.fp16_times + src_ele_num_in_b16 * i] for i in range(EPB16)]
             dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + EPB16 * i] for i in range(EPB16)]
-            tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
+            with tik_inst.if_scope(tp.ub_offset != 1):
+                tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
+            with tik_inst.else_scope():
+                tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, 0, 0)
             self._swap(tp)
 
             #eliminate dirty data between two in_blocks
@@ -2500,7 +2494,10 @@ class Transpose(object):
             src_list = [ub_input_b16[tp.offset_a * self.fp16_times + EPB16 * i] for i in range(EPB16)]
             dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + self._get_dst_size() * EPB16 * i] \
                         for i in range(EPB16)]
-            tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
+            with tik_inst.if_scope(x_src_loop_out * burst_len_out != 1):
+                tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
+            with tik_inst.else_scope():
+                tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 0, 0)
             self._swap(tp)
 
     def _get_reorder_idx(self, is_src_tail_in, is_dst_tail_in, idx):
@@ -5259,23 +5256,37 @@ class Transpose(object):
         with self.tik_inst.for_range(0, tp.trans_axis_num) as i:
             tp.dst_addr.set_as(tp.dst_addr + tp.rt_tuple[i] * tp.dst_jump_stride[i])
 
-    def _copy_in_s9(self, tp, ub_input, repeat, burst_len, src_stride, ub_offset):
+    def _copy_in_src_mode_s9(self, tp, ub_input, repeat, burst_len, ub_offset):
+        self._get_src_addr_s1(tp)
+        self.tik_inst.data_move(ub_input, self.data_in[tp.src_addr], 0, 1, repeat * burst_len, 0, 0)
+
+    def _copy_out_src_mode_s9(self, tp, ub_input, repeat, burst_len, dst_stride, ub_offset):
+        self._get_dst_addr_s1(tp)
+        self.tik_inst.data_move(self.data_out[tp.dst_addr], ub_input, 0, repeat, burst_len, 0, dst_stride)
+
+    def _copy_in_dst_mode_s9(self, tp, ub_input, repeat, burst_len, src_stride, ub_offset):
         self._get_src_addr_s1(tp)
         self.tik_inst.data_move(ub_input, self.data_in[tp.src_addr], 0, repeat, burst_len, src_stride, 0)
 
-    def _copy_out_s9(self, tp, ub_input, repeat, burst_len, ub_offset):
+    def _copy_out_dst_mode_s9(self, tp, ub_input, repeat, burst_len, ub_offset):
         self._get_dst_addr_s1(tp)
         self.tik_inst.data_move(self.data_out[tp.dst_addr], ub_input, 0, 1, repeat * burst_len, 0, 0)
 
-    def _move_data_s9(self, tp, ub_input_64):
+    def _move_data_s9(self, tp, ub_input_64, sub_scenario):
         ub_offset = self.tik_inst.Scalar("int32") # unit : block
         ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
 
         self._init_tuple_common(tp)
-        with self.tik_inst.for_range(0, tp.loop_num) as ln:
-            self._copy_in_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len, tp.src_repeat_stride, ub_offset)
-            self._copy_out_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len, ub_offset)
-            self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor)
+        with self.tik_inst.if_scope(sub_scenario == 1): # dst mode
+            with self.tik_inst.for_range(0, tp.loop_num) as ln:
+                self._copy_in_dst_mode_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len, tp.src_repeat_stride, ub_offset)
+                self._copy_out_dst_mode_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len, ub_offset)
+                self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor)
+        with self.tik_inst.else_scope(): # src mode
+            with self.tik_inst.for_range(0, tp.loop_num) as ln:
+                self._copy_in_src_mode_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len, ub_offset)
+                self._copy_out_src_mode_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len, tp.dst_repeat_stride, ub_offset)
+                self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.src_jump_factor)
 
     # -------------------------------------------------------------------------------------------------
     #                                    scenario_10
@@ -5703,7 +5714,7 @@ class Transpose(object):
                                     self._move_data_s8(self.ub_input_64)
                                 with self.tik_inst.if_scope(scenario == 9):
                                     tp = self._do_tiling_s9(block_idx, fixed_len, per_core_len)
-                                    self._move_data_s9(tp, self.ub_input_64)
+                                    self._move_data_s9(tp, self.ub_input_64, sub_scenario)
                                 with self.tik_inst.if_scope(scenario == 10):
                                     tp = self._do_tiling_s10(block_idx, fixed_len, per_core_len)
                                     self._move_data_s10(tp, self.ub_input_64)
