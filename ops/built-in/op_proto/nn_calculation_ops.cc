@@ -56,6 +56,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <tuple>
 
 #include "./util/error_util.h"
 #include "common/util/error_manager/error_manager.h"
@@ -132,6 +133,7 @@ namespace {
   const int64_t kDynamicRangeUpperBound = 4096;
   const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
   const std::vector<int64_t> DYNAMIC_DIM_ALL = {-2};
+  using SliceTuple = std::tuple<int32_t, int32_t, int32_t, int32_t>;
 }
 
 // ----------------LSTM begin-------------------
@@ -2507,8 +2509,13 @@ static graphStatus VerifyConv2dbpInputCommon(const ge::Operator& op) {
   return GRAPH_SUCCESS;
 }
 
-static void InferHWConv2DbpInput(int32_t kernel, int32_t dilation, int32_t stride, vector<int32_t>& pads,
-                                 vector<int64_t>& output, vector<int64_t>& input, int32_t index, int32_t input_max) {
+static void InferHWConv2DbpInput(vector<int32_t>& pads, vector<int64_t>& output, vector<int64_t>& input,
+                                 int32_t index, const SliceTuple& infer_hw) {
+  int32_t kernel = 0;
+  int32_t dilation = 0;
+  int32_t stride = 0;
+  int32_t input_max = 0;
+  std::tie(kernel, dilation, stride, input_max) = infer_hw;
   int32_t dilate_kernel = (kernel - 1) * dilation + 1;
   int32_t pad_out = kernel - pads[index] - 1;
   int32_t start = std::ceil(static_cast<float>(output[0] - pad_out) / stride);
@@ -2554,6 +2561,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
   bool i_equal_two = i == kHDimNCHWIdx && (kh != 1 || strh != 1) && ih > 0;
   bool i_equal_three = i == kWDimNCHWIdx && (kw != 1 || strw != 1) && iw > 0;
   bool is_deconv_flag = string(op_type.GetString()) == "Deconvolution";
+  SliceTuple infer_hw(kh, dilh, strh, ih);
   if (i == 1) {
     bool dim_shape_fail = string(op_type.GetString()) == "Conv2DBackpropInputD" &&
                           y_data_slice[i].size() < kDataSliceLen;
@@ -2582,7 +2590,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
     return GRAPH_SUCCESS;
   } else if (i_equal_two) {
     vector<int64_t> input_h;
-    InferHWConv2DbpInput(kh, dilh, strh, pad_list, y_data_slice[i], input_h, 0, ih);
+    InferHWConv2DbpInput(pad_list, y_data_slice[i], input_h, 0, infer_hw);
     dedy_data_slice[i] = input_h;
     CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice),
               return GRAPH_FAILED, "set dedy data slice attr failed.");
@@ -2595,7 +2603,8 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
     return GRAPH_SUCCESS;
   } else if (i_equal_three) {
     vector<int64_t> input_w;
-    InferHWConv2DbpInput(kw, dilw, strw, pad_list, y_data_slice[i], input_w, kDataSliceLen, iw);
+    infer_hw = std::make_tuple(kw, dilw, strw, iw);
+    InferHWConv2DbpInput(pad_list, y_data_slice[i], input_w, kConv2dPadLeftIdx, infer_hw);
     dedy_data_slice[i] = input_w;
     CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice),
               return GRAPH_FAILED, "set dedy data slice attr failed.");
@@ -6650,14 +6659,16 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   return GRAPH_SUCCESS;
 }
 
-static void InferHWConv3d(int32_t kernel,
-                          int32_t dilation,
-                          int32_t stride,
-                          int32_t input_size,
+static void InferHWConv3d(const SliceTuple& infer_dhw,
                           const vector<int64_t>& output,
                           vector<int64_t>& input,
                           vector<int32_t>& pad_list,
                           uint32_t pad_idx) {
+  int32_t kernel = 0;
+  int32_t dilation = 0;
+  int32_t stride = 0;
+  int32_t input_size = 0;
+  std::tie(kernel, dilation, stride, input_size) = infer_dhw;
   int32_t kernel_size = (kernel - 1) * dilation + 1;
   int32_t pad_h = pad_list[pad_idx];
   if (input_size > 0) {
@@ -6797,6 +6808,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
   CHECK_OP_FUNC(pad_list.size() != kConv3dPadsSizeLimit, return GRAPH_FAILED, "the pad_list is illegal.");
+  SliceTuple infer_dhw(kd, dild, strd, id);
   // cut N
   if (y_data_slice[0].size() != 0) {
     x_data_slice[0] = y_data_slice[0];
@@ -6810,7 +6822,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   if (y_data_slice[kDDimNDC1HWC0Idx].size() != 0) {
     x_data_slice[kDDimNDC1HWC0Idx].clear();
     x_data_slice[kDDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3d(kd, dild, strd, id,
+    InferHWConv3d(infer_dhw,
                   y_data_slice[1], x_data_slice[1], pad_list, kConv3dPadHeadIdx);
     needUpdateX = true;
   }
@@ -6826,7 +6838,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   if (y_data_slice[kHDimNDC1HWC0Idx].size() != 0) {
     x_data_slice[kHDimNDC1HWC0Idx].clear();
     x_data_slice[kHDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3d(kh, dilh, strh, ih,
+    infer_dhw = std::make_tuple(kh, dilh, strh, ih);
+    InferHWConv3d(infer_dhw,
                   y_data_slice[kHDimNDC1HWC0Idx], x_data_slice[kHDimNDC1HWC0Idx], pad_list, kConv3dPadUpIdx);
     needUpdateX = true;
   }
@@ -6835,7 +6848,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   if (y_data_slice[kWDimNDC1HWC0Idx].size() != 0) {
     x_data_slice[kWDimNDC1HWC0Idx].clear();
     x_data_slice[kWDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3d(kw, dilw, strw, iw,
+    infer_dhw = std::make_tuple(kw, dilw, strw, iw);
+    InferHWConv3d(infer_dhw,
                   y_data_slice[kWDimNDC1HWC0Idx], x_data_slice[kWDimNDC1HWC0Idx], pad_list, kConv3dPadLeftIdx);
     needUpdateX = true;
   }
@@ -7524,14 +7538,16 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   return true;
 }
 
-static void InferHWConv3dBackpropInput(int32_t kernel,
-                                       int32_t dilation,
-                                       int32_t stride,
-                                       int32_t input_size,
+static void InferHWConv3dBackpropInput(const SliceTuple& infer_dhw,
                                        const vector<int64_t>& output,
                                        vector<int64_t>& input,
                                        vector<int32_t>& pad_list,
                                        uint32_t pad_idx) {
+  int32_t kernel = 0;
+  int32_t dilation = 0;
+  int32_t stride = 0;
+  int32_t input_size = 0;
+  std::tie(kernel, dilation, stride, input_size) = infer_dhw;
   int32_t kernel_size = (kernel - 1) * dilation + 1;
   int32_t pad_out = kernel_size - pad_list[pad_idx] - 1;
   if (input_size > 0) {
@@ -7793,6 +7809,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSli
   vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
   CHECK_OP_FUNC(pad_list.size() != kConv3dPadsSizeLimit, return GRAPH_FAILED, "the pad_list is illegal.");
+  SliceTuple infer_dhw = std::make_tuple(kd, dild, strd, id);
   // cut N
   if (y_data_slice[0].size() != 0) {
     dedy_data_slice[0] = y_data_slice[0];
@@ -7803,7 +7820,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSli
   if (y_data_slice[kDDimNDC1HWC0Idx].size() != 0) {
     dedy_data_slice[kDDimNDC1HWC0Idx].clear();
     dedy_data_slice[kDDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3dBackpropInput(kd, dild, strd, id,
+    InferHWConv3dBackpropInput(infer_dhw,
                                y_data_slice[kDDimNDC1HWC0Idx], dedy_data_slice[kDDimNDC1HWC0Idx],
                                pad_list, kConv3dPadHeadIdx);
     needUpdateX = true;
@@ -7813,7 +7830,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSli
   if (y_data_slice[kHDimNDC1HWC0Idx].size() != 0) {
     dedy_data_slice[kHDimNDC1HWC0Idx].clear();
     dedy_data_slice[kHDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3dBackpropInput(kh, dilh, strh, ih,
+    infer_dhw = std::make_tuple(kh, dilh, strh, ih);
+    InferHWConv3dBackpropInput(infer_dhw,
                                y_data_slice[kHDimNDC1HWC0Idx], dedy_data_slice[kHDimNDC1HWC0Idx],
                                pad_list, kConv3dPadUpIdx);
     needUpdateX = true;
@@ -7823,7 +7841,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSli
   if (y_data_slice[kWDimNDC1HWC0Idx].size() != 0) {
     dedy_data_slice[kWDimNDC1HWC0Idx].clear();
     dedy_data_slice[kWDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3dBackpropInput(kw, dilw, strw, iw,
+    infer_dhw = std::make_tuple(kw, dilw, strw, iw);
+    InferHWConv3dBackpropInput(infer_dhw,
                                y_data_slice[kWDimNDC1HWC0Idx], dedy_data_slice[kWDimNDC1HWC0Idx],
                                pad_list, kConv3dPadLeftIdx);
     needUpdateX = true;
@@ -8759,6 +8778,7 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
 
   bool needUpdateX = false;
   bool needUpdateW = false;
+  SliceTuple infer_dhw = std::make_tuple(kd, dild, strd, id);
   // cut N
   if (y_data_slice[0].size() != 0) {
     x_data_slice[0] = y_data_slice[0];
@@ -8775,7 +8795,7 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
   if (y_data_slice[kDDimNDC1HWC0Idx].size() != 0) {
     x_data_slice[kDDimNDC1HWC0Idx].clear();
     x_data_slice[kDDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3dBackpropInput(kd, dild, strd, id,
+    InferHWConv3dBackpropInput(infer_dhw,
                                y_data_slice[kDDimNDC1HWC0Idx], x_data_slice[kDDimNDC1HWC0Idx],
                                pad_list, kConv3dPadHeadIdx);
     needUpdateX = true;
@@ -8785,7 +8805,8 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
   if (y_data_slice[kHDimNDC1HWC0Idx].size() != 0) {
     x_data_slice[kHDimNDC1HWC0Idx].clear();
     x_data_slice[kHDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3dBackpropInput(kh, dilh, strh, ih,
+    infer_dhw = std::make_tuple(kh, dilh, strh, ih);
+    InferHWConv3dBackpropInput(infer_dhw,
                                y_data_slice[kHDimNDC1HWC0Idx], x_data_slice[kHDimNDC1HWC0Idx],
                                pad_list, kConv3dPadUpIdx);
     needUpdateX = true;
@@ -8795,7 +8816,8 @@ graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
   if (y_data_slice[kWDimNDC1HWC0Idx].size() != 0 && pad_list.size() == kConv3dPadsSizeLimit) {
     x_data_slice[kWDimNDC1HWC0Idx].clear();
     x_data_slice[kWDimNDC1HWC0Idx].resize(kDataSliceLen);
-    InferHWConv3dBackpropInput(kw, dilw, strw, iw,
+    infer_dhw = std::make_tuple(kw, dilw, strw, iw);
+    InferHWConv3dBackpropInput(infer_dhw,
                                y_data_slice[kWDimNDC1HWC0Idx], x_data_slice[kWDimNDC1HWC0Idx],
                                pad_list, kConv3dPadLeftIdx);
     needUpdateX = true;
