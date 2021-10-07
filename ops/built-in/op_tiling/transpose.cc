@@ -1032,7 +1032,6 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
     if (repeatAxisDst > NBURST_BOUNDARY) {
       break;
     }
-    printf("%ld,  %ld,  %ld\n", repeatAxisDst, shapeInfo.lastAxisBurstLen, compilerInfo.ubSizeCouldUse);
     if (repeatAxisDst * shapeInfo.lastAxisBurstLen > compilerInfo.ubSizeCouldUse) {
       break;
     }
@@ -1058,7 +1057,6 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
     if (repeatAxisSrc > NBURST_BOUNDARY) {
       break;
     }
-    printf("%ld,  %ld,  %ld\n", repeatAxisDst, shapeInfo.lastAxisBurstLen, compilerInfo.ubSizeCouldUse);
     if (repeatAxisSrc * shapeInfo.lastAxisBurstLen > compilerInfo.ubSizeCouldUse) {
       break;
     }
