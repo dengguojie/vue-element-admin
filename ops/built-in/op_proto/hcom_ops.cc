@@ -145,6 +145,9 @@ IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
   int64_t fusionAttr;
   if (op.GetAttr("fusion", fusionAttr) == GRAPH_SUCCESS) {
     if ((fusionAttr < fusionAttrMinVal) || (fusionAttr > fusionAttrMaxVal)) {
+        string fusionValue = std::to_string(fusionAttr);
+        REPORT_INPUT_ERROR("EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),\
+	        std::vector<std::string>({"HcomAllReduce", "fusion", fusionValue, "please check fusion setting"}));
       OP_LOGE(op.GetName().c_str(), "Attr fusion [%lld] is not supported. expecttd: [%lld ~ %lld]", fusionAttr,
               fusionAttrMinVal, fusionAttrMaxVal);
       return GRAPH_FAILED;
