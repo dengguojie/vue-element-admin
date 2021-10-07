@@ -49,7 +49,8 @@ uint32_t ConcatV2CpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
                        "Get input concat_dim shape failed.");
   int32_t concat_dim_dims = concat_dim_shape_ptr->GetDims();
   KERNEL_CHECK_FALSE(
-      (concat_dim_dims == 0), KERNEL_STATUS_PARAM_INVALID,
+      (concat_dim_dims == 0) || ((concat_dim_dims == 1) && (concat_dim_shape_ptr->NumElements() == 1)),
+      KERNEL_STATUS_PARAM_INVALID,
       "Input concat_dim should be a scalar integer, but got rank[%d].",
       concat_dim_dims);
   int64_t concat_dim = 0;
