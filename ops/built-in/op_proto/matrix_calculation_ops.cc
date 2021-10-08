@@ -1927,7 +1927,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   GeShape shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  ge::ConstGeTensorDescPtr tensordesc_bias = op_desc->GetInputDescPtr(2);
+  ge::ConstGeTensorDescPtr tensordesc_bias = op_desc->GetInputDescPtr(kMatMulInputBiasIndex);
   MatMulInferShapeHelper inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
                                      trans_a, trans_b, shape_out, shape_range_out, tensordesc_bias);
   CHECK(!inferHelper.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
@@ -2062,17 +2062,6 @@ VERIFY_FUNC_REG(GEMM, GemmVerify);
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(BatchMatMul, BatchMatMulVerify) {
   return MatMulInferShapeHelper::VerifyInputs(op);
-}
-
-void modify_batchmatmul_outputshape(vector<int64_t> &shape_out, const vector<int64_t> &shape_y) {
-  vector<int64_t> shape_out_new(2);
-  if (shape_y.size() >= 2) {
-    shape_out = shape_y;
-  }
-  if (shape_y.size() == 1 && shape_out.size() >= 2) {
-    copy(shape_out.end() - 2, shape_out.end(), shape_out_new.begin());
-    shape_out = shape_out_new;
-  }
 }
 
 // Obtains the processing function of the output tensor description.
@@ -2221,7 +2210,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
   size_t dim_num_x2 = shape_x2.GetDimNum();
   auto dim_num = std::max(dim_num_x1, dim_num_x2);
   bool any_unknown_rank = shape_x1.IsUnknownDimNum() || shape_x2.IsUnknownDimNum();
-  ge::ConstGeTensorDescPtr tensordesc_bias = op_desc->GetInputDescPtr(2);
+  ge::ConstGeTensorDescPtr tensordesc_bias = op_desc->GetInputDescPtr(kMatMulInputBiasIndex);
   if (tensordesc_bias != nullptr) {
     const GeShape& shape_bias = tensordesc_bias->GetShape();
     any_unknown_rank = any_unknown_rank || shape_bias.IsUnknownDimNum();
@@ -3669,7 +3658,7 @@ VERIFY_FUNC_REG(Tril, TrilVerify);
 // ----------------Einsum-------------------
 // check if there is an ellipsis
 bool is_ellispis(std::string ori_str, std::string target) {
-    std::string::size_type idx = ori_str.find(target);;
+    std::string::size_type idx = ori_str.find(target);
     if (idx == std::string::npos){
         return false;
     } else {
