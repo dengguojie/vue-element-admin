@@ -83,15 +83,15 @@ def is_support_v200():
 
 def is_support_v220():
     """
-    Check if Ascend920A version.
+    Check if a100 version.
 
     Returns
     -------
-    True: Ascend920A version.
+    True: a100 version.
     False: other version.
     """
     soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version == "Ascend920":
+    if soc_version == "a100":
         return True
     return False
 
