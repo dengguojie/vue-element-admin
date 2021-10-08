@@ -72,12 +72,12 @@ def calc_expect_func(x, y, block_size, data_format):
         res = sess.run(out)
     return res
 
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (2,64,80,64), "dtype": "float16", "format": "ND", "ori_shape": (2,64,80,64),"ori_format": "ND", "param_type": "input"},
-                                              {"shape": (2,128,160,16), "dtype": "float16", "format": "ND", "ori_shape": (2,128,160,16),"ori_format": "ND", "param_type": "output"},
-                                              2, "NHWC"],
-                                   "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
+#ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (2,64,80,64), "dtype": "float16", "format": "ND", "ori_shape": (2,64,80,64),"ori_format": "ND", "param_type": "input"},
+#                                              {"shape": (2,128,160,16), "dtype": "float16", "format": "ND", "ori_shape": (2,128,160,16),"ori_format": "ND", "param_type": "output"},
+#                                              2, "NHWC"],
+#                                   "calc_expect_func": calc_expect_func,
+#                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                   })
 ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (2,2,111,9), "dtype": "float16", "format": "ND", "ori_shape": (2,2,111,9),"ori_format": "ND", "param_type": "input"},
                                               {"shape": (2,6,333,1), "dtype": "float16", "format": "ND", "ori_shape": (2,6,333,1),"ori_format": "ND", "param_type": "output"},
                                               3, "NHWC"],
