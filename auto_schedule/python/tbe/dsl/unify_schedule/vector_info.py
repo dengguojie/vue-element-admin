@@ -501,7 +501,7 @@ class ComputeGraphInfo:
                 # rfactor cause value++
                 cond0 = reduce_info.is_reduce_last_axis()
                 cond1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] in reduce_info.reduce_axes
-                if tiling_case.type.value in ["NORMAL", ] and cond0 and cond1:
+                if cond0 and cond1:
                     # ac_tensor is rf_tensor
                     value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
             return value

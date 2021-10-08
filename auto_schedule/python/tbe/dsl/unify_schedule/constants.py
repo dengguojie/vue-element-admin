@@ -76,6 +76,15 @@ class ReducePattern:
     R_0 = "R_0"
 
 
+class ReduceCategory:
+    """
+    Category of Reduce
+    """
+    ALL_REDUCE = 1
+    NOT_LAST_REDUCE = 2
+    LAST_REDUCE = 3
+
+
 class NormPattern:
     """
     Norm sub pattern.

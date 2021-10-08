@@ -289,33 +289,11 @@ void Reduce::FusedReduceAxis() {
 }
 
 void Reduce::ChooseAtomic() {
-  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
-  total_output_count = 1;
-  total_reduce_count = 1;
-  output_shape.resize(input_shape.size());
-
-  for (uint32_t i = 0; i < input_shape.size(); i++) {
-    if (IsInVector(reduce_axis, i)) {
-      if (compileInfo.is_keep_dims) {
-        output_shape[i] = 1;
-      } else {
-        output_shape[i] = 0;
-      }
-      total_reduce_count *= input_shape[i];
-    } else {
-      output_shape[i] = input_shape[i];
-      total_output_count *= input_shape[i];
-    }
-  }
-
   // UB_SPACE of ub_info is more than ub_info_rf, Atomic selected the former.
   // nodes after reduce(include reduce) have same space(ubSizeA)
   // nodes before reduce have same space(ubSizeB)
   // ubSizeB = ubSizeA * coef (max dtype)
-  compileInfo.max_ub_count = compileInfo.ub_info[compileInfo.idx];
   block_size = compileInfo.min_block_size;
-  ubSizeB = compileInfo.max_ub_count;
-  ubSizeA = ubSizeB / compileInfo.coef;
 
   // Layer 0 Check if atomic is enabled
   bool atomic_available = compileInfo.atomic;
@@ -347,9 +325,31 @@ void Reduce::ChooseAtomic() {
 }
 
 void Reduce::ChooseUBInfo() {
+  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
+  total_output_count = 1;
+  total_reduce_count = 1;
+  output_shape.resize(input_shape.size());
+
+  for (uint32_t i = 0; i < input_shape.size(); i++) {
+    if (IsInVector(reduce_axis, i)) {
+      if (compileInfo.is_keep_dims) {
+        output_shape[i] = 1;
+      } else {
+        output_shape[i] = 0;
+      }
+      total_reduce_count *= input_shape[i];
+    } else {
+      output_shape[i] = input_shape[i];
+      total_output_count *= input_shape[i];
+    }
+  }
+
   // According adaptation of SCH, choose the best UBInfo.
-  // Rfactor only attached in Normal + Last Reduce.
-  if (not compileInfo.atomic && is_last_axis_reduce) {
+  // Rfactor only attached in Last Reduce.
+  compileInfo.max_ub_count = compileInfo.ub_info[compileInfo.idx];
+  ubSizeB = compileInfo.max_ub_count;
+  ubSizeA = ubSizeB / compileInfo.coef;
+  if (is_last_axis_reduce) {
     int64_t last_dim = input_shape[input_shape.size()-1];
     int64_t real_reduce_count = total_reduce_count / last_dim;
     last_dim = (last_dim + block_size - 1) / block_size * block_size;
@@ -1024,8 +1024,8 @@ bool Reduce::MatchPattern() {
     return false;
   }
   // Use compileInfo.idx to choose buffer's size
-  ChooseAtomic();
   ChooseUBInfo();
+  ChooseAtomic();
   return true;
 }
 
