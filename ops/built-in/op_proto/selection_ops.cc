@@ -4068,7 +4068,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
   uint64_t axes_mask = 0;
   if(axes_valid){
     // clamp x to [MIN_INT ~ MAX_INT]
-    auto clamp = [](int64_t x) {
+    auto clamp = [=](int64_t x) {
       return x = x > MAX_INT ? MAX_INT : (x < MIN_INT ? MIN_INT : x);
     };
     //pre fill the values to the vector
