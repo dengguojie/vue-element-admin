@@ -386,8 +386,8 @@ case38 = _run_api_end_with_d(fmap=fmap)
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case1, "success", "dynamic_case1", True))
 
-#ut_case.add_case(["Ascend910A", "Ascend310"],
-#                 _gen_data_case(case2, "success", "dynamic_case2", True))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                _gen_data_case(case2, "success", "dynamic_case2", True))
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case3, RuntimeError, "dynamic_case3", True))

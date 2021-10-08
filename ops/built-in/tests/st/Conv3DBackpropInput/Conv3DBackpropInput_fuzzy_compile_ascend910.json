@@ -71,5 +71,77 @@
 				"value": "NDHWC"
 			}
 		]
+	},
+	{
+		"case_name": "Test_Conv3DBackpropInput_Fuzzy_NCDHW_SAME",
+		"op": "Conv3DBackpropInput",
+		"input_desc": [
+			{
+				"format": "ND",
+				"ori_format": "ND",
+				"type": "int32",
+				"shape": [5],
+				"ori_shape": [5],
+				"value": [1, 256, 8, 56, 56],
+				"name": "input_size"
+			},
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN",
+				"type": "float16",
+				"shape": [3, 3, 3, 64, 64],
+				"ori_shape": [3, 3, 3, 64, 64],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "filter"
+			},
+			{
+				"format": "NCDHW",
+				"ori_format": "NCDHW",
+				"type": "float16",
+				"shape": [1, 64, 8, 56, 56],
+				"ori_shape": [1, 64, 8, 56, 56],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "out_backprop"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "NCDHW",
+				"ori_format": "NCDHW",
+				"type": "float16",
+				"shape": [1, 256, 8, 56, 56],
+				"ori_shape": [1, 256, 8, 56, 56],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1, 1]
+			},
+			{
+				"name": "dilations",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "groups",
+				"type": "int",
+				"value": 4
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NCDHW"
+			}
+		]
 	}
 ]
