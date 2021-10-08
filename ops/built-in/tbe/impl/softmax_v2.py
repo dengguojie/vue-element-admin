@@ -260,17 +260,17 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                     datatype="float16,float16,float16,float",
                                                     format="NC1HWC0,NDC1HWC0,ND,ND")
         if tbe_product in ("Ascend910",) or is_vgatherb:
-            if check_axis_is_last(shape_x_ori, axis):
+            if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[-1] * 2 < UB_SIZE_LIMIT:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                    datatype="float16,float16,float,float,\
-                                                              float16,float",
-                                                    format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                            NDC1HWC0,NDC1HWC0")
+                                                       datatype="float16,float16,float,float,\
+                                                                 float16,float,float16,float",
+                                                       format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                               NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float,float,\
-                                                                  float16,float",
+                                                                  float16,float,float16,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                                NDC1HWC0,NDC1HWC0")
+                                                                NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                     datatype="float16,float16,float,float,float16,float",
