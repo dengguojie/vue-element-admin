@@ -1861,7 +1861,7 @@ def one_hot_ir(ins, output, depth, axis):
             _multi_core_ir_prime_case(tvm_ib, indices_input, output, op_args)
         else:
             cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-            if cce_product in ("Ascend910",):
+            if cce_product in ("Ascend910",) or tbe_platform.api_check_support("tik.vgatherb"):
                 _cloud_multi_core_ir(tvm_ib, indices_input, output, op_args, axis)
             else:
                 _mini_multi_core_ir(tvm_ib, indices_input, output, op_args)
