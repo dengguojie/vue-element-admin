@@ -418,19 +418,6 @@ static void ReverseArray(T* array, int64_t size) {
   }
 }
 
-static int64_t SizeofDType(const string& dType) {
-  if (dType == "int8" || dType == "uint8" || dType == "bool") {
-    return 1;
-  } else if (dType == "int16" || dType == "uint16" || dType == "float16") {
-    return 2;
-  } else if (dType == "int32" || dType == "uint32" || dType == "float" || dType == "float32") {
-    return 4;
-  } else if (dType == "int64" || dType == "uint64" || dType == "float64" || dType == "double") {
-    return 8;
-  }
-  return 1;
-}
-
 static int64_t ElementNumPerBlock(const DataType& dType) {
   if (dType == ge::DT_INT8 || dType == ge::DT_UINT8 || dType == ge::DT_BOOL) {
     return 32;
@@ -531,7 +518,6 @@ static bool IsLastTwoAlignedAndTrans(const CompilerInfo& ci, const ShapeInfo& sh
   if (dim < 3) {
     return false;
   }
-  // if ((shapeInfo.elePerBlock != EPB16) && (shapeInfo.elePerBlock != EPB8)) {
   if (shapeInfo.elePerBlock != EPB16) {
     return false;
   }
@@ -551,7 +537,7 @@ static bool IsLastTwoAlignedAndTrans(const CompilerInfo& ci, const ShapeInfo& sh
       LAST_TWO_TRANS_MAX_SIZE_B16) {
     return false;
   }
-  if ((shapeInfo.elePerBlock == EPB8) && (shapeInfo.reducedInShape[dim - 2] > 128)) {
+  if (shapeInfo.reducedInShape[dim - 2] > 128) {
     return false;
   }
   return true;
@@ -566,7 +552,7 @@ static void Reshape(ShapeInfo& shapeInfo) {
   shapeInfo.lastAxisLen = 1;
   shapeInfo.lastAxisBurstLen = 1;
   shapeInfo.alignElement = shapeInfo.elePerBlock - 1;
-  shapeInfo.isLastAxisTranspose = 0;
+  shapeInfo.isLastAxisTranspose = false;
   shapeInfo.isLastAxisHuge = false;
 }
 
@@ -982,21 +968,39 @@ void UpdateCoreNum(CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
   }
 }
 
-static bool IsScenario2B8(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
+static bool IsScenario1B8(ShapeInfo& shapeInfo) {
   if (shapeInfo.elePerBlock != ELE_NUM_PER_BLOCK_B8) {
     return false;
   }
-
-  if (IsLastAxisJoinTranspose(shapeInfo)) {
-    Reshape(shapeInfo);
-    return true;
+  if (shapeInfo.isLastAxisTranspose) {
+    return false;
   }
-
-  if (shapeInfo.lastAxisLen < B8_HUGE_SIZE) {
-    return true;
+  if (((shapeInfo.lastAxisLen % shapeInfo.elePerBlock) == 0) && \
+      (shapeInfo.lastAxisLen < LAST_AXIS_BLOCK_ALIGN_Y_BORROW_B8_THRESHOLD)) {
+    return false;
   }
+  if (((shapeInfo.lastAxisLen % shapeInfo.elePerBlock) != 0) && \
+      (shapeInfo.lastAxisLen < LAST_AXIS_BLOCK_ALIGN_N_BORROW_B8_THRESHOLD)) {
+    return false;
+  }
+  return true;
+}
 
-  return false;
+static bool IsScenario3B8(ShapeInfo& shapeInfo) {
+  if (shapeInfo.elePerBlock != ELE_NUM_PER_BLOCK_B8) {
+    return false;
+  }
+  if (shapeInfo.isLastAxisTranspose) {
+    return false;
+  }
+  if (shapeInfo.lastAxisLen < LAST_AXIS_HUGE_THRESHOLD) {
+    return false;
+  }
+  return true;
+}
+
+static bool IsScenario5B8(ShapeInfo& shapeInfo) {
+  return (shapeInfo.elePerBlock == ELE_NUM_PER_BLOCK_B8);
 }
 
 static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
@@ -1006,7 +1010,7 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
   if ((shapeInfo.lastAxisLen % shapeInfo.elePerBlock) != 0) {
     return false;
   }
-  if (IsLastAxisJoinTranspose(shapeInfo)) {
+  if (shapeInfo.isLastAxisTranspose) {
     return false;
   }
   if (shapeInfo.lastAxisBurstLen < 4) {
@@ -1025,7 +1029,6 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
     if (!IsCouldUseFullCoreDst(compilerInfo, shapeInfo)) {
       break;
     }
-
     if (IsOverSize(compilerInfo, shapeInfo, repeatAxisDst)) {
       break;
     }
@@ -1050,7 +1053,6 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
     if (!IsCouldUseFullCoreSrc(compilerInfo, shapeInfo)) {
       break;
     }
-
     if (IsOverSize(compilerInfo, shapeInfo, repeatAxisSrc)) {
       break;
     }
@@ -1088,6 +1090,32 @@ static bool IsScenario10(const CompilerInfo& compilerInfo, const ShapeInfo& shap
   return shapeInfo.isLastTwoAlignedAndTrans;
 }
 
+static bool IsScenario11(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo) {
+  int64_t dim = shapeInfo.dim;
+  if (shapeInfo.dim != 2) {
+    return false;
+  }
+  if ((shapeInfo.elePerBlock != EPB16) && (shapeInfo.elePerBlock != EPB8)) {
+    return false;
+  }
+  if (shapeInfo.reducedPerm[dim - 1] != dim - 2) {
+    return false;
+  }
+  if (shapeInfo.reducedPerm[dim - 2] != dim - 1) {
+    return false;
+  }
+  if ((shapeInfo.reducedInShape[shapeInfo.dim - 1] % shapeInfo.elePerBlock) != 0) {
+    return false;
+  }
+  if ((shapeInfo.reducedInShape[shapeInfo.dim - 2] % shapeInfo.elePerBlock) != 0) {
+    return false;
+  }
+  if (!shapeInfo.isLastAxisTranspose) {
+    return false;
+  }
+  return true;
+}
+
 static void SetScenario(const string& opType, CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
   OP_LOGD(opType.c_str(), "Entering SetScenario.");
 
@@ -1112,12 +1140,17 @@ static void SetScenario(const string& opType, CompilerInfo& compilerInfo, ShapeI
     UpdateCoreNum(compilerInfo, shapeInfo);
   } else if (IsScenario9(compilerInfo, shapeInfo)) {
     shapeInfo.scenario = SCENARIO_9;
+  } else if (IsScenario11(compilerInfo, shapeInfo)) {
+    shapeInfo.scenario = SCENARIO_11;
   } else if (IsScenario10(compilerInfo, shapeInfo)) {
     shapeInfo.scenario = SCENARIO_10;
-  } else if (IsScenario2B8(compilerInfo, shapeInfo)) {
-    shapeInfo.scenario = SCENARIO_2;
-    shapeInfo.isLastAxisHuge = true;
-  } else if (IsLastAxisJoinTranspose(shapeInfo)) {
+  } else if (IsScenario3B8(shapeInfo)) {
+    shapeInfo.scenario = SCENARIO_3;
+  } else if (IsScenario1B8(shapeInfo)) {
+    shapeInfo.scenario = SCENARIO_1;
+  } else if (IsScenario5B8(shapeInfo)) {
+    shapeInfo.scenario = SCENARIO_5;
+  } else if (shapeInfo.isLastAxisTranspose && shapeInfo.elePerBlock != EPB32) {
     shapeInfo.scenario = SCENARIO_7;
   } else {
     if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes >= LAST_AXIS_HUGE_THRESHOLD) {
@@ -2005,14 +2038,14 @@ static string PrintScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& 
   return logStr;
 }
 
-static string PrintScenario10(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
+static string PrintScenario11(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                               const RuntimeInfo& runtimeInfo) {
   string logStr;
   PrintShapeInfo(shapeInfo, logStr);
   PrintCompilerInfo(compilerInfo, logStr);
 
   logStr += "srcStrideIn srcStrideInTail dstStrideOut dstStrideOutTail ";
-  logStr += "colPerMC colBlockPerMC colBlockTC rowPerMR rowBlockPerMR rowBlockTR\n";
+  logStr += "colPerMC colBlockPerMC colBlockTC rowPerMR rowBlockPerMR rowBlockTR nUnit\n";
   logStr += "-------------------------------------------------------------------------------------------------------";
   logStr += "-------------------------------------------------------------------\n";
   logStr += to_string(runtimeInfo.twoDInfo.srcStrideIn, 12);
@@ -2024,7 +2057,8 @@ static string PrintScenario10(const CompilerInfo& compilerInfo, const ShapeInfo&
   logStr += to_string(runtimeInfo.twoDInfo.colBlockTC, 10);
   logStr += to_string(runtimeInfo.twoDInfo.rowPerMR, 9);
   logStr += to_string(runtimeInfo.twoDInfo.rowBlockPerMR, 14);
-  logStr += to_string(runtimeInfo.twoDInfo.rowBlockTR, 10);
+  logStr += to_string(runtimeInfo.twoDInfo.rowBlockTR, 11);
+  logStr += to_string(runtimeInfo.twoDInfo.nUnit, 10);
   logStr += "\n\n";
 
   logStr += "loopN  initNTuple          loopMC  colTC  colOffset  loopMR  rowTR  rowOffset\n";
@@ -2644,7 +2678,7 @@ static void MergeDupAxis(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
 
 static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
   int64_t ubSize = 0;
-  bool lastAxisTrans = IsLastAxisJoinTranspose(si);
+  bool lastAxisTrans = si.isLastAxisTranspose;
   int64_t reservedVol = si.lastAxisLen * ci.fp16Times;
 
   if (si.alignElement == 0 && (!lastAxisTrans)) {
@@ -3443,9 +3477,17 @@ static void CalcBurstLen(int j, int64_t* s, int64_t num, const int64_t pi[][BORR
 static void RepeatStride(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& ri,
                          int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT]) {
   BorrowInfo& bi = ri.borrowInfo;
-  int64_t burstLen = ci.fp16Times;
-  if (si.isLastTwoAlignedAndTrans) {
-    burstLen = si.reducedInShape[si.dim - 2] * si.reducedInShape[si.dim - 1] / si.elePerBlock;
+  int64_t burstLen = si.lastAxisLen * ci.fp16Times;
+  if (si.isLastAxisTranspose) {
+    if (si.isLastTwoAlignedAndTrans) {
+      burstLen = si.reducedInShape[si.dim - 2] * si.reducedInShape[si.dim - 1] / si.elePerBlock;
+    } else {
+      burstLen = ci.fp16Times;
+    }
+  } else {
+      if (si.alignElement == 0) {
+        burstLen = si.lastAxisLen / si.elePerBlock;
+    }
   }
   int64_t id = BUILD_T_ID(bi.dupAxis, bi.srcNum, bi.dstNum, bi.srcAxisPerm, bi.dstAxisPerm, GetPermHex(ri));
   const PermInfo& permInfo = gPermDict[id];
@@ -3608,53 +3650,7 @@ static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_
   }
 }
 
-// static void ConstructStepS5(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
-//    const BorrowInfo& bi = runtimeInfo.borrowInfo;
-//
-//    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
-//        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
-//        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
-//        SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
-//        SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
-//    }
-//
-//    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
-//        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
-//        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
-//        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
-//        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
-//    }
-//
-//    if (bi.srcNum == 2 && bi.dstNum == 3 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x021) {
-//        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
-//        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
-//        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
-//        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
-//    }
-//
-//    if (bi.srcNum == 3 && bi.dstNum == 3 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.dstAxisPerm == 0x210) {
-//        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
-//        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
-//        SET_P4(2, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
-//        SET_P4(3, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step)
-//    }
-//
-//    if (bi.srcNum == 3 && bi.dstNum == 3 && bi.srcNumNoDup == 0 && bi.dstNumNoDup == 0 && bi.dstAxisPerm == 0x210) {
-//        SET_P4(0, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
-//        //SET_P4(1, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
-//        //SET_P4(2, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
-//        //SET_P4(3, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, bi.srcIndexIn[2].step, 0)
-//    }
-//
-//    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.dstAxisPerm == 0x10) {
-//        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
-//        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
-//        SET_P4(2, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
-//        SET_P4(3, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
-//    }
-//}
-
-static void ConstructStepS5New(const RuntimeInfo& ri, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
+static void ConstructStepS5(const RuntimeInfo& ri, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
   const BorrowInfo& bi = ri.borrowInfo;
   int64_t st[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM_LT] = {0};
   int axis = 0;
@@ -3751,7 +3747,7 @@ static void CalcRepetStrideS5(const CompilerInfo& compilerInfo, const ShapeInfo&
     }
   }
 
-  ConstructStepS5New(runtimeInfo, step);
+  ConstructStepS5(runtimeInfo, step);
 
   RepeatStride(compilerInfo, shapeInfo, runtimeInfo, step);
 
@@ -4803,161 +4799,6 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
   return true;
 }
 
-// static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t& cFactor, int64_t& rFactor) {
-//    double diff = shapeInfo.reducedInShape[shapeInfo.dim - 1] * 1.0 / shapeInfo.reducedInShape[shapeInfo.dim - 2];
-//    double minDiff = std::numeric_limits<double>::max();
-//    for (int64_t i = 1; i <= crFactor / 2; i++) {
-//        int j = crFactor / i;
-//        double rtDiff = i * 1.0 / j;
-//        if ((abs(rtDiff - diff)) < minDiff) {
-//            cFactor = i;
-//            rFactor = j;
-//            minDiff = abs(rtDiff - diff);
-//        }
-//    }
-//
-//    double rtDiff = crFactor;
-//    if ((abs(rtDiff - diff)) < minDiff) {
-//        cFactor = 1;
-//        rFactor = crFactor;
-//    }
-//}
-//
-// static void CalcUnit(const ShapeInfo& shapeInfo,
-//                     int64_t colUnit, int64_t rowUnit,
-//                     int64_t& colUnitNum, int64_t& rowUnitNum,
-//                     int64_t& colTail, int64_t& rowTail) {
-//    colUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 1] / colUnit;
-//    rowUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 2] / rowUnit;
-//    colTail = shapeInfo.reducedInShape[shapeInfo.dim - 1] % colUnit;
-//    rowTail = shapeInfo.reducedInShape[shapeInfo.dim - 2] % rowUnit;
-//}
-//
-// static void Composite2D(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo,
-//                        int64_t nFactor, int64_t cFactor, int64_t rFactor,
-//                        int64_t colUnit, int64_t rowUnit, int64_t colTail, int64_t rowTail,
-//                        int64_t p1Num[], int64_t p2Num[], int64_t loop1[], int64_t loop2[]) {
-//
-//    TwoDInfo & twoDInfo = runtimeInfo.twoDInfo;
-//    twoDInfo.infoPerCore2D.resize(compilerInfo.coreNum);
-//
-//    for (int64_t i = 0; i < nFactor; i++) {
-//        int64_t colOffset = 0;
-//        for (int64_t j = 0; j < cFactor; j++) {
-//            int64_t rowOffset = 0;
-//            for (int64_t k = 0; k < rFactor; k++) {
-//                int64_t id = i * cFactor * rFactor + j * rFactor + k;
-//
-//                // 1. n
-//                if (i < p1Num[0]) {
-//                    twoDInfo.infoPerCore2D[id].infoN.loopOnN = loop1[0];
-//                } else {
-//                    twoDInfo.infoPerCore2D[id].infoN.loopOnN = loop2[0];
-//                }
-//
-//                // 2. col
-//                if (j < p1Num[1]) {
-//                    twoDInfo.infoPerCore2D[id].infoCol2D.loopOnMC = loop1[1];
-//                    twoDInfo.infoPerCore2D[id].infoCol2D.colOffset = colOffset;
-//                }else {
-//                    twoDInfo.infoPerCore2D[id].infoCol2D.loopOnMC = loop2[1];
-//                    twoDInfo.infoPerCore2D[id].infoCol2D.colOffset = colOffset;
-//                }
-//                if (j == p1Num[1] + p2Num[1] - 1) {
-//                    twoDInfo.infoPerCore2D[id].infoCol2D.colTC = colTail;
-//                }
-//                twoDInfo.infoPerCore2D[id].infoCol2D.colPerMC = colUnit;
-//                twoDInfo.infoPerCore2D[id].infoCol2D.colBlockPerMC += colUnit / shapeInfo.elePerBlock;
-//
-//                // 3. row
-//                if (k < p1Num[2]) {
-//                    twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop1[2];
-//                    twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
-//                    rowOffset += loop1[2] * rowUnit;
-//                }else {
-//                    twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop2[2];
-//                    twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
-//                    rowOffset += loop2[2] * rowUnit;
-//                }
-//                if (k == p1Num[2] + p2Num[2] - 1) {
-//                    twoDInfo.infoPerCore2D[id].infoRow2D.rowTR = rowTail;
-//                }
-//                twoDInfo.infoPerCore2D[id].infoRow2D.rowPerMR = rowUnit;
-//                twoDInfo.infoPerCore2D[id].infoRow2D.rowBlockPerMR = rowUnit / shapeInfo.elePerBlock;
-//            }
-//            if (j < p1Num[1]) {
-//                colOffset += loop1[1] * colUnit;
-//            }else {
-//                colOffset += loop2[1] * colUnit;
-//            }
-//        }
-//    }
-//}
-//
-// static bool TilingDataScenario10(const CompilerInfo & compilerInfo,
-//                                 const ShapeInfo & shapeInfo,
-//                                 RuntimeInfo & runtimeInfo) {
-//    int64_t dim = shapeInfo.dim;
-//    int64_t height =  (int64_t(compilerInfo.ubSizeCouldUse / 2 / shapeInfo.lastAxisBurstLen / EPB16)) * EPB16;
-//    if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < height) {
-//        height = shapeInfo.reducedInShape[shapeInfo.dim - 2];
-//    }
-//    int64_t p1Num[3]; // 0: n, 1: col, 2: row
-//    int64_t p2Num[3];
-//    int64_t loop1[3];
-//    int64_t loop2[3];
-//    int64_t nFactor = 1;
-//    int64_t crFactor = compilerInfo.coreNum / nFactor;
-//    int64_t cFactor = 1;
-//    int64_t rFactor = 1;
-//    int64_t colUnit = 256;
-//    int64_t rowUnit = 128;
-//    int64_t colUnitNum = 1;
-//    int64_t rowUnitNum = 1;
-//    int64_t colTail = 0;
-//    int64_t rowTail = 0;
-//
-//    if (crFactor == 0) {
-//        crFactor = 1;
-//    }
-//
-//    if (shapeInfo.reducedInShape[shapeInfo.dim - 1] < colUnit) {
-//        colUnit = shapeInfo.reducedInShape[shapeInfo.dim - 1];
-//    }
-//
-//    if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < rowUnit) {
-//        rowUnit = shapeInfo.reducedInShape[shapeInfo.dim - 2];
-//    }
-//
-//    CalcCRFactor(shapeInfo, crFactor, cFactor, rFactor);
-//    CalcUnit(shapeInfo, colUnit, rowUnit, colUnitNum, rowUnitNum, colTail, rowTail);
-//    SplitEvenly(nFactor, 1, p1Num[0], p2Num[0], loop1[0], loop2[0]);
-//    SplitEvenly(cFactor, colUnitNum, p1Num[1], p2Num[1], loop1[1], loop2[1]);
-//    SplitEvenly(rFactor, rowUnitNum, p1Num[2], p2Num[2], loop1[2], loop2[2]);
-//
-//    Composite2D(compilerInfo, shapeInfo, runtimeInfo,
-//                nFactor, cFactor, rFactor, colUnit, rowUnit, colTail, rowTail, p1Num, p2Num, loop1, loop2);
-//
-//    TwoDInfo& tdInfo = runtimeInfo.twoDInfo;
-//
-//    tdInfo.nAxisNum = 0;
-//
-//    tdInfo.colPerMC = colUnit;
-//    tdInfo.colBlockPerMC = colUnit / shapeInfo.elePerBlock;
-//    tdInfo.colBlockTC = colTail / shapeInfo.elePerBlock;
-//
-//    tdInfo.rowPerMR = rowUnit;
-//    tdInfo.rowBlockPerMR = rowUnit / shapeInfo.elePerBlock;
-//    tdInfo.rowBlockTR = rowTail / shapeInfo.elePerBlock;
-//
-//    tdInfo.srcStrideIn = shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock - tdInfo.colBlockPerMC;
-//    tdInfo.srcStrideInTail = shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock - tdInfo.colBlockTC;
-//    tdInfo.dstStrideOut = shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock - tdInfo.rowBlockPerMR;
-//    tdInfo.dstStrideOutTail = shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock - tdInfo.rowBlockTR;
-//
-//    return true;
-//}
-
 static bool TilingDataScenario10(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                                  RuntimeInfo& runtimeInfo) {
   CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
@@ -4973,6 +4814,185 @@ static bool TilingDataScenario10(const CompilerInfo& compilerInfo, const ShapeIn
   SplitCore(compilerInfo, shapeInfo, runtimeInfo);
   CalcRepetStrideS5(compilerInfo, shapeInfo, runtimeInfo);
   CalcStrideS4(shapeInfo, runtimeInfo);
+  return true;
+}
+
+static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t& cFactor, int64_t& rFactor) {
+  double diff = shapeInfo.reducedInShape[shapeInfo.dim - 1] * 1.0 / shapeInfo.reducedInShape[shapeInfo.dim - 2];
+  double minDiff = std::numeric_limits<double>::max();
+  for (int64_t i = 1; i <= crFactor / 2; i++) {
+    int j = crFactor / i;
+    double rtDiff = i * 1.0 / j;
+    if ((abs(rtDiff - diff)) < minDiff) {
+        cFactor = i;
+        rFactor = j;
+        minDiff = abs(rtDiff - diff);
+    }
+  }
+
+  double rtDiff = crFactor;
+  if ((abs(rtDiff - diff)) < minDiff) {
+    cFactor = 1;
+    rFactor = crFactor;
+  }
+}
+
+static void CalcUnit(const ShapeInfo& shapeInfo,
+                    int64_t colUnit, int64_t rowUnit,
+                    int64_t& colUnitNum, int64_t& rowUnitNum,
+                    int64_t& colTail, int64_t& rowTail) {
+  colUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 1] / colUnit;
+  rowUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 2] / rowUnit;
+  colTail = shapeInfo.reducedInShape[shapeInfo.dim - 1] % colUnit;
+  rowTail = shapeInfo.reducedInShape[shapeInfo.dim - 2] % rowUnit;
+}
+
+static void Composite3D(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo,
+                        int64_t nFactor, int64_t nUnit, int64_t cFactor, int64_t rFactor,
+                        int64_t colUnit, int64_t rowUnit, int64_t colTail, int64_t rowTail,
+                        int64_t p1Num[], int64_t p2Num[], int64_t loop1[], int64_t loop2[]) {
+
+  TwoDInfo & twoDInfo = runtimeInfo.twoDInfo;
+  twoDInfo.infoPerCore2D.resize(compilerInfo.coreNum);
+  twoDInfo.nUnit = nUnit;
+
+  for (int64_t i = 0; i < nFactor; i++) {
+    int64_t colOffset = 0;
+    for (int64_t j = 0; j < cFactor; j++) {
+      int64_t rowOffset = 0;
+      for (int64_t k = 0; k < rFactor; k++) {
+        int64_t id = i * cFactor * rFactor + j * rFactor + k;
+
+        // 1. n
+        if (i < p1Num[0]) {
+          twoDInfo.infoPerCore2D[id].infoN.loopOnN = loop1[0];
+          if (i == 0) {
+            twoDInfo.infoPerCore2D[id].infoN.initNTuple[0] = 0;
+          }else {
+            twoDInfo.infoPerCore2D[id].infoN.initNTuple[0] = twoDInfo.infoPerCore2D[i - 1].infoN.initNTuple[0] + \
+                                                             loop1[0];
+          }
+        } else {
+          twoDInfo.infoPerCore2D[id].infoN.loopOnN = loop2[0];
+          if (i == p1Num[0]) {
+            twoDInfo.infoPerCore2D[id].infoN.initNTuple[0] = twoDInfo.infoPerCore2D[i - 1].infoN.initNTuple[0] + \
+                                                             loop1[0];
+          } else {
+            twoDInfo.infoPerCore2D[id].infoN.initNTuple[0] = twoDInfo.infoPerCore2D[i - 1].infoN.initNTuple[0] + \
+                                                             loop2[0];
+          }
+        }
+
+        // 2. col
+        if (j < p1Num[1]) {
+          twoDInfo.infoPerCore2D[id].infoCol2D.loopOnMC = loop1[1];
+          twoDInfo.infoPerCore2D[id].infoCol2D.colOffset = colOffset;
+        }else {
+          twoDInfo.infoPerCore2D[id].infoCol2D.loopOnMC = loop2[1];
+          twoDInfo.infoPerCore2D[id].infoCol2D.colOffset = colOffset;
+        }
+        if (j == p1Num[1] + p2Num[1] - 1) {
+          twoDInfo.infoPerCore2D[id].infoCol2D.colTC = colTail;
+        }
+        twoDInfo.infoPerCore2D[id].infoCol2D.colPerMC = colUnit;
+        twoDInfo.infoPerCore2D[id].infoCol2D.colBlockPerMC += colUnit / shapeInfo.elePerBlock;
+
+        // 3. row
+        if (k < p1Num[2]) {
+          twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop1[2];
+          twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
+          rowOffset += loop1[2] * rowUnit;
+        }else {
+          twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop2[2];
+          twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
+          rowOffset += loop2[2] * rowUnit;
+        }
+        if (k == p1Num[2] + p2Num[2] - 1) {
+          twoDInfo.infoPerCore2D[id].infoRow2D.rowTR = rowTail;
+        }
+        twoDInfo.infoPerCore2D[id].infoRow2D.rowPerMR = rowUnit;
+        twoDInfo.infoPerCore2D[id].infoRow2D.rowBlockPerMR = rowUnit / shapeInfo.elePerBlock;
+      }
+      if (j < p1Num[1]) {
+        colOffset += loop1[1] * colUnit;
+      }else {
+        colOffset += loop2[1] * colUnit;
+      }
+    }
+  }
+}
+
+static int64_t CalcNUnit(const CompilerInfo& ci, const ShapeInfo& si) {
+  int64_t dim = si.dim;
+  if (si.reducedInShape[dim - 2] > COL_UNIT) {
+    return 1;
+  }
+  if (si.reducedInShape[dim - 1] > ROW_UNIT) {
+    return 1;
+  }
+  int64_t nUnit = (COL_UNIT * ROW_UNIT) / (si.reducedInShape[dim - 2] * si.reducedInShape[dim - 1] * ci.fp16Times) ;
+  return nUnit == 0 ? 1 : nUnit;
+}
+
+static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
+                                 const ShapeInfo & shapeInfo,
+                                 RuntimeInfo & runtimeInfo) {
+  int64_t dim = shapeInfo.dim;
+  int64_t height =  (int64_t(compilerInfo.ubSizeCouldUse / 2 / shapeInfo.lastAxisBurstLen / EPB16)) * EPB16;
+  if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < height) {
+    height = shapeInfo.reducedInShape[shapeInfo.dim - 2];
+  }
+  int64_t p1Num[3]; // 0: n, 1: col, 2: row
+  int64_t p2Num[3];
+  int64_t loop1[3];
+  int64_t loop2[3];
+  int64_t nVol = 1;
+  int64_t cFactor = 1;
+  int64_t rFactor = 1;
+  int64_t colUnit = COL_UNIT;
+  int64_t rowUnit = ROW_UNIT;
+  int64_t colUnitNum = 1;
+  int64_t rowUnitNum = 1;
+  int64_t colTail = 0;
+  int64_t rowTail = 0;
+  int64_t nUnit = CalcNUnit(compilerInfo, shapeInfo);
+
+  for (int64_t i = 0; i < dim - 2; i++) {
+    nVol *= shapeInfo.reducedInShape[i];
+  }
+  int64_t nFactor = nVol / nUnit;
+  nFactor = (nFactor == 0 ? 1: nFactor);
+  nFactor = (nFactor > compilerInfo.coreNum ? compilerInfo.coreNum : nFactor);
+  int64_t crFactor = compilerInfo.coreNum / nFactor;
+  crFactor = (crFactor == 0 ? 1: crFactor);
+
+  if (shapeInfo.reducedInShape[shapeInfo.dim - 1] < colUnit) {
+    colUnit = shapeInfo.reducedInShape[shapeInfo.dim - 1];
+  }
+  if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < rowUnit) {
+    rowUnit = shapeInfo.reducedInShape[shapeInfo.dim - 2];
+  }
+  CalcCRFactor(shapeInfo, crFactor, cFactor, rFactor);
+  CalcUnit(shapeInfo, colUnit, rowUnit, colUnitNum, rowUnitNum, colTail, rowTail);
+  SplitEvenly(compilerInfo.coreNum, nVol, p1Num[0], p2Num[0], loop1[0], loop2[0], nUnit);
+  SplitEvenly(cFactor, colUnitNum, p1Num[1], p2Num[1], loop1[1], loop2[1]);
+  SplitEvenly(rFactor, rowUnitNum, p1Num[2], p2Num[2], loop1[2], loop2[2]);
+  Composite3D(compilerInfo, shapeInfo, runtimeInfo,
+              nFactor, nUnit, cFactor, rFactor, colUnit, rowUnit, colTail, rowTail, p1Num, p2Num, loop1, loop2);
+
+  TwoDInfo& tdInfo = runtimeInfo.twoDInfo;
+  tdInfo.nAxisNum = 0;
+  tdInfo.colPerMC = colUnit;
+  tdInfo.colBlockPerMC = colUnit / shapeInfo.elePerBlock;
+  tdInfo.colBlockTC = colTail / shapeInfo.elePerBlock;
+  tdInfo.rowPerMR = rowUnit;
+  tdInfo.rowBlockPerMR = rowUnit / shapeInfo.elePerBlock;
+  tdInfo.rowBlockTR = rowTail / shapeInfo.elePerBlock;
+  tdInfo.srcStrideIn = shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock - tdInfo.colBlockPerMC;
+  tdInfo.srcStrideInTail = shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock - tdInfo.colBlockTC;
+  tdInfo.dstStrideOut = shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock - tdInfo.rowBlockPerMR;
+  tdInfo.dstStrideOutTail = shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock - tdInfo.rowBlockTR;
+
   return true;
 }
 
@@ -5078,6 +5098,9 @@ bool TransposeCalcTilingData(const string& opType, const CompilerInfo& compilerI
       case SCENARIO_10:
         res = TilingDataScenario10(compilerInfo, shapeInfo, runtimeInfo);
         OP_LOGI(opType.c_str(), "%s", PrintScenario5(compilerInfo, shapeInfo, runtimeInfo).c_str());
+      case SCENARIO_11:
+        res = TilingDataScenario11(compilerInfo, shapeInfo, runtimeInfo);
+        OP_LOGI(opType.c_str(), "%s", PrintScenario11(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       default:
         break;
@@ -5613,6 +5636,7 @@ static void SerializeScenario5(utils::OpRunInfo& runInfo, const CompilerInfo& co
   WRITE_DATA_F(borrowInfo.lastTwosListRepeat);
   WRITE_DATA_F(borrowInfo.lastTwodListRepeat);
   WRITE_DATA_F(shapeInfo.isLastTwoAlignedAndTrans ? 1 : 0);
+  WRITE_DATA_F(shapeInfo.isLastAxisTranspose? 1 : 0);
 
   for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
     const LRSB* lrsb = borrowInfo.lrsb[i];
@@ -5918,7 +5942,7 @@ static void SerializeScenario9(utils::OpRunInfo& runInfo, const CompilerInfo& co
   runInfo.AddWorkspace(1024);
 }
 
-static void SerializeScenario10(utils::OpRunInfo& runInfo, const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
+static void SerializeScenario11(utils::OpRunInfo& runInfo, const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                                 const RuntimeInfo& runtimeInfo) {
   vector<int64_t> headVec;
   vector<int64_t> fixedVec;
@@ -5945,6 +5969,7 @@ static void SerializeScenario10(utils::OpRunInfo& runInfo, const CompilerInfo& c
   WRITE_DATA_F(tdInfo.srcStrideInTail);
   WRITE_DATA_F(tdInfo.dstStrideOut);
   WRITE_DATA_F(tdInfo.dstStrideOutTail);
+  WRITE_DATA_F(tdInfo.nUnit);
   WRITE_DATA_F(shapeInfo.reducedInShape[shapeInfo.dim - 1]);
   WRITE_DATA_F(shapeInfo.reducedInShape[shapeInfo.dim - 2]);
 
@@ -5962,6 +5987,7 @@ static void SerializeScenario10(utils::OpRunInfo& runInfo, const CompilerInfo& c
   int perCoreLen = 0;
   for (int i = 0; i < compilerInfo.coreNum; i++) {
     WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoN.loopOnN);
+    WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoN.initNTuple[0]);
     WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoCol2D.loopOnMC);
     WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoCol2D.colTC);
     WRITE_DATA_P(tdInfo.infoPerCore2D[i].infoCol2D.colOffset);
@@ -6028,6 +6054,8 @@ void SerializeTilingData(utils::OpRunInfo& runInfo, const CompilerInfo& compiler
       break;
     case SCENARIO_10:
       SerializeScenario5(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+    case SCENARIO_11:
+      SerializeScenario11(runInfo, compilerInfo, shapeInfo, runtimeInfo);
       break;
     default:
       break;

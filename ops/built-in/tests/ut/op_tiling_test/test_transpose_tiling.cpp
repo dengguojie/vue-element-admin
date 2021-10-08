@@ -349,7 +349,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_2d) {
   RuntimeInfo runtimeInfo;
   compilerInfo.coreNum = 32;
   compilerInfo.dType = ge::DT_FLOAT;
-  compilerInfo.fp16Times = 2;
+  compilerInfo.fp16Times = 1;
 
   shapeInfo.inShape.push_back(7000);
   shapeInfo.inShape.push_back(6000);
@@ -359,30 +359,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_2d) {
   shapeInfo.perm.push_back(0);
   ReduceAxis("Transpose", compilerInfo, shapeInfo);
   TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
-
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoCol.colPerMC, 128);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoCol.loopOnMC, 46);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoCol.colTC, 112);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoCol.colOffset, 0);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoCol.backStepLeft, 0);
-
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.rowPerMR, 128);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.loopOnMR, 1);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.rowTR, 96);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.rowOffset, 0);
-  EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.backStepUp, 0);
-
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colPerMC, 128);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.loopOnMC, 46);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colTC, 112);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colOffset, 0);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.backStepLeft, 0);
-
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.rowPerMR, 128);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.loopOnMR, 1);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.rowTR, 96);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.rowOffset, 224);
-  EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.backStepUp, 0);
+  EXPECT_EQ(shapeInfo.scenario, 11);
 }
 
 TEST_F(TransposeTilingTest, last_axis_join_transpose_with_multi_src_axis) {
@@ -1239,6 +1216,121 @@ TEST_F(TransposeTilingTest, int8) {
   EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
 
+TEST_F(TransposeTilingTest, int8_scenario_5_001) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_INT8;
+  compilerInfo.fp16Times = 1;
+
+  shapeInfo.inShape.push_back(60);
+  shapeInfo.inShape.push_back(70);
+  shapeInfo.inShape.push_back(32);
+  shapeInfo.outShape.push_back(70);
+  shapeInfo.outShape.push_back(60);
+  shapeInfo.outShape.push_back(32);
+  shapeInfo.perm.push_back(1);
+  shapeInfo.perm.push_back(0);
+  shapeInfo.perm.push_back(2);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+  EXPECT_EQ(shapeInfo.scenario, 5);
+}
+
+TEST_F(TransposeTilingTest, int8_scenario_5_002) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_INT8;
+  compilerInfo.fp16Times = 1;
+
+  shapeInfo.inShape.push_back(60);
+  shapeInfo.inShape.push_back(70);
+  shapeInfo.inShape.push_back(33);
+  shapeInfo.outShape.push_back(70);
+  shapeInfo.outShape.push_back(60);
+  shapeInfo.outShape.push_back(33);
+  shapeInfo.perm.push_back(1);
+  shapeInfo.perm.push_back(0);
+  shapeInfo.perm.push_back(2);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+  EXPECT_EQ(shapeInfo.scenario, 5);
+}
+
+//TEST_F(TransposeTilingTest, int8_scenario_1_001) {
+//  CompilerInfo compilerInfo;
+//  ShapeInfo shapeInfo;
+//  RuntimeInfo runtimeInfo;
+//  compilerInfo.coreNum = 32;
+//  compilerInfo.ubSize = 8192;
+//  compilerInfo.dType = ge::DT_INT8;
+//  compilerInfo.fp16Times = 1;
+//
+//  shapeInfo.inShape.push_back(60);
+//  shapeInfo.inShape.push_back(70);
+//  shapeInfo.inShape.push_back(32000);
+//  shapeInfo.outShape.push_back(70);
+//  shapeInfo.outShape.push_back(60);
+//  shapeInfo.outShape.push_back(32000);
+//  shapeInfo.perm.push_back(1);
+//  shapeInfo.perm.push_back(0);
+//  shapeInfo.perm.push_back(2);
+//  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+//  EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+//  EXPECT_EQ(shapeInfo.scenario, 1);
+//}
+
+TEST_F(TransposeTilingTest, int8_scenario_3_001) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_INT8;
+  compilerInfo.fp16Times = 1;
+
+  shapeInfo.inShape.push_back(60);
+  shapeInfo.inShape.push_back(70);
+  shapeInfo.inShape.push_back(192 * 1024);
+  shapeInfo.outShape.push_back(70);
+  shapeInfo.outShape.push_back(60);
+  shapeInfo.outShape.push_back(192 * 1024);
+  shapeInfo.perm.push_back(1);
+  shapeInfo.perm.push_back(0);
+  shapeInfo.perm.push_back(2);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+  EXPECT_EQ(shapeInfo.scenario, 3);
+}
+
+TEST_F(TransposeTilingTest, int16_scenario_9_001) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_INT16;
+  compilerInfo.fp16Times = 1;
+
+  shapeInfo.inShape.push_back(60);
+  shapeInfo.inShape.push_back(16);
+  shapeInfo.inShape.push_back(32);
+  shapeInfo.outShape.push_back(60);
+  shapeInfo.outShape.push_back(32);
+  shapeInfo.outShape.push_back(16);
+  shapeInfo.perm.push_back(0);
+  shapeInfo.perm.push_back(2);
+  shapeInfo.perm.push_back(1);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+  EXPECT_EQ(shapeInfo.scenario, 10);
+}
+
 TEST_F(TransposeTilingTest, specific_shape_scenario_4) {
   CompilerInfo compilerInfo;
   ShapeInfo shapeInfo;
@@ -1483,6 +1575,69 @@ TEST_F(TransposeTilingTest, split_n_with_small_shape_2) {
   EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[1].num, 0);
 }
 
+TEST_F(TransposeTilingTest, scenario_11_small_tail) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_FLOAT;
+  compilerInfo.fp16Times = 2;
+
+  shapeInfo.inShape.push_back(4099);
+  shapeInfo.inShape.push_back(16);
+  shapeInfo.inShape.push_back(32);
+  shapeInfo.outShape.push_back(4099);
+  shapeInfo.outShape.push_back(32);
+  shapeInfo.outShape.push_back(16);
+  shapeInfo.perm.push_back(0);
+  shapeInfo.perm.push_back(2);
+  shapeInfo.perm.push_back(1);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+}
+
+TEST_F(TransposeTilingTest, scenario_11_big_tail) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_FLOAT;
+  compilerInfo.fp16Times = 2;
+
+  shapeInfo.inShape.push_back(3);
+  shapeInfo.inShape.push_back(2000);
+  shapeInfo.inShape.push_back(1000);
+  shapeInfo.outShape.push_back(3);
+  shapeInfo.outShape.push_back(1000);
+  shapeInfo.outShape.push_back(2000);
+  shapeInfo.perm.push_back(0);
+  shapeInfo.perm.push_back(2);
+  shapeInfo.perm.push_back(1);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+}
+
+TEST_F(TransposeTilingTest, scenario_11_big_tail_2d) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_FLOAT;
+  compilerInfo.fp16Times = 2;
+
+  shapeInfo.inShape.push_back(2000);
+  shapeInfo.inShape.push_back(1000);
+  shapeInfo.outShape.push_back(1000);
+  shapeInfo.outShape.push_back(2000);
+  shapeInfo.perm.push_back(1);
+  shapeInfo.perm.push_back(0);
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+}
+
 TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
   CompilerInfo compilerInfo;
   ShapeInfo shapeInfo;
@@ -1624,6 +1779,19 @@ TEST_F(TransposeTilingTest, scenario_9_seri) {
   outShape.push_back(100);
   outShape.push_back(128);
   vector<int64_t> perm = {1, 0, 2};
+  std::string data_dtype = "float16";
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
+}
+
+TEST_F(TransposeTilingTest, scenario_11_seri) {
+  vector<int64_t> inShape;
+  vector<int64_t> outShape;
+  inShape.push_back(1024);
+  inShape.push_back(768);
+  outShape.push_back(768);
+  outShape.push_back(1024);
+  vector<int64_t> perm = {1, 0};
   std::string data_dtype = "float16";
   std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
   run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());

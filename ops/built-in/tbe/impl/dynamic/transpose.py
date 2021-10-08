@@ -669,7 +669,7 @@ class Transpose(object):
             # part 2: fixed
             ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 
-            reg_base = [39]
+            reg_base = [40]
             for i in range(reg_base[0]):
                 tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
             self.last_axis_len = tiling_reg_list[0]
@@ -711,6 +711,7 @@ class Transpose(object):
             self.last_two_s_list_repeat = tiling_reg_list[36]
             self.last_two_d_list_repeat = tiling_reg_list[37]
             self.is_last_two_aligned_and_trans = tiling_reg_list[38]
+            self.is_last_axis_transpose = tiling_reg_list[39]
 
             ub_offset.set_as(ub_offset + reg_base[0])
 
@@ -1082,9 +1083,9 @@ class Transpose(object):
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS10(object):
+    class TilingParamS11(object):
         """
-        TilingParamS10
+        TilingParamS11
         """
         def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
             """
@@ -1094,7 +1095,7 @@ class Transpose(object):
             # part 2: fixed
             ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 
-            reg_base = 15
+            reg_base = 16
             for i in range(reg_base):
                 tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
 
@@ -1111,8 +1112,9 @@ class Transpose(object):
             self.src_stride_in_tail = tiling_reg_list[10]
             self.dst_stride_out = tiling_reg_list[11]
             self.dst_stride_out_tail = tiling_reg_list[12]
-            self.col_vol = tiling_reg_list[13]
-            self.row_vol = tiling_reg_list[14]
+            self.n_unit = tiling_reg_list[13]
+            self.col_vol = tiling_reg_list[14]
+            self.row_vol = tiling_reg_list[15]
 
             ub_offset.set_as(ub_offset + reg_base)
 
@@ -1135,7 +1137,7 @@ class Transpose(object):
                 self.n_dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i + 2 * self.n_axis_num])
 
             # part 3: per core
-            per_core_front = 8
+            per_core_front = 9 
             ub_offset.set_as(0)
             reg_base = S10_FIXED_PART_SCALA_MAX_NUM
             for i in range(per_core_front):
@@ -1143,13 +1145,14 @@ class Transpose(object):
             ub_offset.set_as(per_core_front)
 
             self.loop_on_n = tiling_reg_list[reg_base + 0]
-            self.loop_on_mc = tiling_reg_list[reg_base + 1]
-            self.col_tc = tiling_reg_list[reg_base + 2]
-            self.col_offset = tiling_reg_list[reg_base + 3]
-            self.loop_on_mr = tiling_reg_list[reg_base + 4]
-            self.row_tr = tiling_reg_list[reg_base + 5]
-            self.row_offset = tiling_reg_list[reg_base + 6]
-            self.back_step_up = tiling_reg_list[reg_base + 7]
+            self.init_n = tiling_reg_list[reg_base + 1]
+            self.loop_on_mc = tiling_reg_list[reg_base + 2]
+            self.col_tc = tiling_reg_list[reg_base + 3]
+            self.col_offset = tiling_reg_list[reg_base + 4]
+            self.loop_on_mr = tiling_reg_list[reg_base + 5]
+            self.row_tr = tiling_reg_list[reg_base + 6]
+            self.row_offset = tiling_reg_list[reg_base + 7]
+            self.back_step_up = tiling_reg_list[reg_base + 8]
 
             self.init_n_tuple = []
 
@@ -1204,6 +1207,7 @@ class Transpose(object):
         self.tiling_reg_list = [self.tik_inst.Scalar("int64") for i in range(TILING_MAX_PARAM_NUM)]
         self.element_per_block = self._element_per_block(self.x_dtype)
         self.fp16_times = (self._sizeof_dtype(x_dtype) + 1) // self._sizeof_dtype("float16") # fp32/int32:2 fp16/int16:1
+        self.b8_times = self._sizeof_dtype(x_dtype)
         self.ele_per_block = BLOCK_SIZE // self._sizeof_dtype(x_dtype)
         tik_inst.data_move(self.ub_input_64_t, self.data_tiling, 0, 1, TILING_FIXED_MAX_LEN // BLOCK_SIZE, 0, 0)
 
@@ -3920,13 +3924,8 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
                 self._get_src_addr_s5(tp, tp.src_addr, 0)
-                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
-                                   self.data_in[tp.src_addr],
-                                   0,
-                                   1,
-                                   tp.major_burst_len_in,
-                                   0,
-                                   0)
+                ub_offset = i * tp.major_burst_len_in * EPB32 // self.b8_times
+                tik_inst.data_move(ub_input[ub_offset], self.data_in[tp.src_addr], 0, 1, tp.major_burst_len_in, 0, 0)
                 self._update_major_dst_tuple_in_s5(tp)
                 tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
 
@@ -3936,8 +3935,8 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
                 self._get_src_addr_s5(tp, tp.src_addr, 1)
-                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
-                                   self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
+                ub_offset = i * tp.tail_burst_len_in * EPB32 // self.b8_times
+                tik_inst.data_move(ub_input[ub_offset], self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
                 self._update_major_dst_tuple_in_s5(tp)
                 tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
 
@@ -3947,8 +3946,8 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with tik_inst.for_range(0, tp.tail_dst_loop_in) as i:
                 self._get_src_addr_s5(tp, tp.src_addr, 0)
-                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
-                                   self.data_in[tp.src_addr], 0, 1, tp.major_burst_len_in, 0, 0)
+                ub_offset = i * tp.major_burst_len_in * EPB32 // self.b8_times
+                tik_inst.data_move(ub_input[ub_offset], self.data_in[tp.src_addr], 0, 1, tp.major_burst_len_in, 0, 0)
                 self._update_tail_dst_tuple_in_s5(tp)
                 tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
 
@@ -3958,8 +3957,8 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with tik_inst.for_range(0, tp.tail_dst_loop_in) as i:
                 self._get_src_addr_s5(tp, tp.src_addr, 1)
-                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
-                                   self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
+                ub_offset = i * tp.tail_burst_len_in * EPB32 // self.b8_times
+                tik_inst.data_move(ub_input[ub_offset], self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
                 self._update_tail_dst_tuple_in_s5(tp)
                 tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
 
@@ -3967,7 +3966,7 @@ class Transpose(object):
         tik_inst = self.tik_inst
         ub_tail_offset = tik_inst.Scalar("int32")
         ub_offset_tmp = tik_inst.Scalar("int32")
-        ub_offset_tmp.set_as(tp.ub_src_offset * burst_len * EPB16 // self.fp16_times)
+        ub_offset_tmp.set_as(tp.ub_src_offset * burst_len * EPB32 // self.b8_times)
         ub_tail_offset.set_as(loop % 32 * self.ele_per_block)
         with tik_inst.if_scope(x_out_tail_ele == 0):
             tik_inst.data_move(self.data_out[tp.dst_addr],
@@ -4025,6 +4024,56 @@ class Transpose(object):
                                          tp.tail_out_ele, tp.tail_out_tail_ele)
                 self._update_tail_src_tuple_out_s5(tp)
 
+    def _reorder_b8_s5_data_move(self, tp, ub_input, idx):
+        tik_inst = self.tik_inst
+        ub_input_b8 = ub_input.reinterpret_cast_to("int8")
+        with tik_inst.for_range(0, tp.n_1[idx]) as i:
+            with tik_inst.new_stmt_scope(disable_sync=True):
+                with tik_inst.for_range(0, tp.loop_1[idx]) as j:
+                    tik_inst.data_move(ub_input_b8[(tp.offset_b * 2 + \
+                                                     i * tp.vol_1[idx] + j * tp.dst_offset_1[idx]) * self.fp16_times],
+                                       ub_input_b8[(tp.offset_a * 2 + \
+                                                     i * tp.vol_1[idx] + j * tp.src_offset_1[idx]) * self.fp16_times],
+                                       0,
+                                       tp.repeat_1[idx],
+                                       tp.burst_len_1[idx],
+                                       tp.src_stride_1[idx],
+                                       tp.dst_stride_1[idx])
+        with tik_inst.if_scope(tik.all(tp.n_1[idx] > 0, tp.loop_1[idx] > 0)):
+            self._swap(tp)
+
+        with tik_inst.for_range(0, tp.n_2[idx]) as i:
+            with tik_inst.new_stmt_scope(disable_sync=True):
+                with tik_inst.for_range(0, tp.loop_2[idx]) as j:
+                    tik_inst.data_move(ub_input_b8[(tp.offset_b * 2 + \
+                                                     i * tp.vol_2[idx] + j * tp.dst_offset_2[idx]) * self.fp16_times],
+                                       ub_input_b8[(tp.offset_a * 2 + \
+                                                     i * tp.vol_2[idx] + j * tp.src_offset_2[idx]) * self.fp16_times],
+                                       0,
+                                       tp.repeat_2[idx],
+                                       tp.burst_len_2[idx],
+                                       tp.src_stride_2[idx],
+                                       tp.dst_stride_2[idx])
+        with tik_inst.if_scope(tik.all(tp.n_2[idx] > 0, tp.loop_2[idx] > 0)):
+            self._swap(tp)
+
+        with tik_inst.for_range(0, tp.n_3[idx]) as i:
+            with tik_inst.new_stmt_scope(disable_sync=True):
+                with tik_inst.for_range(0, tp.loop_3[idx]) as j:
+                    tik_inst.data_move(ub_input_b8[(tp.offset_b * 2 + \
+                                                     i * tp.vol_3[idx] + j * tp.dst_offset_3[idx]) * self.fp16_times],
+                                       ub_input_b8[(tp.offset_a * 2 + \
+                                                     i * tp.vol_3[idx] + j * tp.src_offset_3[idx]) * self.fp16_times],
+                                       0,
+                                       tp.repeat_3[idx],
+                                       tp.burst_len_3[idx],
+                                       tp.src_stride_3[idx],
+                                       tp.dst_stride_3[idx])
+        with tik_inst.if_scope(tik.all(tp.n_3[idx] > 0, tp.loop_3[idx] > 0)):
+            self._swap(tp)
+
+        tp.ub_res_addr.set_as(tp.offset_a)
+
     def _reorder_s5_data_move(self, tp, ub_input, idx):
         tik_inst = self.tik_inst
         ub_input_b16 = ub_input.reinterpret_cast_to("int16")
@@ -4075,46 +4124,111 @@ class Transpose(object):
 
         tp.ub_res_addr.set_as(tp.offset_a)
 
+    def _make_ualigned_be_head_of_block_b8_s5(self, tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(tik.any(tp.is_last_axis_transpose != 0, tp.align_ele != 0)):
+            ub_input_b8 = ub_input.reinterpret_cast_to("int8")
+            src_ele_num_in_b8 = self._get_src_size() * 2 # avoid bank conflict
+            src_list = [ub_input_b8[src_ele_num_in_b8 * i] for i in range(EPB16)]
+            dst_list_low = [ub_input_b8[tp.offset_b * 2 + EPB32 * i] for i in range(EPB16)]
+            dst_list_high = [ub_input_b8[tp.offset_b * 2 + EPB32 * i + EPB32 * EPB16] for i in range(EPB16)]
+            
+            with tik_inst.if_scope(tp.ub_offset != 1):
+                tik_inst.vnchwconv(False, False, dst_list_low, src_list, tp.ub_offset, EPB32, 1)
+                tik_inst.vnchwconv(False, True, dst_list_high, src_list, tp.ub_offset, EPB32, 1)
+            with tik_inst.else_scope():
+                tik_inst.vnchwconv(False, False, dst_list_low, src_list, 1, 0, 0)
+                tik_inst.vnchwconv(False, True, dst_list_high, src_list, 1, 0, 0)
+
+            self._swap(tp)
+
+            # eliminate dirty data between two in_blocks
+            with tik_inst.if_scope(x_in_tail_ele != 0):
+                tik_inst.data_move(ub_input_b8[tp.offset_b * 2],
+                                   ub_input_b8[tp.offset_a * 2],
+                                   0,
+                                   x_dst_loop_in,
+                                   x_in_ele,
+                                   (self.ele_per_block - x_in_tail_ele), # src_stride
+                                   0) # dst_stride
+                self._swap(tp)
+
     def _make_ualigned_be_head_of_block_s5(self, tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in):
         tik_inst = self.tik_inst
-        ub_input_b16 = ub_input.reinterpret_cast_to("int16")
-        src_ele_num_in_b16 = self._get_src_size() # avoid bank conflict
-        src_list = [ub_input_b16[tp.offset_a * self.fp16_times + src_ele_num_in_b16 * i] for i in range(EPB16)]
-        dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + EPB16 * i] for i in range(EPB16)]
-        tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
-        self._swap(tp)
+        with tik_inst.if_scope(tik.any(tp.is_last_axis_transpose == 1, tp.align_ele != 0)):
+            ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+            src_ele_num_in_b16 = self._get_src_size() # avoid bank conflict
+            src_list = [ub_input_b16[tp.offset_a * self.fp16_times + src_ele_num_in_b16 * i] for i in range(EPB16)]
+            dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + EPB16 * i] for i in range(EPB16)]
+            with tik_inst.if_scope(tp.ub_offset != 1):
+                tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
+            with tik_inst.else_scope():
+                tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
+            self._swap(tp)
 
-        #eliminate dirty data between two in_blocks
-        with tik_inst.if_scope(x_in_tail_ele != 0):
-            tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
-                               ub_input_b16[tp.offset_a * self.fp16_times],
-                               0,
-                               x_dst_loop_in,
-                               x_in_ele * self.fp16_times,
-                               (self.ele_per_block - x_in_tail_ele) * self.fp16_times, # src_stride
-                               0) # dst_stride
+            #eliminate dirty data between two in_blocks
+            with tik_inst.if_scope(x_in_tail_ele != 0):
+                tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
+                                   ub_input_b16[tp.offset_a * self.fp16_times],
+                                   0,
+                                   x_dst_loop_in,
+                                   x_in_ele * self.fp16_times,
+                                   (self.ele_per_block - x_in_tail_ele) * self.fp16_times, # src_stride
+                                   0) # dst_stride
+                self._swap(tp)
+
+    def _make_block_head_be_contiguous_b8_s5(self, tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(tik.any(tp.is_last_axis_transpose != 0, tp.align_ele != 0)):
+            ub_input_b8 = ub_input.reinterpret_cast_to("int8")
+            # 1. insert data between two in_blocks to make each out_blocks be started with block align
+            with tik_inst.if_scope(x_out_tail_ele != 0):
+                tik_inst.data_move(ub_input_b8[tp.offset_b * 2],
+                                   ub_input_b8[tp.offset_a * 2],
+                                   0,
+                                   x_src_loop_out,
+                                   x_out_ele,
+                                   0,
+                                   (self.ele_per_block - x_out_tail_ele))
+                self._swap(tp)
+
+            # 2. make block head be line
+            ub_offset_exclude_pad = 60
+            src_list_low = [ub_input_b8[tp.offset_a * 2 + EPB32 * i] for i in range(EPB16)]
+            src_list_high = [ub_input_b8[tp.offset_a * 2 + EPB32 * i + EPB32 * EPB16] for i in range(EPB16)]
+            dst_list = [ub_input_b8[tp.offset_b * 2 + self._get_dst_size() * EPB32 * i] for i in range(EPB16)]
+            with tik_inst.if_scope(x_src_loop_out * burst_len_out != 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list_low, x_src_loop_out * burst_len_out, 1, EPB32)
+                self.tik_inst.vnchwconv(True, False, dst_list, src_list_high, x_src_loop_out * burst_len_out, 1, EPB32)
+            with tik_inst.else_scope():
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list_low, 1, 0, 0)
+                self.tik_inst.vnchwconv(True, False, dst_list, src_list_high, 1, 0, 0)
             self._swap(tp)
 
     def _make_block_head_be_contiguous_s5(self, tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out):
         tik_inst = self.tik_inst
-        ub_input_b16 = ub_input.reinterpret_cast_to("int16")
-        # insert data between two in_blocks to make each out_blocks be started with block align
-        with tik_inst.if_scope(x_out_tail_ele != 0):
-            tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
-                               ub_input_b16[tp.offset_a * self.fp16_times],
-                               0,
-                               x_src_loop_out,
-                               x_out_ele * self.fp16_times,
-                               0,
-                               (self.ele_per_block - x_out_tail_ele) * self.fp16_times)
-            self._swap(tp)
+        with tik_inst.if_scope(tik.any(tp.is_last_axis_transpose == 1, tp.align_ele != 0)):
+            ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+            # insert data between two in_blocks to make each out_blocks be started with block align
+            with tik_inst.if_scope(x_out_tail_ele != 0):
+                tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
+                                   ub_input_b16[tp.offset_a * self.fp16_times],
+                                   0,
+                                   x_src_loop_out,
+                                   x_out_ele * self.fp16_times,
+                                   0,
+                                   (self.ele_per_block - x_out_tail_ele) * self.fp16_times)
+                self._swap(tp)
 
-        # make block head be line
-        src_list = [ub_input_b16[tp.offset_a * self.fp16_times + EPB16 * i] for i in range(EPB16)]
-        dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + self._get_dst_size() * EPB16 * i] \
-                    for i in range(EPB16)]
-        tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
-        self._swap(tp)
+            # make block head be line
+            src_list = [ub_input_b16[tp.offset_a * self.fp16_times + EPB16 * i] for i in range(EPB16)]
+            dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + self._get_dst_size() * EPB16 * i] \
+                        for i in range(EPB16)]
+            with tik_inst.if_scope(x_src_loop_out * burst_len_out != 1):
+                tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
+            with tik_inst.else_scope():
+                tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
+            self._swap(tp)
 
     def _reorder_s5(self, tp, ub_input, is_src_tail_in, is_dst_tail_in,
                     x_in_ele, x_in_tail_ele, burst_len_in, x_dst_loop_in,
@@ -4124,10 +4238,17 @@ class Transpose(object):
         tp.offset_a.set_as(tp.offset_1 // self.fp16_times)
         tp.offset_b.set_as(tp.offset_2 // self.fp16_times)
         self._get_reorder_idx(is_src_tail_in, is_dst_tail_in, idx)
-        self._make_ualigned_be_head_of_block_s5(tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in)
-        self._reorder_s5_data_move(tp, ub_input, idx)
-        self._make_block_head_be_contiguous_s5(tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out)
-        tp.ub_res_addr.set_as(tp.offset_a)
+
+        if self.x_dtype in ("int8", "uint8", "bool"):
+            self._make_ualigned_be_head_of_block_b8_s5(tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in)
+            self._reorder_b8_s5_data_move(tp, ub_input, idx)
+            self._make_block_head_be_contiguous_b8_s5(tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out)
+            tp.ub_res_addr.set_as(tp.offset_a * 2)
+        else:
+            self._make_ualigned_be_head_of_block_s5(tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in)
+            self._reorder_s5_data_move(tp, ub_input, idx)
+            self._make_block_head_be_contiguous_s5(tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out)
+            tp.ub_res_addr.set_as(tp.offset_a)
 
     def _move_data_s5(self, tp, ub_input_64):
         tik_inst = self.tik_inst
@@ -4153,7 +4274,6 @@ class Transpose(object):
                              tp.major_burst_len_out,
                              tp.major_src_loop_out)
             self._copy_out_major_src_major_dst_s5(tp, ub_input)
-
             self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
 
             with tik_inst.if_scope(tik.all(is_src_tail_in == 1, tp.pivot_src_axis_dup == 0)):
@@ -5595,6 +5715,131 @@ class Transpose(object):
             self._update_logic_tuple_s5(tp)
 
     # -------------------------------------------------------------------------------------------------
+    #                                    scenario_11
+    # -------------------------------------------------------------------------------------------------
+    def _get_src_addr_s11(self, tp, ln, lc, lr):
+        tp.src_addr.set_as(tp.col_offset + lc * tp.col_per_mc + tp.row_offset * tp.col_vol + lr * tp.row_per_mr * tp.col_vol)
+        return tp.src_addr
+
+    def _get_dst_addr_s11(self, tp, ln, lc, lr):
+        tp.dst_addr.set_as(tp.row_offset + lr * tp.row_per_mr + tp.col_offset * tp.row_vol + lc * tp.col_per_mc * tp.row_vol)
+        return tp.dst_addr
+
+    def _copy_in_s11_mcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(ub_input[0],
+                                self.data_in[self._get_src_addr_s11(tp, ln, lc, lr)],
+                                0,
+                                tp.row_per_mr,
+                                tp.col_block_per_mc,
+                                tp.src_stride_in,
+                                0)
+        ub_offset.set_as(tp.row_per_mr * tp.col_per_mc)
+
+    def _copy_in_s11_mctr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(ub_input[0],
+                                self.data_in[self._get_src_addr_s11(tp, ln, lc, lr)],
+                                0,
+                                tp.row_tr,
+                                tp.col_block_per_mc,
+                                tp.src_stride_in,
+                                0)
+        ub_offset.set_as(tp.row_tr * tp.col_per_mc)
+
+    def _copy_in_s11_tcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(ub_input[0],
+                                self.data_in[self._get_src_addr_s11(tp, ln, lc, lr)],
+                                0,
+                                tp.row_per_mr,
+                                tp.col_block_tc,
+                                tp.src_stride_in_tail,
+                                0)
+        ub_offset.set_as(tp.row_per_mr * tp.col_tc)
+
+    def _copy_in_s11_tctr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(ub_input[0],
+                                self.data_in[self._get_src_addr_s11(tp, ln, lc, lr)],
+                                0,
+                                tp.row_tr,
+                                tp.col_block_tc,
+                                tp.src_stride_in_tail,
+                                0)
+        ub_offset.set_as(tp.row_tr * tp.col_tc)
+
+    def _copy_out_s11_mcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(self.data_out[self._get_dst_addr_s11(tp, ln, lc, lr)],
+                                ub_input[tp.offset_b // self.fp16_times],
+                                0,
+                                tp.col_per_mc,
+                                tp.row_block_per_mr,
+                                ROW_UNIT // (EPB16 // self.fp16_times) - tp.row_block_per_mr,
+                                tp.dst_stride_out)
+
+    def _copy_out_s11_mctr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(self.data_out[self._get_dst_addr_s11(tp, ln, lc, lr)],
+                                ub_input[tp.offset_b // self.fp16_times],
+                                0,
+                                tp.col_per_mc,
+                                tp.row_block_tr,
+                                ROW_UNIT // (EPB16 // self.fp16_times) - tp.row_block_tr,
+                                tp.dst_stride_out_tail)
+
+    def _copy_out_s11_tcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(self.data_out[self._get_dst_addr_s11(tp, ln, lc, lr)],
+                                ub_input[tp.offset_b // self.fp16_times],
+                                0,
+                                tp.col_tc,
+                                tp.row_block_per_mr,
+                                ROW_UNIT // (EPB16 // self.fp16_times) - tp.row_block_per_mr,
+                                tp.dst_stride_out)
+
+    def _copy_out_s11_tctr(self, tp, ub_input, ub_offset, ln, lc, lr):
+        self.tik_inst.data_move(self.data_out[self._get_dst_addr_s11(tp, ln, lc, lr)],
+                                ub_input[tp.offset_b // self.fp16_times],
+                                0,
+                                tp.col_tc,
+                                tp.row_block_tr,
+                                ROW_UNIT // (EPB16 // self.fp16_times) - tp.row_block_tr,
+                                tp.dst_stride_out_tail)
+
+    def _reorder_s11(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
+        with self.tik_inst.if_scope(self.fp16_times == 2):  # fp32/int32
+            self._reorder_s7_b32(tp, ub_input, ub_offset, is_tc, is_tr)
+        with self.tik_inst.else_scope():  # fp16/int16
+            self._reorder_s7_b16(tp, ub_input, ub_offset, is_tc, is_tr)
+
+    def _move_data_s11(self, tp, ub_input_64):
+        ub_offset = self.tik_inst.Scalar("int32")  # unit : block
+        ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
+
+        self._init_n_tuple(tp)
+
+        with self.tik_inst.for_range(0, tp.loop_on_n) as ln:
+            with self.tik_inst.for_range(0, tp.loop_on_mc) as lc:
+                with self.tik_inst.for_range(0, tp.loop_on_mr) as lr:
+                    self._copy_in_s11_mcmr(tp, ub_input, ub_offset, ln, lc, lr)
+                    self._reorder_s11(tp, ub_input, ub_offset, False, False)
+                    self._copy_out_s11_mcmr(tp, ub_input, ub_offset, ln, lc, lr)
+
+                with self.tik_inst.if_scope(tp.row_tr != 0):
+                    self._copy_in_s11_mctr(tp, ub_input, ub_offset, ln, lc, tp.loop_on_mr)
+                    self._reorder_s11(tp, ub_input, ub_offset, False, True)
+                    self._copy_out_s11_mctr(tp, ub_input, ub_offset, ln, lc, tp.loop_on_mr)
+
+            with self.tik_inst.if_scope(tp.col_tc != 0):
+                with self.tik_inst.for_range(0, tp.loop_on_mr) as lr:
+                    self._copy_in_s11_tcmr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, lr)
+                    self._reorder_s11(tp, ub_input, ub_offset, True, False)
+                    self._copy_out_s11_tcmr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, lr)
+
+            with self.tik_inst.if_scope(tp.col_tc != 0):
+                with self.tik_inst.if_scope(tp.row_tr != 0):
+                    self._copy_in_s11_tctr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, tp.loop_on_mr)
+                    self._reorder_s11(tp, ub_input, ub_offset, True, True)
+                    self._copy_out_s11_tctr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, tp.loop_on_mr)
+            self._update_tuple(tp.n_axis_num, tp.rt_n_tuple, tp.n_jump_factor)
+
+
+    # -------------------------------------------------------------------------------------------------
     #                                    scenario_end
     # -------------------------------------------------------------------------------------------------
 
@@ -5645,6 +5890,9 @@ class Transpose(object):
     def _do_tiling_s10(self, block_idx, fixed_len, per_core_len):
         return self._do_tiling_common(block_idx, fixed_len, per_core_len, self.TilingParamS5)
 
+    def _do_tiling_s11(self, block_idx, fixed_len, per_core_len):
+        return self._do_tiling_common(block_idx, fixed_len, per_core_len, self.TilingParamS11)
+
     def _do_tiling_common(self, block_idx, fixed_len, per_core_len, TP):
         tiling_reg_list = self.tiling_reg_list
         ub_input_64_t = self.ub_input_64_t
@@ -5673,51 +5921,53 @@ class Transpose(object):
         scenario, fixed_len, per_core_len, sub_scenario = self._decode_tiling_head()
 
         with self.tik_inst.for_range(0, TRANSPOSE_CORE_NUM, block_num=TRANSPOSE_CORE_NUM) as block_idx:
-            with self.tik_inst.if_scope(block_idx < 999):#999
-                with self.tik_inst.if_scope(scenario == 7):
-                    tp = self._do_tiling_s7(block_idx, self.tiling_reg_list, self.ub_input_64_t,
-                                            self.ub_input_64, fixed_len, per_core_len)
-                    with self.tik_inst.if_scope(sub_scenario == 0):
-                        self._move_data_s7_university(tp, self.ub_input_64)
-                    with self.tik_inst.else_scope():
-                        with self.tik_inst.if_scope(sub_scenario == 1):
-                            self._move_data_s7_fat_2_thin(tp, self.ub_input_64)
-                        with self.tik_inst.else_scope():
-                            self._move_data_s7_thin_2_fat(tp, self.ub_input_64)
+            with self.tik_inst.if_scope(scenario == 7):
+                tp = self._do_tiling_s7(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                        self.ub_input_64, fixed_len, per_core_len)
+                with self.tik_inst.if_scope(sub_scenario == 0):
+                    self._move_data_s7_university(tp, self.ub_input_64)
                 with self.tik_inst.else_scope():
-                    with self.tik_inst.if_scope(scenario == 1):
-                        tp = self._do_tiling_s1(block_idx, self.tiling_reg_list, self.ub_input_64_t,
-                                                self.ub_input_64, fixed_len, per_core_len)
-                        self._move_data_s1(tp, self.ub_input_64)
+                    with self.tik_inst.if_scope(sub_scenario == 1):
+                        self._move_data_s7_fat_2_thin(tp, self.ub_input_64)
                     with self.tik_inst.else_scope():
-                        with self.tik_inst.if_scope(tik.any(scenario == 2, scenario == 6)):
-                            tp = self._do_tiling_s2(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                        self._move_data_s7_thin_2_fat(tp, self.ub_input_64)
+            with self.tik_inst.else_scope():
+                with self.tik_inst.if_scope(scenario == 1):
+                    tp = self._do_tiling_s1(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                            self.ub_input_64, fixed_len, per_core_len)
+                    self._move_data_s1(tp, self.ub_input_64)
+                with self.tik_inst.else_scope():
+                    with self.tik_inst.if_scope(tik.any(scenario == 2, scenario == 6)):
+                        tp = self._do_tiling_s2(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                                self.ub_input_64, fixed_len, per_core_len)
+                        self._move_data_s2(tp, self.ub_input_64)
+                    with self.tik_inst.else_scope():
+                        with self.tik_inst.if_scope(scenario == 3):
+                            tp = self._do_tiling_s3(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                                     self.ub_input_64, fixed_len, per_core_len)
-                            self._move_data_s2(tp, self.ub_input_64)
+                            self._move_data_s3(tp, self.ub_input_64)
                         with self.tik_inst.else_scope():
-                            with self.tik_inst.if_scope(scenario == 3):
-                                tp = self._do_tiling_s3(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                            with self.tik_inst.if_scope(scenario == 0):
+                                tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                                         self.ub_input_64, fixed_len, per_core_len)
-                                self._move_data_s3(tp, self.ub_input_64)
-                            with self.tik_inst.else_scope():  # scenario == 0
-                                with self.tik_inst.if_scope(scenario == 0):
-                                    tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64_t,
-                                                            self.ub_input_64, fixed_len, per_core_len)
-                                    self._move_data_s0(tp, self.ub_input_64)
-                                with self.tik_inst.if_scope(scenario == 4):
-                                    tp = self._do_tiling_s4(block_idx, fixed_len, per_core_len)
-                                    self._move_data_s4(tp, self.ub_input_64)
-                                with self.tik_inst.if_scope(scenario == 5):
-                                    tp = self._do_tiling_s5(block_idx, fixed_len, per_core_len)
-                                    self._move_data_s5(tp, self.ub_input_64)
-                                with self.tik_inst.if_scope(scenario == 8):
-                                    self._move_data_s8(self.ub_input_64)
-                                with self.tik_inst.if_scope(scenario == 9):
-                                    tp = self._do_tiling_s9(block_idx, fixed_len, per_core_len)
-                                    self._move_data_s9(tp, self.ub_input_64, sub_scenario)
-                                with self.tik_inst.if_scope(scenario == 10):
-                                    tp = self._do_tiling_s10(block_idx, fixed_len, per_core_len)
-                                    self._move_data_s10(tp, self.ub_input_64)
+                                self._move_data_s0(tp, self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 4):
+                                tp = self._do_tiling_s4(block_idx, fixed_len, per_core_len)
+                                self._move_data_s4(tp, self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 5):
+                                tp = self._do_tiling_s5(block_idx, fixed_len, per_core_len)
+                                self._move_data_s5(tp, self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 8):
+                                self._move_data_s8(self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 9):
+                                tp = self._do_tiling_s9(block_idx, fixed_len, per_core_len)
+                                self._move_data_s9(tp, self.ub_input_64, sub_scenario)
+                            with self.tik_inst.if_scope(scenario == 10):
+                                tp = self._do_tiling_s10(block_idx, fixed_len, per_core_len)
+                                self._move_data_s10(tp, self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 11):
+                                tp = self._do_tiling_s11(block_idx, fixed_len, per_core_len)
+                                self._move_data_s11(tp, self.ub_input_64)
 
     def compute(self, input_list):
         """

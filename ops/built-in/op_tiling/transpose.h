@@ -64,6 +64,8 @@ namespace optiling {
 #define MDTS 1
 #define TDMS 2
 #define TDTS 3
+#define COL_UNIT 240 
+#define ROW_UNIT 128 
 
 /*
  * 4 * 32 block = 4KB, this value should be consistent with the variable in transpose.py
@@ -72,14 +74,16 @@ namespace optiling {
  * 3KB : reserved
  * 4KB : reserved
  */
-#define UB_RESERVED_KB 4                                     // keep same with transpose.py
-#define UB_RESERVED_BLOCK_SIZE (UB_RESERVED_KB * 1024 / 32)  // 128 blocks, 4KB
-#define LAST_AXIS_HUGE_THRESHOLD 100 * 1024                  // unit B
-#define HUGE_BLOCKS_UNIT (LAST_AXIS_HUGE_THRESHOLD / 32)     // unit blocks, 3200 blocks
-#define LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD 4096           // unit B
-#define LAST_AXIS_BLOCK_ALIGN_N_BORROW_THRESHOLD 512         // unit B
-#define LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD 256        // unit B
-#define UB_CAP_BLOCKS 7800                                   // for 310 256 - 8 = 248KB = 7936 Blocks
+#define UB_RESERVED_KB 4                                         // keep same with transpose.py
+#define UB_RESERVED_BLOCK_SIZE (UB_RESERVED_KB * 1024 / 32)      // 128 blocks, 4KB
+#define LAST_AXIS_HUGE_THRESHOLD 100 * 1024                      // unit B
+#define HUGE_BLOCKS_UNIT (LAST_AXIS_HUGE_THRESHOLD / 32)         // unit blocks, 3200 blocks
+#define LAST_AXIS_BLOCK_ALIGN_N_BORROW_B8_THRESHOLD 3000         // unit B
+#define LAST_AXIS_BLOCK_ALIGN_Y_BORROW_B8_THRESHOLD (128 * 1024) // unit B
+#define LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD 4096               // unit B
+#define LAST_AXIS_BLOCK_ALIGN_N_BORROW_THRESHOLD 512             // unit B
+#define LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD 256            // unit B
+#define UB_CAP_BLOCKS 7800                                       // for 310 256 - 8 = 248KB = 7936 Blocks
 #define B8_HUGE_SIZE 1024
 
 #define STRIDE_BOUNDARY 65535
@@ -107,6 +111,7 @@ enum TransposeScenario {
   SCENARIO_8 = 8,    // a100 verifaction
   SCENARIO_9 = 9,    // last axis block aligned and not transpose
   SCENARIO_10 = 10,  // last two axis: block aligned & transpose & not huge
+  SCENARIO_11 = 11,  // last two axis: block aligned & transpose & huge
 };
 
 enum SubScenarioLastAxisTrans {
@@ -705,11 +710,16 @@ struct TwoDInfo {
   int64_t dstStrideOut;
   int64_t dstStrideOutTail;
 
+  int64_t nUnit;
   std::vector<int64_t> nFactor;
   std::vector<int64_t> nSrcStride;
   std::vector<int64_t> nDstStride;
 
   std::vector<InfoPerCore2D> infoPerCore2D;
+
+  TwoDInfo() {
+    nUnit = 1;
+  }
 };
 
 struct RuntimeInfo {
