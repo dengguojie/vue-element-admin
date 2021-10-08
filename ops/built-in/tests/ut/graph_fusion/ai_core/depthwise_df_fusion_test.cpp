@@ -72,14 +72,15 @@ TEST_F(depthwise_df_fusion_test, depthwise_df_fusion_test_dynamic_HWCN) {
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("DepthwiseDfFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-
-    bool findReshape = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "Reshape") {
-            findReshape = true;
+        if (node->GetType() == "DepthwiseConv2DBackpropInput") {
+            auto depthwise_conv2dbp_input_node_desc = node->GetOpDesc();
+            auto filter_tensor = depthwise_conv2dbp_input_node_desc->GetInputDesc(1);
+            actual_filter_shape = filter_tensor.GetShape().GetDims();
+            break;
         }
     }
-    EXPECT_EQ(findReshape, true);
+    EXPECT_EQ(actual_filter_shape, expect_filter_shape);
 }
 
 TEST_F(depthwise_df_fusion_test, depthwise_df_fusion_test_dynamic_NCHW) {
@@ -130,12 +131,13 @@ TEST_F(depthwise_df_fusion_test, depthwise_df_fusion_test_dynamic_NCHW) {
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("DepthwiseDfFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-
-    bool findReshape = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "Reshape") {
-            findReshape = true;
+        if (node->GetType() == "DepthwiseConv2DBackpropInput") {
+            auto depthwise_conv2dbp_input_node_desc = node->GetOpDesc();
+            auto filter_tensor = depthwise_conv2dbp_input_node_desc->GetInputDesc(1);
+            actual_filter_shape = filter_tensor.GetShape().GetDims();
+            break;
         }
     }
-    EXPECT_EQ(findReshape, false);
+    EXPECT_EQ(actual_filter_shape, expect_filter_shape);
 }
