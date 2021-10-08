@@ -61,92 +61,62 @@ vector<FusionPattern*> DepthwiseDfFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status DepthwiseDfFusionPass::SwapNumChnImpl(GeTensorDesc& tensor_desc) {
-  FUSION_PASS_CHECK (
-    tensor_desc.GetShape().GetDimNum() != MAX_DIM_NUM,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dim count not illegal, need:4 real:%d", tensor_desc.GetShape().GetDimNum()),
-    return PARAM_INVALID);
-  ge::Format origin_format = tensor_desc.GetOriginFormat();
-  ge::GeShape tensor_shape = tensor_desc.GetShape();
-  vector<int64_t> dim_info = tensor_shape.GetDims();
-  int64_t n = 0;
-  int64_t c = 0;
-  int64_t h = 0;
-  int64_t w = 0;
-  if (dim_info.size() == 4) {
-    if (origin_format == FORMAT_HWCN) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "in FORMAT_HWCN, before swap C, N, H, W: [%d, %d, %d, %d]", (int)dim_info[2],
-      (int)dim_info[3], (int)dim_info[0], (int)dim_info[1]);
-      n = dim_info[3];
-      h = dim_info[0];
-      w = dim_info[1];
-      c = dim_info[2];
-      tensor_desc.SetShape(ge::GeShape({h, w, 1, c*n}));
-      tensor_desc.SetOriginShape(ge::GeShape({h, w, 1, c*n}));
-    }
-  } else {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "dim_info is not right, please check!");
-    return NOT_CHANGED;
-  }
-  return SUCCESS;
+ge::NodePtr DepthwiseDfFusionPass::CreateReshapeNode(ge::ComputeGraph& graph,
+                                                     vector<int64_t> src_shape,
+                                                     vector<int64_t> tar_shape,
+                                                     const ge::DataType& desc_type,
+                                                     const std::string& node_name) {
+  ge::GeShape input_shape(src_shape);
+  ge::GeTensorDesc filter_input_desc(input_shape, FORMAT_HWCN, desc_type);
+  filter_input_desc.SetShape(input_shape);
+  filter_input_desc.SetOriginShape(input_shape);
+  filter_input_desc.SetOriginDataType(desc_type);
+
+  ge::GeShape output_shape(tar_shape);
+  ge::GeTensorDesc filter_output_desc(output_shape, FORMAT_HWCN, desc_type);
+  filter_output_desc.SetShape(output_shape);
+  filter_output_desc.SetOriginShape(output_shape);
+  filter_output_desc.SetOriginDataType(desc_type);
+
+  ge::OpDescPtr reshape_desc;
+  FUSION_PASS_MAKE_SHARED((reshape_desc = std::make_shared<ge::OpDesc>(
+                          node_name + "/Reshape", "Reshape")), return nullptr);
+  FUSION_PASS_CHECK(reshape_desc->AddInputDesc("x", filter_input_desc) != GRAPH_SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to reshape."), return nullptr);
+  FUSION_PASS_CHECK(reshape_desc->AddOutputDesc("y", filter_output_desc) != GRAPH_SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc y to reshape."), return nullptr);
+  ge::AttrUtils::SetListInt(reshape_desc, "shape", tar_shape);
+
+  auto reshape_node = graph.AddNode(reshape_desc);
+  FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
+                    return nullptr);
+  return reshape_node;
 }
 
-Status DepthwiseDfFusionPass::SwapNumChn(OpDescPtr& op_desc, bool b_input, uint32_t index, bool both) {
-  bool flag = false;
-  ge::GeTensorDesc tensor_desc;
-  graphStatus ret_res;
-  auto get_all_input_candidate_desc = op_desc->GetAllInputsDesc();
+Status DepthwiseDfFusionPass::InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,
+                                         ge::NodePtr& new_node) {
+  ge::NodePtr src_node = src->GetOwnerNode();
+  ge::NodePtr dst_node = dst->GetOwnerNode();
 
-  if (both) {
-    vector<int64_t> dim_info;
-    for (auto iter=get_all_input_candidate_desc.begin(); iter!=get_all_input_candidate_desc.end(); ++iter) {
-      tensor_desc = *iter;
-      if (tensor_desc.GetShape().GetDimNum() == MAX_DIM_NUM) {
-        FUSION_PASS_CHECK(SwapNumChnImpl(tensor_desc) != SUCCESS,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
-        ret_res = op_desc->UpdateInputDesc(index, tensor_desc);
-        dim_info = tensor_desc.GetShape().GetDims();
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap: [%d, %d, %d, %d]", (int)dim_info[0],
-                   (int)dim_info[1], (int)dim_info[2], (int)dim_info[3]);
-        flag = true;
-      }
-    }
-    if (op_desc->GetOutputDesc(0).GetShape().GetDimNum() == MAX_DIM_NUM) {
-      tensor_desc = op_desc->GetOutputDesc(0);
-      FUSION_PASS_CHECK(SwapNumChnImpl(tensor_desc) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
-      ret_res = op_desc->UpdateOutputDesc(index, tensor_desc);
-      dim_info = tensor_desc.GetShape().GetDims();
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap: [%d, %d, %d, %d]", (int)dim_info[0],
-              (int)dim_info[1], (int)dim_info[2], (int)dim_info[3]);
-      flag = true;
-    }
-  } else {
-    if (b_input) {
-      tensor_desc = op_desc->GetInputDesc(index);
-      FUSION_PASS_CHECK(SwapNumChnImpl(tensor_desc) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
-      ret_res = op_desc->UpdateInputDesc(index, tensor_desc);
-
-      vector<int64_t> dim_info1 = tensor_desc.GetShape().GetDims();
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap input: [%d, %d, %d, %d]", (int)dim_info1[0],
-              (int)dim_info1[1], (int)dim_info1[2], (int)dim_info1[3]);
-      flag = true;
-    } else {
-      tensor_desc = op_desc->GetOutputDesc(index);
-      FUSION_PASS_CHECK(SwapNumChnImpl(tensor_desc) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
-      ret_res = op_desc->UpdateOutputDesc(index, tensor_desc);
-
-      vector<int64_t> dim_info1 = tensor_desc.GetShape().GetDims();
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "after swap output: [%d, %d, %d, %d]", (int)dim_info1[0],
-              (int)dim_info1[1], (int)dim_info1[2], (int)dim_info1[3]);
-      flag = true;
-    }
+  if (new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx())) != GRAPH_SUCCESS) {
+    OP_LOGI(new_node->GetName().c_str(), "update input_desc failed.");
+    return FAILED;
   }
-  if (flag) {
-    FUSION_PASS_CHECK(ret_res != ge::GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), 
-                      "Update matmul variable failed"), return PARAM_INVALID);
+  if (new_node->GetOpDesc()->UpdateOutputDesc(0, dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx())) != GRAPH_SUCCESS) {
+    OP_LOGI(new_node->GetName().c_str(), "update output_desc failed.");
+    return FAILED;
+  }
+  if(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
+    OP_LOGE(dst_node->GetName().c_str(), "Remove ori_filter edge error.");
+    return FAILED;
+  }
+  if(ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS) {
+    OP_LOGE(src_node->GetName().c_str(), "Add edge to node %s failed.", new_node->GetName().c_str());
+    return FAILED;
+  }
+  if(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst)!= SUCCESS) {
+   OP_LOGE(new_node->GetName().c_str(), "Add edge to node %s failed.", dst_node->GetName().c_str());
+    return FAILED; 
   }
   return SUCCESS;
 }
@@ -161,13 +131,41 @@ Status DepthwiseDfFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   if (depthwise_desc->GetType() == DEPTHWISE_DYN) {
     index = 1;
   }
-  FUSION_PASS_CHECK(SwapNumChn(depthwise_desc, true, index, false) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
-  ge::NodePtr filter_node = depthwise_node->GetInDataNodes().at(index);
-  OpDescPtr filter_desc = filter_node->GetOpDesc();
 
-  FUSION_PASS_CHECK(SwapNumChn(filter_desc, true, 0, true) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+  ge::GeTensorDesc filter_desc = depthwise_desc->GetInputDesc(index);
+  ge::Format origin_format = filter_desc.GetOriginFormat();
+  ge::DataType filter_dtype = filter_desc.GetDataType();
+
+  if (origin_format != FORMAT_HWCN) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "filter format is not HWCN, no need to do fusion.");
+    return NOT_CHANGED;
+  }
+
+  vector<int64_t> filter_src_shape = filter_desc.GetShape().GetDims();
+  vector<int64_t> filter_tar_shape = filter_src_shape;
+  filter_tar_shape[2] = 1;
+  filter_tar_shape[3] = filter_src_shape[2] * filter_src_shape[3];
+
+  // update filter input desc
+  filter_desc.SetShape(ge::GeShape(filter_tar_shape));
+  filter_desc.SetOriginShape(ge::GeShape(filter_tar_shape));
+  FUSION_PASS_CHECK(depthwise_node->GetOpDesc()->UpdateInputDesc(index, filter_desc) != GRAPH_SUCCESS,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "update depthwise filter input desc failed."),
+                    return FAILED);
+
+
+  std::string node_name = depthwise_node->GetName();
+  ge::NodePtr reshape_node = CreateReshapeNode(graph, filter_src_shape, filter_tar_shape, filter_dtype, node_name);
+  FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
+                    return FAILED);
+  auto in_anchor = depthwise_node->GetInDataAnchor(index);
+  FUSION_PASS_CHECK(in_anchor == nullptr || in_anchor->GetPeerOutAnchor() == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "filter in anchor is nullptr or peer anchor is nullptr."),
+                    return FAILED);
+  FUSION_PASS_CHECK(InsertNode(in_anchor->GetPeerOutAnchor(), in_anchor, reshape_node) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
+                    return FAILED);
+
   OP_LOGI("Leave DepthwiseDfFusionPass");
   return SUCCESS;
 }

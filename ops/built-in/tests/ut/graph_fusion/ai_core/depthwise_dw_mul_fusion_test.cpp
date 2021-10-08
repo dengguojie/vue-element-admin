@@ -110,7 +110,6 @@ TEST_F(depthwise_dw_mul_fusion_test, depthwise_dw_mul_fusion_test_3) {
         .set_attr_pads({0,0,0,0})
         .set_attr_dilations({1,1,1,1})
         .set_attr_data_format("NHWC");
-    depthwiseConv2DBackpropFilter.SetAttr("_fuzz_build", true);
     ge::TensorDesc input_desc_out_backprop(ge::Shape({128, 214, 214, 1}), FORMAT_NHWC, DT_FLOAT16);
     ge::TensorDesc input_desc_input(ge::Shape({128, 214, 214, 1}), FORMAT_NHWC, DT_FLOAT16);
     ge::TensorDesc input_desc_filter_size(ge::Shape({4}), FORMAT_ND, DT_INT32);
