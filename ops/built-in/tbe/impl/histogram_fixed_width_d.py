@@ -52,7 +52,7 @@ SCALAR_ZERO = 0
 def get_op_support_info(x,
                         y,
                         nbins,
-                        dtype="int32",
+                        dtype=3,
                         kernel_name='histogram_fixed_width_d'):
     """
     get_op_support_info
@@ -946,12 +946,12 @@ def histogram_fixed_width_d_compute(x,
 
 # pylint: disable=too-many-arguments,redefined-builtin,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def histogram_fixed_width_d(x,
                             range,
                             y,
                             nbins,
-                            dtype="int32",
+                            dtype=3,
                             kernel_name='histogram_fixed_width_d'):
     """this operation returns a rank 1 histogram counting
      the number of entries in `values` that fell into every bin.

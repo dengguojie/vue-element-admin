@@ -19,11 +19,27 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
+Status AutoMappingFnHistogramFixedWidth(const google::protobuf::Message* op_src, ge::Operator& op) {
+  Status ret = AutoMappingFn(op_src, op);
+  if (ret != SUCCESS) {
+    OP_LOGE("HistogramFixedWidth", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
+  ge::DataType dataType;
+  if (op.GetAttr("dtype", dataType) != ge::GRAPH_SUCCESS) {
+    OP_LOGE("HistogramFixedWidth", "GetAttr dtype failed");
+    return FAILED;
+  }
+  op.SetAttr("dtype", static_cast<int>(dataType));
+  OP_LOGI("HistogramFixedWidth", "op[HistogramFixedWidth] tensorflow plugin parser[AutoMapping] success.");
+  return SUCCESS;
+}
 REGISTER_CUSTOM_OP("HistogramFixedWidth")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("HistogramFixedWidth")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnHistogramFixedWidth)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

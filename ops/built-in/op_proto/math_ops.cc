@@ -505,9 +505,9 @@ static void GetConstValue(const Tensor& const_tensor, const DataType& dtype, std
 }
 
 IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
-  std::string dtype_attr;
+  int dtype_attr;
   if (op.GetAttr("dtype", dtype_attr) == GRAPH_SUCCESS) {
-    if (dtype_attr != "int32") {
+    if (dtype_attr != 3) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
           ConcatString("invalid value[", dtype_attr, "], only support int32"));
       return GRAPH_FAILED;
@@ -561,12 +561,10 @@ IMPLEMT_VERIFIER(HistogramFixedWidthD, HistogramFixedWidthDVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthDInferShape) {
-  std::string dtype_attr;
+  int dtype_attr;
   if (op.GetAttr("dtype", dtype_attr) == GRAPH_SUCCESS) {
-    if (dtype_attr != "int32") {
-      string expected_dtype_list = ConcatString("int32");
-      std::string err_msg = GetInputDtypeNotSupportErrMsg("dtype", expected_dtype_list, dtype_attr);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    if (dtype_attr != 3) {
+      OP_LOGE(op.GetName().c_str(), "attr dtype only support int32, but is %d", dtype_attr);
       return GRAPH_FAILED;
     }
   }
