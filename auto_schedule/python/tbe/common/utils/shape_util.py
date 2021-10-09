@@ -325,8 +325,18 @@ def _get_input_range_nchw(op_type, in_shape, in_format, in_range):
     return [tuple(r) if r else r for r in in_range]
 
 
-def _cube_variable_shape(inputs: list):
+def _cube_variable_shape(inputs: list, attrs=None):
     shape_out = []
+
+    weight_ori_format = inputs[1].get("ori_format")
+    c_index = weight_ori_format.index("C")
+    weight_cin = inputs[1].get("ori_shape")[c_index]
+
+    if attrs:
+        groups = attrs[3]
+        fmap_cin = weight_cin * groups
+    else:
+        fmap_cin = weight_cin
 
     for i, input in enumerate(inputs):
         if i == 0:
@@ -347,6 +357,9 @@ def _cube_variable_shape(inputs: list):
             in_shape = input.get("shape")
             if input.get("format") != "NC1HWC0":
                 return []
+            if in_shape[1] == -1:
+                fmap_ci0 = in_shape[-1]
+                in_shape[1] = (fmap_cin + fmap_ci0 - 1) // fmap_ci0
             if in_shape[n_dim] == dynamic_flag:
                 in_shape[n_dim] = operation.var("batch_n", in_range_nchw[n_dim])
                 operation.add_exclude_bound_var(in_shape[n_dim])
@@ -363,7 +376,7 @@ def _cube_variable_shape(inputs: list):
     return shape_out
 
 
-def variable_shape(inputs: list, op_mode="elewise"):
+def variable_shape(inputs: list, op_mode="elewise", attrs=None):
     """
     :param inputs: all inputs
     :param op_mode: elewise or reduce
@@ -371,7 +384,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
     :return:
     """
     if op_mode == "cube":
-        return _cube_variable_shape(inputs)
+        return _cube_variable_shape(inputs, attrs=attrs)
 
     if op_mode in ("reduce", "norm"):
         return _reduce_and_norm_variable_shape(inputs)

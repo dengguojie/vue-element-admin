@@ -12,7 +12,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME, param_name_inpu
 
 def refine_shapes_for_broadcast(shape1, shape2):
 
-def variable_shape(inputs: list, op_mode="elewise"):
+def variable_shape(inputs: list, op_mode="elewise", attrs=None):
 
 def simplify_axis_shape(shape, axis):
 
