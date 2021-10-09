@@ -20,8 +20,23 @@ if(NOT BUILD_OPEN_PROJECT)
   set(OPERATOR_SAMPLE_NAME operator_demo_projects)
   set(OPERATOR_SAMPLE_BUILD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${OPERATOR_SAMPLE_NAME})
   add_custom_target(OperatorDemoProjects ALL DEPENDS ${OPERATOR_SAMPLE_NAME})
+  # yellow zone, copy makeself from open source
+  set(MAKESELF_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../open_source/makeself)
+  file(GLOB ConfigFiles ${MAKESELF_PATH}/COPYING
+                      ${MAKESELF_PATH}/makeself.1
+                      ${MAKESELF_PATH}/makeself.lsm
+                      ${MAKESELF_PATH}/*.sh
+                      ${MAKESELF_PATH}/README.md
+                      ${MAKESELF_PATH}/VERSION)
+
   add_custom_command(OUTPUT ${OPERATOR_SAMPLE_NAME}
     DEPENDS ${_proto_cc} ${_proto_h}
+    COMMAND rm -rf ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_operator_sample/cmake
+    COMMAND rm -rf ${CMAKE_CURRENT_SOURCE_DIR}/tbe_operator_sample/cmake
+    COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_operator_sample/cmake/util/makeself
+    COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/tbe_operator_sample/cmake/util/makeself
+    COMMAND cp -rf ${ConfigFiles} ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_operator_sample/cmake/util/makeself
+    COMMAND cp -rf ${ConfigFiles} ${CMAKE_CURRENT_SOURCE_DIR}/tbe_operator_sample/cmake/util/makeself
     COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && chmod +x build.sh && ./build.sh
     COMMAND cp -r ${OPERATOR_SAMPLE_BUILD_PATH} ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${OPERATOR_SAMPLE_BUILD_PATH} ${CMAKE_CURRENT_BINARY_DIR}

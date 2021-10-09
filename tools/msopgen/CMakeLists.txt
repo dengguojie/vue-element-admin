@@ -22,7 +22,7 @@ add_custom_target(MsopgenFiles ALL DEPENDS ${MSOPGEN_WHEEL_IMAGE})
 if(BUILD_OPEN_PROJECT)
   # blue zone, download makeself from github
   include(third_party/makeself.cmake)
-  add_custom_command(OUTPUT  ${MSOPGEN_WHEEL_IMAGE} DEPENDS makeself_code
+  add_custom_command(OUTPUT ${MSOPGEN_WHEEL_IMAGE} DEPENDS makeself_code
                     COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/op_gen/template/op_project_tmpl/cmake/util/makeself
                     COMMAND rm -rf ${MSOPGEN_WHEEL_OUT}
                     COMMAND cd ${MSOPGEN_BUILD_PATH} && ./build_whl.sh ${HI_PYTHON}

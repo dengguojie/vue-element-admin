@@ -46,7 +46,7 @@ target_compile_definitions(\${TF_PLUGIN_TARGET} PRIVATE
 target_link_libraries(\${TF_PLUGIN_TARGET} \${ASCEND_INC}/../lib64/libgraph.so)">>${TF_PLUGIN_CMAKELIST}
 
 ##############1. copy aicpu_operator_sample ###################
-cp -rf ${SRC_DIR}/op_project_tmpl/cmake ${DST_DIR}/aicpu_operator_sample/cmake
+cp -rf ${SRC_DIR}/op_project_tmpl/cmake ${DST_DIR}/aicpu_operator_sample/
 cp -rf ${SRC_DIR}/cpukernel/CMakeLists.txt ${DST_DIR}/aicpu_operator_sample/cpukernel/CMakeLists.txt
 cp -rf ${SRC_DIR}/cpukernel/toolchain.cmake ${DST_DIR}/aicpu_operator_sample/cpukernel/toolchain.cmake
 cp -rf ${SRC_DIR}/op_project_tmpl/framework/CMakeLists.txt ${DST_DIR}/aicpu_operator_sample/framework/CMakeLists.txt
@@ -55,7 +55,7 @@ cp -rf ${SRC_DIR}/op_project_tmpl/CMakeLists.txt ${DST_DIR}/aicpu_operator_sampl
 cp -rf ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/aicpu_operator_sample/framework/tf_plugin/CMakeLists.txt
 
 ##############2. copy tbe_operator_sample ###################
-cp -rf ${SRC_DIR}/op_project_tmpl/cmake ${DST_DIR}/tbe_operator_sample/cmake
+cp -rf ${SRC_DIR}/op_project_tmpl/cmake ${DST_DIR}/tbe_operator_sample/
 cp -rf ${SRC_DIR}/op_project_tmpl/framework/CMakeLists.txt ${DST_DIR}/tbe_operator_sample/framework/CMakeLists.txt
 cp -rf ${SRC_DIR}/op_project_tmpl/op_proto/CMakeLists.txt ${DST_DIR}/tbe_operator_sample/op_proto/CMakeLists.txt
 cp -rf ${SRC_DIR}/tbe/CMakeLists.txt ${DST_DIR}/tbe_operator_sample/tbe/CMakeLists.txt
