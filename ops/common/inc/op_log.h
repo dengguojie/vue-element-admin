@@ -50,6 +50,16 @@ get_op_name(T name) {
   return name;
 }
 
+#define CHECK_DIVISOR_ZERO(divisor) \
+  if (divisor == 0) {\
+    return;\
+  }
+
+#define CHECK_DIVISOR_ZERO_RET(divisor,ret) \
+  if (divisor == 0) {\
+    return ret;\
+  }
+
 #if !defined( __ANDROID__) && !defined(ANDROID)
 #define OP_LOGI(opname, ...) D_OP_LOGI(get_op_name(opname), __VA_ARGS__)
 #define OP_LOGW(opname, ...) D_OP_LOGW(get_op_name(opname), __VA_ARGS__)
