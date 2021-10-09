@@ -40,6 +40,8 @@ struct SliceParameters {
   std::string to_string() const;
 };
 
+int64_t CalVnchwUbSize(int64_t ub_size, int64_t dtype_size, int64_t byte_block);
+
 void SetSliceTilingData(const string& opType, SliceParameters& slice_params, utils::OpRunInfo& runInfo,
                         const ge::DataType& dtype, int32_t core_num, int32_t ub_size);
 

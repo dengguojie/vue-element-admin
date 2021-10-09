@@ -280,6 +280,10 @@ namespace optiling
                                   const ge::Format &src_format, const ge::Format &dst_format,
                                   const int64_t &core_num, const int64_t &block_elem_cnt, const int64_t &ub_size,
                                   const int64_t &c0_len, const DataType &dType, TransDataNtc100Param &params) {
+    if (block_elem_cnt == 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "block_elem_cnt = 0 is not supported.");
+      return false;
+    }
     std::string src_format_new;
     std::string dst_format_new;
     std::vector<int64_t> in_shape_new;

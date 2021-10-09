@@ -83,7 +83,11 @@ static int64_t CalShapeMul(const std::vector<int64_t>& shape, int64_t start, int
   return res;
 }
 
-static int64_t CalVnchwUbSize(int64_t ub_size, int64_t dtype_size, int64_t byte_block) {
+int64_t CalVnchwUbSize(int64_t ub_size, int64_t dtype_size, int64_t byte_block) {
+  if (dtype_size == 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING("StridedSlice", "dtype_size = 0 is not supported.");
+      return ub_size;
+    }
   int64_t block_element = byte_block / dtype_size;
   return (ub_size / dtype_size - block_element) / 2 / block_element * block_element;
 }

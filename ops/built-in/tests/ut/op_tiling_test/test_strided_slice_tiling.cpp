@@ -4,10 +4,12 @@
 
 #include <gtest/gtest.h>
 #include <register/op_tiling.h>
+#include "op_tiling/strided_slice.h"
 #include "test_common.h"
 #include "array_ops.h"
 #include "selection_ops.h"
 
+using namespace optiling;
 using namespace std;
 using namespace ge;
 
@@ -672,4 +674,11 @@ TEST_F(stried_slice_tiling, stried_slice_outshape_0) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 38 38 0 0 1 1 1 1 1 1 ");
+}
+
+TEST_F(stried_slice_tiling, stried_slice_div_zero) {
+  int64_t ub_size = 77777;
+  int64_t dtype_size = 0;
+  int64_t byte_block = 16;
+  EXPECT_EQ(CalVnchwUbSize(ub_size, dtype_size, byte_block), ub_size);
 }
