@@ -26,18 +26,20 @@
 
 namespace fe {
 class ConvToFullyConnectionFusionPass : public PatternFusionBasePass {
- protected:
-  vector<FusionPattern*> DefinePatterns() override;
-
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
-
- private:
-  Status CheckFusionParm(ge::NodePtr convNode);
-  void RefreshBiasNodeFromSubgraphToMajorgraph(ge::NodePtr convNode);
-  Status CheckHWCEqual(const ge::GeTensorDesc& xTensor, const ge::GeTensorDesc& filterTensor);
-  int64_t GetDimByAxisName(const ge::GeTensorDesc& tensor, const string& axis);
-  int32_t GetIndexByAxisName(const ge::GeTensorDesc& tensor, const string& axis);
-  const string FUSED_OP_TYPE = "Conv2D";
+protected:
+    vector<FusionPattern *> DefinePatterns() override;
+    Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector <ge::NodePtr> &fusionNodes) override;
+private:
+    Status CheckFusionParm(ge::NodePtr convNode);
+    void RefreshBiasNodeFromSubgraphToMajorgraph(ge::NodePtr convNode);
+    Status CreateReshapeNode(ge::ComputeGraph &graph, const ge::OutDataAnchorPtr &out_anchor,
+                             const vector <int64_t> &shape, ge::NodePtr &shape_node);
+    Status InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,
+                      ge::NodePtr &new_node);
+    Status CheckHWCEqual(const ge::GeTensorDesc &xTensor, const ge::GeTensorDesc &filterTensor);
+    int64_t GetDimByAxisName(const ge::GeTensorDesc &tensor, const string &axis);
+    int32_t GetIndexByAxisName(const ge::GeTensorDesc &tensor, const string &axis);
+    const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV_TO_FULLYCONNECTION_FUSION_PASS_H_
