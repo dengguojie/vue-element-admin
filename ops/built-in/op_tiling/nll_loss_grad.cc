@@ -18,14 +18,11 @@
  * \file nll_loss_grad.cpp
  * \brief dynamic shape tiling of nll_loss_grad
  */
-
-#include "nll_loss_grad.h"
-
 #include <map>
-#include <vector>
-#include <nlohmann/json.hpp>
 
+#include <nlohmann/json.hpp>
 #include "op_tiling_util.h"
+
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
 #include "../op_proto/util/op_common_util.h"
@@ -130,13 +127,53 @@ static bool CheckParams(const string& op, const vector<int64_t>& x_shape, const 
   return true;
 }
 
-bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const std::string& reduction,
-                                  NLLLossGradTilingParam& tiling_param) {
-  if (max_move_line == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGrad", "max_move_line = 0 is not supported.");
-    return false;
-  }
+struct TilingParam {
+  int64_t c_dim = 0;
+  int64_t n_dim = 0;
+  int64_t invalid_target = 0;
+  int64_t ignore_idx = 0;
+  int64_t output_gm_size = 0;
+  int64_t x_gm_size = 0;
+  int64_t y_grad_gm_size = 0;
+  int64_t target_gm_size = 0;
+  int64_t data_total_weight_size = 0;
+  int64_t weight_gm_size = 0;
+  int64_t big_weight = 0;
+  int64_t core_num = 0;
+  int64_t max_line = 0;
+  int64_t lower_line = 0;
+  int64_t loop_time = 0;
+  int64_t fake_core = 0;
+  int64_t redundant_line = 0;
+  int64_t max_total_num = 1;
+  int64_t lower_total_num = 0;
+  int64_t dup_ub_size = 0;
+  int64_t target_ub_size = 0;
+  int64_t weight_ub_size = 0;
+  int64_t total_weight_ub_size = 0;
+  int64_t refactor_weight_ub_size = 0;
+  int64_t weight_burst = 0;
+  int64_t target_burst = 0;
+  int64_t lower_target_burst = 0;
+  int64_t max_vmul_repeat = 0;
+  int64_t lower_vmul_repeat = 0;
+  int64_t last_target_burst = 0;
+  int64_t last_vmul_repeat = 0;
+  int64_t core_dup_repeat = 0;
+  int64_t last_dup_repeat = 0;
+  int64_t max_out_burst = 0;
+  int64_t last_out_burst = 0;
+  int64_t y_grad_ub_size = 0;
+  int64_t tiling_key = 0;
+  int64_t align_repeat_size = 0;
+  int64_t move_out_time = 0;
+  int64_t single_max_repeat = 0;
+  int64_t tail_repeat = 0;
+  int64_t offet = 0;
+};
 
+static bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const std::string& reduction,
+                                         TilingParam& tiling_param) {
   tiling_param.max_line = max_move_line;
   tiling_param.lower_line = tiling_param.n_dim % max_move_line;
   tiling_param.loop_time = GetCeilDiv(tiling_param.n_dim, tiling_param.max_line * tiling_param.core_num);
@@ -192,7 +229,7 @@ bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const std::string
   return true;
 }
 
-static bool GetTilingParamOfOneDimAndBigWeight(const int64_t ub_size_float, NLLLossGradTilingParam& tiling_param) {
+static bool GetTilingParamOfOneDimAndBigWeight(const int64_t ub_size_float, TilingParam& tiling_param) {
   tiling_param.tiling_key = 2001;
   tiling_param.refactor_weight_ub_size = NUM_8;
   tiling_param.loop_time = GetCeilDiv(tiling_param.n_dim, tiling_param.core_num);
@@ -221,7 +258,7 @@ static bool GetTilingParamOfOneDimAndBigWeight(const int64_t ub_size_float, NLLL
 static bool GetTilingParam(const vector<int64_t>& x_shape, const vector<int64_t>& y_grad_shape,
                            const vector<int64_t>& target_shape, const vector<int64_t>& weight_shape,
                            const int64_t block_dim, const int64_t ub_size, const std::string& reduction,
-                           const int64_t ignore_idx, NLLLossGradTilingParam& tiling_param) {
+                           const int64_t ignore_idx, TilingParam& tiling_param) {
   int64_t c_dim = x_shape.back();
   int64_t n_dim = x_shape[0];
   if (ignore_idx < 0 || ignore_idx >= c_dim) {
@@ -367,7 +404,7 @@ static bool GetCompileParams(const nlohmann::json& op_compile_info_json, std::st
   return true;
 }
 
-bool SetRunningInfo(const NLLLossGradTilingParam& tiling_param, utils::OpRunInfo& runInfo) {
+bool SetRunningInfo(const TilingParam& tiling_param, utils::OpRunInfo& runInfo) {
   runInfo.AddTilingData(tiling_param.c_dim);
   runInfo.AddTilingData(tiling_param.n_dim);
   runInfo.AddTilingData(tiling_param.invalid_target);
@@ -501,7 +538,7 @@ bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, c
   }
 
   OP_LOGD(opType, "GetTilingParam.");
-  NLLLossGradTilingParam tiling_param;
+  TilingParam tiling_param;
   if (!GetTilingParam(x_shape, y_grad_shape, target_shape, weight_shape, block_dim, ub_size, reduction, ignore_idx,
                       tiling_param)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: GetTilingParam error.");

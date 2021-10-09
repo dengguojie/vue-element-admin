@@ -10,9 +10,7 @@
 #include "register/op_tiling_registry.h"
 #include "op_log.h"
 #include "op_tiling/op_tiling_util.h"
-#include "op_tiling/trans_data_common.h"
 
-using namespace optiling;
 using namespace std;
 using namespace ge;
 
@@ -844,35 +842,4 @@ TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D_1) {
       "5376 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
-}
-
-TEST_F(TransDataTiling, TransData_tc_201_div_zero) {
-  std::vector<int64_t> input_shape = {100, 1, 1, 1, 47};
-  std::vector<int64_t> output_shape = {1, 3, 1, 1, 7, 16, 16};
-  std::string src_format = "NDHWC";
-  std::string dst_format = "FRACTAL_Z_3D";
-  int64_t core_num = 32;
-  int64_t block_elem_cnt = 0;
-  int64_t ub_size = 65280;
-  TransDataTc201Param params;
-  DataType dtype = ge::DT_FLOAT16;
-  ASSERT_FALSE(TilingNegativeTc201(input_shape, output_shape, src_format, dst_format, core_num,
-                                   block_elem_cnt, dtype, ub_size, params));
-}
-
-TEST_F(TransDataTiling, TransData_ntc_100_div_zero) {
-  std::vector<int64_t> input_shape = {100, 1, 1, 1, 47};
-  std::vector<int64_t> output_shape = {1, 3, 1, 1, 7, 16, 16};
-  std::string src_format = "NDHWC";
-  std::string dst_format = "FRACTAL_Z_3D";
-  int64_t core_num = 32;
-  int64_t block_elem_cnt = 0;
-  int64_t ub_size = 65280;
-  int64_t c0_len = 16;
-  TransDataNtc100Param params;
-  DataType dtype = ge::DT_FLOAT16;
-  ASSERT_FALSE(TilingPositiveSourceNtc100(input_shape, output_shape,
-                                          ge::Format::FORMAT_DHWNC, ge::Format::FORMAT_DHWNC,
-                                          core_num,
-                                          block_elem_cnt, ub_size, c0_len, dtype, params));
 }

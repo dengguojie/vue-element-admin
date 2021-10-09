@@ -135,11 +135,6 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
     return false;
   }
 
-  if (block_elem_cnt == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "block_elem_cnt = 0 is not supported.");
-    return false;
-  }
-
   int64_t c0_len = in_shape[in_shape.size() - 1];
   params.c0_len = c0_len;
 

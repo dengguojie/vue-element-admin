@@ -18,17 +18,14 @@
  * \file test_nll_loss_grad_tiling.cpp
  * \brief dynamic tiling test of nll_loss_grad
  */
-
 #include <iostream>
 #include <fstream>
 #include <vector>
+
 #include <gtest/gtest.h>
-#include "op_tiling/nll_loss_grad.h"
 #include "register/op_tiling_registry.h"
 #include "math_ops.h"
 #include "array_ops.h"
-
-using namespace optiling;
 
 class NLLLossGradTiling : public testing::Test {
  protected:
@@ -291,11 +288,4 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
   for (int64_t i = 0; i < tiling_test_num; i++) {
     iter->second(opParas, op_compile_info, runInfo);
   }
-}
-
-TEST_F(NLLLossGradTiling, NLLLossGrad_div_zero) {
-  int64_t max_move_line = 0;
-  string reduction = "none";
-  NLLLossGradTilingParam tiling_param;
-  ASSERT_FALSE(GetTilingParamOfNormalTwoDim(max_move_line, reduction, tiling_param));
 }
