@@ -951,7 +951,16 @@ IMPLEMT_VERIFIER(BNTrainingReduceGrad, BNTrainingReduceGradVerify) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(BNTrainingReduceGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "y"));
+IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceGradInferShape) {
+  const int64_t input_grads_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_grads_idx, {output_y_idx})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(BNTrainingReduceGrad, BNTrainingReduceGradInferShape);
 
 VERIFY_FUNC_REG(BNTrainingReduceGrad, BNTrainingReduceGradVerify);
 // ----------------BNTrainingReduceGrad END---------------

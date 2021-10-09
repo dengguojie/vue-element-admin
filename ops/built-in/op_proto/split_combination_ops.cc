@@ -630,6 +630,64 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape, in
   return true;
 }
 
+bool ConcatInferShapeCommonStatic(Operator& op, int64_t num_concat, int64_t axis) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc(0);
+  auto output_desc = op_info->MutableOutputDesc(0);
+  const GeShape& input_shape = input_desc->MutableShape();
+  GeShape& output_shape = output_desc->MutableShape();
+  output_shape = input_shape;
+  if (output_shape.IsUnknownShape()) {
+    // dynamic case
+    return false;
+  }
+
+  if (output_shape.IsScalar()) {
+    // scalar to shape [1]
+    output_shape.SetDimNum(1);
+    output_shape.SetDim(0, 1);
+  }
+  const size_t output_dim = output_shape.GetDimNum();
+
+  if ((axis < -static_cast<int64_t>(output_dim)) || (axis >= static_cast<int64_t>(output_dim))) {
+    // axes is valid
+    return false;
+  }
+  if (axis < 0) {
+    axis += output_dim;
+  }
+  int64_t concat_dim_size = output_shape.GetDim(axis);
+
+  for (int64_t input_idx = 1; input_idx < num_concat; input_idx++) {
+    auto input_i_desc = op_info->MutableInputDesc(input_idx);
+    const GeShape& input_i_shape = input_i_desc->MutableShape();
+    if (input_i_shape.IsScalar() && output_dim == 1) {
+      concat_dim_size += 1;
+      continue;
+    }
+    if (input_i_shape.IsUnknownShape()) {
+      // dynamic case
+      return false;
+    }
+    if (input_i_shape.GetDimNum() != output_dim) {
+      // input shape size is not equal output
+      return false;
+    }
+    // check whether the non concat dim is equal
+    for (int64_t check_dim = 0; check_dim < output_dim; check_dim++) {
+      if (check_dim != axis && input_i_shape.GetDim(check_dim) != output_shape.GetDim(check_dim)) {
+        return false;
+      }
+    }
+    concat_dim_size += input_i_shape.GetDim(axis);
+  }
+  output_shape.SetDim(axis, concat_dim_size);
+
+  // set data type
+  output_desc->SetDataType(input_desc->GetDataType());
+  return true;
+}
+
 static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int64_t axis, bool unknown_axis) {
   if (num_concat <= 0) {
     std::string err_msg = GetAttrValueErrMsg("num_concat", std::to_string(num_concat), ConcatString("num_concat > 0"));
@@ -637,6 +695,12 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
     return GRAPH_FAILED;
   }
 
+  // try static infershape directly
+  if (!unknown_axis) {
+    if (ConcatInferShapeCommonStatic(op, num_concat, axis)) {
+      return GRAPH_SUCCESS;
+    }
+  }
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   size_t dim_num = 0;
   std::vector<GeTensorDescPtr> input_x_desc;
@@ -1305,3 +1369,4 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetDInferShape) {
 COMMON_INFER_FUNC_REG(ConcatOffsetD, ConcatOffsetDInferShape);
 // --------------------ConcatOffsetD Op End------------------------
 }  // namespace ge
+

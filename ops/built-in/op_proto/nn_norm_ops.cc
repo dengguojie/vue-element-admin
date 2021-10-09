@@ -120,7 +120,6 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogi
 
 // -------------------SigmoidCrossEntropyWithLogitsV2---------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
-
   std::string reduction = "mean";
   if (op.GetAttr("reduction", reduction) == GRAPH_FAILED) {
     std::string err_msg = GetInputInvalidErrMsg("reduction");
@@ -128,24 +127,27 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
     return GRAPH_FAILED;
   }
 
+  const int64_t input_predict_idx = 0;
+  const int64_t output_loss_idx = 0;
   if (reduction == "none") {
-        if (OneInOneOutDynamicInfer(op, "predict", {"loss"})) {
-        return GRAPH_SUCCESS;
-    }
-        return GRAPH_FAILED;  
-  }
-  else {
-      // if reduction == "mean" or reduction == "sum" , output a scalar
-      auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-      auto outputTensordesc = op_info->MutableOutputDesc("loss");
-      auto predict_desc = op_info->MutableInputDesc("predict");
-      DataType predict_dtype = predict_desc->GetDataType();
-      std::vector<int64_t> o_shape;
-      outputTensordesc->SetShape(GeShape(o_shape));
-      outputTensordesc->SetDataType(predict_dtype);
+    if (OneInOneOutDynamicInfer(op, input_predict_idx, {output_loss_idx})) {
       return GRAPH_SUCCESS;
     }
+    return GRAPH_FAILED;  
   }
+  // if reduction == "mean" or reduction == "sum" , output a scalar
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_tensordesc = op_info->MutableOutputDesc(output_loss_idx);
+  auto predict_desc = op_info->MutableInputDesc(input_predict_idx);
+  DataType predict_dtype = predict_desc->GetDataType();
+
+  // set output dtype
+  output_tensordesc->SetDataType(predict_dtype);
+  // set output shape = scalar
+  GeShape& output_shape = output_tensordesc->MutableShape();
+  output_shape.SetDimNum(0);
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsV2, SigmoidCrossEntropyWithLogitsV2InferShape);
 // ------------------SigmoidCrossEntropyWithLogitsV2 END------------------
@@ -677,20 +679,11 @@ IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskInferShape) {
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto x_desc = op_info->MutableInputDesc("x");
-  vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
-  DataType input_dtype = x_desc->GetDataType();
-  std::vector<std::pair<int64_t, int64_t>> input_range;
-  x_desc->GetShapeRange(input_range);
-  MakeUpShapeRange(x_shape, input_range);
-
-  auto output_desc_y = op_info->MutableOutputDesc("y");
-  output_desc_y->SetShape(GeShape(x_shape));
-  output_desc_y->SetOriginShape(GeShape(x_shape));
-  output_desc_y->SetShapeRange(input_range);
-  output_desc_y->SetDataType(input_dtype);
-
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (!OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

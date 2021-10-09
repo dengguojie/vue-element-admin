@@ -804,50 +804,62 @@ IMPLEMT_COMMON_INFERFUNC(NLLLossInferShape) {
     OP_LOGE(op.GetName().c_str(), "Get attr reduction failed.");
     return GRAPH_FAILED;
   }
-  
-  std::vector<int64_t> scalar;
-  std::vector<int64_t> y_shape;
-  std::vector<std::pair<int64_t, int64_t>> y_range;
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_desc->MutableInputDesc(0);
   auto weight_desc = op_desc->MutableInputDesc(2);
   auto y_desc = op_desc->MutableOutputDesc(0);
   auto total_weight_desc = op_desc->MutableOutputDesc(1);
-  std::vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
+  const GeShape& x_shape = x_desc->MutableShape();
 
   y_desc->SetDataType(x_desc->GetDataType());
-  total_weight_desc->SetShape(GeShape(scalar));
   total_weight_desc->SetDataType(weight_desc->GetDataType());
+
+  GeShape& y_shape = y_desc->MutableShape();
+  GeShape& total_weight_shape = total_weight_desc->MutableShape();
+
+  // set total_weight shape is scalar
+  total_weight_shape.SetDimNum(0);
   
   if (reduction == "none") {
-    if (IsUnknownRankShape(x_shape) || x_shape.size() == 2) {
-      y_shape.push_back(x_shape[0]);
-      y_desc->SetShape(GeShape(y_shape));
+    if (x_shape.IsUnknownDimNum()) {
+      // x is -2, y is -2
+      y_shape.SetIsUnknownDimNum();
+      return GRAPH_SUCCESS;
+    }
+    if (x_shape.GetDimNum() == 2) {
+      // x is [x, y], y is [x]
+      y_shape.SetDimNum(1);
+      y_shape.SetDim(0, x_shape.GetDim(0));
     
-      if (IsUnKnownShape(x_shape)) {
+      if (x_shape.IsUnknownShape()) {
+        // x_shape is dynamic, infer range 
+        std::vector<std::pair<int64_t, int64_t>> y_range;
         std::vector<std::pair<int64_t, int64_t>> x_range;
         x_desc->GetShapeRange(x_range);
-        MakeUpShapeRange(x_shape, x_range);
+        std::vector<int64_t> x_shape_vec = x_shape.GetDims();
+        MakeUpShapeRange(x_shape_vec, x_range);
         y_range.push_back(x_range[0]);
         y_desc->SetShapeRange(y_range);
       }
-
       return GRAPH_SUCCESS;
     }
   }
   
   // reduction "mean" or "sum" or 1D, output y is scalar
-  y_desc->SetShape(GeShape(scalar));
+  y_shape.SetDimNum(0);
   return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(NLLLoss, NLLLossInferShape);
 // --------------------NllLoss END----------------------
 
 // ----------------------NLLLossGrad------------------------
 IMPLEMT_COMMON_INFERFUNC(NLLLossGradInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter NLLLossGradInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"x_grad"})) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_x_grad_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_x_grad_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;

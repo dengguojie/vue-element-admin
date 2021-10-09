@@ -951,7 +951,9 @@ IMPLEMT_VERIFIER(Assign, AssignVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AssignInferShape) {
-  if (OneInOneOutDynamicInfer(op, "value", {"ref"})) {
+  const int64_t input_value_idx = 1;
+  const int64_t output_ref_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_value_idx, {output_ref_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -1658,13 +1660,6 @@ COMMON_INFER_FUNC_REG(Rint, RintInferShape);
 
 // --------------------------------BiasAdd-------------------------------------
 IMPLEMT_VERIFIER(BiasAdd, BiasAddVerify) {
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
-  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_FAILED;
-  }
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_FAILED) {
     std::string err_msg = GetInputInvalidErrMsg("data_format");
@@ -1674,6 +1669,15 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
     string expected_format_list = ConcatString("NHWC, NCHW, NDHWC, NCDHW");
     std::string err_msg = GetInputFormatNotSupportErrMsg(op.GetName().c_str(), expected_format_list, data_format);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (!OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
