@@ -1083,3 +1083,79 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling20) {
   EXPECT_EQ(runInfo.GetBlockDim(), 48);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 3200 5824 1 67 3 ");
 }
+
+TEST_F(EletwiseTilingV2, Eletwise_tiling_empty_tensor) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{2, 0, 2};
+  std::vector<int64_t> output{2, 0, 2};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto exp_op = op::Exp("Exp_0");
+  exp_op.set_input_x(x1);
+  exp_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{exp_op};
+  ge::Graph graph("Eletwise_tiling_empty_tensor");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string op_type = "AutoTiling";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_type);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  std::string compileInfo = R"({"_pattern": "ElemWise", "_outs_uint1": false, "_flag_info": [false, false, false, true, false, false], "_base_info": {}, "_elewise_vars":{}, "_vars": {"2147483647": []}, "_normal_vars": {"2147483647": []}, "_attr_vars": {"2147483647": []}, "_custom_vars": {"2147483647": []}})";
+  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+  std::vector<std::vector<int64_t>> input_shapes{input};
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(optiling::EletwiseTiling(op_type, exp_op, op_info, runInfo));\
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
+}
+
+TEST_F(EletwiseTilingV2, Eletwise_custom_empty_tensor) {
+  using namespace optiling;
+
+  std::vector<int64_t> inputA{2, 0, 2};
+  std::vector<int64_t> inputB{2, 0, 2};
+  std::vector<int64_t> output{2, 0, 2};
+
+  TensorDesc tensor_inputA(ge::Shape(inputA), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_inputB(ge::Shape(inputB), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_inputA);
+  x1.update_output_desc_y(tensor_inputA);
+  auto x2 = op::Data("x2");
+  x2.update_input_desc_x(tensor_inputB);
+  x2.update_output_desc_y(tensor_inputB);
+
+  auto add_op = op::Add("Add_0");
+  add_op.set_input_x1(x1).set_input_x2(x2);
+  add_op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1, x2};
+  std::vector<Operator> outputs{add_op};
+  ge::Graph graph("Eletwise_custom_empty_tensor");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string compileInfo = R"({"_fusion_index": [[0], [1], [2]], "_pattern": "ElemWise", "_outs_uint1": false, "_flag_info": [false, false, true, true, false, true], "_base_info": {"100": [32, 4, 21840, 10920]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "2147483647": []}, "_normal_vars": {"210000000":["_block_factor_0", "ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "2147483647": []}, "_attr_vars": {"210000000":[], "210010000": [], "2147483647": []}, "_custom_vars": {"210000000":[], "210010000": [], "2147483647": []}})";
+  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+  std::vector<std::vector<int64_t>> input_shapes{inputA, inputB};
+  optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(optiling::EletwiseTiling("CustomOP", add_op, op_info, runInfo, c_op_info));\
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
+}

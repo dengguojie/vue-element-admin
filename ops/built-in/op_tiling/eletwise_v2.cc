@@ -519,7 +519,7 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
                               block_dims, input_shapes, dim_len);
     ret = ret && utils::WriteConstTiling(op_type, compile_info, run_info, key, block_dims);
   } else if (is_empty_tensor) {
-    ret = utils::WriteConstTiling(op_type, compile_info, run_info, INT32_MIN, 1);
+    ret = utils::WriteConstTiling(op_type, compile_info, run_info, INT32_MAX, 1);
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     utils::Eletwise eletwise(op_type, input_shapes, compile_info, in_type, out_type, flag_info);
     ret = eletwise.DoTiling();
@@ -572,7 +572,7 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
                               block_dims, input_shapes, dim_len);
     ret = ret && utils::WriteConstTiling(op_type, compile_info, run_info, key, block_dims);
   } else if (is_empty_tensor) {
-    ret = utils::WriteConstTiling(op_type, compile_info, run_info, INT32_MIN, 1);
+    ret = utils::WriteConstTiling(op_type, compile_info, run_info, INT32_MAX, 1);
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     utils::Eletwise eletwise(op_type, input_shapes, compile_info, op_info.GetInType(), out_type, flag_info);
     ret = eletwise.DoTiling();

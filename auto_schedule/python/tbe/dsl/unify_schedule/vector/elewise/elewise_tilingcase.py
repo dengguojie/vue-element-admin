@@ -39,7 +39,7 @@ EMPTY = "empty"
 STATIC = "static"
 ORIGINAL = "original"
 DB_KEY = 10000
-EMPTY_KEY = -2 ** 31
+INT32_MAX = 2147483647
 BLOCK_SIZE_BYTE = 32
 
 
@@ -73,7 +73,7 @@ class ElewiseComputation(Computation):
                 _base_key = operation.get_context().get("_const_base_key") or 100000000
                 operation.get_context().add("_const_base_key", _base_key + 1)
             elif mode == EMPTY:
-                _base_key = EMPTY_KEY
+                _base_key = INT32_MAX
             else:
                 _base_key = 0
             return _base_key
