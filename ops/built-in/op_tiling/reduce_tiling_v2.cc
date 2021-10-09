@@ -117,18 +117,23 @@ int64_t Reduce::GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index) {
   return result;
 }
 
-int32_t Reduce::GetBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor) {
-  int32_t block_dim = 1;
+bool Reduce::CalcBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor,int32_t& block_dim) {
+  int32_t block_dim_temp = 1;
   for (int32_t i = 0; i <= tiling_axis; i++) {
     if (out[i] != 0) {
       if (i == tiling_axis) {
-        block_dim = (int32_t)((out[i] + tiling_factor - 1) / tiling_factor) * block_dim;
+        if (tiling_factor == 0) {
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling factor should not be 0");
+          return false;
+        }
+        block_dim_temp = (int32_t)((out[i] + tiling_factor - 1) / tiling_factor) * block_dim_temp;
       } else {
-        block_dim = (int32_t)out[i] * block_dim;
+        block_dim_temp = (int32_t)out[i] * block_dim_temp;
       }
     }
   }
-  return block_dim;
+  block_dim = block_dim_temp;
+  return true;
 }
 
 int32_t Reduce::GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx) {
@@ -660,11 +665,10 @@ bool Reduce::ProcessNormalTiling() {
     tilingInfo.block_dim = 1;
     GetNotMulCoreBlockTiling();
   } else {
-    if (tilingInfo.block_tiling_factor == 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling factor should not be 0");
+    if (!CalcBlockDim(output_shape, tilingInfo.block_tiling_axis,
+                      tilingInfo.block_tiling_factor,tilingInfo.block_dim)){
       return false;
     }
-    tilingInfo.block_dim = GetBlockDim(output_shape, tilingInfo.block_tiling_axis, tilingInfo.block_tiling_factor);
   }
 
   // rewrite ReorderInfo

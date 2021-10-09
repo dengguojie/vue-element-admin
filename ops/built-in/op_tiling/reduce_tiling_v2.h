@@ -135,7 +135,7 @@ class Reduce {
   int64_t GetReorderInputShapeMul(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
   int64_t GetAlignShapeMul(int32_t axis_index);
   int64_t GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index);
-  int32_t GetBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor);
+  bool CalcBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor, int32_t& block_dim);
   int32_t GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx);
   int32_t CalcConstPattern(std::vector<int32_t>& reduce_axis);
   bool IsInVector(std::vector<int32_t>& input, int32_t value);
