@@ -83,6 +83,7 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   ge::OutDataAnchorPtr depthwise_dw_anchor_ptr1 = depthwise_dw_node->GetOutDataAnchor(0);
   ge::NodePtr post_node = nullptr;
   ge::NodePtr mul_node = nullptr;
+  ge::NodePtr reshape_node = nullptr;
   int64_t mul_n = 0;
   int64_t mul_h = 0;
   int64_t mul_w = 0;
@@ -127,6 +128,7 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
 
   mul_c1 = (groups + COUT - 1) / COUT;
   OP_LOGI("in AddMul After calculate mul_dim_info");
+  ge::OpDescPtr reshape_desc;
   ge::GeTensorDesc output_desc;
   if (!is_dynamic) {
     vector<int64_t> mul_dim_info = {mul_c1 * mul_h * mul_w, multiplier, COUT, COUT};
@@ -145,8 +147,25 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul_desc input failed."),
                       return nullptr);
     FUSION_PASS_CHECK(mul_desc->AddOutputDesc(output_desc) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul_desc output failed."),
-                      return nullptr);
+                  OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul_desc output failed."), return nullptr);
+
+    ge::GeShape input_shape({mul_h, mul_w, 1, mul_n * mul_c});
+    ge::GeTensorDesc reshape_input_desc(input_shape, FORMAT_HWCN, ge::DT_FLOAT);
+    reshape_input_desc.SetShape(input_shape);
+    reshape_input_desc.SetOriginShape(input_shape);
+
+    ge::GeShape output_shape({mul_h, mul_w, mul_c, mul_n});
+    ge::GeTensorDesc reshape_output_desc(output_shape, FORMAT_HWCN, ge::DT_FLOAT);
+    reshape_output_desc.SetShape(output_shape);
+    reshape_output_desc.SetOriginShape(output_shape);
+    FUSION_PASS_MAKE_SHARED(reshape_desc = std::make_shared<ge::OpDesc>(
+                              depthwise_dw_node->GetName() + "/Reshape", "Reshape"), return nullptr);
+    FUSION_PASS_CHECK(reshape_desc->AddInputDesc("x", reshape_input_desc) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to reshape."), return nullptr);
+    FUSION_PASS_CHECK(reshape_desc->AddOutputDesc("y", reshape_output_desc) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc y to reshape."), return nullptr);
+    ge::AttrUtils::SetListInt(reshape_desc, "shape", {mul_h, mul_w, mul_c, mul_n});
+    reshape_node = graph.AddNode(reshape_desc);
   } else {
     ge::GeTensorDesc input_desc_mul;
     vector<int64_t> mul_dim_info = {mul_c1 * mul_h * mul_w, 1, COUT, COUT};
@@ -170,6 +189,13 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   }
 
   mul_node = graph.AddNode(mul_desc);
+  if (!is_dynamic) {
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node->GetOutDataAnchor(0),
+                        reshape_node->GetInDataAnchor(0)) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove edge between pooling and next node failed!"),
+                      return nullptr);
+  }
+  auto end_node = is_dynamic ? mul_node : reshape_node;
 
   for (auto postAnchorPtr0 : depthwise_dw_anchor_ptr1->GetPeerInDataAnchors()) {
     post_node = postAnchorPtr0->GetOwnerNode();
@@ -180,9 +206,9 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
                       return nullptr);
 
     // add edge between mul and next_node
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(end_node->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                              mul_node->GetName().c_str(), post_node->GetName().c_str()),
+                              end_node->GetName().c_str(), post_node->GetName().c_str()),
                       return nullptr);
   }
   // add edge between depthwiseDw and mul
@@ -346,8 +372,8 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   if (is_dynamic) {
     filter_size = out_dim_info;
   } else if (!ge::AttrUtils::GetListInt(depthwise_dw_desc, "filter_size", filter_size)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "can't get filter size");
-    return NOT_CHANGED;
+    filter_size = depthwise_dw_output_shape.GetDims();
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "get filter_size from output_shape.");
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "DepthwiseDwMulFusionPass static shape");
   }
