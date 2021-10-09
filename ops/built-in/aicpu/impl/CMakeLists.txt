@@ -51,6 +51,7 @@ set(local_kernels_src_files
     kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/ones_like.cc
+    kernels/normalized/reverse_sequence.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
