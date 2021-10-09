@@ -1562,6 +1562,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(StridedSliceD, StridedSliceDInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceD);
 // ----------------StridedSliceD Op End-------------------
 
 // ----------------stridedSlice Op Begin-------------------

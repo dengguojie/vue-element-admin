@@ -1079,6 +1079,7 @@ IMPLEMT_INFER_DATA_SLICE(ConcatD, ConcatDInferDataSlice) {
 }
 
 INFER_DATA_SLICE_FUNC_REG(ConcatD, ConcatDInferDataSlice);
+INFER_VALUE_RANGE_DEFAULT_REG(ConcatD);
 // ----------------ConcatD OP End-------------------
 
 // ----------------Concat OP Begin-------------------
@@ -1113,6 +1114,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Concat, ConcatInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(Concat);
 // ----------------Concat OP End-------------------
 
 // ----------------ConcatV2 OP Begin-------------------
