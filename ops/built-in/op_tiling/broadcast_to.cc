@@ -24,42 +24,69 @@
 #include "graph/debug/ge_log.h"
 #include "eletwise.h"
 #include "vector_tiling.h"
-#include "op_tiling_util.h"
-#include "vector_tiling_profiling.h"
-#include "graph/utils/op_desc_utils.h"
 #include <iostream>
 
 namespace optiling {
-bool BroadcastToTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                       utils::OpRunInfo& run_info) {
-  PROFILING_TILING_INIT(op_type.c_str());
-  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
-  OP_TILING_CHECK(operator_info == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
-  auto input_desc = operator_info->MutableInputDesc(0);
-  OP_TILING_CHECK(input_desc == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input 0 opdesc failed"), return false);
+bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+                       OpRunInfo& run_info) {
+  OP_TILING_CHECK(op_paras.inputs.size() != 2,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "length of op_paras.inputs should be 2"),
+                  return false);
+  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"),
+                  return false);
 
-  std::vector<int64_t> x_runtime_shape = input_desc->MutableShape().GetDims();
-  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
+  std::vector<int64_t> shape_value;
 
-  auto output_desc = operator_info->MutableOutputDesc(0);
-  OP_TILING_CHECK(output_desc == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get output 0 opdesc failed"), return false);
+  std::string shape_dtype = op_paras.inputs[1].tensor[0].dtype;
+  auto pointer = std::get<0>(op_paras.const_inputs.at("shape"));
+  auto size = std::get<1>(op_paras.const_inputs.at("shape"));
 
-  std::vector<int64_t> output_shape = output_desc->MutableShape().GetDims();
-  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+  uint32_t count = (shape_dtype == "int64")   ? size / sizeof(int64_t)
+                   : (shape_dtype == "int32") ? size / sizeof(int32_t)
+                                              : 0;
+  OP_TILING_CHECK((count == 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape shape cannot be empty"),
+                  return false);
 
-  std::vector<std::vector<int64_t>> shapes = {x_runtime_shape, output_shape};
-  ge::DataType type = input_desc->GetDataType();
-  OpInfo eletwise_info(shapes, type);
-  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  if (shape_dtype == "int64") {
+    auto* data = (int64_t*)pointer;
+    while (count--) {
+      shape_value.push_back(*data++);
+    }
+  }
+  if (shape_dtype == "int32") {
+    auto* data = (int32_t*)pointer;
+    while (count--) {
+      shape_value.push_back(*data++);
+    }
+  }
 
-  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
-  PROFILING_TILING_END();
+  std::vector<int64_t> broadcast_shape = {};
+  std::vector<int64_t> output_shape = {};
+
+  // align shape for shape and input shapes
+  int64_t len_diff = shape_value.size() - x_runtime_shape.size();
+  OP_TILING_CHECK((len_diff < 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                  "length of shape should not be less than input_x's dimension"),
+                  return false);
+  int64_t const_value_front =
+      std::accumulate(shape_value.begin(), shape_value.begin() + len_diff, 1, std::multiplies<int>());
+  broadcast_shape.push_back(const_value_front);
+  for (uint64_t i = 0; i < x_runtime_shape.size(); i++) {
+    broadcast_shape.push_back(shape_value[len_diff + i]);
+  }
+
+  TeOpParas op_paras_tmp = op_paras;
+  // update new shape
+  op_paras_tmp.inputs[1].tensor[0].shape = std::move(broadcast_shape);
+  op_paras_tmp.outputs[0].tensor[0].shape = std::move(broadcast_shape);
+
+  bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
   return ret;
 }
 
 // register tiling interface of the BroadcastTo op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(BroadcastTo, BroadcastToTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BroadcastTo, BroadcastToTiling);
 }  // namespace optiling
