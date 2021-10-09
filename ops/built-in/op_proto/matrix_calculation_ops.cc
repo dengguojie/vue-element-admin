@@ -575,18 +575,18 @@ static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, NORMALIZE_IN
 static const int64_t VALUE_UNKNOWN_RANK = -2;
 static const int64_t INFINITE_RANGE = -1;
 
-class MatMulInferShapeHelper {
+class InferShapeMatMul {
  public:
-  MatMulInferShapeHelper(const AscendString &op_name,
-                        const GeShape &shape_a,
-                        const GeShape &shape_b,
-                        vector<std::pair<int64_t, int64_t>> &range_a,
-                        vector<std::pair<int64_t, int64_t>> &range_b,
-                        bool trans_a,
-                        bool trans_b,
-                        GeShape &shape_out,
-                        vector<std::pair<int64_t, int64_t>> &range_out,
-                        ConstGeTensorDescPtr tensordesc_bias = nullptr) :
+  InferShapeMatMul(const AscendString &op_name,
+                   const GeShape &shape_a,
+                   const GeShape &shape_b,
+                   vector<std::pair<int64_t, int64_t>> &range_a,
+                   vector<std::pair<int64_t, int64_t>> &range_b,
+                   bool trans_a,
+                   bool trans_b,
+                   GeShape &shape_out,
+                   vector<std::pair<int64_t, int64_t>> &range_out,
+                   ConstGeTensorDescPtr tensordesc_bias = nullptr) :
       op_name(op_name),
       shape_a(shape_a),
       shape_b(shape_b),
@@ -603,7 +603,7 @@ class MatMulInferShapeHelper {
       }
     }
 
-  ~MatMulInferShapeHelper() {}
+  ~InferShapeMatMul() {}
 
   static graphStatus VerifyInputs(const Operator &op);
   static bool IsRangeValid(const GeShape &shape,
@@ -642,7 +642,7 @@ class MatMulInferShapeHelper {
   std::array<std::pair<int64_t, int64_t>, BASE_LEN> infer_range_b;
 };
 
-bool MatMulInferShapeHelper::IsRangeValid(const GeShape &shape, const std::vector<std::pair<int64_t, int64_t>> &range) {
+bool InferShapeMatMul::IsRangeValid(const GeShape &shape, const std::vector<std::pair<int64_t, int64_t>> &range) {
   if (shape.GetDimNum() == 0 || shape.IsUnknownDimNum() || range.empty()) {
     return true;
   }
@@ -664,7 +664,7 @@ bool MatMulInferShapeHelper::IsRangeValid(const GeShape &shape, const std::vecto
   return true;
 }
 
-graphStatus MatMulInferShapeHelper::VerifyInputs(const Operator &op) {
+graphStatus InferShapeMatMul::VerifyInputs(const Operator &op) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
 
@@ -677,8 +677,10 @@ graphStatus MatMulInferShapeHelper::VerifyInputs(const Operator &op) {
   const GeShape& shape_x2 = tensordesc_x2->GetShape();
   std::vector<std::pair<int64_t, int64_t>> shape_range_x1;
   std::vector<std::pair<int64_t, int64_t>> shape_range_x2;
-  tensordesc_x1->GetShapeRange(shape_range_x1);
-  tensordesc_x2->GetShapeRange(shape_range_x2);
+  if (shape_x1.IsUnknownShape() || shape_x2.IsUnknownShape()) {
+    tensordesc_x1->GetShapeRange(shape_range_x1);
+    tensordesc_x2->GetShapeRange(shape_range_x2);
+  }
 
   CHECK(!IsRangeValid(shape_x1, shape_range_x1),
         OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
@@ -689,7 +691,9 @@ graphStatus MatMulInferShapeHelper::VerifyInputs(const Operator &op) {
   if (tensordesc_bias != nullptr) {
     const GeShape& shape_bias = tensordesc_bias->GetShape();
     std::vector<std::pair<int64_t, int64_t>> shape_range_bias;
-    tensordesc_bias->GetShapeRange(shape_range_bias);
+    if (shape_bias.IsUnknownShape()) {
+      tensordesc_bias->GetShapeRange(shape_range_bias);
+    }
     CHECK(!IsRangeValid(shape_bias, shape_range_bias),
         OP_LOGE(opName.GetString(), "Precheck input shape failed."), return GRAPH_FAILED);
   }
@@ -697,7 +701,7 @@ graphStatus MatMulInferShapeHelper::VerifyInputs(const Operator &op) {
   return GRAPH_SUCCESS;
 }
 
-void MatMulInferShapeHelper::SimplifyShapeAndRange(GeShape& shape_out, vector<std::pair<int64_t, int64_t>>& range_out) {
+void InferShapeMatMul::SimplifyShapeAndRange(GeShape& shape_out, vector<std::pair<int64_t, int64_t>>& range_out) {
   CHECK(!shape_out.IsUnknownShape(), range_out.clear(), return);
   for (size_t i = 0; i < range_out.size(); i++) {
     if (range_out[i].first == range_out[i].second) {
@@ -710,7 +714,7 @@ void MatMulInferShapeHelper::SimplifyShapeAndRange(GeShape& shape_out, vector<st
   }
 }
 
-bool MatMulInferShapeHelper::InferBias() const {
+bool InferShapeMatMul::InferBias() const {
   // --------------------------------------------------------------------------------------
   // | bias \ n       |      {-2}      |          -1, (y1, y2)              |     y       |
   // | -------------- | --------------------------------------------------- | ----------- |
@@ -788,7 +792,7 @@ bool MatMulInferShapeHelper::InferBias() const {
   return true;
 }
 
-bool MatMulInferShapeHelper::InferMKN() const {
+bool InferShapeMatMul::InferMKN() const {
   int64_t idx_m = trans_a ? 1 : 0;
   int64_t idx_k_a = trans_a ? 0 : 1;
   int64_t idx_k_b = trans_b ? 1 : 0;
@@ -841,10 +845,10 @@ bool MatMulInferShapeHelper::InferMKN() const {
   return true;
 }
 
-bool MatMulInferShapeHelper::InitializeShapeAndRange(const GeShape& shape,
-                                                     const vector<std::pair<int64_t, int64_t>>& range,
-                                                     std::array<int64_t, BASE_LEN>& infer_shape,
-                                                     std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range) {
+bool InferShapeMatMul::InitializeShapeAndRange(const GeShape& shape,
+                                               const vector<std::pair<int64_t, int64_t>>& range,
+                                               std::array<int64_t, BASE_LEN>& infer_shape,
+                                               std::array<std::pair<int64_t, int64_t>, BASE_LEN>& infer_range) {
   // Dynamic shape: {-2}
   // infer_shape: {-1, ..., -1}; infer_range: {{1, MAX}, ..., {1, MAX}}
   if (shape.IsUnknownDimNum()) {
@@ -883,7 +887,7 @@ bool MatMulInferShapeHelper::InitializeShapeAndRange(const GeShape& shape,
   return true;
 }
 
-bool MatMulInferShapeHelper::InferShape() {
+bool InferShapeMatMul::InferShape() {
   // 1) Static shape
   if (!shape_a.IsUnknownShape() && !shape_b.IsUnknownShape()) {
     int64_t idx_m = trans_a ? 1 : 0;
@@ -1406,7 +1410,7 @@ bool InferShapeBatchMatMul::InferShape() {
   }
 
   // 6) Postprocess
-  MatMulInferShapeHelper::SimplifyShapeAndRange(shape_out, range_out);
+  InferShapeMatMul::SimplifyShapeAndRange(shape_out, range_out);
 
   return true;
 }
@@ -1749,7 +1753,7 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   if (CheckInputDataType(op, "x2", support_list) == false) {
     return GRAPH_FAILED;
   }
-  return MatMulInferShapeHelper::VerifyInputs(op);
+  return InferShapeMatMul::VerifyInputs(op);
 }
 
 // Obtains the processing function of the output tensor description.
@@ -1774,8 +1778,10 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   GeShape shape_x2(tensordesc_x2->MutableShape());
   std::vector<std::pair<int64_t, int64_t>> shape_range_x1;
   std::vector<std::pair<int64_t, int64_t>> shape_range_x2;
-  tensordesc_x1->GetShapeRange(shape_range_x1);
-  tensordesc_x2->GetShapeRange(shape_range_x2);
+  if (shape_x1.IsUnknownShape() || shape_x2.IsUnknownShape()) {
+    tensordesc_x1->GetShapeRange(shape_range_x1);
+    tensordesc_x2->GetShapeRange(shape_range_x2);
+  }
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x1", trans_a)) {
@@ -1809,15 +1815,13 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
   }
 
-  GeShape shape_out;
+  GeShape& shape_out = tensordesc_output->MutableShape();
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  MatMulInferShapeHelper inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
-                                     trans_a, trans_b, shape_out, shape_range_out);
+  InferShapeMatMul inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
+                               trans_a, trans_b, shape_out, shape_range_out);
   CHECK(!inferHelper.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
 
   tensordesc_output->SetShapeRange(shape_range_out);
-  tensordesc_output->SetShape(shape_out);
-  tensordesc_output->SetOriginShape(shape_out);
   tensordesc_output->SetDataType(tensordesc_x1->GetDataType());
 
   return GRAPH_SUCCESS;
@@ -1860,7 +1864,7 @@ IMPLEMT_VERIFIER(MatMulV2, MatMulV2Verify) {
     return GRAPH_FAILED;
   }
 
-  return MatMulInferShapeHelper::VerifyInputs(op);
+  return InferShapeMatMul::VerifyInputs(op);
 }
 
 // Obtains the processing function of the output tensor description.
@@ -1884,8 +1888,10 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   GeShape shape_x2(tensordesc_x2->MutableShape());
   std::vector<std::pair<int64_t, int64_t>> shape_range_x1;
   std::vector<std::pair<int64_t, int64_t>> shape_range_x2;
-  tensordesc_x1->GetShapeRange(shape_range_x1);
-  tensordesc_x2->GetShapeRange(shape_range_x2);
+  if (shape_x1.IsUnknownShape() || shape_x2.IsUnknownShape()) {
+    tensordesc_x1->GetShapeRange(shape_range_x1);
+    tensordesc_x2->GetShapeRange(shape_range_x2);
+  }
 
   if (shape_x2.GetDimNum() == 1 && shape_x2.GetDim(0) > 0) {
     int64_t ori_dim = shape_x2.GetDim(0);
@@ -1925,16 +1931,14 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     return GRAPH_FAILED;
   }
 
-  GeShape shape_out;
+  GeShape& shape_out = tensordesc_output->MutableShape();
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
   ge::ConstGeTensorDescPtr tensordesc_bias = op_desc->GetInputDescPtr(kMatMulInputBiasIndex);
-  MatMulInferShapeHelper inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
-                                     trans_a, trans_b, shape_out, shape_range_out, tensordesc_bias);
+  InferShapeMatMul inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
+                               trans_a, trans_b, shape_out, shape_range_out, tensordesc_bias);
   CHECK(!inferHelper.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
 
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start to set output shape.");
-  tensordesc_output->SetShape(shape_out);
-  tensordesc_output->SetOriginShape(shape_out);
   tensordesc_output->SetShapeRange(shape_range_out);
   if (tensordesc_x1->GetDataType() == ge::DT_INT8 || tensordesc_x1->GetDataType() == ge::DT_INT4) {
     tensordesc_output->SetDataType(ge::DT_INT32);
@@ -2061,7 +2065,7 @@ VERIFY_FUNC_REG(GEMM, GemmVerify);
 
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(BatchMatMul, BatchMatMulVerify) {
-  return MatMulInferShapeHelper::VerifyInputs(op);
+  return InferShapeMatMul::VerifyInputs(op);
 }
 
 // Obtains the processing function of the output tensor description.
@@ -2084,8 +2088,10 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
   GeShape shape_x2(tensordesc_x2->MutableShape());
   std::vector<std::pair<int64_t, int64_t>> shape_range_x1;
   std::vector<std::pair<int64_t, int64_t>> shape_range_x2;
-  tensordesc_x1->GetShapeRange(shape_range_x1);
-  tensordesc_x2->GetShapeRange(shape_range_x2);
+  if (shape_x1.IsUnknownShape() || shape_x2.IsUnknownShape()) {
+    tensordesc_x1->GetShapeRange(shape_range_x1);
+    tensordesc_x2->GetShapeRange(shape_range_x2);
+  }
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x1", trans_a)) {
@@ -2126,14 +2132,13 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
   }
 
-  GeShape shape_out;
+  GeShape& shape_out = tensordesc_out->MutableShape();
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
   InferShapeBatchMatMul BatchMatMulInfer(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2, trans_a, trans_b,
                                          shape_out, shape_range_out);
   CHECK(!BatchMatMulInfer.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"),
         return GRAPH_FAILED);
 
-  tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);
   if (dtype == ge::DT_INT8) {
     tensordesc_out->SetDataType(ge::DT_INT32);
@@ -2166,7 +2171,7 @@ INFER_DATA_SLICE_FUNC_REG(BatchMatMul, BatchMatMulInferDataSlice);
 // ----------------BatchMatMulV2-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(BatchMatMulV2, BatchMatMulV2Verify) {
-  return MatMulInferShapeHelper::VerifyInputs(op);
+  return InferShapeMatMul::VerifyInputs(op);
 }
 
 // Obtains the processing function of the output tensor description.
@@ -2189,8 +2194,10 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
   GeShape shape_x2(tensordesc_x2->MutableShape());
   std::vector<std::pair<int64_t, int64_t>> shape_range_x1;
   std::vector<std::pair<int64_t, int64_t>> shape_range_x2;
-  tensordesc_x1->GetShapeRange(shape_range_x1);
-  tensordesc_x2->GetShapeRange(shape_range_x2);
+  if (shape_x1.IsUnknownShape() || shape_x2.IsUnknownShape()) {
+    tensordesc_x1->GetShapeRange(shape_range_x1);
+    tensordesc_x2->GetShapeRange(shape_range_x2);
+  }
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x1", trans_a)) {
@@ -2236,14 +2243,13 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
   }
 
-  GeShape shape_out;
+  GeShape& shape_out = tensordesc_out->MutableShape();
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
   InferShapeBatchMatMul BatchMatMulV2Infer(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2, trans_a, trans_b,
                                            shape_out, shape_range_out, tensordesc_bias);
   CHECK(!BatchMatMulV2Infer.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"),
         return GRAPH_FAILED);
 
-  tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);
   if (dtype == ge::DT_INT8) {
     tensordesc_out->SetDataType(ge::DT_INT32);
