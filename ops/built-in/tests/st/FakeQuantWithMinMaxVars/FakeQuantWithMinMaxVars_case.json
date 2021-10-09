@@ -726,5 +726,243 @@
       }
     ],
     "case_name": "test_FakeQuantWithMinMaxVars_008"
+  },
+  {
+    "op": "FakeQuantWithMinMaxVars",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          11,
+          5,
+          1
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "value_range": [
+          0,
+          0.5
+        ],
+        "name": "min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "value_range": [
+          0.5,
+          1.0
+        ],
+        "name": "max",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          11,
+          5,
+          3
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 8
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxVars_dynamic_001"
+  },
+  {
+  "op": "FakeQuantWithMinMaxVars",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          33,
+          11
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "value_range": [
+          0,
+          0.5
+        ],
+        "name": "min",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "value_range": [
+          0.5,
+          1.0
+        ],
+        "name": "max",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          33,
+          11
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_bits",
+        "type": "int",
+        "value": 10
+      },
+      {
+        "name": "narrow_range",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_FakeQuantWithMinMaxVars_dynamic_002"
   }
 ]

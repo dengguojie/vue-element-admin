@@ -1879,17 +1879,32 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
+  Shape shape_min = op.GetInputDesc("min").GetShape();
+  Shape shape_max = op.GetInputDesc("max").GetShape();
+  std::vector<int64_t> dims_min = shape_min.GetDims();
+  std::vector<int64_t> dims_max = shape_max.GetDims();
+  if ((dims_min.size() != 1) || (dims_max.size() != 1)) {
+    string input = ConcatString("dims_min.size(),","dims_max.size()");
+    string expected_list = ConcatString("shape of min and max must be rank 1");
+    string input_list = ConcatString("dims_min.size():",dims_min.size(),",","dims_max.size():",dims_max.size());
+    std::string err_msg = GetAttrValueErrMsg(input, input_list, expected_list);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (dims_min[0] != dims_max[0]) {
+    std::string err_msg = GetAttrValueErrMsg("dims_min[0]", std::to_string(dims_min[0]), std::to_string(dims_max[0]));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(FakeQuantWithMinMaxVarsInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  OP_LOGI(op.GetName().c_str(), "Enter FakeQuantWithMinMaxVarsInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})){
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsInferShape);
