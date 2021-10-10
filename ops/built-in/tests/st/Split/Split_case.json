@@ -1,0 +1,49 @@
+[
+  {
+    "op": "Split",
+    "case_name" : "test_split_001",
+     "input_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [1],
+          "ori_shape": [1],
+          "type": "int32",
+          "is_const": true,
+          "value": [0],
+          "name": "split_dim"
+        },
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [1, -1],
+          "ori_shape": [1, -1],
+          "typical_shape": [1, 128],
+          "shape_range": [[32, 128]],
+          "type": "float16",
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "x"
+        }
+     ],
+     "output_desc": [
+       {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [1, -1],
+        "ori_shape": [1, -1],
+        "typical_shape": [1, 128],
+        "shape_range": [[32, 128]],
+        "type": "float16",
+        "name": "y0"
+       }
+     ],
+     "attr": [
+         {
+          "name": "num_split",
+          "value": 1,
+          "type": "int"
+         }
+     ]
+  }
+]

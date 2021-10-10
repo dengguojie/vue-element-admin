@@ -43,6 +43,46 @@ REG_OP(Split)
     .OP_END_FACTORY_REG(Split)
 */
 
+TEST_F(SplitTiling, Split_tiling0) {
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Split");
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto opParas = op::Split("Split");
+  vector<vector<int64_t>> input_shapes = {
+      {0, 8},
+      {1},
+  };
+  vector<vector<int64_t>> output_shapes = {
+      {0, 8},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_INT8, ge::DT_INT32};
+  vector<int32_t> split_dim{0};
+
+  TensorDesc tensorInputx;
+  tensorInputx.SetShape(ge::Shape(input_shapes[0]));
+  tensorInputx.SetDataType(dtypes[0]);
+  TENSOR_INPUT(opParas, tensorInputx, x);
+
+  TensorDesc tensorInputSplitDim;
+  tensorInputSplitDim.SetShape(ge::Shape(input_shapes[1]));
+  tensorInputSplitDim.SetDataType(dtypes[1]);
+  TENSOR_INPUT_CONST(opParas, tensorInputSplitDim, split_dim, (const uint8_t*)split_dim.data(), split_dim.size() * 4);
+
+  opParas.SetAttr("num_split", {1820});
+
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    TensorDesc tensorOutput;
+    tensorOutput.SetShape(ge::Shape(output_shapes[i]));
+    tensorOutput.SetDataType(dtypes[0]);
+    TENSOR_OUTPUT(opParas, tensorOutput, y);
+  }
+
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_elems\":253952, \"num_split\":1}}";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  iter->second(opParas, op_compile_info, runInfo);
+}
+
 TEST_F(SplitTiling, Split_tiling1) {
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Split");
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());

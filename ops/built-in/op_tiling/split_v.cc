@@ -32,6 +32,8 @@
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
+// x is empty tensor
+const int32_t TILING_MODE_0 = 0;
 // num_split is 1
 const int32_t TILING_MODE_1 = 1;
 // split axis 0, or shape_before is 1
@@ -317,10 +319,6 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
     shapeAfterDim = inputShape[j] * shapeAfterDim;
   }
   shapeAfter = shapeDim * shapeAfterDim;
-  if (shapeBefore == 0 || shapeAfter == 0 || shapeAfterDim == 0 || shapeDim == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "error, shape has zero");
-    return false;
-  }
 
   runParams.shapeBefore = shapeBefore;
   runParams.shapeAfter = shapeAfter;
@@ -328,7 +326,12 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
   runParams.inputElems = inputElems;
   runParams.shapeDim = shapeDim;
 
-  if (numSplit == 1) {
+  if (shapeBefore == 0 || shapeAfter == 0 || shapeAfterDim == 0 || shapeDim == 0) {
+    GELOGD("op [SplitVTiling] : mode 0");
+    runParams.tilingMode = TILING_MODE_0;
+    runParams.needCoreNum = 1;
+
+  } else if (numSplit == 1) {
     GELOGD("op [SplitVTiling] : mode 1");
     runParams.tilingMode = TILING_MODE_1;
 
