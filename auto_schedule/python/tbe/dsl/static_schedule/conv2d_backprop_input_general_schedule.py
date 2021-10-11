@@ -1009,7 +1009,10 @@ def general_schedule(
 
     img_shape = cube_util.shape_to_list(_get_fm_5_hd_shape())
     dy_h, dy_w = img_shape[2:4]  # pylint: disable=W0632
-    img_shape_g = [g_after, img_shape[0], cou1_g] + img_shape[2:]
+    if a_col.dtype == "float32":
+        img_shape_g = [g_after, img_shape[0], cou1_g * 2] + img_shape[2:]
+    else:
+        img_shape_g = [g_after, img_shape[0], cou1_g] + img_shape[2:]
     # conv1d_situation
     def _check_conv1d_situation():
         if (
@@ -1521,8 +1524,9 @@ def general_schedule(
                 affine_l0c = 1, 1, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
                              cl0_tiling_n0 * cl0_tiling_nc
             else:
-                affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
-                             cl0_tiling_n0
+                factor = 2 if c_ddr.dtype == "float32" else 1
+                affine_l0c = 1, 1, cl0_tiling_nc * factor, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
+                             cl0_tiling_n0 // factor
 
         if cube_vector_split:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
@@ -2290,6 +2294,9 @@ def general_schedule(
                                or cube_util.is_lhisi_version()):
             _, b_col_inner = sch_agent[b_col].split(sch_agent[b_col].op.axis[1], factor=kernel_h * kernel_w)
             sch_agent[b_col].emit_insn(b_col_inner, "dma_copy")
+        elif b_col.dtype == "float32":
+            sch_agent[b_col].split(sch_agent[b_col].op.axis[-2], factor=8)
+            sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[-3], "dma_copy", {'img2col': 1})
         else:
             sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[2], "dma_copy")
 
@@ -2344,6 +2351,10 @@ def general_schedule(
                 hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
                 sch_agent[c_ddr].split(c_dim, 16)
                 sch[c_ddr].emit_insn(hw_dim, "dma_copy", {"layout_transform": "nz2nd"})
+            elif c_ddr.dtype == "float32":
+                channel_axis = sch_agent[c_ddr].nlast_scopes(3)[0]
+                channel_axis_out, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
+                sch[c_ddr].emit_insn(channel_axis_inner, "dma_copy", {"layout_transform": "channel_split"})
             else:
                 sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         else:

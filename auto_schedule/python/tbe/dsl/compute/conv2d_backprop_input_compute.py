@@ -342,9 +342,9 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     valid_dtype_dict["dx"] = ("float16", "float32", "int32")
     cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     if cube_vector_split:
-        valid_dtype_dict["filter"] += ("bfloat16",)
-        valid_dtype_dict["dedy"] += ("bfloat16",)
-        valid_dtype_dict["dx"] += ("bfloat16",)
+        valid_dtype_dict["filter"] += ("bfloat16", "float32")
+        valid_dtype_dict["dedy"] += ("bfloat16", "float32")
+        valid_dtype_dict["dx"] += ("bfloat16", "float32")
     _check_dtype(valid_dtype_dict)
     _check_shape()
 
@@ -426,12 +426,15 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     # w
     # check filter shape and filter_sizes from topi
     def _check_filter():
-        _check_equal_rule(filter_cout0, w_k0, "filter_cout0", str(w_k0))
+        if filters.dtype == "float32":
+            _check_equal_rule(filter_cout0, w_n0, "filter_cout0", str(w_n0))
+            _check_equal_rule(filter_cin0, w_k0, "filter_cin0", str(w_k0))
+        else:
+            _check_equal_rule(filter_cout0, w_k0, "filter_cout0", str(w_k0))
+            _check_equal_rule(filter_cin0, w_n0, "filter_cin0", str(w_n0))
 
         _check_equal_rule(filter_cout1, dy_c1_extend,
                           "filter_cout1", "dy_c1_extend")
-
-        _check_equal_rule(filter_cin0, w_n0, "filter_cin0", str(w_n0))
 
         _check_variable_range(filter_h, "filter_h", FILTER_HW_MIN)
 

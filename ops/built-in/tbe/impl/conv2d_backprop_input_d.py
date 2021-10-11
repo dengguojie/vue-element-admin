@@ -830,8 +830,8 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
             # (GCi1HkWk, Co1, Co0, Ci0); filter_placehold is same to conv2d_forward's filter
             g_extend * dx_c1_extend * filter_h * filter_w,
             dy_c1_extend,
-            w_k0,
             w_n0,
+            w_k0
         )
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
 

@@ -543,7 +543,7 @@ class Conv2dDxOptiSchedule:
         if not _check_tiling(tiling):
             tiling = {}
             bit_dir = {
-                "float32": 16,
+                "float32": 8,
                 "int32": 16,
                 "float16": 16,
                 "int8": 32,
@@ -581,12 +581,14 @@ class Conv2dDxOptiSchedule:
             else:
                 n_min = 1
                 group_cl0 = 1
+            ka_factor = 2 if atype == "float32" else 1
+            kb_factor = 2 if btype == "float32" else 1
             tiling["AUB_shape"] = None
             tiling["BUB_shape"] = None
-            tiling["AL1_shape"] = [k_al1, 1, 1, 1]
-            tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
-            tiling["AL0_matrix"] = [m_al0, 1, 16, k_al0, 1, 1]
-            tiling["BL0_matrix"] = [1, n_min, 16, k_bl0, 1, 1]
+            tiling["AL1_shape"] = [k_al1 * ka_factor, 1, 1, 1]
+            tiling["BL1_shape"] = [k_bl1 * kb_factor, 1, 1, 1]
+            tiling["AL0_matrix"] = [m_al0, ka_factor, 16, k_al0, 1, 1]
+            tiling["BL0_matrix"] = [kb_factor, n_min, 16, k_bl0, 1, 1]
             tiling["CL0_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
             tiling["CUB_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
             tiling["block_dim"] = [1, 1, 1, 1]
@@ -686,6 +688,14 @@ class Conv2dDxOptiSchedule:
                 1,
                 1,
                 block_n]
+        elif TENSOR_MAP["filter_placehold"].dtype == "float32":
+            filter_shape_g = [
+                DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] * block_k * 2,
+                DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend] // 2,
+                1,
+                1,
+                block_n
+            ]
         else:
             # DIM_MAP["filter_shape"] : ci_dim, co_dim, _, _
             filter_shape_g = [
@@ -1377,6 +1387,8 @@ class Conv2dDxOptiSchedule:
         DIM_MAP["dy_6GD_shape"] = [DIM_MAP[cube_util.GroupDictKeys.g_extend],
                                 DIM_MAP["img_shape"][0],
                                 DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend]]+ DIM_MAP["img_shape"][2:]
+        if weight_l0.dtype == "float32":
+            DIM_MAP["dy_6GD_shape"][2] *= 2
 
         if TENSOR_MAP.get("dilate_ub") is not None:
             DIM_MAP["dilate_dim"] = cube_util.shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["dilate"])
@@ -1503,9 +1515,10 @@ class Conv2dDxOptiSchedule:
             al1_parts = [1, 1, 1]
             if TILING["AL1_shape"]:  # AL1_shape = [C1,H*W,16,16],batch=1
                 # parts of k-axis from DDR to L1---need div by H*W
+                factor = 2 if TENSOR_MAP.get("a_l1").dtype == "float32" else 1
                 al1_parts = [
                     int_ceil_div(
-                        DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend],
+                        DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] * factor,
                         int_ceil_div(TILING["AL1_shape"][0], block_k)
                     ),
                     int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1]),
@@ -1535,6 +1548,8 @@ class Conv2dDxOptiSchedule:
         # get factor from l0c, ub to ddr
         mc_from_tiling = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
         l0c_tiling_factor = [TILING["CL0_matrix"][0], mc_from_tiling]
+        if TENSOR_MAP.get("c_gm").dtype == "float32":
+            l0c_tiling_factor[0] *= 2
         undilate_l0c_m = (mc_from_tiling // DIM_MAP["img_shape"][3]) * DIM_MAP["img_shape"][3]
 
         need_buffer_tile = False
@@ -2249,7 +2264,8 @@ class Conv2dDxOptiSchedule:
             _double_buffer_l0c()
 
             # C_UB
-            _double_buffer_cub(fusion_type)
+            if not self.dx_para.get_para_map("cube_vector_split_flag"):
+                _double_buffer_cub(fusion_type)
 
         def _double_buffer_l0c():
             if TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
@@ -2448,8 +2464,11 @@ class Conv2dDxOptiSchedule:
                 sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
             else:
                 sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
-
-            sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
+            if b_l0b.dtype == "float32":
+                sch[b_l0b].split(b_l0b.op.axis[-2], factor=8)
+                sch[b_l0b].emit_insn(b_l0b.op.axis[-4], "dma_copy", {'img2col': 1})
+            else:
+                sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
 
             if fusion_type not in (
                 FUSION_DX_DEQUANT,
@@ -2466,6 +2485,9 @@ class Conv2dDxOptiSchedule:
             else:
                 if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
                     sch[c_gm].emit_insn(l0c_m_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
+                elif c_gm.dtype == "float32":
+                    _, split_axis = sch[c_gm].split(l0c_n_inner_inner, factor=2)
+                    sch[c_gm].emit_insn(split_axis, "dma_copy", {"layout_transform": "channel_split"})
                 else:
                     sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
@@ -2688,6 +2710,9 @@ class Conv2dDxOptiSchedule:
                 l0c_multi_group_flag = True
                 self._check_quant_fusion_legal(fusion_type)
 
+        if dx_res_write.dtype == "float32":
+            # cin1_g was calculated with c0=8
+            DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] // 2
         if self.dx_para.get_para_map("load3d_flag"):
             a_l0a_before = TENSOR_MAP.get("a_l0a_before")
         drelu_ub, bitmask_ub, add_res_ub, add_input_ub, fusion_dx_gm = (
@@ -2874,7 +2899,7 @@ class Conv2dDxOptiSchedule:
                 (None, None),
                 (None, None),
                 )
-        if not l0c_multi_group_flag:
+        if not l0c_multi_group_flag and not self.dx_para.get_para_map("cube_vector_split_flag"):
             _buffer_tile_l0c_c1()
         # do buffer_tile or buffer_align for cub
         if need_buffer_tile:

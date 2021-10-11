@@ -253,6 +253,8 @@ def calculate_group(out_backprop, input_size, w_shape_nchw, groups, filter_dtype
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
     c0_size = cce_params.C0_SIZE
     c0_size_k = tbe_platform.CUBE_MKN[filter_dtype]['mac'][1]
+    if filter_dtype == "float32":
+        c0_size_k, c0_size = c0_size, c0_size_k
     #groups in w's N and dx's C, so dx_c_ori is filter_c, dy_c_ori is filter_N/groups.
     check_equal_rule(out_backprop[1],
                      w_shape_nchw[0],
@@ -708,9 +710,10 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     valid_res_dtype = ("float16", "float32", "int32")
     cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
     if cube_vector_split:
-        valid_filter_dtype += ("bfloat16",)
-        valid_dedy_dtype += ("bfloat16",)
-        valid_res_dtype += ("bfloat16",)
+        valid_filter_dtype += ("bfloat16", "float32",)
+        valid_dedy_dtype += ("bfloat16", "float32",)
+        valid_res_dtype += ("bfloat16", "float32",)
+
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()

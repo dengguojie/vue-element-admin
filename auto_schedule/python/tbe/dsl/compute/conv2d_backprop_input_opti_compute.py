@@ -289,10 +289,11 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                                       l0_co0_index))
 
             # from L1(zN:n,c1_ori*grousps,ho*wo,c0) to L0(zZ :G,n,hw//m0,c1,m0,c0)
+            cout1_factor = 2 if dedy.dtype == "float32" else 1
             shape_dy_l0 = (self._g_extend,
                            batch_dim,
                            hw_dim,
-                           self._dy_c1_extend,
+                           self._dy_c1_extend * cout1_factor,
                            self._m0,
                            co0_dim)
             if self._var_map:
@@ -344,6 +345,33 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 _bl0_elem_func(indices, b_l1),
                 name=kernels.name + "_B_l0b",
                 attrs={"kernel_hw": (self._kernel_h, self._kernel_w)}
+            )
+        elif kernels.dtype == "float32":
+            k1_dim, co1_dim, co0_dim, k0_dim = list(i.value for i in kernels.shape)
+            shape = (k1_dim, co1_dim, co0_dim, k0_dim)
+
+            def _bl1_elem_func(*index):
+                return kernels(*index)
+
+            b_l1 = tvm.compute(shape, _bl1_elem_func, name=kernels.name + "_B_l1")
+            shape_b_l0 = (self._g_extend,
+                          self._dy_c1_extend * 2,
+                          (self._dx_c1_extend + 1) // 2,
+                          k0_dim * 2,
+                          co0_dim // 2)
+
+            def __kernel_l0_compute(indices, b_l1):
+                l0b_g_index, l0b_co1_index, l0b_ci1_index, l0b_ci0_index, l0b_co0_index = indices
+                _, block_k0, block_n0 = tbe_platform.CUBE_MKN["float32"]["mac"]
+                return b_l1[(l0b_ci1_index * block_n0 + l0b_ci0_index) // block_k0,
+                            (l0b_co1_index * block_k0 + l0b_co0_index) // block_n0,
+                            (l0b_co1_index * block_k0 + l0b_co0_index) % block_n0,
+                            (l0b_ci1_index * block_n0 + l0b_ci0_index) % block_k0]
+
+            b_l0 = tvm.compute(
+                shape_b_l0,
+                lambda *indices: __kernel_l0_compute(indices, b_l1),
+                name=kernels.name + "_B_l0b"
             )
         else:
             k1_dim, co1_dim, co0_dim, k0_dim = list(i.value for i in kernels.shape)
@@ -505,19 +533,36 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         # from l0c(GNC1MC0) to ub(N[GC1]MC0)
         output_shape = [batch_dx_img, c1_dx_img, h_dx_img * w_dx_img, c0_dx_img]
         if self._cube_vector_split_flag:
-            img_c = tvm.compute(
-                output_shape,
-                lambda n, c1, hw, c0: res_c(c1 // self._dx_c1_extend, n,
-                    c1 % self._dx_c1_extend, hw, c0).astype(res_c_dtype),  # pylint: disable=W0108
-                tag="conv2d_backprop_input_opti",
-                name=res_c.name + "_img",
-                attrs={
-                    "hw_dim": h_dx_img * w_dx_img,
-                    "dx_5D_shape": self._output_shape,
-                    "group_dict": self._group_dict,
-                    "kernel_name": self._kernel_name
-                }
-            )
+            if res_c_dtype == "float32":
+                output_shape = [batch_dx_img, c1_dx_img * 2, h_dx_img * w_dx_img, 8]
+                output_shape_fp32 = [batch_dx_img, c1_dx_img * 2, h_dx_img, w_dx_img, 8]
+                img_c = tvm.compute(
+                    output_shape,
+                    lambda n, c1, hw, c0: res_c(c1 // self._dx_c1_extend // 2, n,
+                                                c1 // 2 % self._dx_c1_extend, hw, 8 * (c1 % 2) + c0).astype(res_c_dtype),
+                    tag="conv2d_backprop_input_opti",
+                    name=res_c.name + "_img",
+                    attrs={
+                        "hw_dim": h_dx_img * w_dx_img,
+                        "dx_5D_shape": output_shape_fp32,
+                        "group_dict": self._group_dict,
+                        "kernel_name": self._kernel_name
+                    }
+                )
+            else:
+                img_c = tvm.compute(
+                    output_shape,
+                    lambda n, c1, hw, c0: res_c(c1 // self._dx_c1_extend, n,
+                        c1 % self._dx_c1_extend, hw, c0).astype(res_c_dtype),  # pylint: disable=W0108
+                    tag="conv2d_backprop_input_opti",
+                    name=res_c.name + "_img",
+                    attrs={
+                        "hw_dim": h_dx_img * w_dx_img,
+                        "dx_5D_shape": self._output_shape,
+                        "group_dict": self._group_dict,
+                        "kernel_name": self._kernel_name
+                    }
+                )
         else:
             res_cub = tvm.compute(
                 ub_dx_shape,
