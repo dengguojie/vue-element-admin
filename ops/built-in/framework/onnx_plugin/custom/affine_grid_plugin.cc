@@ -18,7 +18,7 @@
  * \file affine_grid.cc
  * \brief
  */
-#include "onnx_common.h"
+#include "../onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;

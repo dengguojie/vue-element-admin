@@ -10,7 +10,7 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include "onnx_common.h"
+#include "../onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;

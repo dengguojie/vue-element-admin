@@ -23,14 +23,14 @@ protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 set(_onnx_plugins
   addcmul_plugin.cc
   adaptive_max_pool2d_plugin.cc
-  ascend_anti_quant_plugin.cc
-  ascend_dequant_plugin.cc
-  ascend_dequant_s16_plugin.cc
-  ascend_quant_plugin.cc
-  ascend_requant_plugin.cc
-  ascend_requant_s16_plugin.cc
+  quant/ascend_anti_quant_plugin.cc
+  quant/ascend_dequant_plugin.cc
+  quant/ascend_dequant_s16_plugin.cc
+  quant/ascend_quant_plugin.cc
+  quant/ascend_requant_plugin.cc
+  quant/ascend_requant_s16_plugin.cc
   batch_normalization_plugin.cc
-  batch_multi_class_non_max_suppression_plugin.cc
+  custom/batch_multi_class_non_max_suppression_plugin.cc
   concat_plugin.cc
   conv_plugin.cc
   gather_plugin.cc
@@ -51,7 +51,7 @@ set(_onnx_plugins
   argmax_plugin.cc
   argmin_plugin.cc
   average_pool_plugin.cc
-  batch_matmul_plugin.cc
+  custom/batch_matmul_plugin.cc
   cast_plugin.cc
   constantofshape_plugin.cc
   conv_transpose_plugin.cc
@@ -84,9 +84,9 @@ set(_onnx_plugins
   lstm_plugin.cc
   hardmax_plugin.cc
   non_max_suppression_plugin.cc
-  roi_extractor_plugin.cc
+  custom/roi_extractor_plugin.cc
   depth_to_space_plugin.cc
-  affine_grid_plugin.cc
+  custom/affine_grid_plugin.cc
   reduceL2_plugin.cc
   clip_plugin.cc
   celu_plugin.cc
@@ -96,7 +96,7 @@ set(_onnx_plugins
   gather_elements_plugin.cc
   global_max_pool_plugin.cc
   reduceL1_plugin.cc
-  embedding_bag_plugin.cc
+  custom/embedding_bag_plugin.cc
   space_to_depth_plugin.cc
   max_roi_pool_plugin.cc
   selu_plugin.cc

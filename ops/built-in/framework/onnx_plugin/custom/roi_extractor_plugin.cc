@@ -11,7 +11,7 @@ rights reserved.
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include "onnx_common.h"
+#include "../onnx_common.h"
 
 namespace domi {
 static const uint32_t MIN_INPUT_NUM = 2;
