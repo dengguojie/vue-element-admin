@@ -165,7 +165,7 @@ class AContainer(a_lib.ObjWithConst):
             raise ValueError("not supported cmd_name:{}".format(cmd_name))
 
     def _init_tik_module(self):
-        self.tik = importlib.import_module("te.tik")
+        self.tik = importlib.import_module("tbe.tik")
         self.plat = importlib.import_module("te.platform")
         self.tinst = self.tik.Tik(self.tik.Dprofile())
 
