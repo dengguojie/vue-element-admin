@@ -703,6 +703,8 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
 
     std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
     out_range[idx_c] = std::make_pair((int64_t)outc, (int64_t)outc);
+    out_range[idx_h] = std::make_pair(y_shape.GetDim(idx_h), y_shape.GetDim(idx_h));
+    out_range[idx_w] = std::make_pair(y_shape.GetDim(idx_w), y_shape.GetDim(idx_w));
     if (x_shape.GetDim(idx_h) == -1) {
       vector<int64_t> attr_params_h = {strh, dilh, padh, kh};
       GetDepthwiseConv2dOutShapeRange(pad_str, idx_h, attr_params_h, fm_range, out_range);
