@@ -21,6 +21,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from tbe.common.register import set_fusion_buildcfg
 
 
 # pylint: disable=too-many-locals
@@ -347,6 +348,11 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
         res = _fused_compute(x, mean, variance)
     res.op.attrs["ele_fusion_params"] = fusion_params
     res.op.attrs["L1_fusion_type"] = fusion_params["l1_fusion_type"]
+
+    build_cfg = {
+        'read_write_bank_conflict': True
+    }
+    set_fusion_buildcfg("bninference_d", build_cfg)
 
     return res
 
