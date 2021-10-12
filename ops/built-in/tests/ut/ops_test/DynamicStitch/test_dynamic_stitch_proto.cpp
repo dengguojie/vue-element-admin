@@ -73,6 +73,23 @@ TEST_F(DynamicStitch, DynamicStitch_infershape_test_3) {
 
 TEST_F(DynamicStitch, DynamicStitch_infershape_test_4) {
   ge::op::DynamicStitch op;
+  auto tensor_desc = create_desc_with_ori({0},
+                                           ge::DT_FLOAT16, ge::FORMAT_ND,
+                                           {0},
+                                           ge::FORMAT_ND);
+  op.create_dynamic_input_indices(2);
+  op.create_dynamic_input_x(2);
+  op.UpdateDynamicInputDesc("indices", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("indices", 1, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.SetAttr("N",2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(DynamicStitch, DynamicStitch_infershape_test_5) {
+  ge::op::DynamicStitch op;
   auto tensor_desc = create_desc_with_ori({-1, -1},
                                              ge::DT_FLOAT16, ge::FORMAT_ND,
                                              {-1, -1},

@@ -1485,6 +1485,7 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
 
   bool all_indices_constant = true;
   int32_t max_index = 0;
+  int32_t zero_shape_num = 0;
   GeShape last_suffix_shape(ge::UNKNOWN_RANK);
 
   for (int64_t i = 0; i < num_incides; ++i) {
@@ -1508,7 +1509,10 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
     if (indices_dims == UNKNOWN_RANK || data_dims == UNKNOWN_RANK) {
       continue;
     }
-
+    if ((!indices_dims.empty()) && (!data_dims.empty()) && ((indices_dims[0] == 0) || (data_dims[0] == 0))) {
+      zero_shape_num++;
+      continue;
+    }
     const auto rank_of_indices = indices_shape.GetDimNum();
     const auto rank_of_data = data_shape.GetDimNum();
     if (rank_of_indices > rank_of_data) {
@@ -1560,8 +1564,14 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
       }
     }
   }
-  max_index = (max_index == 0) ? (max_index) : (max_index + 1);
-  auto output_dim0 = all_indices_constant ? (max_index) : (ge::UNKNOWN_DIM);
+  if (zero_shape_num == num_incides) {
+    GeTensorDescPtr y_desc = op_desc->MutableOutputDesc("y");
+    GeShape y_shape({ 0 });
+    DataType y_data_type = op_desc->MutableInputDesc("x0")->GetDataType();
+    (void)FillOpDesc(y_desc, y_shape, y_data_type);
+    return GRAPH_SUCCESS;
+  }
+  auto output_dim0 = all_indices_constant ? (max_index + 1) : (ge::UNKNOWN_DIM);
   GeShape output_shape_prefix({output_dim0});
   GeShape output_shape;
   if (Concatenate(output_shape_prefix, last_suffix_shape, output_shape) != GRAPH_SUCCESS) {
