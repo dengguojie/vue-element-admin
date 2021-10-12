@@ -892,7 +892,7 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
         _check(item, value)
         key += value * val[item]
     if not atomic:
-        key *= -1
+        key = (-1 * key) & 0xFFFFFFFF
     return key
 
 
