@@ -81,7 +81,7 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
         add_espmin = tbe.vadds(mul_big, 1.18e-7)
         y_espmin = tbe.vdiv(mul_big, add_espmin)
     elif input_x_dtype == "float32":
-        # algrithm : Y = X/(X*+ESP_MIN)
+        # algrithm : Y = X/(X+ESP_MIN)
         # for float32, add a small number which value is 1.18e-38, so that
         # the divisor is not equal to 0.
         add_espmin = tbe.vadds(target_gt_zero, 1.18e-38)
@@ -185,21 +185,12 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     input_x["rel_pos_to_reduce"] = "before"
     input_target["rel_pos_to_reduce"] = "before"
 
-    input_axis = {"shape": [1, ], "value": [0, ], "rel_pos_to_reduce": "axis"}
 
     x_dtype = input_x.get("dtype")
     x_shape = input_x.get("shape")
-    shape_one_dim = [functools.reduce(lambda x, y: x * y, x_shape[:])]
-    for i, _dim in enumerate(x_shape):
-        if _dim == -1:
-            shape_one_dim = [-1]
-
-    input_x["shape"] = shape_one_dim
-    input_x["shape"] = shape_one_dim
-    input_x["range"] = [(1, 10)]
-    input_target["shape"] = shape_one_dim
-    input_target["ori_shape"] = shape_one_dim
-    input_target["range"] = [(1, 10)]
+    shape_len = len(x_shape)
+    axis_list = list(range(shape_len))
+    input_axis = {"shape": [shape_len, ], "value": axis_list, "rel_pos_to_reduce": "axis"}
 
     ins = classify([input_x, input_target, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
 

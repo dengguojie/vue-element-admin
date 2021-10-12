@@ -178,6 +178,7 @@ set(_optiling_files
   non_zero.cc
   scan_pq_codes.cc
   strided_slice_v3.cc
+  kl_div.cc
   vector_tiling.cc
   lru_cache_v2.cc
 )
