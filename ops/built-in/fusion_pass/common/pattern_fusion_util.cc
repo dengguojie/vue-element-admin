@@ -978,4 +978,113 @@ ge::NodePtr PatternFusionUtil::InsertSingleNode(ge::ComputeGraph &graph, ge::Nod
   return single_node;
 }
 
+Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode, unsigned int weightIdx,
+                                            const vector<NodePtr>& newConvNodes, int64_t group, size_t sliceDimIdx) {
+  string curOpType = "SliceD";
+  OpDescPtr convDesc = srcNode->GetOpDesc();
+  // InsertSliceD conv i newconv
+  vector<NodePtr> newSlicedNodes;
+  // Traverse every output of const node to find sliced node, if have, record sliced
+  for (auto convInAnchor : srcNode->GetInAllNodes().at(weightIdx)->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    if (convInAnchor->GetOwnerNode()->GetType() == "SliceD") {
+      newSlicedNodes.push_back(convInAnchor->GetOwnerNode());
+    }
+  }
+  // If const node don't have sliceD output, create a sliceD node
+  if (newSlicedNodes.empty()) {
+    FUSION_PASS_CHECK((int64_t)(newConvNodes.size()) < group,
+                      OP_LOGE(curOpType.c_str(), "Node's size less then group, fusion failed."),
+                      return FAILED);
+    for (unsigned int newSrcNodeIdx = 0; newSrcNodeIdx < group; newSrcNodeIdx++) {
+      NodePtr slicedNode = nullptr;
+      OpDescPtr sliceDesc = std::make_shared<ge::OpDesc>(
+              srcNode->GetName() + to_string(weightIdx) + "_slice" + to_string(newSrcNodeIdx), "SliceD");
+      FUSION_PASS_CHECK(sliceDesc == nullptr, OP_LOGE(curOpType.c_str(), "sliceNdoe's OpDesc is null, fusion failed."),
+                        return FAILED);
+      // Get weight of srcNode
+      NodePtr constNode = srcNode->GetInDataAnchor(weightIdx)->GetPeerOutAnchor()->GetOwnerNode();
+      int constOutIdx = srcNode->GetInDataAnchor(weightIdx)->GetPeerOutAnchor()->GetIdx();
+      // sliceD's input desc should be the same as weight's output desc
+      GeTensorDesc inputDesc = constNode->GetOpDesc()->GetOutputDesc(constOutIdx);
+      GeShape inputShape = inputDesc.GetShape();
+      GeShape sliceOutShape = inputShape;
+      // check the dim info of sliceD node's input desc
+      FUSION_PASS_CHECK(
+              inputShape.GetDimNum() < 1,
+              OP_LOGE(curOpType.c_str(), "sliceNdoe's dim:[%ld] less than one, fusion failed.", inputShape.GetDimNum()),
+              return FAILED);
+      FUSION_PASS_CHECK(group != 0 && inputShape.GetDim(sliceDimIdx) % group != 0,
+                        OP_LOGE(curOpType.c_str(), "sliceNdoe's dim[%d]:[%ld] divide group(%ld) != 0, fusion failed.",
+                                sliceDimIdx, inputShape.GetDim(sliceDimIdx), group),
+                        return FAILED);
+      // deivide the sliceDimIdx axis data into group
+      sliceOutShape.SetDim(sliceDimIdx, inputShape.GetDim(sliceDimIdx) / group);
+      // set sliceD's output desc info
+      GeTensorDesc sliceOutDesc = inputDesc;
+      sliceOutDesc.Update(sliceOutShape, constNode->GetOpDesc()->GetOutputDesc(constOutIdx).GetFormat(),
+                          constNode->GetOpDesc()->GetOutputDesc(constOutIdx).GetDataType());
+      sliceOutDesc.SetOriginShape(sliceOutShape);
+      sliceDesc->AddInputDesc(inputDesc);
+      sliceDesc->AddOutputDesc(sliceOutDesc);
+      // set newConvNode's input info, it should be the same as sliceD's output desc
+      newConvNodes[newSrcNodeIdx]->GetOpDesc()->UpdateInputDesc(weightIdx, sliceOutDesc);
+      // set sliceD's attr: offsets & size
+      vector<int64_t> vectorOffsets(inputShape.GetDims().size(), 0);
+      vector<int64_t> vectorSize;
+      vectorOffsets[sliceDimIdx] = newSrcNodeIdx * inputShape.GetDim(sliceDimIdx) / group;
+      vectorSize = inputShape.GetDims();
+      vectorSize[sliceDimIdx] /= group;
+      FUSION_PASS_CHECK(!AttrUtils::SetListInt(sliceDesc, "offsets", vectorOffsets),
+                        OP_LOGE(curOpType.c_str(), "Set SliceD's attr offsets failed."), return FAILED);
+      FUSION_PASS_CHECK(!AttrUtils::SetListInt(sliceDesc, "size", vectorSize),
+                        OP_LOGE(curOpType.c_str(), "Set SliceD's attr size failed."), return FAILED);
+      FUSION_PASS_CHECK(!AttrUtils::SetInt(sliceDesc, "index", newSrcNodeIdx),
+                        OP_LOGE(curOpType.c_str(), "Set SliceD's attr index failed."), return FAILED);
+      slicedNode = graph.AddNode(sliceDesc);
+      FUSION_PASS_CHECK(slicedNode == nullptr, OP_LOGE(curOpType.c_str(), "sliceNdoe is null, fusion failed."),
+                        return FAILED);
+      newSlicedNodes.push_back(slicedNode);
+      // connect weight and slice node
+      FUSION_PASS_CHECK(
+              ge::GRAPH_SUCCESS != GraphUtils::AddEdge(srcNode->GetInAllNodes().at(weightIdx)->GetOutDataAnchor(0),
+                                                       newSlicedNodes[newSrcNodeIdx]->GetInDataAnchor(0)),
+              OP_LOGE(curOpType.c_str(), "add concat to output edge fail"), return FAILED);
+      OP_LOGD(curOpType.c_str(), "Add edge from [%s] to [%s]",
+              srcNode->GetInAllNodes().at(weightIdx)->GetName().c_str(),
+              newSlicedNodes[newSrcNodeIdx]->GetName().c_str());
+      // connect slice's output to each new conv node
+      FUSION_PASS_CHECK(
+              ge::GRAPH_SUCCESS != GraphUtils::AddEdge(newSlicedNodes[newSrcNodeIdx]->GetOutDataAnchor(0),
+                                                       newConvNodes[newSrcNodeIdx]->GetInDataAnchor(weightIdx)),
+              OP_LOGE(curOpType.c_str(), "add concat to output edge fail"), return FAILED);
+      OP_LOGD(curOpType.c_str(), "Add edge from [%s] to [%s]", newSlicedNodes[newSrcNodeIdx]->GetName().c_str(),
+              newConvNodes[newSrcNodeIdx]->GetName().c_str());
+    }
+  } else {
+    // if there is sliceD node, just connect sliceD to new conv node
+    FUSION_PASS_CHECK(newSlicedNodes.size() != (unsigned int)group,
+                      OP_LOGE(curOpType.c_str(), "Node[%s] should have [%d] sliceD outputs",
+                              srcNode->GetInAllNodes().at(weightIdx)->GetName().c_str(), group),
+                      return FAILED);
+    for (int newSrcNodeIdx = 0; newSrcNodeIdx < group; newSrcNodeIdx++) {
+      for (auto sliceNode : newSlicedNodes) {
+        int64_t idx = -1;
+        FUSION_PASS_CHECK(!AttrUtils::GetInt(sliceNode->GetOpDesc(), "index", idx),
+                          OP_LOGE(curOpType.c_str(), "Get SliceD's attr index failed."), return FAILED);
+        if (idx == newSrcNodeIdx) {
+          // connect slice's output to each new conv node
+          FUSION_PASS_CHECK(
+                  ge::GRAPH_SUCCESS != GraphUtils::AddEdge(sliceNode->GetOutDataAnchor(0),
+                                                           newConvNodes[newSrcNodeIdx]->GetInDataAnchor(weightIdx)),
+                  OP_LOGE(curOpType.c_str(), "add concat to output edge fail"), return FAILED);
+          newConvNodes[newSrcNodeIdx]->GetOpDesc()->UpdateInputDesc(weightIdx,
+                                                                    sliceNode->GetOpDesc()->GetOutputDesc(0));
+          continue;
+        }
+      }
+    }
+  }
+  return SUCCESS;
+}
+
 }  // namespace fe
