@@ -472,7 +472,7 @@ static bool IsSrcStrideTooHuge(const ShapeInfo& shapeInfo) {
 
 static bool IsDstStrideTooHuge(const ShapeInfo& shapeInfo) {
   int64_t vol = 1;
-  int64_t repeatAxis = shapeInfo.reducedPerm[shapeInfo.dim - 1];
+  int64_t repeatAxis = shapeInfo.dim - 2;
   int64_t index = GetPermIndex(shapeInfo.reducedPerm, repeatAxis);
   for (size_t i = index + 1; i < (size_t)shapeInfo.dim - 1; i++) {
     vol *= shapeInfo.reducedOutShape[i];
@@ -1096,6 +1096,12 @@ static bool IsScenario11(const CompilerInfo& compilerInfo, const ShapeInfo& shap
     return false;
   }
   if ((shapeInfo.elePerBlock != EPB16) && (shapeInfo.elePerBlock != EPB8)) {
+    return false;
+  }
+  if (shapeInfo.reducedInShape[dim - 1] / shapeInfo.elePerBlock >= STRIDE_BOUNDARY) {
+    return false;
+  }
+  if (shapeInfo.reducedInShape[dim - 2] / shapeInfo.elePerBlock >= STRIDE_BOUNDARY) {
     return false;
   }
   if (shapeInfo.reducedPerm[dim - 1] != dim - 2) {
@@ -4817,8 +4823,9 @@ static bool TilingDataScenario10(const CompilerInfo& compilerInfo, const ShapeIn
   return true;
 }
 
-static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t& cFactor, int64_t& rFactor) {
-  double diff = shapeInfo.reducedInShape[shapeInfo.dim - 1] * 1.0 / shapeInfo.reducedInShape[shapeInfo.dim - 2];
+static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t& cFactor, int64_t& rFactor,
+                         int64_t colUnitNum, int64_t rowUnitNum) {
+  double diff = colUnitNum * 1.0 / rowUnitNum;
   double minDiff = std::numeric_limits<double>::max();
   for (int64_t i = 1; i <= crFactor / 2; i++) {
     int j = crFactor / i;
@@ -4832,8 +4839,8 @@ static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t&
 
   double rtDiff = crFactor;
   if ((abs(rtDiff - diff)) < minDiff) {
-    cFactor = 1;
-    rFactor = crFactor;
+    cFactor = crFactor;
+    rFactor = 1;
   }
 }
 
@@ -4904,7 +4911,7 @@ static void Composite3D(const CompilerInfo& compilerInfo, const ShapeInfo& shape
           rowOffset += loop1[2] * rowUnit;
         }else {
           twoDInfo.infoPerCore2D[id].infoRow2D.loopOnMR = loop2[2];
-          twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset =  rowOffset;
+          twoDInfo.infoPerCore2D[id].infoRow2D.rowOffset = rowOffset;
           rowOffset += loop2[2] * rowUnit;
         }
         if (k == p1Num[2] + p2Num[2] - 1) {
@@ -4972,8 +4979,8 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
   if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < rowUnit) {
     rowUnit = shapeInfo.reducedInShape[shapeInfo.dim - 2];
   }
-  CalcCRFactor(shapeInfo, crFactor, cFactor, rFactor);
   CalcUnit(shapeInfo, colUnit, rowUnit, colUnitNum, rowUnitNum, colTail, rowTail);
+  CalcCRFactor(shapeInfo, crFactor, cFactor, rFactor, colUnitNum, rowUnitNum);
   SplitEvenly(compilerInfo.coreNum, nVol, p1Num[0], p2Num[0], loop1[0], loop2[0], nUnit);
   SplitEvenly(cFactor, colUnitNum, p1Num[1], p2Num[1], loop1[1], loop2[1]);
   SplitEvenly(rFactor, rowUnitNum, p1Num[2], p2Num[2], loop1[2], loop2[2]);
