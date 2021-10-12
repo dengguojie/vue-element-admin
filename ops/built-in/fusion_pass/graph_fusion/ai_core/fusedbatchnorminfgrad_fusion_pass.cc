@@ -289,6 +289,11 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
 
   // set grad op type to BNInferGrad and BNUpdateGrad
   newNode->GetOpDesc()->SetType(BNINFERGRAD);
+  map<string, uint32_t> inputname_index_map = {{"grads", 0}, {"scale", 1}, {"batch_variance", 2}};
+  map<string, uint32_t> outputname_index_map = {{"x_backprop", 0}};
+  newNode->GetOpDesc()->UpdateInputName(inputname_index_map);
+  newNode->GetOpDesc()->UpdateOutputName(outputname_index_map);
+
   newNode2->GetOpDesc()->SetType(BNUPDATEGRAD);
 
   FUSION_PASS_CHECK(graph.RemoveNode(batchNormGradNode) != SUCCESS,
