@@ -663,12 +663,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     OP_LOGI(FUSED_OP_TYPE.c_str(), "strided_h or strided_w >63, not support");
     return NOT_CHANGED;
   }
-  bool AicoreSupport = true;
-  AicoreSupport = (ksizeH * ksizeW <= AVG_KERNEL_SIZE_H_MUL_W) || (ksizeH < AVG_KERNEL_SIZE and ksizeW < AVG_KERNEL_SIZE);
-  if (!isDynamic && !AicoreSupport){
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "ksize_h or ksize_w aicore not support");
-    return NOT_CHANGED;
-  }
+
   if (isDynamic && (ksizeH * ksizeW > AVG_KERNEL_SIZE_H_MUL_W)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "ksize_h or ksize_w aicore not support when dynamic mode");
     return NOT_CHANGED;

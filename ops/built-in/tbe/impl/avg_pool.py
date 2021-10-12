@@ -73,9 +73,6 @@ def check_supported(x, filter, bias, y, ksize, strides,
     if not is_support_kernel and outputh != 1 and outputw == 1:
         reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" %(str(ksize),str(ori_shape))
         return False, reason
-    if not is_support_kernel and not (outputh == 1 and outputw == 1):
-        reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" %(str(ksize),str(ori_shape))
-        return False, reason
     if input_h == 1 and input_w > 100000:
         reason = "input_shape is not supported by schedule when input_h=1 and input_w>100000"
         return False, reason
