@@ -42,8 +42,6 @@ from te.tvm.tensor import Tensor
 from .bn_training_update_grad_tilingcase import BNTrainingUpdateGradTilingCase
 from .bn_training_update_grad_tilingcase import BNTrainingUpdateGradInfo
 from .bn_training_update_grad_tilingcase import ComputeGraphInfo
-from .vector_schedule import VectorSchedule
-from tbe.dsl.base.expr_compare import expr_equal
 
 CONST = "const"
 # storage bound which is the maximum memory of UB allocated by the backend

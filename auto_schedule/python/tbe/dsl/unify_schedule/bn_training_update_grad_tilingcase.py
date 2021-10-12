@@ -28,13 +28,9 @@ from tbe.tvm.tensor import Tensor
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_tiling_case
-from tbe.dsl.base.operation import register_build_pointcut
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from tbe.common.utils import op_tiling
-from .constants import Pattern
-from .vector_tilingcase import TilingCaseBase
-
 
 from typing import Any
 from typing import Callable
@@ -634,7 +630,7 @@ class BNTrainingUpdateGradInfo:
         self.graph_info: ComputeGraphInfo = compute_graph_info
 
 
-class BNTrainingUpdateGradTilingCase(TilingCaseBase):
+class BNTrainingUpdateGradTilingCase():
     def __init__(self):
         self.is_atomic = False
         self.block_split_axis_index = None

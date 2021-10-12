@@ -1,0 +1,217 @@
+[
+    {
+        "op": "BNTrainingUpdateV3",
+        "input_desc": [
+          {
+            "shape": [
+              2,
+              4,
+              384,
+              576,
+              16
+            ],
+            "ori_shape": [
+              2,
+              4,
+              384,
+              576,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "x",
+            "type": "float16"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "sum",
+            "type": "float"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "square_sum",
+            "type": "float"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "scale",
+            "type": "float"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "offset",
+            "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              2,
+              4,
+              384,
+              576,
+              16
+            ],
+            "ori_shape": [
+              2,
+              4,
+              384,
+              576,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "y",
+            "type": "float16"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "batch_mean",
+            "type": "float"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "batch_variance",
+            "type": "float"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "reserve_1",
+            "type": "float"
+          },
+          {
+            "shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "ori_shape": [
+              1,
+              4,
+              1,
+              1,
+              16
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NC1HWC0",
+            "name": "reserve_2",
+            "type": "float"
+          }
+        ],
+        "attr": [
+          {
+            "name": "epsilon",
+            "type": "float",
+            "value": 0.0001
+          }
+        ],
+        "case_name": "test_BNTrainingUpdateV3_000"
+      }
+]

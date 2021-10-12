@@ -26,6 +26,9 @@ from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from tbe.dsl.base.operation import add_compile_info
 
 
 # pylint: disable=redefined-builtin
@@ -41,13 +44,17 @@ def _check_shape_5hd(shape_x, shape_sum, shape_square_sum,
     dim_c0 = shape_x[4]
 
     if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_sum[1], shape_sum[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_sum[1]) + ", " + str(shape_sum[4]))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_sum[1], shape_sum[4]", 
+        str(dim_c1) + ", " + str(dim_c0), str(shape_sum[1]) + ", " + str(shape_sum[4]))
     if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_square_sum[1], shape_square_sum[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_square_sum[1]) + ", " + str(shape_square_sum[4]))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_square_sum[1], shape_square_sum[4]", 
+        str(dim_c1) + ", " + str(dim_c0), str(shape_square_sum[1]) + ", " + str(shape_square_sum[4]))
     if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_scale[1], shape_scale[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_scale[1]) + ", " + str(shape_scale[4]))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_scale[1], shape_scale[4]", 
+        str(dim_c1) + ", " + str(dim_c0), str(shape_scale[1]) + ", " + str(shape_scale[4]))
     if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_offset[1], shape_offset[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_offset[1]) + ", " + str(shape_offset[4]))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_offset[1], shape_offset[4]", 
+        str(dim_c1) + ", " + str(dim_c0), str(shape_offset[1]) + ", " + str(shape_offset[4]))
 
 
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
@@ -58,6 +65,25 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
     para_check.check_dtype(dtype_scale, ("float32",))
     para_check.check_dtype(dtype_offset, ("float32",))
 
+def _refine_ins_list(ins_list):
+    for i in range(len(ins_list)):
+        shape_range = []
+        for dim, dim_val in enumerate(ins_list[i]["shape"]):
+            if dim_val == -1:
+                if "range" in ins_list[i]:
+                    range_bottom, range_top = ins_list[i]["range"][dim]
+                    if range_bottom <= 1:
+                        if range_top is not None and range_top <= 1:
+                            range_top = 2
+                        shape_range.append((2, range_top))
+                    else:
+                        shape_range.append((range_bottom, range_top))
+                else:
+                    shape_range.append((2, None))
+            else:
+                shape_range.append((dim_val, dim_val))
+        ins_list[i]["range"] = tuple(shape_range)
+    return ins_list
 
 # pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
@@ -109,6 +135,8 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     # runtime tiling: "NCHW" or "NC1HWC0" reduce [0, 2, 3]
     num_rec = operation.var("num_rec", dtype="float32")
     batch_var_scaler = operation.var("batch_var_scaler", dtype="float32")
+    add_compile_info("bn_update_num_rec_dtype", "float32")
+    add_compile_info("bn_update_batch_var_scaler_dtype", "float32")
 
     # compute the saved mean of x
     save_mean_reduce = tbe.vmuls(sum, num_rec)
@@ -145,8 +173,6 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
 
     return res
 
-
-@register_operator_compute("BnTrainingUpdate", op_mode="dynamic", support_fusion=True)
 def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
                                          y, batch_mean, batch_variance,
                                          reserve_1, reserve_2, epsilon,
@@ -207,12 +233,9 @@ def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
                                         reserve_1, reserve_2,
                                         epsilon, kernel_name=kernel_name)
 
-
     return {"op_placeholder": [in_x, in_sum, in_sqrsum, in_scale, in_offset],
             "op_res": list(res)}
 
-
-@register_operator("BnTrainingUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
@@ -288,43 +311,40 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
         error_detail = "The origin format only supports NCHW when format is NCHW, origin_format:", origin_format
         error_manager_vector.raise_err_specific_reson("bn_training_update_v3", error_detail)
  
-    # check shape
-    if data_format == "NC1HWC0":
-        _check_shape_5hd(shape_x, shape_sum, shape_sqrsum,
-                         shape_scale, shape_offset)
-        shape_list = [1, 1, 1, 1, 1]
-        shape_list[1] = shape_x[1]
-        shape_list[4] = shape_x[4]
-        shape_sum = shape_list
-    else:
-        shape_list = [1, 1, 1, 1]
-        shape_list[1] = shape_x[1]
-        shape_sum = shape_list
+    x["shape"] = shape_x
+    sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
+    square_sum["shape"] = [1, shape_sqrsum[1], 1, 1, shape_sqrsum[4]]
+    scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
+    offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
 
-    # get dynamic shape
-    shape_x, shape_sum = shape_util.variable_shape([x, sum])
-    log.debug("input_x shape: " + str(shape_x))
-    log.debug("input_sum shape: " + str(shape_sum))
+    ins_list = [x, sum, square_sum, scale, offset]
+    ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
+                   extra_params={"disable_optimization": True})
 
-    # compute
-    with tbe.compute():
-        in_x = tvm.placeholder(shape_x, name="x", dtype=dtype_x)
-        in_sum = tvm.placeholder(shape_sum, name="sum", dtype=dtype_sum)
-        in_sqrsum = tvm.placeholder(shape_sum, name="sqrsum", dtype=dtype_sum)
-        in_scale = tvm.placeholder(shape_sum, name="scale", dtype=dtype_sum)
-        in_offset = tvm.placeholder(shape_sum, name="offset", dtype=dtype_sum)
-        res = bn_training_update_v3_compute(in_x, in_sum, in_sqrsum,
-                                            in_scale, in_offset,
-                                            y, batch_mean, batch_variance,
-                                            reserve_1, reserve_2,
-                                            epsilon, kernel_name=kernel_name)
+    schedules = []
+    tensors = []
 
-    # schedule
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
+    for (x, sum, square_sum, scale, offset) in ins:
+        with tbe.compute():
+            shape_x, shape_sum, shape_sqrsum, shape_scale, shape_offset = \
+                shape_util.variable_shape([x, sum, square_sum, scale, offset])
+            
+            in_x = tvm.placeholder(shape_x, name="x", dtype=dtype_x)
+            in_sum = tvm.placeholder(shape_sum, name="sum", dtype=dtype_sum)
+            in_sqrsum = tvm.placeholder(shape_sum, name="sqrsum", dtype=dtype_sum)
+            in_scale = tvm.placeholder(shape_sum, name="scale", dtype=dtype_sum)
+            in_offset = tvm.placeholder(shape_sum, name="offset", dtype=dtype_sum)
+            res = bn_training_update_v3_compute(in_x, in_sum, in_sqrsum,
+                                                in_scale, in_offset,
+                                                y, batch_mean, batch_variance,
+                                                reserve_1, reserve_2,
+                                                epsilon, kernel_name=kernel_name)
+            tensors.append([in_x, in_sum, in_sqrsum, in_scale, in_offset] + res)
 
-    # build
-    tensor_list = [in_x, in_sum, in_sqrsum, in_scale, in_offset] + list(res)
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
+            schedules.append(sch)
+    
     config = {"name": kernel_name,
-              "tensor_list": tensor_list}
-    tbe.build(sch, config)
+              "tensor_list": tensors}
+    tbe.build(schedules, config)

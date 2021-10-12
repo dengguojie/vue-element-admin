@@ -41,6 +41,7 @@ set(_optiling_files
   bninference_d.cc
   tile_with_axis.cc
   bn_reduce_grad.cc
+  bn_training_update_v3.cc
   bn_training_update.cc
   concat.cc
   concat_offset.cc
