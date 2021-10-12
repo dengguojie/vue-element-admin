@@ -772,7 +772,7 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
     if shape_bias_length > 0:
         bias_dtype = bias.get("dtype")
         tensor_bias = tvm.placeholder(shape_bias_dup, name='tensor_bias',
-                                      dtype=bias_dtype, attrs={'ori_shape': shape_bias_dup})
+                                      dtype=bias_dtype, attrs={'ori_shape': bias.get("ori_shape")})
     result = batch_matmul_compute_self(tensor_a, tensor_b, tensor_bias,
                                        output_z, trans_a, trans_b, kernel_name)
     with tvm.target.cce():
