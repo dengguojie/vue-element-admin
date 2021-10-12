@@ -926,13 +926,14 @@ def _func_transform_201(tensor_args, tp_args):
                             ubuf_args = (tik_inst, src_ub, dst_ub, zero_ub, left_pl_size, c1_pl_size, r2nd_pl_size,
                                          c0_len, ele_per_block, sub_c_size, all_c_in, in_dtype)
                             _ubuf_2_ubuf_convert(ubuf_args)
-                        _copy_data_out(copy_out_args)
                     with tik_inst.elif_scope(tik.any(r2nd_lp_idx == r2nd_backend_idx - 1,
                                                      r2nd_lp_idx_2011 == r2nd_vnc_cnt, r2nd_lp_idx_2011 == 0)):
                         vnc_args = (tik_inst, src_ub, dst_ub, left_pl_size, c1_pl_size, r2nd_pl_size, c0_len,
                                     ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size, vnc_col_len,
                                     r2nd_lp_idx_2011)
                         _twice_vnchwconv_no_invert(vnc_args)
+                    with tik_inst.if_scope(tik.any(r2nd_lp_idx == r2nd_backend_idx - 1,
+                                                   r2nd_lp_idx_2011 == r2nd_vnc_cnt, r2nd_lp_idx_2011 == 0)):
                         _copy_data_out(copy_out_args)
 
     with tik_inst.if_scope(block_idx != used_core_cnt - 1):

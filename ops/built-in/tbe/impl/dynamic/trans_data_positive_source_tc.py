@@ -902,6 +902,7 @@ def _func_transform_1011(tensor_args, tp_args):
         _inner_func(lc_args)
 
 
+# pylint: disable=unused-argument
 def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name="trans_data_positive_source_tc"):
     """
     positive transform for last dimension of source format is c
@@ -950,15 +951,17 @@ def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name=
     tiling_params = [tik_inst.Scalar(TILING_CTRL_PARAM[0]) for i in range(TILING_CTRL_PARAM[1])]
     _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes)
 
-    tiling_mode = tiling_params[0]
     used_core_cnt = tiling_params[2]
+    positive_tc_1010 = [("NHWC", "NC1HWC0"), ("NDHWC", "NDC1HWC0"), ("NHWC", "FRACTAL_NZ"),
+                        ("ND", "FRACTAL_NZ"), ("NCHW", "FRACTAL_NZ")]
+    positive_tc_1011 = [("NDHWC", "FRACTAL_Z_3D"), ("NC1HWC0", "FRACTAL_Z")]
     with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
         with tik_inst.if_scope(block_idx < used_core_cnt):
             tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, dst_ub, zero_ub, block_elem_cnt]
-            with tik_inst.if_scope(tiling_mode == 1010):
+            if (src_format.upper(), dst_format.upper()) in positive_tc_1010:
                 tp_args = tiling_params[1:39]
                 _func_transform_1010(tensor_args, tp_args)
-            with tik_inst.if_scope(tiling_mode == 1011):
+            if (src_format.upper(), dst_format.upper()) in positive_tc_1011:
                 tp_args = tiling_params[1:38]
                 _func_transform_1011(tensor_args, tp_args)
 
