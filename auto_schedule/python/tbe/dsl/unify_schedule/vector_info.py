@@ -348,7 +348,6 @@ class ComputeGraphInfo:
                         self.soc_ub_size -= 4096
                     else:
                         _dict["_sNodeNum"].append(dtype)
-                        _dict["_bNodeNum"].append(dtype)
                         self.soc_ub_size -= 2048
 
             def get_dtypes_support_vcross_func():
@@ -392,7 +391,6 @@ class ComputeGraphInfo:
                         else:
                             self.soc_ub_size -= 512
                             _dict["_sNodeNum"].append(dtype)
-                            _dict["_bNodeNum"].append(dtype)
 
             def _reduce_prod_space(_reduce_tensor):
                 if all_axes[-1] not in reduce_axes:
@@ -405,7 +403,6 @@ class ComputeGraphInfo:
                     else:
                         self.soc_ub_size -= 512
                         _dict["_sNodeNum"].append(dtype)
-                        _dict["_bNodeNum"].append(dtype)
 
             if tag.find("reduce") != -1:
                 reduce_axes = get_reduce_axes(_tensor)
