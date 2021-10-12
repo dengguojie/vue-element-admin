@@ -142,7 +142,14 @@ def test_op_select_format(test_arg):
         {"shape": (3, 2, 4, 5, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 1, 1, 1, 1, 16),
          "ori_format": "NHWC", "range": [(1, 100), (2, 2), (4, 4), (4, 4), (2, 2)]}
         )
-
+    op_select_format(
+        {"shape": (3, 2, 4, 5, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": ( 3, 4, 5, 19),
+         "ori_format": "NCHW", "range": [(1, 100), (2, 2), (4, 4), (4, 4), (2, 2)]},
+        {"shape": (1, 16, 1, 1, 1), "dtype": "float16", "format": "NC1HWC0", "ori_shape": ( 1,),
+         "ori_format": "NCHW", "range": [(1, 100), (2, 2), (4, 4), (4, 4), (2, 2)]},
+        {"shape": (3, 2, 4, 5, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 16, 1, 1, 1),
+         "ori_format": "NCHW", "range": [(1, 100), (2, 2), (4, 4), (4, 4), (2, 2)]}
+        )
 
 
 ut_case.add_case(["Ascend910A"], case1)

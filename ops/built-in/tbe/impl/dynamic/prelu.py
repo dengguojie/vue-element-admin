@@ -53,6 +53,7 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
 
     x_shape = x.get("ori_shape")
     weight_shape = weight.get("ori_shape")
+    weight_ori_format = weight.get("ori_format")
 
     product_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -77,7 +78,11 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
         format_weight = format_weight + ["ND"] * len(dtype_base)
-    if not (len(weight_shape) == 3 and weight_shape[-1] == 1 and len(weight_shape) != sum(weight_shape)):
+    if len(weight_shape) == 1 and weight_shape[0] == 1 and weight_ori_format == "NCHW":
+        dtype_base_out = dtype_base_out + dtype_base
+        format_x = format_x + ["NC1HWC0"] * len(dtype_base)
+        format_weight = format_weight + ["ND"] * len(dtype_base)
+    elif not (len(weight_shape) == 3 and weight_shape[-1] == 1 and len(weight_shape) != sum(weight_shape)):
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["NC1HWC0"] * len(dtype_base)
         format_weight = format_weight + ["NC1HWC0"] * len(dtype_base)
