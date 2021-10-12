@@ -99,7 +99,8 @@ def _cal_min_l1space(
     filter_sizes,
     strides,
     dilations,
-    pads
+    pads,
+    dtype="float16"
 ):
     """
     cal the mini l1space using in lxfusion
@@ -148,9 +149,9 @@ def _cal_min_l1space(
         kl1_min = fmap_w
 
     if dedy_w % C0 == 0:
-        bl1_min_byte = filter_h_dilation * kl1_min * C0 * 2
+        bl1_min_byte = filter_h_dilation * kl1_min * C0 * BIT_RATIO_DICT.get(dtype)
     else:
-        bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * 2
+        bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * BIT_RATIO_DICT.get(dtype)
 
     return bl1_min_byte
 
@@ -253,6 +254,7 @@ def get_op_support_info(
     """
 
     format_x = x.get("format")
+    dtype_x = x.get("dtype")
     axis_split_matrix = None
     axis_reduce_list = None
     if format_x == "NC1HWC0":
@@ -279,7 +281,7 @@ def get_op_support_info(
         h_index = data_format.find("H")
         w_index = data_format.find("W")
         strides = [strides[h_index], strides[w_index]]
-    min_l1space = _cal_min_l1space(x_shape, shape_out, filter_shape, strides, dilations, pads)
+    min_l1space = _cal_min_l1space(x_shape, shape_out, filter_shape, strides, dilations, pads, dtype_x)
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(
         axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
     return op_cal_info_in_json
@@ -949,15 +951,15 @@ def check_conv2dbp_filter_params(
 
     def _min_l1_byte():
         # Forth : L1 limitation, Mainly required by chip
-        al1_min_byte = C0 * C0 * 2
+        al1_min_byte = C0 * C0 * BIT_RATIO_DICT.get(x_dtype)
         if not _is_conv1d_situation():
             kl1_min = fmap_w
         else:
             kl1_min = (C0 - 1) * stride_w + filter_w_dilation
         if dedy_w % C0 == 0:
-            bl1_min_byte = filter_h_dilation * kl1_min * C0 * 2
+            bl1_min_byte = filter_h_dilation * kl1_min * C0 * BIT_RATIO_DICT.get(x_dtype)
         else:
-            bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * 2
+            bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * BIT_RATIO_DICT.get(x_dtype)
 
         l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:
@@ -1066,9 +1068,17 @@ def _conv2d_backprop_filter_cce(
     x_dtype = x_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
-    para_check.check_dtype_rule(x_dtype, ["float16"])
-    para_check.check_dtype_rule(out_backprop_dtype, ["float16"])
+    in_dtype_list = ["float16"]
+    if tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT"):
+        in_dtype_list.append("float32")
+    para_check.check_dtype_rule(x_dtype, in_dtype_list)
+    para_check.check_dtype_rule(out_backprop_dtype, in_dtype_list)
     para_check.check_dtype_rule(res_dtype, ["float32", "float16"])
+    if x_dtype != out_backprop_dtype:
+        dict_args = {}
+        dict_args["errCode"] = "E60038"
+        dict_args["desc"] = "The fmap data type is not same as the out_backprop data type."
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
     res = check_conv2dbp_filter_params(
         shape_x,
@@ -1100,9 +1110,14 @@ def _conv2d_backprop_filter_cce(
     fmap_batch, fmap_channel, fmap_h, fmap_w = shape_x
     dedy_batch, dedy_channel, dedy_h, dedy_w = shape_out_backprop
 
-    c0_size = tbe_platform.C0_SIZE  # Channel axis should be align with 16
-    shape_dedy = (dedy_batch, _ceil(dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
-    shape_fmap = (fmap_batch, _ceil(fmap_channel, c0_size), fmap_h, fmap_w, c0_size)
+    # x_dtype is same as outbackprop, use x_dtype to get C0 size
+    c0_size = tbe_platform.CUBE_MKN.get(x_dtype).get("mac")[1]
+    # Channel axis should be align with 16
+    aligned_dedy_channel = _align(dedy_channel, tbe_platform.C0_SIZE)
+    aligned_fmap_channel = _align(fmap_channel, tbe_platform.C0_SIZE)
+    # C0 size is according to dtype, fp32 -> 8 and fp16-> 16
+    shape_dedy = (dedy_batch, _ceil(aligned_dedy_channel, c0_size), dedy_h, dedy_w, c0_size)
+    shape_fmap = (fmap_batch, _ceil(aligned_fmap_channel, c0_size), fmap_h, fmap_w, c0_size)
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
     fmap = tvm.placeholder(shape_fmap, name="fmap", dtype=x_dtype)
 
@@ -1139,7 +1154,7 @@ def conv2d_backprop_filter_compute(
     filter_size,
     strides,
     pads,
-    dilations=(1,1,1,1),
+    dilations=(1, 1, 1, 1),
     groups=1,
     data_format="NHWC",
     kernel_name="conv2d_backprop_filter"

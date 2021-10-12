@@ -25,6 +25,7 @@ from functools import reduce
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
 from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute import cube_util
@@ -45,6 +46,7 @@ INPUTS_HW_MIN = 1
 CONV1D_MAX_W = 2147483647
 # maximum of stride, limited by load3d
 STRIDE_HW_MAX = 63
+
 
 def _check_shape_rule(shape, dim, formats, name, allow_zero=False):
     """
@@ -157,6 +159,19 @@ def _check_addressing_rule(shape, byte_count, limit, name):
         error_manager_util.raise_runtime_error(dict_args)
 
 
+def check_shape_equal(x, y, param_name1, param_name2):
+    """
+    check shape dim equal
+    """
+    if x != y:
+        dict_args = dict()
+        dict_args['errCode'] = "E64002"
+        dict_args['param1'] = param_name1
+        dict_args['param2'] = param_name2
+        dict_args['actual_value'] = "{}, {}".format(x, y)
+        error_manager_util.raise_runtime_error(dict_args)
+
+
 class Conv2dBackpropFilter:  # pylint: disable=R0902
     """
     Conv2dBackpropFilter: compute definition of conv2d_backprop_filter
@@ -247,6 +262,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.flag_load3d_special_case = False
         self.conv1d_situation = False
 
+        self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self.c0_size = tbe_platform.C0_SIZE
+
         # for dynamic
         self.dynamic_para = self._get_dynamic_para()
         self.var_map = self.dynamic_para.get("var_map")
@@ -318,20 +336,18 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
         """
         # check of data type
-        if self.fmap_dtype != "float16":
+        in_dtype_list = ["float16"]
+        if self.cube_vector_split:
+            in_dtype_list.append("float32")
+        para_check.check_dtype_rule(self.fmap_dtype, in_dtype_list)
+        para_check.check_dtype_rule(self.grads_dtype, in_dtype_list)
+        if self.fmap_dtype != self.grads_dtype:
             dict_args = dict()
-            dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "x"
-            dict_args["expected_dtype_list"] = "float16"
-            dict_args["dtype"] = self.fmap_dtype
+            dict_args["errCode"] = "E60038"
+            dict_args["desc"] = "The fmap data type is not same as the out_backprop data type."
             error_manager_util.raise_runtime_error(dict_args)
-        if self.grads_dtype != "float16":
-            dict_args = dict()
-            dict_args["errCode"] = "E60005"
-            dict_args["param_name"] = "out_backprop"
-            dict_args["expected_dtype_list"] = "float16"
-            dict_args["dtype"] = self.grads_dtype
-            error_manager_util.raise_runtime_error(dict_args)
+        # update c0 size
+        self.c0_size = tbe_platform.CUBE_MKN.get(self.fmap_dtype).get("mac")[1]
         if not tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
                 self.res_dtype != "float16":
             dict_args = dict()
@@ -362,24 +378,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         fmap_height_after_pad = self.shape_x_5hd[2] + self.pad[0] + self.pad[1]
         fmap_width_after_pad = self.shape_x_5hd[3] + self.pad[2] + self.pad[3]
 
-        if _ceil_div(self.weight_shape[0], 16) != self.shape_grads_5hd[1]:
-            dict_args = {}
-            dict_args['errCode'] = "E64002"
-            dict_args['param1'] = "out_backprop's C1"
-            dict_args['param2'] = "y's N//16"
-            dict_args['actual_value'] = "{}, {}". format(
-                self.shape_grads_5hd[1], _ceil_div(self.weight_shape[0], 16))
-            error_manager_util.raise_runtime_error(dict_args)
-
-        if _ceil_div(self.group * self.weight_shape[1],
-                     16) != self.shape_x_5hd[1]:
-            dict_args = {}
-            dict_args['errCode'] = "E64002"
-            dict_args['param1'] = "x's C1"
-            dict_args['param2'] = "y's C//16"
-            dict_args['actual_value'] = "{}, {}". format(
-                self.shape_x_5hd[1], _ceil_div(self.weight_shape[1], 16))
-            error_manager_util.raise_runtime_error(dict_args)
+        weight_shape_n = _ceil_div(self.weight_shape[0], BLOCK_SIZE) * BLOCK_SIZE
+        weight_shape_c = _ceil_div(self.group * self.weight_shape[1], BLOCK_SIZE) * BLOCK_SIZE
+        grads_c = self.shape_grads_5hd[1] * self.shape_grads_5hd[4]
+        fmap_c = self.shape_x_5hd[1] * self.shape_x_5hd[4]
+        check_shape_equal(self.shape_grads_5hd[4], self.c0_size, "grads_c0", "c0_size")
+        check_shape_equal(self.shape_x_5hd[4], self.c0_size, "fmap_c0", "c0_size")
+        check_shape_equal(grads_c, weight_shape_n, "grads's C1*C0", "weight's N")
+        check_shape_equal(fmap_c, weight_shape_c, "fmap's C1*C0", "weight's C")
 
         if self.shape_grads_5hd[0] != self.shape_x_5hd[0]:
             dict_args = {}
@@ -435,30 +441,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         do input parameters check part2
 
         """
-        if self.shape_x_5hd[4] != BLOCK_SIZE:
-            dict_args = {}
-            dict_args['errCode'] = "E60000"
-            dict_args['param_name'] = "axis C0 of x"
-            dict_args['expected_value'] = BLOCK_SIZE
-            dict_args['input_value'] = str(self.shape_x_5hd[4])
-            error_manager_util.raise_runtime_error(dict_args)
-
-        if self.shape_grads_5hd[4] != BLOCK_SIZE:
-            dict_args = {}
-            dict_args['errCode'] = "E60000"
-            dict_args['param_name'] = "axis C0 of out_backprop"
-            dict_args['expected_value'] = BLOCK_SIZE
-            dict_args['input_value'] = str(self.shape_grads_5hd[4])
-            error_manager_util.raise_runtime_error(dict_args)
-        if self.shape_x_5hd[0] != self.shape_grads_5hd[0]:
-            dict_args = {}
-            dict_args['errCode'] = "E64002"
-            dict_args['param1'] = "input_x's batch'"
-            dict_args['param2'] = "out_backprop's batch"
-            dict_args['actual_value'] = "{}, {}".format(
-                self.shape_x_5hd[0], self.shape_grads_5hd[0])
-            error_manager_util.raise_runtime_error(dict_args)
-
         stride_height, stride_width = self.stride
         pad_top, pad_bottom, pad_left, pad_right = self.pad
         _, grads_channel_1, grads_height, grads_width, grads_c0 \
@@ -591,9 +573,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         groups = self.group
         cout, cin, _, _ = self.weight_shape
         fmap_c = cin * groups
-        c0_size = tbe_platform.C0_SIZE
-        mag_factor0 = lcm(fmap_c // groups, c0_size) // (fmap_c // groups)
-        mag_factor1 = lcm(cout // groups, c0_size) // (cout // groups)
+        c0_size = self.c0_size
+        mag_factor0 = lcm(fmap_c // groups, BLOCK_SIZE) // (fmap_c // groups)
+        mag_factor1 = lcm(cout // groups, BLOCK_SIZE) // (cout // groups)
         mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
 
         cin1_g = (mag_factor * fmap_c // groups + c0_size - 1) // c0_size
@@ -689,6 +671,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                               grads_channel_1,
                               grads_height*grads_width,
                               grads_c0)
+        if self.grads_dtype == "float32":
+            grads_shape_matrix = (
+                batch_size,
+                hw_mad_1,
+                grads_channel_1,
+                BLOCK_SIZE,
+                grads_c0
+            )
         self.shapelist['grads_matrix'] = grads_shape_matrix
 
         grads_matrix = self._grads_2_matrix(grads_shape_matrix, self.grads)
@@ -700,7 +690,16 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                hw_mad_1,
                                grads_c0,
                                BLOCK_SIZE)
-
+        if self.grads_dtype == "float32":
+            # transpose to make sure k0 axis in mad is 8
+            grads_shape_fractal = (
+                real_g,
+                batch_size,
+                grads_channel_g // grads_c0 // 2,
+                hw_mad_1 * 2,
+                grads_c0 * 2,
+                BLOCK_SIZE // 2
+            )
         self.shapelist['grads_fractal'] = grads_shape_fractal
         grads_fractal = self._grads_2_fractal(grads_shape_fractal,
                                               grads_matrix)
@@ -720,11 +719,21 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
                                                   self.fmap, fmap_dtype)
                 # move fmap to L0B
-                fmap_shape_fmap_matrix = (real_g, batch_size,
-                                          hw_mad//BLOCK_SIZE,
+                fmap_shape_fmap_matrix = (real_g,
+                                          batch_size,
+                                          hw_mad_1,
                                           fmap_c1_g*kernel_height*kernel_width,
                                           fmap_c0,
                                           BLOCK_SIZE)
+                if self.fmap_dtype == "float32":
+                    fmap_shape_fmap_matrix = (
+                        real_g,
+                        batch_size,
+                        hw_mad_1 * 2,
+                        fmap_c1_g * kernel_height * kernel_width // 2,
+                        fmap_c0 * 2,
+                        BLOCK_SIZE // 2
+                    )
                 self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
                 fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
@@ -777,6 +786,13 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         # shape of result dw [n1,m,n0]
         dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
                     grads_channel_g, fmap_c0)
+        if self.fmap_dtype == "float32" and self.grads_dtype == "float32":
+            dw_shape = (
+                real_g,
+                fmap_c1_g // 2 * kernel_height * kernel_width,
+                grads_channel_g,
+                fmap_c0 * 2
+            )
         self.shapelist['dw'] = dw_shape
 
         # do mmad
@@ -804,11 +820,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         def __grads_2_matrix_compute(indices, grads):
             """
             do coordinate calculation
-
             """
-
             grads_width = self.shapelist.get('grads_5hd')[3]
-
             batch_indices, grads_c1_indices, hw_mad_indices, grads_c0_indices \
                 = indices
 
@@ -829,9 +842,34 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             return grads(batch_size_index, grads_c1_index,
                          grads_height_index, grads_width_index, grads_c0_index)
 
+        def __grads_2_zz_matrix_compute(indices, grads):
+            """
+            do coordinate calculation for fp32
+            """
+            grads_h = self.shapelist.get('grads_5hd')[2]
+            grads_w = self.shapelist.get('grads_5hd')[3]
+            hw_mad = grads_h * grads_w
+            (batch_indices,
+                hw_mad_1_indices, grads_c1_indices,
+                hw_mad_0_indices, grads_c0_indices) = indices
+            hw_mad_indices = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
+            grads_h_index = hw_mad_indices // grads_w
+            grads_w_index = hw_mad_indices % grads_w
+            return tvm.select(
+                hw_mad_indices < hw_mad,
+                grads(
+                    batch_indices,
+                    grads_c1_indices,
+                    grads_h_index,
+                    grads_w_index,
+                    grads_c0_indices
+                )
+            )
+
+        func_name = __grads_2_zz_matrix_compute if self.grads_dtype == "float32" else __grads_2_matrix_compute
         return tvm.compute(grads_shape_matrix,
                            lambda *indices:
-                           __grads_2_matrix_compute(indices, grads),
+                           func_name(indices, grads),
                            name='grads_2_matrix',
                            tag='grads_2_matrix')
 
@@ -853,11 +891,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         def __grads_2_fractal_compute(indices, grads_2_matrix):
             """
             do coordinate calculation
-
             """
-
             group_dict = self.group_dict
-
             (group_indices, batch_indices,
                 grads_c1_indices, hw_mad_1_indices,
                 grads_c0_indices, hw_mad_0_indices) = indices
@@ -874,10 +909,37 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             return grads_2_matrix(batch_size_index, grads_c1_index,
                                     grads_hw_index, grads_c0_index)
 
+        def __grads_2_zz_fractal_compute(indices, grads_2_matrix):
+            """
+            do coordinate calculation for fp32
+            """
+            (group_indices, batch_indices,
+                grads_c1_indices, hw_mad_1_indices,
+                grads_c0_indices, hw_mad_0_indices) = indices
+
+            # hw axis in matrix is 16 aligned, while in fractal is 8 aligned
+            hw_mad_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
+            hw_mad_1_index = hw_mad_index // BLOCK_SIZE
+            hw_mad_0_index = hw_mad_index % BLOCK_SIZE
+
+            # c axis in matrix is 8 aligned, while in fractal is 16 aligned
+            grads_c_index = group_indices * self.group_dict.get("cout_g") \
+                            + grads_c1_indices * BLOCK_SIZE + grads_c0_indices
+            grads_c1_index = grads_c_index // self.c0_size
+            grads_c0_index = grads_c_index % self.c0_size
+
+            return grads_2_matrix(
+                batch_indices,
+                hw_mad_1_index,
+                grads_c1_index,
+                hw_mad_0_index,
+                grads_c0_index
+            )
+
+        func_name = __grads_2_zz_fractal_compute if self.grads_dtype == "float32" else __grads_2_fractal_compute
         return tvm.compute(grads_shape_fractal,
                             lambda *indices:
-                            __grads_2_fractal_compute(indices,
-                                                      grads_2_matrix),
+                            func_name(indices, grads_2_matrix),
                             name='grads_2_fractal',
                             tag='grads_2_fractal')
 
@@ -1057,18 +1119,29 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 hw_mad_1_indices, fkk_indices,
                 fmap_c0_indices, hw_mad_0_indices) = indices
 
-            hw_vm_index = hw_mad_1_indices*BLOCK_SIZE + hw_mad_0_indices
-            c1_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
-                            // BLOCK_SIZE) // kernel_width) // kernel_height
+            if self.fmap_dtype == "float32":
+                # matrix: fmap_c0 aligned to 8
+                # fractal: hw_mad aligned to 8, while fmap_c0 aligned to 16
+                # eg: fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
+                # --> matrix is (1, 49, 2, 3, 3, c0=8) -> fractal is (group=1, batch=1, 8, 9, c0=16, mad_0=8)
+                hw_vm_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
+                c1_index = fkk_indices // (kernel_height * kernel_width) * 2 + fmap_c0_indices // self.c0_size
+                kh_vm_index = fkk_indices // kernel_width % kernel_height
+                kw_vm_index = fkk_indices % kernel_width
+                c0_vm_index = fmap_c0_indices % self.c0_size
+            else:
+                hw_vm_index = hw_mad_1_indices*BLOCK_SIZE + hw_mad_0_indices
+                c1_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
+                                // BLOCK_SIZE) // kernel_width) // kernel_height
 
-            c1_index = group_index * self.group_dict.get("cin1_g") + c1_vm_index
+                c1_index = group_index * self.group_dict.get("cin1_g") + c1_vm_index
 
-            kh_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
-                            // BLOCK_SIZE) // kernel_width) % kernel_height
-            kw_vm_index = ((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
-                           // BLOCK_SIZE) % kernel_width
-            c0_vm_index = \
-                (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
+                kh_vm_index = (((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
+                                // BLOCK_SIZE) // kernel_width) % kernel_height
+                kw_vm_index = ((fkk_indices*BLOCK_SIZE + fmap_c0_indices)
+                            // BLOCK_SIZE) % kernel_width
+                c0_vm_index = \
+                    (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
 
             # select padding and 16 align
             return tvm.select(tvm.any(hw_vm_index < 0,
@@ -1171,6 +1244,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         if self.res_dtype == "float16":
             mode = "f162f16"
 
+        if self.fmap_dtype == "float32":
+            # align hw_fuse to 16
+            hw_fuse = _ceil_div(hw_fuse, BLOCK_SIZE) * BLOCK_SIZE
+            k_axis = tvm.reduce_axis((0, hw_fuse), name='axis_k')
+            k_1 = k_axis.var // self.c0_size
+            k_0 = k_axis.var % self.c0_size
+            mode = "fp322fp32"
+
         c_col = tvm.compute(mad_shape,
                             lambda g, fkk, grads_c, fmap_c0:
                             tvm.sum((grads[g, batch_axis, grads_c // 16,
@@ -1235,6 +1316,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                         attrs={'pad': self.pad, 'stride': self.stride,
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape})
+
 
 @tbe_utils.para_check.check_input_type(Tensor, Tensor, (list, tuple), dict)
 def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict):
