@@ -36,7 +36,6 @@ namespace aicpu {
 namespace detail {
 template <typename T>
 inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
-  const auto ParallelFor{aicpu::CpuKernelUtils::ParallelFor};
   auto input = static_cast<T *>(ctx.Input(0)->GetData());
   auto output = static_cast<T *>(ctx.Output(0)->GetData());
   // axes default values = [-1]
@@ -119,7 +118,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
     std::int64_t per_unit_size{length /
                                std::min(std::max(1L, cores - 2L), length)};
     const T constant_one(1.0);
-    ParallelFor(
+    aicpu::CpuKernelUtils::ParallelFor(
         ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
           for (size_t index = begin, dim_length = dims[pivot], outer_index,
                       index_base;
