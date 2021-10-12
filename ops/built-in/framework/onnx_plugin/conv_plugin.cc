@@ -48,13 +48,13 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
   std::vector<int32_t> dilations_list = {1, 1};
   std::vector<int32_t> pad_list;
   bool is_trans_2d = false;
-
+  bool is_have_kernel_shape = false;
+  int dim_size = INPUT_4D;
   // update attrs with model value
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
         strides_list.push_back(1);
-        is_trans_2d = true;
       }
       for (auto i = 0; i < attr.ints_size(); ++i) {
         strides_list.push_back(attr.ints(i));
@@ -63,7 +63,6 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
     } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
         dilations_list.push_back(1);
-        is_trans_2d = true;
       }
       for (auto i = 0; i < attr.ints_size(); ++i) {
         dilations_list.push_back(attr.ints(i));
@@ -80,7 +79,6 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
       if (attr.ints_size() == ONNX_1D_ATTR_PAD_LEN) {
         pad_list.push_back(0);
         pad_list.push_back(0);
-        is_trans_2d = true;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
         pad_list.push_back(attr.ints(i));
@@ -91,13 +89,20 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
       op.SetAttr("groups", attr.i());
     } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
       op.SetAttr("auto_pad", attr.s());
+    } else if (attr.name() == "kernel_shape" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      is_have_kernel_shape = true;
+      is_trans_2d = attr.ints_size() >= 2 ? false : true;
+      dim_size = attr.ints_size() > 2 ? INPUT_5D : INPUT_4D;
     }
   }
 
+  if (!is_have_kernel_shape) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "node must have attr kernel_shape");
+    return FAILED;
+  }
   // kernel_shape属性暂时在TBE算子上没有相应的属性接收，所以没有设置它们
   // aicore算子暂时不支持auto_pad参数，接收后对其进行判断拦截处理
 
-  int dim_size = (strides_list.size() == 5 || pad_list.size() == 6 || dilations_list.size() == 5) ? 5 : 4;
   op.SetAttr("dim_size", dim_size);
   op.SetAttr("trans_2d", is_trans_2d);
 

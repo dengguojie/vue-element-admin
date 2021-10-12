@@ -1,7 +1,8 @@
-onnx-parser_test:r
-
+onnx-parser_test:‡
+4
 x
-Wy"Conv*
+Wy"Conv*
+kernel_shape@ *
 strides@ ConvZ
 x
 

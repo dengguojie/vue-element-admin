@@ -1,9 +1,10 @@
-onnx-parser_test:‰
-*
+onnx-parser_test: 
+A
 x
 Wy"Conv*
 auto_pad"
-SAME_LOWER ConvZ
+SAME_LOWER *
+kernel_shape@@ ConvZ
 x
 
 
