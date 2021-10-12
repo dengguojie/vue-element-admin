@@ -44,7 +44,7 @@ STATIC = "static"
 ORIGINAL = "original"
 ASCEND920 = "Ascend920"
 DB_KEY = 10000
-EMPTY_KEY = -2 ** 31
+EMPTY_KEY = 2 ** 31 - 1
 BLOCK_SIZE_BYTE = 32
 
 # TYPE DOUNDS

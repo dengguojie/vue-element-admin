@@ -24,7 +24,7 @@ def test_empty_tiling(_):
             operation.get_context().get_current_compute().add("_mode", "empty")
             tiling_case = b_t.do_tiling_case()
             return len(tiling_case) == 1 and \
-                   tiling_case[0].tiling_key == -2147483648 and \
+                   tiling_case[0].tiling_key == 2**31 -1  and \
                    tiling_case[0].tiling_strategy == TilingStrategy.CONST
 
 
