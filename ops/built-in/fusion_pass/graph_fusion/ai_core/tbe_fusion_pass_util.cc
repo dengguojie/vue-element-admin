@@ -271,5 +271,16 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
   OP_LOGI("UpdateAttrIsInputConst", "update the node(%s) attr(is_input_const) end.", fuse_op.GetName().c_str());
   return true;
 }
-}  // namespace fe
 
+bool TbeFusionPassUtil::IsEmptyTensor(const ge::GeTensorDesc& tensor_desc) {
+  vector<int64_t> shape_info = tensor_desc.GetShape().GetDims();
+  int64_t shape_dim = shape_info.size();
+  for(int64_t dim = 0; dim < shape_dim; dim++) {
+    if (shape_info[dim] == 0) {
+      OP_LOGI("IsEmptyTensor", "shape dim num is 1 and shape vector[0] is 0, is empty tensor.");
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace fe

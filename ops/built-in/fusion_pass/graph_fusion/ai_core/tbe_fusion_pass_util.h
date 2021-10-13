@@ -89,6 +89,13 @@ class TbeFusionPassUtil {
    * @return true:success, false:failed.
    */
   static bool UpdateAttrIsInputConst(const ge::NodePtr& fuse_node);
+
+  /**
+   * check the tensor desc is null or not
+   * @param [in] tensor_desc which will not changed
+   * @return true:success, false:failed.
+   */
+  static bool IsEmptyTensor(const ge::GeTensorDesc& tensor_desc);
 };
 
 }  // namespace fe

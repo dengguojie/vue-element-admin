@@ -30,6 +30,7 @@
 #include "graph/utils/node_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
+#include "tbe_fusion_pass_util.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
@@ -68,6 +69,13 @@ Status ConstToAttrReduceSumPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
                     return PARAM_INVALID);
 
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+  ge::GeTensorDesc axis_input = fusedDesc->GetInputDesc(1);
+  
+  FUSION_PASS_CHECK(
+      TbeFusionPassUtil::IsEmptyTensor(axis_input),
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "axis dim num is 1 and axis shape vector[0] is 0, not need fusion."),
+      return NOT_CHANGED);
+
   FUSION_PASS_CHECK(
       fusedDesc == nullptr,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
