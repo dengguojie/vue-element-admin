@@ -175,7 +175,7 @@ void PrintTilingParams(const std::string& op_type, const CleanTilingParams& para
 }
 
 bool CheckSize(const std::string& op_type, const uint32_t& size) {
-  if (size <= 0) {
+  if (size < 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: workspace size must be greater than 0!");
     return false;
   }

@@ -78,3 +78,18 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_3) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
+
+TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_4) {
+  std::string op_name = "DynamicAtomicAddrClean";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  std::string compileInfo = R"({"_workspace_size_list": [0], "vars": {"ub_size": 126976, "core_num": 2}})";
+  std::vector<uint32_t> workspace_size{};
+  auto opParas = op::DynamicAtomicAddrClean("DynamicAtomicAddrClean");
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 0 0 0 0 0 0 0 0 0 0 ");
+}
