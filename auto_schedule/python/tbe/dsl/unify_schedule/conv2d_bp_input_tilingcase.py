@@ -922,6 +922,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
             'CUB_pbuffer': 1,
             'UBG_pbuffer': 1,
         }
+        tiling["default_tiling_flag"] = True
         return tiling
 
     def _check_and_set_default_tiling(self, tiling_in):
@@ -974,12 +975,13 @@ class Conv2dBpInputTiling(CubeTilingOp):
         preprocess tiling for get tiling range
         """
         tiling = copy.deepcopy(tiling_in)
+        kh_kw_k0 = self.k_h * self.k_w * utils.CUBE_SIZE
         if tiling["AL1_shape"]:
-            tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // \
-                (self.k_h * self.k_w * utils.CUBE_SIZE)
+            tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // kh_kw_k0
+        if tiling.get("default_tiling_flag"):
+            kh_kw_k0 = self.k_w * utils.CUBE_SIZE
         if tiling["BL1_shape"]:
-            tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
-                (self.k_h * self.k_w * utils.CUBE_SIZE)
+            tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // kh_kw_k0
         return tiling
 
     def _get_al1_bound(self, tiling, fmap_h, fmap_w):

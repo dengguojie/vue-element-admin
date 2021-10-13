@@ -18,6 +18,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
+from impl.util.util_cube_dynamic import ceil_div
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import gen_conv_shape_range
@@ -159,9 +160,22 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         # get dx_range depends on dy_range
         dy_range = out_backprop.get("ori_range")
         ori_data_format = out_backprop.get("ori_format")
+        out_backprop_shape = out_backprop.get("ori_shape")
+        y_data_format = y.get("ori_format")
+        y_shape = y.get("ori_shape")
+        stride_h = strides[data_format.find("H")]
+        stride_w = strides[data_format.find("W")]
+        y_shape_h = y_shape[y_data_format.find("H")]
+        y_shape_w = y_shape[y_data_format.find("W")]
+        out_backprop_shape_h = out_backprop_shape[ori_data_format.find("H")]
+        out_backprop_shape_w = out_backprop_shape[ori_data_format.find("W")]
+        pads_new = pads
+        if out_backprop_shape_h == ceil_div(y_shape_h, stride_h) and \
+           out_backprop_shape_w == ceil_div(y_shape_w, stride_w):
+            pads_new = [-1, -1, -1, -1]
         ori_paras = {
             "input_size": input_size, "x": out_backprop, "filters": filter, "bias": None, "offset_w": None, "y": y,
-            "strides": strides, "pads": pads, "dilations": dilations, "groups": groups, "data_format": data_format,
+            "strides": strides, "pads": pads_new, "dilations": dilations, "groups": groups, "data_format": data_format,
             "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name
         }
         conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)

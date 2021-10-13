@@ -444,9 +444,9 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self.a_info[3] = self._get_output_w(self.b_info[3])
         self.tiling_info["tiling_type"] = "cost_model_tiling"
 
-        if self.b_info[2] != 1 and self.b_info[3] == 1:
+        if self.a_info[2] != 1 and self.a_info[3] == 1:
             self.tiling_info['padr'] += (self.c_info[3] - 1) * self.tiling_info['dilationW'] + 1
-            self.tiling_info['strideW'] = self.a_info[3] + self.cur_pads[2] + self.cur_pads[3]
+            self.tiling_info['strideW'] = self.b_info[3] + self.cur_pads[2] + self.cur_pads[3]
 
         cost_tiling = get_tiling(self.tiling_info)
         tiling = self._check_and_set_default_tiling(cost_tiling[0])
@@ -508,7 +508,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         # searching down-ward for w_min
         while self._check_tiling_match(tiling, cur_w_size, h_i, cur_n_size) and \
-            cur_w_size > max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1):
+            cur_w_size > max(self.k_w - self.cur_pads[0] - self.cur_pads[1], 1) and \
+            not (tiling.get("w_one_flag") == 1 and self._get_output_w(cur_w_size) == 1):
             wi_min = cur_w_size
             cur_w_size = cur_w_size - W_DELTA
 
@@ -542,12 +543,14 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         perf_hi_max = min(hi_max, h_i + H_LEN)
 
         # searching down-ward for n_min based on w_min and h_min
+        ni_min = cur_n_size
         while self._check_tiling_match(tiling, perf_wi_min, perf_hi_min, cur_n_size) \
             and cur_n_size >= 1:
             ni_min = cur_n_size
             cur_n_size = cur_n_size - W_DELTA
 
         cur_n_size = n_i
+        ni_max = cur_n_size
         # searching up-ward for n_max based on w_max and h_max
         dynamic_l0a_attach = tiling.get("dynamic_l0a_attach")
         dynamic_l0b_attach = tiling.get("dynamic_l0b_attach")
@@ -1017,7 +1020,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         tiling = tiling_extend["tiling"]
         dy_shape = tiling_extend["A_shape"]
         fmap_shape = tiling_extend["B_shape"]
-        w_one_flag = 2 if fmap_shape[2] != 1 and fmap_shape[3] == 1 else 1
+        w_one_flag = 2 if dy_shape[2] != 1 and dy_shape[3] == 1 else 1
         if w_one_flag == 2:
             dy_shape = (dy_shape[0], dy_shape[1], dy_shape[2], dy_shape[3] * 2, dy_shape[4])
         constraint_flag = self._get_attach_flag_detail(tiling, dy_shape, fmap_shape)

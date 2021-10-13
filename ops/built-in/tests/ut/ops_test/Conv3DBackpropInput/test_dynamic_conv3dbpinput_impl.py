@@ -197,60 +197,6 @@ case18 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
                   input_size=input_size, filter=filter, pads=pads)
 
 
-def test_conv3d_bp_input_fuzz_build_tilingcase(test_arg):
-    import json
-    from impl.dynamic.conv3d_backprop_input import conv3d_backprop_input
-    from tbe.common.context import get_context
-    from tbe.common.context import op_context
-    with op_context.OpContext("dynamic"):
-        get_context().set_build_type("fuzzily_build")
-        get_context().add_addition("max_kernel_id", -1)
-        missing_info = [{
-                            "inputs": [{
-                                "index": 2,
-                                "tensor": [{
-                                    "range": [
-                                        [2, 4],
-                                        [8, 16],
-                                        [8, 16],
-                                        [8, 16],
-                                        [16, 16]
-                                    ],
-                                    "shape": [-1, -1, -1, -1, 16]
-                                }]
-                            }]
-                        }]
-        get_context().add_addition("missing_support_info", json.dumps(missing_info))
-        input_list = [
-            {
-            'shape': (5,),
-            'ori_shape': (5,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-            }, {
-                'shape': (8, 1, 16, 16),
-                'ori_shape': (2, 2, 2, 16, 16),
-                'ori_format': 'DHWCN',
-                'format': 'FRACTAL_Z_3D',
-                'dtype': 'float16'
-            }, {
-                'shape': (2, 8, 1, 8, 8, 16),
-                'ori_shape': (-1, -1, -1, -1, 16),
-                'ori_format': 'NDHWC',
-                'format': 'NDC1HWC0',
-                'dtype': 'float16',
-                'range': [(2, 3), (8, 15), (1, 1), (8, 15), (8, 15), (16, 16)]
-            }, {
-                'shape': (2, 9, 1, 9, 9, 16),
-                'ori_shape': (-1, -1, -1, -1, 16),
-                'ori_format': 'NDHWC',
-                'format': 'NDC1HWC0',
-                'dtype': 'float16',
-                'range': [(2, 3), (8, 15), (1, 1), (8, 15), (8, 15), (16, 16)]
-            }, (1, 1, 1, 1, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 'conv3d_dx_generalization']
-        conv3d_backprop_input(*input_list)
-
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A"],
@@ -294,8 +240,6 @@ ut_case.add_case(["Ascend910A"],
 print("adding conv3d test_conv3d_backprop_input_fuzz_build_generalization testcase")
 ut_case.add_cust_test_func(test_func=test_conv3d_backprop_input_fuzz_build_generalization)
 
-print("add test_conv3d_bp_input_fuzz_build_tilingcase")
-ut_case.add_cust_test_func(test_func=test_conv3d_bp_input_fuzz_build_tilingcase)
 
 if __name__ == '__main__':
     ut_case.run()

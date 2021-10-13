@@ -60,6 +60,11 @@ GRADE_W = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
 GRADE_D = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
 DYNAMIC_FMAP_W_MIN = 1
 DYNAMIC_FMAP_W_MAX = 4096
+CUBE_SIZE = 16
+FP16_M = 16
+FP16_K = 16
+FP16_N = 16
+FP16_SIZE = 2
 
 
 def _get_idx_shape_from_format(obj_format, obj_shape):
@@ -130,8 +135,10 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type):
     modify w range max value
     """
 
+    bit_dir = {"float32": 16, "float16": 16, "int8": 32, "int32": 16}
     fmap_w = fmap.get("ori_shape")[fmap.get("ori_format").find("W")]
     filter_h = infilter.get("ori_shape")[infilter.get("ori_format").find("H")]
+    filter_w = infilter.get("ori_shape")[infilter.get("ori_format").find("W")]
     dedy_h_max = dedy.get("ori_range")[dedy.get("ori_format").find("H")][1]
     dedy_h = dedy.get("ori_shape")[dedy.get("ori_format").find("H")]
     dedy_w = dedy.get("ori_shape")[dedy.get("ori_format").find("W")]
@@ -145,7 +152,10 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type):
     while dedy_h_max >= dedy_h:
         h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
         l1_size = get_soc_spec("L1_SIZE")
-        a_l1_size = l1_size
+        kw_k0 = filter_w * CUBE_SIZE
+        tiling_BL1_shape_0 = bit_dir[filter_dtype] // kw_k0
+        filter_l1_size = FP16_SIZE * FP16_N * tiling_BL1_shape_0 * FP16_K * filter_w * filter_h
+        a_l1_size = l1_size - filter_l1_size
         w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
         w_max = w_value // stride_w
 
