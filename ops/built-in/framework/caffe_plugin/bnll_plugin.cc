@@ -29,7 +29,7 @@ Status ParseParamsBNLL(const Message* op_origin, ge::Operator& op_dest) {
     OP_LOGE("op_origin get failed.\n");
     return FAILED;
   }
-  
+
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
   if (layer == nullptr) {
     OP_LOGE("Dynamic cast op_src to LayerParameter failed.\n");

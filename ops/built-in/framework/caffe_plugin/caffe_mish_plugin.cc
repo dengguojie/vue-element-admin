@@ -22,7 +22,6 @@
 #include "register/register.h"
 
 namespace domi {
-
 Status ParseParamMish(const Message* op_src, ge::Operator& op_dest) {
   return SUCCESS;
 }

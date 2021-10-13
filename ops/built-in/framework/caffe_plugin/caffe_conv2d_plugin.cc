@@ -25,7 +25,6 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
 /*!
   * @brief Get covolution pad params from caffe proto and convert to tbe conv2d ir
   * @param conv_param the source conv param info from caffe.
@@ -183,8 +182,8 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
     }
   }
 
-  int channel_axis = conv_param.axis();
-  if ((channel_axis + 4) % 4 != 1) {
+  int channelAxis = conv_param.axis();
+  if ((channelAxis + 4) % 4 != 1) {
     ge::OpsConvShapeErrReport(op.GetName(), "only support 2D convolution and C-channel on the second axis.");
     OP_LOGE(op.GetName().c_str(),
             "only support 2D convolution and C-channel on the second"
@@ -192,8 +191,8 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
     return false;
   }
 
-  bool force_nd_im2col = conv_param.force_nd_im2col();
-  if (force_nd_im2col) {
+  bool forceNdIm2col = conv_param.force_nd_im2col();
+  if (forceNdIm2col) {
     ge::OpsConvShapeErrReport(op.GetName(), "only support 2D convolution.");
     OP_LOGE(op.GetName().c_str(), "only support 2D convolution.");
     return false;

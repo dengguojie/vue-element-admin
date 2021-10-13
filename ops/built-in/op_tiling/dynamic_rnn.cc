@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,23 +31,30 @@
 #include "op_log.h"
 
 namespace optiling {
+const int DEFAULT_SHAPE_LIST_SIZE = 3;
+const int DEFAULT_INDEX_TWO = 2;
+const int DEFAULT_RETURN = -2;
+const int DEFAULT_PARAS_INPUT_SIZE = 2;
+const int DEFAULT_XSHAPE_SIZE = 3;
+const int DEFAULT_CHEQUE_INDEX = -2;
+const int DEFAULT_BLOCK_DIM = 32;
 
 struct DynamicRnnParam {
   int32_t sequenceLength;
   int32_t dynamicrnnbatch;
-  int32_t cheque_index;
+  int32_t chequeIndex;
 };
 
 void InitRunningParams(DynamicRnnParam& params) {
   params.sequenceLength = 0;
   params.dynamicrnnbatch = 0;
-  params.cheque_index = -1;
+  params.chequeIndex = -1;
 }
 
 void SetRunningParams(const DynamicRnnParam& runParams, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, runParams.sequenceLength);
   ByteBufferPut(runInfo.tiling_data, runParams.dynamicrnnbatch);
-  ByteBufferPut(runInfo.tiling_data, runParams.cheque_index);
+  ByteBufferPut(runInfo.tiling_data, runParams.chequeIndex);
 }
 
 /*
@@ -56,35 +63,36 @@ void SetRunningParams(const DynamicRnnParam& runParams, OpRunInfo& runInfo) {
  * @param [in] params: tilling params
  * @return void: void
  */
-void PrintTilingParams(const std::string& op_type, const DynamicRnnParam& params) {
-  OP_LOGD(op_type.c_str(), "sequenceLength=%lld", params.sequenceLength);
-  OP_LOGD(op_type.c_str(), "dynamicrnnbatch=%lld", params.dynamicrnnbatch);
-  OP_LOGD(op_type.c_str(), "cheque_index=%lld", params.cheque_index);
+void PrintTilingParams(const std::string& opType, const DynamicRnnParam& params) {
+  OP_LOGD(opType.c_str(), "sequenceLength=%lld", params.sequenceLength);
+  OP_LOGD(opType.c_str(), "dynamicrnnbatch=%lld", params.dynamicrnnbatch);
+  OP_LOGD(opType.c_str(), "chequeIndex=%lld", params.chequeIndex);
 }
 
 // return tiling_indextiling_index
 int32_t GetLibItem(const std::string& opType, const nlohmann::json& opCompileInfoJson, std::vector<int64_t> xShape) {
   using namespace nlohmann;
   const auto& allVars = opCompileInfoJson["vars"];
-  std::vector<std::vector<int64_t>> tune_shape_list = allVars.at("tune_shape_list").get<std::vector<std::vector<int64_t>>>();
-  for (int64_t i = 0; i < tune_shape_list.size(); i++) {
-    if (tune_shape_list[i].size() != 3) {
+  std::vector<std::vector<int64_t>> tune_shape_list =
+      allVars.at("tune_shape_list").get<std::vector<std::vector<int64_t>>>();
+  for (uint64_t i = 0; i < tune_shape_list.size(); i++) {
+    if (tune_shape_list[i].size() != DEFAULT_SHAPE_LIST_SIZE) {
       OP_LOGE(opType.c_str(), "tune_shape_list's size is illegal. it's = %lld", tune_shape_list[i].size());
-      return -2;
+      return DEFAULT_RETURN;
     }
     if ((tune_shape_list[i][0] == -1) && (tune_shape_list[i][1] == -1)) {
-      OP_LOGD(opType.c_str(), "matched floor schedule, the matched schedule = %lld", tune_shape_list[i][2]);
-      int32_t res = (int32_t)tune_shape_list[i][2];
+      OP_LOGD(opType.c_str(), "matched floor schedule, the matched schedule = %lld", tune_shape_list[i][DEFAULT_INDEX_TWO]);
+      int32_t res = (int32_t)tune_shape_list[i][DEFAULT_INDEX_TWO];
       return res;
     }
-    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / 16) == xShape[2])) {
-      OP_LOGD(opType.c_str(), "The matched schedule = %lld", tune_shape_list[i][2]);
-      int32_t res = (int32_t)tune_shape_list[i][2];
+    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / 16) == xShape[DEFAULT_INDEX_TWO])) {
+      OP_LOGD(opType.c_str(), "The matched schedule = %lld", tune_shape_list[i][DEFAULT_INDEX_TWO]);
+      int32_t res = (int32_t)tune_shape_list[i][DEFAULT_INDEX_TWO];
       return res;
     }
   }
   OP_LOGE(opType.c_str(), "No matching schedule is found.");
-  return -2;
+  return DEFAULT_RETURN;
 }
 
 /*
@@ -102,13 +110,13 @@ bool DynamicRnnTiling(const std::string& opType, const TeOpParas& opParas, const
     OP_LOGE(opType.c_str(), "op DynamicRnnTiling: op_info json error.");
     return false;
   }
-  if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
+  if (opParas.inputs.empty() || opParas.inputs.size() < DEFAULT_PARAS_INPUT_SIZE || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
     OP_LOGE(opType.c_str(), "op DynamicRnnTiling: input shape error.");
     return false;
   }
   std::vector<int64_t> xShape = opParas.inputs[0].tensor[0].shape;
-  if (xShape.size() < 3) {
+  if (xShape.size() < DEFAULT_XSHAPE_SIZE) {
     OP_LOGE(opType.c_str(), "op DynamicRnnTiling: inputs shape are invalid.");
     return false;
   }
@@ -124,25 +132,25 @@ bool DynamicRnnTiling(const std::string& opType, const TeOpParas& opParas, const
 
   // set run tiling data
   int32_t sequenceLength = xShape[0];
-  int32_t dynamicrnnbatch = xShape[2];
-  int32_t cheque_index = GetLibItem(opType, op_info, xShape);
+  int32_t dynamicrnnbatch = xShape[DEFAULT_INDEX_TWO];
+  int32_t chequeIndex = GetLibItem(opType, op_info, xShape);
 
-  if (cheque_index == -2) {
+  if (chequeIndex == DEFAULT_CHEQUE_INDEX) {
     OP_LOGE(opType.c_str(), "DynamicRnnTiling has no matched schedule.");
     return false;
   }
 
-  runInfo.tiling_key = cheque_index;
+  runInfo.tiling_key = chequeIndex;
   runParams.sequenceLength = sequenceLength;
   runParams.dynamicrnnbatch = dynamicrnnbatch;
-  runParams.cheque_index = cheque_index;
+  runParams.chequeIndex = chequeIndex;
   // print tiling params
   PrintTilingParams(opType, runParams);
   SetRunningParams(runParams, runInfo);
 
   // block_dim, core num used in tik op
   // todo sync while dead
-  runInfo.block_dim = 32;
+  runInfo.block_dim = DEFAULT_BLOCK_DIM;
   // workspace, null for tik op
   std::vector<int64_t> workspace = {4096};
   runInfo.workspaces = workspace;

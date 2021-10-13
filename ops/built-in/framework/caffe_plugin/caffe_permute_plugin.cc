@@ -25,7 +25,6 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
 Status ParseParamsPermute(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("Permute", "ParseParamsPermute start");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
@@ -43,8 +42,7 @@ Status ParseParamsPermute(const Message* op_src, ge::Operator& op_dest) {
     for (int i = 0; i < permute_param.order_size(); ++i) {
       uint32_t order = permute_param.order(i);
       if (std::find(orders.begin(), orders.end(), order) != orders.end()) {
-        ge::OpsAttrValueErrReport(op_dest.GetName(), "order", "unrepeatable",
-                                  "duplicate, [" + to_string(order) + "]");
+        ge::OpsAttrValueErrReport(op_dest.GetName(), "order", "unrepeatable", "duplicate, [" + to_string(order) + "]");
         OP_LOGE("Permute", "there are duplicate orders");
         return FAILED;
       }

@@ -24,12 +24,13 @@
 
 namespace domi {
 // Caffe ParseParams
-Status ParseParamsYolo(const Message* op_origin, ge::Operator& op_dest) {
+Status ParseParamsYolo(const Message* op_origin, ge::Operator& op_dest)
+{
   OP_LOGI("Yolo", "enter into ParseParams Yolo ------begin!!");
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Yolo", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

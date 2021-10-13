@@ -25,7 +25,8 @@
 
 namespace domi {
 // Caffe ParseParams
-Status ParseParamsCopy(const Message* op_src, ge::Operator& op_dst) {
+Status ParseParamsCopy(const Message* op_src, ge::Operator& op_dst)
+{
   OP_LOGI("Copy", "enter into ParseParamsCopy  ------begin!!");
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);

@@ -23,33 +23,33 @@
 #include "op_log.h"
 
 namespace domi {
-
 // #### Set param in attr for transfer
-Status ParseParamsNormalize(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsNormalize(const Message* op_src, ge::Operator& op_dest)
+{
   OP_LOGI("Normalize", "Start into the ParseParamsNormalize!");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Normalize", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
 
   const caffe::NormalizeParameter& normalize_param = layer->norm_param();
 
-  // Parse across_spatial
+  // Parse acrossSpatial
   if (!normalize_param.has_across_spatial()) {
     op_dest.SetAttr("across_spatial", true);
   } else {
-    bool across_spatial = static_cast<bool>(normalize_param.across_spatial());
-    op_dest.SetAttr("across_spatial", across_spatial);
+    bool acrossSpatial = static_cast<bool>(normalize_param.across_spatial());
+    op_dest.SetAttr("across_spatial", acrossSpatial);
   }
 
-  // Parse channel_shared
+  // Parse channelShared
   if (!normalize_param.has_channel_shared()) {
     op_dest.SetAttr("channel_shared", true);
   } else {
-    bool channel_shared = normalize_param.channel_shared();
-    op_dest.SetAttr("channel_shared", channel_shared);
+    bool channelShared = normalize_param.channel_shared();
+    op_dest.SetAttr("channel_shared", channelShared);
   }
 
   // Parse eps
@@ -70,5 +70,4 @@ REGISTER_CUSTOM_OP("Normalize")
     .OriginOpType("Normalize")            // name in caffe module
     .ParseParamsFn(ParseParamsNormalize)  // AutoMappingFn for Tensorflow, ParseParamsFn need to realize for caffe
     .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

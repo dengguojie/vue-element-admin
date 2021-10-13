@@ -23,12 +23,11 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ParseParamsLog(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("Log", "--------------ParseParamsLog  start---------------");
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Log", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

@@ -24,7 +24,8 @@
 
 namespace domi {
 // Caffe ParseParams
-Status ParseParamsSigmoid(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsSigmoid(const Message* op_src, ge::Operator& op_dest)
+{
   OP_LOGI("Sigmoid", "--ParseParamsSigmoid  start--");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   if (layer == nullptr) {

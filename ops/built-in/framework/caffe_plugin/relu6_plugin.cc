@@ -26,7 +26,7 @@ namespace domi {
 Status ParseParamsRelu6(const Message* op_origin, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Relu6", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

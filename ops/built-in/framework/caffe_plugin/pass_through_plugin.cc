@@ -29,7 +29,7 @@ Status ParseParamsPassThrough(const Message* op_origin, ge::Operator& op_dest) {
   // trans op_src to op_dest
   const caffe::LayerParameter* layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("PassThrough", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

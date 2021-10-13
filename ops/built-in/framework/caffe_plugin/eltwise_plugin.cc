@@ -26,6 +26,8 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
+const int OPERATION_ONE = 1;
+const int OPERATION_TWO = 2;
 void PrintfInfo(const caffe::LayerParameter* layer) {
   if (layer->eltwise_param().coeff_size() == 0 || layer->eltwise_param().coeff_size() == layer->bottom_size()) {
     OP_LOGI("Eltwise",
@@ -40,7 +42,7 @@ void PrintfInfo(const caffe::LayerParameter* layer) {
 
 Status ParseParamsEltwise(const Message* op_src, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Eltwise", "Dynamic cast op_src to LayerParameter failed");
     return FAILED;
   }
@@ -52,11 +54,11 @@ Status ParseParamsEltwise(const Message* op_src, ge::Operator& op_dest) {
       case 0:
         op_dest.SetAttr("mode", static_cast<int64_t>(0));
         break;
-      case 1:
-        op_dest.SetAttr("mode", static_cast<int64_t>(1));
+      case OPERATION_ONE:
+        op_dest.SetAttr("mode", static_cast<int64_t>(OPERATION_ONE));
         break;
-      case 2:
-        op_dest.SetAttr("mode", static_cast<int64_t>(2));
+      case OPERATION_TWO:
+        op_dest.SetAttr("mode", static_cast<int64_t>(OPERATION_TWO));
         break;
       default:
         ge::OpsAttrValueErrReport(op_dest.GetName(), "operation", "0 or 1 or 2", "unsupported");
@@ -67,7 +69,7 @@ Status ParseParamsEltwise(const Message* op_src, ge::Operator& op_dest) {
         return PARAM_INVALID;
     }
   } else {
-    op_dest.SetAttr("mode", static_cast<int64_t>(1));
+    op_dest.SetAttr("mode", static_cast<int64_t>(OPERATION_ONE));
   }
   if (layer->eltwise_param().coeff_size() != 0) {
     vector<float> v_coeff;

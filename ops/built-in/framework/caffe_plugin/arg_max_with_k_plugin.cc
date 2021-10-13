@@ -23,6 +23,7 @@
 #include "op_log.h"
 
 namespace domi {
+const int DEFAULT_AXIS = 10000;
 // #### Set param in attr for transfer
 Status ParseParamsArgMaxWithK(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("ArgMaxWithK", "Start into the ParseParamsArgMaxWithK!");
@@ -40,21 +41,21 @@ Status ParseParamsArgMaxWithK(const Message* op_src, ge::Operator& op_dest) {
     int axis = static_cast<int>(argmax_param.axis());
     op_dest.SetAttr("axis", axis);
   } else {
-    op_dest.SetAttr("axis", 10000);
+    op_dest.SetAttr("axis", DEFAULT_AXIS);
   }
 
-  // Parse out_max_val
+  // Parse outMaxVal
   if (argmax_param.has_out_max_val()) {
-    bool out_max_val = static_cast<bool>(argmax_param.out_max_val());
-    op_dest.SetAttr("out_max_val", out_max_val);
+    bool outMaxVal = static_cast<bool>(argmax_param.out_max_val());
+    op_dest.SetAttr("out_max_val", outMaxVal);
   } else {
     op_dest.SetAttr("out_max_val", false);
   }
 
-  // Parse top_k
+  // Parse topK
   if (argmax_param.has_top_k()) {
-    int top_k = static_cast<int>(argmax_param.top_k());
-    op_dest.SetAttr("topk", top_k);
+    int topK = static_cast<int>(argmax_param.top_k());
+    op_dest.SetAttr("topk", topK);
   } else {
     op_dest.SetAttr("topk", 1);
   }

@@ -25,14 +25,14 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
-Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
+Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest)
+{
    // Parse parameters
-  const float LRN_DEFAULT_BETA = 0.75;
-  const uint32_t LRN_DEFAULT_NORM_REGION = 0;
-  const uint32_t LRN_DEFAULT_LOCAL_SIZE = 5;
-  const float LRN_DEFAULT_BIAS = 1.0;
-  const float LRN_DEFAULT_ALPHA = 1.0;
+  const float lrnDefaultBeta = 0.75;
+  const uint32_t lrnDefaultNormRegion = 0;
+  const uint32_t lrnDefaultLocalSize = 5;
+  const float lrnDefaultBias = 1.0;
+  const float lrnDefaultAlpha = 1.0;
   const string LRN_ACROSS_CHANNELS = "ACROSS_CHANNELS";
   const string LRN_WITHIN_CHANNEL = "WITHIN_CHANNEL";
 
@@ -40,7 +40,7 @@ Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
   // Ckeck operator parameter's validity
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE(op_dest.GetName().c_str(), "convert src op failed.");
     return FAILED;
   }
@@ -51,40 +51,40 @@ Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest) {
   if (param.has_beta()) {
     op_dest.SetAttr("beta", param.beta());
   } else {
-    op_dest.SetAttr("beta", LRN_DEFAULT_BETA);
+    op_dest.SetAttr("beta", lrnDefaultBeta);
   }
 
-  uint32_t local_size = LRN_DEFAULT_LOCAL_SIZE;
+  uint32_t localSize = lrnDefaultLocalSize;
   if (param.has_local_size()) {
-    local_size = param.local_size();
-    if (0 == local_size % 2) {
-      ge::OpsAttrValueErrReport(op_dest.GetName(), "local_size", "odd value",
-                                to_string(local_size));
-      OP_LOGE(op_dest.GetName().c_str(), "LRN only supports odd values for local_size.");
+    localSize = param.local_size();
+    if (localSize % 2 == 0) {
+      ge::OpsAttrValueErrReport(op_dest.GetName(), "localSize", "odd value",
+                                to_string(localSize));
+      OP_LOGE(op_dest.GetName().c_str(), "LRN only supports odd values for localSize.");
       return FAILED;
     }
   }
-  int64_t depth_radius = (local_size - 1) / 2;
-  op_dest.SetAttr("depth_radius", depth_radius);
+  int64_t depthRadius = (localSize - 1) / 2;
+  op_dest.SetAttr("depth_radius", depthRadius);
 
-  uint32_t norm_region = LRN_DEFAULT_NORM_REGION;
+  uint32_t normRegion = lrnDefaultNormRegion;
   if (param.has_norm_region()) {
-    norm_region = param.norm_region();
+    normRegion = param.norm_region();
   }
 
   if (param.has_k()) {
     op_dest.SetAttr("bias", param.k());
   } else {
-    op_dest.SetAttr("bias", LRN_DEFAULT_BIAS);
+    op_dest.SetAttr("bias", lrnDefaultBias);
   }
 
-  float alpha = LRN_DEFAULT_ALPHA;
+  float alpha = lrnDefaultAlpha;
   if (param.has_alpha()) {
     alpha = param.alpha();
   }
-  op_dest.SetAttr("alpha", alpha / local_size);
+  op_dest.SetAttr("alpha", alpha / localSize);
 
-  if (norm_region == LRN_DEFAULT_NORM_REGION) {
+  if (normRegion == lrnDefaultNormRegion) {
     op_dest.SetAttr("norm_region", LRN_ACROSS_CHANNELS);
   } else {
     op_dest.SetAttr("norm_region", LRN_WITHIN_CHANNEL);

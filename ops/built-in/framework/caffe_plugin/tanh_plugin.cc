@@ -23,7 +23,8 @@
 #include "op_log.h"
 
 namespace domi {
-Status ParseParamsTanh(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsTanh(const Message* op_src, ge::Operator& op_dest)
+{
   OP_LOGI("Tanh", "enter into ParseParams Tanh ------begin!!");
 
   if (op_src == nullptr) {

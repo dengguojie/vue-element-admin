@@ -36,16 +36,16 @@ Status ParseParamsConcat(const Message* op_src, ge::Operator& op_dest) {
   }
 
   const caffe::ConcatParameter& param = layer->concat_param();
-  int concat_dim = 0;
+  int concatDim = 0;
   if (param.has_axis()) {
-    concat_dim = param.axis();
+    concatDim = param.axis();
   } else if (param.has_concat_dim()) {
-    concat_dim = param.concat_dim();
+    concatDim = param.concat_dim();
   } else {
     OP_LOGI("Concat", "Caffe Concat has no axis nor concat_dim.");
-    concat_dim = DEFAULT_CONCAT_DIM;
+    concatDim = DEFAULT_CONCAT_DIM;
   }
-  op_dest.SetAttr("concat_dim", concat_dim);
+  op_dest.SetAttr("concat_dim", concatDim);
 
   int n = layer->bottom_size();
   OP_LOGI("Concat", "[PLUGIN_CONCAT]--------------bottom_size=%d---------------", n);

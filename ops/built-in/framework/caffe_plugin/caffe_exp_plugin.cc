@@ -23,7 +23,6 @@
 #include "register/register.h"
 
 namespace domi {
-
 Status ParseParamsExp(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("Exp", "--ParseParamsExp  start--");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
@@ -35,27 +34,27 @@ Status ParseParamsExp(const Message* op_src, ge::Operator& op_dest) {
   const caffe::ExpParameter& exp_param = layer->exp_param();
 
   const std::string EXP_ATTR_BASE = "base";
-  const float DEFAULT_BASE_VALUE = -1.0;
+  const float defaultBaseValue = -1.0;
   if (exp_param.has_base()) {
     op_dest.SetAttr(EXP_ATTR_BASE, static_cast<float>(exp_param.base()));
   } else {
-    op_dest.SetAttr(EXP_ATTR_BASE, static_cast<float>(DEFAULT_BASE_VALUE));
+    op_dest.SetAttr(EXP_ATTR_BASE, static_cast<float>(defaultBaseValue));
   }
 
   const std::string EXP_ATTR_SCALE = "scale";
-  const float DEFAULT_SCALE_VALUE = 1.0;
+  const float defaultScaleValue = 1.0;
   if (exp_param.has_scale()) {
     op_dest.SetAttr(EXP_ATTR_SCALE, static_cast<float>(exp_param.scale()));
   } else {
-    op_dest.SetAttr(EXP_ATTR_SCALE, static_cast<float>(DEFAULT_SCALE_VALUE));
+    op_dest.SetAttr(EXP_ATTR_SCALE, static_cast<float>(defaultScaleValue));
   }
 
   const std::string EXP_ATTR_SHIFT = "shift";
-  const float DEFAULT_SHIFT_VALUE = 0.0;
+  const float defaultShiftValue = 0.0;
   if (exp_param.has_shift()) {
     op_dest.SetAttr(EXP_ATTR_SHIFT, static_cast<float>(exp_param.shift()));
   } else {
-    op_dest.SetAttr(EXP_ATTR_SHIFT, static_cast<float>(DEFAULT_SHIFT_VALUE));
+    op_dest.SetAttr(EXP_ATTR_SHIFT, static_cast<float>(defaultShiftValue));
   }
 
   OP_LOGI("Exp", "--ParseParamsExp end--");

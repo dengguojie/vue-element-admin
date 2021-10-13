@@ -17,13 +17,14 @@
 #include "op_log.h"
 
 namespace domi {
+const int DEFAULT_OUT_BOX_DIM = 3;
 // Caffe ParseParams
 Status ParseParamsYoloV3DetectionOutputV2(const Message* op_origin, ge::Operator& op_dest) {
   OP_LOGI("YoloV3DetectionOutputV2", "enter into ParseParamsYoloV3DetectionOutputV2 ------begin!!");
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("YoloV3DetectionOutputV2", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -31,7 +32,7 @@ Status ParseParamsYoloV3DetectionOutputV2(const Message* op_origin, ge::Operator
   const caffe::YoloV3DetectionOutputV2Parameter& param = layer->yolov3_detection_output_v2_param();
   int n = layer->bottom_size();
   op_dest.SetAttr("N", n);
-  op_dest.SetAttr("out_box_dim", 3);
+  op_dest.SetAttr("out_box_dim", DEFAULT_OUT_BOX_DIM);
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", n);
   if (param.has_boxes()) {

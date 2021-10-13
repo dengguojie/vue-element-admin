@@ -25,7 +25,8 @@
 
 namespace domi {
 // #### Set param in attr for transfer
-Status ParseParamsInnerProduct(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsInnerProduct(const Message* op_src, ge::Operator& op_dest)
+{
   OP_LOGI("InnerProduct", "Start into the ParseParamsInnerProduct!");
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
 

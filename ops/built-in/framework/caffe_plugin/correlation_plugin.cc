@@ -44,7 +44,7 @@ Status ParseParamsByOperatorCorrelation(const ge::Operator& op_src, ge::Operator
 }
 
 REGISTER_CUSTOM_OP("Correlation")
-   .FrameworkType(CAFFE)  
+   .FrameworkType(CAFFE)
    .OriginOpType("Correlation")
    .ParseParamsByOperatorFn(ParseParamsByOperatorCorrelation)
    .ImplyType(ImplyType::TVM);

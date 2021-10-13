@@ -25,7 +25,7 @@ namespace domi {
 // Caffe ParseParams
 Status ParseParamsReverse(const Message* op_src, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     return FAILED;
   }
 
@@ -39,7 +39,7 @@ Status ParseParamsReverse(const Message* op_src, ge::Operator& op_dest) {
       v_axis.push_back(reverse_param.axis(i));
     }
   }
-  
+
   op_dest.SetAttr("axis", v_axis);
 
   return SUCCESS;

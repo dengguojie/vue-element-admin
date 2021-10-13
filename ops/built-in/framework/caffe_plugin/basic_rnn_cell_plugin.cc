@@ -24,7 +24,8 @@
 
 namespace domi {
 // Caffe ParseParams
-Status ParseParamsBasicRNNCell(const Message* op_origin, ge::Operator& op_dest) {
+Status ParseParamsBasicRNNCell(const Message* op_origin, ge::Operator& op_dest)
+{
   return SUCCESS;
 }
 

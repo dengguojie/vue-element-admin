@@ -34,7 +34,7 @@ Status ParseParamsScale(const Message* op_src, ge::Operator& op_dest) {
   OP_LOGI("Scale", "------Parse Params for Scale begin------");
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("Scale", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }

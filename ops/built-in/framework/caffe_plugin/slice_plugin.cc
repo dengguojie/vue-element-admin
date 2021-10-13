@@ -25,10 +25,10 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
-Status ParseParamsSlice(const Message* op_src, ge::Operator& op) {
+Status ParseParamsSlice(const Message* op_src, ge::Operator& op)
+{
   auto layer = static_cast<const caffe::LayerParameter*>(op_src);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE(op.GetName().c_str(), "convert src op failed.");
     return FAILED;
   }

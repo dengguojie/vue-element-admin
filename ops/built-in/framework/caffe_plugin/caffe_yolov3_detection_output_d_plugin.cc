@@ -30,15 +30,16 @@ Status ParseParamsYoloV3DetectionOutput(const Message* op_origin, ge::Operator& 
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("YoloV3DetectionOutput", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
   // get layer
   const caffe::YoloV3DetectionOutputParameter& param = layer->yolov3_detection_output_param();
+  const int DEFAULT_OUT_BOTTOM_SIZE = 2;
   int n = layer->bottom_size();
   op_dest.SetAttr("N", n);
-  op_dest.SetAttr("out_box_dim", 2);
+  op_dest.SetAttr("out_box_dim", DEFAULT_OUT_BOTTOM_SIZE);
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", n);
   if (param.has_boxes()) {

@@ -23,7 +23,8 @@
 #include "op_log.h"
 
 namespace domi {
-Status ParseParamsThreshold(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsThreshold(const Message* op_src, ge::Operator& op_dest)
+{
   OP_LOGI("Threshold", "enter into ParseParams Threshold ------begin!!");
 
   if (op_src == nullptr) {

@@ -30,8 +30,10 @@
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
 
-
 namespace optiling {
+const int SHAPE_INDEX_TWO = 2;
+const int SHAPE_INDEX_THREE = 3;
+const int SHAPE_INDEX_FOUR = 4;
 
 struct AippTilingParams {
   int64_t needCoreNum;
@@ -107,11 +109,11 @@ bool CalAippRunningParams(const std::string& opType, AippTilingParams& runParams
                           int64_t coreNum) {
   runParams.outputN = outputShape[0];
   runParams.outputC1 = outputShape[1];
-  runParams.outputH = outputShape[2];
-  runParams.outputW = outputShape[3];
-  runParams.outputC0 = outputShape[4];
-  OP_LOGD(opType.c_str(), "op [AippTiling], n=%ld, c1=%ld, h=%ld, w=%ld, c0=%ld", runParams.outputN,
-          runParams.outputC1, runParams.outputH, runParams.outputW, runParams.outputC0);
+  runParams.outputH = outputShape[SHAPE_INDEX_TWO];
+  runParams.outputW = outputShape[SHAPE_INDEX_THREE];
+  runParams.outputC0 = outputShape[SHAPE_INDEX_FOUR];
+  OP_LOGD(opType.c_str(), "op [AippTiling], n=%ld, c1=%ld, h=%ld, w=%ld, c0=%ld", runParams.outputN, runParams.outputC1,
+          runParams.outputH, runParams.outputW, runParams.outputC0);
 
   runParams.batchEachCore = CalCeilValue(opType, runParams.outputN, coreNum);
   runParams.needCoreNum = CalCeilValue(opType, runParams.outputN, runParams.batchEachCore);
@@ -152,10 +154,10 @@ bool AippTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op AippTiling: output shape dims must be 5, dim 1 must be equal to 1");
     return false;
   }
-  std::string input_format = opParas.inputs[0].tensor[0].format;
-  std::string output_format = opParas.outputs[0].tensor[0].format;
-  OP_LOGD(opType.c_str(), "op [AippTiling], input format [%s], output format [%s]",
-          input_format.c_str(), output_format.c_str());
+  std::string inputFormat = opParas.inputs[0].tensor[0].format;
+  std::string ioutputFormat = opParas.outputs[0].tensor[0].format;
+  OP_LOGD(opType.c_str(), "op [AippTiling], input format [%s], output format [%s]", inputFormat.c_str(),
+          ioutputFormat.c_str());
 
   // get compile info
   int64_t coreNum = 0;

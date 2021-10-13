@@ -30,7 +30,8 @@ namespace domi {
  * return SUCCESS:parse success
  *        FAILED: parse failed
  */
-Status ParseParamsSoftmax(const Message* op_src, ge::Operator& op_dst) {
+Status ParseParamsSoftmax(const Message* op_src, ge::Operator& op_dst)
+{
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   if (layer == nullptr) {
     OP_LOGI("Softmax", "[Softmax_Plugin] cast op_src to LayerParameter failed.");

@@ -25,15 +25,15 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-
 static const int DEFAULT_SAMPLE_NUM = 2;
 static const int DEFAULT_ROI_END_MODE = 0;
-Status ParseParamsROIAlign(const Message* op_origin, ge::Operator& op_dest) {
+Status ParseParamsROIAlign(const Message* op_origin, ge::Operator& op_dest)
+{
   OP_LOGI("enter into ParseParamsROIAlign ------begin!!\n");
   // trans op_src to op_dest
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
 
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGI("Dynamic cast op_src to LayerParameter failed.\n");
     return FAILED;
   }

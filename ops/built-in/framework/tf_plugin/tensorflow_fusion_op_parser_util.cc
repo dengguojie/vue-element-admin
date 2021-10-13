@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
         ++num_set;                                                                                            \
       }                                                                                                       \
     } else if (attr_value.value_case() == domi::tensorflow::AttrValue::oneof_case) {                          \
-      if (type != type_string) {                                                                              \
+      if (type != (type_string)) {                                                                              \
         OP_LOGE("GeAttrValue has value with type '" type_string "' when '%s' expected", type.c_str());        \
         return FAILED;                                                                                        \
       }                                                                                                       \
@@ -145,8 +145,8 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
 
   // Okay to have an empty list, but not to be missing a non-list value.
   string str_x = "list(";
-  bool b_start = (type.size() >= str_x.size()) && (type.compare(0, str_x.size(), str_x) == 0);
-  if ((num_set == 0) && !b_start) {
+  bool bStart = (type.size() >= str_x.size()) && (type.compare(0, str_x.size(), str_x) == 0);
+  if ((num_set == 0) && !bStart) {
     OP_LOGE("GeAttrValue missing value with expected type '%s'", type.c_str());
     return FAILED;
   }

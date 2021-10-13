@@ -27,9 +27,10 @@
 using namespace ge;
 namespace domi {
 // Caffe ParseParams
-Status ParseParamsContinuationIndicator(const Message* op_origin, ge::Operator& op_dest) {
+Status ParseParamsContinuationIndicator(const Message* op_origin, ge::Operator& op_dest)
+{
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
-  if (nullptr == layer) {
+  if (layer == nullptr) {
     OP_LOGE("ContinuationIndicator", "Dynamic cast op_src to LayerParameter failed.");
     return FAILED;
   }
@@ -43,9 +44,15 @@ Status ParseParamsContinuationIndicator(const Message* op_origin, ge::Operator& 
   return SUCCESS;
 }
 
+/**
+ * FrameworkType:  Enumerated type. The options are as follows: CAFFE, TENSORFLOW
+ * OriginOpType:   ContinuationIndicator indicates the type name of the operator in the caffe framework.
+ * ParseParamsFn:  AutoMappingFn indicates automatic mapping the parameters of op.
+ * ImplyType:      Instantiation type, TVM
+ */
 REGISTER_CUSTOM_OP("ContinuationIndicator")
-    .FrameworkType(CAFFE)      // Enumerated type. The options are as follows: CAFFE, TENSORFLOW
-    .OriginOpType("ContinuationIndicator")  // ContinuationIndicator indicates the type name of the operator in the caffe framework.
-    .ParseParamsFn(ParseParamsContinuationIndicator)  // AutoMappingFn indicates automatic mapping the parameters of op.
+    .FrameworkType(CAFFE)
+    .OriginOpType("ContinuationIndicator")
+    .ParseParamsFn(ParseParamsContinuationIndicator)
     .ImplyType(ImplyType::TVM);
-}// namespace domi
+} // namespace domi
