@@ -1548,7 +1548,7 @@ class Conv2dDxOptiSchedule:
         # get factor from l0c, ub to ddr
         mc_from_tiling = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
         l0c_tiling_factor = [TILING["CL0_matrix"][0], mc_from_tiling]
-        if TENSOR_MAP.get("c_gm").dtype == "float32":
+        if TENSOR_MAP.get("c_gm").dtype == "float32" and TENSOR_MAP.get("b_l1").dtype == "float32":
             l0c_tiling_factor[0] *= 2
         undilate_l0c_m = (mc_from_tiling // DIM_MAP["img_shape"][3]) * DIM_MAP["img_shape"][3]
 
@@ -2485,7 +2485,7 @@ class Conv2dDxOptiSchedule:
             else:
                 if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
                     sch[c_gm].emit_insn(l0c_m_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
-                elif c_gm.dtype == "float32":
+                elif c_gm.dtype == "float32" and a_l1.dtype == "float32":
                     _, split_axis = sch[c_gm].split(l0c_n_inner_inner, factor=2)
                     sch[c_gm].emit_insn(split_axis, "dma_copy", {"layout_transform": "channel_split"})
                 else:
@@ -2710,7 +2710,7 @@ class Conv2dDxOptiSchedule:
                 l0c_multi_group_flag = True
                 self._check_quant_fusion_legal(fusion_type)
 
-        if dx_res_write.dtype == "float32":
+        if dx_res_write.dtype == "float32" and a_l1.dtype == "float32":
             # cin1_g was calculated with c0=8
             DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] // 2
         if self.dx_para.get_para_map("load3d_flag"):

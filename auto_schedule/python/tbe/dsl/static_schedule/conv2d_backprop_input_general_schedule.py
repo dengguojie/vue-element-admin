@@ -1524,7 +1524,7 @@ def general_schedule(
                 affine_l0c = 1, 1, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
                              cl0_tiling_n0 * cl0_tiling_nc
             else:
-                factor = 2 if c_ddr.dtype == "float32" else 1
+                factor = 2 if c_ddr.dtype == "float32" and a_col.dtype == "float32" else 1
                 affine_l0c = 1, 1, cl0_tiling_nc * factor, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
                              cl0_tiling_n0 // factor
 
@@ -2351,7 +2351,7 @@ def general_schedule(
                 hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
                 sch_agent[c_ddr].split(c_dim, 16)
                 sch[c_ddr].emit_insn(hw_dim, "dma_copy", {"layout_transform": "nz2nd"})
-            elif c_ddr.dtype == "float32":
+            elif c_ddr.dtype == "float32" and b_col.dtype == "float32":
                 channel_axis = sch_agent[c_ddr].nlast_scopes(3)[0]
                 channel_axis_out, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
                 sch[c_ddr].emit_insn(channel_axis_inner, "dma_copy", {"layout_transform": "channel_split"})

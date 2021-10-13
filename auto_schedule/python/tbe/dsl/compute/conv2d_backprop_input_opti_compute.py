@@ -533,7 +533,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         # from l0c(GNC1MC0) to ub(N[GC1]MC0)
         output_shape = [batch_dx_img, c1_dx_img, h_dx_img * w_dx_img, c0_dx_img]
         if self._cube_vector_split_flag:
-            if res_c_dtype == "float32":
+            if res_c_dtype == "float32" and tensor_a.dtype == "float32":
                 output_shape = [batch_dx_img, c1_dx_img * 2, h_dx_img * w_dx_img, 8]
                 output_shape_fp32 = [batch_dx_img, c1_dx_img * 2, h_dx_img, w_dx_img, 8]
                 img_c = tvm.compute(
