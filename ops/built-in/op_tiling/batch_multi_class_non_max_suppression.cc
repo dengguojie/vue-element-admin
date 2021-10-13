@@ -23,6 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
   struct BatchMultiClassNonMaxSuppressionTilingParams {
@@ -81,6 +82,8 @@ namespace optiling {
   static void CalCoreInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params,
                           int32_t & core_num, std::vector<int64_t> & scores_shape) {
     OP_LOGD("CalCoreInfo is running");
+    OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("batch_multi_class_non_max_suppression",
+      "core_num = 0 is not support"), return);
     int32_t batch = scores_shape[0];
     int32_t batch_per_core = 0;
     int32_t core_used = 0;
@@ -97,6 +100,8 @@ namespace optiling {
   static void CalRunningInfo(BatchMultiClassNonMaxSuppressionTilingParams &tiling_params,
                              int32_t core_num, int32_t proposal_topk_k, std::vector<int64_t> & scores_shape) {
     OP_LOGD("CalRunningInfo is running");
+    OP_TILING_CHECK(proposal_topk_k == 0, VECTOR_INNER_ERR_REPORT_TILIING("batch_multi_class_non_max_suppression",
+      "proposal_topk_k = 0 is not support"), return);
     int32_t batch = scores_shape[0];
     int32_t classes = scores_shape[1];
     int32_t boxes_num = scores_shape[2];

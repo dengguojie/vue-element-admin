@@ -98,6 +98,8 @@ static void PrintParam(const TilingParam& param) {
 }
 
 static int32_t GetCeilInt(int32_t value1, int32_t value2) {
+  OP_TILING_CHECK(value2 == 0, VECTOR_INNER_ERR_REPORT_TILIING("arg_max_with_value", "value2 must not be zero"),
+                  return -1);
   return (int32_t)(value1 + value2 - 1) / value2;
 }
 

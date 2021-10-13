@@ -94,6 +94,8 @@ static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
 }
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
+  OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("batch_to_space_nd", "core_num = 0 is not support"),
+                  return);  
   param.one_core_ele = (total_ele + core_num - 1) / core_num;
   param.act_core_num = total_ele / param.one_core_ele;
   if (total_ele % param.one_core_ele != 0) {

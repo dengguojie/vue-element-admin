@@ -92,6 +92,12 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
                       int64_t indicesSize, int64_t varDataEachBlock, int64_t var_num, std::string var_dtype, int64_t var_first_shape) {
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t halfUbSize = ubSize / 2;
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varSize = 0 is not support"),
+                  return); 
+  OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "indicesSize = 0 is not support"),
+                  return);
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varDataEachBlock = 0 is not support"),
+                  return);
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = indicesNum / (halfUbSize / indicesSize);

@@ -81,6 +81,8 @@ namespace optiling{
     {
       core_used = rounds;
     }
+    OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("rnn_gen_mask_v2",
+      "core_num = 0 is not support"), return);
     batch_num_per_aicore = rounds / core_used;
     batch_tail = rounds % core_used;
 
@@ -93,6 +95,8 @@ namespace optiling{
                       std::vector<int64_t> & x_shape)
   {
     OP_LOGD("CalRunningInfo is running");
+    OP_TILING_CHECK(block == 0, VECTOR_INNER_ERR_REPORT_TILIING("rnn_gen_mask_v2",
+      "block = 0 is not support"), return);
     int32_t batch_size = x_shape[1];
     int32_t num_step = x_shape[0];
     int32_t rounds = batch_size * num_step;

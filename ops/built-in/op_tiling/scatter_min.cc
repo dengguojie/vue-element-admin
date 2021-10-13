@@ -102,6 +102,16 @@ void CalScatterMinBranchRunningParams(ScatterMinTilingParams& runParams, int64_t
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_min", "varSize = 0 is not support"),
+                  return); 
+  OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_min", "indicesSize = 0 is not support"),
+                  return);
+  OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_min", "varUbSize = 0 is not support"),
+                  return); 
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_min", "indicesUbSize = 0 is not support"),
+                  return);
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_min", "varDataEachBlock = 0 is not support"),
+                  return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
   runParams.varLastNum = varNum % (varUbSize / varSize);
   runParams.updatesLoopNum = updateDataNum / (varUbSize / varSize);

@@ -26,6 +26,7 @@
 #include "../op_proto/util/util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -173,6 +174,8 @@ static void _printTensorValue(const ReflectionPadV3CompileParams& compile_params
 }
 
 static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num) {
+  OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("reflection_pad_v3",
+    "core_num = 0 is not support"), return -1);
   auto nc_total = x_shape[0] * x_shape[1];
   auto hc_total = x_shape[2] * x_shape[3];
   auto block = 16;
@@ -206,6 +209,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   auto block = 16;
   auto nc_total = input_shape[0] * input_shape[1];
   core_used = get_core_num(input_shape, compile_params.core_num);
+  OP_TILING_CHECK(core_used == 0, VECTOR_INNER_ERR_REPORT_TILIING("reflection_pad_v3",
+    "core_used = 0 is not support"), return false);
   not_last_core_numel = (nc_total - diff) / core_used + diff;
   last_core_numel = nc_total - (core_used - diff) * not_last_core_numel;
   if (input_shape[2] < block && input_shape[3] < block) {

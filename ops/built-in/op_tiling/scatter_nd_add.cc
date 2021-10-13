@@ -79,7 +79,27 @@ void CalRunningParams(ScatterNdAddTilingParams& runParams, int64_t indicesNum, i
                       int64_t varDataEachBlock, string VarDtype) {
   int64_t addSizeByte = varSize * addsNum;
   int64_t halfUbSize = ubSize / 2;
+  OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "halfUbSize = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "indicesSize = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "coreNum = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "varSize = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(runParams.indicesLastDim == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "runParams.indicesLastDim = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(runParams.indicesLastDim == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "runParams.indicesLastDim = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(varDataEachBlock == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "varDataEachBlock = 0 is not support"),
+                  return );
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;
+  OP_TILING_CHECK(halfUbIndicesNum == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "halfUbIndicesNum = 0 is not support"),
+                  return );
   runParams.addsLoopNum = addDataNum / (halfUbSize / varSize);
   runParams.addsLastNum = addDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = (indicesNum / runParams.indicesLastDim) / (halfUbIndicesNum / runParams.indicesLastDim);

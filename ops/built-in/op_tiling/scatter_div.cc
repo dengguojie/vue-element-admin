@@ -106,6 +106,16 @@ void CalScatterDivBranchRunningParams(ScatterDivTilingParams& runParams, int64_t
     varUbSize = ubSize / 16 * 5;
     indicesUbSize = ubSize / 16;
   }
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "varSize = 0 is not support"),
+                  return); 
+  OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "indicesSize = 0 is not support"),
+                  return);
+  OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "varUbSize = 0 is not support"),
+                  return); 
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "indicesUbSize = 0 is not support"),
+                  return);
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "varDataEachBlock = 0 is not support"),
+                  return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
   runParams.varLastNum = varNum % (varUbSize / varSize);
   runParams.updatesLoopNum = updateDataNum / (varUbSize / varSize);

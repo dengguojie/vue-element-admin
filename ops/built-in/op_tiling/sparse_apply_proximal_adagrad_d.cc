@@ -72,13 +72,19 @@ void InitTilingParams(SapaTilingParamsFp32& params) {
 }
 
 int32_t SapaCeil(const int32_t& num, const int32_t& factor) {
-  if (num % factor != 0) {
-    return (num / factor + 1) * factor;
+    OP_TILING_CHECK(factor == 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING("sparse_apply_proximal_adagrad_d", "factor must not be zero"),
+                    return -1);
+    if (num % factor != 0) {
+        return (num / factor + 1) * factor;
   }
   return num;
 }
 
 int32_t SapaCeilDiv(const int32_t& num, const int32_t& factor) {
+  OP_TILING_CHECK(factor == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("sparse_apply_proximal_adagrad_d", "factor must not be zero"),
+                  return -1);
   int32_t res;
   res = (num % factor == 0) ? num / factor : num / factor + 1;
   return res;
