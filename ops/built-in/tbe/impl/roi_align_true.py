@@ -1097,8 +1097,12 @@ def _compute_roi_with_single_point(tik_instance, feature_shape, dtype,
         with tik_instance.for_range(0, 2) as j:
             one = tik_instance.Scalar(dtype="int32", init_value=-1)
             cache_table[j, 0].set_as(one)
+
+    thread_num = 2
+    if pool_w == 1:
+        thread_num = 1
     with tik_instance.for_range(0, pool_h) as p_h:
-        with tik_instance.for_range(0, pool_w, thread_num=2) as p_w:
+        with tik_instance.for_range(0, pool_w, thread_num=thread_num) as p_w:
             # less 255
             c_block = 110
             c_number = (fm_c1 + (c_block - 1)) // c_block
