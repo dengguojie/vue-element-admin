@@ -897,7 +897,11 @@ class ReduceMultiSchedule(ElewiseSchedule):
                                                                         self._core_num)
         # set barrier base on block tiling result
         tiling_shape[block_tiling_axes[0]] = block_factor
-        tiling_barrier = tiling_barrier + list(range(block_tiling_axes[0]))
+        if self._op_type == OpSpecTypes.MVN:
+            tiling_barrier = tiling_barrier + list(range(block_tiling_axes[0] + 1))
+        else:
+            tiling_barrier = tiling_barrier + list(range(block_tiling_axes[0]))
+
         tiling_barrier = tiling_barrier + block_tiling_axes[1:]
         # ub tiling
         rest_size = int(self._max_ub_count // self._limit_ub_count)
