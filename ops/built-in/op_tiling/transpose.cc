@@ -614,7 +614,7 @@ static bool AddShapePerm(const string& opType, const ge::Operator& paras, Compil
   info.dType = input_desc->GetDataType();
   info.fp16Times = (GetSizeByDataType(info.dType) + 1) / 2;  // add 1 for int8
   OP_LOGD(opType.c_str(), "GetCompileParams, coreNum[%d], ubSize[%d] blocks, dType[%s].", info.coreNum, info.ubSize,
-          to_string(info.dType));
+          to_string(info.dType).c_str());
 
   shapeInfo.inShape = input_desc->MutableShape().GetDims();
   shapeInfo.outShape = output_desc->MutableShape().GetDims();

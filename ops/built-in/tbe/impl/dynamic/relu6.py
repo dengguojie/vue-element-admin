@@ -25,9 +25,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,too-many-locals
+@register_operator_compute("Relu6", op_mode="dynamic", support_fusion=True)
 def relu6_compute(input_x, output_y, kernel_name="relu6"):
     """
     compute of relu6

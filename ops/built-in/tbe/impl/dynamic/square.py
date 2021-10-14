@@ -21,12 +21,14 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=unused-argument,redefined-argument-from-local
-def square_compute(input_x, output_y, input_dtype, kernel_name="square"):
+@register_operator_compute("Square", op_mode="dynamic", support_fusion=True)
+def square_compute(input_x, output_y, kernel_name="square"):
     """
     algorithm: square
     calculating data's square,y= x*x
@@ -47,6 +49,7 @@ def square_compute(input_x, output_y, input_dtype, kernel_name="square"):
     """
     api_check = tbe_platform.api_check_support("tbe.dsl.vmul",
                                                "float32")
+    input_dtype = input_x.dtype
     if not(api_check) and input_dtype == "float32":
         input_x = tbe.cast_to(input_x, "float16")
         res = tbe.vmul(input_x, input_x)
@@ -91,7 +94,7 @@ def square(input_x, output, kernel_name="square"):
             x_shape = shape_util.variable_shape([input_x])
             # square_compute
             data_x = tvm.placeholder(x_shape[0], x_dtype, name="data_x")
-            res = square_compute(data_x, output, x_dtype, kernel_name)
+            res = square_compute(data_x, output, kernel_name)
 
             tensors.append((data_x, res))
         with tvm.target.cce():

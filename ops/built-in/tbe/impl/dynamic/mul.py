@@ -22,11 +22,13 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_common
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local
+@register_operator_compute("Mul", op_mode="dynamic", support_fusion=True)
 def mul_compute(input1, input2, output, kernel_name="mul"):
     """
     calculating data's mul, c = a * b
