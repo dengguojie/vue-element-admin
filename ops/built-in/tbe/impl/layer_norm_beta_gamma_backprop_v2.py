@@ -17,6 +17,7 @@ layer_norm_beta_gamma_backprop_v2
 """
 import operator
 import te.lang.cce as tbe
+import functools
 
 from te import tvm
 from te import platform as tbe_platform
@@ -330,6 +331,28 @@ def layer_norm_beta_gamma_back_nz_compute(data_dy, data_x, param_nz):
     return res_list
 
 
+def _update_input_shape(shape_x, shape_dy, shape_gamma):
+    """
+    update shape_x, shape_dy, shape_gamma
+    """
+    size_gamma = len(shape_gamma)
+    if 1 < size_gamma < len(shape_x):
+        shape_x_new = []
+        shape_dy_new = []
+        shape_gamma_new = []
+        sub = len(shape_x) - len(shape_gamma)
+        for i in range(sub):
+            shape_x_new.append(shape_x[i])
+            shape_dy_new.append(shape_dy[i])
+        fused_size = functools.reduce(lambda x, y: x * y, shape_gamma)
+        shape_x_new.append(fused_size)
+        shape_dy_new.append(fused_size)
+        shape_gamma_new.append(fused_size)
+        return shape_x_new, shape_dy_new, shape_gamma_new
+
+    return shape_x, shape_dy, shape_gamma
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
@@ -399,14 +422,15 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
                        "shape_gamma": shape_gamma,
                        "dtype": dtype, "kernel_name": kernel_name})
 
-        data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype, attrs=attr)
-        data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)
+        shape_x_new, shape_dy_new, shape_gamma_new = _update_input_shape(shape_x, shape_dy, shape_gamma)
+        data_dy = tvm.placeholder(shape_dy_new, name="data_dy", dtype=dtype, attrs=attr)
+        data_x = tvm.placeholder(shape_x_new, name="data_x", dtype=dtype_x)
 
         res_list = layer_norm_beta_gamma_backprop_v2_compute(data_dy,
                                                              data_x,
                                                              output_pd_gamma,
                                                              output_pd_beta,
-                                                             shape_gamma)
+                                                             shape_gamma_new)
 
         with tvm.target.cce():
             sch = tbe.auto_schedule(res_list)
