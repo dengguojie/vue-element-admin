@@ -1614,10 +1614,10 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             sch[tensor1].compute_at(sch[workspace2], workspace2_mhowo_outer)
             sch[tensor2].compute_at(sch[workspace2], workspace2_mhowo_outer)
             if not compute_inline_tensor4_41:
-                sch[tensor4].compute_at(sch[workspace2], workspace2_khkw_outer)
-                sch[tensor41].compute_at(sch[workspace2], workspace2_khkw_outer)
+                sch[tensor4].compute_at(sch[workspace2], workspace2_mhowo_outer)
+                sch[tensor41].compute_at(sch[workspace2], workspace2_mhowo_outer)
             if not compute_inline_tensor3_6:
-                sch[tensor3].compute_at(sch[workspace2], workspace2_khkw_outer)
+                sch[tensor3].compute_at(sch[workspace2], workspace2_mhowo_outer)
         elif split_workspace2_kd_flag:
             sch[tensor0].compute_at(sch[workspace2], workspace2_kd_outer)
             sch[tensor1].compute_at(sch[workspace2], workspace2_kd_outer)
