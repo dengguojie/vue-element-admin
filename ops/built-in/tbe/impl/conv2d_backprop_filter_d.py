@@ -117,7 +117,8 @@ def _cal_min_l1space(
     -------
     bl1_min_byte: int
     """
-
+    # Waiting for FE support fp32, need to be deleted later
+    dtype = "float16"
     filter_sizes = list(filter_sizes)
     strides = list(strides)
     dilations = list(dilations)
@@ -950,6 +951,8 @@ def check_conv2dbp_filter_params(
     _check_axis_hw()
 
     def _min_l1_byte():
+        # Waiting for FE support fp32, need to be deleted later
+        x_dtype = "float16"
         # Forth : L1 limitation, Mainly required by chip
         al1_min_byte = C0 * C0 * BIT_RATIO_DICT.get(x_dtype)
         if not _is_conv1d_situation():
