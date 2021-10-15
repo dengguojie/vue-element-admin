@@ -212,27 +212,23 @@ struct TilingParamsInt32 {
 /******************COMMON_FUNCTION******************/
 
 int32_t ComputeDivRemainders(const int32_t& num, const int32_t& factor, const int32_t& times) {
-  int32_t res;
-  res = num - factor * times;
+  int32_t res = num - factor * times;
   return res;
 }
 
 int32_t UssCeil(const int32_t& num, const int32_t& factor) {
-  int32_t res;
-  res = (num % factor == 0) ? num : factor * (num / factor + 1);
+  int32_t res = (num % factor == 0) ? num : factor * (num / factor + 1);
   return res;
 }
 
 int32_t UssCeilDiv(const int32_t& num, const int32_t& factor) {
-  int32_t res;
-  res = (num % factor == 0) ? num / factor : num / factor + 1;
+  int32_t res = (num % factor == 0) ? num / factor : num / factor + 1;
   return res;
 }
 
 int32_t UssCeilDivNoAtomic(const int32_t& num, const int32_t& factor, const int32_t& e_size,
                            const int32_t& output_ub_ele_num_one_row) {
-  int32_t res;
-  res = num / factor;
+  int32_t res = num / factor;
   if(factor>1 && e_size < output_ub_ele_num_one_row) {
     if (e_size * res % output_ub_ele_num_one_row != 0) {
       res = res / output_ub_ele_num_one_row * output_ub_ele_num_one_row;
@@ -626,7 +622,7 @@ void ComputeIdsParamsMovGm2ub(const int32_t& ids_ele_num_one_core, const int32_t
     ids_mov_times_gm2ub = 1;
     ids_ele_num_ub_front_part = ids_ele_num_one_core;
     ids_ele_num_ub_last_part = ids_ele_num_ub_front_part;
-  } else if (ids_ele_num_one_core > max_ids_ele_num_one_ub_tensor) {
+  } else {
     // mov_times > 1
     if (ids_ele_num_one_core % max_ids_ele_num_one_ub_tensor == 0) {
       // no last part
@@ -654,7 +650,7 @@ void ComputeIdsParamsMovGm2ubNoAtomic(const int32_t& ids_ele_num_one_core, const
     ids_mov_times_gm2ub = 1;
     ids_ele_num_ub_front_part = ids_ele_num_one_core;
     ids_ele_num_ub_last_part = ids_ele_num_ub_front_part;
-  } else if (ids_ele_num_one_core > max_ids_ele_num_one_ub_tensor) {
+  } else {
     // mov_times > 1
     if (ids_ele_num_one_core % max_ids_ele_num_one_ub_tensor == 0) {
       // no last part
@@ -671,24 +667,6 @@ void ComputeIdsParamsMovGm2ubNoAtomic(const int32_t& ids_ele_num_one_core, const
   }
   ids_front_burst_len = UssCeilDiv(ids_ele_num_ub_front_part * ids_ele_byte, BYTE_BLOCK);
   ids_last_burst_len = UssCeilDiv(ids_ele_num_ub_last_part * ids_ele_byte, BYTE_BLOCK);
-}
-void ComputeUb2gmParams(const EleByte& ele_byte, const int32_t e_num, const int32_t ub_tensor_size,
-                        int32_t& e_mov_times_gm2ub, int32_t& e_ub2gm_front_burst_len, int32_t& e_num_front_part,
-                        int32_t& e_ub2gm_last_burst_len, int32_t& e_num_last_part) {
-  int32_t max_e_one_ub_tensor = ub_tensor_size / ele_byte;
-  if (e_num <= max_e_one_ub_tensor) {
-    e_mov_times_gm2ub = 1;
-    e_ub2gm_front_burst_len = UssCeilDiv(e_num * ele_byte, BYTE_BLOCK);
-    e_ub2gm_last_burst_len = e_ub2gm_front_burst_len;
-    e_num_front_part = e_num;
-    e_num_last_part = e_num;
-  } else {
-    e_mov_times_gm2ub = UssCeilDiv(e_num, max_e_one_ub_tensor);
-    e_ub2gm_front_burst_len = UssCeilDiv(ub_tensor_size, BYTE_BLOCK);
-    e_num_front_part = ub_tensor_size / ele_byte;
-    e_num_last_part = ComputeDivRemainders(e_num, e_num_front_part, e_mov_times_gm2ub - 1);
-    e_ub2gm_last_burst_len = UssCeilDiv(e_num_last_part * ele_byte, BYTE_BLOCK);
-  }
 }
 
 void ComputeInitOutputUbParams(const int32_t& ids_ele_num, const int32_t& output_ub_ele_num_one_row,
@@ -811,7 +789,7 @@ void ComputeENumParams(
         e_ub2gm_last_burst_len_input_scalar = e_ub2gm_front_burst_len_input_scalar;
         e_gm2ub_last_burst_len_input_scalar = e_gm2ub_front_burst_len_input_scalar;
         repeat_time_last_part_input_scalar = repeat_time_front_part_input_scalar;
-      } else if(num_segments_front_core_input_scalar > num_segment_max) {
+      } else {
         num_segment_max_time = num_segments_front_core_input_scalar / num_segment_max;
         num_segment_max_time =
         (num_segments_front_core_input_scalar % num_segment_max == 0) ? num_segment_max_time : num_segment_max_time + 1;

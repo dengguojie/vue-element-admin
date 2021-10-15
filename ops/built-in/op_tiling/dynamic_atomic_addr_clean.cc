@@ -60,8 +60,7 @@ struct CleanTilingParams {
 };
 
 int32_t CeilDiv(const int32_t& num, const int32_t& factor) {
-  int32_t res;
-  res = (num % factor == 0) ? num / factor : num / factor + 1;
+  int32_t res = (num % factor == 0) ? num / factor : num / factor + 1;
   return res;
 }
 
@@ -174,7 +173,7 @@ void PrintTilingParams(const std::string& op_type, const CleanTilingParams& para
           params.repeat_time_last_part_last_core_input_scalar);
 }
 
-bool CheckSize(const std::string& op_type, const uint32_t& size) {
+bool CheckSize(const std::string& op_type, const int64_t& size) {
   if (size < 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: workspace size must be greater than 0!");
     return false;

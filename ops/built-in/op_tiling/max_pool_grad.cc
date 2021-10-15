@@ -461,8 +461,7 @@ void MaxWriteTilingParams(const TilingParams& params, OpRunInfo& run_info) {
 }
 
 int64_t UssCeilDiv(const int64_t& num, const int64_t& factor) {
-  int64_t res;
-  res = (num % factor == 0) ? num / factor : num / factor + 1;
+  int64_t res = (num % factor == 0) ? num / factor : num / factor + 1;
   return res;
 }
 
@@ -862,7 +861,7 @@ vector<int64_t> SplitPore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int
   InferDimReturn(core_ou_shape_h, core_ou_shape_w, true_false, ksize, strides, ho_ys, wo_ys, h_ys, w_ys,
                  core_in_shape_h, core_in_shape_w);
 
-  vector<int64_t> list_data = {total_num,       real_core,       core_ou_shape_h, core_ou_shape_w,
+  vector<int64_t> list_data = {total_num, real_core, core_ou_shape_h, core_ou_shape_w,
                                core_in_shape_h, core_in_shape_w, core_branch};
   return list_data;
 }
@@ -1152,12 +1151,12 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
 
   if (padding == "VALID") {
     if (core_branch == 0) {
-      if (params.select_key == 0) {
-        params.select_key = CASE_NO_TILING;
-      } else if (params.select_key == 2) {
+      if (params.select_key == 2) {
         params.select_key = CASE_TILING_HO;
-      } else {
+      } else if (params.select_key != 0) {
         params.select_key = CASE_TILING_HO_WO;
+      } else {
+        params.select_key = CASE_NO_TILING;
       }
     } else {
       if (params.select_key == 2) {
