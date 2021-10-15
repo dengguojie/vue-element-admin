@@ -149,6 +149,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/zeroslike.cc
   ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reverse_sequence.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
@@ -303,6 +304,7 @@ set(_cpu_kernels_ut_files
   testcase/where/src/where_utest.cpp
   testcase/zeroslike/src/zeroslike_utest.cpp
   testcase/reverse_sequence/src/reverse_sequence_kernel_utest.cpp
+  testcase/crop_and_resize/src/crop_and_resize_kernel_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

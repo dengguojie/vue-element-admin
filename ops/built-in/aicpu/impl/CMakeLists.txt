@@ -23,6 +23,7 @@ set(local_kernels_src_files
     kernels/normalized/coordinates_1d_to_2d.cc
     kernels/normalized/cosh.cc
     kernels/normalized/diag.cc
+    kernels/normalized/crop_and_resize.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
     kernels/normalized/elugrad.cc
