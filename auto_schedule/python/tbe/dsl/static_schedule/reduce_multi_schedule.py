@@ -386,7 +386,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                     phony_node = self._mid_tensors[7]
                 else:
                     phony_node = self._mid_tensors[5]
-                op_name = phony_node.op.name
+                op_name = f"{phony_node.op.name}."
                 if insn == "vector_dup_with_align":
                     ori_shape = self._input_tensors[1].op.attrs["ori_shape"]
                     if ori_shape[-1].value % 16 == 15:
