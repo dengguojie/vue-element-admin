@@ -442,7 +442,7 @@ case26 = {"params": [
     {"shape": (-1, -1, -1, -1, -1, -1, -1), "dtype": "int32", "format": "ND", "ori_shape": (-1, -1, -1,
                                                                                                 -1, -1, -1, -1),
      "ori_format": "ND", "range": [(2, None), (2, None), (2, None), (2, None), (2, None), (2, None),
-                                   (2, None)]}, 3],
+                                   (2, None)]}, -3],
          "case_name": "dynamic_one_hot_26",
          "expect": "success",
          "format_expect": [],

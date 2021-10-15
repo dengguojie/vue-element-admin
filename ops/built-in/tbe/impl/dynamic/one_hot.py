@@ -2448,7 +2448,7 @@ class OneHot():
                                         id_number)
 
 
-def _check_param(x, depth, on_value, off_value, axis):
+def _check_param(x, depth, on_value, off_value):
     """
     check parameters, if one is invalid, then raise error
 
@@ -2469,8 +2469,6 @@ def _check_param(x, depth, on_value, off_value, axis):
     -------
     None
     """
-    if axis < -1 or axis >= 8:
-        return RuntimeError("axis must be in range [-1, 7].")
     x_dtype = x.get("dtype")
     depth_dtype = depth.get("dtype")
     on_value_dtype = on_value.get("dtype")
@@ -2516,7 +2514,7 @@ def one_hot(x,
     -------
     None
     """
-    _check_param(x, depth, on_value, off_value, axis)
+    _check_param(x, depth, on_value, off_value)
     one_hot_instance = OneHot(
         x, depth, on_value, off_value, axis, y, kernel_name)
     tik_instance = one_hot_instance.one_hot_compute_tiling()
