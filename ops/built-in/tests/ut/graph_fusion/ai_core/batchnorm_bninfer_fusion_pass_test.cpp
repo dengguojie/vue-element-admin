@@ -131,3 +131,138 @@ TEST_F(batchnorm_bninfer_fusion_test, batchnorm_bninfer_fusion_test_2) {
                                               *compute_graph_ptr);
   GE_DUMP(compute_graph_ptr, "batchnorm_bninfer_fusion_test_2_after");
 }
+
+TEST_F(batchnorm_bninfer_fusion_test, batchnorm_bninfer_fusion_test_3) {
+  auto graph = std::make_shared<ge::ComputeGraph>("batchnorm_bninfer_fusion_test_3");
+
+  ge::GeShape bias_shape({64});
+  ge::GeTensorDesc bias_desc(bias_shape, ge::FORMAT_NHWC, ge::DT_FLOAT);
+  bias_desc.SetOriginFormat(ge::FORMAT_NHWC);
+  bias_desc.SetOriginDataType(ge::DT_FLOAT);
+  bias_desc.SetOriginShape(bias_shape);
+
+  ge::OpDescPtr x1 = std::make_shared<ge::OpDesc>("x1", "Data");
+  ge::OpDescPtr scale = std::make_shared<ge::OpDesc>("scale", "Data");
+  ge::OpDescPtr offset = std::make_shared<ge::OpDesc>("offset", "Const");
+  ge::OpDescPtr mean = std::make_shared<ge::OpDesc>("mean", "Const");
+  ge::OpDescPtr variance = std::make_shared<ge::OpDesc>("variance", "Const");
+  ge::OpDescPtr batchnorm = std::make_shared<ge::OpDesc>("batchnorm", "BatchNorm");
+  ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
+
+  x1->AddOutputDesc(bias_desc);
+  scale->AddOutputDesc(bias_desc);
+  offset->AddOutputDesc(bias_desc);
+  mean->AddOutputDesc(bias_desc);
+  variance->AddOutputDesc(bias_desc);
+
+  batchnorm->AddInputDesc(bias_desc);
+  batchnorm->AddInputDesc(bias_desc);
+  batchnorm->AddInputDesc(bias_desc);
+  batchnorm->AddInputDesc(bias_desc);
+  batchnorm->AddInputDesc(bias_desc);
+  batchnorm->AddOutputDesc(bias_desc);
+  batchnorm->AddOutputDesc(bias_desc);
+  batchnorm->AddOutputDesc(bias_desc);
+  batchnorm->AddOutputDesc(bias_desc);
+  batchnorm->AddOutputDesc(bias_desc);
+
+  netoutput->AddInputDesc(bias_desc);
+
+  ge::NodePtr x1_node = graph->AddNode(x1);
+  ge::NodePtr scale_node = graph->AddNode(scale);
+  ge::NodePtr offset_node = graph->AddNode(offset);
+  ge::NodePtr mean_node = graph->AddNode(mean);
+  ge::NodePtr variance_node = graph->AddNode(variance);
+  ge::NodePtr batchnorm_node = graph->AddNode(batchnorm);
+  ge::NodePtr netoutput_node = graph->AddNode(netoutput);
+
+  ge::AttrUtils::SetBool(batchnorm_node->GetOpDesc(), "is_training", false);
+  ge::AttrUtils::SetFloat(batchnorm_node->GetOpDesc(), "epsilon", 1.1);
+
+  ge::GraphUtils::AddEdge(x1_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(scale_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(offset_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(2));
+  ge::GraphUtils::AddEdge(mean_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(3));
+  ge::GraphUtils::AddEdge(variance_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(4));
+  ge::GraphUtils::AddEdge(batchnorm_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(batchnorm_node->GetOutControlAnchor(), netoutput_node->GetInControlAnchor());
+
+  std::cout << batchnorm_node->GetAllOutDataAnchorsSize() << std::endl;
+
+  EXPECT_EQ(batchnorm_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size(), 1);
+
+  std::cout << batchnorm_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() << std::endl;
+  fe::FusionPassTestUtils::InferShapeAndType(graph);
+  GE_DUMP(graph, "batchnorm_bninfer_fusion_test_2_before");
+  fe::FusionPassTestUtils::RunGraphFusionPass("BatchNormBnInferFusionPass", fe::BUILT_IN_GRAPH_PASS, *graph);
+  GE_DUMP(graph, "batchnorm_bninfer_fusion_test_2_after");
+}
+
+TEST_F(batchnorm_bninfer_fusion_test, batchnorm_bninfer_fusion_test_4) {
+
+auto graph = std::make_shared<ge::ComputeGraph>("batchnorm_bninfer_fusion_test_4");
+
+ge::GeShape bias_shape({64});
+ge::GeTensorDesc bias_desc(bias_shape, ge::FORMAT_NHWC, ge::DT_FLOAT);
+bias_desc.SetOriginFormat(ge::FORMAT_NHWC);
+bias_desc.SetOriginDataType(ge::DT_FLOAT);
+bias_desc.SetOriginShape(bias_shape);
+
+ge::OpDescPtr x1 = std::make_shared<ge::OpDesc>("x1", "Data");
+ge::OpDescPtr scale = std::make_shared<ge::OpDesc>("scale", "Const");
+ge::OpDescPtr offset = std::make_shared<ge::OpDesc>("offset", "Const");
+ge::OpDescPtr mean = std::make_shared<ge::OpDesc>("mean", "Const");
+ge::OpDescPtr variance = std::make_shared<ge::OpDesc>("variance", "Const");
+ge::OpDescPtr batchnorm = std::make_shared<ge::OpDesc>("batchnorm", "BatchNorm");
+ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
+
+x1->AddOutputDesc(bias_desc);
+scale->AddOutputDesc(bias_desc);
+offset->AddOutputDesc(bias_desc);
+mean->AddOutputDesc(bias_desc);
+variance->AddOutputDesc(bias_desc);
+
+batchnorm->AddInputDesc(bias_desc);
+batchnorm->AddInputDesc(bias_desc);
+batchnorm->AddInputDesc(bias_desc);
+batchnorm->AddInputDesc(bias_desc);
+batchnorm->AddInputDesc(bias_desc);
+batchnorm->AddOutputDesc(bias_desc);
+batchnorm->AddOutputDesc(bias_desc);
+batchnorm->AddOutputDesc(bias_desc);
+batchnorm->AddOutputDesc(bias_desc);
+batchnorm->AddOutputDesc(bias_desc);
+
+
+netoutput->AddInputDesc(bias_desc);
+
+ge::NodePtr x1_node = graph->AddNode(x1);
+ge::NodePtr scale_node = graph->AddNode(scale);
+ge::NodePtr offset_node = graph->AddNode(offset);
+ge::NodePtr mean_node = graph->AddNode(mean);
+ge::NodePtr variance_node = graph->AddNode(variance);
+ge::NodePtr batchnorm_node = graph->AddNode(batchnorm);
+ge::NodePtr netoutput_node = graph->AddNode(netoutput);
+
+ge::AttrUtils::SetBool(batchnorm_node->GetOpDesc(), "is_training", false);
+ge::AttrUtils::SetFloat(batchnorm_node->GetOpDesc(), "epsilon", 1.1);
+
+ge::GraphUtils::AddEdge(x1_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(0));
+ge::GraphUtils::AddEdge(scale_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(1));
+ge::GraphUtils::AddEdge(offset_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(2));
+ge::GraphUtils::AddEdge(mean_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(3));
+ge::GraphUtils::AddEdge(variance_node->GetOutDataAnchor(0), batchnorm_node->GetInDataAnchor(4));
+ge::GraphUtils::AddEdge(batchnorm_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+ge::GraphUtils::AddEdge(batchnorm_node->GetOutControlAnchor(), netoutput_node->GetInControlAnchor());
+
+std::cout << batchnorm_node->GetAllOutDataAnchorsSize()<< std::endl;
+
+EXPECT_EQ(batchnorm_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size(), 1);
+
+std::cout << batchnorm_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() << std::endl;
+  fe::FusionPassTestUtils::InferShapeAndType(graph);
+  GE_DUMP(graph, "batchnorm_bninfer_fusion_test_2_before");
+  fe::FusionPassTestUtils::RunGraphFusionPass("BatchNormBnInferFusionPass", fe::BUILT_IN_GRAPH_PASS,
+                                              *graph);
+  GE_DUMP(graph, "batchnorm_bninfer_fusion_test_2_after");
+}
