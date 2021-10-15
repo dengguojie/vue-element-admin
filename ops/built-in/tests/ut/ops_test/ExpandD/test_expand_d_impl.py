@@ -36,5 +36,16 @@ ut_case.add_precision_case("all", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 3), "shape": (3, 2, 3),
                 "param_type": "output"},
                [3, 2, 3]],
-    "calc_expect_func": calc_expect_func
+    "calc_expect_func": calc_expect_func,
+    "case_name": "test_expand_d_01"
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 3), "shape": (3, 2, 3),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 3), "shape": (3, 2, 3),
+                "param_type": "output"},
+               [3, 2, 3]],
+    "calc_expect_func": calc_expect_func,
+    "case_name": "test_expand_d_02"
 })

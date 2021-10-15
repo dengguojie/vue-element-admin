@@ -22,11 +22,16 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# define a scalar for add
-HALF_ONE = 0.5
-# define zero and one for broadcast
-ZERO_VALUE = 0
-ONE_VALUE = 1
+
+class Constant:
+    """
+    The class for constant
+    """
+    ONE_VALUE = 1
+    # define a scalar for add
+    HALF_ONE = 0.5
+    # define zero and one for broadcast
+    ZERO_VALUE = 0
 
 
 # pylint: disable=unused-variable
@@ -62,10 +67,8 @@ def _less_compare_float32(data_x, data_y):
 
     # max num of float32 is 2**126
     # but cce can only support 2**62, so use 50/50/26 to adaptor 126
-    res_mul_first = tbe.vmuls(res_max,
-                                      tvm.const(2 ** 50, dtype="float32"))
-    res_mul_second = tbe.vmuls(res_mul_first,
-                                       tvm.const(2 ** 50, dtype="float32"))
+    res_mul_first = tbe.vmuls(res_max, tvm.const(2 ** 50, dtype="float32"))
+    res_mul_second = tbe.vmuls(res_mul_first, tvm.const(2 ** 50, dtype="float32"))
     res = tbe.vmuls(res_mul_second, tvm.const(2 ** 26, dtype="float32"))
 
     return res
@@ -152,85 +155,54 @@ def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits,
     else:
         quant_min = 1
     quant_max = 2 ** num_bits - 1
-    tensor_zero = tbe.vmuls(min_broadcast, tvm.const(ZERO_VALUE, dtype))
-    quant_min_float = tbe.vadds(tensor_zero,
-                                        tvm.const(quant_min, dtype))
-    quant_max_float = tbe.vadds(tensor_zero,
-                                        tvm.const(quant_max, dtype))
+    tensor_zero = tbe.vmuls(min_broadcast, tvm.const(Constant.ZERO_VALUE, dtype))
+    quant_min_float = tbe.vadds(tensor_zero, tvm.const(quant_min, dtype))
+    quant_max_float = tbe.vadds(tensor_zero, tvm.const(quant_max, dtype))
     max_sub_min = tbe.vsub(max_broadcast, min_broadcast)
     quant_max_sub_quant_min = tbe.vsub(quant_max_float, quant_min_float)
     scale = tbe.vdiv(max_sub_min, quant_max_sub_quant_min)
     min_div_scale = tbe.vdiv(min_broadcast, scale)
     zero_point_from_min = tbe.vsub(quant_min_float, min_div_scale)
 
-    bool_less_quant_min_float = _less_compare_float32(zero_point_from_min,
-                                                      quant_min_float)
-    bool_more_quant_max_float = _less_compare_float32(quant_max_float,
-                                                      zero_point_from_min)
-    less_quant_min_float = tbe.vmul(quant_min_float,
-                                            bool_less_quant_min_float)
-    more_quant_max_float = tbe.vmul(quant_max_float,
-                                            bool_more_quant_max_float)
+    bool_less_quant_min_float = _less_compare_float32(zero_point_from_min, quant_min_float)
+    bool_more_quant_max_float = _less_compare_float32(quant_max_float, zero_point_from_min)
+    less_quant_min_float = tbe.vmul(quant_min_float, bool_less_quant_min_float)
+    more_quant_max_float = tbe.vmul(quant_max_float, bool_more_quant_max_float)
     bool_not_less_quant_min_float = _bool_negate(bool_less_quant_min_float)
     bool_not_more_quant_max_float = _bool_negate(bool_more_quant_max_float)
-    bool_between_min_max = tbe.vmul(bool_not_less_quant_min_float,
-                                            bool_not_more_quant_max_float)
-    between_min_max_float = tbe.vmul(zero_point_from_min,
-                                             bool_between_min_max)
-    between_min_max_add_half_one = tbe.vadds(between_min_max_float,
-                                                     tvm.const(HALF_ONE, dtype))
+    bool_between_min_max = tbe.vmul(bool_not_less_quant_min_float, bool_not_more_quant_max_float)
+    between_min_max_float = tbe.vmul(zero_point_from_min, bool_between_min_max)
+    between_min_max_add_half_one = tbe.vadds(between_min_max_float, tvm.const(Constant.HALF_ONE, dtype))
     between_min_max_round = tbe.floor(between_min_max_add_half_one)
-    nudged_zero_point_tmp = tbe.vadd(less_quant_min_float,
-                                             more_quant_max_float)
-    nudged_zero_point = tbe.vadd(nudged_zero_point_tmp,
-                                         between_min_max_round)
+    nudged_zero_point_tmp = tbe.vadd(less_quant_min_float, more_quant_max_float)
+    nudged_zero_point = tbe.vadd(nudged_zero_point_tmp, between_min_max_round)
 
     nudged_min_tmp = tbe.vsub(quant_min_float, nudged_zero_point)
     nudged_min = tbe.vmul(nudged_min_tmp, scale)
 
-    tensor_zero_second = tbe.vmuls(min_broadcast,
-                                           tvm.const(ZERO_VALUE, dtype))
-    quant_min_float_second = tbe.vadds(tensor_zero_second,
-                                               tvm.const(quant_min, dtype))
-    quant_max_float_second = tbe.vadds(tensor_zero_second,
-                                               tvm.const(quant_max, dtype))
+    tensor_zero_second = tbe.vmuls(min_broadcast, tvm.const(Constant.ZERO_VALUE, dtype))
+    quant_min_float_second = tbe.vadds(tensor_zero_second, tvm.const(quant_min, dtype))
+    quant_max_float_second = tbe.vadds(tensor_zero_second, tvm.const(quant_max, dtype))
     max_sub_min_second = tbe.vsub(max_broadcast, min_broadcast)
-    quant_max_sub_quant_min_second = tbe.vsub(quant_max_float_second,
-                                                      quant_min_float_second)
-    scale_second = tbe.vdiv(max_sub_min_second,
-                                    quant_max_sub_quant_min_second)
+    quant_max_sub_quant_min_second = tbe.vsub(quant_max_float_second, quant_min_float_second)
+    scale_second = tbe.vdiv(max_sub_min_second, quant_max_sub_quant_min_second)
     min_div_scale_second = tbe.vdiv(min_broadcast, scale_second)
-    zero_point_from_min_second = tbe.vsub(quant_min_float_second,
-                                                  min_div_scale_second)
+    zero_point_from_min_second = tbe.vsub(quant_min_float_second, min_div_scale_second)
 
-    bool_less_quant_min_second = _less_compare_float32(
-        zero_point_from_min_second,
-        quant_min_float_second)
-    bool_more_quant_max_second = _less_compare_float32(quant_max_float_second,
-                                                       zero_point_from_min_second)
-    less_quant_min_second = tbe.vmul(quant_min_float_second,
-                                             bool_less_quant_min_second)
-    more_quant_max_float_second = tbe.vmul(quant_max_float_second,
-                                                   bool_more_quant_max_second)
+    bool_less_quant_min_second = _less_compare_float32(zero_point_from_min_second, quant_min_float_second)
+    bool_more_quant_max_second = _less_compare_float32(quant_max_float_second, zero_point_from_min_second)
+    less_quant_min_second = tbe.vmul(quant_min_float_second, bool_less_quant_min_second)
+    more_quant_max_float_second = tbe.vmul(quant_max_float_second, bool_more_quant_max_second)
     bool_not_less_quant_min_second = _bool_negate(bool_less_quant_min_second)
     bool_not_more_quant_max_second = _bool_negate(bool_more_quant_max_second)
-    bool_between_min_max_second = tbe.vmul(
-        bool_not_less_quant_min_second,
-        bool_not_more_quant_max_second)
-    between_min_max_float_second = tbe.vmul(zero_point_from_min_second,
-                                                    bool_between_min_max_second)
-    min_max_add_half_one_second = tbe.vadds(
-        between_min_max_float_second,
-        tvm.const(HALF_ONE, dtype))
-    between_min_max_round_second = tbe.floor(
-        min_max_add_half_one_second)
-    nudged_zero_point_tmp_second = tbe.vadd(less_quant_min_second,
-                                                    more_quant_max_float_second)
-    nudged_zero_point_second = tbe.vadd(nudged_zero_point_tmp_second,
-                                                between_min_max_round_second)
+    bool_between_min_max_second = tbe.vmul(bool_not_less_quant_min_second, bool_not_more_quant_max_second)
+    between_min_max_float_second = tbe.vmul(zero_point_from_min_second, bool_between_min_max_second)
+    min_max_add_half_one_second = tbe.vadds(between_min_max_float_second, tvm.const(Constant.HALF_ONE, dtype))
+    between_min_max_round_second = tbe.floor(min_max_add_half_one_second)
+    nudged_zero_point_tmp_second = tbe.vadd(less_quant_min_second, more_quant_max_float_second)
+    nudged_zero_point_second = tbe.vadd(nudged_zero_point_tmp_second, between_min_max_round_second)
 
-    nudged_max_tmp = tbe.vsub(quant_max_float_second,
-                                      nudged_zero_point_second)
+    nudged_max_tmp = tbe.vsub(quant_max_float_second, nudged_zero_point_second)
     nudged_max = tbe.vmul(nudged_max_tmp, scale_second)
     res = nudged_min, nudged_max
 
@@ -255,16 +227,13 @@ def _bool_both_zero_compute(juduged_min, juduged_max):
         a tensor for juduge compute
     """
     dtype = juduged_min.dtype
-    tensor_zero = tbe.vmuls(juduged_min, tvm.const(ZERO_VALUE, dtype))
+    tensor_zero = tbe.vmuls(juduged_min, tvm.const(Constant.ZERO_VALUE, dtype))
     min_abs = tbe.vabs(juduged_min)
     max_abs = tbe.vabs(juduged_max)
     min_max_replace = tbe.vadd(min_abs, max_abs)
-    bool_min_max_product_less_zero = _less_compare_float32(min_max_replace,
-                                                           tensor_zero)
-    bool_min_max_product_more_zero = _less_compare_float32(tensor_zero,
-                                                           min_max_replace)
-    bool_both_zero = tbe.vadd(bool_min_max_product_less_zero,
-                                      bool_min_max_product_more_zero)
+    bool_min_max_product_less_zero = _less_compare_float32(min_max_replace, tensor_zero)
+    bool_min_max_product_more_zero = _less_compare_float32(tensor_zero, min_max_replace)
+    bool_both_zero = tbe.vadd(bool_min_max_product_less_zero, bool_min_max_product_more_zero)
     res = bool_both_zero
 
     return res
@@ -285,7 +254,7 @@ def _bool_negate(input_bool):
     """
     shape = tbe.util.shape_to_list(input_bool.shape)
     dtype = input_bool.dtype
-    tensor_one = tbe.broadcast(ONE_VALUE, shape, dtype)
+    tensor_one = tbe.broadcast(Constant.ONE_VALUE, shape, dtype)
     output_bool = tbe.vsub(tensor_one, input_bool)
 
     return output_bool
@@ -358,35 +327,27 @@ def fake_quant_with_min_max_vars_per_channel_gradient_compute(gradients, x,
     min_broadcast = tbe.broadcast(min, shape, dtype)
     max_broadcast = tbe.broadcast(max, shape, dtype)
 
-    nudged_min, nudged_max = _nudged_min_max_compute(min_broadcast,
-                                                     max_broadcast, num_bits,
-                                                     narrow_range)
+    nudged_min, nudged_max = _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits, narrow_range)
 
     bool_both_zero_value = _bool_both_zero_compute(min_broadcast, max_broadcast)
     bool_both_zero_negate = _bool_negate(bool_both_zero_value)
 
     bool_less_equal_nudged_max = _less_equal_compare_float32(x, nudged_max)
     bool_more_equal_nudged_min = _less_equal_compare_float32(nudged_min, x)
-    boolbetween_nudged_min_max = tbe.vmul(bool_less_equal_nudged_max,
-                                                  bool_more_equal_nudged_min)
-    backprops_wrt_input_tmp = tbe.vmul(boolbetween_nudged_min_max,
-                                               gradients)
-    backprops_wrt_bool_both_zero = tbe.vmul(backprops_wrt_input_tmp,
-                                                    bool_both_zero_value)
+    boolbetween_nudged_min_max = tbe.vmul(bool_less_equal_nudged_max, bool_more_equal_nudged_min)
+    backprops_wrt_input_tmp = tbe.vmul(boolbetween_nudged_min_max, gradients)
+    backprops_wrt_bool_both_zero = tbe.vmul(backprops_wrt_input_tmp, bool_both_zero_value)
     gradients_both_zero = tbe.vmul(gradients, bool_both_zero_negate)
-    backprops_wrt_input = tbe.vadd(backprops_wrt_bool_both_zero,
-                                           gradients_both_zero)
+    backprops_wrt_input = tbe.vadd(backprops_wrt_bool_both_zero, gradients_both_zero)
 
     bool_less_nudged_min = _bool_negate(bool_more_equal_nudged_min)
     backprop_wrt_min_tmp = tbe.vmul(bool_less_nudged_min, gradients)
-    backprop_wrt_min_bool = tbe.vmul(backprop_wrt_min_tmp,
-                                             bool_both_zero_value)
+    backprop_wrt_min_bool = tbe.vmul(backprop_wrt_min_tmp, bool_both_zero_value)
     backprop_wrt_min = tbe.sum(backprop_wrt_min_bool, sum_axis, True)
 
     bool_more_nudged_max = _bool_negate(bool_less_equal_nudged_max)
     backprop_wrt_max_tmp = tbe.vmul(bool_more_nudged_max, gradients)
-    backprop_wrt_max_bool = tbe.vmul(backprop_wrt_max_tmp,
-                                             bool_both_zero_value)
+    backprop_wrt_max_bool = tbe.vmul(backprop_wrt_max_tmp, bool_both_zero_value)
     backprop_wrt_max = tbe.sum(backprop_wrt_max_bool, sum_axis, True)
     res = [backprops_wrt_input, backprop_wrt_min, backprop_wrt_max]
 

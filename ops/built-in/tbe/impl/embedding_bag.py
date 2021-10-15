@@ -15,24 +15,27 @@
 """
 embedding_bag
 """
-import math
 
 from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
-from impl.util import util_tik_comm_func
 from te.utils import op_utils
+from impl.util import util_tik_comm_func
 
 # pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
 # pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
 
-# process 128 weight at one time
-WEIGHT_NUM_MIN = 128
-MAX_BAG_SIZE = 16
+class Constant:
+    """
+    The class for constant
+    """
+    # process 128 weight at one time
+    WEIGHT_NUM_MIN = 128
+    MAX_BAG_SIZE = 16
 
 
-class EmbeddingBag(object):
+class EmbeddingBag:
     """
     Function: use to store EmbeddingBag base parameters
     Modify : 2021-03-01
@@ -117,7 +120,7 @@ class EmbeddingBag(object):
         """get max bag size
         """
         if self.is_single_indices:
-            res = MAX_BAG_SIZE
+            res = Constant.MAX_BAG_SIZE
         else:
             res = mem_aligned("int32", self.indices_shape[1])
         return res
@@ -140,7 +143,8 @@ class EmbeddingBag(object):
         """init tik gm mem
         """
         # init gm input
-        weight_gm = self.tik_instance.Tensor(self.weight_dtype, self.weight_shape, name="weight_gm", scope=tik.scope_gm)
+        weight_gm = self.tik_instance.Tensor(self.weight_dtype, self.weight_shape,
+                                             name="weight_gm", scope=tik.scope_gm)
         indices_gm = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape, name="indices_gm",
                                               scope=tik.scope_gm)
 
@@ -185,12 +189,12 @@ class EmbeddingBag(object):
         weight_total_size = total_num(self.weight_shape)
         self.weight_ub_temp = self.tik_instance.Tensor(self.weight_dtype, (128,),
                                                        name="weight_ub_temp", scope=tik.scope_ubuf)
-        if weight_total_size <= WEIGHT_NUM_MIN:
+        if weight_total_size <= Constant.WEIGHT_NUM_MIN:
             util_tik_comm_func.gm2ub(self.tik_instance, self.weight_ub_temp, self.input_gm_list[0], weight_total_size)
         else:
             util_tik_comm_func.gm2ub(self.tik_instance, self.weight_ub_temp,
-                                     self.input_gm_list[0][weight_total_size - WEIGHT_NUM_MIN],
-                                     WEIGHT_NUM_MIN)
+                                     self.input_gm_list[0][weight_total_size - Constant.WEIGHT_NUM_MIN],
+                                     Constant.WEIGHT_NUM_MIN)
         self.output_ub_temp = self.tik_instance.Tensor(self.weight_dtype, (128,),
                                                        name="output_ub_temp", scope=tik.scope_ubuf)
         util_tik_comm_func.tik_func_vector(self.tik_instance, self.output_ub_temp, -1, 128)
@@ -250,7 +254,8 @@ class EmbeddingBag(object):
                 with self.tik_instance.for_range(1, self.max_bag_size) as j:
                     valid_scalar.set_as(indices_bag_ub[i * self.max_bag_size + j])
                     with self.tik_instance.if_scope(valid_scalar != -1):
-                        util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vadd", count_a_temp_ub, count_a_temp_ub,
+                        util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vadd", count_a_temp_ub,
+                                                            count_a_temp_ub,
                                                             count_b_temp_ub, self.bag_count_ub.shape[0])
                         util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vadd", divided_a_temp_ub,
                                                             divided_a_temp_ub,
@@ -424,12 +429,12 @@ class EmbeddingBag(object):
                         self.gather_from_weight(temp_sum_ub, self.input_gm_list[0], bag_temp_scalar)
                         util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vadd", result_sum_ub, result_sum_ub,
                                                             temp_sum_ub, weight_num)
-                with self.tik_instance.if_scope(output_total_size < WEIGHT_NUM_MIN):
+                with self.tik_instance.if_scope(output_total_size < Constant.WEIGHT_NUM_MIN):
                     with self.tik_instance.for_range(0, self.embedding_dim) as i:
                         self.output_ub_temp[index_scalar * self.embedding_dim + i].set_as(result_sum_ub[i])
                 with self.tik_instance.else_scope():
                     self.embedding_bag_out_by_index(self.output_gm_list[0], result_sum_ub, index_scalar)
-            with self.tik_instance.if_scope(output_total_size < WEIGHT_NUM_MIN):
+            with self.tik_instance.if_scope(output_total_size < Constant.WEIGHT_NUM_MIN):
                 self.embedding_bag_one_time_out()
             with self.tik_instance.else_scope():
                 # move tail data
@@ -478,12 +483,12 @@ class EmbeddingBag(object):
                 divided_scalar.set_as(self.bag_divided_ub[i])
                 util_tik_comm_func.tik_func_vmuls(self.tik_instance, result_sum_ub, result_sum_ub, divided_scalar,
                                                   weight_num)
-                with self.tik_instance.if_scope(output_total_size < WEIGHT_NUM_MIN):
+                with self.tik_instance.if_scope(output_total_size < Constant.WEIGHT_NUM_MIN):
                     with self.tik_instance.for_range(0, self.embedding_dim) as i:
                         self.output_ub_temp[index_scalar * self.embedding_dim + i].set_as(result_sum_ub[i])
                 with self.tik_instance.else_scope():
                     self.embedding_bag_out_by_index(self.output_gm_list[0], result_sum_ub, index_scalar)
-            with self.tik_instance.if_scope(output_total_size < WEIGHT_NUM_MIN):
+            with self.tik_instance.if_scope(output_total_size < Constant.WEIGHT_NUM_MIN):
                 self.embedding_bag_one_time_out()
             with self.tik_instance.else_scope():
                 # move tail data
@@ -527,12 +532,12 @@ class EmbeddingBag(object):
                         self.gather_from_weight(temp_sum_ub, self.input_gm_list[0], bag_temp_scalar)
                         util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vmax", result_sum_ub, result_sum_ub,
                                                             temp_sum_ub, weight_num)
-                with self.tik_instance.if_scope(output_total_size < WEIGHT_NUM_MIN):
+                with self.tik_instance.if_scope(output_total_size < Constant.WEIGHT_NUM_MIN):
                     with self.tik_instance.for_range(0, self.embedding_dim) as i:
                         self.output_ub_temp[index_scalar * self.embedding_dim + i].set_as(result_sum_ub[i])
                 with self.tik_instance.else_scope():
                     self.embedding_bag_out_by_index(self.output_gm_list[0], result_sum_ub, index_scalar)
-            with self.tik_instance.if_scope(output_total_size < WEIGHT_NUM_MIN):
+            with self.tik_instance.if_scope(output_total_size < Constant.WEIGHT_NUM_MIN):
                 self.embedding_bag_one_time_out()
             with self.tik_instance.else_scope():
                 # move tail data
@@ -581,7 +586,7 @@ class EmbeddingBag(object):
         """gather_from_weight
         """
         weight_total_size = total_num(self.weight_shape)
-        if weight_total_size <= WEIGHT_NUM_MIN:
+        if weight_total_size <= Constant.WEIGHT_NUM_MIN:
             with self.tik_instance.for_range(0, self.embedding_dim) as i:
                 slice_ub[i].set_as(self.weight_ub_temp[index * self.embedding_dim + i])
         else:

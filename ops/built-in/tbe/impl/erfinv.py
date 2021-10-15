@@ -15,40 +15,45 @@
 """
 erfinv
 """
+from functools import reduce as functools_reduce
 from te import tvm
 import te.lang.cce as tbe
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
-from functools import reduce as functools_reduce
 
-# define a scaler, value = 1
-SCALER_ONE = 1
-# define a scaler, value = -1
-SCALER_NEGATIVE_ONE = -1
-# define a scaler, value = -0.47047, only used in compute of erf and erfc
-SCALER_P = 0.47047
-# define a scaler, value = 0.3480242, only used in compute of erf and erfc
-SCALER_A = 0.3480242
-# define a scaler, value = -0.0958798, only used in compute of erf and erfc
-SCALER_B = -0.0958798
-# define a scaler, value = 0.7478556, only used in compute of erf and erfc
-SCALER_C = 0.7478556
-# define a scaler, value = 32768
-SCALER_FP16_MAX = 32768
-# define a scaler, value = 2**(-15)
-SCALER_FP16_MIN = 2 ** (-15)
 
-# The ratio needed for numerical calculation.
-# The detailed calculation process will be given in the code comments below.
-a = (0.886226899, -1.645349621, 0.914624893, -0.140543331)
-b = (-2.118377725, 1.442710462, -0.329097515, 0.012229801)
-c = (-1.970840454, -1.624906493, 3.429567803, 1.641345311)
-d = (3.543889200, 1.637067800)
+class Constant:
+    """
+    The class for constant
+    """
+    # define a scaler, value = 1
+    SCALER_ONE = 1
+    # define a scaler, value = -1
+    SCALER_NEGATIVE_ONE = -1
+    # define a scaler, value = -0.47047, only used in compute of erf and erfc
+    SCALER_P = 0.47047
+    # define a scaler, value = 0.3480242, only used in compute of erf and erfc
+    SCALER_A = 0.3480242
+    # define a scaler, value = -0.0958798, only used in compute of erf and erfc
+    SCALER_B = -0.0958798
+    # define a scaler, value = 0.7478556, only used in compute of erf and erfc
+    SCALER_C = 0.7478556
+    # define a scaler, value = 32768
+    SCALER_FP16_MAX = 32768
+    # define a scaler, value = 2**(-15)
+    SCALER_FP16_MIN = 2 ** (-15)
 
-CENTRAL_RANGE = 0.7
-PI = 3.1415926535
-TWODIVPI = 1.1283791670955
+    # The ratio needed for numerical calculation.
+    # The detailed calculation process will be given in the code comments below.
+    a = (0.886226899, -1.645349621, 0.914624893, -0.140543331)
+    b = (-2.118377725, 1.442710462, -0.329097515, 0.012229801)
+    c = (-1.970840454, -1.624906493, 3.429567803, 1.641345311)
+    d = (3.543889200, 1.637067800)
+
+    CENTRAL_RANGE = 0.7
+    PI = 3.1415926535
+    TWODIVPI = 1.1283791670955
 
 
 @fusion_manager.register("erfinv")
@@ -77,7 +82,7 @@ def erfinv_compute(input_x, output_y, kernel_name="erfinv"):
         input_x = tbe.cast_to(input_x, "float32")
 
     x_abs = tbe.vabs(input_x)
-    x_lt_range = tbe.vcmp(x_abs, CENTRAL_RANGE, 'le', 'bool')
+    x_lt_range = tbe.vcmp(x_abs, Constant.CENTRAL_RANGE, 'le', 'bool')
 
     # yl is the value of y when input_x <= CENTRAL_RANGE
     yl = cal_yl(input_x)
@@ -88,14 +93,14 @@ def erfinv_compute(input_x, output_y, kernel_name="erfinv"):
     y = tbe.vsel(x_lt_range, yl, yg)
 
     # Two steps of Newton-Raphson correction
-    for i in range(0, 2):
+    for _ in range(0, 2):
         erf_result = erf(y)
 
         num = tbe.vsub(erf_result, input_x)
         temp = tbe.vmul(y, y)
         temp = tbe.vmuls(temp, -1)
         temp = tbe.vexp(temp)
-        dem = tbe.vmuls(temp, TWODIVPI)
+        dem = tbe.vmuls(temp, Constant.TWODIVPI)
         crt = tbe.vdiv(num, dem)
         y = tbe.vsub(y, crt)
 
@@ -119,28 +124,28 @@ def cal_yl(input_x):
     -------
     output tensor
     """
-    const_one = tvm.const(SCALER_ONE, dtype="float32")
+    const_one = tvm.const(Constant.SCALER_ONE, dtype="float32")
     zl = tbe.vmul(input_x, input_x)
 
-    # numl = ((a[3]*z + a[2])*z + a[1])*z + a[0]
-    erfinv_vmuls_a = tbe.vmuls(zl, a[3])
-    erfinv_vadds_a = tbe.vadds(erfinv_vmuls_a, a[2])
+    # `numl = ((a[3]*z + a[2])*z + a[1])*z + a[0]`
+    erfinv_vmuls_a = tbe.vmuls(zl, Constant.a[3])
+    erfinv_vadds_a = tbe.vadds(erfinv_vmuls_a, Constant.a[2])
     erfinv_square_vmul_a = tbe.vmul(erfinv_vadds_a, zl)
-    erfinv_square_vadds_a = tbe.vadds(erfinv_square_vmul_a, a[1])
+    erfinv_square_vadds_a = tbe.vadds(erfinv_square_vmul_a, Constant.a[1])
     erfinv_cube_vmul_a = tbe.vmul(erfinv_square_vadds_a, zl)
-    numl = tbe.vadds(erfinv_cube_vmul_a, a[0])
+    numl = tbe.vadds(erfinv_cube_vmul_a, Constant.a[0])
 
-    # deml = (((b[3]*z + b[2])*z + b[1])*z + b[0])*z + 1
-    erfinv_vmuls_b = tbe.vmuls(zl, b[3])
-    erfinv_vadds_b = tbe.vadds(erfinv_vmuls_b, b[2])
+    # `deml = (((b[3]*z + b[2])*z + b[1])*z + b[0])*z + 1`
+    erfinv_vmuls_b = tbe.vmuls(zl, Constant.b[3])
+    erfinv_vadds_b = tbe.vadds(erfinv_vmuls_b, Constant.b[2])
     erfinv_square_vmul_b = tbe.vmul(erfinv_vadds_b, zl)
-    erfinv_square_vadds_b = tbe.vadds(erfinv_square_vmul_b, b[1])
+    erfinv_square_vadds_b = tbe.vadds(erfinv_square_vmul_b, Constant.b[1])
     erfinv_cube_vmul_b = tbe.vmul(erfinv_square_vadds_b, zl)
-    erfinv_cube_vadds_b = tbe.vadds(erfinv_cube_vmul_b, b[0])
+    erfinv_cube_vadds_b = tbe.vadds(erfinv_cube_vmul_b, Constant.b[0])
     erfinv_power4_vmul_b = tbe.vmul(erfinv_cube_vadds_b, zl)
     deml = tbe.vadds(erfinv_power4_vmul_b, const_one)
 
-    # yl = input_x * numl / deml
+    # `yl = input_x * numl / deml`
     xnuml = tbe.vmul(input_x, numl)
     yl = tbe.vdiv(xnuml, deml)
     return yl
@@ -162,13 +167,13 @@ def cal_yg(input_x):
     output tensor
     """
     dtype = input_x.dtype
-    const_one = tvm.const(SCALER_ONE, dtype="float32")
-    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype="float32")
+    const_one = tvm.const(Constant.SCALER_ONE, dtype="float32")
+    const_negative_one = tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype="float32")
     x_abs = tbe.vabs(input_x)
-    fp16_max = tvm.const(SCALER_FP16_MAX, dtype=dtype)
-    fp16_min = tvm.const(SCALER_FP16_MIN, dtype=dtype)
+    fp16_max = tvm.const(Constant.SCALER_FP16_MAX, dtype=dtype)
+    fp16_min = tvm.const(Constant.SCALER_FP16_MIN, dtype=dtype)
 
-    # zg = sqrt(-log((1-|x|)/2))
+    # `zg = sqrt(-log((1-|x|)/2))`
     x_abs_minus_one = tbe.vadds(x_abs, const_negative_one)
     data_neg = tbe.vmuls(x_abs_minus_one, -1)
     mul_data = tbe.vmuls(data_neg, 0.5)
@@ -176,17 +181,17 @@ def cal_yg(input_x):
     zg_square = tbe.vabs(data_vlog)
     zg = tbe.vsqrt(zg_square, 1)
 
-    # numg = ((c[3]*z + c[2])*z + c[1])*z + c[0]
-    zg_vmuls_c3 = tbe.vmuls(zg, c[3])
-    lr_vadds_c2 = tbe.vadds(zg_vmuls_c3, c[2])
+    # `numg = ((c[3]*z + c[2])*z + c[1])*z + c[0]`
+    zg_vmuls_c3 = tbe.vmuls(zg, Constant.c[3])
+    lr_vadds_c2 = tbe.vadds(zg_vmuls_c3, Constant.c[2])
     lr_vmul_zg = tbe.vmul(lr_vadds_c2, zg)
-    lr_vadds_c1 = tbe.vadds(lr_vmul_zg, c[1])
+    lr_vadds_c1 = tbe.vadds(lr_vmul_zg, Constant.c[1])
     lr_vmul_zg = tbe.vmul(lr_vadds_c1, zg)
-    numg = tbe.vadds(lr_vmul_zg, c[0])
+    numg = tbe.vadds(lr_vmul_zg, Constant.c[0])
 
-    # demg = (d[1]*z + d[0])*z + 1
-    zg_vmuls_d1 = tbe.vmuls(zg, d[1])
-    lr_vadds_d0 = tbe.vadds(zg_vmuls_d1, d[0])
+    # `demg = (d[1]*z + d[0])*z + 1`
+    zg_vmuls_d1 = tbe.vmuls(zg, Constant.d[1])
+    lr_vadds_d0 = tbe.vadds(zg_vmuls_d1, Constant.d[0])
     lr_vmul_zg = tbe.vmul(lr_vadds_d0, zg)
     demg = tbe.vadds(lr_vmul_zg, const_one)
 
@@ -201,6 +206,7 @@ def cal_yg(input_x):
     numg_sign = tbe.vmul(numg, tensor_sign)
     yg = tbe.vdiv(numg_sign, demg)
     return yg
+
 
 # Since erf() cannot be called here, it needs to be rewritten
 def erf(input_x):
@@ -220,14 +226,14 @@ def erf(input_x):
     """
     dtype = input_x.dtype
     shape = tbe.util.shape_to_list(input_x.shape)
-    const_one = tvm.const(SCALER_ONE, dtype="float32")
-    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype="float32")
-    const_p = tvm.const(SCALER_P, dtype="float32")
-    const_a = tvm.const(SCALER_A, dtype="float32")
-    const_b = tvm.const(SCALER_B, dtype="float32")
-    const_c = tvm.const(SCALER_C, dtype="float32")
-    fp16_max = tvm.const(SCALER_FP16_MAX, dtype=dtype)
-    fp16_min = tvm.const(SCALER_FP16_MIN, dtype=dtype)
+    const_one = tvm.const(Constant.SCALER_ONE, dtype="float32")
+    const_negative_one = tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype="float32")
+    const_p = tvm.const(Constant.SCALER_P, dtype="float32")
+    const_a = tvm.const(Constant.SCALER_A, dtype="float32")
+    const_b = tvm.const(Constant.SCALER_B, dtype="float32")
+    const_c = tvm.const(Constant.SCALER_C, dtype="float32")
+    fp16_max = tvm.const(Constant.SCALER_FP16_MAX, dtype=dtype)
+    fp16_min = tvm.const(Constant.SCALER_FP16_MIN, dtype=dtype)
 
     data_vmuls = tbe.vmuls(input_x, fp16_max)
     data_abs = tbe.vabs(data_vmuls)

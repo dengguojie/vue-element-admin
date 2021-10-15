@@ -18,15 +18,20 @@ import math
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform as cce
 
-RESERVE_SIZE = 16 * 1024
-BLOCK = 8
+class Constant:
+    """
+    The class for constant
+    """
+    RESERVE_SIZE = 16 * 1024
+    BLOCK = 8
 
 
-class EmbeddingDenseGrad(object):
+class EmbeddingDenseGrad:
     """
     Function: store EmbeddingDenseGrad parameters  and compute EmbeddingDenseGrad
     """
 
+    # pylint: disable=unused-argument
     def __init__(
             self,
             grad,
@@ -79,7 +84,7 @@ class EmbeddingDenseGrad(object):
         self.dtype_bytes_size_grad = cce.get_bit_len(
             self.dtype_grad) // 8
         self.grad_each_block = block_bite_size // self.dtype_bytes_size_grad
-        '''Calculate how many counts elements can be stored in a block according 
+        '''Calculate how many counts elements can be stored in a block according
         to the input data type
         '''
         self.dtype_bytes_size_counts = cce.get_bit_len(
@@ -95,13 +100,13 @@ class EmbeddingDenseGrad(object):
 
         if self.scale_grad_by_freq:
             self.ub_indices_size = (self.ub_size_bytes - self.num_weights *
-                                    self.dtype_bytes_size_counts - RESERVE_SIZE) \
+                                    self.dtype_bytes_size_counts - Constant.RESERVE_SIZE) \
                                    // (self.embedding_dim * self.dtype_bytes_size_grad +
                                        self.dtype_bytes_size_indices)\
                                    // self.indices_each_block * self.indices_each_block
             self.counts_size = self.num_weights
         else:
-            self.ub_indices_size = (self.ub_size_bytes - RESERVE_SIZE) \
+            self.ub_indices_size = (self.ub_size_bytes - Constant.RESERVE_SIZE) \
                                    // (self.embedding_dim * self.dtype_bytes_size_grad +
                                        self.dtype_bytes_size_indices)\
                                    // self.indices_each_block * self.indices_each_block
@@ -143,10 +148,8 @@ class EmbeddingDenseGrad(object):
         tik_instance: tik_instance
         """
         self.element_of_grad_and_indices()
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name, inputs=[
-                self.grad, self.indices], outputs=[
-                self.grad_weight])
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.grad, self.indices], outputs=[self.grad_weight])
         return self.tik_instance
 
     def element_of_grad_and_indices(self):
@@ -168,7 +171,7 @@ class EmbeddingDenseGrad(object):
             self.numel_indices *= x
         self.new_numel_indices = math.ceil(
             self.numel_indices / self.dtype_bytes_size_indices) * self.dtype_bytes_size_indices
-        if self.numel_indices // self.aicore_num * self.embedding_dim < BLOCK:
+        if self.numel_indices // self.aicore_num * self.embedding_dim < Constant.BLOCK:
             self.aicore_num = 1
         self.gm_for_data_and_fill_grad_weight()
 
@@ -184,7 +187,7 @@ class EmbeddingDenseGrad(object):
         None
         """
         # Allocate space for grad, indices and grad_weight on gm
-        self.indices = self.tik_instance.Tensor(self.dtype_indices, (self.new_numel_indices, ), name="indices",
+        self.indices = self.tik_instance.Tensor(self.dtype_indices, (self.new_numel_indices,), name="indices",
                                                 scope=tik.scope_gm)
         self.grad_weight = self.tik_instance.Tensor(self.dtype_grad, (self.num_weights, self.embedding_dim),
                                                     name="grad_weight", scope=tik.scope_gm, is_atomic_add=True)
@@ -210,7 +213,7 @@ class EmbeddingDenseGrad(object):
         None
         """
         # Allocate space for grad, indices and counts on ub
-        self.indices_ub = self.tik_instance.Tensor(self.dtype_indices, (self.ub_indices_size, ), name="indices_ub",
+        self.indices_ub = self.tik_instance.Tensor(self.dtype_indices, (self.ub_indices_size,), name="indices_ub",
                                                    scope=tik.scope_ubuf)
         self.grad_ub = self.tik_instance.Tensor(self.dtype_grad, (self.ub_indices_size, self.embedding_dim),
                                                 name="grad_ub", scope=tik.scope_ubuf)
@@ -237,16 +240,16 @@ class EmbeddingDenseGrad(object):
             self.ranges = self.ele_not_last_core
         # Move indexes and grad blocks from gm to ub
         if self.embedding_dim < 8:
-            self.block_ub = self.tik_instance.Tensor(self.dtype_grad, (BLOCK, ), name="block_ub",
+            self.block_ub = self.tik_instance.Tensor(self.dtype_grad, (Constant.BLOCK,), name="block_ub",
                                                      scope=tik.scope_ubuf)
-            self.tik_instance.vec_dup(BLOCK, self.block_ub, scalar_float0, 1, 8)
+            self.tik_instance.vec_dup(Constant.BLOCK, self.block_ub, scalar_float0, 1, 8)
         if self.ranges // self.ub_indices_size > 0:
             with self.tik_instance.for_range(0, self.ranges // self.ub_indices_size) as i1:
                 self.tik_instance.data_move(self.indices_ub, self.indices[core_index * self.ele_not_last_core +
                                                                           i1 * self.ub_indices_size], 0, 1,
                                             self.ub_indices_size // self.indices_each_block, 0, 0)
                 self.tik_instance.data_move(self.grad_ub, self.grad[(core_index * self.ele_not_last_core +
-                                                                    i1 * self.ub_indices_size) * self.embedding_dim],
+                                                                     i1 * self.ub_indices_size) * self.embedding_dim],
                                             0, 1, self.ub_indices_size * self.embedding_dim // self.grad_each_block,
                                             0, 0)
 
@@ -273,7 +276,7 @@ class EmbeddingDenseGrad(object):
                 self.ub_indices_size /
                 self.indices_each_block)
             offset_grad_move = (core_index * self.ele_not_last_core + self.ranges // self.ub_indices_size *
-                self.ub_indices_size) * self.embedding_dim
+                                self.ub_indices_size) * self.embedding_dim
             burst_len_grad = ((self.ranges % self.ub_indices_size) * self.embedding_dim - 1) // self.grad_each_block + 1
 
             self.tik_instance.data_move(self.indices_ub, self.indices[offset_indices_move], 0, 1, burst_len_indices, 0,
@@ -305,8 +308,8 @@ class EmbeddingDenseGrad(object):
                         with self.tik_instance.for_range(0, self.embedding_dim) as i:
                             self.block_ub[i].set_as(self.grad_ub[self.index * self.embedding_dim + i])
                         self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
-                                                self.block_ub, 0,
-                                                1, BLOCK // self.grad_each_block, 0, 0)
+                                                    self.block_ub, 0,
+                                                    1, Constant.BLOCK // self.grad_each_block, 0, 0)
                     else:
                         self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
                                                     self.grad_ub[self.index * self.embedding_dim], 0,
@@ -345,4 +348,3 @@ def embedding_dense_grad(
         grad, indices, y, num_weights, padding_idx, scale_grad_by_freq, kernel_name)
     tik_instance = embedding_dense_grad_instance.embedding_dense_grad_compute()
     return tik_instance
-

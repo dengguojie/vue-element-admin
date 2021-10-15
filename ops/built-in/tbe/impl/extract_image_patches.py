@@ -26,23 +26,28 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.im2col_common_func import im2col_compute
+from impl.im2col_common_func import im2col_schedule
 from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_common import check_load3d_w_out_1_support
-from impl.im2col_common_func import im2col_compute
-from impl.im2col_common_func import im2col_schedule
-
-BLOCK_SIZE = 16
-BLOCK_SIZE_INT8 = 32
-
-DOUBLE_BUFFER = 2
-FP16_SIZE = 2
-INT8_SIZE = 1
-SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
+class Constant:
+    """
+    The class for constant
+    """
+    BLOCK_SIZE = 16
+    BLOCK_SIZE_INT8 = 32
+    DOUBLE_BUFFER = 2
+    FP16_SIZE = 2
+    INT8_SIZE = 1
+    SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+
+
+# pylint: disable=unused-argument, too-many-arguments
 def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_name="extract_image_patches"):
     """
     get extract_image_patches slice info
@@ -120,7 +125,8 @@ def extract_image_patches_compute(fmap,
     stride = (stride_h, stride_w)
     dilate = (dilate_h, dilate_w)
 
-    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksize, stride, dilate, pads, out_h, out_w)
+    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksize, stride,
+                                                                dilate, pads, out_h, out_w)
 
     return output_res, workspace_res, workspace_shape
 
@@ -154,11 +160,11 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     dtype_input = images.get("dtype")
     dtype_input = dtype_input.lower()
     if dtype_input in ('int8', 'uint8'):
-        align_block_size = BLOCK_SIZE_INT8
-        type_size = INT8_SIZE
+        align_block_size = Constant.BLOCK_SIZE_INT8
+        type_size = Constant.INT8_SIZE
     else:
-        align_block_size = BLOCK_SIZE
-        type_size = FP16_SIZE
+        align_block_size = Constant.BLOCK_SIZE
+        type_size = Constant.FP16_SIZE
 
     data_format = images.get('ori_format')
     format_list = ('NHWC', 'NCHW')
@@ -196,7 +202,8 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     if (out_h <= 0) or (out_w <= 0):
         error_manager_vector.raise_err_specific_reson(kernel_name, "out_h and out_w can not <= 0!")
     if (padding_h_top >= 256) or (padding_h_bottom >= 256):
-        error_manager_vector.raise_err_specific_reson(kernel_name, "padding_h_top and padding_h_bottom can not >= 256!")
+        error_manager_vector.raise_err_specific_reson(kernel_name,
+                                                      "padding_h_top and padding_h_bottom can not >= 256!")
     if (padding_w_before >= 256) or (padding_w_after >= 256):
         error_manager_vector.raise_err_specific_reson(kernel_name,
                                                       "padding_w_before and padding_w_after can not >= 256!")
@@ -209,18 +216,19 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
 
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
-    cut_h_col = (BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
+    cut_h_col = (Constant.BLOCK_SIZE // math.gcd(out_w, Constant.BLOCK_SIZE) - 1) * \
+                stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
 
-    cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
+    cut_w_row_s = (Constant.BLOCK_SIZE - 1) * stride_w + 1
     cut_h_row_s = ((cut_w_row_s - 1) // fmap_w + 1) * stride_h + 1
     min_cut_h = min(cut_h_col, cut_h_row_s)
 
-    if min_cut_h * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER > SIZE_L1:
+    if min_cut_h * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER > Constant.SIZE_L1:
         error_manager_vector.raise_err_specific_reson(
             kernel_name, "Input size is too large load to L1, while cut h, need size: %d" %
-                         (min_cut_h * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER))
+            (min_cut_h * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER))
 
     data_input = tvm.placeholder(shape_input, name="data", dtype=dtype_input)
     output_res, workspace_res, _ = extract_image_patches_compute(data_input, fmap_c, ksizes, strides, dilates, padding,

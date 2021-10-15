@@ -25,7 +25,6 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: too-many-locals
 # pylint: disable=unrecognized-inline-option,invalid-name,too-many-locals,unused-argument
 def get_fusion_params(x_tensor, y, x_tensor_num):
     """
@@ -83,10 +82,10 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     tmp_y["slice_offset"] = []
     fuse_y = tmp_y if y is None else y
     fusion_params = get_fusion_params(x, fuse_y, tensor_num)
-    case = 0 #depthwise_con2d fusion flag
+    case = 0 # depthwise_con2d fusion flag
 
     if mode == 1:
-        if len(coeff) != 0 and len(coeff) != tensor_num:
+        if coeff and len(coeff) != tensor_num:
             error_manager_vector.raise_err_specific_reson("eltwise",
                                                           "the parameter coeff's length not equal to inputs'num")
         if len(coeff) == tensor_num:
@@ -111,7 +110,7 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
                 data0_tmp = tbe.vmax(data0_tmp, datan_tmp)
                 case = "eltwise_case_2"
             else:
-                if len(coeff) == 0:
+                if not coeff:
                     data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
                     case = "eltwise_case_1_1"
                 elif coeff[i] == 1:
@@ -133,14 +132,29 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
 
 
 def get_shape_len(shape):
+    """
+    get length of shape
+    """
     len_count = 1
-    for i in range(0, len(shape)):
-        len_count = len_count * shape[i]
+    for _, value in enumerate(shape):
+        len_count = len_count * value
     return len_count
 
 
-def _eltwise_check_para(x, y, mode=1, coeff=[],
-                        kernel_name="eltwise"):
+def _eltwise_check_para(x, y, mode=1, coeff=[], kernel_name="eltwise"):
+    """
+    check the params
+    Parameters
+    ----------
+    x : the list of input data, it's element is dict:{"shape":[], "dtype":""}
+    y : the dict of output
+    mode : 0:product,1:sum,2:max;default is 1:sum.
+    coeff : input_num should be equal with coeff size.
+    kernel_name : cce kernel name, default value is "eltwise"
+    Returns
+    -------
+    None
+    """
     shape = x[0].get("shape")
     dtype = x[0].get("dtype").lower()
     para_check.check_shape(shape, param_name="x")
@@ -179,6 +193,7 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
     op_list = (0, 1, 2)
     if mode not in op_list:
         error_manager_vector.raise_err_check_params_rules("eltwise", "mode only support 0,1,2", "mode", mode)
+
 
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)

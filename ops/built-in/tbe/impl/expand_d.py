@@ -21,8 +21,6 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.shape_util import broadcast_shapes
 
-NUM_ONE = 1
-
 
 # pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("expand_d")
@@ -48,7 +46,7 @@ def expand_compute(x, shape):
 
     python_shape_in = [int(x) for x in shape_in]
     if list(python_shape_in) == list(shape):
-        output_tensor = tbe.vmuls(x, NUM_ONE)
+        output_tensor = tbe.vmuls(x, 1)
     else:
         output_tensor = tbe.broadcast(x, shape, dtype)
 

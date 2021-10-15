@@ -19,8 +19,17 @@ case2 = {"params": [{"shape": (1, 3), "dtype": "float16", "format": "ND", "ori_s
          "format_expect": [],
          "support_expect": True}
 
+case3 = {"params": [{"shape": (1, 3), "dtype": "float16", "format": "ND", "ori_shape": (1, 3),"ori_format": "ND"},
+                    {"shape": (2, 3), "dtype": "float16", "format": "ND", "ori_shape": (2, 3),"ori_format": "ND"},
+                    {"shape": (2, 3), "dtype": "float16", "format": "ND", "ori_shape": (2, 3),"ori_format": "ND"}],
+         "case_name": "FastGeluGrad_3",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
+ut_case.add_case("Ascend910", case3)
 
 def calc_expect_func(dy, x, y):
     input_x = x['value']

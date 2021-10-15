@@ -25,7 +25,9 @@
 				],
 				"data_distribute":[
 					"uniform"
-				]
+				],
+				"name": "input_x",
+				"param_type": "input"
 			}
 		],
 		"output_desc":[
@@ -40,7 +42,9 @@
 					10,
 					8,
 					6
-				]
+				],
+				"param_type": "output",
+                "name": "output_y"
 			}
 		],
 		"attr":[]

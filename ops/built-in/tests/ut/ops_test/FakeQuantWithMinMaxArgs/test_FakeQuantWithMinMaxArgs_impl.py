@@ -57,12 +57,21 @@ case5 = {"params": [{"shape": (128, 255, 36), "dtype": "float32", "format": "NCH
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (128, 255, 36), "dtype": "float32", "format": "NCHW", "ori_shape": (128, 255, 36),"ori_format": "NCHW"}, #x
+                    {"shape": (128, 255, 36), "dtype": "float32", "format": "NCHW", "ori_shape": (128, 255, 36),"ori_format": "NCHW"},
+                    6,6,6,True
+                    ],
+         "case_name": "FakeQuantWithMinMaxArgs_6",
+         "expect": RuntimeError,
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 
 #precision cases
 def _nudge_min_max(min, max, num_bits, narrow_range):

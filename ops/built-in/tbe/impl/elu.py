@@ -38,14 +38,20 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-# shape limit 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-NUM_ZERO = 0.0
-NUM_ONE_NEG = -1.0
+
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ZERO = 0.0
+    NUM_ONE_NEG = -1.0
 
 
 def _elu_computer_performance(data, alpha, dtype):
-    scalar_one_neg = tvm.const(NUM_ONE_NEG, dtype)
+    """
+    computer performance
+    """
+    scalar_one_neg = tvm.const(Constant.NUM_ONE_NEG, dtype)
 
     negative_data = tbe.vmuls(data, scalar_one_neg)
     negative_data = tbe.vrelu(negative_data)
@@ -62,16 +68,20 @@ def _elu_computer_performance(data, alpha, dtype):
 
 
 def _elu_computer_precision(data, alpha, dtype):
-    scalar_zero = tvm.const(NUM_ZERO, dtype)
+    """
+    computer precision
+    """
+    scalar_zero = tvm.const(Constant.NUM_ZERO, dtype)
     negative_data = tbe.vmins(data, scalar_zero)
     positive_data = tbe.vmaxs(data, scalar_zero)
 
     exp_res = tbe.vexp(negative_data)
-    exp_res = tbe.vadds(exp_res, tvm.const(NUM_ONE_NEG, dtype))
+    exp_res = tbe.vadds(exp_res, tvm.const(Constant.NUM_ONE_NEG, dtype))
 
     res = tbe.vaxpy(exp_res, positive_data, tvm.const(alpha, dtype))
 
     return res
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("elu")

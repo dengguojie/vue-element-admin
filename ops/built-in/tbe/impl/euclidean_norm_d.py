@@ -18,9 +18,17 @@ euclidean_norm_d
 # pylint: disable=W0613,W0401
 import te.lang.cce
 from te import tvm
-from te.utils.op_utils import *
-from te.platform.fusion_manager import fusion_manager
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import check_shape
+from te.utils.op_utils import KERNEL_NAME
+from te.utils.op_utils import OPTION_ATTR_LIST_INT
+from te.utils.op_utils import OPTION_ATTR_BOOL
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import wrap_axes_to_positive
 from te.platform import get_soc_spec
+from te.platform.fusion_manager import fusion_manager
 
 
 @fusion_manager.register("euclidean_norm_d")
@@ -73,6 +81,22 @@ def euclidean_norm_d_compute(x,
 
 
 def refine_shape_axes_custom(shape, axes):
+    """
+    refine shape and axes
+    Parameters
+    ----------
+    shape : list, tuple
+        input shape
+    axes : int, list, tuple
+        the first axes to reduce, may be negative to index from the end
+
+    Returns
+    -------
+    refined_shape : list
+        new shape
+    refined_axes : list
+        new axes
+    """
     wrapped_axes = wrap_axes_to_positive(axes, len(shape))
     wrapped_axes = sorted(wrapped_axes)
     refined_axes = []
@@ -156,4 +180,3 @@ def euclidean_norm_d(input_data,
     config = {"name": kernel_name, "tensor_list": [data_input, res]}
 
     te.lang.cce.cce_build_code(schedule, config)
-

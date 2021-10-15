@@ -57,11 +57,25 @@ case3 = {"params": [{"shape": (7, 6, 1), "dtype": "float32", "format": "ND", "or
          "expect": "success",
          "support_expect": True}
 
+case4 = {"params": [{"shape": (7, 6, 1), "dtype": "float32", "format": "ND", "ori_shape": (7, 6, 1),"ori_format": "ND"}, #x
+                    {"shape": (7, 6, 1), "dtype": "float32", "format": "ND", "ori_shape": (7, 6, 1),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (7, 6, 1), "dtype": "float32", "format": "ND", "ori_shape": (7, 6, 1),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    1,False,
+                    ],
+         "case_name": "FakeQuantWithMinMaxVarsGradient_4",
+         "expect": RuntimeError,
+         "support_expect": True}
+
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend710"], case1)
 #ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend710"], case4)
 
 #precision cases
 #model value wrong

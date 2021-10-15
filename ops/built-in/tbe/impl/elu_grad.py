@@ -41,8 +41,12 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-NUM_ZERO = 0.0
-NUM_ONE = 1.0
+class Constant:
+    """
+    The class for elu_grad constant
+    """
+    NUM_ONE = 1.0
+    NUM_ZERO = 0.0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
@@ -75,12 +79,12 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
         activations = tbe.cast_to(activations, "float32")
 
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", "float32"):
-        min_res = tbe.vmins(activations, NUM_ZERO)
-        add_res = tbe.vadds(min_res, NUM_ONE)
+        min_res = tbe.vmins(activations, Constant.NUM_ZERO)
+        add_res = tbe.vadds(min_res, Constant.NUM_ONE)
         res = tbe.vmul(add_res, grads)
     else:
-        input_border = tvm.const(NUM_ZERO, grads.dtype)
-        scalar_param_one = tvm.const(NUM_ONE, grads.dtype)
+        input_border = tvm.const(Constant.NUM_ZERO, grads.dtype)
+        scalar_param_one = tvm.const(Constant.NUM_ONE, grads.dtype)
         tensor_input_border = tbe.broadcast(input_border, shape)
         tensor_scalar_param_one = tbe.broadcast(scalar_param_one, shape)
 
@@ -92,6 +96,7 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
         res = tbe.cast_to(res, "float16")
 
     return res
+
 
 # pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

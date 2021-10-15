@@ -20,15 +20,14 @@ import math
 from te import tik
 from te import platform as cce
 from te.utils import para_check
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
 
-class Eye(object):
+class Eye:
     """
-        Function: use to create a 2-D tensor with ones on the diagobal and zeros elsewhere
-        Create: 2020-07-10
-        Modify: 2020-12-17
+    Function: use to create a 2-D tensor with ones on the diagobal and zeros elsewhere
+    Create: 2020-07-10
+    Modify: 2020-12-17
     """
     def __init__(self, y, num_rows, num_columns, batch_shape, dtype="float32", kernel_name="eye"):
         """
@@ -43,8 +42,8 @@ class Eye(object):
         if num_rows <= 0:
             raise ValueError("The num_rows must be greater than 0, got {}.".format(num_rows))
 
-        for index in range(len(batch_shape)):
-            if batch_shape[index] <= 0:
+        for index, value in enumerate(batch_shape):
+            if value <= 0:
                 raise ValueError("The batch_shape[{}] should be more than 0.".format(index))
 
         self.y = y
@@ -81,7 +80,7 @@ class Eye(object):
 
         # the number of element in Global Memory
         self.num_elem_output_y_gm = self.num_elem_one_batch
-        if len(batch_shape) > 0:
+        if batch_shape:
             for item in batch_shape:
                 self.batch_num *= item
         self.num_elem_output_y_gm *= self.batch_num
@@ -94,7 +93,7 @@ class Eye(object):
             raise RuntimeError("The tensor is too large.")
 
         self.output_y_gm = self.tik_instance.Tensor(self.dtype,
-                                                    (self.num_elem_output_y_gm, ),
+                                                    (self.num_elem_output_y_gm,),
                                                     name="output_y_gm",
                                                     scope=tik.scope_gm)
 
@@ -313,10 +312,8 @@ class Eye(object):
 
             with self.tik_instance.for_range(0, loop_time, block_num=loop_time) as index:
                 offset_row = index * self.offset_one
-                output_y_ub = self.tik_instance.Tensor(self.dtype,
-                                                      (ub_size,),
-                                                      name="output_y_ub",
-                                                      scope=tik.scope_ubuf)
+                output_y_ub = self.tik_instance.Tensor(self.dtype, (ub_size,), name="output_y_ub",
+                                                       scope=tik.scope_ubuf)
                 self.dup_zero_to_ub(output_y_ub, ub_size)
                 output_y_ub[0].set_as(self.scalar_one)
                 if self.offset_one % self.num_elem_each_block:
@@ -329,10 +326,7 @@ class Eye(object):
             self.eye_compute_last_one_in_batches()
         else:
             ub_size = self.to_block_unit(self.num_elem_one_batch)
-            output_y_ub = self.tik_instance.Tensor(self.dtype,
-                                                    (ub_size,),
-                                                    name="output_y_ub",
-                                                    scope=tik.scope_ubuf)
+            output_y_ub = self.tik_instance.Tensor(self.dtype, (ub_size,), name="output_y_ub", scope=tik.scope_ubuf)
             self.dup_zero_to_ub(output_y_ub, ub_size)
             output_y_ub[0].set_as(self.scalar_one)
             for i in range(self.batch_num):
@@ -362,14 +356,10 @@ class Eye(object):
             offset_list = self.get_offset_list(self.offset_one, ub_size)
 
             with self.tik_instance.for_range(0, loop_time, block_num=loop_time) as index:
-                output_one_ub = self.tik_instance.Tensor(self.dtype,
-                                                        (ub_size,),
-                                                        name="output_one_ub",
-                                                        scope=tik.scope_ubuf)
-                output_zeros_ub = self.tik_instance.Tensor(self.dtype,
-                                                         (ub_size,),
-                                                         name="output_zeros_ub",
+                output_one_ub = self.tik_instance.Tensor(self.dtype, (ub_size,), name="output_one_ub",
                                                          scope=tik.scope_ubuf)
+                output_zeros_ub = self.tik_instance.Tensor(self.dtype, (ub_size,), name="output_zeros_ub",
+                                                           scope=tik.scope_ubuf)
                 self.dup_zero_to_ub(output_one_ub, ub_size)
                 self.dup_zero_to_ub(output_zeros_ub, ub_size)
                 output_one_ub[0].set_as(self.scalar_one)
@@ -430,7 +420,7 @@ class Eye(object):
         """
         if self.num_rows == self.num_columns:
             return
-        elif self.num_rows < self.num_columns:
+        if self.num_rows < self.num_columns:
             zeros_in_tail = self.num_columns - self.num_rows
         else:
             zeros_in_tail = (self.num_rows - self.num_columns) * self.num_columns
@@ -439,15 +429,14 @@ class Eye(object):
 
         ub_list = self.get_ub_list(zeros_to_fill)
 
-        if len(ub_list) == 0:
+        if not ub_list:
             return
-        else:
-            ub_size = ub_list[0]
+        ub_size = ub_list[0]
 
         # do it each batch
         with self.tik_instance.new_stmt_scope():
             zeros = self.tik_instance.Tensor(self.dtype,
-                                             (ub_size, ),
+                                             (ub_size,),
                                              name="zeros",
                                              scope=tik.scope_ubuf)
             self.dup_zero_to_ub(zeros, ub_size)
@@ -553,7 +542,7 @@ class Eye(object):
 
         """
         ub_list = []
-        for i in range(num // self.max_num_elem_each_ub):
+        for _ in range(num // self.max_num_elem_each_ub):
             ub_list.append(self.max_num_elem_each_ub)
         if num % self.max_num_elem_each_ub:
             ub_list.append(num % self.max_num_elem_each_ub)
@@ -575,7 +564,7 @@ class Eye(object):
         """
         offset_list = []
         offset = 0
-        for i in range(row_size // ub_size - 1):
+        for _ in range(row_size // ub_size - 1):
             offset_list.append(offset + ub_size)
             offset += ub_size
         if self.offset_one % ub_size:

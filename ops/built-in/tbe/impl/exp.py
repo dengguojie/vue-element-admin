@@ -32,6 +32,7 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     """
     return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
+
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("exp")
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
@@ -113,7 +114,7 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
 
     if base <= 0 and (not isclose(base, -1.0)):
         error_manager_vector.raise_err_input_value_invalid("exp", "base", "strictly positive or -1", base)
-    
+
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)

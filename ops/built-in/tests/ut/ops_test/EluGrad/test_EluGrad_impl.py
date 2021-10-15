@@ -19,10 +19,12 @@ def gen_elu_grad_case(shape_gradient, shape_activation, dtype, case_name_val):
 case1 = gen_elu_grad_case((32, 112, 15, 112),(32, 112, 15, 112),"float32", "elu_grad_1")
 case2 = gen_elu_grad_case((32, 112, 15),(32, 112, 15),"float32", "elu_grad_2")
 case3 = gen_elu_grad_case((32, 112),(32, 112),"float32", "elu_grad_3")
+case4 = gen_elu_grad_case((32, 112),(32, 112),"float16", "elu_grad_4")
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend710", "Ascend910"], case4)
 
 # precision cases
 def calc_expect_func(x1, x2, y):

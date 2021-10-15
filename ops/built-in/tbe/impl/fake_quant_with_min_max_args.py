@@ -105,8 +105,7 @@ def fake_quant_with_min_max_args_compute(x, y, min=-6, max=6, num_bits=8,
         # Calculate the quantized and dequantized results
         clamped_shifted = tbe.vsub(clamped, nudged_min_tensor)
         vmul_shifted = tbe.vmuls(clamped_shifted, inv_nudged_scale_const)
-        vadds_shifted = tbe.vadds(vmul_shifted, tvm.const(0.5,
-                                                                  dtype="float32"))
+        vadds_shifted = tbe.vadds(vmul_shifted, tvm.const(0.5, dtype="float32"))
         floor_vadds_shifted = tbe.floor(vadds_shifted)
         floor_cast = tbe.cast_to(floor_vadds_shifted, output_dtype)
         res_scale = tbe.vmuls(floor_cast, scale)
@@ -207,7 +206,7 @@ def fake_quant_with_min_max_args(x, y, min=-6, max=6, num_bits=8,
     para_check.check_dtype(input_dtype, ["float32"], param_name="x")
     if min >= max:
         excepted_value = "min must be less than max"
-        real_value = "min is (%d) and max is (%d)"%(min, max)
+        real_value = "min is (%d) and max is (%d)" % (min, max)
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "min", excepted_value, real_value)
     if num_bits < 2 or num_bits > 16:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", "2", "16", num_bits)

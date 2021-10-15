@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("fake_quant_with_min_max_args_gradient")
@@ -189,8 +190,7 @@ def _cmpare_value(x, nudged_min, nudged_max):
 
         vmul_max_value = tbe.vmul(one_min, max_value_tensor)
         vmul_max_value_one = tbe.vmul(vmul_max_value, max_value_tensor)
-        between_nudged_min_max = tbe.vmul(vmul_max_value_one,
-                                                  max_value_one_tensor)
+        between_nudged_min_max = tbe.vmul(vmul_max_value_one, max_value_one_tensor)
 
     return between_nudged_min_max
 
@@ -252,7 +252,7 @@ def fake_quant_with_min_max_args_gradient(gradients, x, y, min=-6,
     para_check.check_dtype(input_dtype, ["float32"], param_name="x")
     if min >= max:
         excepted_value = "min must be less than max"
-        real_value = "min is (%d) and max is (%d)"%(min, max)
+        real_value = "min is (%d) and max is (%d)" % (min, max)
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "min", excepted_value, real_value)
     if num_bits < 2 or num_bits > 16:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", "2", "16", num_bits)

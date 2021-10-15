@@ -25,16 +25,20 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# value of default num_bits
-NUM_BITS_MIN = 2
-# value of max num_bits
-NUM_BITS_MAX = 16
-# value of min num_bits
-NUM_BITS_DEFAULT = 8
-# 0.5
-FLOAT_HALF_VALUE = 0.5
-# data type
-D_TYPE = "float32"
+class Constant:
+    """
+    The class for constant
+    """
+    # value of default num_bits
+    NUM_BITS_MIN = 2
+    # value of max num_bits
+    NUM_BITS_MAX = 16
+    # value of min num_bits
+    NUM_BITS_DEFAULT = 8
+    # 0.5
+    FLOAT_HALF_VALUE = 0.5
+    # data type
+    D_TYPE = "float32"
 
 
 def _less_compare_float32(data_x, data_y):
@@ -48,15 +52,14 @@ def _less_compare_float32(data_x, data_y):
     (2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1
     so min_value*max_value*max_value*factor_value = 1
     """
-    shape_inputs = te.lang.cce.util.shape_to_list(data_x.shape)
-    min_value = tvm.const(2 ** (-126), dtype=D_TYPE)
-    max_value = tvm.const(2 ** 62, dtype=D_TYPE)
-    factor_value = tvm.const(2 ** 2, dtype=D_TYPE)
+    min_value = tvm.const(2 ** (-126), dtype=Constant.D_TYPE)
+    max_value = tvm.const(2 ** 62, dtype=Constant.D_TYPE)
+    factor_value = tvm.const(2 ** 2, dtype=Constant.D_TYPE)
 
     if api_check_support("te.lang.cce.vmaxs", data_x.dtype):
         res_sub = te.lang.cce.vsub(data_y, data_x)
         res_min = te.lang.cce.vmins(res_sub, min_value)
-        res_max = te.lang.cce.vmaxs(res_min, tvm.const(0, dtype=D_TYPE))
+        res_max = te.lang.cce.vmaxs(res_min, tvm.const(0, dtype=Constant.D_TYPE))
     else:
         data_zero = te.lang.cce.vmuls(data_x, 0)
         min_value_tensor = te.lang.cce.vadds(data_zero, min_value)
@@ -85,8 +88,7 @@ def _bool_negate(input_bool):
 
 
 # pylint: disable=locally-disabled,too-many-statements,too-many-locals,unused-variable
-def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits,
-                            narrow_range):
+def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits, narrow_range):
     """
     Compute gradients for a FakeQuantWithMinMaxVars operation.
     quant_max = 2^num_bits - 1
@@ -99,89 +101,58 @@ def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits,
     quant_max = 2 ** num_bits - 1
 
     tensor_zero = te.lang.cce.vmuls(min_broadcast, tvm.const(0, dtype))
-    quant_min_float = te.lang.cce.vadds(tensor_zero,
-                                        tvm.const(quant_min, dtype))
-    quant_max_float = te.lang.cce.vadds(tensor_zero,
-                                        tvm.const(quant_max, dtype))
+    quant_min_float = te.lang.cce.vadds(tensor_zero, tvm.const(quant_min, dtype))
+    quant_max_float = te.lang.cce.vadds(tensor_zero, tvm.const(quant_max, dtype))
     max_sub_min = te.lang.cce.vsub(max_broadcast, min_broadcast)
     quant_max_sub_quant_min = te.lang.cce.vsub(quant_max_float, quant_min_float)
     scale = te.lang.cce.vdiv(max_sub_min, quant_max_sub_quant_min)
     min_div_scale = te.lang.cce.vdiv(min_broadcast, scale)
 
     zero_point_from_min = te.lang.cce.vsub(quant_min_float, min_div_scale)
-    bool_less_quant_min_float = _less_compare_float32(zero_point_from_min,
-                                                      quant_min_float)
-    bool_more_quant_max_float = _less_compare_float32(quant_max_float,
-                                                      zero_point_from_min)
-    less_quant_min_float = te.lang.cce.vmul(quant_min_float,
-                                            bool_less_quant_min_float)
-    more_quant_max_float = te.lang.cce.vmul(quant_max_float,
-                                            bool_more_quant_max_float)
+    bool_less_quant_min_float = _less_compare_float32(zero_point_from_min, quant_min_float)
+    bool_more_quant_max_float = _less_compare_float32(quant_max_float, zero_point_from_min)
+    less_quant_min_float = te.lang.cce.vmul(quant_min_float, bool_less_quant_min_float)
+    more_quant_max_float = te.lang.cce.vmul(quant_max_float, bool_more_quant_max_float)
     bool_not_less_quant_min_float = _bool_negate(bool_less_quant_min_float)
     bool_not_more_quant_max_float = _bool_negate(bool_more_quant_max_float)
 
-    bool_between_min_max = te.lang.cce.vmul(bool_not_less_quant_min_float,
-                                            bool_not_more_quant_max_float)
-    between_min_max_float = te.lang.cce.vmul(zero_point_from_min,
-                                             bool_between_min_max)
+    bool_between_min_max = te.lang.cce.vmul(bool_not_less_quant_min_float, bool_not_more_quant_max_float)
+    between_min_max_float = te.lang.cce.vmul(zero_point_from_min, bool_between_min_max)
     # use DSL floor(x+0.5) to implement the round(x) function of the tf
     between_min_max_add_half_one = te.lang.cce.vadds(between_min_max_float,
-                                                     tvm.const(FLOAT_HALF_VALUE,
-                                                               dtype))
+                                                     tvm.const(Constant.FLOAT_HALF_VALUE, dtype))
     between_min_max_round = te.lang.cce.floor(between_min_max_add_half_one)
-    nudged_zero_point_tensor = te.lang.cce.vadd(less_quant_min_float,
-                                                more_quant_max_float)
-    nudged_zero_point = te.lang.cce.vadd(nudged_zero_point_tensor,
-                                         between_min_max_round)
+    nudged_zero_point_tensor = te.lang.cce.vadd(less_quant_min_float, more_quant_max_float)
+    nudged_zero_point = te.lang.cce.vadd(nudged_zero_point_tensor, between_min_max_round)
 
     nudged_min_tensor = te.lang.cce.vsub(quant_min_float, nudged_zero_point)
     nudged_min = te.lang.cce.vmul(nudged_min_tensor, scale)
 
     tensor_zero_second = te.lang.cce.vmuls(min_broadcast, tvm.const(0, dtype))
-    quant_min_float_second = te.lang.cce.vadds(tensor_zero_second,
-                                               tvm.const(quant_min, dtype))
-    quant_max_float_second = te.lang.cce.vadds(tensor_zero_second,
-                                               tvm.const(quant_max, dtype))
+    quant_min_float_second = te.lang.cce.vadds(tensor_zero_second, tvm.const(quant_min, dtype))
+    quant_max_float_second = te.lang.cce.vadds(tensor_zero_second, tvm.const(quant_max, dtype))
     max_sub_min_second = te.lang.cce.vsub(max_broadcast, min_broadcast)
-    quant_max_sub_quant_min_second = te.lang.cce.vsub(quant_max_float_second,
-                                                      quant_min_float_second)
-    scale_second = te.lang.cce.vdiv(max_sub_min_second,
-                                    quant_max_sub_quant_min_second)
+    quant_max_sub_quant_min_second = te.lang.cce.vsub(quant_max_float_second, quant_min_float_second)
+    scale_second = te.lang.cce.vdiv(max_sub_min_second, quant_max_sub_quant_min_second)
     min_div_scale_second = te.lang.cce.vdiv(min_broadcast, scale_second)
 
-    zero_point_from_min_second = te.lang.cce.vsub(quant_min_float_second,
-                                                  min_div_scale_second)
-    bool_less_quant_min_second = _less_compare_float32(
-        zero_point_from_min_second,
-        quant_min_float_second)
-    bool_more_quant_max_second = \
-        _less_compare_float32(quant_max_float_second,
-                              zero_point_from_min_second)
-    less_quant_min_float_second = te.lang.cce.vmul(quant_min_float_second,
-                                                   bool_less_quant_min_second)
-    more_quant_max_float_second = te.lang.cce.vmul(quant_max_float_second,
-                                                   bool_more_quant_max_second)
+    zero_point_from_min_second = te.lang.cce.vsub(quant_min_float_second, min_div_scale_second)
+    bool_less_quant_min_second = _less_compare_float32(zero_point_from_min_second, quant_min_float_second)
+    bool_more_quant_max_second = _less_compare_float32(quant_max_float_second, zero_point_from_min_second)
+    less_quant_min_float_second = te.lang.cce.vmul(quant_min_float_second, bool_less_quant_min_second)
+    more_quant_max_float_second = te.lang.cce.vmul(quant_max_float_second, bool_more_quant_max_second)
     bool_not_less_quant_min_second = _bool_negate(bool_less_quant_min_second)
     bool_not_more_quant_max_second = _bool_negate(bool_more_quant_max_second)
-    bool_between_min_max_second = te.lang.cce.vmul(
-        bool_not_less_quant_min_second,
-        bool_not_more_quant_max_second)
+    bool_between_min_max_second = te.lang.cce.vmul(bool_not_less_quant_min_second, bool_not_more_quant_max_second)
 
-    between_min_max_float_second = te.lang.cce.vmul(zero_point_from_min_second,
-                                                    bool_between_min_max_second)
-    min_max_add_half_one_second = te.lang.cce.vadds(
-        between_min_max_float_second,
-        tvm.const(FLOAT_HALF_VALUE, dtype))
-    between_min_max_round_second = te.lang.cce.floor(
-        min_max_add_half_one_second)
-    nudged_zero_point_tensor_second = te.lang.cce.vadd(
-        less_quant_min_float_second,
-        more_quant_max_float_second)
-    nudged_zero_point_second = te.lang.cce.vadd(nudged_zero_point_tensor_second,
-                                                between_min_max_round_second)
+    between_min_max_float_second = te.lang.cce.vmul(zero_point_from_min_second, bool_between_min_max_second)
+    min_max_add_half_one_second = te.lang.cce.vadds(between_min_max_float_second,
+                                                    tvm.const(Constant.FLOAT_HALF_VALUE, dtype))
+    between_min_max_round_second = te.lang.cce.floor(min_max_add_half_one_second)
+    nudged_zero_point_tensor_second = te.lang.cce.vadd(less_quant_min_float_second, more_quant_max_float_second)
+    nudged_zero_point_second = te.lang.cce.vadd(nudged_zero_point_tensor_second, between_min_max_round_second)
 
-    nudged_max_tensor = te.lang.cce.vsub(quant_max_float_second,
-                                         nudged_zero_point_second)
+    nudged_max_tensor = te.lang.cce.vsub(quant_max_float_second, nudged_zero_point_second)
     nudged_max = te.lang.cce.vmul(nudged_max_tensor, scale_second)
     res = nudged_min, nudged_max
 
@@ -199,22 +170,20 @@ def _between_nudged_min_max_compute(x, nudged_min, nudged_max):
     but cce can only support 2**62, so use 62/62/2 to adaptor 126
     (2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1
     """
-    shape_inputs = te.lang.cce.util.shape_to_list(x.shape)
-    min_value = tvm.const(2 ** (-126), dtype=D_TYPE)
-    max_value = tvm.const(2 ** 62, dtype=D_TYPE)
-    factor_value = tvm.const(2 ** 2, dtype=D_TYPE)
+    min_value = tvm.const(2 ** (-126), dtype=Constant.D_TYPE)
+    max_value = tvm.const(2 ** 62, dtype=Constant.D_TYPE)
+    factor_value = tvm.const(2 ** 2, dtype=Constant.D_TYPE)
 
     if api_check_support("te.lang.cce.vmaxs", x.dtype):
         sub_tensor_min = te.lang.cce.vsub(x, nudged_min)
         sub_min = te.lang.cce.vadds(sub_tensor_min, min_value)
-        more_nudged_min_tensor = te.lang.cce.vmaxs(sub_min, tvm.const(0, dtype=D_TYPE))
+        more_nudged_min_tensor = te.lang.cce.vmaxs(sub_min, tvm.const(0, dtype=Constant.D_TYPE))
 
         sub_tensor_max = te.lang.cce.vsub(nudged_max, x)
         sub_max = te.lang.cce.vadds(sub_tensor_max, min_value)
-        less_nudged_max_tensor = te.lang.cce.vmaxs(sub_max, tvm.const(0, dtype=D_TYPE))
+        less_nudged_max_tensor = te.lang.cce.vmaxs(sub_max, tvm.const(0, dtype=Constant.D_TYPE))
 
-        between_nudged_tensor = te.lang.cce.vmul(more_nudged_min_tensor,
-                                                 less_nudged_max_tensor)
+        between_nudged_tensor = te.lang.cce.vmul(more_nudged_min_tensor, less_nudged_max_tensor)
         between_nudged_element = te.lang.cce.vmins(between_nudged_tensor, min_value)
     else:
         data_zero = te.lang.cce.vmuls(x, 0)
@@ -264,7 +233,7 @@ def _check_parameters(gradients, x, input_min, input_max, kernel_name):
     para_check.check_shape(shape_max, min_rank=1, max_rank=1, param_name="max")
 
     # check data type of input tensor
-    check_list = (D_TYPE,)
+    check_list = (Constant.D_TYPE,)
     para_check.check_dtype(dtype_gradient, check_list, param_name="gradients")
     para_check.check_dtype(dtype_data, check_list, param_name="x")
     para_check.check_dtype(dtype_min, check_list, param_name="min")
@@ -342,14 +311,11 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
 
     min_broadcast = te.lang.cce.broadcast(min, input_shape, dtype)
     max_broadcast = te.lang.cce.broadcast(max, input_shape, dtype)
-    nudged_min, nudged_max = _nudged_min_max_compute(min_broadcast,
-                                                     max_broadcast, num_bits,
-                                                     narrow_range)
-    nudged_min_backup = te.lang.cce.vadds(nudged_min, tvm.const(0, D_TYPE))
-    nudged_max_backup = te.lang.cce.vadds(nudged_max, tvm.const(0, D_TYPE))
+    nudged_min, nudged_max = _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits, narrow_range)
+    nudged_min_backup = te.lang.cce.vadds(nudged_min, tvm.const(0, Constant.D_TYPE))
+    nudged_max_backup = te.lang.cce.vadds(nudged_max, tvm.const(0, Constant.D_TYPE))
 
-    between_nudged_min_max = _between_nudged_min_max_compute(x, nudged_min,
-                                                             nudged_max)
+    between_nudged_min_max = _between_nudged_min_max_compute(x, nudged_min, nudged_max)
     wrt_input_tensor = te.lang.cce.vmul(between_nudged_min_max, gradients)
     shape_list = []
     for i, _ in enumerate(input_shape):
@@ -366,29 +332,20 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
     bool_both_no_zero = _both_min_max_zero(min, max, input_shape, dtype)
 
     bool_both_no_zero_reverse = te.lang.cce.vsub(tensor_one, bool_both_no_zero)
-    bool_both_no_zero_broad = te.lang.cce.broadcast(bool_both_no_zero,
-                                                    input_shape, dtype)
-    bool_both_no_zero_reverse = te.lang.cce.broadcast(bool_both_no_zero_reverse,
-                                                      input_shape, dtype)
+    bool_both_no_zero_broad = te.lang.cce.broadcast(bool_both_no_zero, input_shape, dtype)
+    bool_both_no_zero_reverse = te.lang.cce.broadcast(bool_both_no_zero_reverse, input_shape, dtype)
 
-    wrt_input_weight = te.lang.cce.vmul(wrt_input_tensor,
-                                        bool_both_no_zero_broad)
+    wrt_input_weight = te.lang.cce.vmul(wrt_input_tensor, bool_both_no_zero_broad)
     gradients_weight = te.lang.cce.vmul(gradients, bool_both_no_zero_reverse)
     backprops_wrt_x = te.lang.cce.vadd(wrt_input_weight, gradients_weight)
 
     # cloud version: optimize to eliminating workspace by reducing atomic
     # insert temp node to make vadd_last node as mid_outputTensor for eliminating workspace
-    temp_insert_node_mul = te.lang.cce.vmuls(backprops_wrt_x, tvm.const(0, D_TYPE))
-    temp_insert_node_add = te.lang.cce.vadd(temp_insert_node_mul,
-                                            below_min_data)
-    below_min_data_tensor = te.lang.cce.vmul(temp_insert_node_add,
-                                             bool_both_no_zero)
-    below_max_data_tensor = te.lang.cce.vmul(below_max_data,
-                                             bool_both_no_zero)
-    backprop_wrt_min_max_list = te.lang.cce.tuple_sum(
-        [below_min_data_tensor,
-         below_max_data_tensor],
-        axis=shape_list)
+    temp_insert_node_mul = te.lang.cce.vmuls(backprops_wrt_x, tvm.const(0, Constant.D_TYPE))
+    temp_insert_node_add = te.lang.cce.vadd(temp_insert_node_mul, below_min_data)
+    below_min_data_tensor = te.lang.cce.vmul(temp_insert_node_add, bool_both_no_zero)
+    below_max_data_tensor = te.lang.cce.vmul(below_max_data, bool_both_no_zero)
+    backprop_wrt_min_max_list = te.lang.cce.tuple_sum([below_min_data_tensor, below_max_data_tensor], axis=shape_list)
     output_list = [backprops_wrt_x] + list(backprop_wrt_min_max_list)
 
     return output_list
@@ -402,11 +359,9 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
 def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
                                           backprops_wrt_x, backprops_wrt_min,
                                           backprops_wrt_max,
-                                          num_bits=NUM_BITS_DEFAULT,
+                                          num_bits=Constant.NUM_BITS_DEFAULT,
                                           narrow_range=False,
-                                          kernel_name="fake_quant_"
-                                                      "with_min_max_vars_"
-                                                      "gradient"):
+                                          kernel_name="fake_quant_with_min_max_vars_gradient"):
     """
     Compute gradients for a FakeQuantWithMinMaxVars operation use
     fake_quant_with_min_max_vars_gradient_compute.
@@ -446,9 +401,9 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
     """
     _check_parameters(gradients, x, min, max, kernel_name)
 
-    if num_bits < NUM_BITS_MIN or num_bits > NUM_BITS_MAX:
-        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", \
-                                                                NUM_BITS_MIN, NUM_BITS_MAX, num_bits)
+    if num_bits < Constant.NUM_BITS_MIN or num_bits > Constant.NUM_BITS_MAX:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "num_bits", Constant.NUM_BITS_MIN,
+                                                                Constant.NUM_BITS_MAX, num_bits)
 
     dtype_gradient = gradients.get("dtype").lower()
     shape_gradient = gradients.get("shape")
@@ -467,11 +422,9 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
     para_check.check_shape(shape_backprops_wrt_max, param_name="backprops_wrt_max")
     shape_min = shape_util.scalar2tensor_one(shape_min)
     shape_gradient = (functools_reduce(lambda x, y: x * y, shape_gradient[:]),)
-    _, min_new_shape, _ = shape_util.broadcast_shapes(shape_gradient, shape_min,
-                                              param_name_input1="gradients",
-                                              param_name_input2="min")
-    gradient_data = tvm.placeholder(shape_gradient, name="gradient_data",
-                                    dtype=dtype_gradient)
+    _, min_new_shape, _ = shape_util.broadcast_shapes(shape_gradient, shape_min, param_name_input1="gradients",
+                                                      param_name_input2="min")
+    gradient_data = tvm.placeholder(shape_gradient, name="gradient_data", dtype=dtype_gradient)
     x = tvm.placeholder(shape_gradient, name="x", dtype=dtype_gradient)
     min_data = tvm.placeholder(min_new_shape, name="min_data", dtype=dtype_min)
     max_data = tvm.placeholder(min_new_shape, name="max_data", dtype=dtype_min)
@@ -490,6 +443,5 @@ def fake_quant_with_min_max_vars_gradient(gradients, x, min, max,
     with tvm.target.cce():
         sch = te.lang.cce.auto_schedule(res_list)
 
-    config = {"name": kernel_name,
-              "tensor_list": list(input_placeholders) + list(res_list)}
+    config = {"name": kernel_name, "tensor_list": list(input_placeholders) + list(res_list)}
     te.lang.cce.cce_build_code(sch, config)

@@ -22,8 +22,6 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 
-# const value
-CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals,unused-variable
@@ -51,8 +49,8 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu",
     attr_opp = 0 - attr
     attr_half = attr / 2
     const_0 = tvm.const(attr_opp, dtype)
-    const_1 = tvm.const(CONST_1, dtype)
-    abs_x =tbe.vabs(input_x)
+    const_1 = tvm.const(1, dtype)
+    abs_x = tbe.vabs(input_x)
     mul_abs_x = tbe.vmuls(abs_x, const_0)
     exp_abs_x = tbe.vexp(mul_abs_x)
     div_down = tbe.vadds(exp_abs_x, const_1)

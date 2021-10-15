@@ -23,22 +23,27 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 
-# define a scaler, value = 1
-SCALER_ONE = 1
-# define a scaler, value = -1
-SCALER_NEGATIVE_ONE = -1
-# define a scaler, value = -0.47047, only used in compute of erfc and erf
-SCALER_P = 0.47047
-# define a scaler, value = 0.3480242, only used in compute of erfc and erf
-SCALER_A = 0.3480242
-# define a scaler, value = -0.0958798, only used in compute of erfc and erf
-SCALER_B = -0.0958798
-# define a scaler, value = 0.7478556, only used in compute of erfc and erf
-SCALER_C = 0.7478556
-# define a scaler, value = 32768
-SCALER_FP16_MAX = 32768
-# define a scaler, value = 2**(-15)
-SCALER_FP16_MIN = 2**(-15)
+
+class Constant:
+    """
+    The class for constant
+    """
+    # define a scaler, value = 1
+    SCALER_ONE = 1
+    # define a scaler, value = -0.47047, only used in compute of erfc and erf
+    SCALER_P = 0.47047
+    # define a scaler, value = -1
+    SCALER_NEGATIVE_ONE = -1
+    # define a scaler, value = -0.0958798, only used in compute of erfc and erf
+    SCALER_B = -0.0958798
+    # define a scaler, value = 0.3480242, only used in compute of erfc and erf
+    SCALER_A = 0.3480242
+    # define a scaler, value = 2**(-15)
+    SCALER_FP16_MIN = 2**(-15)
+    # define a scaler, value = 0.7478556, only used in compute of erfc and erf
+    SCALER_C = 0.7478556
+    # define a scaler, value = 32768
+    SCALER_FP16_MAX = 32768
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -65,14 +70,14 @@ def erfc_compute(input_x, output_y, kernel_name="erfc"):
     dtype = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)
 
-    const_one = tvm.const(SCALER_ONE, dtype="float32")
-    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype="float32")
-    const_p = tvm.const(SCALER_P, dtype="float32")
-    const_a = tvm.const(SCALER_A, dtype="float32")
-    const_b = tvm.const(SCALER_B, dtype="float32")
-    const_c = tvm.const(SCALER_C, dtype="float32")
-    fp16_max = tvm.const(SCALER_FP16_MAX, dtype=dtype)
-    fp16_min = tvm.const(SCALER_FP16_MIN, dtype=dtype)
+    const_one = tvm.const(Constant.SCALER_ONE, dtype="float32")
+    const_negative_one = tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype="float32")
+    const_p = tvm.const(Constant.SCALER_P, dtype="float32")
+    const_a = tvm.const(Constant.SCALER_A, dtype="float32")
+    const_b = tvm.const(Constant.SCALER_B, dtype="float32")
+    const_c = tvm.const(Constant.SCALER_C, dtype="float32")
+    fp16_max = tvm.const(Constant.SCALER_FP16_MAX, dtype=dtype)
+    fp16_min = tvm.const(Constant.SCALER_FP16_MIN, dtype=dtype)
 
     if dtype == "float16":
         input_x = tbe.cast_to(input_x, "float32")

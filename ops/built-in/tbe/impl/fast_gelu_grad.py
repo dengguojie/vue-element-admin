@@ -23,12 +23,11 @@ import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
-from impl.util.platform_adapter import error_manager_vector
 from te.utils import shape_util
-from impl.util import util_compute
 from tbe.dsl import broadcast
+from impl.util.platform_adapter import error_manager_vector
+from impl.util import util_compute
 
-CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals
@@ -63,7 +62,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z,
     attr_opp = 0 - attr
     const_1 = tvm.const(attr_opp, dtype)
     const_2 = tvm.const(attr, dtype)
-    const_3 = tvm.const(CONST_1, dtype)
+    const_3 = tvm.const(1, dtype)
 
     # e^(-1.702x)
     abs_x = tbe.vabs(input_x)
@@ -145,8 +144,9 @@ def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad",
     shape_dy = list(shape_dy)
     shape_x = list(shape_x)
     if not operator.eq(shape_dy, shape_x):
-        error_manager_vector.raise_err_inputs_shape_not_equal("fast_gelu_grad", "shape_dy", "shape_x", shape_dy, shape_x, shape_x)
-    
+        error_manager_vector.raise_err_inputs_shape_not_equal("fast_gelu_grad", "shape_dy", "shape_x",
+                                                              shape_dy, shape_x, shape_x)
+
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_dy)
     data_dy = tvm.placeholder(fuseshape, name="data_dy", dtype=input_dtype)

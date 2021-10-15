@@ -18,17 +18,22 @@ elu_grad_v2
 import operator
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.cce_conf import api_check_support
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
-NUM_ZERO = 0.0
-NUM_ONE = 1.0
+
+class Constant:
+    """
+    The class for elu_grad_v2 constant
+    """
+    NUM_ZERO = 0.0
+    NUM_ONE = 1.0
+
 
 #pylint: disable=unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("elu_grad_v2")
-def elu_grad_v2_compute(grads, activations, y, alpha=NUM_ONE):
+def elu_grad_v2_compute(grads, activations, y, alpha=Constant.NUM_ONE):
     """
     calculating data
 
@@ -51,22 +56,22 @@ def elu_grad_v2_compute(grads, activations, y, alpha=NUM_ONE):
         grads = tbe.cast_to(grads, "float32")
         activations = tbe.cast_to(activations, "float32")
 
-    scalar_param_zero = tvm.const(NUM_ZERO, grads.dtype)
+    scalar_param_zero = tvm.const(Constant.NUM_ZERO, grads.dtype)
     scalar_param_alpha = tvm.const(alpha, grads.dtype)
-    scalar_param_one = tvm.const(NUM_ONE, grads.dtype)
+    scalar_param_one = tvm.const(Constant.NUM_ONE, grads.dtype)
 
     tensor_scalar_one = tbe.broadcast(scalar_param_one, shape)
     tensor_scalar_zero = tbe.broadcast(scalar_param_zero, shape)
     tensor_ret_x_ge_zero = tbe.vadds(activations, scalar_param_alpha)
 
-    mid_ret = tbe.vcmpsel(activations, tensor_scalar_zero, 'le', tensor_ret_x_ge_zero,
-                                  tensor_scalar_one)
+    mid_ret = tbe.vcmpsel(activations, tensor_scalar_zero, 'le', tensor_ret_x_ge_zero, tensor_scalar_one)
     res = tbe.vmul(mid_ret, grads)
 
     if dtype.lower() == "float16":
         res = tbe.cast_to(res, "float16")
 
     return res
+
 
 #pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

@@ -174,6 +174,8 @@ struct TilingParam {
 
 static bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const std::string& reduction,
                                          TilingParam& tiling_param) {
+  OP_TILING_CHECK(max_move_line == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGrad", "max_move_line = 0 is not supported."), return false);
   tiling_param.max_line = max_move_line;
   tiling_param.lower_line = tiling_param.n_dim % max_move_line;
   tiling_param.loop_time = GetCeilDiv(tiling_param.n_dim, tiling_param.max_line * tiling_param.core_num);
