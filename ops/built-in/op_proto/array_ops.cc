@@ -2316,6 +2316,18 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
   int64_t len_x = x_dims.size();
   int64_t len_shape = data.GetSize() / sizeof(T);
   int64_t diff = abs(len_x - len_shape);
+  const char *op_name = "Expand";
+
+  std::string xShape = to_string(x_dims);
+  OP_LOGD(op_name, "Get shape of [expand's x] %s", xShape.c_str());
+  
+  std::vector<int64_t> shape_dims;
+  for (int64_t i = 0; i < len_shape; i++) {
+    T dim = *((T *)data.GetData() + i);
+    shape_dims.push_back(dim);
+  }
+  std::string shapeVal = to_string(shape_dims);
+  OP_LOGD(op_name, "Get constValue val of [expand's shape] %s", shapeVal.c_str());
 
   if (len_shape < len_x) {
     for (int64_t i = 0; i < len_x; i++) {
