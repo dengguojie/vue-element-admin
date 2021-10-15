@@ -400,6 +400,7 @@ IMPLEMT_COMMON_INFERFUNC(CastInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Cast, CastInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(Cast);
 // --------------Cast END-----------------
 
 // ---------------------GreaterEqual-----------------------

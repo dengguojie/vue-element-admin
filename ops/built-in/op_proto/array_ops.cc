@@ -1705,6 +1705,8 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
 
 INFER_FUNC_REG(Unsqueeze, UnsqueezeInfer);
 
+INFER_VALUE_RANGE_DEFAULT_REG(Unsqueeze);
+
 IMPLEMT_INFERFUNC(Rank, RankInfer) {
   OP_LOGI(op.GetName().c_str(), "Rank infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
