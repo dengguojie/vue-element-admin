@@ -258,6 +258,8 @@ class GemmSchedule(object):
         self.storage_ka_bound_change = False
         self.storage_kb_bound_change = False
         self.storage_n_bound_change = False
+        self.cgm_ka_storage_change = False
+        self.cgm_kb_stotage_change = False
         self.l1_fusion_type = 0
 
     @staticmethod
@@ -3476,9 +3478,10 @@ class GemmSchedule(object):
         # when the Inner axis is K and attach to C_gm, k_aligned value
         # may be larger than the tiling value.
         if self.aub_attach_status == "c_gm" and not self.transpose_a:
+            self.cgm_ka_storage_change = True
             max_k_bound = self._get_a_max_k_bound()
             a_align_value = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0,
-                                        max_k_bound + gap_value, 1)
+                                       max_k_bound + gap_value, 1)
         src_dtype = a_normalize_ub.dtype
         a_transpose = TENSOR_MAP.get("a_transpose")
         if a_int82fp16 is not None:
@@ -3506,9 +3509,10 @@ class GemmSchedule(object):
         # when the Inner axis is K and attach to C_gm, k_aligned value
         # may be larger than the tiling value.
         if self.bub_attach_status == "c_gm" and self.transpose_b:
+            self.cgm_kb_stotage_change = True
             max_k_bound = self._get_b_max_k_bound()
             b_align_value = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0,
-                                        max_k_bound + gap_value, 1)
+                                       max_k_bound + gap_value, 1)
         src_dtype = b_normalize_ub.dtype
         b_transpose = TENSOR_MAP.get("b_transpose")
         if b_int82fp16 is not None:
@@ -4107,10 +4111,15 @@ class GemmSchedule(object):
             sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
             # get l1 bound
+            aub_storage_bound = self._get_aub_bound()
+            bub_storage_bound = self._get_bub_bound()
             if self.format_a == "ND":
-                sch[TENSOR_MAP.get("a_ub")].set_buffer_size(self._get_aub_bound())
+                # a_ub is normalized so the storage used for (M,K) is the same as (M1, K1 , M0, K0)
+                sch[TENSOR_MAP.get("a_ub")].set_buffer_size(aub_storage_bound)
+                sch[TENSOR_MAP.get("a_ub_fract")].set_buffer_size(aub_storage_bound)
             if self.format_b == "ND":
-                sch[TENSOR_MAP.get("b_ub")].set_buffer_size(self._get_bub_bound())
+                sch[TENSOR_MAP.get("b_ub")].set_buffer_size(bub_storage_bound)
+                sch[TENSOR_MAP.get("b_ub_fract")].set_buffer_size(bub_storage_bound)
             sch[TENSOR_MAP.get("a_l1")].set_buffer_size(self._get_al1_bound())
             sch[TENSOR_MAP.get("b_l1")].set_buffer_size(self._get_bl1_bound())
 
@@ -4166,7 +4175,6 @@ class GemmSchedule(object):
             n_factors = self._int_ceil_div(n_parts, self.tiling["block_dim"][1])
             n_bound = n_factors * self.tiling["CL0_matrix"][0] * self.block_out
         return n_bound
-    
 
     def _get_aub_bound(self):
         gap_value = self.block_reduce
@@ -4176,7 +4184,7 @@ class GemmSchedule(object):
             max_k_bound = self._get_a_max_k_bound()
             # If having bank conflict
             k_bound = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0,
-                                 max_k_bound + gap_value, max_k_bound) if not self.transpose_a else max_k_bound
+                                 max_k_bound + gap_value, max_k_bound) if self.cgm_ka_storage_change else max_k_bound
         else:
             k_bound = self.aub_tiling_k
             k_bound = k_bound + gap_value if self.storage_ka_bound_change else k_bound
@@ -4191,12 +4199,12 @@ class GemmSchedule(object):
             max_k_bound = self._get_b_max_k_bound()
             # If having bank conflict
             k_bound = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0,
-                                 max_k_bound + gap_value, max_k_bound) if self.transpose_b else max_k_bound
+                                 max_k_bound + gap_value, max_k_bound) if self.cgm_kb_stotage_change else max_k_bound
         else:
             k_bound = self.bub_tiling_k
             k_bound = k_bound + gap_value if self.storage_kb_bound_change else k_bound
         bub_bound = n_bound * k_bound
-        
+
         return bub_bound
 
     def _get_al1_bound(self):
@@ -4251,7 +4259,7 @@ class GemmSchedule(object):
         else:
             n_index = -3
             n_shape_src_tensor = self.TENSOR_MAP.get("b_l0b")
-            
+
         m_shape = m_shape_src_tensor.shape[m_index]
         k_shape = k_shape_src_tensor.shape[k_index]
         n_shape = n_shape_src_tensor.shape[n_index]

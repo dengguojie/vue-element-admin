@@ -17,7 +17,6 @@ dynamic mat_mul
 """
 import math
 
-from impl.util import fusion_util
 from impl.util import util_common
 from impl.util import util_gemm
 from impl.util import util_select_op_base
