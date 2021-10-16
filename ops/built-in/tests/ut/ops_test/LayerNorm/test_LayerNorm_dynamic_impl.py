@@ -71,10 +71,28 @@ case4 = {"params": [{"shape": (-1, -1, 16, 16), "dtype": "float16", "format": "F
          "format_expect": [],
          "support_expect": True}
 
+case5 = {"params": [{"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512), "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    {"shape": (304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (304, 512),
+                     "ori_format": "NCHW", "range": ((1, None), )},
+                    {"shape": (304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (304, 512),
+                     "ori_format": "NCHW", "range": ((1, None), )},
+                    {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                     "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    {"shape": (32, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 1, 1),
+                     "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    {"shape": (32, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 1, 1),
+                     "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    1, 1],
+         # "case_name": "layer_norm_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
 
 if __name__ == "__main__":
     with tbe.common.context.op_context.OpContext("dynamic"):

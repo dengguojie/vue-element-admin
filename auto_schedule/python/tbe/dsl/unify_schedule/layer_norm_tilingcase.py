@@ -247,8 +247,10 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_fo
 
     pre_compile_info = get_compile_info()
     if pre_compile_info and "common_info" not in pre_compile_info:
-        info_map = {
-            "common_info": common_info, "pattern_info": pattern_info, "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": core_num, "max_ub_size_normal_fp16": max_ub_size_normal_fp16, "max_ub_size_normal_fp32": max_ub_size_normal_fp32, "mode": mode, "input_format": input_format}
+        info_map = {"common_info": common_info, "pattern_info": pattern_info,
+                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes,
+                    "max_ub_size_normal_fp16": max_ub_size_normal_fp16,
+                    "max_ub_size_normal_fp32": max_ub_size_normal_fp32, "mode": mode}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
                 add_compile_info(key, info_map.get(key))
@@ -394,7 +396,7 @@ def build_pointcut(func, *args, **kwargs):
     func(*args, **kwargs)
 
 
-class LayerNormTilingCase(TilingCaseBase):
+class LayerNormTilingCase:
     def __init__(self):
         self.is_atomic = False
         self.block_split_axis_index = None
