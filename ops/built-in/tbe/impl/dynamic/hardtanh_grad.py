@@ -18,18 +18,12 @@ hardtanh_grad
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.platform_adapter import tbe_context
-
-
-INF_FP32_VAL = 1e-10
 
 
 # pylint: disable=too-many-arguments,too-many-locals
@@ -62,6 +56,8 @@ def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_
     """
     Please refer to the TE DSL Manual, And code here with TE DSL.
     """
+    INF_FP32_VAL = 1e-10
+
     in_data_type = input_result.dtype.lower()
     f_min = tvm.const(min_val, dtype="float32")
     f_max = tvm.const(max_val, dtype="float32")
@@ -127,10 +123,8 @@ def hardtanh_grad(result, grad, y, min_val, max_val, kernel_name="hardtanh_grad"
     """
 
     result_shape = result.get("shape")
-    result_range = list(result.get("range"))
     result_dtype = (result.get("dtype")).lower()
     grad_shape = grad.get("shape")
-    gard_range = list(grad.get("range"))
     grad_dtype = (grad.get("dtype")).lower()
 
     """
@@ -157,7 +151,7 @@ def hardtanh_grad(result, grad, y, min_val, max_val, kernel_name="hardtanh_grad"
         with tbe.compute():
             shape_result, shape_grad = shape_util.variable_shape([_result, _grad])
             data_result = tvm.placeholder(shape_result, name="data_result", dtype=result_dtype)
-            data_grad = tvm.placeholder(shape_result, name="data_grad", dtype=grad_dtype)
+            data_grad = tvm.placeholder(shape_grad, name="data_grad", dtype=grad_dtype)
             res = hardtanh_grad_compute(data_result, data_grad, y, min_val, max_val, kernel_name)
             tensors.append([data_result, data_grad, res])
 

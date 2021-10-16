@@ -22,9 +22,9 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
 
 # pylint: disable=invalid-name, unused-argument
 @register_operator_compute("Ger", op_mode="dynamic", support_fusion=False)
@@ -56,13 +56,14 @@ def ger_compute(data_x1, data_x2, y, kernel_name="ger"):
     res = tbe.vmul(broa_x1, broa_x2)
     return res
 
+
 # pylint: disable=invalid-name, unused-argument
 @register_operator("Ger")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def ger(x1, x2, y, kernel_name="ger"):
     """
-    calculate the outer product of x1 and x2. If x1 is a vector of size n and 
+    calculate the outer product of x1 and x2. If x1 is a vector of size n and
     x2 is a vector of size m, then y must be a matrix of size (n*m)
 
     Parameters
@@ -122,4 +123,3 @@ def ger(x1, x2, y, kernel_name="ger"):
               "need_build": False,
               }
     tbe.build(schedules, config)
-

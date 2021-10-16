@@ -16,7 +16,6 @@
 index_fill_d
 """
 
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
@@ -28,15 +27,15 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 
-@register_operator_compute("IndexFillD",op_mode="dynamic",support_fusion=True)
+@register_operator_compute("IndexFillD", op_mode="dynamic", support_fusion=True)
 def index_fill_d_compute(x, assist1, assist2):
     """
     Main compute logic of index_fill
-    Firstly, construct the tensor input of assist1 and assist2, 
+    Firstly, construct the tensor input of assist1 and assist2,
     where the shape and X of assist1 are the same, and the value is to remove,
-    the corresponding position to be filled is 0, and the other positions are 1; 
-    the shape and X of assist2 are the same, 
-    and the value is that the corresponding position to be filled is value, 
+    the corresponding position to be filled is 0, and the other positions are 1;
+    the shape and X of assist2 are the same,
+    and the value is that the corresponding position to be filled is value,
     and all other positions are 0.
     All of the above operations are done in the adaptation layer
 
@@ -60,6 +59,7 @@ def index_fill_d_compute(x, assist1, assist2):
     output_y = tbe.vadd(temp, assist2)
     return output_y
 
+
 @register_operator("IndexFillD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -78,7 +78,7 @@ def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     Construct two auxiliary tensors in adaptation layer.
     [                   [                 [
       [1, 2, 3],         [0, 1, 0],        [-1, 0, -1],
-      [4, 5, 6],   *     [0, 1, 0],    +   [-1, 0, -1],    = 
+      [4, 5, 6],   *     [0, 1, 0],    +   [-1, 0, -1],    =
       [7, 8, 9]          [0, 1, 0]         [-1, 0, -1]
     ]                   ]                 ]
         [[-1.,  2., -1.],
@@ -117,15 +117,16 @@ def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     # check dim
     shape_x_length = len(x_shape)
     if dim < -shape_x_length or dim >= shape_x_length:
-        raise RuntimeError("Out of range, dim should be in[%d,%d], which is [%d]" %(-shape_x_length, shape_x_length - 1, dim))
+        raise RuntimeError("Out of range, dim should be in[%d,%d], which is [%d]" %
+                           (-shape_x_length, shape_x_length - 1, dim))
 
     schedules = []
     tensors = []
-    ins =classify([x, assist1, assist2], OpPatternMode.ELEWISE)
+    ins = classify([x, assist1, assist2], OpPatternMode.ELEWISE)
 
     for (_x, _assist1, _assist2) in ins:
         with tbe.compute():
-            shape_x, shape_assist1, shape_assist2= shape_util.variable_shape([_x, _assist1, _assist2])
+            shape_x, shape_assist1, shape_assist2 = shape_util.variable_shape([_x, _assist1, _assist2])
 
             data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
             data_input_as1 = tvm.placeholder(

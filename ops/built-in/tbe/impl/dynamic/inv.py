@@ -16,7 +16,6 @@
 inv
 """
 
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
@@ -25,9 +24,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
-
-# define a scalar , value = 1
-SCALAR_ONE = 1
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -50,23 +46,25 @@ def inv_compute(input_x, output_y, kernel_name="inv"):
     res: TVM tensor
         the result of compute
     """
+    SCALAR_ONE = 1
+
     dtype = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)
 
     temp_const = tvm.const(SCALAR_ONE, dtype=dtype)
-    
+
     if dtype == "int32":
         input_x = tbe.cast_to(input_x, "float32")
         temp_tensor = tbe.broadcast(temp_const, shape, "float32")
         res = tbe.vdiv(temp_tensor, input_x)
     else:
         temp_tensor = tbe.broadcast(temp_const, shape, dtype)
-        
+
     res = tbe.vdiv(temp_tensor, input_x)
-    
+
     if dtype == "int32":
         res = tbe.cast_to(res, "int32")
-        
+
     return res
 
 
@@ -93,15 +91,15 @@ def inv(input_x, output_y, kernel_name="inv"):
     """
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32")
-    para_check.check_dtype(input_dtype, check_list, param_name = "input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            data_input = tvm.placeholder(x_shape[0], dtype = input_dtype,
-                                         name = "data_input")
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
+                                         name="data_input")
             res = inv_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
@@ -112,4 +110,3 @@ def inv(input_x, output_y, kernel_name="inv"):
               "tensor_list": tensors,
               "bool_storage_as_1bit": False}
     tbe.build(schedules, config)
-    

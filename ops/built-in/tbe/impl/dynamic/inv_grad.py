@@ -26,9 +26,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scalar , value = -1
-SCALAR_NEGATIVE_ONE = -1
-
 
 # pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("InvGrad", op_mode="dynamic", support_fusion=True)
@@ -52,6 +49,8 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     res: TVM tensor
         the result of compute
     """
+    SCALAR_NEGATIVE_ONE = -1
+
     shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_y.dtype
 

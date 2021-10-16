@@ -16,7 +16,6 @@
 invert
 """
 
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
@@ -30,7 +29,8 @@ from impl.util.platform_adapter import register_operator
 # pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("Invert", op_mode="dynamic", support_fusion=True)
 def invert_compute(input_x, output_y, kernel_name="invert"):
-    """Flips all bits elementwise.
+    """
+    Flips all bits elementwise.
 
     Parameters
     ----------
@@ -55,7 +55,8 @@ def invert_compute(input_x, output_y, kernel_name="invert"):
                             para_check.KERNEL_NAME)
 @register_operator("Invert")
 def invert(input_x, output_y, kernel_name="invert"):
-    """Flips all bits elementwise.
+    """
+    Flips all bits elementwise.
 
     Parameters
     ----------
@@ -73,15 +74,15 @@ def invert(input_x, output_y, kernel_name="invert"):
     """
     input_dtype = input_x.get("dtype").lower()
     check_list = ("int16", "uint16")
-    para_check.check_dtype(input_dtype, check_list, param_name = "input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            data_input = tvm.placeholder(x_shape[0], dtype = input_dtype,
-                                         name = "data_input")
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
+                                         name="data_input")
             res = invert_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

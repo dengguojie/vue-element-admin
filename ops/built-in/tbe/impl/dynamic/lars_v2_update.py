@@ -65,7 +65,7 @@ def lars_v2_update_compute(inputs_data, hyperparam, epsilon, use_clip, out, kern
         coeff_weight_norm = tbe.cast_to(coeff_weight_norm, "float16")
         norm_res = tbe.cast_to(norm_res, "float16")
         coeff = tbe.vdiv(coeff_weight_norm, norm_res)
-        coeff = tbe.cast_to(coeff, "float32")       
+        coeff = tbe.cast_to(coeff, "float32")
     coeff = tbe.vdiv(coeff_weight_norm, norm_res)
 
     if use_clip:
@@ -178,7 +178,8 @@ def lars_v2_update(weight,
             shape_weight, shape_grad = shape_util.variable_shape([_weight, _grad])
             data_weight = tvm.placeholder(shape_weight, name="data_weight", dtype=weight_dtype)
             data_grad = tvm.placeholder(shape_grad, name="data_grad", dtype=weight_dtype)
-            inputs_place_holders = [data_weight, data_grad, data_weights, data_grads, data_weight_decay, data_learning_rate]
+            inputs_place_holders = [data_weight, data_grad, data_weights, data_grads,
+                                    data_weight_decay, data_learning_rate]
             res = lars_v2_update_compute(inputs_place_holders, hyperparam, epsilon, use_clip, out, kernel_name)
             tensors.append(inputs_place_holders + [res])
 

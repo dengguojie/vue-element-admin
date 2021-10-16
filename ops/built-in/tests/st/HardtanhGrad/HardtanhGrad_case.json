@@ -1,0 +1,58 @@
+[
+  {
+    "op": "HardtanhGrad",
+    "input_desc": [
+      {
+        "shape": [
+          16, 8, 375
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 8, 375
+        ],
+        "ori_format": "ND",
+        "name": "result",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16, 8, 375
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 8, 375
+        ],
+        "ori_format": "ND",
+        "name": "grad",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16, 8, 375
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 8, 375
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr":[
+      {
+        "name": "min_val",
+        "type": "float",
+        "value": -1.0
+      },
+      {
+        "name": "max_val",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_GreaterEqual_000"
+  }
+]

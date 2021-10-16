@@ -23,11 +23,14 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
-
-# min float32 value
-MIN_FP32 = 2 ** (-126)
-# min float16 value
-MIN_FP16 = 2 ** (-24)
+class Constant:
+    """
+    The class for constant
+    """
+    # min float32 value
+    MIN_FP32 = 2 ** (-126)
+    # min float16 value
+    MIN_FP16 = 2 ** (-24)
 
 
 # pylint: disable=too-many-locals
@@ -119,11 +122,11 @@ def greater_compute(x, y, z, kernel_name="greater"):
 
     if dtype == "float32":
         # minimun num of float32 2**(-126)
-        data_min = tbe.broadcast(tvm.const(MIN_FP32, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(Constant.MIN_FP32, dtype=dtype),
                                  shape, dtype)
     elif dtype == "float16":
         # minimun num of float16 2**(-24)
-        data_min = tbe.broadcast(tvm.const(MIN_FP16, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(Constant.MIN_FP16, dtype=dtype),
                                  shape, dtype)
     else:
         data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
@@ -134,7 +137,8 @@ def greater_compute(x, y, z, kernel_name="greater"):
 
 # pylint: disable=invalid-name
 @register_operator("Greater")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def greater(x, y, z, kernel_name="greater"):
     """
     do element-wise greater operation between two input tensors

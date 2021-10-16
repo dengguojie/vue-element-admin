@@ -15,9 +15,7 @@
 """
 l1_loss_grad
 """
-
-import te
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -35,7 +33,7 @@ def l1_loss_grad_compute(grads, predict, label, y, reduction="mean", kernel_name
     """
     l1_loss_grad_compute
     """
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
     data_type = predict.dtype.lower()
     if data_type == "float32" and cce_product == "Ascend310":
@@ -72,6 +70,7 @@ def l1_loss_grad_compute(grads, predict, label, y, reduction="mean", kernel_name
         res = tbe.cast_to(res, "float32", False)
 
     return res
+
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
 @register_operator("L1LossGrad")
@@ -121,7 +120,7 @@ def l1_loss_grad(grads, predict, label, y, reduction="mean", kernel_name="l1_los
             tensor_label = tvm.placeholder(shape_label, name="tensor_label", dtype=label_dtype)
             tensor_predict = tvm.placeholder(shape_predict, name="tensor_predict", dtype=predict_dtype)
 
-            res = l1_loss_grad_compute(tensor_grads, tensor_predict, tensor_label, y, 
+            res = l1_loss_grad_compute(tensor_grads, tensor_predict, tensor_label, y,
                                        reduction=reduction, kernel_name=kernel_name)
             tensors.append([tensor_grads, tensor_predict, tensor_label, res])
         with tvm.target.cce():

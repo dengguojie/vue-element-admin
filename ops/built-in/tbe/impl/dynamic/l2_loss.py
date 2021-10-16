@@ -15,7 +15,6 @@
 """
 l2_loss
 """
-import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -23,8 +22,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-
-NONETYPE = type(None)
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -60,9 +57,10 @@ def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("L2Loss")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.KERNEL_NAME)
+                            para_check.KERNEL_NAME)
 def l2_loss(x, y, kernel_name="l2_loss"):
-    """reduce a tensor on a certain axes.
+    """
+    reduce a tensor on a certain axes.
 
     Parameters:
     ----------
@@ -88,7 +86,7 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     axes = []
     for i in range(len(shape)):
         axes.append(i)
-    input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(axes),], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})

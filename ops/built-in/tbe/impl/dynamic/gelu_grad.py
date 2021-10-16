@@ -28,18 +28,23 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
-# CSVALUE equals 0.044715
-CSVALUE = tvm.const(0.044715, "float32")
-# SQURT equals np.sqrt(2 / np.pi)
-SQURT = tvm.const(0.7978846, "float32")
 
-# CSVALUE_4 equals 0.5*np.sqrt(2 / np.pi)*3*CSVALUE
-CSVALUE_4 = tvm.const(0.0535161122, "float32")
-# CSVALUE_5 equals 0.5*np.sqrt(2 / np.pi)
-CSVALUE_5 = tvm.const(0.3989422804, "float32")
+class Constant:
+    """
+    The class for constant
+    """
+    # CSVALUE equals 0.044715
+    CSVALUE = tvm.const(0.044715, "float32")
+    # SQURT equals np.sqrt(2 / np.pi)
+    SQURT = tvm.const(0.7978846, "float32")
 
-# min float32 value
-MIN_FP32 = 2 ** (-126)
+    # CSVALUE_4 equals 0.5*np.sqrt(2 / np.pi)*3*CSVALUE
+    CSVALUE_4 = tvm.const(0.0535161122, "float32")
+    # CSVALUE_5 equals 0.5*np.sqrt(2 / np.pi)
+    CSVALUE_5 = tvm.const(0.3989422804, "float32")
+
+    # min float32 value
+    MIN_FP32 = 2 ** (-126)
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -85,7 +90,7 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
     up_val_tmp = tbe.vmul(exp_val_fp32, input_x)
     up_val = tbe.vsub(input_x, up_val_tmp)
 
-    input_x_tmp = tbe.vadds(input_abs, MIN_FP32)
+    input_x_tmp = tbe.vadds(input_abs, Constant.MIN_FP32)
     down_val_tmp = tbe.vadds(exp_val_fp32, tvm.const(1, "float32"))
     down_val = tbe.vmul(down_val_tmp, input_x_tmp)
 
@@ -106,9 +111,9 @@ def _math_four_compute(placeholders):
     data_x = placeholders
     datax_pow = tbe.vmul(data_x, data_x)
     datax_pow1 = tbe.vmul(datax_pow, data_x)
-    datax_muls_c = tbe.vmuls(datax_pow1, CSVALUE)
+    datax_muls_c = tbe.vmuls(datax_pow1, Constant.CSVALUE)
     datax_addx = tbe.vadd(datax_muls_c, data_x)
-    datax_muls_s = tbe.vmuls(datax_addx, SQURT)
+    datax_muls_s = tbe.vmuls(datax_addx, Constant.SQURT)
 
     return datax_muls_s
 
@@ -120,9 +125,9 @@ def _result2_compute(placeholders):
     result equals np.sqrt(2 / np.pi) (1 + 3*0.044715*x2)
     """
     data_x = placeholders
-    val1 = CSVALUE_5
+    val1 = Constant.CSVALUE_5
     data_x_sqr = tbe.vmul(data_x, data_x)
-    data_x_sqr_vmul = tbe.vmuls(data_x_sqr, CSVALUE_4)
+    data_x_sqr_vmul = tbe.vmuls(data_x_sqr, Constant.CSVALUE_4)
     data_x_sqr_vmul_add1 = tbe.vadds(data_x_sqr_vmul, val1)
 
     return data_x_sqr_vmul_add1

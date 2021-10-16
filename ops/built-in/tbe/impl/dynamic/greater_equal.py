@@ -25,20 +25,24 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 
 
-# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2 ** (-126)
-# define a scalar, value = 2**(62)
-SCALAR_MUL_FP32 = 2 ** (62)
-# define a scalar, value = 2**(2)
-SCALAR_MUL1_FP32 = 2 ** (2)
-# define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-SCALAR_MIN_FP16 = 2 ** (-24)
-# define a scalar, value = 2**(12)
-SCALAR_MUL_FP16 = 2 ** (12)
-# define a scalar, value = 1
-SCALAR_ONE = 1
-# define a scalar, value = 0
-SCALAR_ZERO = 0
+class Constant:
+    """
+    The class for constant
+    """
+    # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
+    SCALAR_MIN_FP32 = 2 ** (-126)
+    # define a scalar, value = 2**(62)
+    SCALAR_MUL_FP32 = 2 ** (62)
+    # define a scalar, value = 2**(2)
+    SCALAR_MUL1_FP32 = 2 ** (2)
+    # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
+    SCALAR_MIN_FP16 = 2 ** (-24)
+    # define a scalar, value = 2**(12)
+    SCALAR_MUL_FP16 = 2 ** (12)
+    # define a scalar, value = 1
+    SCALAR_ONE = 1
+    # define a scalar, value = 0
+    SCALAR_ZERO = 0
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -61,25 +65,25 @@ def _greater_equal_compare(data, shape, dtype, data_min):
     the compare result
     """
     if dtype == "int32":
-        data_one = tbe.broadcast(tvm.const(SCALAR_ONE, "float16"), shape, "float16")
+        data_one = tbe.broadcast(tvm.const(Constant.SCALAR_ONE, "float16"), shape, "float16")
     else:
-        data_one = tbe.broadcast(tvm.const(SCALAR_ONE, dtype), shape, dtype)
+        data_one = tbe.broadcast(tvm.const(Constant.SCALAR_ONE, dtype), shape, dtype)
 
     res_sub = tbe.vsub(data[1], data[0])
     res_min = tbe.vmins(res_sub, data_min)
-    res_max = tbe.vmaxs(res_min, tvm.const(SCALAR_ZERO, dtype))
+    res_max = tbe.vmaxs(res_min, tvm.const(Constant.SCALAR_ZERO, dtype))
 
     if dtype == "float32":
         # max num of float32 is 2**126
         # but cce can only support 2**62, so use 62/62/2 to adaptor 126
-        res_mul1 = tbe.vmuls(res_max, tvm.const(SCALAR_MUL_FP32, dtype=dtype))
-        res_mul2 = tbe.vmuls(res_mul1, tvm.const(SCALAR_MUL_FP32, dtype=dtype))
-        res_mul = tbe.vmuls(res_mul2, tvm.const(SCALAR_MUL1_FP32, dtype=dtype))
+        res_mul1 = tbe.vmuls(res_max, tvm.const(Constant.SCALAR_MUL_FP32, dtype=dtype))
+        res_mul2 = tbe.vmuls(res_mul1, tvm.const(Constant.SCALAR_MUL_FP32, dtype=dtype))
+        res_mul = tbe.vmuls(res_mul2, tvm.const(Constant.SCALAR_MUL1_FP32, dtype=dtype))
     elif dtype == "float16":
         # max num of float16 is 2**24
         # but cce can only support 2**12, so use 12/12 to adaptor 24
-        res_mul1 = tbe.vmuls(res_max, tvm.const(SCALAR_MUL_FP16, dtype=dtype))
-        res_mul = tbe.vmuls(res_mul1, tvm.const(SCALAR_MUL_FP16, dtype=dtype))
+        res_mul1 = tbe.vmuls(res_max, tvm.const(Constant.SCALAR_MUL_FP16, dtype=dtype))
+        res_mul = tbe.vmuls(res_mul1, tvm.const(Constant.SCALAR_MUL_FP16, dtype=dtype))
     else:
         res_mul = tbe.cast_to(res_max, "float16")
     res = tbe.vsub(data_one, res_mul)
@@ -123,13 +127,13 @@ def greater_equal_compute(input_x, input_y, output_z, kernel_name="greater_equal
 
     if dtype_x == "float32":
         # minimun num of float32 2**(-126)
-        data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype_x)
+        data_min = tvm.const(Constant.SCALAR_MIN_FP32, dtype=dtype_x)
     elif dtype_x == "float16":
         # minimun num of float16 2**(-24)
-        data_min = tvm.const(SCALAR_MIN_FP16, dtype=dtype_x)
+        data_min = tvm.const(Constant.SCALAR_MIN_FP16, dtype=dtype_x)
     else:
         # minimun num of int32 1
-        data_min = tvm.const(SCALAR_ONE, dtype=dtype_x)
+        data_min = tvm.const(Constant.SCALAR_ONE, dtype=dtype_x)
 
     return _greater_equal_compare((input_x, input_y), shape_max, dtype_x, data_min)
 

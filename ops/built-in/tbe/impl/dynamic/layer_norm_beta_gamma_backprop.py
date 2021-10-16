@@ -23,16 +23,32 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 
 
-# Minimum positive number greater than 0
-EPSLON = 1e-12
-
+# pylint: disable=unused-argument
 @tbe_register.register_param_generalization("LayerNormBetaGammaBackprop")
 def layer_norm_beta_gamma_backprop_generalization(input_dy, input_x, input_variance, input_mean, output_pd_gamma,
                                                   output_pd_beta, shape_gamma, impl_mode,
-                                                  generalize_config={"mode": "keep_rank"}):
+                                                  generalize_config=None):
+    """
+    Parameters
+    ----------
+    input_dy: TVM tensor
+        the placeholder of dy input data
+    input_x: TVM tensor
+        the placeholder of x input data
+    input_variance: TVM tensor
+        the placeholder of variance input data
+    input_mean: TVM tensor
+        the placeholder of mean input data
+    output_pd_gamma: dict
+        shape and dtype of output, only support float16, float32
+    output_pd_beta: dict
+        shape and dtype of output, only support float16, float32
+    shape_gamma: list or tuple
+        original shape of gamma
+    generalize_config: None
+    """
     # for now only support dy and x is (-1,-1,N), variance and mean is (-1,-1,1), shape_gamma is (N,)
     result = []
     x_shape = input_x["shape"]
@@ -175,6 +191,9 @@ def _get_pd_var_front(data, dtype):
     var_elta_2: tvm.tensor
         np.power((data_variance + EPSLON), (-0.5))
     """
+    # Minimum positive number greater than 0
+    EPSLON = 1e-12
+
     var_elta = tbe.vadds(data.get("data_variance"),
                          tvm.const(EPSLON, dtype=dtype))
     var_elta_log = tbe.vlog(var_elta)
@@ -308,6 +327,7 @@ def _get_pd_x(data, shape_x, dtype):
     return var_elta_2_cast, sub_x_mean
 
 
+# pylint: disable=unused-argument
 def _get_pd_gamma(data, params, var_elta_2_cast, sub_x_mean, dtype):
     """
     compute pd_gamma according to data, params, var_elta_2_cast and sub_x_mean
@@ -402,7 +422,7 @@ def _get_res(data, params, shape_x, dtype):
     data_dy = data.get("data_dy")
     if params.get("param_axis"):
         data_dy_2 = data.get("data_dy_2")
-        if data_dy_2 == None:
+        if data_dy_2 is None:
             data_dy_2 = data_dy
         pd_gamma = tbe.reduce_sum(pdga_mul, params.get("param_axis"), keepdims=True)
         pd_beta = tbe.reduce_sum(data_dy_2, params.get("param_axis"), keepdims=True)
@@ -459,7 +479,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean, shape_gamma_ori):
         data_variance = tbe.cast_to(data_variance, "float32")
         data_mean = tbe.cast_to(data_mean, "float32")
 
-    data = {"data_dy": data_dy, "data_x": data_x, "data_dy_2":data_dy_2,
+    data = {"data_dy": data_dy, "data_x": data_x, "data_dy_2": data_dy_2,
             "data_variance": data_variance,
             "data_mean": data_mean}
 
@@ -472,6 +492,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean, shape_gamma_ori):
     return pd_gamma, pd_beta
 
 
+# pylint: disable=unused-argument
 def layer_norm_beta_gamma_backprop_compute(input_dy, input_x, input_variance,
                                            input_mean, output_pd_gamma,
                                            output_pd_beta, shape_gamma,
