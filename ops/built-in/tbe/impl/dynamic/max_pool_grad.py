@@ -26,39 +26,43 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
 
 
-# vector_repeat
-MAX_REPEAT = 255
-# block_size
-MINI_UNIT = 32
-# mini value of fp16
-MIN_VALUE_FP16 = -65535.0
-# vector fp16 size
-VECTOR_FP16_SIZE = 128
-# vector fp32 size
-VECTOR_FP32_SIZE = 64
-# vconv mask
-MASK64_VALUE = 64
-# maximum dma_copy stride
-MAX_STRIDE = 65535
-# UB SIZE
-SIZE_UB = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-# L1 SIZE
-SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
-# BLOCK NUMS
-MAX_CORE = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-TILING_PARAM_DTYPE = "int64"
-TILING_PARAMS_NUM = 136
-MAX_INT32 = 2 ** 31 - 1
-C0 = 16
+class Constant(object):
+    """
+    The class for Constant
+    """
+    # vector_repeat
+    MAX_REPEAT = 255
+    # block_size
+    MINI_UNIT = 32
+    # mini value of fp16
+    MIN_VALUE_FP16 = -65535.0
+    # vector fp16 size
+    VECTOR_FP16_SIZE = 128
+    # vector fp32 size
+    VECTOR_FP32_SIZE = 64
+    # vconv mask
+    MASK64_VALUE = 64
+    # maximum dma_copy stride
+    MAX_STRIDE = 65535
+    # UB SIZE
+    SIZE_UB = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    # L1 SIZE
+    SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+    # BLOCK NUMS
+    MAX_CORE = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    TILING_PARAM_DTYPE = "int64"
+    TILING_PARAMS_NUM = 136
+    MAX_INT32 = 2 ** 31 - 1
+    C0 = 16
 
-CASE_ZERO = 0
-CASE_ONE = 1
-CASE_TWO = 2
-CASE_THREE = 3
-CASE_FORE = 4
-CASE_FIVE = 5
-CASE_SIX = 6
-CASE_SEVEN = 7
+    CASE_ZERO = 0
+    CASE_ONE = 1
+    CASE_TWO = 2
+    CASE_THREE = 3
+    CASE_FORE = 4
+    CASE_FIVE = 5
+    CASE_SIX = 6
+    CASE_SEVEN = 7
 
 
 # pylint: disable=too-many-locals,too-many-arguments,invalid-name,too-many-locals,no-self-use,too-few-public-methods
@@ -131,12 +135,12 @@ class ParamsUB:
     """
 
     def __init__(self, sh, sw, kh, kw):
-        self.l1_in_size = SIZE_L1 // 2
-        self.col_in_size = ((SIZE_UB - 256) // (198 + 64 * sh * sw)) * C0
+        self.l1_in_size = Constant.SIZE_L1 // 2
+        self.col_in_size = ((Constant.SIZE_UB - 256) // (198 + 64 * sh * sw)) * Constant.C0
         if self.col_in_size < 256:
             self.col_in_size = 256
         self.forward_ou_size = self.col_in_size
-        self.mask_size = (SIZE_UB - 256) // (198 + 64 * sh * sw)
+        self.mask_size = (Constant.SIZE_UB - 256) // (198 + 64 * sh * sw)
         if self.mask_size < 128:
             self.mask_size = 128
         self.grad_size = self.col_in_size
@@ -146,9 +150,251 @@ class ParamsUB:
         used_ub_byte = (self.col_in_size + self.forward_ou_size + self.mask_size * 3 +
                         self.grad_size + self.zero_size +
                         self.grad_sel_fp16_size) * 2
-        self.f_map_fp32_size = (SIZE_UB - 288 - used_ub_byte) // 4 - self.grad_sel_fp32_size
+        self.f_map_fp32_size = (Constant.SIZE_UB - 288 - used_ub_byte) // 4 - self.grad_sel_fp32_size
         if self.f_map_fp32_size < 16:
             error_manager_vector.raise_err_specific_reson("max_pool_grad", "ub is error")
+
+
+def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
+    """
+    move ub to gm
+    """
+    src_idx, dst_idx = in_list[-2], in_list[-1]
+    n_burst, burst_len = in_list[0], in_list[1]
+    src_stride, dst_stride = in_list[2], in_list[3]
+
+    with tik_instance.for_range(0, n_burst) as i:
+        src_idx += i * (src_stride + burst_len) * Constant.MINI_UNIT // num_bit
+        dst_idx += i * (dst_stride + burst_len) * Constant.MINI_UNIT // num_bit
+
+        tik_instance.data_move(dst_buf[dst_idx], src_buf[src_idx], 0, 1, burst_len, 0, 0)
+
+
+def _ultimate_data_move_dy(tik_instance, src_buf, dst_buf, in_list, num_bit):
+    """
+    dynamic move ub to gm
+    """
+    src_idx, dst_idx = in_list[-2], in_list[-1]
+    n_burst, burst_len = in_list[0], in_list[1]
+    src_stride, dst_stride = in_list[2], in_list[3]
+
+    tik_instance.data_move(dst_buf[dst_idx], src_buf[src_idx], 0, 1, burst_len, 0, 0)
+
+
+def _norm_data_move(tik_instance, src_buf, dst_buf, in_list):
+    """
+    _norm_data_move
+    """
+    src_idx, dst_idx = in_list[-2], in_list[-1]
+    n_burst, burst_len = in_list[0], in_list[1]
+    src_stride, dst_stride = in_list[2], in_list[3]
+
+    tik_instance.data_move(dst_buf[dst_idx], src_buf[src_idx], 0, n_burst, burst_len, src_stride, dst_stride)
+
+
+def _set_vector_dup_zero(tik_instance, dst, idx, number, dtype):
+    """
+    set_vector_dup
+    """
+    if dtype == "float16":
+        mask = 128
+    else:
+        mask = 64
+    dst_blk_stride = 1
+    dst_rep_stride = 8
+    repeats = 1
+    tik_instance.vector_dup(mask, dst[idx], number, repeats, dst_blk_stride, dst_rep_stride)
+
+
+def _set_vector_dup_dy(tik_instance, dst, idx, number, dtype, dup_repeat_merchant, dup_repeat_remainder,
+                       dup_remainder, repeats, dst_size):
+    """
+    set_vector_dup
+    """
+    if dtype == "float16":
+        mask = 128
+    else:
+        mask = 64
+    dup_psm = Constant.MAX_REPEAT * mask
+    dup_repeat_merchant_g = dst_size // dup_psm
+
+    dst_blk_stride = 1
+    dst_rep_stride = 8
+    if dup_repeat_merchant_g > 0:
+        with tik_instance.for_range(0, dup_repeat_merchant) as i:
+            tik_instance.vector_dup(mask, dst[idx + i * dup_psm], number, Constant.MAX_REPEAT, dst_blk_stride,
+                                    dst_rep_stride)
+
+    with tik_instance.if_scope(dup_repeat_remainder != 0):
+        if dst_size >= mask:
+            with tik_instance.if_scope(repeats != 0):
+                tik_instance.vector_dup(mask, dst[idx + dup_repeat_merchant * dup_psm], number, repeats,
+                                        dst_blk_stride, dst_rep_stride)
+        with tik_instance.if_scope(dup_remainder != 0):
+            tik_instance.vector_dup(dup_remainder, dst[idx + dup_repeat_merchant * dup_psm + repeats * mask],
+                                    number, 1, dst_blk_stride, dst_rep_stride)
+
+
+def _vconv_dy(tik_instance, src, src_start, dst, dst_start, src_dtype, repeat_max_time, remain_repeat_time,
+              remain_ele, dstsize):
+    """
+    vconv
+    """
+    mask_value = Constant.VECTOR_FP32_SIZE
+
+    if src_dtype == 'float16':
+        src_stride, dst_stride = 4, 8
+        if dstsize >= Constant.MASK64_VALUE * Constant.MAX_REPEAT:
+            with tik_instance.if_scope(repeat_max_time > 0):
+                with tik_instance.for_range(0, repeat_max_time) as loop1:
+                    tik_instance.vconv(Constant.MASK64_VALUE, "",
+                                       dst[dst_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                                       src[src_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                                       Constant.MAX_REPEAT, 1, 1, dst_stride, src_stride)
+        if dstsize >= Constant.MASK64_VALUE:
+            with tik_instance.if_scope(remain_repeat_time > 0):
+                tik_instance.vconv(Constant.MASK64_VALUE, "",
+                                   dst[dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                                   src[src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                                   remain_repeat_time, 1, 1, dst_stride, src_stride)
+        with tik_instance.if_scope(remain_ele > 0):
+            tik_instance.vconv(
+                remain_ele, "",
+                dst[dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value +
+                    remain_repeat_time * mask_value],
+                src[src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value +
+                    remain_repeat_time * mask_value],
+                1, 1, 1, dst_stride, src_stride)
+
+    else:
+        src_stride, dst_stride = 8, 4
+        with tik_instance.if_scope(repeat_max_time > 0):
+            with tik_instance.for_range(0, repeat_max_time) as loop1:
+                tik_instance.vconv(Constant.MASK64_VALUE, "",
+                                   dst[dst_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                                   src[src_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                                   Constant.MAX_REPEAT, 1, 1, dst_stride, src_stride)
+        with tik_instance.if_scope(remain_repeat_time > 0):
+            tik_instance.vconv(Constant.MASK64_VALUE, "",
+                               dst[dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                               src[src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                               remain_repeat_time, 1, 1, dst_stride, src_stride)
+        with tik_instance.if_scope(remain_ele > 0):
+            tik_instance.vconv(
+                remain_ele, "",
+                dst[dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value +
+                    remain_repeat_time * mask_value],
+                src[src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value +
+                    remain_repeat_time * mask_value],
+                1, 1, 1, dst_stride, src_stride)
+
+
+def _vector_op_dy(tik_instance, operator, src1, src2, dst, dtype, stride_config, repeat_max_loop,
+                  remain_max_loop, remain_ele, src1_size, src2_size, dst_size):
+    """
+    vadd
+    """
+    stride_config = list(stride_config)
+    if dtype == "float16":
+        mask = Constant.VECTOR_FP16_SIZE
+    else:
+        mask = Constant.VECTOR_FP32_SIZE
+
+    config_num = stride_config[0] <= 255 and stride_config[1] <= 255 and stride_config[2] <= 255 and stride_config[
+        3] <= 255 and stride_config[4] <= 255 and stride_config[5] <= 255
+    config_num_3 = stride_config[0] <= 255 and stride_config[1] <= 255 and stride_config[2] <= 255
+
+    if operator == "vadd":
+        if stride_config is None:
+            stride_config = 1, 1, 1, 8, 8, 8
+        dst_offset = 0
+        src1_offset = 0
+        src2_offset = 0
+        dst_less = (stride_config[0] * 8 + stride_config[3] * Constant.MAX_REPEAT) * 8
+        src1_less = (stride_config[1] * 8 + stride_config[4] * Constant.MAX_REPEAT) * 8
+        src2_size_less = (stride_config[2] * 8 + stride_config[5] * Constant.MAX_REPEAT) * 8
+
+        dst_less1 = (stride_config[0] * 8 + stride_config[3]) * 8
+        src1_less1 = (stride_config[1] * 8 + stride_config[4]) * 8
+        src2_size1_less = (stride_config[2] * 8 + stride_config[5]) * 8
+
+        if dst_size >= dst_less and src1_size >= src1_less and src2_size >= src2_size_less and config_num:
+            with tik_instance.if_scope(repeat_max_loop > 0):
+                tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], Constant.MAX_REPEAT,
+                                  stride_config[0], stride_config[1], stride_config[2], stride_config[3],
+                                  stride_config[4], stride_config[5])
+                dst_offset += Constant.MINI_UNIT // (tbe_platform.get_bit_len(dst.dtype.lower()) //
+                                            8) * stride_config[3] * 255
+                src1_offset += Constant.MINI_UNIT // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                             8) * stride_config[4] * 255
+                src2_offset += Constant.MINI_UNIT // (tbe_platform.get_bit_len(src2.dtype.lower()) //
+                                             8) * stride_config[5] * 255
+
+        with tik_instance.if_scope(remain_max_loop > 0):
+            if config_num_3 and dst_size >= stride_config[0] * mask and src1_size >= stride_config[1] * mask \
+                    and src2_size >= stride_config[2] * mask:
+                with tik_instance.if_scope(remain_max_loop == 1):
+                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
+                                      stride_config[0], stride_config[1], stride_config[2], 0, 0, 0)
+            if config_num and dst_size >= dst_less1 and src1_size >= src1_less1 and src2_size >= src2_size1_less:
+                with tik_instance.if_scope(remain_max_loop != 1):
+                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
+                                      stride_config[0], stride_config[1], stride_config[2], stride_config[3],
+                                      stride_config[4], stride_config[5])
+            dst_offset += Constant.MINI_UNIT // (tbe_platform.get_bit_len(dst.dtype.lower()) //
+                                        8) * stride_config[3] * remain_max_loop
+            src1_offset += Constant.MINI_UNIT // (tbe_platform.get_bit_len(src1.dtype.lower()) //
+                                         8) * stride_config[4] * remain_max_loop
+            src2_offset += Constant.MINI_UNIT // (tbe_platform.get_bit_len(src2.dtype.lower()) //
+                                         8) * stride_config[5] * remain_max_loop
+        with tik_instance.if_scope(remain_ele > 0):
+            stride_config[3] = stride_config[4] = stride_config[5] = 0
+            tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
+                              stride_config[0], stride_config[1], stride_config[2], stride_config[3],
+                              stride_config[4], stride_config[5])
+
+
+def _rewrite_fmap_dy(tik_instance, operator, src1, src2, dst, dtype, repeat_times, shape_map, shape_grad,
+                     config, num_instr_loop_h, num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
+                     num_instr_loop_h_1):
+    """
+    vadd
+    """
+    mask = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="mask_params")
+    rep = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="rep_params")
+
+    h, w, c0 = shape_map[0], shape_map[1], 16
+    ho, wo = shape_grad[0], shape_grad[1]
+    if dtype == "float16":
+        max_mask = 128
+        num_block = 8
+        block_size = 16
+    else:
+        max_mask = 64
+        num_block = 8
+        block_size = 8
+
+    with tik_instance.for_range(0, num_instr_loop_h) as idx_h:
+        with tik_instance.for_range(0, num_instr_loop_w) as idx_w:
+            src1_offset = idx_w * num_block * config[1] * block_size + \
+                          idx_h * Constant.MAX_REPEAT * w * c0
+            src2_offset = idx_w * num_block * config[2] * block_size + \
+                          idx_h * Constant.MAX_REPEAT * wo * c0
+            dst_offset = idx_w * num_block * config[0] * block_size + \
+                         idx_h * Constant.MAX_REPEAT * w * c0
+
+            with tik_instance.if_scope(idx_w < num_instr_loop_w_1):
+                mask.set_as(max_mask)
+            with tik_instance.else_scope():
+                mask.set_as(remain_mask)
+            with tik_instance.if_scope(idx_h < num_instr_loop_h_1):
+                rep.set_as(Constant.MAX_REPEAT)
+
+            with tik_instance.else_scope():
+                rep.set_as(remain_repeat)
+
+            tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], rep, config[0],
+                              config[1], config[2], config[3], config[4], config[5])
 
 
 class MaxPoolGradCompute:
@@ -159,7 +405,7 @@ class MaxPoolGradCompute:
     def __init__(self, params1):
         self.core_ou_shape = []
         self.core_in_shape = []
-        self.c0 = C0
+        self.c0 = Constant.C0
         self.ksize = params1[0]
         self.strides = params1[1]
         self.pads = params1[2]
@@ -181,8 +427,8 @@ class MaxPoolGradCompute:
         self.mask_fp16 = 128
         self.mask_fp32 = 64
         self.tik_instance = tik.Tik()
-        self.ub_maxsize = SIZE_UB // self.num_bit
-        self.L1_maxsize = SIZE_L1 // self.num_bit
+        self.ub_maxsize = Constant.SIZE_UB // self.num_bit
+        self.L1_maxsize = Constant.SIZE_L1 // self.num_bit
         self.orig_x_gm = None
         self.orig_y_gm = None
         self.grads_gm = None
@@ -209,7 +455,7 @@ class MaxPoolGradCompute:
                 -------
                 None
                 """
-                self.tiling_gm = tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,),
+                self.tiling_gm = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
                                                      name="tiling_gm",
                                                      scope=tik.scope_gm)
 
@@ -233,25 +479,25 @@ class MaxPoolGradCompute:
                 -------
                 None
                 """
-                self.select_key = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="select_key")
-                self.n = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="forward_in_shape_n")
-                self.c1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="forward_in_shape_c1")
-                self.h = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="h")
-                self.w = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="w")
-                self.ho = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="grad_shape_h")
-                self.wo = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="grad_shape_w")
-                self.pad_hw_top = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="pad_hw_top")
-                self.pad_hw_bottom = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="pad_hw_bottom")
-                self.pad_hw_left = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="pad_hw_left")
-                self.pad_hw_right = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="pad_hw_right")
-                self.overlap_h = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="overlap_h")
-                self.overlap_w = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="overlap_w")
-                self.hi_invalid = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="hi_invalid")
-                self.wi_invalid = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wi_invalid")
-                self.total_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="total_num")
-                self.core_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="real_core_num")
-                self.forward_in_shape = [self.n, self.c1, self.h, C0]
-                self.grad_shape = [self.n, self.c1, self.ho, self.wo, C0]
+                self.select_key = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="select_key")
+                self.n = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="forward_in_shape_n")
+                self.c1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="forward_in_shape_c1")
+                self.h = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="h")
+                self.w = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="w")
+                self.ho = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="grad_shape_h")
+                self.wo = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="grad_shape_w")
+                self.pad_hw_top = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="pad_hw_top")
+                self.pad_hw_bottom = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="pad_hw_bottom")
+                self.pad_hw_left = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="pad_hw_left")
+                self.pad_hw_right = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="pad_hw_right")
+                self.overlap_h = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="overlap_h")
+                self.overlap_w = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="overlap_w")
+                self.hi_invalid = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="hi_invalid")
+                self.wi_invalid = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wi_invalid")
+                self.total_num = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="total_num")
+                self.core_num = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="real_core_num")
+                self.forward_in_shape = [self.n, self.c1, self.h, Constant.C0]
+                self.grad_shape = [self.n, self.c1, self.ho, self.wo, Constant.C0]
                 self.forward_ou_shape = self.grad_shape
                 self.ou_shape = self.forward_in_shape
                 self.pad = []
@@ -259,169 +505,199 @@ class MaxPoolGradCompute:
                     self.pad = [[0, 0], [0, 0]]
                 else:
                     self.pad = [[self.pad_hw_top, self.pad_hw_bottom], [self.pad_hw_left, self.pad_hw_right]]
-                self.core_ou_shape_h = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_ou_shape_h")
-                self.core_ou_shape_w = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_ou_shape_w")
-                self.core_in_shape_h = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_in_shape_h")
-                self.core_in_shape_w = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_in_shape_w")
-                self.new_ho = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="new_ho")
-                self.new_wo = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="new_wo")
-                self.total_num_div_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="total_num_div_core")
-                self.total_num_div_core_1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="total_num_div_core")
-                self.core_loop_params = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_loop_params")
-                self.core_loop_params1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_loop_params1")
-                self.core_ou_shape = [self.core_ou_shape_h, self.core_ou_shape_w, C0]
-                self.core_in_shape = [self.core_in_shape_h, self.core_in_shape_w, C0]
-                self.hi_batch = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="hi_batch")
-                self.wi_batch = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wi_batch")
-                self.wi_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wi_tail")
-                self.wo_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wo_tail")
-                self.loop_ho = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="loop_ho")
-                self.loop_wo = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="loop_ho")
-                self.dup_repeat_merchant_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.core_ou_shape_h = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_ou_shape_h")
+                self.core_ou_shape_w = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_ou_shape_w")
+                self.core_in_shape_h = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_in_shape_h")
+                self.core_in_shape_w = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_in_shape_w")
+                self.new_ho = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="new_ho")
+                self.new_wo = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="new_wo")
+                self.total_num_div_core = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="total_num_div_core")
+                self.total_num_div_core_1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="total_num_div_core")
+                self.core_loop_params = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_loop_params")
+                self.core_loop_params1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                             name="core_loop_params1")
+                self.core_ou_shape = [self.core_ou_shape_h, self.core_ou_shape_w, Constant.C0]
+                self.core_in_shape = [self.core_in_shape_h, self.core_in_shape_w, Constant.C0]
+                self.hi_batch = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="hi_batch")
+                self.wi_batch = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wi_batch")
+                self.wi_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wi_tail")
+                self.wo_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wo_tail")
+                self.loop_ho = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="loop_ho")
+                self.loop_wo = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="loop_ho")
+                self.dup_repeat_merchant_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                           name="dup_repeat_merchant_f_map_fp32")
-                self.dup_repeat_remainder_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dup_repeat_remainder_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                            name="dup_repeat_remainder_f_map_fp32")
-                self.dup_remainder_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dup_remainder_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                     name="dup_remainder_f_map_fp32")
-                self.repeats_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeats_f_map_fp32")
-                self.forward_in_shape_h_w_c0 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.repeats_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="repeats_f_map_fp32")
+                self.forward_in_shape_h_w_c0 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="forward_in_shape_h_w_c0")
-                self.forward_ou_shape_h_w_c0 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.forward_ou_shape_h_w_c0 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="forward_ou_shape_h_w_c0")
-                self.hi_val = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="hi_val")
-                self.wi_val = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wi_val")
-                self.burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len")
-                self.src_stride = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride")
-                self.burst_len_src_orig_y = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_src_orig_y")
-                self.src_stride_src_orig_y = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.hi_val = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="hi_val")
+                self.wi_val = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wi_val")
+                self.burst_len = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="burst_len")
+                self.src_stride = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="src_stride")
+                self.burst_len_src_orig_y = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="burst_len_src_orig_y")
+                self.src_stride_src_orig_y = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                  name="src_stride_src_orig_y")
-                self.repeat_times = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeat_times")
-                self.howo_co_ver = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="howo_co_ver")
-                self.mask_size_16 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="mask_size_16")
-                self.mask_size_ver = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="mask_size_ver")
-                self.repeat_max_time_grad_sel = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.repeat_times = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="repeat_times")
+                self.howo_co_ver = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="howo_co_ver")
+                self.mask_size_16 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="mask_size_16")
+                self.mask_size_ver = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="mask_size_ver")
+                self.repeat_max_time_grad_sel = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                     name="repeat_max_time_grad_sel")
-                self.remain_repeat_time_grad_sel = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_repeat_time_grad_sel = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                        name="remain_repeat_time_grad_sel")
-                self.remain_ele_grad_sel = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_ele_grad_sel")
-                self.repeat_max_loop_vadd = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeat_max_loop_vadd")
-                self.remain_max_loop_vadd = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_max_loop_vadd")
-                self.remain_ele_vadd = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_ele_vadd")
-                self.src_stride_ub_2_gm = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_ub_2_gm")
-                self.dst_stride_ub_2_gm = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_ub_2_gm")
-                self.repeat_max_loop_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_ele_grad_sel = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                               name="remain_ele_grad_sel")
+                self.repeat_max_loop_vadd = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="repeat_max_loop_vadd")
+                self.remain_max_loop_vadd = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="remain_max_loop_vadd")
+                self.remain_ele_vadd = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="remain_ele_vadd")
+                self.src_stride_ub_2_gm = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="src_stride_ub_2_gm")
+                self.dst_stride_ub_2_gm = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="dst_stride_ub_2_gm")
+                self.repeat_max_loop_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                       name="repeat_max_loop_f_map_fp32")
-                self.remain_max_loop_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_max_loop_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                       name="remain_max_loop_f_map_fp32")
-                self.remain_ele_f_map_fp32 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_ele_f_map_fp32 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                  name="remain_ele_f_map_fp32")
-                self.wi_val_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wi_val_tail")
-                self.burst_len_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_tail")
-                self.src_stride_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_tail")
-                self.pad_hw_top_neg = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="pad_hw_top_neg")
-                self.pad_hw_left_neg = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="pad_hw_left_neg")
-                self.forward_in_shape_h_w_2 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.wi_val_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wi_val_tail")
+                self.burst_len_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="burst_len_tail")
+                self.src_stride_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="src_stride_tail")
+                self.pad_hw_top_neg = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="pad_hw_top_neg")
+                self.pad_hw_left_neg = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="pad_hw_left_neg")
+                self.forward_in_shape_h_w_2 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="forward_in_shape_h_w_2")
-                self.burst_len_src_orig_y_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.burst_len_src_orig_y_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                      name="burst_len_src_orig_y_tail")
-                self.src_stride_src_orig_y_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.src_stride_src_orig_y_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                       name="src_stride_src_orig_y_tail")
-                self.repeat_times_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeat_times_tail")
-                self.howo_co_ver_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="howo_co_ver_tail")
-                self.repeat_max_loop_vadd_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.repeat_times_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                             name="repeat_times_tail")
+                self.howo_co_ver_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="howo_co_ver_tail")
+                self.repeat_max_loop_vadd_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                      name="repeat_max_loop_vadd_tail")
-                self.remain_max_loop_vadd_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_max_loop_vadd_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                      name="remain_max_loop_vadd_tail")
-                self.remain_ele_vadd_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_ele_vadd_tail")
-                self.src_stride_ub_2_gm_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_ele_vadd_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="remain_ele_vadd_tail")
+                self.src_stride_ub_2_gm_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="src_stride_ub_2_gm_tail")
-                self.dst_stride_ub_2_gm_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dst_stride_ub_2_gm_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="dst_stride_ub_2_gm_tail")
-                self.core_ho_times = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_ho_times")
-                self.core_wo_times = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="core_wo_times")
-                self.map_hi = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="map_hi")
-                self.map_wi = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="map_wi")
+                self.core_ho_times = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_ho_times")
+                self.core_wo_times = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="core_wo_times")
+                self.map_hi = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="map_hi")
+                self.map_wi = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="map_wi")
 
-                self.config = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="config")
-                self.sh_wi_2 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="sh_wi_2")
-                self.num_instr_loop_h = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="num_instr_loop_h")
-                self.num_instr_loop_w = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="num_instr_loop_w")
-                self.remain_mask = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_mask")
-                self.remain_repeat = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_repeat")
-                self.num_instr_loop_w_1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="num_instr_loop_w_1")
-                self.num_instr_loop_h_1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="num_instr_loop_h_1")
-                self.ho_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="ho_tail")
-                self.hi_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="hi_tail")
-                self.dst_stride_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_tail")
-                self.wo_2 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="wo_2")
-                self.boundary_h = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="boundary_h")
-                self.burst_len_ub_2_gm = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_ub_2_gm")
-                self.non_overlap_1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="non_overlap_1")
-                self.overlap_1 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="poverlap_1")
-                self.burst_len_over = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_over")
-                self.src_stride_over = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_over")
-                self.dst_stride_over = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_over")
-                self.dup_repeat_merchant_non_overlap = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.config = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="config")
+                self.sh_wi_2 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="sh_wi_2")
+                self.num_instr_loop_h = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="num_instr_loop_h")
+                self.num_instr_loop_w = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="num_instr_loop_w")
+                self.remain_mask = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="remain_mask")
+                self.remain_repeat = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="remain_repeat")
+                self.num_instr_loop_w_1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="num_instr_loop_w_1")
+                self.num_instr_loop_h_1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="num_instr_loop_h_1")
+                self.ho_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="ho_tail")
+                self.hi_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="hi_tail")
+                self.dst_stride_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="dst_stride_tail")
+                self.wo_2 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="wo_2")
+                self.boundary_h = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="boundary_h")
+                self.burst_len_ub_2_gm = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                             name="burst_len_ub_2_gm")
+                self.non_overlap_1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="non_overlap_1")
+                self.overlap_1 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="poverlap_1")
+                self.burst_len_over = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="burst_len_over")
+                self.src_stride_over = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="src_stride_over")
+                self.dst_stride_over = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="dst_stride_over")
+                self.dup_repeat_merchant_non_overlap = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                            name="dup_repeat_merchant_non_overlap")
-                self.dup_repeat_remainder_non_overlap = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dup_repeat_remainder_non_overlap = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                             name="dup_repeat_remainder_non_overlap")
-                self.dup_remainder_non_overlap = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dup_remainder_non_overlap = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                      name="dup_remainder_non_overlap")
-                self.repeats_non_overlap = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeats_non_overlap")
-                self.burst_len_ub2gm_2 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_ub2gm_2")
-                self.src_stride_ub2gm_2 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_ub2gm_2")
-                self.dst_stride_ub2gm_2 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_ub2gm_2")
-                self.burst_len_ub2gm_3 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_ub2gm_3")
-                self.src_stride_ub2gm_3 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_ub2gm_3")
-                self.dst_stride_ub2gm_3 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_ub2gm_3")
-                self.hi_val_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="hi_val_tail")
-                self.burst_len_val = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="hi_val_tail")
-                self.src_stride_val = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_val")
-                self.dst_stride_val = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_val")
-                self.burst_len_val_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="burst_len_val_tail")
-                self.src_stride_val_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_val_tail")
-                self.dst_stride_val_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_val_tail")
-                self.num_instr_loop_h_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.repeats_non_overlap = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                               name="repeats_non_overlap")
+                self.burst_len_ub2gm_2 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                             name="burst_len_ub2gm_2")
+                self.src_stride_ub2gm_2 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="src_stride_ub2gm_2")
+                self.dst_stride_ub2gm_2 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="dst_stride_ub2gm_2")
+                self.burst_len_ub2gm_3 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                             name="burst_len_ub2gm_3")
+                self.src_stride_ub2gm_3 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="src_stride_ub2gm_3")
+                self.dst_stride_ub2gm_3 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="dst_stride_ub2gm_3")
+                self.hi_val_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="hi_val_tail")
+                self.burst_len_val = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="hi_val_tail")
+                self.src_stride_val = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="src_stride_val")
+                self.dst_stride_val = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="dst_stride_val")
+                self.burst_len_val_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="burst_len_val_tail")
+                self.src_stride_val_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                               name="src_stride_val_tail")
+                self.dst_stride_val_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                               name="dst_stride_val_tail")
+                self.num_instr_loop_h_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                  name="num_instr_loop_h_tail")
-                self.remain_repeat_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_repeat_tail")
-                self.num_instr_loop_h_1_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="remain_repeat_tail")
-                self.burst_len_ub_2_gm_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.remain_repeat_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="remain_repeat_tail")
+                self.num_instr_loop_h_1_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                   name="remain_repeat_tail")
+                self.burst_len_ub_2_gm_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="burst_len_ub_2_gm_tail")
-                self.non_overlap_1_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="non_overlap_1_tail")
-                self.src_stride_over_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="src_stride_over_tail")
-                self.dst_stride_over_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride_over_tail")
+                self.non_overlap_1_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="non_overlap_1_tail")
+                self.src_stride_over_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="src_stride_over_tail")
+                self.dst_stride_over_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                                name="dst_stride_over_tail")
                 self.dup_repeat_merchant_non_overlap_tail = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="dup_repeat_merchant_non_overlap_tail")
+                    dtype=Constant.TILING_PARAM_DTYPE, name="dup_repeat_merchant_non_overlap_tail")
                 self.dup_repeat_remainder_non_overlap_tail = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="dup_repeat_remainder_non_overlap_tail")
-                self.dup_remainder_non_overlap_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    dtype=Constant.TILING_PARAM_DTYPE, name="dup_repeat_remainder_non_overlap_tail")
+                self.dup_remainder_non_overlap_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                           name="dup_remainder_non_overlap_tail")
-                self.repeats_non_overlap_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.repeats_non_overlap_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                     name="repeats_non_overlap_tail")
-                self.burst_len_ub2gm_2_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.burst_len_ub2gm_2_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="burst_len_ub2gm_2_tail")
-                self.src_stride_ub2gm_2_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.src_stride_ub2gm_2_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="src_stride_ub2gm_2_tail")
-                self.dst_stride_ub2gm_2_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dst_stride_ub2gm_2_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="dst_stride_ub2gm_2_tail")
-                self.burst_len_ub2gm_3_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.burst_len_ub2gm_3_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="burst_len_ub2gm_3_tail")
-                self.src_stride_ub2gm_3_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.src_stride_ub2gm_3_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="src_stride_ub2gm_3_tail")
-                self.dst_stride_ub2gm_3_tail = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.dst_stride_ub2gm_3_tail = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="dst_stride_ub2gm_3_tail")
-                self.forward_in_shape_w_c0 = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.forward_in_shape_w_c0 = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                  name="forward_in_shape_w_c0")
-                self.dst_stride = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="dst_stride")
+                self.dst_stride = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="dst_stride")
 
         self.params = CommonScalar(self.tik_instance, self.pads)
         self.gm = GmTensor(self.tik_instance)
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,),
+            tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
                                                  name="tiling_ub",
                                                  scope=tik.scope_ubuf)
             # mov tiling params from gm to ub
-            self.tik_instance.data_move(tiling_ub, self.gm.tiling_gm, 0, 1, TILING_PARAMS_NUM * 8 // 32, 0, 0)
+            self.tik_instance.data_move(tiling_ub, self.gm.tiling_gm, 0, 1, Constant.TILING_PARAMS_NUM * 8 // 32, 0, 0)
             # input scalar in flowtable
             i = 0
             # common params
@@ -698,7 +974,6 @@ class MaxPoolGradCompute:
         """
         set tik_instance
         """
-        # tik_instance = tik.Tik()
         self._set_src_dst_tensor(tik_instance)
 
         return tik_instance
@@ -707,50 +982,16 @@ class MaxPoolGradCompute:
         """
         set input and output tensor
         """
-        self.orig_x_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,), name="orig_x_gm", scope=tik.scope_gm)
+        self.orig_x_gm = tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="orig_x_gm", scope=tik.scope_gm)
 
-        self.orig_y_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,), name="orig_y_gm", scope=tik.scope_gm)
+        self.orig_y_gm = tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="orig_y_gm", scope=tik.scope_gm)
 
-        self.grads_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,), name="grads_gm", scope=tik.scope_gm)
+        self.grads_gm = tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="grads_gm", scope=tik.scope_gm)
 
-        self.ou_y_gm = tik_instance.Tensor("float32", (MAX_INT32,),
+        self.ou_y_gm = tik_instance.Tensor("float32", (Constant.MAX_INT32,),
                                            name="ou_y_gm",
                                            scope=tik.scope_gm,
                                            is_atomic_add=True)
-
-    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
-        """
-        move ub to gm
-        """
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        with tik_instance.for_range(0, n_burst) as i:
-            src_idx += i * (src_stride + burst_len) * MINI_UNIT // num_bit
-            dst_idx += i * (dst_stride + burst_len) * MINI_UNIT // num_bit
-
-            tik_instance.data_move(dst_buf[dst_idx], src_buf[src_idx], 0, 1, burst_len, 0, 0)
-
-    def _ultimate_data_move_dy(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
-        """
-        dynamic move ub to gm
-        """
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        tik_instance.data_move(dst_buf[dst_idx], src_buf[src_idx], 0, 1, burst_len, 0, 0)
-
-    def _norm_data_move(self, tik_instance, src_buf, dst_buf, in_list):
-        """
-        _norm_data_move
-        """
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        tik_instance.data_move(dst_buf[dst_idx], src_buf[src_idx], 0, n_burst, burst_len, src_stride, dst_stride)
 
     def _copy_gm_to_l1_dy(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape, burst_len, src_stride):
         """
@@ -759,10 +1000,10 @@ class MaxPoolGradCompute:
         dst_stride = 0
         in_list = [1, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(src_stride > MAX_STRIDE):
-            self._ultimate_data_move_dy(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
+        with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+            _ultimate_data_move_dy(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
         with tik_instance.else_scope():
-            self._norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
+            _norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
 
     def _gm2l1_tiling_do_ho_dy(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape, hi_batch, burst_len, src_stride,
                                dst_stride):
@@ -771,11 +1012,10 @@ class MaxPoolGradCompute:
         """
         in_list = [1, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(tik.any(src_stride > MAX_STRIDE, dst_stride > MAX_STRIDE)):
-            self._ultimate_data_move_dy(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
+        with tik_instance.if_scope(tik.any(src_stride > Constant.MAX_STRIDE, dst_stride > Constant.MAX_STRIDE)):
+            _ultimate_data_move_dy(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
         with tik_instance.else_scope():
-
-            self._norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
+            _norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
 
     def _gm2l1_tiling_do_ho_wo_dy(self, tik_instance, l1_buf, src_idx, dst_idx, input0, input1, burst_len, src_stride):
         """
@@ -791,11 +1031,11 @@ class MaxPoolGradCompute:
 
         in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(src_stride > MAX_STRIDE):
-            self._ultimate_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
+        with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+            _ultimate_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
 
         with tik_instance.else_scope():
-            self._norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
+            _norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
 
     def _gm2l1_tiling_do_ho_wo_dy1(self, tik_instance, l1_buf, src_idx, dst_idx, input0, input1):
         """
@@ -806,17 +1046,17 @@ class MaxPoolGradCompute:
         c0 = self.c0
         in_shape = [hi_val, wi_val, c0]
         n_burst = in_shape[0]
-        burst_len = wi_val * 16 * self.num_bit // MINI_UNIT
-        src_stride = (self.params.w - wi_val) * c0 * self.num_bit // MINI_UNIT
+        burst_len = wi_val * 16 * self.num_bit // Constant.MINI_UNIT
+        src_stride = (self.params.w - wi_val) * c0 * self.num_bit // Constant.MINI_UNIT
         dst_stride = 0
 
         in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(src_stride > MAX_STRIDE):
-            self._ultimate_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
+        with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+            _ultimate_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list, self.num_bit)
 
         with tik_instance.else_scope():
-            self._norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
+            _norm_data_move(tik_instance, self.orig_x_gm, l1_buf, in_list)
 
     def _copy_ub_to_gm_dy(self, tik_instance, src_buf, src_idx, dst_buf, dst_idx, in_shape, burst_len, dst_stride):
         """
@@ -825,10 +1065,10 @@ class MaxPoolGradCompute:
         src_stride = 0
         in_list = [1, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(dst_stride > MAX_STRIDE):
-            self._ultimate_data_move_dy(tik_instance, src_buf, dst_buf, in_list, self.num_bit_fp32)
+        with tik_instance.if_scope(dst_stride > Constant.MAX_STRIDE):
+            _ultimate_data_move_dy(tik_instance, src_buf, dst_buf, in_list, self.num_bit_fp32)
         with tik_instance.else_scope():
-            self._norm_data_move(tik_instance, src_buf, dst_buf, in_list)
+            _norm_data_move(tik_instance, src_buf, dst_buf, in_list)
 
     def _ub2gm_split_do_ho_2_dy(self, tik_instance, src, src_idx, dst, dst_idx, burst_len, src_stride, dst_stride):
         """
@@ -836,11 +1076,11 @@ class MaxPoolGradCompute:
         """
         in_list = [1, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(tik.any(src_stride > MAX_STRIDE, dst_stride > MAX_STRIDE)):
-            self._ultimate_data_move_dy(tik_instance, src, dst, in_list, self.num_bit_fp32)
+        with tik_instance.if_scope(tik.any(src_stride > Constant.MAX_STRIDE, dst_stride > Constant.MAX_STRIDE)):
+            _ultimate_data_move_dy(tik_instance, src, dst, in_list, self.num_bit_fp32)
 
         with tik_instance.else_scope():
-            self._norm_data_move(tik_instance, src, dst, in_list)
+            _norm_data_move(tik_instance, src, dst, in_list)
 
     def _ub2gm_split_do_ho_dy(self, tik_instance, src_buf, src_idx, dst_buf, dst_idx, burst_len, src_stride,
                               dst_stride):
@@ -849,12 +1089,11 @@ class MaxPoolGradCompute:
         """
         in_list = [1, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-        with tik_instance.if_scope(tik.any(src_stride > MAX_STRIDE, dst_stride > MAX_STRIDE)):
-            self._ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, self.num_bit_fp32)
+        with tik_instance.if_scope(tik.any(src_stride > Constant.MAX_STRIDE, dst_stride > Constant.MAX_STRIDE)):
+            _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, self.num_bit_fp32)
 
         with tik_instance.else_scope():
-
-            self._norm_data_move(tik_instance, src_buf, dst_buf, in_list)
+            _norm_data_move(tik_instance, src_buf, dst_buf, in_list)
 
     def _ub2gm_split_do_ho_wo_dy(self, tik_instance, src, src_idx, dst, dst_idx, in_shape, hi_batch, wi_batch,
                                  burst_len, src_stride, dst_stride):
@@ -870,10 +1109,10 @@ class MaxPoolGradCompute:
 
         in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx_new, dst_idx_new]
 
-        with tik_instance.if_scope(tik.any(src_stride > MAX_STRIDE, dst_stride > MAX_STRIDE)):
-            self._ultimate_data_move(tik_instance, src, dst, in_list, num_bit)
+        with tik_instance.if_scope(tik.any(src_stride > Constant.MAX_STRIDE, dst_stride > Constant.MAX_STRIDE)):
+            _ultimate_data_move(tik_instance, src, dst, in_list, num_bit)
         with tik_instance.else_scope():
-            self._norm_data_move(tik_instance, src, dst, in_list)
+            _norm_data_move(tik_instance, src, dst, in_list)
 
     def _copy_gm_to_ub_dy(self, tik_instance, dst_buf, src_buf, src_idx, in_shape, burst_len, src_stride):
         """
@@ -881,229 +1120,36 @@ class MaxPoolGradCompute:
         """
         n_burst = 1
         dst_stride = 0
-        with tik_instance.if_scope(src_stride > MAX_STRIDE):
+        with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
             in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, 0]
-            self._ultimate_data_move_dy(tik_instance, src_buf, dst_buf, in_list, self.num_bit)
+            _ultimate_data_move_dy(tik_instance, src_buf, dst_buf, in_list, self.num_bit)
 
         with tik_instance.else_scope():
             tik_instance.data_move(dst_buf[0], src_buf[src_idx], 0, n_burst, burst_len, src_stride, dst_stride)
-
-    def _set_vector_dup_zero(self, tik_instance, dst, idx, number, dtype):
-        """
-        set_vector_dup
-        """
-        if dtype == "float16":
-            mask = 128
-        else:
-            mask = 64
-        dst_blk_stride = 1
-        dst_rep_stride = 8
-        repeats = 1
-        tik_instance.vector_dup(mask, dst[idx], number, repeats, dst_blk_stride, dst_rep_stride)
-
-    def _set_vector_dup_dy(self, tik_instance, dst, idx, number, dtype, dup_repeat_merchant, dup_repeat_remainder,
-                          dup_remainder, repeats, dst_size):
-        """
-        set_vector_dup
-        """
-        if dtype == "float16":
-            mask = 128
-        else:
-            mask = 64
-        dup_psm = MAX_REPEAT * mask
-        dup_repeat_merchant_g = dst_size // dup_psm
-
-        dst_blk_stride = 1
-        dst_rep_stride = 8
-        if dup_repeat_merchant_g > 0:
-            with tik_instance.for_range(0, dup_repeat_merchant) as i:
-                tik_instance.vector_dup(mask, dst[idx + i * dup_psm], number, MAX_REPEAT, dst_blk_stride,
-                                        dst_rep_stride)
-
-        with tik_instance.if_scope(dup_repeat_remainder != 0):
-            if dst_size >= mask:
-                with tik_instance.if_scope(repeats != 0):
-                    tik_instance.vector_dup(mask, dst[idx + dup_repeat_merchant * dup_psm], number, repeats,
-                                            dst_blk_stride, dst_rep_stride)
-            with tik_instance.if_scope(dup_remainder != 0):
-                tik_instance.vector_dup(dup_remainder, dst[idx + dup_repeat_merchant * dup_psm + repeats * mask],
-                                        number, 1, dst_blk_stride, dst_rep_stride)
-
-    def _vconv_dy(self, tik_instance, src, src_start, dst, dst_start, src_dtype, repeat_max_time, remain_repeat_time,
-                  remain_ele, dstsize):
-        """
-        vconv
-        """
-        mask_value = VECTOR_FP32_SIZE
-
-        if src_dtype == 'float16':
-            src_stride, dst_stride = 4, 8
-            if dstsize >= MASK64_VALUE * MAX_REPEAT:
-                with tik_instance.if_scope(repeat_max_time > 0):
-                    with tik_instance.for_range(0, repeat_max_time) as loop1:
-                        tik_instance.vconv(MASK64_VALUE, "", dst[dst_start + loop1 * MAX_REPEAT * mask_value],
-                                           src[src_start + loop1 * MAX_REPEAT * mask_value], MAX_REPEAT, 1, 1,
-                                           dst_stride, src_stride)
-            if dstsize >= MASK64_VALUE:
-                with tik_instance.if_scope(remain_repeat_time > 0):
-                    tik_instance.vconv(MASK64_VALUE, "", dst[dst_start + repeat_max_time * MAX_REPEAT * mask_value],
-                                       src[src_start + repeat_max_time * MAX_REPEAT * mask_value], remain_repeat_time,
-                                       1, 1, dst_stride, src_stride)
-            with tik_instance.if_scope(remain_ele > 0):
-                tik_instance.vconv(
-                    remain_ele, "",
-                    dst[dst_start + repeat_max_time * MAX_REPEAT * mask_value + remain_repeat_time * mask_value],
-                    src[src_start + repeat_max_time * MAX_REPEAT * mask_value + remain_repeat_time * mask_value], 1, 1,
-                    1, dst_stride, src_stride)
-
-        else:
-            src_stride, dst_stride = 8, 4
-            with tik_instance.if_scope(repeat_max_time > 0):
-                with tik_instance.for_range(0, repeat_max_time) as loop1:
-                    tik_instance.vconv(MASK64_VALUE, "", dst[dst_start + loop1 * MAX_REPEAT * mask_value],
-                                       src[src_start + loop1 * MAX_REPEAT * mask_value], MAX_REPEAT, 1, 1, dst_stride,
-                                       src_stride)
-            with tik_instance.if_scope(remain_repeat_time > 0):
-                tik_instance.vconv(MASK64_VALUE, "", dst[dst_start + repeat_max_time * MAX_REPEAT * mask_value],
-                                   src[src_start + repeat_max_time * MAX_REPEAT * mask_value], remain_repeat_time, 1,
-                                   1, dst_stride, src_stride)
-            with tik_instance.if_scope(remain_ele > 0):
-                tik_instance.vconv(
-                    remain_ele, "",
-                    dst[dst_start + repeat_max_time * MAX_REPEAT * mask_value + remain_repeat_time * mask_value],
-                    src[src_start + repeat_max_time * MAX_REPEAT * mask_value + remain_repeat_time * mask_value], 1, 1,
-                    1, dst_stride, src_stride)
-
-    def _vector_op_dy(self, tik_instance, operator, src1, src2, dst, dtype, stride_config, repeat_max_loop,
-                      remain_max_loop, remain_ele, src1_size, src2_size, dst_size):
-        """
-        vadd
-        """
-        stride_config = list(stride_config)
-        if dtype == "float16":
-            mask = VECTOR_FP16_SIZE
-        else:
-            mask = VECTOR_FP32_SIZE
-
-        config_num = stride_config[0] <= 255 and stride_config[1] <= 255 and stride_config[2] <= 255 and stride_config[
-            3] <= 255 and stride_config[4] <= 255 and stride_config[5] <= 255
-        config_num_3 = stride_config[0] <= 255 and stride_config[1] <= 255 and stride_config[2] <= 255
-
-        if operator == "vadd":
-            if stride_config is None:
-                stride_config = 1, 1, 1, 8, 8, 8
-            dst_offset = 0
-            src1_offset = 0
-            src2_offset = 0
-            dst_less = (stride_config[0] * 8 + stride_config[3] * MAX_REPEAT) * 8
-            src1_less = (stride_config[1] * 8 + stride_config[4] * MAX_REPEAT) * 8
-            src2_size_less = (stride_config[2] * 8 + stride_config[5] * MAX_REPEAT) * 8
-
-            dst_less1 = (stride_config[0] * 8 + stride_config[3]) * 8
-            src1_less1 = (stride_config[1] * 8 + stride_config[4]) * 8
-            src2_size1_less = (stride_config[2] * 8 + stride_config[5]) * 8
-
-            if dst_size >= dst_less and src1_size >= src1_less and src2_size >= src2_size_less and config_num:
-                with tik_instance.if_scope(repeat_max_loop > 0):
-                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], MAX_REPEAT,
-                                      stride_config[0], stride_config[1], stride_config[2], stride_config[3],
-                                      stride_config[4], stride_config[5])
-                    dst_offset += MINI_UNIT // (tbe_platform.get_bit_len(dst.dtype.lower()) //
-                                                8) * stride_config[3] * 255
-                    src1_offset += MINI_UNIT // (tbe_platform.get_bit_len(src1.dtype.lower()) //
-                                                 8) * stride_config[4] * 255
-                    src2_offset += MINI_UNIT // (tbe_platform.get_bit_len(src2.dtype.lower()) //
-                                                 8) * stride_config[5] * 255
-
-            with tik_instance.if_scope(remain_max_loop > 0):
-                if config_num_3 and dst_size >= stride_config[0] * mask and src1_size >= stride_config[
-                        1] * mask and src2_size >= stride_config[2] * mask:
-                    with tik_instance.if_scope(remain_max_loop == 1):
-
-                        tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
-                                          stride_config[0], stride_config[1], stride_config[2], 0, 0, 0)
-                if config_num and dst_size >= dst_less1 and src1_size >= src1_less1 and src2_size >= src2_size1_less:
-                    with tik_instance.if_scope(remain_max_loop != 1):
-                        tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], remain_max_loop,
-                                          stride_config[0], stride_config[1], stride_config[2], stride_config[3],
-                                          stride_config[4], stride_config[5])
-                dst_offset += MINI_UNIT // (tbe_platform.get_bit_len(dst.dtype.lower()) //
-                                            8) * stride_config[3] * remain_max_loop
-                src1_offset += MINI_UNIT // (tbe_platform.get_bit_len(src1.dtype.lower()) //
-                                             8) * stride_config[4] * remain_max_loop
-                src2_offset += MINI_UNIT // (tbe_platform.get_bit_len(src2.dtype.lower()) //
-                                             8) * stride_config[5] * remain_max_loop
-            with tik_instance.if_scope(remain_ele > 0):
-                stride_config[3] = stride_config[4] = stride_config[5] = 0
-                tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset], src2[src2_offset], 1,
-                                  stride_config[0], stride_config[1], stride_config[2], stride_config[3],
-                                  stride_config[4], stride_config[5])
-
-    def _rewrite_fmap_dy(self, tik_instance, operator, src1, src2, dst, dtype, repeat_times, shape_map, shape_grad,
-                         config, num_instr_loop_h, num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
-                         num_instr_loop_h_1):
-        """
-        vadd
-        """
-        mask = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="mask_params")
-        rep = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="rep_params")
-
-        h, w, c0 = shape_map[0], shape_map[1], 16
-        ho, wo = shape_grad[0], shape_grad[1]
-        if dtype == "float16":
-            max_mask = 128
-            num_block = 8
-            block_size = 16
-        else:
-            max_mask = 64
-            num_block = 8
-            block_size = 8
-
-        with tik_instance.for_range(0, num_instr_loop_h) as idx_h:
-            with tik_instance.for_range(0, num_instr_loop_w) as idx_w:
-                src1_offset = idx_w * num_block * config[1] * block_size + \
-                              idx_h * MAX_REPEAT * w * c0
-                src2_offset = idx_w * num_block * config[2] * block_size + \
-                              idx_h * MAX_REPEAT * wo * c0
-                dst_offset = idx_w * num_block * config[0] * block_size + \
-                             idx_h * MAX_REPEAT * w * c0
-
-                with tik_instance.if_scope(idx_w < num_instr_loop_w_1):
-                    mask.set_as(max_mask)
-                with tik_instance.else_scope():
-                    mask.set_as(remain_mask)
-                with tik_instance.if_scope(idx_h < num_instr_loop_h_1):
-                    rep.set_as(MAX_REPEAT)
-
-                with tik_instance.else_scope():
-                    rep.set_as(remain_repeat)
-
-                tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset], src2[src2_offset], rep, config[0],
-                                  config[1], config[2], config[3], config[4], config[5])
 
     def _set_buf_tensor(self, tik_instance, param):
         """
         apply ub and l1
         """
 
-        l1_in_buf = tik_instance.Tensor(self.dtype, [param.l1_in_size,], name="l1_in_buf", scope=tik.scope_cbuf)
-        forward_ou_buf = tik_instance.Tensor(self.dtype, [param.forward_ou_size,],
+        l1_in_buf = tik_instance.Tensor(self.dtype, [param.l1_in_size, ], name="l1_in_buf", scope=tik.scope_cbuf)
+        forward_ou_buf = tik_instance.Tensor(self.dtype, [param.forward_ou_size, ],
                                              name="forward_ou_buf",
                                              scope=tik.scope_ubuf)
-        grad_buf = tik_instance.Tensor(self.dtype, [param.grad_size,], name="grad_buf", scope=tik.scope_ubuf)
-        col_in_buf = tik_instance.Tensor(self.dtype, [param.col_in_size,], name="col_in_buf", scope=tik.scope_ubuf)
-        mask_buf = tik_instance.Tensor("uint16", [param.mask_size,], name='mask_buf', scope=tik.scope_ubuf)
-        mask_or_buf = tik_instance.Tensor("uint16", [param.mask_size,], name='mask_or_buf', scope=tik.scope_ubuf)
-        mask_not_buf = tik_instance.Tensor("uint16", [param.mask_size,], name='mask_not_buf', scope=tik.scope_ubuf)
-        zero_buf = tik_instance.Tensor(self.dtype, [param.zero_size,], name='zero_buf', scope=tik.scope_ubuf)
+        grad_buf = tik_instance.Tensor(self.dtype, [param.grad_size, ], name="grad_buf", scope=tik.scope_ubuf)
+        col_in_buf = tik_instance.Tensor(self.dtype, [param.col_in_size, ], name="col_in_buf", scope=tik.scope_ubuf)
+        mask_buf = tik_instance.Tensor("uint16", [param.mask_size, ], name='mask_buf', scope=tik.scope_ubuf)
+        mask_or_buf = tik_instance.Tensor("uint16", [param.mask_size, ], name='mask_or_buf', scope=tik.scope_ubuf)
+        mask_not_buf = tik_instance.Tensor("uint16", [param.mask_size, ], name='mask_not_buf', scope=tik.scope_ubuf)
+        zero_buf = tik_instance.Tensor(self.dtype, [param.zero_size, ], name='zero_buf', scope=tik.scope_ubuf)
 
-        grad_sel_fp16_buf = tik_instance.Tensor(self.dtype, [param.grad_sel_fp16_size,],
+        grad_sel_fp16_buf = tik_instance.Tensor(self.dtype, [param.grad_sel_fp16_size, ],
                                                 name='grad_sel_fp16_buf',
                                                 scope=tik.scope_ubuf)
-        grad_sel_fp32_buf = tik_instance.Tensor("float32", [param.grad_sel_fp32_size,],
+        grad_sel_fp32_buf = tik_instance.Tensor("float32", [param.grad_sel_fp32_size, ],
                                                 name='grad_sel_fp32_buf',
                                                 scope=tik.scope_ubuf)
-        f_map_fp32_buf = tik_instance.Tensor("float32", [param.f_map_fp32_size,],
+        f_map_fp32_buf = tik_instance.Tensor("float32", [param.f_map_fp32_size, ],
                                              name='f_map_fp32_buf',
                                              scope=tik.scope_ubuf)
 
@@ -1193,13 +1239,13 @@ class MaxPoolGradCompute:
         grad_sel_fp16_size = param.grad_sel_fp16_size
         grad_sel_fp32_size = param.grad_sel_fp32_size
         f_map_fp32_size = param.f_map_fp32_size
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
-            self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                   self.params.dup_repeat_merchant_f_map_fp32,
-                                   self.params.dup_repeat_remainder_f_map_fp32, self.params.dup_remainder_f_map_fp32,
-                                   self.params.repeats_f_map_fp32, f_map_fp32_size)
+            _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                    self.params.dup_repeat_merchant_f_map_fp32,
+                                    self.params.dup_repeat_remainder_f_map_fp32, self.params.dup_remainder_f_map_fp32,
+                                    self.params.repeats_f_map_fp32, f_map_fp32_size)
             merchant = (sum_core + num_core_loop) // c1
             remainder = (sum_core + num_core_loop) % c1
 
@@ -1228,7 +1274,7 @@ class MaxPoolGradCompute:
                     src_l1 = 0
                     tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], [0, 0, 0, 0], hi, wi, 0, idx_w, idx_h, 0,
                                           0, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1, self.params.repeat_times,
-                                          0, MIN_VALUE_FP16)
+                                          0, Constant.MIN_VALUE_FP16)
 
                     # ---calculate mask---
                     with tik_instance.if_scope(tik.all(idx_h == 0, idx_w == 0)):
@@ -1263,7 +1309,7 @@ class MaxPoolGradCompute:
                                           grad_buf[grad_offset], zero_buf, 1, 1, 1, 1, 8, 8, 0)
 
                     # ---vconv grad_sel_fp16 to fp32---
-                    self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                    _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                    self.params.repeat_max_time_grad_sel, self.params.remain_repeat_time_grad_sel,
                                    self.params.remain_ele_grad_sel, grad_size)
 
@@ -1276,7 +1322,7 @@ class MaxPoolGradCompute:
                         shape_map_hw = [hi, wi, c0]
                         shape_grad = [ho, wo, c0]
 
-                        self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                        _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                               grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                               "float32", ho, shape_map_hw, shape_grad, config,
                                               self.params.num_instr_loop_h,
@@ -1284,7 +1330,7 @@ class MaxPoolGradCompute:
                                               self.params.remain_repeat, self.params.num_instr_loop_w_1,
                                               self.params.num_instr_loop_h_1)
 
-                        self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                        _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                               grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                               "float32", ho, shape_map_hw, shape_grad, config,
                                               self.params.num_instr_loop_h, self.params.num_instr_loop_w,
@@ -1299,13 +1345,13 @@ class MaxPoolGradCompute:
                             map_index = (ho_idx * self.sh * wi * c0) + (idx_h * wi * c0 + idx_w * c0)
                             mask_index = wo * ho_idx * c0
 
-                            self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                            _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:], "float32",
                                                (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                                self.params.repeat_max_loop_vadd, self.params.remain_max_loop_vadd,
                                                self.params.remain_ele_vadd, f_map_fp32_size, grad_sel_fp32_size,
                                                f_map_fp32_size)
-                            self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                            _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                "float32",
                                                (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
@@ -1347,10 +1393,10 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
             merchant = (sum_core + num_core_loop) // c1
@@ -1411,7 +1457,7 @@ class MaxPoolGradCompute:
                         src_l1 = 0
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], [0, 0, 0, 0], hi, self.params.wi_batch,
                                               0, idx_w, idx_h, 0, 0, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
-                                              repeat_times, 0, MIN_VALUE_FP16)
+                                              repeat_times, 0, Constant.MIN_VALUE_FP16)
 
                         # ---calculate mask---
                         idx_list = [idx_h, idx_w]
@@ -1423,7 +1469,7 @@ class MaxPoolGradCompute:
                         self._sel_dy(tik_instance, buf_list, idx_list, const_list, howo_co_ver)
 
                         # ---vconv grad_sel_fp16 to fp32---
-                        self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                        _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                        repeat_max_time, remain_repeat_time, remain_ele, grad_size)
 
                         # ---rewrite grad_sel_fp32 to f_map_fp32
@@ -1436,13 +1482,13 @@ class MaxPoolGradCompute:
                             shape_map_hw = [self.params.hi_batch, self.params.wi_batch, c0]
                             shape_grad = [ho, wo, c0]
 
-                            self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                            _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                   grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                                   "float32", ho, shape_map_hw, shape_grad, config, num_instr_loop_h,
                                                   num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
                                                   num_instr_loop_h_1)
 
-                            self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                            _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                   grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                   "float32", ho, shape_map_hw, shape_grad, config, num_instr_loop_h,
                                                   num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
@@ -1457,13 +1503,13 @@ class MaxPoolGradCompute:
                                             (idx_h * self.params.wi_batch * c0 + idx_w * c0)
                                 mask_index = wo * ho_idx * c0
 
-                                self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                                _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                    grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                                    "float32",
                                                    (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                                    repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd,
                                                    f_map_fp32_size, grad_sel_fp32_size, f_map_fp32_size)
-                                self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                                _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                    grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                    "float32",
                                                    (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
@@ -1492,58 +1538,58 @@ class MaxPoolGradCompute:
                                                    n_burst, burst_len_over, src_stride_over, dst_stride_over)
 
                             dst_vec_idx = src_idx + overlap_1
-                            self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, dst_vec_idx, 0, "float32",
-                                                   dup_repeat_merchant_non_overlap, dup_repeat_remainder_non_overlap,
-                                                   dup_remainder_non_overlap, repeats_non_overlap, f_map_fp32_size)
+                            _set_vector_dup_dy(tik_instance, f_map_fp32_buf, dst_vec_idx, 0, "float32",
+                                                    dup_repeat_merchant_non_overlap, dup_repeat_remainder_non_overlap,
+                                                    dup_remainder_non_overlap, repeats_non_overlap, f_map_fp32_size)
 
                         with tik_instance.else_scope():
                             self._ub2gm_split_do_ho_2_dy(tik_instance, f_map_fp32_buf, src_idx, dst, dst_idx,
                                                          burst_len_ub2gm_2, src_stride_ub2gm_2, dst_stride_ub2gm_2)
 
-                            self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                                   self.params.dup_repeat_merchant_f_map_fp32,
-                                                   self.params.dup_repeat_remainder_f_map_fp32,
-                                                   self.params.dup_remainder_f_map_fp32,
-                                                   self.params.repeats_f_map_fp32, f_map_fp32_size)
+                            _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                                    self.params.dup_repeat_merchant_f_map_fp32,
+                                                    self.params.dup_repeat_remainder_f_map_fp32,
+                                                    self.params.dup_remainder_f_map_fp32,
+                                                    self.params.repeats_f_map_fp32, f_map_fp32_size)
 
                     elif self.kh == self.sh:
                         self._ub2gm_split_do_ho_2_dy(tik_instance, f_map_fp32_buf, src_idx, dst, dst_idx,
                                                      burst_len_ub2gm_2, src_stride_ub2gm_2, dst_stride_ub2gm_2)
 
-                        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                               self.params.dup_repeat_merchant_f_map_fp32,
-                                               self.params.dup_repeat_remainder_f_map_fp32,
-                                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
-                                               f_map_fp32_size)
+                        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                                self.params.dup_repeat_merchant_f_map_fp32,
+                                                self.params.dup_repeat_remainder_f_map_fp32,
+                                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
+                                                f_map_fp32_size)
 
                     else:
                         with tik_instance.if_scope(self.params.hi_invalid >= 0):
                             self._ub2gm_split_do_ho_2_dy(tik_instance, f_map_fp32_buf, src_idx, dst, dst_idx,
                                                          burst_len_ub2gm_2, src_stride_ub2gm_2, dst_stride_ub2gm_2)
 
-                            self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                                   self.params.dup_repeat_merchant_f_map_fp32,
-                                                   self.params.dup_repeat_remainder_f_map_fp32,
-                                                   self.params.dup_remainder_f_map_fp32,
-                                                   self.params.repeats_f_map_fp32, f_map_fp32_size)
+                            _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                                    self.params.dup_repeat_merchant_f_map_fp32,
+                                                    self.params.dup_repeat_remainder_f_map_fp32,
+                                                    self.params.dup_remainder_f_map_fp32,
+                                                    self.params.repeats_f_map_fp32, f_map_fp32_size)
                         with tik_instance.else_scope():
                             with tik_instance.if_scope(hi_coordinate + hi < self.params.boundary_h):
                                 self._ub2gm_split_do_ho_2_dy(tik_instance, f_map_fp32_buf, src_idx, dst, dst_idx,
                                                              burst_len_ub2gm_2, src_stride_ub2gm_2, dst_stride_ub2gm_2)
 
-                                self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                                       self.params.dup_repeat_merchant_f_map_fp32,
-                                                       self.params.dup_repeat_remainder_f_map_fp32,
-                                                       self.params.dup_remainder_f_map_fp32,
-                                                       self.params.repeats_f_map_fp32, f_map_fp32_size)
+                                _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                                        self.params.dup_repeat_merchant_f_map_fp32,
+                                                        self.params.dup_repeat_remainder_f_map_fp32,
+                                                        self.params.dup_remainder_f_map_fp32,
+                                                        self.params.repeats_f_map_fp32, f_map_fp32_size)
                             with tik_instance.else_scope():
                                 self._ub2gm_split_do_ho_2_dy(tik_instance, f_map_fp32_buf, src_idx, dst, dst_idx,
                                                              burst_len_ub2gm_3, src_stride_ub2gm_3, dst_stride_ub2gm_3)
-                                self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                                       self.params.dup_repeat_merchant_f_map_fp32,
-                                                       self.params.dup_repeat_remainder_f_map_fp32,
-                                                       self.params.dup_remainder_f_map_fp32,
-                                                       self.params.repeats_f_map_fp32, f_map_fp32_size)
+                                _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                                        self.params.dup_repeat_merchant_f_map_fp32,
+                                                        self.params.dup_repeat_remainder_f_map_fp32,
+                                                        self.params.dup_remainder_f_map_fp32,
+                                                        self.params.repeats_f_map_fp32, f_map_fp32_size)
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(self.ou_y_gm, dst_ou_gm, 0)
@@ -1637,10 +1683,10 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
             merchant = (sum_core + num_core_loop) // c1
@@ -1704,7 +1750,7 @@ class MaxPoolGradCompute:
                         src_l1 = 0
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], [0, 0, 0, 0], hi_val, wi_val, 0, idx_w,
                                               idx_h, 0, 0, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
-                                              repeat_times, 0, MIN_VALUE_FP16)
+                                              repeat_times, 0, Constant.MIN_VALUE_FP16)
 
                         # ---calculate mask---
                         idx_list = [idx_h, idx_w]
@@ -1715,17 +1761,17 @@ class MaxPoolGradCompute:
 
                         # ---sel(grad,zero,mask)---
                         self._sel_dy(tik_instance, buf_list, idx_list, const_list, howo_co_ver)
-                        self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                        _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                        repeat_max_time, remain_repeat_time, remain_ele, grad_size)
 
                         map_index = idx_h * self.params.wi_batch * c0 + idx_w * c0
                         mask_index = 0
-                        self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                        _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                            grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:], "float32",
                                            (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                            repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd, f_map_fp32_size,
                                            grad_sel_fp32_size, f_map_fp32_size)
-                        self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                        _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                            grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                            "float32", (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                            repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd, f_map_fp32_size,
@@ -1746,11 +1792,11 @@ class MaxPoolGradCompute:
                                                   self.params.hi_batch, self.params.wi_batch, burst_len_ub_2_gm,
                                                   src_stride_ub_2_gm, dst_stride_ub_2_gm)
 
-                    self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                           self.params.dup_repeat_merchant_f_map_fp32,
-                                           self.params.dup_repeat_remainder_f_map_fp32,
-                                           self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
-                                           f_map_fp32_size)
+                    _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                            self.params.dup_repeat_merchant_f_map_fp32,
+                                            self.params.dup_repeat_remainder_f_map_fp32,
+                                            self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
+                                            f_map_fp32_size)
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(1, self.ou_y_gm, dst_ou_gm, 0)
@@ -1832,10 +1878,10 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
             core_ho = self.params.core_ou_shape_h
@@ -1902,7 +1948,7 @@ class MaxPoolGradCompute:
                         src_l1 = 0
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], [0, 0, 0, 0], hi, self.params.wi_batch,
                                               0, idx_w, idx_h, 0, 0, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
-                                              repeat_times, 0, MIN_VALUE_FP16)
+                                              repeat_times, 0, Constant.MIN_VALUE_FP16)
 
                         # ---calculate mask---
                         idx_list = [idx_h, idx_w]
@@ -1914,7 +1960,7 @@ class MaxPoolGradCompute:
                         self._sel_dy(tik_instance, buf_list, idx_list, const_list, howo_co_ver)
 
                         # ---vconv grad_sel_fp16 to fp32---
-                        self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                        _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                        repeat_max_time_grad_sel, remain_repeat_time_grad_sel, remain_ele_grad_sel,
                                        grad_size)
 
@@ -1923,20 +1969,19 @@ class MaxPoolGradCompute:
                                   self.params.wo_2)
 
                         with tik_instance.if_scope(config_params == 1):
-
                             map_index = (idx_h * self.params.wi_batch * c0 + idx_w * c0)
                             mask_index = 0
                             shape_map_hw = [self.params.hi_batch, self.params.wi_batch, c0]
                             shape_grad = [ho, wo_batch, c0]
 
-                            self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                            _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                   grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                                   "float32",
                                                   ho, shape_map_hw, shape_grad, config, num_instr_loop_h,
                                                   num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
                                                   num_instr_loop_h_1)
 
-                            self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                            _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                   grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                   "float32", ho, shape_map_hw, shape_grad, config, num_instr_loop_h,
                                                   num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
@@ -1950,13 +1995,13 @@ class MaxPoolGradCompute:
                                             (idx_h * self.params.wi_batch * c0 + idx_w * c0)
                                 mask_index = wo_batch * ho_idx * c0
 
-                                self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                                _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                    grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                                    "float32",
                                                    (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                                    repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd,
                                                    f_map_fp32_size, grad_sel_fp32_size, f_map_fp32_size)
-                                self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                                _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                    grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                    "float32",
                                                    (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
@@ -1979,11 +2024,11 @@ class MaxPoolGradCompute:
                     self._ub2gm_split_do_ho_2_dy(tik_instance, f_map_fp32_buf, src_idx, dst, dst_idx,
                                                  burst_len_ub2gm_2, src_stride_ub2gm_2, dst_stride_ub2gm_2)
 
-                    self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                           self.params.dup_repeat_merchant_f_map_fp32,
-                                           self.params.dup_repeat_remainder_f_map_fp32,
-                                           self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
-                                           f_map_fp32_size)
+                    _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                            self.params.dup_repeat_merchant_f_map_fp32,
+                                            self.params.dup_repeat_remainder_f_map_fp32,
+                                            self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
+                                            f_map_fp32_size)
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(self.ou_y_gm, dst_ou_gm, 0)
@@ -2067,10 +2112,10 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
 
@@ -2154,7 +2199,7 @@ class MaxPoolGradCompute:
                         src_l1 = 0
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], [0, 0, 0, 0], hi_val, wi_val, 0, idx_w,
                                               idx_h, 0, 0, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
-                                              repeat_times, 0, MIN_VALUE_FP16)
+                                              repeat_times, 0, Constant.MIN_VALUE_FP16)
 
                         # ---calculate mask---
                         idx_list = [idx_h, idx_w]
@@ -2165,18 +2210,18 @@ class MaxPoolGradCompute:
                         # ---sel(grad,zero,mask)---
                         self._sel_dy(tik_instance, buf_list, idx_list, const_list, howo_co_ver)
 
-                        self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                        _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                        repeat_max_time, remain_repeat_time, remain_ele, grad_size)
 
                         map_index = idx_h * self.params.wi_batch * c0 + idx_w * c0
                         mask_index = 0
 
-                        self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                        _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                            grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:], "float32",
                                            (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                            repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd, f_map_fp32_size,
                                            grad_sel_fp32_size, f_map_fp32_size)
-                        self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                        _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                            grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                            "float32", (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                            repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd, f_map_fp32_size,
@@ -2199,9 +2244,9 @@ class MaxPoolGradCompute:
                                                   self.params.hi_batch, self.params.wi_batch, burst_len_ub2gm_2,
                                                   src_stride_ub_2_gm, dst_stride_ub_2_gm)
 
-                    self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32", repeat_max_loop_f_map_fp32,
-                                           remain_max_loop_f_map_fp32, remain_ele_f_map_fp32,
-                                           self.params.repeats_f_map_fp32, f_map_fp32_size)
+                    _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32", repeat_max_loop_f_map_fp32,
+                                            remain_max_loop_f_map_fp32, remain_ele_f_map_fp32,
+                                            self.params.repeats_f_map_fp32, f_map_fp32_size)
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(self.ou_y_gm, dst_ou_gm, 0)
@@ -2285,13 +2330,12 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
-
             merchant = (sum_core + num_core_loop) // c1
             remainder = (sum_core + num_core_loop) % c1
             merchant_c1 = remainder
@@ -2324,7 +2368,7 @@ class MaxPoolGradCompute:
                     tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], pad_hw_list, self.params.hi_batch,
                                           self.params.wi_batch, 0, idx_w, idx_h, self.params.pad_hw_left_neg,
                                           self.params.pad_hw_top_neg, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
-                                          self.params.repeat_times, 0, MIN_VALUE_FP16)
+                                          self.params.repeat_times, 0, Constant.MIN_VALUE_FP16)
 
                     # ---calculate mask---
                     idx_list = [idx_h, idx_w]
@@ -2336,7 +2380,7 @@ class MaxPoolGradCompute:
                     self._sel_dy(tik_instance, buf_list, idx_list, const_list, self.params.howo_co_ver)
 
                     # ---vconv grad_sel_fp16 to fp32---
-                    self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                    _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                    self.params.repeat_max_time_grad_sel, self.params.remain_repeat_time_grad_sel,
                                    self.params.remain_ele_grad_sel, grad_size)
 
@@ -2349,14 +2393,14 @@ class MaxPoolGradCompute:
                         shape_map_hw = [self.params.map_hi, self.params.map_wi, c0]
                         shape_grad = [ho_batch, wo_batch, c0]
 
-                        self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                        _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                               grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:], "float32",
                                               ho_batch, shape_map_hw, shape_grad, config, self.params.num_instr_loop_h,
                                               self.params.num_instr_loop_w, self.params.remain_mask,
                                               self.params.remain_repeat, self.params.num_instr_loop_w_1,
                                               self.params.num_instr_loop_h_1)
 
-                        self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                        _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                               grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                               "float32", ho_batch, shape_map_hw, shape_grad, config,
                                               self.params.num_instr_loop_h, self.params.num_instr_loop_w,
@@ -2371,13 +2415,13 @@ class MaxPoolGradCompute:
                                         (idx_h * self.params.map_wi * c0 + idx_w * c0)
                             mask_index = wo_batch * ho_idx * c0
 
-                            self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                            _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:], "float32",
                                                (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                                self.params.repeat_max_loop_vadd, self.params.remain_max_loop_vadd,
                                                self.params.remain_ele_vadd, f_map_fp32_size, grad_sel_fp32_size,
                                                f_map_fp32_size)
-                            self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                            _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                "float32",
                                                (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
@@ -2399,7 +2443,6 @@ class MaxPoolGradCompute:
                 num_bit = self.num_bit_fp32
                 n_burst = ub2gm_shape[1]
                 burst_len = self.params.burst_len_over
-                # c0 * num_bit // MINI_UNIT is 2
                 src_stride = self.params.src_stride_val
                 dst_stride = 0
 
@@ -2407,16 +2450,16 @@ class MaxPoolGradCompute:
                 dst_idx_new = dst_idx
 
                 in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx_new, dst_idx_new]
-                with tik_instance.if_scope(src_stride > MAX_STRIDE):
-                    self._ultimate_data_move(tik_instance, f_map_fp32_buf, dst, in_list, num_bit)
+                with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+                    _ultimate_data_move(tik_instance, f_map_fp32_buf, dst, in_list, num_bit)
                 with tik_instance.else_scope():
-                    self._norm_data_move(tik_instance, f_map_fp32_buf, dst, in_list)
+                    _norm_data_move(tik_instance, f_map_fp32_buf, dst, in_list)
 
-                self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                       self.params.dup_repeat_merchant_f_map_fp32,
-                                       self.params.dup_repeat_remainder_f_map_fp32,
-                                       self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
-                                       f_map_fp32_size)
+                _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                        self.params.dup_repeat_merchant_f_map_fp32,
+                                        self.params.dup_repeat_remainder_f_map_fp32,
+                                        self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
+                                        f_map_fp32_size)
 
             tik_instance.set_atomic_add(1)
             mov_atomic(self.ou_y_gm, dst_ou_gm, 0)
@@ -2457,10 +2500,10 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
 
@@ -2508,7 +2551,7 @@ class MaxPoolGradCompute:
                                 hi_coord * self.params.w * c0 + di_coord * c1 * self.params.h * self.params.w * c0
                 src_orig_y_gm = merchant * self.params.forward_ou_shape_h_w_c0 + \
                                 merchant_c1 * self.params.ho * self.params.wo * c0 + \
-                                ho_coordinate * self.params.wo * c0 +\
+                                ho_coordinate * self.params.wo * c0 + \
                                 do_coordinate * c1 * self.params.ho * self.params.wo * c0
                 src_grad_gm = src_orig_y_gm
 
@@ -2522,7 +2565,7 @@ class MaxPoolGradCompute:
                 l1_idx = 0
 
                 h_top, h_bottom = _calc_pad_dy(tik_instance, pad_hw_top, pad_hw_bottom, hi_coordinate, hi_value,
-                                              self.params.h)
+                                               self.params.h)
                 pad_hw_list[-1] = h_bottom
                 pad_hw_list[-2] = h_top
 
@@ -2534,11 +2577,11 @@ class MaxPoolGradCompute:
                     hi_val -= h_bottom
 
                 in_shape = [hi_val, self.params.wi_batch, c0]
-                burst_len = hi_val * self.params.wi_batch * 16 * self.num_bit // MINI_UNIT
+                burst_len = hi_val * self.params.wi_batch * 16 * self.num_bit // Constant.MINI_UNIT
                 src_stride = (self.params.forward_in_shape_h_w_2 + self.params.forward_in_shape_w_c0 *
-                              (self.params.h - hi_val)) * self.num_bit // MINI_UNIT
+                              (self.params.h - hi_val)) * self.num_bit // Constant.MINI_UNIT
                 dst_stride = (self.params.hi_batch - hi_val) * self.params.w * self.c0 * \
-                             self.num_bit // MINI_UNIT
+                             self.num_bit // Constant.MINI_UNIT
                 self._gm2l1_tiling_do_ho_dy(tik_instance, l1_in_buf, src_orig_x_gm,
                                             l1_idx * self.params.hi_batch * self.params.wi_batch * c0, in_shape,
                                             self.params.hi_batch, burst_len, src_stride, dst_stride)
@@ -2561,7 +2604,7 @@ class MaxPoolGradCompute:
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], pad_hw_list, hi_val,
                                               self.params.wi_batch, 0, idx_w, idx_h, self.params.pad_hw_left_neg,
                                               -h_top, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1, repeat_times, 0,
-                                              MIN_VALUE_FP16)
+                                              Constant.MIN_VALUE_FP16)
 
                         # ---calculate mask---
                         idx_list = [idx_h, idx_w]
@@ -2573,7 +2616,7 @@ class MaxPoolGradCompute:
                         self._sel_dy(tik_instance, buf_list, idx_list, const_list, howo_co_ver)
 
                         # ---vconv grad_sel_fp16 to fp32---
-                        self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                        _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                        repeat_max_time_grad_sel, remain_repeat_time_grad_sel, remain_ele_grad_sel,
                                        grad_size)
 
@@ -2581,37 +2624,35 @@ class MaxPoolGradCompute:
                         config = (self.sw * 2, self.sw * 2, 2, self.params.sh_wi_2, self.params.sh_wi_2,
                                   self.params.wo_2)
                         with tik_instance.if_scope(self.params.config == 1):
-
                             map_index = idx_h * self.params.map_wi * c0 + idx_w * c0
                             mask_index = 0
                             shape_map_hw = [self.params.map_hi, self.params.map_wi, c0]
                             shape_grad = [ho, wo_batch, c0]
 
-                            self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                            _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                   grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                                   "float32", ho, shape_map_hw, shape_grad, config, num_instr_loop_h,
                                                   num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
                                                   num_instr_loop_h_1)
 
-                            self._rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                            _rewrite_fmap_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                   grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                   "float32", ho, shape_map_hw, shape_grad, config, num_instr_loop_h,
                                                   num_instr_loop_w, remain_mask, remain_repeat, num_instr_loop_w_1,
                                                   num_instr_loop_h_1)
                         with tik_instance.else_scope():
-
                             with tik_instance.for_range(0, ho) as ho_idx:
                                 map_index = (ho_idx * self.sh * self.params.map_wi * c0) + \
                                             (idx_h * self.params.map_wi * c0 + idx_w * c0)
                                 mask_index = wo_batch * ho_idx * c0
 
-                                self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                                _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                                    grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:],
                                                    "float32",
                                                    (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                                    repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd,
                                                    f_map_fp32_size, grad_sel_fp32_size, f_map_fp32_size)
-                                self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                                _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                                    grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                                    "float32",
                                                    (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
@@ -2638,18 +2679,17 @@ class MaxPoolGradCompute:
                     dst_stride = 0
 
                     in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
-                    with tik_instance.if_scope(src_stride > MAX_STRIDE):
-                        # if src_stride > MAX_STRIDE:
-                        self._ultimate_data_move(tik_instance, f_map_fp32_buf, dst, in_list, num_bit)
+                    with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+                        _ultimate_data_move(tik_instance, f_map_fp32_buf, dst, in_list, num_bit)
                     with tik_instance.else_scope():
-                        self._norm_data_move(tik_instance, f_map_fp32_buf, dst, in_list)
+                        _norm_data_move(tik_instance, f_map_fp32_buf, dst, in_list)
 
                     # vec_dup
-                    self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                           self.params.dup_repeat_merchant_f_map_fp32,
-                                           self.params.dup_repeat_remainder_f_map_fp32,
-                                           self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
-                                           f_map_fp32_size)
+                    _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                            self.params.dup_repeat_merchant_f_map_fp32,
+                                            self.params.dup_repeat_remainder_f_map_fp32,
+                                            self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
+                                            f_map_fp32_size)
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(hi_val, self.ou_y_gm, dst_ou_gm, l1_idx * self.params.map_hi * self.params.map_wi * c0)
@@ -2721,10 +2761,10 @@ class MaxPoolGradCompute:
         grad_sel_fp16_buf = buf_list[8]
         grad_sel_fp32_buf = buf_list[9]
         f_map_fp32_buf = buf_list[10]
-        self._set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
-        self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                               self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
-                               self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
+        _set_vector_dup_zero(tik_instance, zero_buf, 0, 0, self.dtype)
+        _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                self.params.dup_repeat_merchant_f_map_fp32, self.params.dup_repeat_remainder_f_map_fp32,
+                                self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32, f_map_fp32_size)
 
         with tik_instance.for_range(0, core_loop) as num_core_loop:
 
@@ -2798,9 +2838,9 @@ class MaxPoolGradCompute:
                 # Prevent reading gm out of bounds
 
                 h_top, h_bottom = _calc_pad_dy(tik_instance, pad_hw_top, pad_hw_bottom, hi_coordinate, hi_value,
-                                              self.params.h)
+                                               self.params.h)
                 w_top, w_bottom = _calc_pad_dy1(tik_instance, pad_hw_left, pad_hw_right, wi_coordinate, wi_value,
-                                               self.params.w)
+                                                self.params.w)
                 pad_hw_list[-1], pad_hw_list[-2] = h_bottom, h_top
                 pad_hw_list[-3], pad_hw_list[-4] = w_bottom, w_top
 
@@ -2836,7 +2876,7 @@ class MaxPoolGradCompute:
                         # with tik_instance.if_scope(load3d_mark != 1):
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], pad_hw_list, hi_val, wi_val, 0, idx_w,
                                               idx_h, -w_top, -h_top, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
-                                              repeat_times, 0, MIN_VALUE_FP16)
+                                              repeat_times, 0, Constant.MIN_VALUE_FP16)
 
                         # ---calculate mask---
                         idx_list = [idx_h, idx_w]
@@ -2846,7 +2886,7 @@ class MaxPoolGradCompute:
 
                         self._sel_dy(tik_instance, buf_list, idx_list, const_list, howo_co_ver)
 
-                        self._vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
+                        _vconv_dy(tik_instance, grad_sel_fp16_buf, 0, grad_sel_fp32_buf, 0, "float16",
                                        repeat_max_time, remain_repeat_time, remain_ele, grad_size)
 
                         # ---rewrite grad_sel_fp32 to f_map_fp32
@@ -2859,12 +2899,12 @@ class MaxPoolGradCompute:
                         map_index = idx_h * self.params.map_wi * c0 + idx_w * c0
                         mask_index = 0
 
-                        self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
+                        _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index:],
                                            grad_sel_fp32_buf[mask_index:], f_map_fp32_buf[map_index:], "float32",
                                            (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                            repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd, f_map_fp32_size,
                                            grad_sel_fp32_size, f_map_fp32_size)
-                        self._vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
+                        _vector_op_dy(tik_instance, "vadd", f_map_fp32_buf[map_index + 8:],
                                            grad_sel_fp32_buf[mask_index + 8:], f_map_fp32_buf[map_index + 8:],
                                            "float32", (self.sw * 2, self.sw * 2, 2, self.sw * 16, self.sw * 16, 16),
                                            repeat_max_loop_add, remain_max_loop_add, remain_ele_vadd, f_map_fp32_size,
@@ -2886,25 +2926,25 @@ class MaxPoolGradCompute:
 
                     num_bit = self.num_bit_fp32
                     n_burst = ub2gm_shape[1]
-                    burst_len = ub2gm_shape[2] * ub2gm_shape[3] * num_bit // MINI_UNIT
+                    burst_len = ub2gm_shape[2] * ub2gm_shape[3] * num_bit // Constant.MINI_UNIT
 
                     src_stride = (self.params.map_wi - num_w) * 2
                     dst_stride = (self.params.w - num_w) * 2
 
                     in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
 
-                    with tik_instance.if_scope(tik.any(src_stride > MAX_STRIDE, dst_stride > MAX_STRIDE)):
-                        self._ultimate_data_move(tik_instance, f_map_fp32_buf, dst, in_list, num_bit)
+                    with tik_instance.if_scope(
+                            tik.any(src_stride > Constant.MAX_STRIDE, dst_stride > Constant.MAX_STRIDE)):
+                        _ultimate_data_move(tik_instance, f_map_fp32_buf, dst, in_list, num_bit)
 
                     with tik_instance.else_scope():
+                        _norm_data_move(tik_instance, f_map_fp32_buf, dst, in_list)
 
-                        self._norm_data_move(tik_instance, f_map_fp32_buf, dst, in_list)
-
-                    self._set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
-                                           self.params.dup_repeat_merchant_f_map_fp32,
-                                           self.params.dup_repeat_remainder_f_map_fp32,
-                                           self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
-                                           f_map_fp32_size)
+                    _set_vector_dup_dy(tik_instance, f_map_fp32_buf, 0, 0, "float32",
+                                            self.params.dup_repeat_merchant_f_map_fp32,
+                                            self.params.dup_repeat_remainder_f_map_fp32,
+                                            self.params.dup_remainder_f_map_fp32, self.params.repeats_f_map_fp32,
+                                            f_map_fp32_size)
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(1, hi_val, wi_val, self.ou_y_gm, dst_ou_gm, 0)
@@ -2952,10 +2992,10 @@ class MaxPoolGradCompute:
         split_model = [self.params.new_ho, self.params.new_wo]
 
         param_ub = ParamsUB(self.sh, self.sw, self.kh, self.kw)
-        with tik_instance.for_range(0, MAX_CORE, block_num=MAX_CORE) as blk_idx:
+        with tik_instance.for_range(0, Constant.MAX_CORE, block_num=Constant.MAX_CORE) as blk_idx:
             with tik_instance.if_scope(blk_idx < self.params.core_num):
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_TWO):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_TWO):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -2973,7 +3013,7 @@ class MaxPoolGradCompute:
                         self._tiling_ho_wo_main_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
 
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_FORE):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_FORE):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -2990,7 +3030,7 @@ class MaxPoolGradCompute:
                                                 (blk_idx - self.params.total_num_div_core_1))
                         self._pure_atomic_tiling_ho_wo_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_SEVEN):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_SEVEN):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -3008,7 +3048,7 @@ class MaxPoolGradCompute:
 
                         self._same_pure_atomic_tiling_ho_wo_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_ZERO):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_ZERO):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -3025,7 +3065,7 @@ class MaxPoolGradCompute:
                                                 (blk_idx - self.params.total_num_div_core_1))
                         self._not_tiling_main_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_ONE):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_ONE):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -3042,7 +3082,7 @@ class MaxPoolGradCompute:
                                                 (blk_idx - self.params.total_num_div_core_1))
                         self._tiling_ho_main_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_THREE):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_THREE):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -3059,7 +3099,7 @@ class MaxPoolGradCompute:
                                                 (blk_idx - self.params.total_num_div_core_1))
                         self._pure_atomic_tiling_ho_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_FIVE):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_FIVE):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -3076,7 +3116,7 @@ class MaxPoolGradCompute:
                                                 (blk_idx - self.params.total_num_div_core_1))
                         self._same_pure_atomic_tiling_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
                 with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.if_scope(self.params.select_key == CASE_SIX):
+                    with self.tik_instance.if_scope(self.params.select_key == Constant.CASE_SIX):
                         core_loop = tik_instance.Scalar("int64")
                         sum_core = tik_instance.Scalar("int64")
 
@@ -3204,9 +3244,9 @@ def max_pool_grad(orig_x, orig_y, grads, y, ksize, strides, padding, data_format
 
     tbe_context.get_context().add_compile_info(
         "vars", {
-            "ub_size": SIZE_UB,
-            "l1_size": SIZE_L1,
-            "core_num": MAX_CORE,
+            "ub_size": Constant.SIZE_UB,
+            "l1_size": Constant.SIZE_L1,
+            "core_num": Constant.MAX_CORE,
             "kh": kh,
             "kw": kw,
             "sh": sh,

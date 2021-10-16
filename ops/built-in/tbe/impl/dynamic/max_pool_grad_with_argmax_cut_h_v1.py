@@ -15,27 +15,29 @@
 """
 max_pool_grad_with_argmax_v1
 """
-from te import tik
-from te.platform.cce_conf import CceProductParams
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
 from impl import common_util_v1
 from impl import constant_util_v1 as constant
 
-# size of vector calc one repeat
-ONE_REPEAT = 256
-# max repeat of vector calc
-V_MAX_REPEAT = 255
-# max num of fp16 in one repeat
-FP16_MAX = 128
-# max num of fp32 in one repeat
-FP32_MAX = 64
-# max num of fp16 mask handle one time
-MASK_MAX = 8
-TILING_NUM = 64
-MAX_GM = 2 ** 31 - 1
-L1_SIZE = CceProductParams().getParams("L1_Buffer")
+
+class Constant(object):
+    # size of vector calc one repeat
+    ONE_REPEAT = 256
+    # max repeat of vector calc
+    V_MAX_REPEAT = 255
+    # max num of fp16 in one repeat
+    FP16_MAX = 128
+    # max num of fp32 in one repeat
+    FP32_MAX = 64
+    # max num of fp16 mask handle one time
+    MASK_MAX = 8
+    TILING_NUM = 64
+    MAX_GM = 2 ** 31 - 1
+    L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments
+# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments,unused-argument
 # pylint: too-many-locals,simplifiable-if-statement,too-many-branches,too-many-statements
 class MaxpoolGradBase(object):
     """
@@ -57,12 +59,12 @@ class MaxpoolGradBase(object):
         None
         """
         self.blocknum = tik.Dprofile("v100", "cloud").get_aicore_num()
-        self.ub_size = CceProductParams().getParams("Unified_Buffer")
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
         self.dtype = grad.get("dtype").lower()
         self.dtype_size = common_util_v1.get_data_size(self.dtype)
         self.nc1 = 1
-        
+
         self.tik_instance = tik.Tik()
         self.ksize = ksize
         self.strides = strides
@@ -72,21 +74,23 @@ class MaxpoolGradBase(object):
         self.channel = 16
         self.pad_top, self.pad_left = self.padding[1:3]
         self.kernel_h, self.kernel_w = self.ksize[1:3]
-        
-        self.data_input = self.tik_instance.Tensor(self.dtype, (MAX_GM,), name="data_input", scope=tik.scope_gm)
-        self.data_mask = self.tik_instance.Tensor("uint16", (MAX_GM,), name="data_mask", scope=tik.scope_gm)
-        self.data_input_origin = self.tik_instance.Tensor(self.dtype, (MAX_GM,), name="data_input_origin",
+
+        self.data_input = self.tik_instance.Tensor(self.dtype, (Constant.MAX_GM,), name="data_input",
+                                                   scope=tik.scope_gm)
+        self.data_mask = self.tik_instance.Tensor("uint16", (Constant.MAX_GM,), name="data_mask", scope=tik.scope_gm)
+        self.data_input_origin = self.tik_instance.Tensor(self.dtype, (Constant.MAX_GM,), name="data_input_origin",
                                                           scope=tik.scope_gm)
-        self.data_output = self.tik_instance.Tensor(self.dtype, (MAX_GM,), name="data_output", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        
+        self.data_output = self.tik_instance.Tensor(self.dtype, (Constant.MAX_GM,), name="data_output",
+                                                    scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
+
         self.tiling_mode = None
         self.real_block = None
         self.block_cycle = None
         self.block_index = None
         self.dxh, self.dxw = None, None
         self.dyh, self.dyw = None, None
-        
+
         self.stride_h, self.stride_w = None, None
         self.pad_bottom, self.pad_right = None, None
         self.offset_h, self.offset_w = None, None
@@ -99,6 +103,9 @@ class MaxpoolGradBase(object):
         self.ho_count = None
 
     def get_tiling_params(self):
+        """
+        get tiling params
+        """
         self.tiling_mode = self.tik_instance.Scalar("int32")
         self.real_block = self.tik_instance.Scalar("int32")
         self.block_cycle = self.tik_instance.Scalar("int32")
@@ -126,9 +133,10 @@ class MaxpoolGradBase(object):
         self.ho_every = self.tik_instance.Scalar("int32")
         self.ho_last = self.tik_instance.Scalar("int32")
         self.ho_count = self.tik_instance.Scalar("int32")
-        
+
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int32", (TILING_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+            tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_NUM,), name="tiling_ub",
+                                                 scope=tik.scope_ubuf)
             self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 8, 0, 0)
             self.tiling_mode.set_as(tiling_ub[0])
             self.real_block.set_as(tiling_ub[1])
@@ -186,7 +194,7 @@ class MaxpoolGradBase(object):
         wo_max = self.tik_instance.Scalar("int32")
         h_cycle = self.tik_instance.Scalar("int32")
         wo_max.set_as(self.wo_max)
-        
+
         stride_h, stride_w = self.strides[1:3]
         stridehw = stride_h * stride_w
         if stridehw == 1:
@@ -210,7 +218,7 @@ class MaxpoolGradBase(object):
             max_mem_size3 = 512
             max_mem_size4 = 8064
             max_mem_size5 = 8064
-            
+
         with self.tik_instance.if_scope(self.hoverlap == 0):
             h_cycle.set_as((self.dyh + self.ho_max - 1) // self.ho_max)
         with self.tik_instance.else_scope():
@@ -219,18 +227,18 @@ class MaxpoolGradBase(object):
         with self.tik_instance.if_scope(self.dyh == 1):
             self.ho_max.set_as(1)
             h_cycle.set_as(1)
-            
+
         mask_one_window = ((self.dyh * self.dyw + 15) // 16 + 1) * 16
 
         # vector_repeat_time
-        v_rep_time = self.ho_max * wo_max * self.channel * dtype_size // ONE_REPEAT
-        v_rep_cycle_fp32 = 2 * v_rep_time // V_MAX_REPEAT
+        v_rep_time = self.ho_max * wo_max * self.channel * dtype_size // Constant.ONE_REPEAT
+        v_rep_cycle_fp32 = 2 * v_rep_time // Constant.V_MAX_REPEAT
         # v_rep_last
-        v_rep_last_fp32 = 2 * v_rep_time % V_MAX_REPEAT
+        v_rep_last_fp32 = 2 * v_rep_time % Constant.V_MAX_REPEAT
 
-        v_rep_time_col = (2 * (self.col2img_w * self.channel * self.col2img_h + 64) * dtype_size) // ONE_REPEAT
-        v_rep_cycle_col = v_rep_time_col // V_MAX_REPEAT
-        v_rep_last_col = v_rep_time_col % V_MAX_REPEAT
+        v_rep_time_col = (2 * (self.col2img_w * self.channel * self.col2img_h + 64) * dtype_size) // Constant.ONE_REPEAT
+        v_rep_cycle_col = v_rep_time_col // Constant.V_MAX_REPEAT
+        v_rep_last_col = v_rep_time_col % Constant.V_MAX_REPEAT
 
         real_cycle = self.tik_instance.Scalar("int32")
         block_base = self.tik_instance.Scalar("int32")
@@ -276,10 +284,12 @@ class MaxpoolGradBase(object):
                 in_nburst = self.tik_instance.Scalar("int32")
                 in_nburst.set_as(self.ho_max)
                 true_val = self.tik_instance.Scalar("int32")
-                with self.tik_instance.if_scope(self.kernel_h * self.kernel_w * mask_one_window > (L1_SIZE // 2)):
+                with self.tik_instance.if_scope(
+                        self.kernel_h * self.kernel_w * mask_one_window > (Constant.L1_SIZE // 2)):
                     true_val.set_as(0)
                 with self.tik_instance.else_scope():
-                    with self.tik_instance.if_scope(tik.any(self.dyw % 16 == 0, tik.all(self.ho_max == 1, h_cycle == 1))):
+                    with self.tik_instance.if_scope(
+                            tik.any(self.dyw % 16 == 0, tik.all(self.ho_max == 1, h_cycle == 1))):
                         true_val.set_as(1)
                     with self.tik_instance.else_scope():
                         true_val.set_as(0)
@@ -307,8 +317,9 @@ class MaxpoolGradBase(object):
 
                     self.tik_instance.data_move(data_max_ub,
                                                 self.data_input[(block_num * nc1 * self.dyh + loopc1 * self.dyh +
-                                                                new_looph) * self.dyw * self.channel],
-                                                constant.SID, in_nburst, self.dyw, constant.STRIDE_ZERO, wo_max - self.dyw)
+                                                                 new_looph) * self.dyw * self.channel],
+                                                constant.SID, in_nburst, self.dyw,
+                                                constant.STRIDE_ZERO, wo_max - self.dyw)
                     with self.tik_instance.if_scope(true_val == 1):
                         mask_idx = self.tik_instance.Scalar("int32")
                         mask_idx.set_as(block_num * nc1 * mask_one_window * self.kernel_w * self.kernel_h +
@@ -341,11 +352,11 @@ class MaxpoolGradBase(object):
                                 with self.tik_instance.for_range(0, v_rep_time, thread_num=1) as cycle:
                                     # extract 8 mask, compare 128 number
                                     cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
-                                        data_mask_ub[cycle * MASK_MAX])
+                                        data_mask_ub[cycle * Constant.MASK_MAX])
 
                                     # calc 128 number everytime, 16x6x16->12x128
-                                    self.tik_instance.vsel(constant.MASK128, 0, data_vsel_ub[cycle * FP16_MAX],
-                                                           cmpmask, data_max_ub[cycle * FP16_MAX],
+                                    self.tik_instance.vsel(constant.MASK128, 0, data_vsel_ub[cycle * Constant.FP16_MAX],
+                                                           cmpmask, data_max_ub[cycle * Constant.FP16_MAX],
                                                            data_vsel_ub_zero[0], constant.REPEAT_TIME_ONCE,
                                                            constant.STRIDE_ONE, constant.STRIDE_ONE,
                                                            constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
@@ -356,17 +367,21 @@ class MaxpoolGradBase(object):
                             with self.tik_instance.if_scope(v_rep_cycle_fp32 > 0):  # 0
                                 with self.tik_instance.for_range(0, v_rep_cycle_fp32, thread_num=1) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "",
-                                                            data_vsel_ub_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                            data_vsel_ub[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                            V_MAX_REPEAT, constant.STRIDE_ONE, constant.STRIDE_ONE,
-                                                            constant.REPEAT_STRIDE_EIGHT,
+                                                            data_vsel_ub_fp32[
+                                                                cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                            data_vsel_ub[
+                                                                cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                            Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
+                                                            constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                                                             constant.REPEAT_STRIDE_FOUR)
 
                             with self.tik_instance.if_scope(v_rep_last_fp32 != 0):  # 24 x 64
                                 self.tik_instance.vconv(constant.MASK64, "",
                                                         data_vsel_ub_fp32[
-                                                            v_rep_cycle_fp32 * V_MAX_REPEAT * FP32_MAX],
-                                                        data_vsel_ub[v_rep_cycle_fp32 * V_MAX_REPEAT * FP32_MAX],
+                                                            v_rep_cycle_fp32 * Constant.V_MAX_REPEAT *
+                                                            Constant.FP32_MAX],
+                                                        data_vsel_ub[v_rep_cycle_fp32 * Constant.V_MAX_REPEAT *
+                                                                     Constant.FP32_MAX],
                                                         v_rep_last_fp32, constant.STRIDE_ONE, constant.STRIDE_ONE,
                                                         constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_FOUR)
 
@@ -392,17 +407,19 @@ class MaxpoolGradBase(object):
                     with self.tik_instance.if_scope(v_rep_cycle_col > 0):  # 0
                         with self.tik_instance.for_range(0, v_rep_cycle_col) as cycle:
                             self.tik_instance.vconv(constant.MASK64, "",
-                                                    data_vmul_ub_col2img_fp16[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                    data_vmul_ub_col2img_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                    V_MAX_REPEAT, constant.STRIDE_ONE, constant.STRIDE_ONE,
+                                                    data_vmul_ub_col2img_fp16[
+                                                        cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                    data_vmul_ub_col2img_fp32[
+                                                        cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                    Constant.V_MAX_REPEAT, constant.STRIDE_ONE, constant.STRIDE_ONE,
                                                     constant.REPEAT_STRIDE_FOUR, constant.REPEAT_STRIDE_EIGHT)
 
                     with self.tik_instance.if_scope(v_rep_last_col != 0):  # 108 x 64 = 6912
                         self.tik_instance.vconv(constant.MASK64, "",
                                                 data_vmul_ub_col2img_fp16[
-                                                    v_rep_cycle_col * V_MAX_REPEAT * FP32_MAX],
+                                                    v_rep_cycle_col * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                                 data_vmul_ub_col2img_fp32[
-                                                    v_rep_cycle_col * V_MAX_REPEAT * FP32_MAX],
+                                                    v_rep_cycle_col * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                                 v_rep_last_col, constant.STRIDE_ONE, constant.STRIDE_ONE,
                                                 constant.REPEAT_STRIDE_FOUR, constant.REPEAT_STRIDE_EIGHT)
 
@@ -455,7 +472,7 @@ class MaxpoolGradBase(object):
         dialate_w = self.dilation[2]
         stride_h, stride_w = self.strides[1:3]
         stridehw = stride_h * stride_w
-        
+
         if stridehw == 1:
             max_mem_size0 = 16256
             max_mem_size1 = 16448
@@ -477,12 +494,12 @@ class MaxpoolGradBase(object):
             max_mem_size3 = 512
             max_mem_size4 = 7936
             max_mem_size5 = 7936
-        
+
         h_cycle_every = self.tik_instance.Scalar("int32")
         h_cycle_last = self.tik_instance.Scalar("int32")
         wo_max = self.tik_instance.Scalar("int32")
         wo_max.set_as(self.wo_max)
-        
+
         with self.tik_instance.if_scope(self.hoverlap == 0):
             h_cycle_every.set_as((self.ho_every + self.ho_max_every - 1) // self.ho_max_every)
             h_cycle_last.set_as((self.ho_last + self.ho_max_last - 1) // self.ho_max_last)
@@ -492,20 +509,20 @@ class MaxpoolGradBase(object):
 
         mask_one_window = ((self.dyh * self.dyw + 15) // 16 + 1) * 16
         # vector_repeat_time
-        v_rep_time_last = self.ho_max_last * wo_max * self.channel * dtype_size // ONE_REPEAT
-        v_rep_cycle_fp32_last = 2 * v_rep_time_last // V_MAX_REPEAT
-        v_rep_last_fp32_last = 2 * v_rep_time_last % V_MAX_REPEAT
+        v_rep_time_last = self.ho_max_last * wo_max * self.channel * dtype_size // Constant.ONE_REPEAT
+        v_rep_cycle_fp32_last = 2 * v_rep_time_last // Constant.V_MAX_REPEAT
+        v_rep_last_fp32_last = 2 * v_rep_time_last % Constant.V_MAX_REPEAT
         v_rep_time_col_last = (2 * (self.col2img_w * self.channel * self.col2img_h_last + 64) *
-                               dtype_size) // ONE_REPEAT
-        v_rep_cycle_col_last = v_rep_time_col_last // V_MAX_REPEAT
-        v_rep_last_col_last = v_rep_time_col_last % V_MAX_REPEAT
-        v_rep_time_every = self.ho_max_every * wo_max * self.channel * dtype_size // ONE_REPEAT
-        v_rep_cycle_fp32_every = 2 * v_rep_time_every // V_MAX_REPEAT
-        v_rep_last_fp32_every = 2 * v_rep_time_every % V_MAX_REPEAT
+                               dtype_size) // Constant.ONE_REPEAT
+        v_rep_cycle_col_last = v_rep_time_col_last // Constant.V_MAX_REPEAT
+        v_rep_last_col_last = v_rep_time_col_last % Constant.V_MAX_REPEAT
+        v_rep_time_every = self.ho_max_every * wo_max * self.channel * dtype_size // Constant.ONE_REPEAT
+        v_rep_cycle_fp32_every = 2 * v_rep_time_every // Constant.V_MAX_REPEAT
+        v_rep_last_fp32_every = 2 * v_rep_time_every % Constant.V_MAX_REPEAT
         v_rep_time_col_every = (2 * (self.col2img_w * self.channel * self.col2img_h_every + 64) *
-                                dtype_size) // ONE_REPEAT
-        v_rep_cycle_col_every = v_rep_time_col_every // V_MAX_REPEAT
-        v_rep_last_col_every = v_rep_time_col_every % V_MAX_REPEAT
+                                dtype_size) // Constant.ONE_REPEAT
+        v_rep_cycle_col_every = v_rep_time_col_every // Constant.V_MAX_REPEAT
+        v_rep_last_col_every = v_rep_time_col_every % Constant.V_MAX_REPEAT
 
         real_cycle = self.tik_instance.Scalar("int32")
         block_base = self.tik_instance.Scalar("int32")
@@ -562,7 +579,8 @@ class MaxpoolGradBase(object):
                 mask_address = self.tik_instance.Scalar("int32")
                 with self.tik_instance.for_range(0, h_cycle_last) as looph:  # 4
                     in_src_address.set_as(block_batch * self.dyh * self.dyw * self.channel)
-                    mask_address.set_as(block_batch * mask_one_window * self.kernel_w * self.kernel_h)  # 56 x 56 x 3 x 3
+                    # 56 x 56 x 3 x 3
+                    mask_address.set_as(block_batch * mask_one_window * self.kernel_w * self.kernel_h)
                     with self.tik_instance.if_scope(self.hoverlap == 0):
                         new_looph.set_as(looph * self.ho_max_last)
                         with self.tik_instance.if_scope(looph == h_cycle_last - 1):
@@ -595,7 +613,7 @@ class MaxpoolGradBase(object):
                             # mask copy gm to ub
                             self.tik_instance.data_move(data_mask_ub[cycle * wo_max],
                                                         self.data_mask[mask_address + cycle * self.dyw +
-                                                        mask_one_window * mask_id],
+                                                                       mask_one_window * mask_id],
                                                         constant.SID, 1,
                                                         wo_max // 16, 0, 0)
 
@@ -609,11 +627,11 @@ class MaxpoolGradBase(object):
                         with self.tik_instance.if_scope(v_rep_time_last > 0):
                             with self.tik_instance.for_range(0, v_rep_time_last, thread_num=1) as cycle:  # 56
                                 cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
-                                    data_mask_ub[cycle * MASK_MAX])
+                                    data_mask_ub[cycle * Constant.MASK_MAX])
                                 self.tik_instance.vsel(constant.MASK128, 0,
-                                                       data_vsel_ub[cycle * FP16_MAX],
+                                                       data_vsel_ub[cycle * Constant.FP16_MAX],
                                                        cmpmask,
-                                                       data_max_ub[cycle * FP16_MAX],
+                                                       data_max_ub[cycle * Constant.FP16_MAX],
                                                        data_vsel_ub_zero[0],
                                                        constant.REPEAT_TIME_ONCE,
                                                        constant.STRIDE_ONE,
@@ -628,16 +646,18 @@ class MaxpoolGradBase(object):
                             with self.tik_instance.for_range(0, v_rep_cycle_fp32_last,
                                                              thread_num=1) as cycle:
                                 self.tik_instance.vconv(constant.MASK64, "",
-                                                        data_vsel_ub_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                        data_vsel_ub[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                        V_MAX_REPEAT, constant.STRIDE_ONE,
+                                                        data_vsel_ub_fp32[
+                                                            cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                        data_vsel_ub[cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                        Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
                                                         constant.STRIDE_ONE,
                                                         constant.REPEAT_STRIDE_EIGHT,
                                                         constant.REPEAT_STRIDE_FOUR)
                         with self.tik_instance.if_scope(v_rep_last_fp32_last != 0):  # 112
                             self.tik_instance.vconv(constant.MASK64, "", data_vsel_ub_fp32[
-                                v_rep_cycle_fp32_last * V_MAX_REPEAT * FP32_MAX],
-                                                    data_vsel_ub[v_rep_cycle_fp32_last * V_MAX_REPEAT * FP32_MAX],
+                                v_rep_cycle_fp32_last * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                    data_vsel_ub[v_rep_cycle_fp32_last * Constant.V_MAX_REPEAT *
+                                                                 Constant.FP32_MAX],
                                                     v_rep_last_fp32_last, constant.STRIDE_ONE,
                                                     constant.STRIDE_ONE,
                                                     constant.REPEAT_STRIDE_EIGHT,
@@ -661,21 +681,21 @@ class MaxpoolGradBase(object):
                         with self.tik_instance.for_range(0, v_rep_cycle_col_last) as cycle:
                             self.tik_instance.vconv(constant.MASK64, "",
                                                     data_vmul_ub_col2img_fp16[
-                                                        cycle * V_MAX_REPEAT * FP32_MAX],
+                                                        cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                                     data_vmul_ub_col2img_fp32[
-                                                        cycle * V_MAX_REPEAT * FP32_MAX],
-                                                    V_MAX_REPEAT, constant.STRIDE_ONE,
+                                                        cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                    Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
                                                     constant.STRIDE_ONE,
                                                     constant.REPEAT_STRIDE_FOUR,
                                                     constant.REPEAT_STRIDE_EIGHT)
                     with self.tik_instance.if_scope(v_rep_last_col_last != 0):  # 162
                         self.tik_instance.vconv(constant.MASK64, "",
                                                 data_vmul_ub_col2img_fp16[
-                                                    v_rep_cycle_col_last * V_MAX_REPEAT *
-                                                    FP32_MAX],
+                                                    v_rep_cycle_col_last * Constant.V_MAX_REPEAT *
+                                                    Constant.FP32_MAX],
                                                 data_vmul_ub_col2img_fp32[
-                                                    v_rep_cycle_col_last * V_MAX_REPEAT *
-                                                    FP32_MAX],
+                                                    v_rep_cycle_col_last * Constant.V_MAX_REPEAT *
+                                                    Constant.FP32_MAX],
                                                 v_rep_last_col_last, constant.STRIDE_ONE,
                                                 constant.STRIDE_ONE,
                                                 constant.REPEAT_STRIDE_FOUR,
@@ -739,7 +759,8 @@ class MaxpoolGradBase(object):
                 mask_address = self.tik_instance.Scalar("int32")
                 with self.tik_instance.for_range(0, h_cycle_every) as looph:  # 1
                     in_src_address.set_as(block_batch * self.dyh * self.dyw * self.channel)
-                    mask_address.set_as(block_batch * mask_one_window * self.kernel_w * self.kernel_h)  # 1 x 3 x 3 x 56 x 56
+                    # 1 x 3 x 3 x 56 x 56
+                    mask_address.set_as(block_batch * mask_one_window * self.kernel_w * self.kernel_h)
                     with self.tik_instance.if_scope(self.hoverlap == 0):
                         in_src_address.set_as(in_src_address +
                                               (block_h * self.ho_every +
@@ -772,7 +793,7 @@ class MaxpoolGradBase(object):
                             # mask copy gm to ub
                             self.tik_instance.data_move(data_mask_ub[cycle * wo_max],
                                                         self.data_mask[mask_address + cycle * self.dyw +
-                                                                  mask_one_window * mask_id],
+                                                                       mask_one_window * mask_id],
                                                         constant.SID, 1,
                                                         wo_max // 16, 0, 0)
                         data_vsel_ub = self.tik_instance.Tensor(dtype, (max_mem_size4,),
@@ -785,11 +806,11 @@ class MaxpoolGradBase(object):
                         with self.tik_instance.if_scope(v_rep_time_every > 0):  # 16
                             with self.tik_instance.for_range(0, v_rep_time_every, thread_num=1) as cycle:
                                 cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
-                                    data_mask_ub[cycle * MASK_MAX])
+                                    data_mask_ub[cycle * Constant.MASK_MAX])
                                 self.tik_instance.vsel(constant.MASK128, 0,
-                                                       data_vsel_ub[cycle * FP16_MAX],
+                                                       data_vsel_ub[cycle * Constant.FP16_MAX],
                                                        cmpmask,
-                                                       data_max_ub[cycle * FP16_MAX],
+                                                       data_max_ub[cycle * Constant.FP16_MAX],
                                                        data_vsel_ub_zero[0],
                                                        constant.REPEAT_TIME_ONCE,
                                                        constant.STRIDE_ONE,
@@ -803,17 +824,19 @@ class MaxpoolGradBase(object):
                             with self.tik_instance.for_range(0, v_rep_cycle_fp32_every,
                                                              thread_num=1) as cycle:
                                 self.tik_instance.vconv(constant.MASK64, "",
-                                                        data_vsel_ub_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                        data_vsel_ub[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                        V_MAX_REPEAT, constant.STRIDE_ONE,
+                                                        data_vsel_ub_fp32[
+                                                            cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                        data_vsel_ub[cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                        Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
                                                         constant.STRIDE_ONE,
                                                         constant.REPEAT_STRIDE_EIGHT,
                                                         constant.REPEAT_STRIDE_FOUR)
                         with self.tik_instance.if_scope(v_rep_last_fp32_every != 0):  # 32
                             self.tik_instance.vconv(constant.MASK64, "",
                                                     data_vsel_ub_fp32[v_rep_cycle_fp32_every *
-                                                                      V_MAX_REPEAT * FP32_MAX],
-                                                    data_vsel_ub[v_rep_cycle_fp32_every * V_MAX_REPEAT * FP32_MAX],
+                                                                      Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                    data_vsel_ub[v_rep_cycle_fp32_every * Constant.V_MAX_REPEAT *
+                                                                 Constant.FP32_MAX],
                                                     v_rep_last_fp32_every, constant.STRIDE_ONE,
                                                     constant.STRIDE_ONE,
                                                     constant.REPEAT_STRIDE_EIGHT,
@@ -836,19 +859,19 @@ class MaxpoolGradBase(object):
                         with self.tik_instance.for_range(0, v_rep_cycle_col_every) as cycle:
                             self.tik_instance.vconv(constant.MASK64, "",
                                                     data_vmul_ub_col2img_fp16[
-                                                        cycle * V_MAX_REPEAT * FP32_MAX],
+                                                        cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                                     data_vmul_ub_col2img_fp32[
-                                                        cycle * V_MAX_REPEAT * FP32_MAX],
-                                                    V_MAX_REPEAT, constant.STRIDE_ONE,
+                                                        cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                                    Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
                                                     constant.STRIDE_ONE,
                                                     constant.REPEAT_STRIDE_FOUR,
                                                     constant.REPEAT_STRIDE_EIGHT)
                     with self.tik_instance.if_scope(v_rep_last_col_every != 0):  # 162
                         self.tik_instance.vconv(constant.MASK64, "", data_vmul_ub_col2img_fp16[
-                            v_rep_cycle_col_every * V_MAX_REPEAT * FP32_MAX],
+                            v_rep_cycle_col_every * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                                 data_vmul_ub_col2img_fp32[
                                                     v_rep_cycle_col_every *
-                                                    V_MAX_REPEAT * FP32_MAX],
+                                                    Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                                 v_rep_last_col_every, constant.STRIDE_ONE,
                                                 constant.STRIDE_ONE,
                                                 constant.REPEAT_STRIDE_FOUR,
@@ -883,13 +906,16 @@ class MaxpoolGradBase(object):
                             output_cuthline.set_as((self.ho_every - looph *
                                                     (self.ho_max_every - 1) - 1) * self.stride_h)
 
-                        dst_address.set_as(dst_address + ((block_h * (self.ho_every - 1) + looph * (self.ho_max_every - 1) -
-                                                           self.pad_top + 1) * self.stride_h + self.pad_top) * self.dxw * self.channel)
+                        dst_address.set_as(dst_address +
+                                           ((block_h * (self.ho_every - 1) + looph * (self.ho_max_every - 1) -
+                                             self.pad_top + 1) * self.stride_h + self.pad_top) *
+                                           self.dxw * self.channel)
 
                         with self.tik_instance.if_scope(block_h == 0):  # 1
                             with self.tik_instance.if_scope(looph == 0):  # 0
                                 output_cuthline.set_as(self.ho_max_every * self.stride_h - self.pad_top)
-                                src_address.set_as(self.pad_left * self.channel + self.pad_top * self.col2img_w * self.channel)
+                                src_address.set_as(self.pad_left * self.channel + self.pad_top * self.col2img_w *
+                                                   self.channel)
                                 dst_address.set_as(block_batch * self.dxh * self.dxw * self.channel)
                     self.tik_instance.data_move(self.data_output[dst_address],
                                                 data_vmul_ub_col2img_fp16[src_address],
@@ -957,19 +983,23 @@ class MaxpoolGradBase(object):
         """
         The fun just for clean ub
         """
-        v_rep_clear_time = data_vmul_ub_col2img_fp32.shape[0] * dtype_size // ONE_REPEAT
-        v_rep_clear_cycle = v_rep_clear_time // V_MAX_REPEAT  # 1
-        v_rep_clear_last = v_rep_clear_time % V_MAX_REPEAT  # 250
-        v_res_last = v_rep_clear_cycle * V_MAX_REPEAT * FP32_MAX + v_rep_clear_last * FP32_MAX
+        v_rep_clear_time = data_vmul_ub_col2img_fp32.shape[0] * dtype_size // Constant.ONE_REPEAT
+        v_rep_clear_cycle = v_rep_clear_time // Constant.V_MAX_REPEAT  # 1
+        v_rep_clear_last = v_rep_clear_time % Constant.V_MAX_REPEAT  # 250
+        v_res_last = v_rep_clear_cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX + v_rep_clear_last *\
+                     Constant.FP32_MAX
         v_res_time = data_vmul_ub_col2img_fp32.shape[0] - v_res_last
         if v_rep_clear_cycle > 0:
             with self.tik_instance.for_range(0, v_rep_clear_cycle, thread_num=1) as cycle:
                 self.tik_instance.vector_dup(constant.MASK64,
-                                             data_vmul_ub_col2img_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
-                                             0, V_MAX_REPEAT, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
+                                             data_vmul_ub_col2img_fp32[
+                                                 cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
+                                             0, Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
+                                             constant.REPEAT_STRIDE_EIGHT)
         if v_rep_clear_last != 0:
             self.tik_instance.vector_dup(constant.MASK64,
-                                         data_vmul_ub_col2img_fp32[v_rep_clear_cycle * V_MAX_REPEAT * FP32_MAX],
+                                         data_vmul_ub_col2img_fp32[
+                                             v_rep_clear_cycle * Constant.V_MAX_REPEAT * Constant.FP32_MAX],
                                          0, v_rep_clear_last, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
         if v_res_time != 0:
             res_repeat_time = v_res_time * dtype_size // constant.BLOCK_SIZE
@@ -980,20 +1010,24 @@ class MaxpoolGradBase(object):
         """
         The fun just for clean ub
         """
-        v_rep_clear_time = data_vmul_ub_col2img_fp16.shape[0] * dtype_size // ONE_REPEAT
-        v_rep_clear_cycle = v_rep_clear_time // V_MAX_REPEAT  # 1
-        v_rep_clear_last = v_rep_clear_time % V_MAX_REPEAT  # 250
-        v_res_last = v_rep_clear_cycle * V_MAX_REPEAT * FP16_MAX + v_rep_clear_last * FP16_MAX
+        v_rep_clear_time = data_vmul_ub_col2img_fp16.shape[0] * dtype_size // Constant.ONE_REPEAT
+        v_rep_clear_cycle = v_rep_clear_time // Constant.V_MAX_REPEAT  # 1
+        v_rep_clear_last = v_rep_clear_time % Constant.V_MAX_REPEAT  # 250
+        v_res_last = v_rep_clear_cycle * Constant.V_MAX_REPEAT * Constant.FP16_MAX + v_rep_clear_last *\
+                     Constant.FP16_MAX
         v_res_time = data_vmul_ub_col2img_fp16.shape[0] - v_res_last
         mask = 16
         if v_rep_clear_cycle > 0:
             with self.tik_instance.for_range(0, v_rep_clear_cycle, thread_num=1) as cycle:
                 self.tik_instance.vector_dup(constant.MASK128,
-                                             data_vmul_ub_col2img_fp16[cycle * V_MAX_REPEAT * FP16_MAX],
-                                             0, V_MAX_REPEAT, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
+                                             data_vmul_ub_col2img_fp16[
+                                                 cycle * Constant.V_MAX_REPEAT * Constant.FP16_MAX],
+                                             0, Constant.V_MAX_REPEAT, constant.STRIDE_ONE,
+                                             constant.REPEAT_STRIDE_EIGHT)
         if v_rep_clear_last != 0:
             self.tik_instance.vector_dup(constant.MASK128,
-                                         data_vmul_ub_col2img_fp16[v_rep_clear_cycle * V_MAX_REPEAT * FP16_MAX],
+                                         data_vmul_ub_col2img_fp16[
+                                             v_rep_clear_cycle * Constant.V_MAX_REPEAT * Constant.FP16_MAX],
                                          0, v_rep_clear_last, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
         if v_res_time != 0:
             res_repeat_time = v_res_time * dtype_size // constant.BLOCK_SIZE

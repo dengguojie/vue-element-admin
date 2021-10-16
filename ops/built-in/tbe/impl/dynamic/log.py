@@ -16,7 +16,6 @@
 log
 """
 import math
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm

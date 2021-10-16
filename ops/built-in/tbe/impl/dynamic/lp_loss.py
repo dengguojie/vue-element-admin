@@ -16,7 +16,6 @@
 lp_loss
 """
 
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -25,9 +24,9 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from tbe.common.utils.shape_util import shape_to_list
 from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import tbe_platform
+from tbe.common.utils.shape_util import shape_to_list
+
 
 # pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
 def l1_loss_compute(predict, label, dims, reduction):
@@ -63,7 +62,7 @@ def l1_loss_compute(predict, label, dims, reduction):
             cof = tbe.var("cof", dtype=precision_dtype)
             if precision_dtype == "float16":
                 tbe.var("cof_empty", dtype=precision_dtype)
-            tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", precision_dtype)   
+            tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", precision_dtype)
         # calculate the result of sum(loss)
     if reduction == "sum":
         loss = tbe.reduce_sum(loss, dims)
@@ -92,13 +91,13 @@ def lp_loss_compute(predict, label, axis, p, reduction):
     :param kernel_name: ernel name, default value is "lp_loss"
     :return: output tensor
     """
-    res = l1_loss_compute(predict, label, axis,reduction)
+    res = l1_loss_compute(predict, label, axis, reduction)
     return res
 
 
 @register_operator("LpLoss")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def lp_loss(predict, label, y, p, reduction="mean", kernel_name="lp_loss"):
     """
@@ -171,7 +170,8 @@ def lp_loss(predict, label, y, p, reduction="mean", kernel_name="lp_loss"):
 
         for (_predict, _label, _input_axis) in ins:
             with tbe.compute():
-                shape_predict, shape_label = shape_util.variable_shape([_predict, _label,_input_axis], op_mode="reduce")[0:2]
+                shape_predict, shape_label = shape_util.variable_shape([_predict, _label, _input_axis],
+                                                                       op_mode="reduce")[0:2]
                 predict_data = tvm.placeholder(shape_predict, dtype=predict_dtype, name="predict_data")
                 label_data = tvm.placeholder(shape_label, dtype=label_dtype, name="label_data")
 

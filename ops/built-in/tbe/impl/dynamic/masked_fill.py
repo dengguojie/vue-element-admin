@@ -50,7 +50,7 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
 
     if value.dtype != x.dtype:
         value = tbe.cast_to(value, x.dtype)
-    
+
     x_shape = shape_util.shape_to_list(x.shape)
     mask_shape = shape_util.shape_to_list(mask.shape)
     value_shape = shape_util.shape_to_list(value.shape)

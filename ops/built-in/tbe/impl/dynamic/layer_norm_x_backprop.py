@@ -16,12 +16,10 @@
 layer_norm_x_backprop
 """
 # pylint: disable=too-many-lines
-import operator
-
-from impl.util.platform_adapter import tvm
-import te.platform as tbe_platform
-# from te.lang.base import operation
+import tbe as mytbe
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
@@ -29,19 +27,50 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import operation
 
 
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
+class Constant(object):
+    """
+    The class for Constant
+    """
+    # General limitation of the size for input shape: 2**31
+    SHAPE_SIZE_LIMIT = 2147483648
+    # Minimum positive number greater than 0
+    EPSLON = 1e-12
 
-# Minimum positive number greater than 0
-EPSLON = 1e-12
 
-import tbe as mytbe
+# pylint: disable=unused-argument
 @mytbe.common.register.register_param_generalization("LayerNormXBackprop")
 def layer_norm_bata_gamma_backprop_generalization(input_dy, input_x, input_variance,
                                                   input_mean, input_gamma, output_pd_x, impl_mode,
-                                                  generalize_config={"mode": "keep_rank"}):
-    # for now only support dy and x is (-1, -1, N), variavce and mean is (-1, -1, 1),
-    # shape_gamma is (N,)
+                                                  generalize_config=None):
+    """
+    layer norm bata gamma backprop generalization
+
+    Parameters
+    ----------
+    input_dy : dict
+        shape and dtype of input dy, only support float16, float32
+    input_x: dict
+        shape and dtype of input x, only support float16, float32
+    input_variance: dict
+        shape and dtype of input variance, only support float16, float32
+    input_mean: dict
+        shape and dtype of input mean, only support float16, float32
+    input_gamma: dict
+        shape and dtype of input gamma, only support float16, float32
+    output_pd_x: dict
+        shape and dtype of output, only support float16, float32
+    impl_mode: str
+        high_precision or high_performance for inference, default value is OpImplMode.HIGH_PERFORMANCE.
+    generalize_config: dict
+        single item under "keep_rank" mode and multiple under "all_shape"
+    Returns
+    -------
+    None
+    """
+    # for now only support dy and x is (-1, -1, N), variavce and mean is (-1, -1, 1), shape_gamma is (N,)
+    if generalize_config is None:
+        generalize_config = {"mode": "keep_rank"}
+
     result = []
     x_shape = input_x["shape"]
     last_dim = x_shape[-1]
@@ -118,7 +147,8 @@ def _check_shape_mean(shape_x, shape_mean):
     """
     if len(shape_x) != len(shape_mean):
         error_detail = "length of shape_x and shape_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop", "input_x", "input_mean", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop", "input_x", "input_mean",
+                                                               error_detail)
 
     if shape_mean[-1] != 1:
         error_detail = "value of shape_mean's last dim must be 1"
@@ -263,7 +293,7 @@ def _get_params(shape_x, shape_mean, shape_gamma):
     for i in reduce_axis:
         mean_num *= shape_x[i]
 
-    params = {"param_axis": param_axis, "reduce_axis": reduce_axis,"mean_num": mean_num}
+    params = {"param_axis": param_axis, "reduce_axis": reduce_axis, "mean_num": mean_num}
 
     return params
 
@@ -306,7 +336,7 @@ def _get_pd_var_front(data, cast_dtype):
     var_elta_2: tvm.tensor
         np.power((data_variance + EPSLON), (-0.5))
     """
-    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(EPSLON, dtype=cast_dtype))
+    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(Constant.EPSLON, dtype=cast_dtype))
     var_elta_log = tbe.vlog(var_elta)
     var_elta_mul = tbe.vmuls(var_elta_log, tvm.const(-0.5, dtype=cast_dtype))
     var_elta_2 = tbe.vexp(var_elta_mul)
@@ -356,7 +386,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
     return pd_var, var_elta_2, sub_x_mean
 
 
-def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
+def _get_pd_mean(params, pd_xl, var_elta_2, cast_dtype):
     """
     compute pd_mean according to reduce_axis, pd_xl, pd_var, var_elta_2
     and sub_x_mean
@@ -368,14 +398,8 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
         "mean_num": mean_num}
     pd_xl: tvm.tensor
         data_dy*data_gamma
-    pd_var: tvm.tensor
-        np.sum(((-0.5)*pd_xl*(data_x - data_mean)
-        *np.power((data_variance + EPSLON), (-1.5))), reduce_axis,
-        keepdims=True)
     var_elta_2: tvm.tensor
         np.power((data_variance + EPSLON), (-0.5))
-    sub_x_mean: tvm.tensor
-        data_x - data_mean
 
     Returns
     -------
@@ -423,7 +447,7 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
 
     pd_var, var_elta_2, sub_x_mean = _get_pd_var(data, params, shape_x, pd_xl, cast_dtype)
 
-    pd_mean = _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype)
+    pd_mean = _get_pd_mean(params, pd_xl, var_elta_2, cast_dtype)
 
     var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
@@ -539,7 +563,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
 
     has_improve_precision = False
     cast_dtype = dtype
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
         cast_dtype = "float32"
 
@@ -561,7 +585,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     return pd_x
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("layer_norm_x_backprop")
+@tbe_platform.fusion_manager.register("layer_norm_x_backprop")
 def layer_norm_x_backprop_compute(input_dy, input_x,
                                   input_variance, input_mean,
                                   input_gamma, output_pd_x,
@@ -598,7 +622,8 @@ def layer_norm_x_backprop_compute(input_dy, input_x,
     return res_list
 
 
-@register_operator("LayerNormXBackprop",pattern = "Layer_norm_x_backprop")
+# pylint: disable=unused-argument
+@register_operator("LayerNormXBackprop", pattern="Layer_norm_x_backprop")
 def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                           input_gamma, output_pd_x,
                           kernel_name="layer_norm_x_backprop"):
@@ -645,7 +670,6 @@ def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
     shape_x = input_x.get("shape")
     last_dim = shape_x[-1]
     shape_variance = input_variance.get("shape")
-    shape_mean = input_mean.get("shape")
     shape_gamma = input_gamma.get("shape")
 
     dynamic_shape_dy = shape_dy
@@ -658,7 +682,7 @@ def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
     dynamic_shape_variance = (dim_0, dim_1, 1)
     dynamic_shape_mean = dynamic_shape_variance
     with tbe.compute():
-        dynamic_shape_gamma = (1,1, last_dim)
+        dynamic_shape_gamma = (1, 1, last_dim)
         data_gm = _get_data_gm({"shape_dy": dynamic_shape_dy, "shape_x": dynamic_shape_x,
                                 "shape_var": dynamic_shape_variance,
                                 "shape_mean": dynamic_shape_mean,

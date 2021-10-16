@@ -26,9 +26,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
-_CONST_INF = 2147483647
-_CONST_EPSILON_FP16 = 1e-7
-_CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
+
+class Constant(object):
+    """
+    The class for Constant
+    """
+    CONST_INF = 2147483647
+    CONST_EPSILON_FP16 = 1e-7
+    CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
+
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals
 def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
@@ -37,7 +43,7 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     When p equals inf, lp_norm equals the max absolute value of elements;
     when -inf, lp_norm equals the min absolute value of elements.
     """
-    if (p == "inf") or (p == _CONST_INF):
+    if p in ("inf", Constant.CONST_INF):
         reduce_support_fp32 = tbe_platform.api_check_support("tbe.dsl.reduce_max", "float32")
         if x_type == "float16" and reduce_support_fp32:
             abs_x = tbe.cast_to(abs_x, "float32")
@@ -65,6 +71,7 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         res = tbe.cast_to(res, dtype=x_type)
     return res
 
+
 # pylint: disable=invalid-name,unused-argument,too-many-locals
 def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
@@ -88,6 +95,7 @@ def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
         res = tbe.cast_to(res, dtype=x_type)
     return res
 
+
 # pylint: disable=invalid-name,unused-argument,too-many-locals
 def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
@@ -100,7 +108,7 @@ def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     elif not sum_support_fp32 and x_type == "float32":
         cast_support_f322f16 = tbe_platform.api_check_support("tbe.cast_to", "f322f16")
         if cast_support_f322f16:
-            abs_x = tbe.cast_to(abs_x, "float16")            
+            abs_x = tbe.cast_to(abs_x, "float16")
         else:
             raise RuntimeError("Type of input x must be float16 since cast op cannot support f322f16")
 
@@ -108,6 +116,7 @@ def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     if res.dtype != x_type:
         res = tbe.cast_to(res, dtype=x_type)
     return res
+
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals
 def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
@@ -131,6 +140,7 @@ def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
         res = tbe.cast_to(res, dtype=x_type)
     return res
 
+
 # pylint: disable=invalid-name,unused-argument,too-many-locals
 @register_operator_compute("LpNorm", op_mode="dynamic", support_fusion=False)
 def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
@@ -149,11 +159,11 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         else:
             raise RuntimeError("Type of input x must be float16 since cast op cannot support f322f16")
     prod_x = abs_x
-    for p_ix in range(1, p):
+    for _ in range(1, p):
         prod_x = tbe.vmul(prod_x, abs_x)
     sum_prod_x = tbe.reduce_sum(prod_x, axis=axes, keepdims=keepdim)
     # extraction can be transformed like x^p =  y --> x = exp(log(y)/p)
-    if "910" in _CCE_PLAT:
+    if "910" in Constant.CCE_PLAT:
         log_sum_x = tbe.vlog(sum_prod_x, 1)
     else:
         log_sum_x = tbe.vlog(sum_prod_x)
@@ -168,7 +178,7 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
 
 @register_operator("LpNorm")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, 
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_norm"):
     """
@@ -212,9 +222,9 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     if isinstance(axes, int):
         axes = [axes]
     if axes is None:
-        axes = [i for i in range(no_shape)]       
+        axes = list(range(no_shape))
     if len(axes) == 0:
-        axes = [i for i in range(no_shape)]
+        axes = list(range(no_shape))
 
     x["rel_pos_to_reduce"] = "before"
 
@@ -222,33 +232,33 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     schedules = []
     tensors = []
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdim is True})
-    
-    for (_x, axes) in ins:
+
+    for (_x, axes_dict) in ins:
         with tbe.compute():
-            shape_var_new = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
+            shape_var_new = shape_util.variable_shape([_x, axes_dict], op_mode="reduce")[0]
             input_data = tvm.placeholder(shape_var_new, name="input_data", dtype=x_type)
             abs_data = tbe.vabs(input_data)
 
-            if (p in p_inf_list) or (p == _CONST_INF) or (p == -_CONST_INF - 1):
-                res = lp_norm_inf_compute(abs_data, x_type, y, p, axes.get("value"), keepdim, kernel_name)            
+            if (p in p_inf_list) or (p == Constant.CONST_INF) or (p == -Constant.CONST_INF - 1):
+                res = lp_norm_inf_compute(abs_data, x_type, y, p, axes_dict.get("value"), keepdim, kernel_name)
             elif p == 0:
-                res = lp_norm0_compute(abs_data, x_type, y, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm0_compute(abs_data, x_type, y, axes_dict.get("value"), keepdim, kernel_name)
             elif p == 1:
-                res = lp_norm1_compute(abs_data, x_type, y, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm1_compute(abs_data, x_type, y, axes_dict.get("value"), keepdim, kernel_name)
             elif p == 2:
-                res = lp_norm2_compute(abs_data, x_type, y, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm2_compute(abs_data, x_type, y, axes_dict.get("value"), keepdim, kernel_name)
             else:
-                res = lp_norm_compute(abs_data, x_type, y, p, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm_compute(abs_data, x_type, y, p, axes_dict.get("value"), keepdim, kernel_name)
 
-            if x_type == "float16" and float(epsilon) <= _CONST_EPSILON_FP16:
+            if x_type == "float16" and float(epsilon) <= Constant.CONST_EPSILON_FP16:
                 if epsilon == 0.0:
                     std_no = tvm.const(0.0, dtype=x_type)
                 else:
-                    std_no = tvm.const(_CONST_EPSILON_FP16, dtype=x_type)
+                    std_no = tvm.const(Constant.CONST_EPSILON_FP16, dtype=x_type)
             else:
                 std_no = tvm.const(float(epsilon), dtype=x_type)
             res = tbe.vmaxs(res, std_no)
-     
+
             tensors.append([input_data, res])
 
         with tvm.target.cce():

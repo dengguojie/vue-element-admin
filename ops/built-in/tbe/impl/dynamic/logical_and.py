@@ -63,7 +63,8 @@ def logical_and_compute(x1, x2, y, kernel_name="logical_and"):
 
 
 @register_operator("LogicalAnd")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def logical_and(x1, x2, y, kernel_name="logical_and"):
     """
     calculating data

@@ -23,11 +23,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
-# define a scalar , value = 0
-SCALAR_ZERO = 0
-# define a scalar , value = -1
-NEGATIVE_ONE = -1
-
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
 # pylint: disable=redefined-argument-from-local
@@ -73,7 +68,7 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
 
     tmp_min_x = tbe.vmins(x, help_min)
     tmp_max_x = tbe.vmaxs(tmp_min_x,
-                                      tvm.const(SCALAR_ZERO, "float32"))
+                                      tvm.const(0, "float32"))
     tmp_mul_x = tbe.vmuls(tmp_max_x, help_rec_one)
 
     if dtype == "float32":
@@ -82,7 +77,7 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
     result_tmp_right = tbe.vmuls(tmp_mul_x, help_rec_sec)
 
     result_sub = tbe.vadds(result_tmp_right,
-                                       tvm.const(NEGATIVE_ONE, "float32"))
+                                       tvm.const(-1, "float32"))
     result_abs = tbe.vabs(result_sub)
     result_tmp_left = tbe.vmuls(result_abs, negative_slope)
 

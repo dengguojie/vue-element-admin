@@ -23,20 +23,23 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2 ** (-126)
-# define a scalar, value = 2**(50)
-SCALAR_MUL_FP32 = 2 ** (50)
-# define a scalar, value = 2**(26)
-SCALAR_MUL2_FP32 = 2 ** (26)
-# define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-SCALAR_MIN_FP16 = 2 ** (-24)
-# define a scalar, value = 2**(12)
-SCALAR_MUL_FP16 = 2 ** (12)
-# define a scalar, value = -1
-SCALAR_NEG_ONE = -1
+
+class Constant(object):
+    """
+    The class for Constant
+    """
+    # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
+    SCALAR_MIN_FP32 = 2 ** (-126)
+    # define a scalar, value = 2**(50)
+    SCALAR_MUL_FP32 = 2 ** 50
+    # define a scalar, value = 2**(26)
+    SCALAR_MUL2_FP32 = 2 ** 26
+    # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
+    SCALAR_MIN_FP16 = 2 ** (-24)
+    # define a scalar, value = 2**(12)
+    SCALAR_MUL_FP16 = 2 ** 12
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -69,14 +72,14 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
                                                                     param_name_input2="input_y")
 
     if dtype_x == "float32":
-        scalar_min = tvm.const(SCALAR_MIN_FP32, dtype="float32")
-        scalar_mul = tvm.const(SCALAR_MUL_FP32, dtype="float32")
-        scalar_mul1 = tvm.const(SCALAR_MUL2_FP32, dtype="float32")
-        scalar_neg_one = tvm.const(SCALAR_NEG_ONE, dtype="float32")
+        scalar_min = tvm.const(Constant.SCALAR_MIN_FP32, dtype="float32")
+        scalar_mul = tvm.const(Constant.SCALAR_MUL_FP32, dtype="float32")
+        scalar_mul1 = tvm.const(Constant.SCALAR_MUL2_FP32, dtype="float32")
+        scalar_neg_one = tvm.const(-1, dtype="float32")
     else:
-        scalar_min = tvm.const(SCALAR_MIN_FP16, dtype="float16")
-        scalar_mul = tvm.const(SCALAR_MUL_FP16, dtype="float16")
-        scalar_neg_one = tvm.const(SCALAR_NEG_ONE, dtype="float16")
+        scalar_min = tvm.const(Constant.SCALAR_MIN_FP16, dtype="float16")
+        scalar_mul = tvm.const(Constant.SCALAR_MUL_FP16, dtype="float16")
+        scalar_neg_one = tvm.const(-1, dtype="float16")
 
     if dtype_x in ("int8", "uint8"):
         input_x = tbe.cast_to(input_x, "float16")

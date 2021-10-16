@@ -24,30 +24,30 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
-# define a scalar, value = -1
-SCALAR_NEG_ONE = -1.0
-# define a scalar, value = 1
-SCALAR_ONE = 1.0
-# define taylor negative threshold , value = -1.7
-TAYLOR_NEGATIVE_THRESHOLD = -1.7
-# define taylor positive threshold , value = 0.7
-TAYLOR_POSITIVE_THRESHOLD = 0.7
-# define second order parameter , value = 1 / 2.0
-TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
-# define third order parameter , value = 1 / 6.0
-TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
-# define fourth order parameter , value = 1 / 24.0
-TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
-# define fifth order parameter , value = 1 / 120.0
-TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
-# define sixth order parameter , value = 1 / 720.0
-TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
-# define seventh order parameter , value = 1 / 5040.0
-TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
+
+class Constant(object):
+    """
+    The class for Constant
+    """
+    # define taylor negative threshold , value = -1.7
+    TAYLOR_NEGATIVE_THRESHOLD = -1.7
+    # define taylor positive threshold , value = 0.7
+    TAYLOR_POSITIVE_THRESHOLD = 0.7
+    # define second order parameter , value = 1 / 2.0
+    TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
+    # define third order parameter , value = 1 / 6.0
+    TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
+    # define fourth order parameter , value = 1 / 24.0
+    TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
+    # define fifth order parameter , value = 1 / 120.0
+    TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
+    # define sixth order parameter , value = 1 / 720.0
+    TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
+    # define seventh order parameter , value = 1 / 5040.0
+    TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-
 def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     algorithm: log1p
@@ -82,7 +82,7 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     if dtype == "float32" and (not cloud_check):
         input_x = tbe.cast_to(input_x, "float16")
 
-    data_add = tbe.vadds(input_x, tvm.const(SCALAR_ONE, input_x.dtype))
+    data_add = tbe.vadds(input_x, tvm.const(1.0, input_x.dtype))
     res = tbe.vlog(data_add)
 
     if (not cloud_check) and mini_check:
@@ -113,9 +113,9 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     newton_taylor_res = _newton_taylor_log1p(input_x, input_y)
     newton_exp_res = _newton_exp_log1p(input_x, input_y)
 
-    input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, input_y.dtype)
+    input_left_border = tvm.const(Constant.TAYLOR_NEGATIVE_THRESHOLD, input_y.dtype)
     tensor_input_left_border = tbe.broadcast(input_left_border, shape)
-    input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, input_y.dtype)
+    input_right_border = tvm.const(Constant.TAYLOR_POSITIVE_THRESHOLD, input_y.dtype)
     tensor_input_right_border = tbe.broadcast(input_right_border, shape)
     exp_taylor_neg = tbe.vcmpsel(input_y, tensor_input_left_border,
                                  'gt', newton_taylor_res,
@@ -139,37 +139,37 @@ def _exp_taylor_compute(input_x):
     -------
     """
     # calculate second order tayloy section : x^2 / 2!
-    taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
+    taylor_second_order_param = tvm.const(Constant.TAYLOR_SECOND_ORDER_PARAM, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
     data_power_2_div_2 = tbe.vmuls(data_power_2,
                                    taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
-    taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
+    taylor_third_order_param = tvm.const(Constant.TAYLOR_THIRD_ORDER_PARAM, "float32")
     data_power_3 = tbe.vmul(data_power_2, input_x)
     data_power_3_div_6 = tbe.vmuls(data_power_3,
                                    taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
-    taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
+    taylor_fourth_order_param = tvm.const(Constant.TAYLOR_FOURTH_ORDER_PARAM, "float32")
     data_power_4 = tbe.vmul(data_power_3, input_x)
     data_power_4_div_24 = tbe.vmuls(data_power_4,
                                     taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
-    taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
+    taylor_fifth_order_param = tvm.const(Constant.TAYLOR_FIFTH_ORDER_PARAM, "float32")
     data_power_5 = tbe.vmul(data_power_4, input_x)
     data_power_5_div_120 = tbe.vmuls(data_power_5,
                                      taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
-    taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
+    taylor_sixth_order_param = tvm.const(Constant.TAYLOR_SIXTH_ORDER_PARAM, "float32")
     data_power_6 = tbe.vmul(data_power_5, input_x)
     data_power_6_div_720 = tbe.vmuls(data_power_6,
                                      taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
-    taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
+    taylor_seventh_order_param = tvm.const(Constant.TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
     data_power_7 = tbe.vmul(data_power_6, input_x)
     data_power_7_div_5040 = tbe.vmuls(data_power_7,
@@ -177,7 +177,7 @@ def _exp_taylor_compute(input_x):
 
     # calculate first order tayloy plus one section : 1 + x
     res_first_taylor = tbe.vadds(input_x,
-                                 tvm.const(SCALAR_ONE, "float32"))
+                                 tvm.const(1.0, "float32"))
     res_second_taylor = tbe.vadd(res_first_taylor,
                                  data_power_2_div_2)
     res_third_taylor = tbe.vadd(res_second_taylor,
@@ -207,9 +207,9 @@ def _newton_exp_iter(input_x, input_y):
     -------
     """
     # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
-    newton_exp = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
+    newton_exp = tbe.vadds(input_y, tvm.const(-1.0,
                                               "float32"))
-    input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
+    input_y_mul = tbe.vmuls(input_y, tvm.const(-1.0,
                                                "float32"))
     input_y_exp = tbe.vexp(input_y_mul)
     newton_exp = tbe.vadd(newton_exp, input_y_exp)
@@ -233,9 +233,9 @@ def _newton_taylor_iter(input_x, input_y):
     -------
     """
     # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
-    newton_taylor = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
+    newton_taylor = tbe.vadds(input_y, tvm.const(-1.0,
                                                  "float32"))
-    input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
+    input_y_mul = tbe.vmuls(input_y, tvm.const(-1.0,
                                                "float32"))
     input_y_taylor = _exp_taylor_compute(input_y_mul)
     newton_taylor = tbe.vadd(newton_taylor, input_y_taylor)

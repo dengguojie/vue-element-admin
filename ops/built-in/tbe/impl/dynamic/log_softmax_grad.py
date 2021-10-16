@@ -21,7 +21,6 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import classify
 
 
@@ -124,12 +123,12 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
     tensors = []
     ins = classify([input_dy, input_x, input_axis], "norm")
 
-    for (dy, x, axis) in ins:
+    for (dy, x, axis_dict) in ins:
         with tbe.compute():
-            dy_shape_var_new, x_shape_var_new, _= shape_util.variable_shape([dy, x, axis], op_mode="norm")
+            dy_shape_var_new, x_shape_var_new, _ = shape_util.variable_shape([dy, x, axis_dict], op_mode="norm")
             input_dy = tvm.placeholder(dy_shape_var_new, dtype=dtype, name="input_dy")
             input_x = tvm.placeholder(x_shape_var_new, dtype=dtype, name="input_x")
-            output = log_softmax_grad_compute(input_dy, input_x, output_z, axis.get("value"), kernel_name)
+            output = log_softmax_grad_compute(input_dy, input_x, output_z, axis_dict.get("value"), kernel_name)
             tensors.append([input_dy, input_x, output])
 
         with tvm.target.cce():

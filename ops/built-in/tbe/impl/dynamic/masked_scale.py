@@ -15,21 +15,18 @@
 """
 masked_scale
 """
-
-from te import tvm
 from impl.util.platform_adapter import tbe
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+
 
 # pylint: disable=unused-argument
-@register_operator_compute("MaskedScale", op_mode = "dynamic", support_fusion = True)
+@register_operator_compute("MaskedScale", op_mode="dynamic", support_fusion=True)
 def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
     """
     function: compute of masked_scale
@@ -69,6 +66,7 @@ def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
         res = tbe.cast_to(res, dtype=y.get("dtype"))
 
     return res
+
 
 # pylint: disable=unused-argument
 @register_operator("MaskedScale")
