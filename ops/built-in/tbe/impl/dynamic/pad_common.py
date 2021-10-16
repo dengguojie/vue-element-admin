@@ -19,14 +19,19 @@ import math
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 
-# maximum of gm
-MAX_INT32 = 2 ** 31 - 1
-# byte of int32, int64
-INT32_BYTE = 4
-INT64_BYTE = 8
-# numbers in the block
-INT32_BLOCK = 8
-INT64_BLOCK = 4
+
+class Constant:
+    """
+    The class for constant
+    """
+    # maximum of gm
+    MAX_INT32 = 2 ** 31 - 1
+    # byte of int32, int64
+    INT32_BYTE = 4
+    INT64_BYTE = 8
+    # numbers in the block
+    INT32_BLOCK = 8
+    INT64_BLOCK = 4
 
 
 # pylint: disable=too-many-statements,too-many-instance-attributes,too-many-arguments
@@ -132,7 +137,7 @@ def calc_axis_amount(pads, mark):
     # assume input is [1,1,..1,1]
     num = len(pads)
     if not mark:
-        new_pad = pads.copy()
+        new_pad = list(pads)
     else:
         index0 = num - 1
         index1 = num - 2
@@ -333,7 +338,7 @@ class PadInit:
         # last param
         self.tiling_arg_kind = 25 + 11
         self.tiling_arg_num = self.axis_amount * 25 + 11
-        self.tiling_buf_size = math.ceil(self.tiling_arg_num / INT64_BLOCK) * INT64_BLOCK
+        self.tiling_buf_size = math.ceil(self.tiling_arg_num / Constant.INT64_BLOCK) * Constant.INT64_BLOCK
 
         # "Param":list represent begin idx of the param and length in tiling_buf
         num0, num1 = 1, self.axis_amount
@@ -359,7 +364,7 @@ class PadInit:
                                               name="tiling_buf",
                                               scope=tik.scope_ubuf)
 
-        tiling_args_byte = self.tiling_buf_size * INT64_BYTE
+        tiling_args_byte = self.tiling_buf_size * Constant.INT64_BYTE
         ub_byte = self.max_ub_size - tiling_args_byte
         self.buf_size = ub_byte // self.num_bit // self.mask * self.mask
         self.buf = tik_instance.Tensor(self.dtype,
@@ -377,8 +382,8 @@ class PadInit:
         self.tiling_gm = tik_instance.Tensor("int64", (self.tiling_buf_size,),
                                              name="tiling_gm", scope=tik.scope_gm)
 
-        self.input_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,),
+        self.input_gm = tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,),
                                             name="input_gm", scope=tik.scope_gm)
 
-        self.output_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,),
+        self.output_gm = tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,),
                                              name="output_gm", scope=tik.scope_gm)

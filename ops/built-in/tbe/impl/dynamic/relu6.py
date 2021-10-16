@@ -16,7 +16,6 @@
 relu6
 f(x) = min(max(0,x), 6)
 """
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm

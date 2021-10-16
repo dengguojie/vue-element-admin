@@ -16,10 +16,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 PadD: Align
 """
 from impl.util.platform_adapter import tik
-# vector_repeat
-MAX_REPEAT = 255
-# block_size
-BLOCK_SIZE = 32
+
+
+class Constant:
+    """
+    The class for constant
+    """
+    # vector_repeat
+    MAX_REPEAT = 255
+    # block_size
+    BLOCK_SIZE = 32
 
 
 # pylint: disable=too-many-arguments,too-many-locals,too-many-statements
@@ -31,7 +37,7 @@ def set_vector_dup(obj, num_data, number):
     Func supports any value of num_data(less than buf_size).
     """
     tik_instance = obj.tik_instance
-    unit = MAX_REPEAT * obj.mask
+    unit = Constant.MAX_REPEAT * obj.mask
     repeat_merchant = num_data // unit
     repeat_remainder = num_data % unit
     dst_blk_stride = 1
@@ -41,7 +47,7 @@ def set_vector_dup(obj, num_data, number):
         tik_instance.vector_dup(obj.mask,
                                 obj.buf[i*unit],
                                 number,
-                                MAX_REPEAT,
+                                Constant.MAX_REPEAT,
                                 dst_blk_stride,
                                 dst_rep_stride)
 
@@ -81,7 +87,7 @@ def copy_buf2gm_circulation(tik_instance, num_bit, ac_num,
     def _copy_ub2gm(factor, data_len, idx):
         idx += factor * vir_num
         n_burst = 1
-        burst_len = data_len * num_bit // BLOCK_SIZE
+        burst_len = data_len * num_bit // Constant.BLOCK_SIZE
         src_stride = 0
         dst_stride = 0
 
@@ -165,7 +171,7 @@ def _copy_gm2buf(obj, in_num, src_ub, src_gm):
     obj.tik_instance.data_move(obj.buf[src_ub],
                                obj.input_gm[src_gm],
                                0, 1,
-                               in_num * obj.num_bit // BLOCK_SIZE,
+                               in_num * obj.num_bit // Constant.BLOCK_SIZE,
                                0, 0)
 
 
@@ -188,7 +194,7 @@ def _copy_buf2gm(obj, in_num, src_ub, dst_gm):
     obj.tik_instance.data_move(obj.output_gm[dst_gm],
                                obj.buf[src_ub],
                                0, 1,
-                               in_num * obj.num_bit // BLOCK_SIZE,
+                               in_num * obj.num_bit // Constant.BLOCK_SIZE,
                                0, 0)
 
 
@@ -207,7 +213,7 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm):
         src_idx += serial * obj.buf_size
         dst_idx += serial * obj.buf_size
         n_burst = 1
-        burst_len = data_len * obj.num_bit // BLOCK_SIZE
+        burst_len = data_len * obj.num_bit // Constant.BLOCK_SIZE
         src_stride = 0
         dst_stride = 0
 
@@ -322,7 +328,7 @@ def _recursion(obj, axis, dst_gm, src_gm, src_ub, dst_ub, max_num, mark):
         else:
             total_num_ub = obj.prod_new_in[axis]
             n_burst = 1
-            burst_len = total_num_ub * obj.num_bit // BLOCK_SIZE
+            burst_len = total_num_ub * obj.num_bit // Constant.BLOCK_SIZE
             src_stride = 0
             dst_stride = 0
             _copy_buf2buf(obj, n_burst, burst_len,

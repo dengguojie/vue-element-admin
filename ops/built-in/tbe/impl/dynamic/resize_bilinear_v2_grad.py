@@ -343,7 +343,8 @@ class ResizeBilinearV2Grad(object):
         tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num})
         return self.tik_instance
 
-    def get_dtype_size(self, dtype):
+    @staticmethod
+    def get_dtype_size(dtype):
         """
         :param dtype: data type
         :return:
@@ -391,7 +392,8 @@ class ResizeBilinearV2Grad(object):
         else:
             src_scalar.set_as(scale * dst_index_scalar)
 
-    def get_ratio(self, src_index, idx_scalar, l_ratio_scalar, r_ratio_scalar):
+    @staticmethod
+    def get_ratio(src_index, idx_scalar, l_ratio_scalar, r_ratio_scalar):
         """
         calculate ratio
         :param src_index: scalar of src_index
@@ -1127,7 +1129,7 @@ class ResizeBilinearV2Grad(object):
         """
         sum data
         """
-        for it in range(iter_num):
+        for _ in range(iter_num):
             num = num // 2
             if num // MASK > 0:
                 mask = MASK

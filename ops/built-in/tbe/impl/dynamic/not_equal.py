@@ -29,16 +29,21 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2 ** (-126)
-# define a scalar, value = 2**(50)
-SCALAR_MUL_FP32 = 2 ** (50)
-# define a scalar, value = 2**(26)
-SCALAR_MUL2_FP32 = 2 ** (26)
-# define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-SCALAR_MIN_FP16 = 2 ** (-24)
-# define a scalar, value = 2**(12)
-SCALAR_MUL_FP16 = 2 ** (12)
+
+class Constant:
+    """
+    The class for constant
+    """
+    # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
+    SCALAR_MIN_FP32 = 2**(-126)
+    # define a scalar, value = 2**(50)
+    SCALAR_MUL_FP32 = 2**(50)
+    # define a scalar, value = 2**(26)
+    SCALAR_MUL2_FP32 = 2**(26)
+    # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
+    SCALAR_MIN_FP16 = 2**(-24)
+    # define a scalar, value = 2**(12)
+    SCALAR_MUL_FP16 = 2**(12)
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -72,12 +77,12 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
                                                                     param_name_input2="input_y")
 
     if dtype_x in ("float32", "int32"):
-        tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP32, dtype="float32"), shape_broadcast)
-        tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP32, dtype="float32"), shape_broadcast)
-        tensor_mul1 = tbe.broadcast(tvm.const(SCALAR_MUL2_FP32, dtype="float32"), shape_broadcast)
+        tensor_min = tbe.broadcast(tvm.const(Constant.SCALAR_MIN_FP32, dtype="float32"), shape_broadcast)
+        tensor_mul = tbe.broadcast(tvm.const(Constant.SCALAR_MUL_FP32, dtype="float32"), shape_broadcast)
+        tensor_mul1 = tbe.broadcast(tvm.const(Constant.SCALAR_MUL2_FP32, dtype="float32"), shape_broadcast)
     else:
-        tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP16, dtype="float16"), shape_broadcast)
-        tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP16, dtype="float16"), shape_broadcast)
+        tensor_min = tbe.broadcast(tvm.const(Constant.SCALAR_MIN_FP16, dtype="float16"), shape_broadcast)
+        tensor_mul = tbe.broadcast(tvm.const(Constant.SCALAR_MUL_FP16, dtype="float16"), shape_broadcast)
 
     if dtype_x in ("int8", "uint8"):
         input_x = tbe.cast_to(input_x, "float16")
@@ -107,9 +112,7 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
 
 
 @register_operator("NotEqual")
-@para_check.check_op_params(para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     """
@@ -137,8 +140,8 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
     para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if x_dtype != y_dtype:
-        error_manager_vector.raise_err_inputs_dtype_not_equal("not_equal", "input_x", "input_y",
-                                                              str(x_dtype), str(y_dtype))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("not_equal", "input_x", "input_y", str(x_dtype),
+                                                              str(y_dtype))
 
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

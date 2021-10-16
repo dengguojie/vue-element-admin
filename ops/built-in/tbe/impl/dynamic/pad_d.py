@@ -23,13 +23,18 @@ from impl.dynamic import pad_common
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# maximum of gm
-MAX_INT32 = 2**31 - 1
-# byte of int32
-INT32_BYTE = 4
-# numbers in the block
-INT32_BLOCK = 8
-INT64_BLOCK = 4
+
+class Constant:
+    """
+    The class for constant
+    """
+    # maximum of gm
+    MAX_INT32 = 2**31 - 1
+    # byte of int32
+    INT32_BYTE = 4
+    # numbers in the block
+    INT32_BLOCK = 8
+    INT64_BLOCK = 4
 
 
 def pad_compute(obj):
@@ -43,7 +48,7 @@ def pad_compute(obj):
         # init tiling_params
         # =====================
         obj.tik_instance.data_move(obj.tiling_buf, obj.tiling_gm, 0, 1,
-                                   obj.tiling_buf_size//INT64_BLOCK, 0, 0)
+                                   obj.tiling_buf_size//Constant.INT64_BLOCK, 0, 0)
         pad_common.init_params(obj)
 
         # ======================

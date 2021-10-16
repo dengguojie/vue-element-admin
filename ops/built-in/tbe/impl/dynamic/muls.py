@@ -15,7 +15,6 @@
 """
 dynamic muls
 """
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -23,6 +22,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+
 
 # pylint: disable=too-many-locals,unused-argument
 def muls_compute(input_x, scalar, kernel_name="muls"):

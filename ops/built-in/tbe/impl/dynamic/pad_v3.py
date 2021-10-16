@@ -32,7 +32,7 @@ from impl.util.util_select_op_base import SplitOutput
 MAX_INT64 = 2 ** 64 - 1
 # tiling param nums
 TILING_NUMS = 20
-# 1 byte = 8 bit
+# 1 byte is 8 bit
 EIGHT_BIT = 8
 # bytes of one block
 BLOCK_BYTES = 32
@@ -1163,7 +1163,7 @@ class PadV3Init(object):
                         self.tik_instance.data_move(self.output_gm[dst_offset],
                                                     origin_output_data_ub[_copy_idx * max_output_size],
                                                     0, 1, burst_len, 0, 0)
-                    # is_last_output_algin = True
+                    # is_last_output_algin is True
                     if not is_last_output_algin:
                         copy_tail_offset = self.tik_instance.Scalar(dtype="int64", name="copy_tail_offset")
                         copy_tail_offset.set_as(third_dim_output_num % 16)
@@ -1407,12 +1407,13 @@ class PadV3Init(object):
         # input_dtype is fp16/int16 dtype_rate == 1
         # input_dtype is fp32/int32 dtype_rate == 2
         dtype_rate = self.input_bytes_size // self.inner_bytes_size
-        wr_compile_info = dict()
-        wr_compile_info["ub_size"] = self.ub_number
-        wr_compile_info["core_num"] = self.core_nums
-        wr_compile_info["dtype_rate"] = dtype_rate
-        wr_compile_info["mode"] = self.mode
-        wr_compile_info["padding_contiguous"] = self.padding_contiguous
+        wr_compile_info = {
+            "ub_size": self.ub_number,
+            "core_num": self.core_nums,
+            "dtype_rate": dtype_rate,
+            "mode": self.mode,
+            "padding_contiguous": self.padding_contiguous
+        }
         if outer_compile_info is not None:
             for key in outer_compile_info.keys():
                 wr_compile_info[key] = outer_compile_info[key]

@@ -16,7 +16,6 @@
 dynamic relu
 """
 from __future__ import absolute_import
-from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm

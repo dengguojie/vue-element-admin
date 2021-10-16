@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic reduce_max
 """
-import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify

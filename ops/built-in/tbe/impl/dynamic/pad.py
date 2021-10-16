@@ -26,22 +26,27 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-# tiling param nums
-TILING_NUMS = 28
-# 1 byte = 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# vnchw the minest block
-TRANS_MIN_BLKS = 16
-# compute only zero axis, cut last dim
-MODE0 = 0
-# compute only one axis
-MODE1 = 1
-# compute merge two axis
-MODE2 = 2
-# compute big last axis
-MODE3 = 3
+
+class Constant:
+    """
+    The class for constant
+    """
+    # tiling param nums
+    TILING_NUMS = 28
+    # 1 byte = 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # vnchw the minest block
+    TRANS_MIN_BLKS = 16
+    # compute only zero axis, cut last dim
+    MODE0 = 0
+    # compute only one axis
+    MODE1 = 1
+    # compute merge two axis
+    MODE2 = 2
+    # compute big last axis
+    MODE3 = 3
 
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
@@ -141,7 +146,7 @@ class PadInit(OpBase):
         OpBase.__init__(self)
         self.max_shape_len = max_shape_len
         self.tiling_dtype = "int64"
-        self.tiling_shape = (TILING_NUMS,)
+        self.tiling_shape = (Constant.TILING_NUMS,)
         self.kernel_name = kernel_name
 
         # op para init
@@ -149,7 +154,7 @@ class PadInit(OpBase):
         self.input_gm = None
         self.output_gm = None
         self.input_bytes_size = 0
-        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // EIGHT_BIT
+        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // Constant.EIGHT_BIT
         self.block_num = constant.BLOCK_SIZE // self.inner_bytes_size
         self.ub_number = self.ub_size_bytes // self.inner_bytes_size
         # default copy data number in one time
@@ -299,8 +304,10 @@ class PadInit(OpBase):
             tiling_input_dim_cut_axis: which dim will be cut
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_NUMS // 4, 0, 0)
+            tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_NUMS,),
+                                                 name="tiling_ub",
+                                                 scope=tik.scope_ubuf)
+            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.TILING_NUMS // 4, 0, 0)
             self.tiling_key.set_as(tiling_ub[0])
             self.tiling_input_dim_0.set_as(tiling_ub[1])
             self.tiling_input_dim_1.set_as(tiling_ub[2])
@@ -362,7 +369,7 @@ class PadInit(OpBase):
         init gm tensor set tiling, input, paddings output tensor(gm)
         """
         tiling_dict = {"dtype": self.tiling_dtype, "shape": self.tiling_shape}
-        self.input_bytes_size = tbe_platform.get_bit_len(input_dict_list[pad_input_idx]["dtype"]) // EIGHT_BIT
+        self.input_bytes_size = tbe_platform.get_bit_len(input_dict_list[pad_input_idx]["dtype"]) // Constant.EIGHT_BIT
         output_dict_list[pad_outnput_idx]["is_atomic_add"] = True
         self.op_init_gm(input_dict_list, output_dict_list, tiling_info=tiling_dict)
         self.input_gm = self.input_gm_list[pad_input_idx].reinterpret_cast_to(self.inner_dtype)
@@ -409,19 +416,19 @@ class PadInit(OpBase):
         output_gm, output_offset = gm_dst_info
         bursn_len = (copy_len + self.block_num - 1) // self.block_num
         self.tik_instance.data_move(ub_one_block, input_gm[input_offset], 0, 1, bursn_len, 0, 0)
-        vnchw_src_list = [ub_one_block] * TRANS_MIN_BLKS
-        vnchw_dst_list = [used_ub[i * TRANS_MIN_BLKS] for i in range(TRANS_MIN_BLKS)]
+        vnchw_src_list = [ub_one_block] * Constant.TRANS_MIN_BLKS
+        vnchw_dst_list = [used_ub[i * Constant.TRANS_MIN_BLKS] for i in range(Constant.TRANS_MIN_BLKS)]
         self.tik_instance.vnchwconv(False, False, vnchw_dst_list, vnchw_src_list, 1, 0, 0)
         burst_num = 1
         burst_len = self.block_num - copy_len + 1
         self.tik_instance.data_move(used_ub[copy_len * self.block_num:], ub_one_block[self.block_num:], 0, burst_num,
                                     burst_len, 0, 0)
-        vnchw_src_list = [used_ub[i * TRANS_MIN_BLKS] for i in range(TRANS_MIN_BLKS)]
+        vnchw_src_list = [used_ub[i * Constant.TRANS_MIN_BLKS] for i in range(Constant.TRANS_MIN_BLKS)]
         vnchw_dst_list = \
-            [used_ub[i * TRANS_MIN_BLKS + TRANS_MIN_BLKS * TRANS_MIN_BLKS] for i in range(TRANS_MIN_BLKS)]
+            [used_ub[i * Constant.TRANS_MIN_BLKS + Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS] for i in range(Constant.TRANS_MIN_BLKS)]
         self.tik_instance.vnchwconv(False, False, vnchw_dst_list, vnchw_src_list, 1, 0, 0)
-        self.tik_instance.data_move(output_gm[output_offset], used_ub[TRANS_MIN_BLKS * TRANS_MIN_BLKS], 0, 1,
-                                    bursn_len, 0, 0)
+        self.tik_instance.data_move(output_gm[output_offset],
+                                    used_ub[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS], 0, 1, bursn_len, 0, 0)
 
     def do_pad_with_move_cut_inner(self):
         """
@@ -555,8 +562,8 @@ class PadInit(OpBase):
             # copy one block first
             if not is_last_align:
                 self.data_move_with_mask_less_block([self.input_gm, input_gm_offset],
-                                                    [self.output_gm, output_outer_offset], block_copy_num,
-                                                    data_ub_pang, ub_one_block)
+                                                    [self.output_gm, output_outer_offset], block_copy_num, data_ub_pang,
+                                                    ub_one_block)
             if not is_copy_one_loop:
                 with self.tik_instance.for_range(0, copy_loop_ceil // 2) as copy_idx:
                     ping_idx = copy_idx * 2
@@ -733,8 +740,8 @@ class PadInit(OpBase):
                         self.tik_instance.data_move(origin_data_ub[_copy_idx * max_output_size],
                                                     self.input_gm[input_gm_offset + src_offset], 0, 1, burst_len, 0, 0)
                 # step2. vnchw 16 dims origin_data_ub to vnchw_data_ub
-                origin_data_ub_list = [origin_data_ub[i * max_output_size] for i in range(0, TRANS_MIN_BLKS)]
-                vnchw_data_ub_list = [vnchw_data_ub[i * 16] for i in range(0, TRANS_MIN_BLKS)]
+                origin_data_ub_list = [origin_data_ub[i * max_output_size] for i in range(0, Constant.TRANS_MIN_BLKS)]
+                vnchw_data_ub_list = [vnchw_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                 self.tik_instance.vnchwconv(False, False, vnchw_data_ub_list, origin_data_ub_list, vnchw_repeat0,
                                             vnchw_dst_stride0, vnchw_src_stride0)
 
@@ -753,9 +760,9 @@ class PadInit(OpBase):
 
                 # step4. vnchw vnchw_output_data_ub to 16 dims origin_output_data_ub
                 origin_output_data_ub_list = \
-                    [origin_output_data_ub[i * max_output_size] for i in range(0, TRANS_MIN_BLKS)]
+                    [origin_output_data_ub[i * max_output_size] for i in range(0, Constant.TRANS_MIN_BLKS)]
                 vnchw_output_data_ub_list = \
-                    [vnchw_output_data_ub[i * 16] for i in range(0, TRANS_MIN_BLKS)]
+                    [vnchw_output_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                 self.tik_instance.vnchwconv(False, False, origin_output_data_ub_list, vnchw_output_data_ub_list,
                                             vnchw_repeat1, vnchw_dst_stride1, vnchw_src_stride1)
 
@@ -787,12 +794,12 @@ class PadInit(OpBase):
                     # step6. process tail for the last line
                     with self.tik_instance.if_scope(align_tail != 0):
                         origin_output_data_ub_list = \
-                            [origin_output_tail_data_ub[i * 16] for i in range(0, TRANS_MIN_BLKS)]
+                            [origin_output_tail_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                         vnchw_output_data_ub_list = \
                             [vnchw_output_data_ub[i * 16 + (do_inner_num * third_dim_output_num - 16) * 16]
-                             for i in range(0, TRANS_MIN_BLKS)]
-                        self.tik_instance.vnchwconv(False, False, origin_output_data_ub_list,
-                                                    vnchw_output_data_ub_list, 1, 0, 0)
+                             for i in range(0, Constant.TRANS_MIN_BLKS)]
+                        self.tik_instance.vnchwconv(False, False, origin_output_data_ub_list, vnchw_output_data_ub_list,
+                                                    1, 0, 0)
                         burst_len = 1
                         dst_offset = \
                             output_outer_offset \
@@ -826,8 +833,7 @@ class PadInit(OpBase):
             vnchw_output_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
                                                                  name="vnchw_output_data_ub_ping",
                                                                  scope=tik.scope_ubuf)
-            origin_output_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype,
-                                                                  (max_line_in_ub * max_output_size,),
+            origin_output_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
                                                                   name="origin_output_data_ub_ping",
                                                                   scope=tik.scope_ubuf)
             origin_output_tail_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (16 * 16,),
@@ -846,8 +852,7 @@ class PadInit(OpBase):
             vnchw_output_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
                                                                  name="vnchw_output_data_ub_ping",
                                                                  scope=tik.scope_ubuf)
-            origin_output_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype,
-                                                                  (max_line_in_ub * max_output_size,),
+            origin_output_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
                                                                   name="origin_output_data_ub_ping",
                                                                   scope=tik.scope_ubuf)
             origin_output_tail_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype, (16 * 16,),
@@ -973,8 +978,10 @@ class PadInit(OpBase):
                                                     self.input_gm[input_gm_offset + src_offset], 0, 1, burst_len, 0, 0)
 
                     # step2. vnchw 16 dims origin_data_ub to vnchw_data_ub
-                    origin_data_ub_list = [origin_data_ub[i * max_output_size] for i in range(0, TRANS_MIN_BLKS)]
-                    vnchw_data_ub_list = [vnchw_data_ub[i * 16] for i in range(0, TRANS_MIN_BLKS)]
+                    origin_data_ub_list = [
+                        origin_data_ub[i * max_output_size] for i in range(0, Constant.TRANS_MIN_BLKS)
+                    ]
+                    vnchw_data_ub_list = [vnchw_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                     self.tik_instance.vnchwconv(False, False, vnchw_data_ub_list, origin_data_ub_list, vnchw_repeat0,
                                                 vnchw_dst_stride0, vnchw_src_stride0)
 
@@ -994,9 +1001,9 @@ class PadInit(OpBase):
 
                     # step4. vnchw vnchw_output_data_ub to 16 dims origin_output_data_ub
                     origin_output_data_ub_list = \
-                        [origin_output_data_ub[i * max_output_size] for i in range(0, TRANS_MIN_BLKS)]
+                        [origin_output_data_ub[i * max_output_size] for i in range(0, Constant.TRANS_MIN_BLKS)]
                     vnchw_output_data_ub_list = \
-                        [vnchw_output_data_ub[i * 16] for i in range(0, TRANS_MIN_BLKS)]
+                        [vnchw_output_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                     self.tik_instance.vnchwconv(False, False, origin_output_data_ub_list, vnchw_output_data_ub_list,
                                                 vnchw_repeat1, vnchw_dst_stride1, vnchw_src_stride1)
 
@@ -1010,8 +1017,8 @@ class PadInit(OpBase):
                             + (self.tiling_pading_value[self.shape_len - 2][0] + second_dim_start) \
                             * self.output_offset[self.shape_len - 1]
                         self.tik_instance.data_move(self.output_gm[dst_offset],
-                                                    origin_output_data_ub[_copy_idx * max_output_size], 0, 1,
-                                                    burst_len, 0, 0)
+                                                    origin_output_data_ub[_copy_idx * max_output_size], 0, 1, burst_len,
+                                                    0, 0)
                     # is_last_output_algin = True
                     if not is_last_output_algin:
                         copy_tail_offset = self.tik_instance.Scalar(dtype="int64", name="copy_tail_offset")
@@ -1022,10 +1029,10 @@ class PadInit(OpBase):
                             copy_tail_offset.set_as(16 - copy_tail_offset)
                         vnchw_repeat = 1
                         origin_output_tail_data_ub_list = \
-                            [origin_output_tail_data_ub[i * 16] for i in range(0, TRANS_MIN_BLKS)]
+                            [origin_output_tail_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                         vnchw_output_data_ub_list = \
                             [vnchw_output_data_ub[((third_dim_output_num * second_dim_process_num - 16) + i) * 16]
-                             for i in range(0, TRANS_MIN_BLKS)]
+                             for i in range(0, Constant.TRANS_MIN_BLKS)]
                         self.tik_instance.vnchwconv(False, False, origin_output_tail_data_ub_list,
                                                     vnchw_output_data_ub_list, vnchw_repeat, 0, 0)
 
@@ -1096,21 +1103,21 @@ class PadInit(OpBase):
         """
         pad_compute
         do_pad with different tiling key
-        MODE0: the last dim of output > 128*core_num, and cut by last dim
+        Constant.MODE0: the last dim of output > 128*core_num, and cut by last dim
                 and do pad with data move
-        MODE1: the last dim of output => 960, and cut by outer dim(0-4)
+        Constant.MODE1: the last dim of output => 960, and cut by outer dim(0-4)
                 and do pad with data move
-        MODE2: the last dim of output < 960, and cut by outer dim(0-3)
+        Constant.MODE2: the last dim of output < 960, and cut by outer dim(0-3)
                 and do pad with vnchw
         """
         # op step 0. init gm memory
         # do in function init_src_dst_gm
 
         # op step 1. regist the tiling funtion base on tiling_key
-        self.regist_compute(MODE0, self.do_pad_with_move_cut_inner)
-        self.regist_compute(MODE1, self.do_pad_with_move_cut_outer)
-        self.regist_compute(MODE2, self.do_pad_with_vnchw_for_last_two_dim)
-        self.regist_compute(MODE3, self.do_pad_with_vnchw_for_last_three_dim)
+        self.regist_compute(Constant.MODE0, self.do_pad_with_move_cut_inner)
+        self.regist_compute(Constant.MODE1, self.do_pad_with_move_cut_outer)
+        self.regist_compute(Constant.MODE2, self.do_pad_with_vnchw_for_last_two_dim)
+        self.regist_compute(Constant.MODE3, self.do_pad_with_vnchw_for_last_three_dim)
 
         # op step 2. run all regist compute base tiling key
         self.op_run_compute()
@@ -1120,10 +1127,11 @@ class PadInit(OpBase):
         # input_dtype is fp16/int16 dtype_rate == 1
         # input_dtype is fp32/int32 dtype_rate == 2
         dtype_rate = self.input_bytes_size // self.inner_bytes_size
-        wr_compile_info = dict()
-        wr_compile_info["ub_size"] = self.ub_number
-        wr_compile_info["core_num"] = self.core_nums
-        wr_compile_info["dtype_rate"] = dtype_rate
+        wr_compile_info = {
+            "ub_size": self.ub_number,
+            "core_num": self.core_nums,
+            "dtype_rate": dtype_rate
+        }
 
         # for StridedSliceGrad add attr to compile info
         if outer_compile_info is not None:

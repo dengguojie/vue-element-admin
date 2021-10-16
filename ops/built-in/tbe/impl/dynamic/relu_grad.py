@@ -47,12 +47,12 @@ def calculate_one_or_zero(input_tensor, dtype):
     # define help constant. use help_min*help_rec_one*help_rec_sec to get the
     # result 1
     if dtype == "float32":
-        help_min = tvm.const(2 ** (-126), "float32")
-        help_rec_one = tvm.const(2 ** 38, "float32")
-        help_rec_sec = tvm.const(2 ** 44, "float32")
+        help_min = tvm.const(2**(-126), "float32")
+        help_rec_one = tvm.const(2**38, "float32")
+        help_rec_sec = tvm.const(2**44, "float32")
     elif dtype == "float16":
-        help_min = tvm.const(2 ** (-24), "float16")
-        help_rec_one = tvm.const(2 ** 12, "float16")
+        help_min = tvm.const(2**(-24), "float16")
+        help_rec_one = tvm.const(2**12, "float16")
         help_rec_sec = help_rec_one
     elif dtype == "int32":
         help_min = tvm.const(1, "int32")
@@ -79,8 +79,7 @@ def calculate_one_or_zero(input_tensor, dtype):
 
 
 # pylint: disable=locally-disabled,unused-argument
-def relu_grad_compute(input_gradients, input_features, output_backprops,
-                      kernel_name="relu_grad"):
+def relu_grad_compute(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation
     output_backprops = input_gradients*1(input_features>0) or 0(input_features<=0).
@@ -112,7 +111,8 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
 
     x0_shape = shape_util.shape_to_list(input_gradients.shape)
     x1_shape = shape_util.shape_to_list(input_features.shape)
-    _, _, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape,
+    _, _, y_shape = shape_util.broadcast_shapes(x0_shape,
+                                                x1_shape,
                                                 param_name_input1="input_gradients",
                                                 param_name_input2="input_features")
     input_gradients = tbe.broadcast(input_gradients, y_shape)
@@ -130,7 +130,8 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
 
 
 @register_operator("ReluGrad")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation
@@ -154,13 +155,13 @@ def relu_grad(input_gradients, input_features, output_backprops, kernel_name="re
     """
     g_dtype = input_gradients.get("dtype").lower()
     x_dtype = input_features.get("dtype").lower()
-    check_list =("float16", "float32", "int32", "int8", "uint8")
+    check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(g_dtype, check_list, param_name="input_gradients")
     para_check.check_dtype(x_dtype, check_list, param_name="input_features")
     para_check.check_elewise_shape_range([input_gradients, input_features], support_broadcast=True)
     if g_dtype != x_dtype:
-        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_gradients", "input_features",
-                                                              g_dtype, x_dtype)
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_gradients", "input_features", g_dtype,
+                                                              x_dtype)
     ins = classify([input_gradients, input_features], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (g, x) in ins:
@@ -168,8 +169,7 @@ def relu_grad(input_gradients, input_features, output_backprops, kernel_name="re
             g_shape, x_shape = shape_util.variable_shape([g, x])
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
-            res = relu_grad_compute(tensor_g, tensor_x, output_backprops,
-                                    kernel_name)
+            res = relu_grad_compute(tensor_g, tensor_x, output_backprops, kernel_name)
             tensors.append((tensor_g, tensor_x, res))
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

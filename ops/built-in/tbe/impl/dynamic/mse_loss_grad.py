@@ -15,7 +15,6 @@
 """
 mse_loss_grad
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -152,7 +151,7 @@ def mse_loss_grad(predict, label, dout, grad, reduction="mean", kernel_name="mse
 
     dout_shape = dout.get("shape")
     dout_range = list(dout.get("range"))
-        
+
     para_check.check_kernel_name(kernel_name)
 
     ins = classify([predict, label, dout], OpPatternMode.ELEWISE_WITH_BROADCAST)

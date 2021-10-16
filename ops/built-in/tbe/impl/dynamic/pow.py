@@ -53,6 +53,7 @@ def _is_equal_zero(x):
 
     return zero_index
 
+
 def _less_compute(input_x, input_y):
     """
     if x is less than y, then return 1, else return 0.

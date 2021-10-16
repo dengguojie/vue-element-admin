@@ -15,10 +15,7 @@
 """
 reduce_std_with_mean
 """
-import collections
-
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import para_check
@@ -76,13 +73,10 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilo
         reduce_ele *= i
     dtype = x.dtype
     # broadcast
-    # mu_broadcast = tbe.broadcast(mean, shape_x)
     mu_broadcast = mean
 
-    # calculate x-mubroadcast
     x_mu_sub = tbe.vsub(x, mu_broadcast)
 
-    # calculate x_mu_sub^2
     var_mul = tbe.vmul(x_mu_sub, x_mu_sub)
 
     if unbiased:
@@ -172,7 +166,6 @@ def reduce_std_with_mean(x, mean, y, dim=None, unbiased=True, keepdims=False, in
     """
     # calculating data parameters
     dtype = x["dtype"]
-    dtype_y = y["dtype"]
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_lower, check_list)

@@ -22,8 +22,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_tik_comm_func import ceil_div
-from tbe.common.utils.errormgr import error_manager_vector
-from te import platform as tbe_platform
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tbe_platform
 
 DIM2 = 2
 NUM_EIGHT = 8
@@ -123,6 +123,14 @@ class NllLossGradCompute:
         self.tiling_params = [self.tik_instance.Scalar(TILING_CTRL_PARAM[0]) for i in range(TILING_CTRL_PARAM[1])]
         self.get_tiling_params()
         self.init_tiling_params()
+        self.y_grad_ub = None
+        self.target_ub = None
+        self.weight_ub = None
+        self.target_value_ub = None
+        self.refactor_weight_ub = None
+        self.total_weight_ub = None
+        self.dup_ub = None
+        self.index_x = None
 
     def init_tiling_params(self):
         """
@@ -342,7 +350,7 @@ class NllLossGradCompute:
                                    1, NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
         self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], NEGATIVE, repeat, 1, 1, 8, 8)
         if self.reduction == "mean":
-            if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
+            if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
                 self.tik_instance.vdiv(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub,
                                        repeat, 1, 1, 1, 8, 8, 0)
             else:
@@ -452,7 +460,7 @@ class NllLossGradCompute:
 
                 self.tik_instance.data_move(self.total_weight_ub, self.data_total_weight, 0, 1, 1, 0, 0)
                 if self.reduction == "mean":
-                    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
+                    if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
                         self.tik_instance.vdiv(1, self.weight_ub, self.weight_ub, self.total_weight_ub,
                                                1, 1, 1, 1, NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
                     else:

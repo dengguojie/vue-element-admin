@@ -61,7 +61,8 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
 
 
 @register_operator("MulNoNan")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT,
+                            para_check.KERNEL_NAME)
 def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     """
     calculating data

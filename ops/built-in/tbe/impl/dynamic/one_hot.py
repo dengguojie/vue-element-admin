@@ -22,28 +22,32 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-# 16k UB buffer is a reserved space
-RESERVE_SIZE = 16 * 1024
 
-MAX_INT32 = 2 ** 31 - 1
-SCALAR_TENSOR_SIZE = 32
-TILING_ARG_NUM = 64
-cal_num = 64
-TILING_MODE_1 = 1
-TILING_MODE_2 = 2
-TILING_MODE_3 = 3
-TILING_MODE_4 = 4
-TILING_MODE_5 = 5
-TILING_MODE_6 = 6
-TILING_MODE_7 = 7
-TILING_MODE_8 = 8
-TILING_MODE_9 = 9
-TILING_MODE_10 = 10
-TILING_MODE_11 = 11
-TILING_MODE_12 = 12
-TILING_MODE_13 = 13
-OFF_VALUE_TENSOR_PART = 2
-TOTAL_PART = 3
+class Constant:
+    """
+    The class for constant
+    """
+    # 16k UB buffer is a reserved space
+    RESERVE_SIZE = 16 * 1024
+    MAX_INT32 = 2 ** 31 - 1
+    SCALAR_TENSOR_SIZE = 32
+    TILING_ARG_NUM = 64
+    cal_num = 64
+    TILING_MODE_1 = 1
+    TILING_MODE_2 = 2
+    TILING_MODE_3 = 3
+    TILING_MODE_4 = 4
+    TILING_MODE_5 = 5
+    TILING_MODE_6 = 6
+    TILING_MODE_7 = 7
+    TILING_MODE_8 = 8
+    TILING_MODE_9 = 9
+    TILING_MODE_10 = 10
+    TILING_MODE_11 = 11
+    TILING_MODE_12 = 12
+    TILING_MODE_13 = 13
+    OFF_VALUE_TENSOR_PART = 2
+    TOTAL_PART = 3
 
 
 class OneHot():
@@ -95,7 +99,7 @@ class OneHot():
         block_bite_size = 32
         self.max_repeat_time = 255
         self.tik_instance = tik.Tik(tik.Dprofile())
-        self.ub_size_bytes =cce.get_soc_spec(cce.UB_SIZE)
+        self.ub_size_bytes = cce.get_soc_spec(cce.UB_SIZE)
         self.dtype_bytes_size_x = cce.get_bit_len(self.dtype_x) // 8
         self.x_each_block = block_bite_size // self.dtype_bytes_size_x
         self.dtype_bytes_size_depth = cce.get_bit_len(
@@ -115,7 +119,7 @@ class OneHot():
         self.index_scalar = self.tik_instance.Scalar(
             self.dtype_x, name='index_scalar')
         self.tiling_gm = self.tik_instance.Tensor(
-            self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_gm', scope=tik.scope_gm)
+            self.tiling_dtype, (Constant.TILING_ARG_NUM,), name='tiling_gm', scope=tik.scope_gm)
         self.total_core_number = cce.get_soc_spec(cce.CORE_NUM)
         self.numel_shape_x = None
         self.x_gm = None
@@ -204,24 +208,24 @@ class OneHot():
         -------
         None
         """
-        self.x_gm = self.tik_instance.Tensor(self.dtype_x, (MAX_INT32,),
+        self.x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,),
                                              name='x_gm', scope=tik.scope_gm)
-        self.y_gm = self.tik_instance.Tensor(self.dtype_on_value, (MAX_INT32,),
+        self.y_gm = self.tik_instance.Tensor(self.dtype_on_value, (Constant.MAX_INT32,),
                                              name='y_gm', scope=tik.scope_gm)
         self.on_value_gm = self.tik_instance.Tensor(
             self.dtype_on_value,
-            (SCALAR_TENSOR_SIZE,
+            (Constant.SCALAR_TENSOR_SIZE,
              ),
             name='on_value_gm',
             scope=tik.scope_gm)
         self.off_value_gm = self.tik_instance.Tensor(
             self.dtype_off_value,
-            (SCALAR_TENSOR_SIZE,
+            (Constant.SCALAR_TENSOR_SIZE,
              ),
             name='off_value_gm',
             scope=tik.scope_gm)
         self.depth_gm = self.tik_instance.Tensor(
-            self.dtype_depth, (SCALAR_TENSOR_SIZE,), name='depth_gm', scope=tik.scope_gm)
+            self.dtype_depth, (Constant.SCALAR_TENSOR_SIZE,), name='depth_gm', scope=tik.scope_gm)
 
     def one_hot_compute_tiling(self):
         """
@@ -238,13 +242,13 @@ class OneHot():
         self.gm_to_data()
         with self.tik_instance.for_range(0, self.total_core_number, block_num=self.total_core_number) as block_id:
             tiling_ub = self.tik_instance.Tensor(
-                self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_ub', scope=tik.scope_ubuf)
+                self.tiling_dtype, (Constant.TILING_ARG_NUM,), name='tiling_ub', scope=tik.scope_ubuf)
             self.tik_instance.data_move(
                 tiling_ub,
                 self.tiling_gm,
                 0,
                 1,
-                SCALAR_TENSOR_SIZE //
+                Constant.SCALAR_TENSOR_SIZE //
                 self.tiling_each_block,
                 0,
                 0)
@@ -255,31 +259,31 @@ class OneHot():
                 mode_of_cal_with_axis = self.tik_instance.Scalar(
                     self.dtype_x, name='mode_of_cal_with_axis')
                 mode_of_cal_with_axis.set_as(tiling_ub[2])
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_1):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_1):
                     self.one_hot_last_axis_first_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_2):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_2):
                     self.one_hot_last_axis_second_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_3):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_3):
                     self.one_hot_last_axis_third_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_4):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_4):
                     self.one_hot_last_axis_fourth_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_5):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_5):
                     self.one_hot_last_axis_fifth_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_6):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_6):
                     self.one_hot_first_axis_first_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_7):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_7):
                     self.one_hot_first_axis_second_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_8):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_8):
                     self.one_hot_first_axis_third_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_9):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_9):
                     self.one_hot_first_axis_fourth_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_10):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_10):
                     self.one_hot_middle_axis_first_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_11):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_11):
                     self.one_hot_middle_axis_second_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_12):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_12):
                     self.one_hot_middle_axis_third_mode(block_id)
-                with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_13):
+                with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_13):
                     self.one_hot_middle_axis_fourth_mode(block_id)
         tbe_context.get_context().add_compile_info('vars', {'core_num': self.total_core_number, 'axis': self.axis})
         self.tik_instance.BuildCCE(
@@ -301,9 +305,9 @@ class OneHot():
         -------
         None
         """
-        self.total_part = TOTAL_PART
-        self.off_value_tensor_part = OFF_VALUE_TENSOR_PART
-        self.per_part_unused_ub = (self.ub_size_bytes - RESERVE_SIZE) // self.dtype_bytes_size_x // \
+        self.total_part = Constant.TOTAL_PART
+        self.off_value_tensor_part = Constant.OFF_VALUE_TENSOR_PART
+        self.per_part_unused_ub = (self.ub_size_bytes - Constant.RESERVE_SIZE) // self.dtype_bytes_size_x // \
             self.total_part // self.x_each_block * self.x_each_block
         self.x_ub = self.tik_instance.Tensor(
             self.dtype_x, (self.per_part_unused_ub,), name='x_ub', scope=tik.scope_ubuf)
@@ -316,18 +320,18 @@ class OneHot():
             scope=tik.scope_ubuf)
         self.on_value_ub = self.tik_instance.Tensor(
             self.dtype_on_value,
-            (SCALAR_TENSOR_SIZE,
+            (Constant.SCALAR_TENSOR_SIZE,
              ),
             name='on_value_ub',
             scope=tik.scope_ubuf)
         self.off_value_ub = self.tik_instance.Tensor(
             self.dtype_off_value,
-            (SCALAR_TENSOR_SIZE,
+            (Constant.SCALAR_TENSOR_SIZE,
              ),
             name='off_value_ub',
             scope=tik.scope_ubuf)
         self.depth_ub = self.tik_instance.Tensor(
-            self.dtype_depth, (SCALAR_TENSOR_SIZE,), name='depth_ub', scope=tik.scope_ubuf)
+            self.dtype_depth, (Constant.SCALAR_TENSOR_SIZE,), name='depth_ub', scope=tik.scope_ubuf)
         self.on_value = self.tik_instance.Scalar(
             self.dtype_on_value, name='on_value')
         self.off_value = self.tik_instance.Scalar(
@@ -351,7 +355,7 @@ class OneHot():
             self.on_value_gm,
             0,
             1,
-            SCALAR_TENSOR_SIZE //
+            Constant.SCALAR_TENSOR_SIZE //
             self.on_value_each_block,
             0,
             0)
@@ -361,7 +365,7 @@ class OneHot():
             self.off_value_gm,
             0,
             1,
-            SCALAR_TENSOR_SIZE //
+            Constant.SCALAR_TENSOR_SIZE //
             self.off_value_each_block,
             0,
             0)
@@ -372,7 +376,7 @@ class OneHot():
             self.depth_gm,
             0,
             1,
-            SCALAR_TENSOR_SIZE //
+            Constant.SCALAR_TENSOR_SIZE //
             self.depth_each_block,
             0,
             0)
@@ -977,7 +981,7 @@ class OneHot():
             with self.tik_instance.if_scope(i == x_move_times - 1):
                 with self.tik_instance.for_range(0, (end - begin) % self.per_part_unused_ub) as index:
                     self.index_scalar.set_as(self.x_ub[index])
-                    with self.tik_instance.for_range(0, cal_num) as j:
+                    with self.tik_instance.for_range(0, Constant.cal_num) as j:
                         with self.tik_instance.if_scope(
                                 tik.all(self.index_scalar < part_num * (j + 1), self.index_scalar >= part_num * j)):
                             self.index_scalar.set_as(
@@ -998,7 +1002,7 @@ class OneHot():
             with self.tik_instance.else_scope():
                 with self.tik_instance.for_range(0, self.per_part_unused_ub) as index:
                     self.index_scalar.set_as(self.x_ub[index])
-                    with self.tik_instance.for_range(0, cal_num) as j:
+                    with self.tik_instance.for_range(0, Constant.cal_num) as j:
                         with self.tik_instance.if_scope(
                                 tik.all(self.index_scalar < part_num * (j + 1), self.index_scalar >= part_num * j)):
                             self.index_scalar.set_as(
@@ -1372,7 +1376,7 @@ class OneHot():
                 with self.tik_instance.for_range(0, self.numel_shape_x % self.per_part_unused_ub) as k:
                     self.index_scalar.set_as(self.x_ub[k])
                     with self.tik_instance.if_scope(tik.all(self.index_scalar < end, self.index_scalar >= begin)):
-                        with self.tik_instance.for_range(0, cal_num) as j:
+                        with self.tik_instance.for_range(0, Constant.cal_num) as j:
                             with self.tik_instance.if_scope(
                                     tik.all(((self.numel_shape_x // self.per_part_unused_ub * self.per_part_unused_ub)
                                              + k) < part_num * (j + 1), ((self.numel_shape_x //
@@ -1384,9 +1388,9 @@ class OneHot():
                                                     part_num *
                                                     j -
                                                     1) //
-                                                   SCALAR_TENSOR_SIZE +
+                                                   Constant.SCALAR_TENSOR_SIZE +
                                                    1) *
-                                                  SCALAR_TENSOR_SIZE -
+                                                  Constant.SCALAR_TENSOR_SIZE -
                                                   (self.numel_shape_x -
                                                    part_num *
                                                    j))
@@ -1428,7 +1432,7 @@ class OneHot():
                 with self.tik_instance.for_range(0, self.per_part_unused_ub) as i:
                     self.index_scalar.set_as(self.x_ub[i])
                     with self.tik_instance.if_scope(tik.all(self.index_scalar < end, self.index_scalar >= begin)):
-                        with self.tik_instance.for_range(0, cal_num) as j:
+                        with self.tik_instance.for_range(0, Constant.cal_num) as j:
                             with self.tik_instance.if_scope(
                                     tik.all((i + index * self.per_part_unused_ub) < part_num * (j + 1),
                                             (i + index * self.per_part_unused_ub) >= part_num * j)):
@@ -1437,9 +1441,9 @@ class OneHot():
                                                     part_num *
                                                     j -
                                                     1) //
-                                                   SCALAR_TENSOR_SIZE +
+                                                   Constant.SCALAR_TENSOR_SIZE +
                                                    1) *
-                                                  SCALAR_TENSOR_SIZE -
+                                                  Constant.SCALAR_TENSOR_SIZE -
                                                   (self.numel_shape_x -
                                                    part_num *
                                                    j))
@@ -1640,8 +1644,8 @@ class OneHot():
                                                           self.depth *
                                                           self.last_dim_x +
                                                           self.index_scalar *
-                                                          self.last_dim_x], self.off_value_tensor_ub, 0, 1, self.last_dim_x //
-                                                self.off_value_each_block, 0, 0)
+                                                          self.last_dim_x], self.off_value_tensor_ub, 0, 1, 
+                                                          self.last_dim_x // self.off_value_each_block, 0, 0)
                     self.align_to_32_last_block(
                         self.last_dim_x,
                         self.not_last_core_numel *
@@ -2243,7 +2247,7 @@ class OneHot():
                                 self.last_dim_x % self.per_part_unused_ub > 0)):
                     with self.tik_instance.for_range(0, self.last_dim_x % self.per_part_unused_ub) as k:
                         self.index_scalar.set_as(self.x_ub[k])
-                        with self.tik_instance.for_range(0, cal_num) as j:
+                        with self.tik_instance.for_range(0, Constant.cal_num) as j:
                             with self.tik_instance.if_scope(
                                     tik.all((k + (self.last_dim_x // self.per_part_unused_ub * self.per_part_unused_ub))
                                             < part_num * (j + 1),
@@ -2346,7 +2350,7 @@ class OneHot():
                 with self.tik_instance.else_scope():
                     with self.tik_instance.for_range(0, self.per_part_unused_ub) as cnt:
                         self.index_scalar.set_as(self.x_ub[cnt])
-                        with self.tik_instance.for_range(0, cal_num) as j:
+                        with self.tik_instance.for_range(0, Constant.cal_num) as j:
                             with self.tik_instance.if_scope(
                                     tik.all((cnt + index * self.per_part_unused_ub) < part_num * (j + 1),
                                             (cnt + index * self.per_part_unused_ub) >= part_num * j)):
@@ -2519,4 +2523,3 @@ def one_hot(x,
         x, depth, on_value, off_value, axis, y, kernel_name)
     tik_instance = one_hot_instance.one_hot_compute_tiling()
     return tik_instance
-

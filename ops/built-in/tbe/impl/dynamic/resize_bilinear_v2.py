@@ -364,7 +364,7 @@ class ResizeBilinearV2(OpBase):
                                                                scope=tik.scope_ubuf)
             vector_repeat_num = (idx_num + 63) // 64
             if self.half_pixel_centers:
-                # calcu: (idx + 0.5) * scale - 0.5
+                # calcu: `(idx + 0.5) * scale - 0.5`
                 self.tik_instance.vadds(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, 0.5, vector_repeat_num, 1, 1, 8, 8)
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub, scale, vector_repeat_num,
                                         1, 1, 8, 8)
@@ -376,7 +376,7 @@ class ResizeBilinearV2(OpBase):
                                            mem_info["zero"]["fp32"], vector_repeat_num,
                                            1, 1, 0, 8, 8, 0)
             else:
-                # calcu: idx * scale
+                # calcu: `idx * scale`
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale, vector_repeat_num, 1, 1, 8,
                                         8)
             # do vmax for 0
@@ -445,7 +445,7 @@ class ResizeBilinearV2(OpBase):
         """
         with self.tik_instance.new_stmt_scope():
             if self.half_pixel_centers:
-                # calcu: (idx + 0.5) * scale - 0.5
+                # calcu: `(idx + 0.5) * scale - 0.5`
                 util_tik_comm_func.tik_func_vadds(self.tik_instance,
                                                   src1,
                                                   idx_ub_fp32,
@@ -485,7 +485,7 @@ class ResizeBilinearV2(OpBase):
                                                     src1_rep=0,
                                                     dst_rep=32)
             else:
-                # calcu: idx * scale
+                # calcu: `idx * scale`
                 util_tik_comm_func.tik_func_vmuls(self.tik_instance,
                                                   src1,
                                                   idx_ub_fp32,
@@ -636,13 +636,14 @@ class ResizeBilinearV2(OpBase):
             self.tik_instance.vector_dup(8, function_default_int32_ub[40], scalar_input, 1, 1, 8)
             util_tik_comm_func.tik_func_vconv(self.tik_instance, function_default_fp32_ub, function_default_int32_ub,
                                               64)
-        mem_default = dict()
-        mem_default["zero"] = {"int32": function_default_int32_ub[0:], "fp32": function_default_fp32_ub[0:]}
-        mem_default["one"] = {"int32": function_default_int32_ub[8:], "fp32": function_default_fp32_ub[8:]}
-        mem_default["in_width"] = {"int32": function_default_int32_ub[16:], "fp32": function_default_fp32_ub[16:]}
-        mem_default["in_height"] = {"int32": function_default_int32_ub[24:], "fp32": function_default_fp32_ub[24:]}
-        mem_default["height_start"] = {"int32": function_default_int32_ub[32:], "fp32": function_default_fp32_ub[32:]}
-        mem_default["width_start"] = {"int32": function_default_int32_ub[40:], "fp32": function_default_fp32_ub[40:]}
+        mem_default = {
+            "zero": {"int32": function_default_int32_ub[0:], "fp32": function_default_fp32_ub[0:]},
+            "one": {"int32": function_default_int32_ub[8:], "fp32": function_default_fp32_ub[8:]},
+            "in_width": {"int32": function_default_int32_ub[16:], "fp32": function_default_fp32_ub[16:]},
+            "in_height": {"int32": function_default_int32_ub[24:], "fp32": function_default_fp32_ub[24:]},
+            "height_start": {"int32": function_default_int32_ub[32:], "fp32": function_default_fp32_ub[32:]},
+            "width_start": {"int32": function_default_int32_ub[40:], "fp32": function_default_fp32_ub[40:]}
+        }
 
         return mem_default
 
@@ -2023,7 +2024,7 @@ class ResizeBilinearV2(OpBase):
                         self._function_data_move(1, input_w_len, ub_info, 1)
 
                     vmuls_value = scalar_in_h_weight_1
-                    # get (1 - x_lerp) * (1 - y lerp)
+                    # get `(1 - x_lerp) * (1 - y lerp)`
                     util_tik_comm_func.tik_func_vmuls(self.tik_instance,
                                                       src1_ub[0:],
                                                       src1[8:],
@@ -2033,7 +2034,7 @@ class ResizeBilinearV2(OpBase):
                                                       dst_blk=4,
                                                       src_rep=32,
                                                       dst_rep=32)
-                    # get x_lerp * (1 - y lerp)
+                    # get `x_lerp * (1 - y lerp)`
                     util_tik_comm_func.tik_func_vmuls(self.tik_instance,
                                                       src1_ub[8:],
                                                       src1[0:],
@@ -2044,7 +2045,7 @@ class ResizeBilinearV2(OpBase):
                                                       src_rep=32,
                                                       dst_rep=32)
                     vmuls_value = scalar_in_h_weight
-                    # get (1 - x_lerp) * y lerp
+                    # get `(1 - x_lerp) * y lerp`
                     util_tik_comm_func.tik_func_vmuls(self.tik_instance,
                                                       src1_ub[2 * 8:],
                                                       src1[8:],
@@ -2054,7 +2055,7 @@ class ResizeBilinearV2(OpBase):
                                                       dst_blk=4,
                                                       src_rep=32,
                                                       dst_rep=32)
-                    # get x_lerp * y lerp
+                    # get `x_lerp * y lerp`
                     util_tik_comm_func.tik_func_vmuls(self.tik_instance,
                                                       src1_ub[3 * 8:],
                                                       src1[0:],
@@ -2292,7 +2293,7 @@ class ResizeBilinearV2(OpBase):
                 input_top = input_ori_ub_fp32_top
 
             input_num = do_nc_num * self.images_shape_c0 * 2
-            #  calcu: top + (bottom - top) * input_h_weight
+            #  calcu: `top + (bottom - top) * input_h_weight`
             self.tik_instance.vsub(self.vector_num, input_bottom, input_bottom, input_top,
                                    (input_num + self.vector_num - 1) // self.vector_num, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vmuls(self.vector_num, output_h_ub, input_bottom, input_h_weight,
@@ -2300,7 +2301,7 @@ class ResizeBilinearV2(OpBase):
             self.tik_instance.vadd(self.vector_num, output_h_ub, input_top, output_h_ub,
                                    (input_num + self.vector_num - 1) // self.vector_num, 1, 1, 1, 8, 8, 8)
 
-            #  calcu: left + (right - left) * input_w_weight
+            #  calcu: `left + (right - left) * input_w_weight`
             input_num = do_nc_num * self.images_shape_c0
             with self.tik_instance.if_scope(input_w1_index != input_w0_index):
                 self.tik_instance.vsub(self.images_shape_c0, output_last, output_h_ub[self.images_shape_c0:],

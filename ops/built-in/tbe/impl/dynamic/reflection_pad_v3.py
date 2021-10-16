@@ -1201,10 +1201,11 @@ class ReflectionPadV3Init(object):
         opt_config = {"out_of_bound_sync_check": True}
 
         # add compile info
-        wr_compile_info = dict()
-        wr_compile_info["core_num"] = self.core_nums
-        wr_compile_info["mode"] = self.mode
-        wr_compile_info["padding_contiguous"] = self.padding_contiguous
+        wr_compile_info = {
+            "core_num": self.core_nums,
+            "mode": self.mode,
+            "padding_contiguous": self.padding_contiguous
+        }
         if outer_compile_info is not None:
             for key in outer_compile_info.keys():
                 wr_compile_info[key] = outer_compile_info[key]

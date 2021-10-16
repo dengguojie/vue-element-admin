@@ -23,12 +23,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
-from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=too-many-arguments,unused-argument
-# pylint: disable=ttoo-many-locals,redefined-argument-from-local
+# pylint: disable=too-many-locals,redefined-argument-from-local
 def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     Parameters
@@ -47,25 +46,24 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     compute result of relu6grad
     """
     # input_x<=6 and input_x>=0
-    # min(input,6)
+    # get min between input and 6
     min_positive_6 = tbe.vmins(input_x, 6)
-    # max(input,0)
+    # get max between input and 0
     max_zero_min_6 = tbe.vmaxs(min_positive_6, 0)
 
-    # (X-6), X*(X-6)
     x_sub_6 = tbe.vadds(max_zero_min_6, -6)
     x_mul_x_6 = tbe.vmul(max_zero_min_6, x_sub_6)
 
     input_dtype = input_x.dtype
     if input_dtype == "float16":
-        # algrithm : Y = X*(X-6)*1024/(X*(X-6)*1024+ESP_MIN)
+        # algrithm : `Y = X*(X-6)*1024/(X*(X-6)*1024+ESP_MIN)`
         # for float16, add a small number which value is 1.18e-7, so that the divisor is not equal to 0, and for
         # accuracy, multiply by a number which value is 1024.
         x_mul_x_6_big = tbe.vmuls(x_mul_x_6, 1024)
         y_add_espmin = tbe.vadds(x_mul_x_6_big, 1.18e-7)
         y_y_esp_min = tbe.vdiv(x_mul_x_6_big, y_add_espmin)
     if input_dtype == "float32":
-        # algrithm : Y = X*(X-6)/(X*(X-6)+ESP_MIN)
+        # algrithm : `Y = X*(X-6)/(X*(X-6)+ESP_MIN)`
         # for float32, add a small number which value is 1.18e-38, so that the divisor is not equal to 0.
         y_add_espmin = tbe.vadds(x_mul_x_6, 1.18e-38)
         y_y_esp_min = tbe.vdiv(x_mul_x_6, y_add_espmin)
