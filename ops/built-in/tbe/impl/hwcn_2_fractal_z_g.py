@@ -20,12 +20,18 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 
-EPB = 16
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-OFFSET_1 = 256 * 256
-OFFSET_2 = 0
-MAX_CORE_NUM = 32
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    EPB = 16
+    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    OFFSET_1 = 256 * 256
+    OFFSET_2 = 0
+    MAX_CORE_NUM = 32
+
 
 # purpose is not split one block into two
 # when src_c<=16, src_n_unit=lcm(cout_orig, 16) * K, 1<=cout_orig<=16, K is scale
@@ -43,6 +49,7 @@ src_n_unit_dict = {1:320, 2:320, 3:240, 4:320, 5:240, 6:240, 7:224, 8:320,
 #  1 3 3 3 3 3
 left_zero_cycle_dict = {1:16, 2:8, 3:16, 4:4, 5:16, 6:8, 7:16, 8:2, 9:16, 10:8, 11:16, 12:3, 13:16, 14:8, 15:16, 16:1}
 
+
 # pylint: disable=superfluous-parens,useless-object-inheritance
 # pylint: invalid-name,too-many-instance-attributes,too-many-arguments
 # pylint: unused-variable,too-few-public-methods,too-many-statements
@@ -52,6 +59,7 @@ class Hwcn2Fractalzg(object):
     """
     Hwcn2Fractalzg
     """
+# pylint: disable= too-few-public-methods
     class TilingParam(object):
         """
         TilingParam
@@ -108,20 +116,21 @@ class Hwcn2Fractalzg(object):
                         self.loop_groups_repeat.append(pf_groups_repeat[g])
                 self._pad_zero()
 
-            def _pad_zero_impl(self, v, n):
+            @staticmethod
+            def _pad_zero_impl(v, n):
                 while(len(v) < n):
                     v.append(0)
 
             def _pad_zero(self):
-                self._pad_zero_impl(self.loop_kernel_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_kernel_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_c_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_c_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_n_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_n_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_n_tail, CORE_NUM)
-                self._pad_zero_impl(self.loop_groups_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_groups_repeat, CORE_NUM)
+                self._pad_zero_impl(self.loop_kernel_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_kernel_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_n_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_n_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_n_tail, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_groups_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_groups_repeat, Constant.CORE_NUM)
 
         def __init__(self, shape_in, shape_out, groups):
             self.cout_orig = shape_in[3] // groups
@@ -141,7 +150,7 @@ class Hwcn2Fractalzg(object):
             self.vol_gc1 = shape_out[0] // self.khw
             self.g = 1
             self.c1 = 1
-            self.pf_kernel_base = [] #pf means per factor
+            self.pf_kernel_base = [] # pf means per factor
             self.pf_kernel_repeat = []
             self.pf_src_c_base = []
             self.pf_src_c_repeat = []
@@ -176,26 +185,31 @@ class Hwcn2Fractalzg(object):
                 self._dispatch_loop_c_gt_16()
                 self.pcp.composite_c_gt_16(self.pf_kernel_base, self.pf_kernel_repeat,
                                            self.pf_groups_base, self.pf_groups_repeat)
-        def _ceil(self, m, n):
+        
+        @staticmethod
+        def _ceil(m, n):
             return (m + n - 1) // n
 
-        def _lcm(self, m, n):
+        @staticmethod
+        def _lcm(m, n):
             return (m * n) // math.gcd(m, n)
 
         def _update_g(self):
-            E = min(self._lcm(self._lcm(self.cin_orig, EPB) // self.cin_orig,
+            e = min(self._lcm(self._lcm(self.cin_orig, EPB) // self.cin_orig,
                               self._lcm(self.cout_orig, EPB) // self.cout_orig),
                     self.groups)
-            self.g = self._ceil(self.groups, E)
+            self.g = self._ceil(self.groups, e)
             self.c1 = self.vol_gc1 // self.g
 
-        def _sum_all(self, loop):
+        @staticmethod
+        def _sum_all(loop):
             res = 0
-            for i in range(len(loop)):
+            for i, _ in enumerate(loop):
                 res = res + loop[i]
             return res
 
-        def _remove_zero_data(self, tup):
+        @staticmethod
+        def _remove_zero_data(tup):
             tup = [x for x in tup if x != 0]
 
         def _calc_src_n_unit(self):
@@ -233,13 +247,13 @@ class Hwcn2Fractalzg(object):
                         each_factor[i] = each_factor[i] - 1
                 self._remove_zero_data(each_factor)
                 r = 0
-                for i in range(len(each_factor)):
+                for i, _ in enumerate(each_factor):
                     base.append(r)
                     r = r + each_factor[i]
                     repeat.append(each_factor[i])
 
         def _bind_src_n_tail(self, factor_n):
-            for i in range(factor_n - 1):
+            for _ in range(factor_n - 1):
                 self.pf_src_n_tail.append(0)
             self.pf_src_n_tail.append(self.src_n_tail)
 
@@ -247,8 +261,8 @@ class Hwcn2Fractalzg(object):
             factor_k = self.khw
             factor_c = 1
             factor_n = 1
-            if factor_k >= CORE_NUM:
-                factor_k = CORE_NUM
+            if factor_k >= Constant.CORE_NUM:
+                factor_k = Constant.CORE_NUM
 
             # step 1: kernel factor
             unit = 1
@@ -256,12 +270,12 @@ class Hwcn2Fractalzg(object):
 
             # step 2: src_c factor
             if self.src_c > EPB:
-                factor_c = self.src_c // EPB if CORE_NUM // factor_k > self.src_c // EPB else CORE_NUM // factor_k
+                factor_c = self.src_c // EPB if Constant.CORE_NUM // factor_k > self.src_c // EPB else Constant.CORE_NUM // factor_k
             unit = EPB
             self._each_factor_process_num(self.src_c, factor_c, unit, self.pf_src_c_base, self.pf_src_c_repeat)
 
             # step 3: src_n factor
-            factor_n = CORE_NUM // (factor_k * factor_c)
+            factor_n = Constant.CORE_NUM // (factor_k * factor_c)
             self._calc_src_n_unit()
             self._calc_src_n_tail()
             if factor_n == 0:
@@ -274,15 +288,15 @@ class Hwcn2Fractalzg(object):
 
         def _dispatch_loop_c_gt_16(self):
             factor_k = self.khw
-            if factor_k >= CORE_NUM:
-                factor_k = CORE_NUM
+            if factor_k >= Constant.CORE_NUM:
+                factor_k = Constant.CORE_NUM
 
             # step 1: kernel factor
             unit = 1
             self._each_factor_process_num(self.khw, factor_k, unit, self.pf_kernel_base, self.pf_kernel_repeat)
 
             # step 2: src_n factor
-            factor_g = CORE_NUM // (factor_k)
+            factor_g = Constant.CORE_NUM // (factor_k)
             if factor_g == 0:
                 factor_g = 1
             unit = 1
@@ -315,14 +329,14 @@ class Hwcn2Fractalzg(object):
             loop_top_distance.append(top_distance)
 
         def _calc_init_position(self):
-            for i in range(CORE_NUM):
+            for i in range(Constant.CORE_NUM):
                 block_idx = self.pcp.loop_src_n_base[i] * self.src_n_unit // self.cout_orig
                 self._calc_init_position_common(block_idx, self.loop_left_zero,
                                                 self.loop_top_distance,
                                                 self.loop_nc0_counter)
 
         def _calc_init_position_tail(self):
-            for i in range(CORE_NUM):
+            for i in range(Constant.CORE_NUM):
                 block_idx = (self.pcp.loop_src_n_base[i] + self.pcp.loop_src_n_repeat[i]) * self.src_n_unit //\
                              self.cout_orig
                 self._calc_init_position_common(block_idx, self.loop_left_zero_tail,
@@ -331,7 +345,7 @@ class Hwcn2Fractalzg(object):
 
     def __init__(self, tik_inst, data_in, data_out, data_workspace):
         self.tik_inst = tik_inst
-        self.ub_input = tik_inst.Tensor("float16", (UB_SIZE // 2, ), tik.scope_ubuf, "ub_input")
+        self.ub_input = tik_inst.Tensor("float16", (Constant.UB_SIZE // 2, ), tik.scope_ubuf, "ub_input")
         self.data_in = data_in
         self.data_out = data_out
         self.data_workspace = data_workspace
@@ -347,7 +361,7 @@ class Hwcn2Fractalzg(object):
                                       pc_src_c_base, pc_src_c_repeat, pc_src_n_base, pc_src_n_repeat,
                                       left_zero, top_distance, nc0_counter,
                                       src_n_tail, left_zero_tail, top_distance_tail, nc0_counter_tail):
-        for i in range(CORE_NUM):
+        for i in range(Constant.CORE_NUM):
             with self.tik_inst.if_scope(block_idx == i):
                 pc_kernel_base.set_as(tp.pcp.loop_kernel_base[i])
                 pc_kernel_repeat.set_as(tp.pcp.loop_kernel_repeat[i])
@@ -365,17 +379,19 @@ class Hwcn2Fractalzg(object):
 
     def _get_param_by_block_idx_gt_16(self, block_idx, tp, pc_kernel_base, pc_kernel_repeat,
                                       pc_groups_base, pc_groups_repeat):
-        for i in range(CORE_NUM):
+        for i in range(Constant.CORE_NUM):
             with self.tik_inst.if_scope(block_idx == i):
                 pc_kernel_base.set_as(tp.pcp.loop_kernel_base[i])
                 pc_kernel_repeat.set_as(tp.pcp.loop_kernel_repeat[i])
                 pc_groups_base.set_as(tp.pcp.loop_groups_base[i])
                 pc_groups_repeat.set_as(tp.pcp.loop_groups_repeat[i])
 
-    def _calc_src_addr_ws(self, tp, lk, lsn, src_addr):
+    @staticmethod
+    def _calc_src_addr_ws(tp, lk, lsn, src_addr):
         src_addr.set_as(lk * tp.vol_cn + lsn * tp.src_n_unit)
 
-    def _calc_dst_addr_ws(self, tp, lk, lsn, dst_addr):
+    @staticmethod
+    def _calc_dst_addr_ws(tp, lk, lsn, dst_addr):
         dst_addr.set_as(lk * tp.src_n * EPB + lsn * tp.src_n_unit * EPB)
 
     def  _copy_in_ws(self, tp, ub_input, ub_offset, src_addr, is_tail):
@@ -395,16 +411,16 @@ class Hwcn2Fractalzg(object):
 
     def _zero_offset_1(self, ub_input, repeat=248):
         # mask,dst,scalar, repeat_times, dst_blk_stride, dst_rep_stride
-        self.tik_inst.vector_dup(128, ub_input[OFFSET_1], 0, repeat, 1, 8)
+        self.tik_inst.vector_dup(128, ub_input[Constant.OFFSET_1], 0, repeat, 1, 8)
 
     def _zero_offset_2(self, ub_input, repeat=248):
-        self.tik_inst.vector_dup(128, ub_input[OFFSET_2], 0, repeat, 1, 8)
+        self.tik_inst.vector_dup(128, ub_input[Constant.OFFSET_2], 0, repeat, 1, 8)
 
     def _reorder_ws(self, tp, ub_input, is_tail):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(is_tail == 0):
             src_addr_list = [ub_input[tp.src_n_unit * i] for i in range(EPB)]
-            dst_addr_list = [ub_input[OFFSET_1 + EPB * i] for i in range(EPB)]
+            dst_addr_list = [ub_input[Constant.OFFSET_1 + EPB * i] for i in range(EPB)]
             repeat_cnt = tp.burst_len_unit
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride = 0
@@ -417,7 +433,7 @@ class Hwcn2Fractalzg(object):
             if tp.src_n == 17:
                 return
             src_addr_list = [ub_input[tp.src_n_tail * i] for i in range(EPB)]
-            dst_addr_list = [ub_input[OFFSET_1 + EPB * i] for i in range(EPB)]
+            dst_addr_list = [ub_input[Constant.OFFSET_1 + EPB * i] for i in range(EPB)]
             repeat_cnt = tik_inst.Scalar("int64", init_value=tp.burst_len_tail)
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride = 0
@@ -431,9 +447,9 @@ class Hwcn2Fractalzg(object):
         tik_inst = self.tik_inst
         src_n_tail = tik_inst.Scalar("int64", init_value=tp.src_n_tail)
         with tik_inst.if_scope(is_tail == 0):
-            tik_inst.data_move(self.data_workspace[dst_addr], ub_input[OFFSET_1], 0, 1, tp.src_n_unit, 0, 0)
+            tik_inst.data_move(self.data_workspace[dst_addr], ub_input[Constant.OFFSET_1], 0, 1, tp.src_n_unit, 0, 0)
         with tik_inst.else_scope():
-            tik_inst.data_move(self.data_workspace[dst_addr], ub_input[OFFSET_1], 0, 1, src_n_tail, 0, 0)
+            tik_inst.data_move(self.data_workspace[dst_addr], ub_input[Constant.OFFSET_1], 0, 1, src_n_tail, 0, 0)
 
     def _prepare_by_workspace(self, tp, ub_input, ub_offset, lk, lsn, is_tail):
         tik_inst = self.tik_inst
@@ -445,10 +461,12 @@ class Hwcn2Fractalzg(object):
         self._reorder_ws(tp, ub_input, is_tail)
         self._copy_out_ws(tp, ub_input, dst_addr, is_tail)
 
-    def _calc_src_addr_new(self, tp, lk, lb, src_addr):
+    @staticmethod
+    def _calc_src_addr_new(tp, lk, lb, src_addr):
         src_addr.set_as(lk * tp.src_n * EPB + lb * tp.cout_orig * EPB)
 
-    def _calc_dst_addr_new(self, tp, lk, top_distance, left_zero, nc0_counter, dst_addr):
+    @staticmethod
+    def _calc_dst_addr_new(tp, lk, top_distance, left_zero, nc0_counter, dst_addr):
         dst_addr.set_as(lk * tp.dst_n * EPB +\
                         nc0_counter * tp.vol_hwnc0 +\
                         top_distance * EPB +\
@@ -470,7 +488,7 @@ class Hwcn2Fractalzg(object):
                 with tik_inst.if_scope(left_zero + tp.cin_orig == EPB):
                     left_zero.set_as(0)
                     top_distance.set_as((top_distance + tp.cout_orig) % tp.dst_n)
-                with tik_inst.else_scope():#(left_zero + tp.cin_orig > EPB):
+                with tik_inst.else_scope(): # (left_zero + tp.cin_orig > EPB):
                     consumed.set_as(EPB - left_zero)
                     left_zero.set_as(0)
 
@@ -501,15 +519,15 @@ class Hwcn2Fractalzg(object):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(left_zero + tp.cin_orig < EPB):
             tik_inst.data_move(self.data_out[dst_addr], ub_input, 0, 1, tp.cout_orig, 0, 0)
-        with tik_inst.else_scope(): #overlap scenario
+        with tik_inst.else_scope(): # overlap scenario
             burst_len = tik_inst.Scalar("int64", init_value=tp.cout_orig - 1)
             with tik_inst.if_scope(burst_len != 0):
                 tik_inst.data_move(self.data_out[dst_addr], ub_input, 0, 1, burst_len, 0, 0)
-            tik_inst.vector_dup(128, self.ub_input[OFFSET_1], 0, 1, 1, 8)
+            tik_inst.vector_dup(128, self.ub_input[Constant.OFFSET_1], 0, 1, 1, 8)
             dst_addr.set_as(dst_addr + (tp.cout_orig - 1) * EPB - (EPB - tp.cin_orig))
             with tik_inst.for_range(0, tp.cin_orig) as k:
-                self.ub_input[OFFSET_1 + EPB - tp.cin_orig + k] = self.ub_input[(tp.cout_orig - 1) * EPB + k]
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1], 0, 1, 1, 0, 0)
+                self.ub_input[Constant.OFFSET_1 + EPB - tp.cin_orig + k] = self.ub_input[(tp.cout_orig - 1) * EPB + k]
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0, 1, 1, 0, 0)
 
     def _copy_ws_out_aligned(self, tp, ub_input, lk, lb, left_zero, top_distance, nc0_counter, consumed):
         tik_inst = self.tik_inst
@@ -543,14 +561,16 @@ class Hwcn2Fractalzg(object):
         with tik_inst.if_scope(consumed != 0):
             self._copy_ws_out_aligned(tp, ub_input, lk, lb, left_zero, top_distance, nc0_counter, consumed)
 
-    def _calc_block_param(self, tp, pc_src_n_base, pc_src_n_repeat, block_base, block_repeat,
+    @staticmethod
+    def _calc_block_param(tp, pc_src_n_base, pc_src_n_repeat, block_base, block_repeat,
                           src_n_tail, block_base_tail, block_repeat_tail):
         block_base.set_as((pc_src_n_base * tp.src_n_unit) // tp.cout_orig)
         block_repeat.set_as((pc_src_n_repeat * tp.src_n_unit) // tp.cout_orig)
         block_base_tail.set_as(((pc_src_n_base + pc_src_n_repeat) * tp.src_n_unit) // tp.cout_orig)
         block_repeat_tail.set_as(src_n_tail // tp.cout_orig)
 
-    def _backup(self, left_zero, top_distance, nc0_counter,
+    @staticmethod
+    def _backup(left_zero, top_distance, nc0_counter,
                 left_zero_tail, top_distance_tail, nc0_counter_tail,
                 left_zero_bk, top_distance_bk, nc0_counter_bk,
                 left_zero_tail_bk, top_distance_tail_bk, nc0_counter_tail_bk):
@@ -561,7 +581,8 @@ class Hwcn2Fractalzg(object):
         top_distance_tail_bk.set_as(top_distance_tail)
         nc0_counter_tail_bk.set_as(nc0_counter_tail)
 
-    def _restore(self, left_zero, top_distance, nc0_counter,
+    @staticmethod
+    def _restore(left_zero, top_distance, nc0_counter,
                  left_zero_tail, top_distance_tail, nc0_counter_tail,
                  left_zero_bk, top_distance_bk, nc0_counter_bk,
                  left_zero_tail_bk, top_distance_tail_bk, nc0_counter_tail_bk):
@@ -611,7 +632,7 @@ class Hwcn2Fractalzg(object):
         block_base_tail = tik_inst.Scalar("int64", init_value=0)
         block_repeat_tail = tik_inst.Scalar("int64", init_value=0)
 
-        with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+        with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
             self._get_param_by_block_idx_le_16(block_idx, tp, pc_kernel_base, pc_kernel_repeat, pc_src_c_base,
                                                pc_src_c_repeat, pc_src_n_base, pc_src_n_repeat,
                                                left_zero, top_distance, nc0_counter,
@@ -659,10 +680,12 @@ class Hwcn2Fractalzg(object):
                                           left_zero_tail, top_distance_tail, nc0_counter_tail, consumed)
         return
 
-    def _calc_src_addr_gt_16(self, tp, lk, lg, consumed_line, src_addr):
+    @staticmethod
+    def _calc_src_addr_gt_16(tp, lk, lg, consumed_line, src_addr):
         src_addr.set_as(lk * tp.vol_cn + lg * tp.cout_orig + consumed_line * tp.src_n)
 
-    def _calc_dst_addr_gt_16(self, tp, lk, lg, block_seq, dst_addr):
+    @staticmethod
+    def _calc_dst_addr_gt_16(tp, lk, lg, block_seq, dst_addr):
         dst_addr.set_as(lk * tp.dst_n * EPB + block_seq * tp.vol_hwnc0)
         dst_addr.set_as(dst_addr + (lg * tp.cout_orig) % tp.dst_n * EPB)
 
@@ -671,7 +694,7 @@ class Hwcn2Fractalzg(object):
         src_addr = tik_inst.Scalar("int64", init_value=0)
         self._calc_src_addr_gt_16(tp, lk, lg, consumed_line, src_addr)
         with tik_inst.for_range(0, cur_line) as i:
-            tik_inst.data_move(ub_input[OFFSET_1 + pad_line * EPB + ub_offset * EPB],
+            tik_inst.data_move(ub_input[Constant.OFFSET_1 + pad_line * EPB + ub_offset * EPB],
                                self.data_in[src_addr + i * tp.src_n],
                                0, 1, tp.cout_orig_burst_len, 0, 0)
             ub_offset.set_as(ub_offset + tp.cout_orig_burst_len)
@@ -680,8 +703,8 @@ class Hwcn2Fractalzg(object):
         tik_inst = self.tik_inst
         src_stride = tik_inst.Scalar("int64", init_value=0)
         dst_stride = tik_inst.Scalar("int64", init_value=0)
-        src_addr_list = [ub_input[OFFSET_1 + tp.cout_orig_aligned * i] for i in range(EPB)]
-        dst_addr_list = [ub_input[OFFSET_2 + EPB * i] for i in range(EPB)]
+        src_addr_list = [ub_input[Constant.OFFSET_1 + tp.cout_orig_aligned * i] for i in range(EPB)]
+        dst_addr_list = [ub_input[Constant.OFFSET_2 + EPB * i] for i in range(EPB)]
         repeat_cnt = tik_inst.Scalar("int64", init_value=tp.cout_orig_burst_len)
 
         with tik_inst.if_scope(repeat_cnt > 1):
@@ -694,9 +717,10 @@ class Hwcn2Fractalzg(object):
         tik_inst = self.tik_inst
         dst_addr = tik_inst.Scalar("int64", init_value=0)
         self._calc_dst_addr_gt_16(tp, lk, lg, block_seq, dst_addr)
-        tik_inst.data_move(self.data_out[dst_addr], ub_input[OFFSET_2], 0, 1, tp.cout_orig, 0, 0)
+        tik_inst.data_move(self.data_out[dst_addr], ub_input[Constant.OFFSET_2], 0, 1, tp.cout_orig, 0, 0)
 
-    def _init_line_param(self, tp, lg, pad_line, last_line, cur_line, consumed_line, block_seq):
+    @staticmethod
+    def _init_line_param(tp, lg, pad_line, last_line, cur_line, consumed_line, block_seq):
         pad_line.set_as((lg * tp.cin_orig) % EPB)
         last_line.set_as(0)
         cur_line.set_as(EPB - pad_line)
@@ -738,7 +762,7 @@ class Hwcn2Fractalzg(object):
         consumed_line = tik_inst.Scalar("int64", init_value=0)
         block_seq = tik_inst.Scalar("int64", init_value=0)
 
-        with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+        with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
             self._get_param_by_block_idx_gt_16(block_idx, tp, pc_kernel_base, pc_kernel_repeat,
                                                pc_groups_base, pc_groups_repeat)
 

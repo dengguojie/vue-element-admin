@@ -1,38 +1,47 @@
 [
   {
     "op": "HistogramFixedWidthD",
-    "cast_name": "test_histogram_fixed_with_d_001",
+    "case_name": "test_histogram_fixed_with_d_001",
     "input_desc": [
       {
-        "format": "NHWC",
-        "ori_format": "NHWC",
+        "format": "ND",
+        "ori_format": "ND",
         "shape": [
           2
         ],
-        "type": "int32",
+        "ori_shape": [
+          2
+        ],
+        "type": "float16",
         "value_range":[[-1,10]],
         "data_distribute":"uniform",
-        "name": "x",
+        "name": "x"
       },
       {
-        "format": "NHWC",
-        "ori_format": "NHWC",
+        "format": "ND",
+        "ori_format": "ND",
         "shape": [
           2
         ],
-        "type": "int32",
+        "ori_shape": [
+          2
+        ],
+        "type": "float16",
         "value_range":[[6,12]],
         "name": "range"
       }
     ],
     "output_desc": [
       {
-        "format": "NHWC",
-        "ori_format": "NHWC",
+        "format": "ND",
+        "ori_format": "ND",
         "shape": [
           5
         ],
-        "type": "int32",
+        "ori_shape": [
+          5
+        ],
+        "type": "float16",
         "name": "y"
       }
     ],

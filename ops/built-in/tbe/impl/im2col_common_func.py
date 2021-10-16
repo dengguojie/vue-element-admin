@@ -15,29 +15,29 @@
 """
 extract_image_patches
 """
-# import functools
+# pylint: disable=unused-import,too-many-lines
 import math
 import os
-# import re
-# import stat
 
 import te.platform as tbe_platform
 from te import tvm
 
-# from te.lang import cce as tbe
 
+class Constant:
+    """
+    This class for Constant.
+    """
+    BLOCK_SIZE = 16
+    BLOCK_SIZE_INT8 = 32
 
-BLOCK_SIZE = 16
-BLOCK_SIZE_INT8 = 32
-
-DOUBLE_BUFFER = 2
-FP16_SIZE = 2
-INT8_SIZE = 1
-NEED_UB_SPACE_NUM = 2
-SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
-SIZE_UB = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-LOAD3D_REPEAT_TIME_LIMIT = 255
-DELTA = 0.000001  # aviod div zero, fp32 precision
+    DOUBLE_BUFFER = 2
+    FP16_SIZE = 2
+    INT8_SIZE = 1
+    NEED_UB_SPACE_NUM = 2
+    SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+    SIZE_UB = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    LOAD3D_REPEAT_TIME_LIMIT = 255
+    DELTA = 0.000001  # aviod div zero, fp32 precision
 
 
 # pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name
@@ -275,9 +275,9 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     fmap_shape = fmap.shape
     dtype_input = fmap.dtype
     if dtype_input in ('int8', 'uint8'):
-        align_block_size = BLOCK_SIZE_INT8
+        align_block_size = Constant.BLOCK_SIZE_INT8
     else:
-        align_block_size = BLOCK_SIZE
+        align_block_size = Constant.BLOCK_SIZE
 
     fmap_n = fmap_shape[0].value
     fmap_c1 = fmap_shape[1].value
@@ -308,8 +308,8 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
 
     fmap_im2col = _im2col_row_major_v2(fmap_in_l1, fmap_vm_shape, kernel_h, kernel_w, pad, stride, dilate, dtype_input)
 
-    howo = ((out_h * out_w + BLOCK_SIZE - 1) // BLOCK_SIZE) * BLOCK_SIZE
-    fractal_shape = (fmap_n, howo // BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, BLOCK_SIZE, align_block_size)
+    howo = ((out_h * out_w + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
+    fractal_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, Constant.BLOCK_SIZE, align_block_size)
 
     config = {"mac": [16, align_block_size, 16]}
 
@@ -337,9 +337,9 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
         "conv_fm_w": fmap_w,
     }
 
-    ub_split_c1_shape = (fmap_n, howo // BLOCK_SIZE, fmap_c1, kernel_h * kernel_w, BLOCK_SIZE, align_block_size)
+    ub_split_c1_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1, kernel_h * kernel_w, Constant.BLOCK_SIZE, align_block_size)
     ub_split_c1_res = _ub_split_c1(ub_split_c1_shape, fmap_fractal, kernel_h * kernel_w)
-    ub_transpose_shape = (fmap_n, howo // BLOCK_SIZE, BLOCK_SIZE, kernel_h * kernel_w, fmap_c1, align_block_size)
+    ub_transpose_shape = (fmap_n, howo // Constant.BLOCK_SIZE, Constant.BLOCK_SIZE, kernel_h * kernel_w, fmap_c1, align_block_size)
     ub_transpose_res = _ub_transpose(ub_transpose_shape, ub_split_c1_res)
 
     ub_merge_hw_shape = (fmap_n, howo, kernel_h * kernel_w, fmap_c1, align_block_size)
@@ -383,9 +383,9 @@ def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fma
     """
     # cut howo col
     max_v_ub = (used_ub_size // align_block_size // lcm_out_w + khkw - 1) // (khkw + 1)
-    if max_v_ub > LOAD3D_REPEAT_TIME_LIMIT:
-        max_v_ub = LOAD3D_REPEAT_TIME_LIMIT
-    max_v_l1 = SIZE_L1 // (cut_h_col * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER)
+    if max_v_ub > Constant.LOAD3D_REPEAT_TIME_LIMIT:
+        max_v_ub = Constant.LOAD3D_REPEAT_TIME_LIMIT
+    max_v_l1 = Constant.SIZE_L1 // (cut_h_col * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER)
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
     if max_v_ub > 1:
@@ -401,11 +401,11 @@ def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fma
 def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dilated_kernel_w, stride_h, type_size,
                                    avg_split_ub_size, cut_w_row, cut_h_row, c_in_real, align_block_size):
     # cut howo row
-    max_v_ub = avg_split_ub_size // align_block_size // BLOCK_SIZE // khkw
-    max_v_load3d_limit = LOAD3D_REPEAT_TIME_LIMIT // khkw
+    max_v_ub = avg_split_ub_size // align_block_size // Constant.BLOCK_SIZE // khkw
+    max_v_load3d_limit = Constant.LOAD3D_REPEAT_TIME_LIMIT // khkw
     if max_v_ub > max_v_load3d_limit:
         max_v_ub = max_v_load3d_limit
-    max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER)
+    max_v_l1 = Constant.SIZE_L1 // (cut_h_row * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER)
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
     if max_v_ub > 1:
@@ -427,18 +427,21 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
 # pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
                                            c_in_real, align_block_size, dilated_kernel_h):
+    """"
+    The function is get tiling param cut howo partial col.
+    """
     # cut howo col partially
     c_in_align = _ceil_div(c_in_real, align_block_size) * align_block_size
     max_v_ub = avg_split_ub_size // (khkw * c_in_align * align_block_size)
-    max_v_load3d_limit = LOAD3D_REPEAT_TIME_LIMIT // khkw
+    max_v_load3d_limit = Constant.LOAD3D_REPEAT_TIME_LIMIT // khkw
     if max_v_ub > max_v_load3d_limit:
         max_v_ub = 0
 
-    w_size = fmap_w * c_in_align * type_size * DOUBLE_BUFFER
-    max_v_l1 = SIZE_L1 // (dilated_kernel_h * w_size)
-    if SIZE_L1 < (_ceil_div(max_v_l1 * BLOCK_SIZE, out_w) + 1) * stride_h * w_size \
+    w_size = fmap_w * c_in_align * type_size * Constant.DOUBLE_BUFFER
+    max_v_l1 = Constant.SIZE_L1 // (dilated_kernel_h * w_size)
+    if Constant.SIZE_L1 < (_ceil_div(max_v_l1 * Constant.BLOCK_SIZE, out_w) + 1) * stride_h * w_size \
             or cut_h_row > stride_h + dilated_kernel_h - 1:
-        max_v_l1 = SIZE_L1 // (cut_h_row * w_size)
+        max_v_l1 = Constant.SIZE_L1 // (cut_h_row * w_size)
 
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
@@ -446,16 +449,16 @@ def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_s
 
     # cut howo col partially, move_rate
     # move_rate useful move rate while mte2 data move
-    move_rate = max_v_ub * align_block_size / (cut_hw_up_w + DELTA)
+    move_rate = max_v_ub * align_block_size / (cut_hw_up_w + Constant.DELTA)
     return max_v_ub, move_rate
 
 
 def _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row, align_block_size):
     # cut howo khkw c, minimum cut
-    max_v_ub = avg_split_ub_size // (1 * align_block_size * BLOCK_SIZE)
-    if max_v_ub > LOAD3D_REPEAT_TIME_LIMIT:
-        max_v_ub = LOAD3D_REPEAT_TIME_LIMIT
-    max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER)
+    max_v_ub = avg_split_ub_size // (1 * align_block_size * Constant.BLOCK_SIZE)
+    if max_v_ub > Constant.LOAD3D_REPEAT_TIME_LIMIT:
+        max_v_ub = Constant.LOAD3D_REPEAT_TIME_LIMIT
+    max_v_l1 = Constant.SIZE_L1 // (cut_h_row * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER)
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
 
@@ -558,21 +561,21 @@ def im2col_schedule(res, sch_list):
 
     dtype_input = ub_res.dtype
     if dtype_input in ('int8', 'uint8'):
-        align_block_size = BLOCK_SIZE_INT8
-        type_size = INT8_SIZE
+        align_block_size = Constant.BLOCK_SIZE_INT8
+        type_size = Constant.INT8_SIZE
     else:
-        align_block_size = BLOCK_SIZE
-        type_size = FP16_SIZE
+        align_block_size = Constant.BLOCK_SIZE
+        type_size = Constant.FP16_SIZE
 
-    out_hw_up16 = ((out_h * out_w - 1) // BLOCK_SIZE + 1) * BLOCK_SIZE
+    out_hw_up16 = ((out_h * out_w - 1) // Constant.BLOCK_SIZE + 1) * Constant.BLOCK_SIZE
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
     dilated_kernel_w = (kernel_w - 1) * dilate_w + 1
-    lcm_out_w = BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) * out_w
-    cut_h_col = (BLOCK_SIZE // math.gcd(out_w, BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
+    lcm_out_w = Constant.BLOCK_SIZE // math.gcd(out_w, Constant.BLOCK_SIZE) * out_w
+    cut_h_col = (Constant.BLOCK_SIZE // math.gcd(out_w, Constant.BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
-    # cut_h_col while cut_hw = BLOCK_SIZE
-    cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
+    # cut_h_col while cut_hw = Constant.BLOCK_SIZE
+    cut_w_row_s = (Constant.BLOCK_SIZE - 1) * stride_w + 1
     cut_h_row_s = max(stride_h, (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1)
     cut_w_row = cut_w_row_s + dilated_kernel_w - 1
     cut_h_row = cut_h_row_s + dilated_kernel_h - 1
@@ -588,10 +591,10 @@ def im2col_schedule(res, sch_list):
 
     sch[ub_res].buffer_align((1, 1), (1, 1), (1, 1), (1, align_block_size))
     sch[fmap_im2col].buffer_align((1, 1), (out_w, out_w), (1, 1), (1, 1), (1, 1), (1, align_block_size))
-    sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, align_block_size))
+    sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, Constant.BLOCK_SIZE), (1, align_block_size))
 
-    used_ub_size = SIZE_UB // type_size // DOUBLE_BUFFER
-    avg_split_ub_size = used_ub_size // NEED_UB_SPACE_NUM
+    used_ub_size = Constant.SIZE_UB // type_size // Constant.DOUBLE_BUFFER
+    avg_split_ub_size = used_ub_size // Constant.NEED_UB_SPACE_NUM
     howo = out_h * out_w
     khkw = kernel_h * kernel_w
     c_out = khkw * fmap_c1 * fmap_c0
@@ -599,7 +602,7 @@ def im2col_schedule(res, sch_list):
     out_shape = [fmap_n, howo, khkw, c_in_real]
     device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-    def _split_multi_core_32B_not_aligned(multi_core_factor, dma_split_axis_id, dma_split_factor):
+    def _split_multi_core_32b_not_aligned(multi_core_factor, dma_split_axis_id, dma_split_factor):
         """
         split multi core, when 32B is not aligned
         """
@@ -625,12 +628,12 @@ def im2col_schedule(res, sch_list):
 
         return [[res_bind_axis], res_axis_list, [workspace_bind_axis], workspace_axis_list, dma_copy_axis]
 
-    def _split_multi_core_32B_align(tiling_factor):
+    def _split_multi_core_32b_align(tiling_factor):
         """
         split multi core, when 32B is aligned
         """
-        if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
-            howo_align = BLOCK_SIZE
+        if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
+            howo_align = Constant.BLOCK_SIZE
         else:
             howo_align = lcm_out_w
 
@@ -657,7 +660,7 @@ def im2col_schedule(res, sch_list):
 
         res_axis_list = list(res.op.axis).copy()
         res_bind_axis_list = [0 for _ in res_axis_list]
-        for i in range(len(res_bind_axis_list)):
+        for i, _ in enumerate(res_bind_axis_list):
             res_bind_axis_list[i], res_axis_list[i] = sch[res].split(res_axis_list[i], factor=multi_core_factor[i])
         sch[res].reorder(*(res_bind_axis_list + res_axis_list))
         res_bind_axis = sch[res].fuse(*(res_bind_axis_list))
@@ -758,9 +761,9 @@ def im2col_schedule(res, sch_list):
             multi_core_factor[0] = max(_ceil_div(out_shape[0], used_core_num), tiling_factor[0])
             return multi_core_factor
         else:
-            if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
-                howo_align = BLOCK_SIZE
-            elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+            if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
+                howo_align = Constant.BLOCK_SIZE
+            elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
                 howo_align = lcm_out_w
             else:
                 howo_align = howo
@@ -784,7 +787,7 @@ def im2col_schedule(res, sch_list):
 
         return multi_core_factor
 
-    def _schedule_32B_not_aligned(dma_split_axis_id, dma_split_factor, allow_multi_core, reg_mov=True):
+    def _schedule_32b_not_aligned(dma_split_axis_id, dma_split_factor, allow_multi_core, reg_mov=True):
         """
         schedule, when 32B is not aligned
         """
@@ -795,7 +798,7 @@ def im2col_schedule(res, sch_list):
         tiling_param = _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size,
                                          type_size, avg_split_ub_size, align_block_size)
 
-        max_v_cut_col, max_v_cut_row, max_v_cut_col_p, max_v_cut_min, move_rate_cut_col, move_rate_cut_row, \
+        max_v_cut_col, max_v_cut_row, max_v_cut_col_p, _, move_rate_cut_col, move_rate_cut_row, \
         move_rate_cut_col_p = tiling_param
         move_rate = 0
         if max_v_cut_col > 0:
@@ -805,9 +808,9 @@ def im2col_schedule(res, sch_list):
         if move_rate < move_rate_cut_col_p and max_v_cut_col_p > 0:
             move_rate = move_rate_cut_col_p
 
-        if lcm_out_w * c_out <= avg_split_ub_size and khkw * fmap_c1 <= LOAD3D_REPEAT_TIME_LIMIT \
+        if lcm_out_w * c_out <= avg_split_ub_size and khkw * fmap_c1 <= Constant.LOAD3D_REPEAT_TIME_LIMIT \
                 and max_v_cut_col > 0 and max_v_cut_row > 0 \
-                and SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+                and Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
             max_v = avg_split_ub_size // lcm_out_w // c_out
             if lcm_out_w * max_v < howo:
                 # if True cut n howo else only cut n
@@ -819,17 +822,17 @@ def im2col_schedule(res, sch_list):
             c_factor = align_block_size
         elif move_rate == move_rate_cut_row and max_v_cut_row > 0:
             # cut howo row
-            howo_factor = BLOCK_SIZE
+            howo_factor = Constant.BLOCK_SIZE
             khkw_factor = khkw
             c_factor = align_block_size
         elif move_rate == move_rate_cut_col_p and max_v_cut_col_p > 0:
             # cut howo col partially
-            howo_factor = BLOCK_SIZE * max_v_cut_col_p
+            howo_factor = Constant.BLOCK_SIZE * max_v_cut_col_p
             c_factor = c_in_real
             khkw_factor = khkw
         else:
             # cut howo khkw c
-            howo_factor = BLOCK_SIZE
+            howo_factor = Constant.BLOCK_SIZE
             khkw_factor = 1
             c_factor = align_block_size
 
@@ -842,7 +845,7 @@ def im2col_schedule(res, sch_list):
         else:
             multi_core_factor = out_shape.copy()
 
-        split_multi_core_axis_list = _split_multi_core_32B_not_aligned(multi_core_factor, dma_split_axis_id,
+        split_multi_core_axis_list = _split_multi_core_32b_not_aligned(multi_core_factor, dma_split_axis_id,
                                                                        dma_split_factor)
         res_bind_list, res_axis_list, workspace_bind_list, workspace_axis_list, dma_copy_axis = \
             split_multi_core_axis_list
@@ -863,15 +866,15 @@ def im2col_schedule(res, sch_list):
         workspace_axis_inner_list = [workspace_res_n_inner, workspace_res_c1_inner_outer, workspace_res_howo_inner,
                                      workspace_res_khkw_inner, workspace_res_c1_inner]
 
-        if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+        if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
             compute_at_id = 0
-        elif SIZE_L1 >= cut_h_row * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_row * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER \
                 and move_rate != move_rate_cut_col:
             compute_at_id = 1
-        elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER \
                 and move_rate == move_rate_cut_col:
             compute_at_id = 1
-        elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER \
                 and move_rate == move_rate_cut_col:
             compute_at_id = 1
             workspace_c_out_outer, workspace_axis_outer_list[3] = sch[workspace_res].split(workspace_axis_outer_list[3],
@@ -882,7 +885,7 @@ def im2col_schedule(res, sch_list):
             workspace_c_out_outer, workspace_axis_outer_list[3] = sch[workspace_res].split(workspace_axis_outer_list[3],
                                                                                            factor=1)
             workspace_bind_list.append(workspace_c_out_outer)
-            workspace_axis_outer_list[2], workspace_khkw_outer_inner = sch[workspace_res].split(
+            workspace_axis_outer_list[2], _ = sch[workspace_res].split(
                 workspace_axis_outer_list[2], factor=max(kernel_w // tiling_factor[2], 1))
 
         sch[workspace_res].reorder(*(workspace_bind_list + workspace_axis_outer_list + workspace_axis_inner_list))
@@ -949,9 +952,9 @@ def im2col_schedule(res, sch_list):
         if move_rate < move_rate_cut_col_p and max_v_cut_col_p > 0:
             move_rate = move_rate_cut_col_p
         split_khkw_mode = False
-        if lcm_out_w * c_out <= avg_split_ub_size and khkw * fmap_c1 <= LOAD3D_REPEAT_TIME_LIMIT \
+        if lcm_out_w * c_out <= avg_split_ub_size and khkw * fmap_c1 <= Constant.LOAD3D_REPEAT_TIME_LIMIT \
                 and max_v_cut_col > 0 and max_v_cut_row > 0 \
-                and SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+                and Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
             max_v = avg_split_ub_size // lcm_out_w // c_out
             if lcm_out_w * max_v < howo:
                 # if True cut n howo else only cut n
@@ -964,19 +967,19 @@ def im2col_schedule(res, sch_list):
             c_factor = align_block_size * max_v
         elif move_rate == move_rate_cut_row and max_v_cut_row > 0:
             # cut howo row
-            howo_factor = BLOCK_SIZE
+            howo_factor = Constant.BLOCK_SIZE
             khkw_factor = khkw
             max_v = max_v_cut_row
             c_factor = align_block_size * max_v
         elif move_rate == move_rate_cut_col_p and max_v_cut_col_p > 0:
             # cut howo col partially
-            howo_factor = BLOCK_SIZE * max_v_cut_col_p
+            howo_factor = Constant.BLOCK_SIZE * max_v_cut_col_p
             c_factor = c_in_real
             khkw_factor = khkw
             max_v = fmap_c1
         else:
             # cut howo khkw c
-            howo_factor = BLOCK_SIZE
+            howo_factor = Constant.BLOCK_SIZE
             max_v = max_v_cut_min
             if max_v == 0:
                 max_v = 1
@@ -988,7 +991,7 @@ def im2col_schedule(res, sch_list):
             c_factor = align_block_size * max_v
 
         tiling_factor = [n_factor, howo_factor, khkw_factor, c_factor]
-        res_bind_list, res_axis_list = _split_multi_core_32B_align(tiling_factor)
+        res_bind_list, res_axis_list = _split_multi_core_32b_align(tiling_factor)
 
         res_n_outer, res_n_inner = sch[res].split(res_axis_list[0], factor=tiling_factor[0])
         res_howo_outer, res_howo_inner = sch[res].split(res_axis_list[1], factor=tiling_factor[1])
@@ -998,23 +1001,23 @@ def im2col_schedule(res, sch_list):
 
         res_axis_outer_list = [res_n_outer, res_howo_outer, res_khkw_outer, res_c_outer]
 
-        if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+        if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
             compute_at_id = 0
-        elif SIZE_L1 >= cut_h_row * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_row * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER \
                 and move_rate != move_rate_cut_col:
             compute_at_id = 1
-        elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER \
                 and move_rate == move_rate_cut_col:
             compute_at_id = 1
-        elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER \
                 and move_rate == move_rate_cut_col:
             compute_at_id = 1
             res_c_out_outer, res_axis_outer_list[3] = sch[res].split(res_axis_outer_list[3], factor=1)
             res_bind_list.append(res_c_out_outer)
-        elif SIZE_L1 >= cut_h_row_s * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER \
+        elif Constant.SIZE_L1 >= cut_h_row_s * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER \
                 and split_khkw_mode:
             compute_at_id = 2
-            res_axis_outer_list[2], res_khkw_outer_inner = sch[res].split(res_axis_outer_list[2],
+            res_axis_outer_list[2], _ = sch[res].split(res_axis_outer_list[2],
                                                                           factor=max(kernel_w // khkw_factor, 1))
             res_c_out_outer, res_axis_outer_list[3] = sch[res].split(res_axis_outer_list[3], factor=1)
             res_bind_list.append(res_c_out_outer)
@@ -1061,13 +1064,13 @@ def im2col_schedule(res, sch_list):
                 break
 
         res_ub_num = _ceil_div(_ceil_div(c_in_real, align_block_size) * align_block_size, c_in_real) + 1
-        max_ub_limit_32B = min(_ceil_div(_prod(out_shape), device_core_num), avg_split_ub_size // res_ub_num)
-        max_ub_limit_32B = max(align_block_size, max_ub_limit_32B)
+        max_ub_limit_32b = min(_ceil_div(_prod(out_shape), device_core_num), avg_split_ub_size // res_ub_num)
+        max_ub_limit_32b = max(align_block_size, max_ub_limit_32b)
 
         for i in range(min(multi_core_i + 1, dma_split_i), dma_split_i + 1):
-            dma_split_factor, align_split, allow_multi_core = _get_dma_split_factor(i, out_shape, max_ub_limit_32B)
+            dma_split_factor, align_split, allow_multi_core = _get_dma_split_factor(i, out_shape, max_ub_limit_32b)
             if align_split or i == dma_split_i:
-                _schedule_32B_not_aligned(i, dma_split_factor, allow_multi_core, reg_mov=(i != out_shape_len - 1))
+                _schedule_32b_not_aligned(i, dma_split_factor, allow_multi_core, reg_mov=(i != out_shape_len - 1))
                 break
 
     sch[fmap_in_l1].double_buffer()

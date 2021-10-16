@@ -21,7 +21,12 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.tik_op_base import TikOpBase
 
-OP_NAME = "GRUV2HiddenGradCell"
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    OP_NAME = "GRUV2HiddenGradCell"
 
 
 # pylint: disable=too-many-arguments,invalid-name
@@ -60,7 +65,7 @@ def _check_attr(gate_order):
     """
     if gate_order not in ['zrh', 'rzh']:
         rule_desc = "gate_order should be zrh or rzh, but current attr is " + gate_order
-        error_manager_vector.raise_err_check_params_rules(OP_NAME, rule_desc, 'gate_order', gate_order)
+        error_manager_vector.raise_err_check_params_rules(Constant.OP_NAME, rule_desc, 'gate_order', gate_order)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -78,7 +83,7 @@ class GRUHiddenGradCell(TikOpBase):
         self.kernel_name = kernel_name
         self.device_aicore_num = self.tik_instance.d_profiling.get_aicore_num()
         self.ub_byte_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-        # [1, output_dim, batch, 16, 16]
+        # `[1, output_dim, batch, 16, 16]`
         shape = dnt_x["shape"]
         self.t_size = dy["shape"][0]
         self.fuse_size = self.get_shape_size(shape)
@@ -175,13 +180,13 @@ class GRUHiddenGradCell(TikOpBase):
             self.move_data(h1, self.h[self.ht_offset, input_offset], self.dtype, shape)
         h1_sub_n2 = h1
         self.vsub_func(h1_sub_n2, h1, n2, shape)
-        # (1-i2)*i2
+        # `(1-i2)*i2`
         one_i2_mul_i2 = one_sub_i2
         self.vmul_func(one_i2_mul_i2, one_sub_i2, i2, shape)  # free i2
-        # (dh2 + dy)*(1-i2)*i2
+        # `(dh2 + dy)*(1-i2)*i2`
         dh2_mul_i2 = one_i2_mul_i2
         self.vmul_func(dh2_mul_i2, one_i2_mul_i2, dh_add_dy, shape)
-        # (h1-n2)*(dh2 + dy)*(1-i2)*i2
+        # `(h1-n2)*(dh2 + dy)*(1-i2)*i2`
         di2 = dh2_mul_i2
         self.vmul_func(di2, dh2_mul_i2, h1_sub_n2, shape)  # free h1
         # di2 -> out

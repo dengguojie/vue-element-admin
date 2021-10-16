@@ -319,7 +319,7 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
                     error_msg += "Should has test case file like:"
                     error_msg += " built-in/tests/ut/ops_test/" + op_type + "/test_*_impl.py"
                     print(error_msg)
-                    #raise RuntimeError("Not found test case directory")
+                    raise RuntimeError("Not found test case directory")
                 relate_ut_dir_list.append(op_ut_test_dir)
 
         _deal_ops_file_change()

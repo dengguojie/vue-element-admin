@@ -34,11 +34,16 @@ from te.utils import para_check
 # pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
 # pylint: disable=too-few-public-methods
 
-SCALAR_MAX_FP16 = (2 ** 16 - 1)
-SHAPE_SIZE_LIMIT = 2 ** 31
-MAX_BINS = 8192
-MAX_STEPS = 4096
-ESP = 1.192092896e-07
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    SCALAR_MAX_FP16 = (2 ** 16 - 1)
+    SHAPE_SIZE_LIMIT = 2 ** 31
+    MAX_BINS = 8192
+    MAX_STEPS = 4096
+    ESP = 1.192092896e-07
 
 
 # pylint: disable=unused-argument
@@ -55,7 +60,8 @@ class Barrier:
         """
         if isinstance(stmt, _expr.Call):
             stmt = _make.Evaluate(stmt)
-        assert isinstance(stmt, _stmt.Stmt) or callable(stmt)
+        if not isinstance(stmt, _stmt.Stmt) and not callable(stmt):
+            raise ValueError('The stmt is not isinstance and callable!')
         tik_inst._seq_stack[-1].append(stmt)
 
     def __init__(self, tik_instance, workspace, block_num, block_id):
@@ -146,7 +152,7 @@ class Reconstruction():
         self.data_dtype = input_data.get('dtype')
         data_shape = input_data.get('shape')
         self.data_num = functools.reduce(lambda x, y: x * y, data_shape)
-        if self.data_num > SHAPE_SIZE_LIMIT:
+        if self.data_num > Constant.SHAPE_SIZE_LIMIT:
             raise ValueError('Excessive amount of "input_data"(more than 2^31)!')
 
         if len(input_min.get('shape')) != 1 or input_min.get('shape')[0] != 1:
@@ -158,7 +164,7 @@ class Reconstruction():
         if len(cumsum_shape) != 1:
             raise ValueError('The shape of "input_cumsum" must be "(x,)"!')
         self.cumsum_num = cumsum_shape[0]
-        if cumsum_shape[0] > MAX_BINS:
+        if cumsum_shape[0] > Constant.MAX_BINS:
             raise ValueError('Excessive amount of "input_cumsum"(more than 8192)!')
 
         # input&output global memory
@@ -589,7 +595,7 @@ class Reconstruction():
 
         fp16_repeat_time = fp16_loss_each_core // fp16_8_block
         if fp16_repeat_time > 0:
-            self.tik_instance.vec_dup(fp16_8_block, total_loss_fp16, SCALAR_MAX_FP16, fp16_repeat_time, 8)
+            self.tik_instance.vec_dup(fp16_8_block, total_loss_fp16, Constant.SCALAR_MAX_FP16, fp16_repeat_time, 8)
 
         # conv fp32 to fp16
         data_num_scalar = self.tik_instance.Scalar('float32')
@@ -652,7 +658,7 @@ class Reconstruction():
         self.tik_instance.vec_dup(1, scale_tensor, optimal_scale, 1, 8)
         # set scale to one if too small
         eps_scalar = self.tik_instance.Scalar('float32')
-        eps_scalar.set_as(ESP)
+        eps_scalar.set_as(Constant.ESP)
         eps_tensor = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'esp_scale')
         self.tik_instance.vec_dup(1, eps_tensor, eps_scalar, 1, 8)
         cmpmask = self.tik_instance.vcmp_le(8, scale_tensor, eps_tensor, 1, 1)

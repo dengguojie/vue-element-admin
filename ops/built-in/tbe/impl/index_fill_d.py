@@ -33,9 +33,9 @@ def index_fill_d_compute(x, assist1, assist2):
     and the value is that the corresponding position to be filled is value, 
     and all other positions are 0.
     All of the above operations are done in the adaptation layer
-
     Multiply x and assist1, the add result and assist2.
     Parameters
+
     ----------
     x : dict
         shape and dtype of input
@@ -70,14 +70,15 @@ def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
         [-1.,  8., -1.]])
     We implement it in another way.
     Construct two auxiliary tensors in adaptation layer.
-    [                   [                 [
-      [1, 2, 3],         [0, 1, 0],        [-1, 0, -1],
-      [4, 5, 6],   *     [0, 1, 0],    +   [-1, 0, -1],    = 
-      [7, 8, 9]          [0, 1, 0]         [-1, 0, -1]
-    ]                   ]                 ]
-        [[-1.,  2., -1.],
-        [-1.,  5., -1.],
-        [-1.,  8., -1.]]
+    `[                   [                 [`
+    `  [1, 2, 3],         [0, 1, 0],        [-1, 0, -1],`
+    `  [4, 5, 6],   *     [0, 1, 0],    +   [-1, 0, -1],    = `
+    `  [7, 8, 9]          [0, 1, 0]         [-1, 0, -1]`
+    `]                   ]                 ]`
+    `    [[-1.,  2., -1.],`
+    `    [-1.,  5., -1.],`
+    `    [-1.,  8., -1.]]`
+
     Parameters
     ----------
     x : dict
@@ -114,7 +115,8 @@ def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     # check dim
     shape_x_length = len(shape_x)
     if dim < -shape_x_length or dim >= shape_x_length:
-        raise RuntimeError("Out of range, dim should be in[%d,%d], which is [%d]" %(-shape_x_length, shape_x_length - 1, dim))
+        raise RuntimeError(
+            "Out of range, dim should be in [%d, %d], which is [%d]" %(-shape_x_length, shape_x_length - 1, dim))
 
     data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
     data_input_as1 = tvm.placeholder(

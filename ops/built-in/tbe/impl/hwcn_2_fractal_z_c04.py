@@ -21,24 +21,28 @@ from te import tik
 from impl.util.platform_adapter import para_check
 
 
-# available ub size
-TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# available number of cores
-MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# bytes of type float16
-SIZE_TWO_BYTES = 2
-# size of the cube unit
-CUBE_SIZE = 16
-# minimum unit of data_move: 32Bytes
-DATA_MOVE_MIN_UNIT = 32
-# maximum repeat number
-MAX_REPEATS = 255
-# maximum blk stride
-MAX_STRIDE_BLK = 65535
-# maximum mask
-MAX_MASK = 128
-# the value of C0
-C0 = 4
+class Constant:
+    """
+    This class for Constant.
+    """
+    # available ub size
+    TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    # available number of cores
+    MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # bytes of type float16
+    SIZE_TWO_BYTES = 2
+    # size of the cube unit
+    CUBE_SIZE = 16
+    # minimum unit of data_move: 32Bytes
+    DATA_MOVE_MIN_UNIT = 32
+    # maximum repeat number
+    MAX_REPEATS = 255
+    # maximum blk stride
+    MAX_STRIDE_BLK = 65535
+    # maximum mask
+    MAX_MASK = 128
+    # the value of C0
+    C0 = 4
 
 
 # pylint: disable=too-many-instance-attributes,too-many-locals,too-many-lines
@@ -50,7 +54,7 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     core_loop = tik_instance.Scalar("uint64")
     sum_core = tik_instance.Scalar("uint64")
 
-    with tik_instance.if_scope(num_core < total_core_loop_num % MAX_CORE_NUM):
+    with tik_instance.if_scope(num_core < total_core_loop_num % Constant.MAX_CORE_NUM):
         core_loop.set_as((total_core_loop_num + core_number - 1) //
                          core_number)
         sum_core.set_as(core_loop * num_core)
@@ -58,9 +62,9 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     with tik_instance.else_scope():
         core_loop.set_as(total_core_loop_num // core_number)
         sum_core.set_as((core_loop + 1) *
-                        (total_core_loop_num % MAX_CORE_NUM) +
+                        (total_core_loop_num % Constant.MAX_CORE_NUM) +
                         core_loop *
-                        (num_core - total_core_loop_num % MAX_CORE_NUM))
+                        (num_core - total_core_loop_num % Constant.MAX_CORE_NUM))
 
     return core_loop, sum_core
 
@@ -69,10 +73,10 @@ def _set_core_num(loop_number):
     """
     set the block_num
     """
-    if loop_number < MAX_CORE_NUM:
+    if loop_number < Constant.MAX_CORE_NUM:
         return loop_number
 
-    return MAX_CORE_NUM
+    return Constant.MAX_CORE_NUM
 
 
 def _cal_core_loop(tik_instance, num_data_one_loop, core_loop, ub_ori):
@@ -165,19 +169,19 @@ class HWCN2FRACTALZC04Compute:
         self.src_shape = src_shape
         self.dtype = dtype
         self.kernel_name = kernel_name
-        self.dst_shape = [(self.src_shape[0] * self.src_shape[1] * C0 +
-                           CUBE_SIZE - 1) // CUBE_SIZE,
-                          (self.src_shape[3] + CUBE_SIZE - 1) // CUBE_SIZE,
-                          CUBE_SIZE, CUBE_SIZE]
+        self.dst_shape = [(self.src_shape[0] * self.src_shape[1] * Constant.C0 +
+                           Constant.CUBE_SIZE - 1) // Constant.CUBE_SIZE,
+                          (self.src_shape[3] + Constant.CUBE_SIZE - 1) // Constant.CUBE_SIZE,
+                          Constant.CUBE_SIZE, Constant.CUBE_SIZE]
 
-        self.num_byte = SIZE_TWO_BYTES
-        self.mask = MAX_MASK
+        self.num_byte = Constant.SIZE_TWO_BYTES
+        self.mask = Constant.MAX_MASK
         # the number of data that can be moved in each data_move
-        self.num_data = DATA_MOVE_MIN_UNIT // self.num_byte
+        self.num_data = Constant.DATA_MOVE_MIN_UNIT // self.num_byte
         para_check.check_shape_rule(self.dst_shape)
         para_check.check_tensor_shape_size(self.dst_shape)
         # the number of data that UB can put in
-        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // self.num_byte // 2
+        self.ub_memory = min(Constant.TOTAL_UB_MEMORY, 252 * 1024) // self.num_byte // 2
         self.src_gm = None
         self.dst_gm = None
 
@@ -223,34 +227,34 @@ class HWCN2FRACTALZC04Compute:
         vector_dup zeros when dup_number is Scalar
         """
         scalar_zero = tik_instance.Scalar(dtype=self.dtype, init_value=0.0)
-        repeat_number = dup_number // MAX_MASK
-        tail = dup_number % MAX_MASK
+        repeat_number = dup_number // Constant.MAX_MASK
+        tail = dup_number % Constant.MAX_MASK
 
-        with tik_instance.for_range(0, repeat_number // MAX_REPEATS) as \
+        with tik_instance.for_range(0, repeat_number // Constant.MAX_REPEATS) as \
                 num_repeat_loop:
-            tik_instance.vector_dup(MAX_MASK,
-                                    ub_trans[MAX_MASK * MAX_REPEATS *
+            tik_instance.vector_dup(Constant.MAX_MASK,
+                                    ub_trans[Constant.MAX_MASK * Constant.MAX_REPEATS *
                                              num_repeat_loop + offset],
                                     scalar_zero,
-                                    MAX_REPEATS,
+                                    Constant.MAX_REPEATS,
                                     self.num_byte // 2,
-                                    MAX_MASK // self.num_data)
-        with tik_instance.if_scope(repeat_number % MAX_REPEATS != 0):
-            tik_instance.vector_dup(MAX_MASK,
-                                    ub_trans[repeat_number // MAX_REPEATS *
-                                             MAX_MASK * MAX_REPEATS + offset],
+                                    Constant.MAX_MASK // self.num_data)
+        with tik_instance.if_scope(repeat_number % Constant.MAX_REPEATS != 0):
+            tik_instance.vector_dup(Constant.MAX_MASK,
+                                    ub_trans[repeat_number // Constant.MAX_REPEATS *
+                                             Constant.MAX_MASK * Constant.MAX_REPEATS + offset],
                                     scalar_zero,
-                                    repeat_number % MAX_REPEATS,
+                                    repeat_number % Constant.MAX_REPEATS,
                                     self.num_byte // 2,
-                                    MAX_MASK // self.num_data)
+                                    Constant.MAX_MASK // self.num_data)
         with tik_instance.if_scope(tail != 0):
             tik_instance.vector_dup(tail,
-                                    ub_trans[MAX_MASK * repeat_number +
+                                    ub_trans[Constant.MAX_MASK * repeat_number +
                                              offset],
                                     scalar_zero,
                                     1,
                                     self.num_byte // 2,
-                                    MAX_MASK // self.num_data)
+                                    Constant.MAX_MASK // self.num_data)
 
     def vector_dup_zero_python(self, tik_instance, ub_trans, dup_number,
                                offset):
@@ -258,80 +262,80 @@ class HWCN2FRACTALZC04Compute:
         vector_dup zeros when dup_number is python variable
         """
         scalar_zero = tik_instance.Scalar(dtype=self.dtype, init_value=0.0)
-        repeat_number = dup_number // MAX_MASK
-        tail = dup_number % MAX_MASK
+        repeat_number = dup_number // Constant.MAX_MASK
+        tail = dup_number % Constant.MAX_MASK
 
-        with tik_instance.for_range(0, repeat_number // MAX_REPEATS) as \
+        with tik_instance.for_range(0, repeat_number // Constant.MAX_REPEATS) as \
                 num_repeat_loop:
-            tik_instance.vector_dup(MAX_MASK,
-                                    ub_trans[MAX_MASK * MAX_REPEATS *
+            tik_instance.vector_dup(Constant.MAX_MASK,
+                                    ub_trans[Constant.MAX_MASK * Constant.MAX_REPEATS *
                                              num_repeat_loop + offset],
                                     scalar_zero,
-                                    MAX_REPEATS,
+                                    Constant.MAX_REPEATS,
                                     self.num_byte // 2,
-                                    MAX_MASK // self.num_data)
-        if repeat_number % MAX_REPEATS != 0:
-            tik_instance.vector_dup(MAX_MASK,
-                                    ub_trans[repeat_number // MAX_REPEATS *
-                                             MAX_MASK * MAX_REPEATS + offset],
+                                    Constant.MAX_MASK // self.num_data)
+        if repeat_number % Constant.MAX_REPEATS != 0:
+            tik_instance.vector_dup(Constant.MAX_MASK,
+                                    ub_trans[repeat_number // Constant.MAX_REPEATS *
+                                             Constant.MAX_MASK * Constant.MAX_REPEATS + offset],
                                     scalar_zero,
-                                    repeat_number % MAX_REPEATS,
+                                    repeat_number % Constant.MAX_REPEATS,
                                     self.num_byte // 2,
-                                    MAX_MASK // self.num_data)
+                                    Constant.MAX_MASK // self.num_data)
         if tail != 0:
             tik_instance.vector_dup(tail,
-                                    ub_trans[MAX_MASK * repeat_number +
+                                    ub_trans[Constant.MAX_MASK * repeat_number +
                                              offset],
                                     scalar_zero,
                                     1,
                                     self.num_byte // 2,
-                                    MAX_MASK // self.num_data)
+                                    Constant.MAX_MASK // self.num_data)
 
     def data_rearrange_case_zero(self, tik_instance, ub_ori, ub_trans,
                                  loop_number, is_x_padding):
         """
         rearrange data when UB can put in N1 * N0 * X0 data
         """
-        if self.src_shape[2] == C0:
+        if self.src_shape[2] == Constant.C0:
             with tik_instance.if_scope(is_x_padding == 1):
                 chw = self.src_shape[0] * self.src_shape[1] *\
                       self.src_shape[2]
-                dup_number = (CUBE_SIZE - chw % CUBE_SIZE) *\
+                dup_number = (Constant.CUBE_SIZE - chw % Constant.CUBE_SIZE) *\
                              self.dst_shape[1] * self.dst_shape[2]
                 offset = loop_number * self.dst_shape[1] *\
                          self.dst_shape[2] * self.dst_shape[3] -\
-                         (CUBE_SIZE - chw % CUBE_SIZE) * \
+                         (Constant.CUBE_SIZE - chw % Constant.CUBE_SIZE) * \
                          self.dst_shape[1] * self.dst_shape[2]
                 self.vector_dup_zero_python(tik_instance, ub_ori,
                                             dup_number, offset)
 
-        if self.src_shape[3] % CUBE_SIZE != 0:
+        if self.src_shape[3] % Constant.CUBE_SIZE != 0:
             scalar_zero = tik_instance.Scalar(dtype=self.dtype,
                                               init_value=0.0)
             mask = 0
-            for i, _ in enumerate(range(CUBE_SIZE - self.src_shape[3] %
-                                        CUBE_SIZE)):
-                mask += 2 ** (CUBE_SIZE - 1 - i)
+            for i, _ in enumerate(range(Constant.CUBE_SIZE - self.src_shape[3] %
+                                        Constant.CUBE_SIZE)):
+                mask += 2 ** (Constant.CUBE_SIZE - 1 - i)
 
             with tik_instance.for_range(
-                0, loop_number * CUBE_SIZE // MAX_REPEATS) as num_repeat:
-                offset = (num_repeat * MAX_REPEATS + 1) * self.dst_shape[1] * \
-                         self.dst_shape[2] - CUBE_SIZE
+                0, loop_number * Constant.CUBE_SIZE // Constant.MAX_REPEATS) as num_repeat:
+                offset = (num_repeat * Constant.MAX_REPEATS + 1) * self.dst_shape[1] * \
+                         self.dst_shape[2] - Constant.CUBE_SIZE
                 tik_instance.vector_dup([0, mask],
                                         ub_ori[offset],
                                         scalar_zero,
-                                        MAX_REPEATS, 0,
+                                        Constant.MAX_REPEATS, 0,
                                         self.dst_shape[1] *
                                         self.dst_shape[2] // self.num_data)
             with tik_instance.if_scope(
-                loop_number * CUBE_SIZE % MAX_REPEATS != 0):
-                offset = (loop_number * CUBE_SIZE // MAX_REPEATS *
-                          MAX_REPEATS + 1) * self.dst_shape[1] *\
-                         self.dst_shape[2] - CUBE_SIZE
+                loop_number * Constant.CUBE_SIZE % Constant.MAX_REPEATS != 0):
+                offset = (loop_number * Constant.CUBE_SIZE // Constant.MAX_REPEATS *
+                          Constant.MAX_REPEATS + 1) * self.dst_shape[1] *\
+                         self.dst_shape[2] - Constant.CUBE_SIZE
                 tik_instance.vector_dup([0, mask],
                                         ub_ori[offset],
                                         scalar_zero,
-                                        loop_number * CUBE_SIZE % MAX_REPEATS,
+                                        loop_number * Constant.CUBE_SIZE % Constant.MAX_REPEATS,
                                         0,
                                         self.dst_shape[1] *
                                         self.dst_shape[2] //
@@ -340,7 +344,7 @@ class HWCN2FRACTALZC04Compute:
         with tik_instance.for_range(0, loop_number) as num_cn_loop:
             offset = num_cn_loop * self.dst_shape[1] * self.dst_shape[2] * \
                      self.dst_shape[3]
-            dst_list = [ub_trans[i * CUBE_SIZE + offset] for i in range(16)]
+            dst_list = [ub_trans[i * Constant.CUBE_SIZE + offset] for i in range(16)]
             src_list = [ub_ori[i * self.dst_shape[1] * self.dst_shape[2] +
                                offset] for i in range(16)]
             if self.dst_shape[1] == 1:
@@ -349,7 +353,7 @@ class HWCN2FRACTALZC04Compute:
             else:
                 tik_instance.vnchwconv(False, False, dst_list, src_list,
                                        self.dst_shape[1],
-                                       CUBE_SIZE * CUBE_SIZE // self.num_data,
+                                       Constant.CUBE_SIZE * Constant.CUBE_SIZE // self.num_data,
                                        self.num_byte // 2)
 
     def data_rearrange_case_one(self, tik_instance, ub_ori, ub_trans,
@@ -357,33 +361,33 @@ class HWCN2FRACTALZC04Compute:
         """
         rearrange data when UB can not put in N1 * N0 * X0 data
         """
-        chw = self.src_shape[0] * self.src_shape[1] * C0
+        chw = self.src_shape[0] * self.src_shape[1] * Constant.C0
 
-        if self.src_shape[2] == C0 and chw % CUBE_SIZE != 0:
+        if self.src_shape[2] == Constant.C0 and chw % Constant.CUBE_SIZE != 0:
             with tik_instance.if_scope(num_x0 == self.dst_shape[0] - 1):
-                dup_number = (CUBE_SIZE - chw % CUBE_SIZE) * loop_len * \
+                dup_number = (Constant.CUBE_SIZE - chw % Constant.CUBE_SIZE) * loop_len * \
                              self.dst_shape[2]
-                offset = (chw % CUBE_SIZE) * loop_len * self.dst_shape[2]
+                offset = (chw % Constant.CUBE_SIZE) * loop_len * self.dst_shape[2]
                 self.vector_dup_zero_python(tik_instance, ub_ori,
                                             dup_number, offset)
 
-        if self.src_shape[3] % CUBE_SIZE != 0:
+        if self.src_shape[3] % Constant.CUBE_SIZE != 0:
             with tik_instance.if_scope(is_last == 1):
                 scalar_zero = tik_instance.Scalar(dtype=self.dtype,
                                                   init_value=0.0)
                 mask = 0
-                for i, _ in enumerate(range(CUBE_SIZE - self.src_shape[3] %
-                                            CUBE_SIZE)):
-                    mask += 2 ** (CUBE_SIZE - 1 - i)
-                offset = loop_len * self.dst_shape[2] - CUBE_SIZE
+                for i, _ in enumerate(range(Constant.CUBE_SIZE - self.src_shape[3] %
+                                            Constant.CUBE_SIZE)):
+                    mask += 2 ** (Constant.CUBE_SIZE - 1 - i)
+                offset = loop_len * self.dst_shape[2] - Constant.CUBE_SIZE
                 tik_instance.vector_dup([0, mask],
                                         ub_ori[offset],
                                         scalar_zero,
-                                        CUBE_SIZE, 0,
+                                        Constant.CUBE_SIZE, 0,
                                         loop_len * self.dst_shape[2] //
                                         self.num_data)
 
-        dst_list = [ub_trans[i * CUBE_SIZE] for i in range(16)]
+        dst_list = [ub_trans[i * Constant.CUBE_SIZE] for i in range(16)]
         src_list = [ub_ori[i * loop_len * self.dst_shape[2]]
                     for i in range(16)]
         if loop_len == 1:
@@ -392,7 +396,7 @@ class HWCN2FRACTALZC04Compute:
         else:
             tik_instance.vnchwconv(False, False, dst_list, src_list,
                                    loop_len,
-                                   CUBE_SIZE * CUBE_SIZE // self.num_data,
+                                   Constant.CUBE_SIZE * Constant.CUBE_SIZE // self.num_data,
                                    self.num_byte // 2)
 
     def data_move_gm2ub_n_align_zero(self, tik_instance, ub_ori, loop_number,
@@ -401,7 +405,7 @@ class HWCN2FRACTALZC04Compute:
         move data from gm to UB when UB can put in N1 * N0 * X0 data and
         N % 16 == 0
         """
-        if self.src_shape[2] == C0:
+        if self.src_shape[2] == Constant.C0:
             src_gm_index = num_x0 * num_data_one_loop - \
                            (loop_number - 1) * num_data_one_loop
             src_ub_index = 0
@@ -412,15 +416,15 @@ class HWCN2FRACTALZC04Compute:
                                    self.num_data, 0, 0)
         else:
             src_gm_index = (num_x0 - loop_number + 1) * self.src_shape[2] * \
-                           self.src_shape[3] * CUBE_SIZE // C0
+                           self.src_shape[3] * Constant.CUBE_SIZE // Constant.C0
             src_ub_index = 0
             tik_instance.data_move(ub_ori[src_ub_index],
                                    self.src_gm[src_gm_index],
-                                   0, CUBE_SIZE // C0 * loop_number,
+                                   0, Constant.CUBE_SIZE // Constant.C0 * loop_number,
                                    self.src_shape[2] *
                                    self.src_shape[3] // self.num_data,
                                    0,
-                                   (C0 - self.src_shape[2]) *
+                                   (Constant.C0 - self.src_shape[2]) *
                                    self.src_shape[3] // self.num_data)
 
     def data_move_gm2ub_n_align_one(self, tik_instance, ub_ori, src_gm_index,
@@ -429,10 +433,10 @@ class HWCN2FRACTALZC04Compute:
         move data from gm to UB when UB can not put in N1 * N0 * X0 data and
         N % 16 == 0
         """
-        if self.src_shape[2] == C0:
+        if self.src_shape[2] == Constant.C0:
             tik_instance.data_move(ub_ori[0],
                                    self.src_gm[src_gm_index],
-                                   0, C0 * cn_number,
+                                   0, Constant.C0 * cn_number,
                                    loop_len * self.dst_shape[2] //
                                    self.num_data,
                                    (self.src_shape[3] - loop_len *
@@ -440,7 +444,7 @@ class HWCN2FRACTALZC04Compute:
                                    0)
         else:
             with tik_instance.for_range(0, cn_number) as num_cn:
-                tik_instance.data_move(ub_ori[num_cn * C0 * loop_len *
+                tik_instance.data_move(ub_ori[num_cn * Constant.C0 * loop_len *
                                               self.dst_shape[2]],
                                        self.src_gm[src_gm_index + num_cn *
                                                    self.src_shape[2] *
@@ -468,7 +472,7 @@ class HWCN2FRACTALZC04Compute:
                                                align_loop == 0,
                                                num_core_loop !=
                                                core_loop - 1)):
-                if self.src_shape[2] != C0:
+                if self.src_shape[2] != Constant.C0:
                     self.vector_dup_zero(tik_instance, ub_ori,
                                          align_loop * num_data_one_loop, 0)
 
@@ -487,25 +491,25 @@ class HWCN2FRACTALZC04Compute:
 
             with tik_instance.if_scope(num_core_loop == core_loop - 1):
                 # zero padding if C != 4
-                if self.src_shape[2] != C0:
+                if self.src_shape[2] != Constant.C0:
                     self.vector_dup_zero(tik_instance, ub_ori,
                                          remainder * num_data_one_loop, 0)
 
-                if self.src_shape[0] * self.src_shape[1] * C0 % CUBE_SIZE != 0:
-                    cn_number = CUBE_SIZE // C0 * (remainder - 1) +\
+                if self.src_shape[0] * self.src_shape[1] * Constant.C0 % Constant.CUBE_SIZE != 0:
+                    cn_number = Constant.CUBE_SIZE // Constant.C0 * (remainder - 1) +\
                                 self.src_shape[0] * self.src_shape[1] %\
-                                (CUBE_SIZE // C0)
+                                (Constant.CUBE_SIZE // Constant.C0)
                     with tik_instance.if_scope(num_x0 == self.dst_shape[0] -
                                                1):
                         is_x_padding.set_as(1)
-                        if self.src_shape[2] == C0:
+                        if self.src_shape[2] == Constant.C0:
                             src_gm_index = num_x0 * num_data_one_loop - \
                                            (remainder - 1) * num_data_one_loop
                             src_ub_index = 0
                             burst_number = (remainder * num_data_one_loop -
-                                            (CUBE_SIZE - self.src_shape[0] *
+                                            (Constant.CUBE_SIZE - self.src_shape[0] *
                                              self.src_shape[1] *
-                                             self.src_shape[2] % CUBE_SIZE) *
+                                             self.src_shape[2] % Constant.CUBE_SIZE) *
                                             self.dst_shape[1] *
                                             self.dst_shape[2]) // self.num_data
                             tik_instance.data_move(ub_ori[src_ub_index],
@@ -515,7 +519,7 @@ class HWCN2FRACTALZC04Compute:
                             src_gm_index = (num_x0 - remainder + 1) * \
                                            self.src_shape[2] *\
                                            self.src_shape[3] * \
-                                           CUBE_SIZE // C0
+                                           Constant.CUBE_SIZE // Constant.C0
                             src_ub_index = 0
                             tik_instance.data_move(ub_ori[src_ub_index],
                                                    self.src_gm[src_gm_index],
@@ -524,7 +528,7 @@ class HWCN2FRACTALZC04Compute:
                                                    self.src_shape[3] //
                                                    self.num_data,
                                                    0,
-                                                   (C0 - self.src_shape[2]) *
+                                                   (Constant.C0 - self.src_shape[2]) *
                                                    self.src_shape[3] //
                                                    self.num_data)
                     with tik_instance.else_scope():
@@ -559,23 +563,23 @@ class HWCN2FRACTALZC04Compute:
             num_x0 = total_core_loop
             # zero padding if C != 4
             with tik_instance.if_scope(num_core_loop % align_loop == 0):
-                if self.src_shape[2] != C0:
+                if self.src_shape[2] != Constant.C0:
                     self.vector_dup_zero(tik_instance, ub_ori,
                                          align_loop * num_data_one_loop, 0)
 
             src_gm_index = num_x0 * self.src_shape[3] * self.src_shape[2] * \
-                           CUBE_SIZE // C0
+                           Constant.CUBE_SIZE // Constant.C0
             src_ub_index = (num_core_loop % align_loop) * num_data_one_loop
-            if C0 * self.src_shape[0] * self.src_shape[1] % CUBE_SIZE != 0:
+            if Constant.C0 * self.src_shape[0] * self.src_shape[1] % Constant.CUBE_SIZE != 0:
                 with tik_instance.if_scope(num_x0 == self.dst_shape[0] - 1):
                     is_x_padding.set_as(1)
                     with tik_instance.for_range(0, self.src_shape[0] *
                                                 self.src_shape[1] %
-                                                (CUBE_SIZE // C0)) as num_cn:
+                                                (Constant.CUBE_SIZE // Constant.C0)) as num_cn:
                         with tik_instance.for_range(0, self.src_shape[2])\
                                 as num_row:
                             tik_instance.data_move(ub_ori[src_ub_index +
-                                                          (num_cn * C0 +
+                                                          (num_cn * Constant.C0 +
                                                            num_row) *
                                                           self.dst_shape[1] *
                                                           self.dst_shape[2]],
@@ -590,11 +594,11 @@ class HWCN2FRACTALZC04Compute:
                                                    self.dst_shape[2] //
                                                    self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    with tik_instance.for_range(0, CUBE_SIZE // C0) as num_cn:
+                    with tik_instance.for_range(0, Constant.CUBE_SIZE // Constant.C0) as num_cn:
                         with tik_instance.for_range(0, self.src_shape[2])\
                                 as num_row:
                             tik_instance.data_move(ub_ori[src_ub_index +
-                                                          (num_cn * C0 +
+                                                          (num_cn * Constant.C0 +
                                                            num_row) *
                                                           self.dst_shape[1] *
                                                           self.dst_shape[2]],
@@ -609,11 +613,11 @@ class HWCN2FRACTALZC04Compute:
                                                    self.dst_shape[2] //
                                                    self.num_data, 0, 0)
             else:
-                with tik_instance.for_range(0, CUBE_SIZE // C0) as num_cn:
+                with tik_instance.for_range(0, Constant.CUBE_SIZE // Constant.C0) as num_cn:
                     with tik_instance.for_range(0, self.src_shape[2])\
                             as num_row:
                         tik_instance.data_move(ub_ori[src_ub_index +
-                                                      (num_cn * C0 +
+                                                      (num_cn * Constant.C0 +
                                                        num_row) *
                                                       self.dst_shape[1] *
                                                       self.dst_shape[2]],
@@ -657,25 +661,25 @@ class HWCN2FRACTALZC04Compute:
         """
         the data_move process when UB can put not in N1 * N0 * X0 data
         """
-        ori_hwc = self.src_shape[0] * self.src_shape[1] * C0
+        ori_hwc = self.src_shape[0] * self.src_shape[1] * Constant.C0
         src_gm_index = num_x0 * self.src_shape[3] * self.src_shape[2] * \
-                       CUBE_SIZE // C0 + loop_time * loop_n * CUBE_SIZE
+                       Constant.CUBE_SIZE // Constant.C0 + loop_time * loop_n * Constant.CUBE_SIZE
         # zero padding if C != 4
-        if self.src_shape[2] != C0:
+        if self.src_shape[2] != Constant.C0:
             self.vector_dup_zero_python(tik_instance, ub_ori,
-                                        loop_len * CUBE_SIZE * CUBE_SIZE, 0)
+                                        loop_len * Constant.CUBE_SIZE * Constant.CUBE_SIZE, 0)
 
-        if self.src_shape[3] % CUBE_SIZE != 0 or\
+        if self.src_shape[3] % Constant.CUBE_SIZE != 0 or\
                 (self.src_shape[3] - loop_len * self.dst_shape[2]) // \
-                self.num_data > MAX_STRIDE_BLK:
-            if ori_hwc % CUBE_SIZE != 0:
+                self.num_data > Constant.MAX_STRIDE_BLK:
+            if ori_hwc % Constant.CUBE_SIZE != 0:
                 with tik_instance.if_scope(num_x0 == self.dst_shape[0] - 1):
                     with tik_instance.for_range(0, self.src_shape[0] *
                                                 self.src_shape[1] %
-                                                (CUBE_SIZE // C0)) as num_cn:
+                                                (Constant.CUBE_SIZE // Constant.C0)) as num_cn:
                         with tik_instance.for_range(0, self.src_shape[2]) \
                                 as num_row:
-                            tik_instance.data_move(ub_ori[(num_cn * C0 +
+                            tik_instance.data_move(ub_ori[(num_cn * Constant.C0 +
                                                            num_row) *
                                                           loop_len *
                                                           self.dst_shape[2]],
@@ -692,10 +696,10 @@ class HWCN2FRACTALZC04Compute:
                                                    0, 0)
 
                 with tik_instance.else_scope():
-                    with tik_instance.for_range(0, CUBE_SIZE // C0) as num_cn:
+                    with tik_instance.for_range(0, Constant.CUBE_SIZE // Constant.C0) as num_cn:
                         with tik_instance.for_range(0, self.src_shape[2]) \
                                 as num_row:
-                            tik_instance.data_move(ub_ori[(num_cn * C0 +
+                            tik_instance.data_move(ub_ori[(num_cn * Constant.C0 +
                                                            num_row) *
                                                           loop_len *
                                                           self.dst_shape[2]],
@@ -711,10 +715,10 @@ class HWCN2FRACTALZC04Compute:
                                                    self.num_data,
                                                    0, 0)
             else:
-                with tik_instance.for_range(0, CUBE_SIZE // C0) as num_cn:
+                with tik_instance.for_range(0, Constant.CUBE_SIZE // Constant.C0) as num_cn:
                     with tik_instance.for_range(0, self.src_shape[2]) \
                             as num_row:
-                        tik_instance.data_move(ub_ori[(num_cn * C0 +
+                        tik_instance.data_move(ub_ori[(num_cn * Constant.C0 +
                                                        num_row) * loop_len *
                                                       self.dst_shape[2]],
                                                self.src_gm[src_gm_index +
@@ -727,10 +731,10 @@ class HWCN2FRACTALZC04Compute:
                                                self.num_data,
                                                0, 0)
         else:
-            if ori_hwc % CUBE_SIZE != 0:
+            if ori_hwc % Constant.CUBE_SIZE != 0:
                 with tik_instance.if_scope(num_x0 == self.dst_shape[0] - 1):
                     cn_number = self.src_shape[0] * self.src_shape[1] % \
-                                (CUBE_SIZE // C0)
+                                (Constant.CUBE_SIZE // Constant.C0)
                     self.data_move_gm2ub_n_align_one(tik_instance, ub_ori,
                                                      src_gm_index, loop_len,
                                                      cn_number)
@@ -738,10 +742,10 @@ class HWCN2FRACTALZC04Compute:
                 with tik_instance.else_scope():
                     self.data_move_gm2ub_n_align_one(tik_instance, ub_ori,
                                                      src_gm_index, loop_len,
-                                                     C0)
+                                                     Constant.C0)
             else:
                 self.data_move_gm2ub_n_align_one(tik_instance, ub_ori,
-                                                 src_gm_index, loop_len, C0)
+                                                 src_gm_index, loop_len, Constant.C0)
 
         self.data_rearrange_case_one(tik_instance, ub_ori, ub_trans,
                                      is_last, num_x0, loop_len)
@@ -785,7 +789,7 @@ class HWCN2FRACTALZC04Compute:
             align_loop, remainder = _cal_core_loop(tik_instance,
                                                    num_data_one_loop,
                                                    core_loop, ub_ori_data)
-            if self.src_shape[3] % CUBE_SIZE == 0:
+            if self.src_shape[3] % Constant.CUBE_SIZE == 0:
                 self.data_move_case_zero(tik_instance, ub_ori, ub_trans,
                                          core_loop, sum_core, align_loop,
                                          remainder, num_data_one_loop)
@@ -799,10 +803,10 @@ class HWCN2FRACTALZC04Compute:
         """
         the transfer process when UB can not put in N1 * N0 * X0 data
         """
-        ub_ori_data = self.ub_memory - self.ub_memory % (CUBE_SIZE * CUBE_SIZE)
+        ub_ori_data = self.ub_memory - self.ub_memory % (Constant.CUBE_SIZE * Constant.CUBE_SIZE)
         ub_trans_data = ub_ori_data
         loop_n, loop_remainder = _cal_core_loop_python(
-            CUBE_SIZE * CUBE_SIZE, self.dst_shape[1], ub_ori_data)
+            Constant.CUBE_SIZE * Constant.CUBE_SIZE, self.dst_shape[1], ub_ori_data)
         # divide the core according to X0
         total_core_loop_num = self.dst_shape[0]
         core_number = _set_core_num(total_core_loop_num)

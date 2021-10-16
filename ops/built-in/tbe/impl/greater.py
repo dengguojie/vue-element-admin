@@ -24,10 +24,14 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# min float32 value
-MIN_FP32 = 2**(-126)
-# min float16 value
-MIN_FP16 = 2**(-24)
+class Constant:
+    """
+    This class for Constant.
+    """
+    # min float32 value
+    MIN_FP32 = 2**(-126)
+    # min float16 value
+    MIN_FP16 = 2**(-24)
 
 
 # pylint: disable=too-many-locals
@@ -121,11 +125,11 @@ def greater_compute(x, y, z, kernel_name="greater"):
 
     if dtype == "float32":
         # minimun num of float32 2**(-126)
-        data_min = tbe.broadcast(tvm.const(MIN_FP32, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(Constant.MIN_FP32, dtype=dtype),
                                          shape, dtype)
     elif dtype == "float16":
         # minimun num of float16 2**(-24)
-        data_min = tbe.broadcast(tvm.const(MIN_FP16, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(Constant.MIN_FP16, dtype=dtype),
                                          shape, dtype)
     else:
         data_min = tbe.broadcast(tvm.const(1, dtype=dtype),

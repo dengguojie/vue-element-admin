@@ -21,6 +21,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
+
 #pylint: disable=unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("hard_shrink_grad")
 def hard_shrink_grad_compute(gradients, features, backprops, lambd=0.5, kernel_name="hard_shrink_grad"):
@@ -52,6 +53,7 @@ def hard_shrink_grad_compute(gradients, features, backprops, lambd=0.5, kernel_n
     ratio = tbe.vcmpsel(tbe.vabs(features), lambd_tensor, 'le', zero_tensor, one_tensor) 
     result = tbe.vmul(gradients, ratio)
     return result
+
 
 #pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -91,7 +93,7 @@ def hard_shrink_grad(gradients, features, backprops, lambd=0.5, kernel_name="har
     para_check.check_dtype_rule(input_dtype, check_list)
     para_check.check_dtype_rule(grad_dtype, check_list)
     para_check.check_kernel_name(kernel_name)
-    if(lambd < 0):
+    if lambd < 0:
         raise RuntimeError("Only support lambd >= 0 while lambd is {}.".format(lambd))
 
     data_gradients = tvm.placeholder(shape_grad, name="data_gradients", dtype=input_dtype)
@@ -102,4 +104,4 @@ def hard_shrink_grad(gradients, features, backprops, lambd=0.5, kernel_name="har
     config = {"name": kernel_name,
               "tensor_list": [data_gradients, data_features, res]}
 
-    tbe.cce_build_code(schedule, config) 
+    tbe.cce_build_code(schedule, config)

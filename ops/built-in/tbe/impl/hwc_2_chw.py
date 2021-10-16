@@ -19,22 +19,26 @@ from te import tik
 from te import platform as tbe_platform
 
 
-# UB size in byte
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# AICORE count
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# C0 length
-VNC_LEN = 16
-# bytes in one block
-BLOCK_BYTE_SIZE = 32
-# repeat up limit for vector
-REPEAT_LIMIT = 255
-# mask value for float32
-MASK_64 = 64
-# float16/32 type list
-TYPE_FLOAT_LIST = ("float32",)
-# used for vnchwconv
-VNC_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+class Constant:
+    """
+    This class for Constant.
+    """
+    # UB size in byte
+    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    # AICORE count
+    CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # C0 length
+    VNC_LEN = 16
+    # bytes in one block
+    BLOCK_BYTE_SIZE = 32
+    # repeat up limit for vector
+    REPEAT_LIMIT = 255
+    # mask value for float32
+    MASK_64 = 64
+    # float16/32 type list
+    TYPE_FLOAT_LIST = ("float32",)
+    # used for vnchwconv
+    VNC_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 
 
 def _ceil_div(value_x, value_y):
@@ -75,17 +79,17 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
     axis_hw, axis_c = shape_in
     hw_size = axis_hw
     dtype_len = _get_dtype_factor(data_in.dtype)
-    ele_count_per_block = BLOCK_BYTE_SIZE // dtype_len
+    ele_count_per_block = Constant.BLOCK_BYTE_SIZE // dtype_len
     # save 8kb to avoid repeat time of vnchwconv is larger than 255
-    mod_ub_size = UB_SIZE
+    mod_ub_size = Constant.UB_SIZE
     if mod_ub_size > 248 * 1024:
         mod_ub_size = 248 * 1024
     need_ub_size = _floor_trunc(mod_ub_size // 2 // dtype_len, ele_count_per_block)
 
     # each core process certain hw'c lines
-    core_num = _ceil_div(hw_size, _ceil_div(hw_size, CORE_NUM))
+    core_num = _ceil_div(hw_size, _ceil_div(hw_size, Constant.CORE_NUM))
     # to make sure every core process hw is block align except last core
-    sub_hw_per_loop = _floor_trunc(need_ub_size // VNC_LEN // axis_c, ele_count_per_block) * VNC_LEN
+    sub_hw_per_loop = _floor_trunc(need_ub_size // Constant.VNC_LEN // axis_c, ele_count_per_block) * Constant.VNC_LEN
     per_core_hw_cnt = _floor_trunc(_ceil_div(hw_size, core_num), ele_count_per_block)
     last_core_hw_cnt = hw_size - per_core_hw_cnt * (core_num - 1)
 
@@ -123,14 +127,14 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                                        0, 1, axis_c, 0, 0)
 
                 # do hwc to chw transfer
-                inner_hw_len_1 = sub_hw_per_loop // VNC_LEN
+                inner_hw_len_1 = sub_hw_per_loop // Constant.VNC_LEN
                 fp16_inner_hwc_len = inner_hw_len_1 * axis_c * 2
                 fp16_in_ub = in_ub.reinterpret_cast_to("float16")
                 fp16_out_ub = out_ub.reinterpret_cast_to("float16")
                 # first vnchwconv
-                src_addr_list = [fp16_in_ub[fp16_inner_hwc_len * i] for i in VNC_IDX_LIST]
-                dst_addr_list = [fp16_out_ub[VNC_LEN * i] for i in VNC_IDX_LIST]
-                repeat_cnt = _ceil_div(fp16_inner_hwc_len, VNC_LEN)
+                src_addr_list = [fp16_in_ub[fp16_inner_hwc_len * i] for i in Constant.VNC_IDX_LIST]
+                dst_addr_list = [fp16_out_ub[Constant.VNC_LEN * i] for i in Constant.VNC_IDX_LIST]
+                repeat_cnt = _ceil_div(fp16_inner_hwc_len, Constant.VNC_LEN)
                 src_stride = 0 if repeat_cnt == 1 else 1
                 dst_stride = 0 if repeat_cnt == 1 else 16
                 tik_inst.vnchwconv(False, False,
@@ -138,13 +142,13 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                                    repeat_cnt, dst_stride, src_stride)
                 # do hwc to chw transfer
                 with tik_inst.for_range(0, inner_hw_len_1) as inner_hw_1_idx:
-                    tik_inst.data_move(fp16_in_ub[inner_hw_1_idx * 2 * VNC_LEN],
-                                       fp16_out_ub[inner_hw_1_idx * axis_c * 2 * VNC_LEN],
+                    tik_inst.data_move(fp16_in_ub[inner_hw_1_idx * 2 * Constant.VNC_LEN],
+                                       fp16_out_ub[inner_hw_1_idx * axis_c * 2 * Constant.VNC_LEN],
                                        0, axis_c, 2, 0, (inner_hw_len_1 - 1) * 2)
                 # second vnchwconv
-                src_addr_list = [fp16_in_ub[VNC_LEN * i] for i in VNC_IDX_LIST]
-                dst_addr_list = [fp16_out_ub[fp16_inner_hwc_len * i] for i in VNC_IDX_LIST]
-                repeat_cnt = _ceil_div(fp16_inner_hwc_len, VNC_LEN)
+                src_addr_list = [fp16_in_ub[Constant.VNC_LEN * i] for i in Constant.VNC_IDX_LIST]
+                dst_addr_list = [fp16_out_ub[fp16_inner_hwc_len * i] for i in Constant.VNC_IDX_LIST]
+                repeat_cnt = _ceil_div(fp16_inner_hwc_len, Constant.VNC_LEN)
                 src_stride = 0 if repeat_cnt == 1 else 16
                 dst_stride = 0 if repeat_cnt == 1 else 1
                 tik_inst.vnchwconv(False, False,

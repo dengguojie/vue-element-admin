@@ -24,7 +24,11 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-NONETYPE = type(None)
+class Constant:
+    """
+    This class for Constant.
+    """
+    NONETYPE = type(None)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,redefined-builtin

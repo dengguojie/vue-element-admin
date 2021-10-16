@@ -18,22 +18,27 @@ import math
 from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
-from impl.util.platform_adapter import para_check
 from te.utils import op_utils
 from te.platform.fusion_manager import fusion_manager
+from impl.util.platform_adapter import para_check
 
-# neg two
-NEG_TWO = -2
-# neg one
-NEG_ONE = -1
-# ub reserver size
-UB_RESERVE_SIZE = 8 * 1024
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    # neg two
+    NEG_TWO = -2
+    # neg one
+    NEG_ONE = -1
+    # ub reserver size
+    UB_RESERVE_SIZE = 8 * 1024
 
 
 class ScatterAxis():
     """
-       Function: scatter axis
-       Modify : 2020-8
+    Function: scatter axis
+    Modify : 2020-8
     """
 
     def __init__(self, var, indices, updates, var_out, axis, kernel_name, compute_type):
@@ -82,7 +87,7 @@ class ScatterAxis():
         self.kernel_name = kernel_name
         self.compute_type = compute_type
 
-        self.ub_size_bytes = (tik.Dprofile().get_unified_buffer_size() - UB_RESERVE_SIZE)
+        self.ub_size_bytes = (tik.Dprofile().get_unified_buffer_size() - Constant.UB_RESERVE_SIZE)
         self.ai_core_num = tik.Dprofile().get_aicore_num()
 
         self.var_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.var_dtype) // 8
@@ -126,6 +131,37 @@ class ScatterAxis():
         self.init_gm_tensor()
         self.init_ub_tensor_para()
         self.init_scalar_val()
+
+        self.var_vconv_ub = None
+        self.updates_vconv_ub = None
+        self.var_tile_vconv_ub = None
+        self.updates_tile_vconv_ub = None
+        self.var_ub = None
+        self.updates_ub = None
+        self.indices_ub = None
+        self.var_tile_ub = None
+        self.updates_tile_ub = None
+        self.updates_move_tile_ub = None
+        self.var_read_index = None
+        self.updates_read_index = None
+        self.elem_tailpart_start = None
+        self.ori_index = None
+        self.conv_index = None
+        self.elem_data_offset = None
+        self.elem_total_len = None
+        self.elem_end = None
+        self.burst_align_offset = None
+        self.mid_elem_count = None
+        self.elem_tailpart_len = None
+        self.elem_burstpart_start = None
+        self.elem_burstpart_len = None
+        self.elem_burstpart_burstlen = None
+        self.elem_tailpart_burstlen = None
+        self.write_buf_offset = None
+        self.head_elem_len = None
+        self.end_elem_len = None
+        self.slice_loop_index = None
+        self.slice_loop_count = None
 
     def init_gm_tensor(self):
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, self.var_shape, name="var_gm", scope=tik.scope_gm)
@@ -211,6 +247,9 @@ class ScatterAxis():
                                           // self.var_data_each_block * self.var_data_each_block)
 
     def init_elem_move_info(self):
+        """
+        The function is init elem move info.
+        """
         # elem move info
         self.elem_tailpart_start = self.tik_instance.Scalar("int32")
         self.elem_tailpart_start.set_as(0)
@@ -623,6 +662,9 @@ class ScatterAxis():
                                         updates_burst_len, 0, 0)
 
     def compute_function(self, mask, dst_ub, src1_ub, src2_ub, repeat_times, compute_repeat_strid):
+        """
+        The function is compute function.
+        """
         if self.compute_type == "vadd":
             self.tik_instance.vadd(mask, dst_ub, src1_ub, src2_ub, repeat_times, 1, 1, 1, compute_repeat_strid,
                                    compute_repeat_strid, compute_repeat_strid)
@@ -640,11 +682,11 @@ class ScatterAxis():
                                        compute_repeat_strid)
                 self.tik_instance.vmul(mask, src2_ub, src2_ub, tmp_tensor, repeat_times, 1, 1, 1, compute_repeat_strid,
                                        compute_repeat_strid, compute_repeat_strid)
-                self.tik_instance.vadds(mask, src2_ub, src2_ub, NEG_TWO, repeat_times, 1, 1, compute_repeat_strid,
+                self.tik_instance.vadds(mask, src2_ub, src2_ub, Constant.NEG_TWO, repeat_times, 1, 1, compute_repeat_strid,
                                         compute_repeat_strid)
                 self.tik_instance.vmul(mask, src2_ub, src2_ub, tmp_tensor, repeat_times, 1, 1, 1, compute_repeat_strid,
                                        compute_repeat_strid, compute_repeat_strid)
-                self.tik_instance.vmuls(mask, src2_ub, src2_ub, NEG_ONE, repeat_times, 1, 1, compute_repeat_strid,
+                self.tik_instance.vmuls(mask, src2_ub, src2_ub, Constant.NEG_ONE, repeat_times, 1, 1, compute_repeat_strid,
                                         compute_repeat_strid)
                 # mul src1_ub * (1/src2_ub)
                 self.tik_instance.vmul(mask, dst_ub, src1_ub, src2_ub, repeat_times, 1, 1, 1, compute_repeat_strid,
@@ -764,7 +806,7 @@ class ScatterAxis():
 
 @op_utils.check_op_params(dict, dict, dict, dict, int, str)
 def index_add(var, axis_indices, updates, var_out, axis=0, kernel_name="index_add"):
-    '''
+    """
         index add
     :param var: dict
                 input var data
@@ -779,6 +821,6 @@ def index_add(var, axis_indices, updates, var_out, axis=0, kernel_name="index_ad
     :param kernel_name: str
                   kernel name, default value is "index_add"
     :return: none
-    '''
+    """
     scatter = ScatterAxis(var, axis_indices, updates, var_out, axis, kernel_name, "vadd")
     scatter.scatter_axis_operator()

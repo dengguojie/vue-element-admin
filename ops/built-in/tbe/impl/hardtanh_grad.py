@@ -21,7 +21,12 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 
-INF_FP32_VAL = 1e-10
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    INF_FP32_VAL = 1e-10
 
 
 # pylint: disable=too-many-arguments,too-many-locals
@@ -74,7 +79,7 @@ def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_
     sub_min = tbe.vsub(tmp_max, min_tensor)
     mul_max_min = tbe.vmul(sub_max, sub_min)
 
-    add_inf = tbe.vadds(mul_max_min, tvm.const(INF_FP32_VAL, dtype="float32"))
+    add_inf = tbe.vadds(mul_max_min, tvm.const(Constant.INF_FP32_VAL, dtype="float32"))
     div_res = tbe.vdiv(mul_max_min, add_inf)
 
     if in_data_type == "float16":

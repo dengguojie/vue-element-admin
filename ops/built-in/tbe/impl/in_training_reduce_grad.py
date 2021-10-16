@@ -23,8 +23,13 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
-# minimum positive number greater than 0
-EPSLON = 1e-6
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    # minimum positive number greater than 0
+    EPSLON = 1e-6
 
 
 # pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name,too-many-function-args
@@ -145,7 +150,7 @@ def in_training_reduce_grad_compute(dy,
         dy = tbe.cast_to(dy, "float32")
         x = tbe.cast_to(x, "float32")
 
-    data_sqrt = tbe.vsqrt(tbe.vadds(variance, EPSLON))
+    data_sqrt = tbe.vsqrt(tbe.vadds(variance, Constant.EPSLON))
     scale_inv = tbe.vmuls(res_gamma, num_rec)
     scale_inv_reverse = tbe.vmuls(res_gamma, (-1.0) * num_rec)
     offset_inv_reverse = tbe.vmuls(res_beta, (-1.0) * num_rec)

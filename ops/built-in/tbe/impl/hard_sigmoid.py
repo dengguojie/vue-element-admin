@@ -21,6 +21,7 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 
+
 # pylint: disable=unused-argument
 @fusion_manager.register("hard_sigmoid")
 def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmoid"):
@@ -50,13 +51,13 @@ def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmo
         cast_support_s322f16 = tbe_platform.api_check_support("te.lang.cce.cast_to", "s322f16")
         if cast_support_f322f16 and dtype == "float32" or  cast_support_s322f16 and dtype == "int32":
             input_x = tbe.cast_to(input_x, "float16")
-        else:  
+        else:
             raise RuntimeError("Type of input x must be float16")
 
 
     alpha_x = tbe.vmuls(input_x, tvm.const(alpha, input_x.dtype))
     alpha_x_beta = tbe.vadds(alpha_x, tvm.const(beta, input_x.dtype))
-    
+
     vcmpsel_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vcmpsel", "float32")
     if alpha_x_beta.dtype != "float32" and vcmpsel_support_fp32:
         alpha_x_beta = tbe.cast_to(alpha_x_beta, "float32")
@@ -65,7 +66,7 @@ def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmo
         if cast_support_f322f16:
             alpha_x_beta = tbe.cast_to(alpha_x_beta, "float16")
         else:
-            raise RuntimeError("Type of input x must be float16")   
+            raise RuntimeError("Type of input x must be float16")
 
     one_tensor = tbe.broadcast(tvm.const(1, alpha_x_beta.dtype), shape)
     zero_tensor = tbe.broadcast(tvm.const(0, alpha_x_beta.dtype), shape)

@@ -21,28 +21,30 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 
-# neg two
-NEG_TWO = -2
 
-# neg one
-NEG_ONE = -1
-
-# UB Reserve size
-UB_RESERVE_SIZE = 8192
-
-# Some basic global params
-ONE_BLOCK_SIZE = 32
-ONE_VECTOR_CALC_SIZE = 256
-TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
-BITS_OF_ONE_BYTE = 8
-MAX_REPEAT_TIMES = 255
-MAX_UBSIZE_USE_RATE = 0.9
+class Constant:
+    """
+    This class for Constant.
+    """
+    # neg two
+    NEG_TWO = -2
+    # neg one
+    NEG_ONE = -1
+    # UB Reserve size
+    UB_RESERVE_SIZE = 8192
+    # Some basic global params
+    ONE_BLOCK_SIZE = 32
+    ONE_VECTOR_CALC_SIZE = 256
+    TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
+    BITS_OF_ONE_BYTE = 8
+    MAX_REPEAT_TIMES = 255
+    MAX_UBSIZE_USE_RATE = 0.9
 
 
 class Scatter():
     """
-       Function: use to store scatter base parameters
-       Modify : 2019-10-28
+    Function: use to store scatter base parameters
+    Modify : 2019-10-28
     """
 
     def __init__(self, var, indices, updates, var_out, nd_flag, axis, kernel_name,
@@ -105,13 +107,13 @@ class Scatter():
         self.get_some_basic_info()
 
         # decide the mask of computation
-        self.max_num_one_repeat = ONE_VECTOR_CALC_SIZE // TYPE_BYTES_MAP[self.var_dtype]
+        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // Constant.TYPE_BYTES_MAP[self.var_dtype]
 
         # open multi-cores even if update_data_num less than 32B, cause the operation keep distances
         # if the pre_loops muls indices num ge than 32B
         if self.update_data_num < self.var_data_each_block \
                 and functools_reduce(lambda x, y: x * y, self.var_shape[:self.axis + 1]) \
-                * self.var_dtype_bytes_size // self.block_num < ONE_BLOCK_SIZE:
+                * self.var_dtype_bytes_size // self.block_num < Constant.ONE_BLOCK_SIZE:
             self.block_num = 1
 
         # init some variable
@@ -123,6 +125,24 @@ class Scatter():
         # calc the tiling parameters
         self.init_ub_tensor_para()
 
+        self.indices_ub_number = None
+        self.updates_ub_number = None
+        self.vconv_ub_number = None
+        self.var_vconv_ub = None
+        self.updates_vconv_ub = None
+        self.var_tail_vconv_ub = None
+        self.updates_tail_vconv_ub = None
+        self.var_ub = None
+        self.updates_ub = None
+        self.indices_ub = None
+        self.var_tail_ub = None
+        self.updates_tail_ub = None
+        self.var_read_index = None
+        self.updates_read_index = None
+        self.indices_loop_index = None
+        self.indices_tmp = None
+        self.outer_loop_start_index_every_block = None
+
     def get_some_basic_info(self):
         """
         get some basic info, e.x. ub_size_bytes
@@ -130,19 +150,22 @@ class Scatter():
         """
         self.ub_size_bytes = (
                 tbe_platform.cce_conf.get_soc_spec(
-                    tbe_platform.cce_conf.UB_SIZE) - UB_RESERVE_SIZE)
+                    tbe_platform.cce_conf.UB_SIZE) - Constant.UB_RESERVE_SIZE)
         self.var_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
-            self.var_dtype) // BITS_OF_ONE_BYTE
+            self.var_dtype) // Constant.BITS_OF_ONE_BYTE
         self.indices_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
-            self.indices_dtype) // BITS_OF_ONE_BYTE
-        self.var_data_each_block = ONE_BLOCK_SIZE // self.var_dtype_bytes_size
-        self.indices_data_each_block = ONE_BLOCK_SIZE // self.indices_dtype_bytes_size
+            self.indices_dtype) // Constant.BITS_OF_ONE_BYTE
+        self.var_data_each_block = Constant.ONE_BLOCK_SIZE // self.var_dtype_bytes_size
+        self.indices_data_each_block = Constant.ONE_BLOCK_SIZE // self.indices_dtype_bytes_size
         self.indices_ub_number = 0
         self.updates_ub_number = 0
         self.index_loop_num = 0
         self.vconv_ub_number = None
 
     def get_data_num(self):
+        """
+        The function is get data num.
+        """
         self.axis_and_after_data_num_of_updates = functools_reduce(lambda x, y: x * y, self.updates_shape[self.axis:])
         self.axis_and_after_data_num_of_var = functools_reduce(lambda x, y: x * y, self.var_shape[self.axis:])
 
@@ -193,6 +216,9 @@ class Scatter():
         self.outer_loop_start_index_of_updates = None
 
     def create_gm_tensors(self):
+        """
+        The function is create gm tensors.
+        """
         self.var_gm = self.tik_instance.Tensor(
             self.var_dtype, self.var_shape, name="var_gm", scope=tik.scope_gm)
         self.indices_gm = self.tik_instance.Tensor(
@@ -209,6 +235,9 @@ class Scatter():
             self.var_dtype, self.var_shape, name="out_gm", scope=tik.scope_gm)
 
     def get_outer_loop_and_block_num(self):
+        """
+        The function is get outer loop and block num.
+        """
         self.outer_loop = None
         self.outer_loops_per_block = None
 
@@ -239,7 +268,7 @@ class Scatter():
             self.init_ub_tensor_para_of_int8_uint8(indices_size_bytes, updates_size_bytes)
         else:
             # if updates size * 2 is smaller than 0.9 ub size
-            if updates_size_bytes * 2 < self.ub_size_bytes * MAX_UBSIZE_USE_RATE:
+            if updates_size_bytes * 2 < self.ub_size_bytes * Constant.MAX_UBSIZE_USE_RATE:
                 self.updates_ub_number = math.ceil(
                     self.update_data_num /
                     self.var_data_each_block) * self.var_data_each_block
@@ -252,7 +281,7 @@ class Scatter():
                         self.indices_num / self.indices_data_each_block
                     ) * self.indices_data_each_block
             # if indices size is smaller than 0.9 ub size
-            elif indices_size_bytes < self.ub_size_bytes * MAX_UBSIZE_USE_RATE:
+            elif indices_size_bytes < self.ub_size_bytes * Constant.MAX_UBSIZE_USE_RATE:
                 self.indices_ub_number = math.ceil(
                     self.indices_num /
                     self.indices_data_each_block) * self.indices_data_each_block
@@ -277,14 +306,17 @@ class Scatter():
             self.updates_ub_number -= self.var_data_each_block
 
     def init_ub_tensor_para_of_int8_uint8(self, indices_size_bytes, updates_size_bytes):
+        """
+        The function is init ub tensor para of int8 and uint8.
+        """
         vconv_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
             self.vconv_dst_dtype)
-        vconv_data_each_block = ONE_BLOCK_SIZE // vconv_dtype_bytes_size
+        vconv_data_each_block = Constant.ONE_BLOCK_SIZE // vconv_dtype_bytes_size
         vconv_size_bytes = (
                 updates_size_bytes // self.var_dtype_bytes_size *
                 vconv_dtype_bytes_size)
         if (updates_size_bytes + vconv_size_bytes) * 2 < (
-                self.ub_size_bytes * MAX_UBSIZE_USE_RATE):
+                self.ub_size_bytes * Constant.MAX_UBSIZE_USE_RATE):
             self.updates_ub_number = math.ceil(
                 self.update_data_num /
                 self.var_data_each_block) * self.var_data_each_block
@@ -300,7 +332,7 @@ class Scatter():
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
 
-        elif indices_size_bytes < (self.ub_size_bytes * MAX_UBSIZE_USE_RATE):
+        elif indices_size_bytes < (self.ub_size_bytes * Constant.MAX_UBSIZE_USE_RATE):
             self.indices_ub_number = math.ceil(
                 self.indices_num /
                 self.indices_data_each_block) * self.indices_data_each_block
@@ -561,18 +593,18 @@ class Scatter():
         :param element_num:
         :return:
         """
-        compute_loop = element_num // self.max_num_one_repeat // MAX_REPEAT_TIMES
+        compute_loop = element_num // self.max_num_one_repeat // Constant.MAX_REPEAT_TIMES
 
         if compute_loop > 0:
             with self.tik_instance.for_range(0, compute_loop) as index:
-                index_offset = index * self.max_num_one_repeat * MAX_REPEAT_TIMES
+                index_offset = index * self.max_num_one_repeat * Constant.MAX_REPEAT_TIMES
                 self.calc_process(self.max_num_one_repeat, index_offset,
-                                  index_offset, index_offset, MAX_REPEAT_TIMES, False)
+                                  index_offset, index_offset, Constant.MAX_REPEAT_TIMES, False)
         last_loop = element_num % (self.max_num_one_repeat *
-                                   MAX_REPEAT_TIMES) // self.max_num_one_repeat
+                                   Constant.MAX_REPEAT_TIMES) // self.max_num_one_repeat
 
         if last_loop > 0:
-            index_offset = compute_loop * self.max_num_one_repeat * MAX_REPEAT_TIMES
+            index_offset = compute_loop * self.max_num_one_repeat * Constant.MAX_REPEAT_TIMES
             self.calc_process(self.max_num_one_repeat, index_offset,
                               index_offset, index_offset, last_loop, False)
 

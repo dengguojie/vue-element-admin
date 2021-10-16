@@ -15,6 +15,7 @@
 """
 histogram_fixed_width_d
 """
+# pylint: disable = too-many-lines
 from te import platform as tbe_platform
 import te.lang.cce
 import te.platform.cce_params as cce_params
@@ -29,22 +30,27 @@ from impl.util.util_select_op_base import ReduceInput
 from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# segment num one time for copy_gm_to_ubuf
-SEGMENT_SIZE_COPY_GM_TO_UB = 1024 * 10
-# segment num one time for calcu_histogram,
-# when do add use fp16, the value > 2048 will have a large error precision
-SEGMENT_SIZE_CALCU_HISTOGRAM = 1024 * 10
-SEGMENT_SIZE_CALCU_HISTOGRAM_MINI = 2048
-# the max value int 64bit, 2**64 - 1
-MAX_VALUE_UINT64 = 18446744073709551615
-# the bit size of set_vector_mask
-BIT_SIZE_OF_VECTOE_MASK = 128
-# scalar -1
-SCALAR_NEGATIVE_ONE = -1
-# scalar 1
-SCALAR_ONE = 1
-# scalar 0
-SCALAR_ZERO = 0
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    # segment num one time for copy_gm_to_ubuf
+    SEGMENT_SIZE_COPY_GM_TO_UB = 1024 * 10
+    # segment num one time for calcu_histogram,
+    # when do add use fp16, the value > 2048 will have a large error precision
+    SEGMENT_SIZE_CALCU_HISTOGRAM = 1024 * 10
+    SEGMENT_SIZE_CALCU_HISTOGRAM_MINI = 2048
+    # the max value int 64bit, 2**64 - 1
+    MAX_VALUE_UINT64 = 18446744073709551615
+    # the bit size of set_vector_mask
+    BIT_SIZE_OF_VECTOE_MASK = 128
+    # scalar -1
+    SCALAR_NEGATIVE_ONE = -1
+    # scalar 1
+    SCALAR_ONE = 1
+    # scalar 0
+    SCALAR_ZERO = 0
 
 
 # pylint: disable = unused-argument,invalid-name,unused-variable
@@ -71,7 +77,9 @@ def get_op_support_info(x,
 
 # pylint: disable=too-many-instance-attributes
 class IrParams:
-    """IR Params, include all params"""
+    """
+    IR Params, include all params
+    """
 
     # pylint: disable=too-many-statements
     def __init__(self, ib_, dtype_list, shape_list, nbins):
@@ -118,14 +126,14 @@ class IrParams:
                                  self.mid_dtype_size
 
         # for set_vec_mask
-        self.uint64_all_one = tvm.const(MAX_VALUE_UINT64, "uint64")
+        self.uint64_all_one = tvm.const(Constant.MAX_VALUE_UINT64, "uint64")
 
         # get run plat, mini or cloud
         self.compile_plat = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-        self.segment_size_calcu_histogram = SEGMENT_SIZE_CALCU_HISTOGRAM
+        self.segment_size_calcu_histogram = Constant.SEGMENT_SIZE_CALCU_HISTOGRAM
         if self.compile_plat in ("Ascend310",):
             self.segment_size_calcu_histogram = \
-                SEGMENT_SIZE_CALCU_HISTOGRAM_MINI
+                Constant.SEGMENT_SIZE_CALCU_HISTOGRAM_MINI
 
         # cce pipe stri PIPE_ALL
         self.args_str = tvm.call_pure_intrin("int32", "tvm_cce_string_print",
@@ -140,10 +148,10 @@ class IrParams:
 
         self.src_ub = kernel_api.ib_new_alloc(self.ir_builder,
                                               self.input_dtype,
-                                              [SEGMENT_SIZE_COPY_GM_TO_UB],
+                                              [Constant.SEGMENT_SIZE_COPY_GM_TO_UB],
                                               "src_ub",
                                               scope=tbe_platform.scope_ubuf)
-        self.get_ub_size(SEGMENT_SIZE_COPY_GM_TO_UB, self.input_dtype_size)
+        self.get_ub_size(Constant.SEGMENT_SIZE_COPY_GM_TO_UB, self.input_dtype_size)
         self.range_src_ub = kernel_api.ib_new_alloc(
             self.ir_builder, self.input_range_dtype, [self.input_align_len],
             "range_src_ub", scope=tbe_platform.scope_ubuf)
@@ -161,10 +169,10 @@ class IrParams:
         if self.input_dtype != self.mid_dtype:
             self.src_mid_input_ub = \
                 kernel_api.ib_new_alloc(self.ir_builder, self.mid_dtype,
-                                        [SEGMENT_SIZE_COPY_GM_TO_UB],
+                                        [Constant.SEGMENT_SIZE_COPY_GM_TO_UB],
                                         "src_mid_input_ub",
                                         scope=tbe_platform.scope_ubuf)
-            self.get_ub_size(SEGMENT_SIZE_COPY_GM_TO_UB, self.mid_dtype_size)
+            self.get_ub_size(Constant.SEGMENT_SIZE_COPY_GM_TO_UB, self.mid_dtype_size)
             self.src_mid_input_range_ub = \
                 kernel_api.ib_new_alloc(self.ir_builder, self.mid_dtype,
                                         [self.mid_vec_align_len],
@@ -186,7 +194,7 @@ class IrParams:
                                      scope=cce_params.scope_reg)
         # for preprocess
         _shape = \
-            [(((SEGMENT_SIZE_COPY_GM_TO_UB - 1) // self.mid_vec_align_len) +
+            [(((Constant.SEGMENT_SIZE_COPY_GM_TO_UB - 1) // self.mid_vec_align_len) +
               1) * self.mid_vec_align_len]
         self.range0_ub = kernel_api.ib_new_alloc(self.ir_builder,
                                                  self.mid_dtype,
@@ -257,7 +265,8 @@ class IrParams:
         self.ir_builder.scope_attr(self.block, "thread_extent", self.core_num)
 
     def get_ub_size(self, data_len, dtype_size):
-        """add ub size in self.ub_size
+        """
+        add ub size in self.ub_size
 
         Parameters
         ----------
@@ -271,7 +280,8 @@ class IrParams:
         self.ub_size = self.ub_size + data_len * dtype_size
 
     def get_block_offset_one_core(self):
-        """get_block_offset_one_core
+        """
+        get_block_offset_one_core
 
         Parameters
         ----------
@@ -335,7 +345,8 @@ class IrParams:
                 self.reg[6] = self.index_ub.vload(0, self.mid_dtype)
 
     def get_mask_list(self, mask_list_num):
-        """get_mask_list  for 0-64
+        """
+        get_mask_list  for 0-64
 
         Parameters
         ----------
@@ -348,16 +359,17 @@ class IrParams:
         """
         with self.ir_builder.for_range(0, mask_list_num, for_type="serial",
                                        name="mask_index") as mask_index:
-            with self.ir_builder.if_scope(mask_index == SCALAR_ZERO):
+            with self.ir_builder.if_scope(mask_index == Constant.SCALAR_ZERO):
                 self.set_mask_list[mask_index] = tvm.const(
-                    SCALAR_ONE, "uint64")
+                    Constant.SCALAR_ONE, "uint64")
             with self.ir_builder.else_scope():
                 self.set_mask_list[mask_index] = \
-                    tvm.const(SCALAR_ONE*2, "uint64") * \
+                    tvm.const(Constant.SCALAR_ONE*2, "uint64") * \
                     self.set_mask_list[mask_index - 1]
 
     def get_mask_fuc(self, index, mask_index):
-        """get_mask_fuc, calcu self.mask[4]
+        """
+        get_mask_fuc, calcu self.mask[4]
         get set_vec_mask when only one value(location is index)
 
         Parameters
@@ -371,13 +383,13 @@ class IrParams:
         -------
         None
         """
-        self.mask[mask_index + 1] = tvm.const(SCALAR_ZERO, "uint64")
-        self.mask[mask_index + 3] = tvm.const(SCALAR_ZERO, "uint64")
+        self.mask[mask_index + 1] = tvm.const(Constant.SCALAR_ZERO, "uint64")
+        self.mask[mask_index + 3] = tvm.const(Constant.SCALAR_ZERO, "uint64")
         mask_tail = index % self.mid_vec_align_len
         with self.ir_builder.if_scope(
-                mask_tail <= (BIT_SIZE_OF_VECTOE_MASK // 2)):
+                mask_tail <= (Constant.BIT_SIZE_OF_VECTOE_MASK // 2)):
             self.mask[mask_index + 2] = tvm.const(1, "uint64")
-            with self.ir_builder.if_scope(mask_tail == SCALAR_ZERO):
+            with self.ir_builder.if_scope(mask_tail == Constant.SCALAR_ZERO):
                 self.mask[mask_index] = tvm.const(1, "uint64")
             with self.ir_builder.else_scope():
                 with self.ir_builder.for_range(0,
@@ -391,7 +403,7 @@ class IrParams:
                     self.mask[mask_index + 2] * tvm.const(2, "uint64")
         with self.ir_builder.else_scope():
             self.mask[mask_index + 1] = tvm.const(1, "uint64")
-            mask_tail = mask_tail % (BIT_SIZE_OF_VECTOE_MASK // 2)
+            mask_tail = mask_tail % (Constant.BIT_SIZE_OF_VECTOE_MASK // 2)
             with self.ir_builder.for_range(0,
                                            mask_tail,
                                            for_type="serial",
@@ -448,7 +460,8 @@ def _fuction_calcu_one_segment(calc_ub_info,
                                segment_index,
                                params,
                                is_tail=False):
-    """get histogram in one segment, result store in src_output_ub
+    """
+    get histogram in one segment, result store in src_output_ub
     form : src_output_ub[i] = num++  if value < j
            src_output_ub[i] = src_output_ub[i + 1] - src_output_ub[i]
 
@@ -528,7 +541,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
 
     def _do_calcu_f32_mini(cal_offset, nbins_index):
         with params.ir_builder.if_scope(
-                tvm.any((nbins_index == SCALAR_ZERO),
+                tvm.any((nbins_index == Constant.SCALAR_ZERO),
                         (nbins_index == params.nbins))):
             with params.ir_builder.if_scope(nbins_index == 0):
                 kernel_api.kernel_vector_dup_fuc(
@@ -550,7 +563,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
                 params.histogram_data_len, params.mid_vec_align_len)
             _do_cmp_calcu(mask_paras[0] + mask_paras[1], cal_offset,
                           nbins_index)
-            if mask_paras[0] > SCALAR_ONE:
+            if mask_paras[0] > Constant.SCALAR_ONE:
                 params.ir_builder.emit(
                     tvm.call_extern(
                         params.vcadd_ub.dtype, "vadd",
@@ -559,8 +572,8 @@ def _fuction_calcu_one_segment(calc_ub_info,
                             "r", offset=params.mid_vec_align_len),
                         params.vcadd_ub.access_ptr("r", offset=0),
                         mask_paras[0] - 1, 1, 1, 1, 0, 8, 0))
-            if mask_paras[0] > SCALAR_ZERO:
-                if mask_paras[1] == SCALAR_ONE:
+            if mask_paras[0] > Constant.SCALAR_ZERO:
+                if mask_paras[1] == Constant.SCALAR_ONE:
                     params.ir_builder.emit(
                         tvm.call_extern("uint64", 'set_vector_mask',
                                         mask_paras[2][1], mask_paras[2][0]))
@@ -576,7 +589,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
                         tvm.call_extern("uint64", 'set_vector_mask',
                                         params.uint64_all_one,
                                         params.uint64_all_one))
-            if mask_paras[0] == SCALAR_ZERO:
+            if mask_paras[0] == Constant.SCALAR_ZERO:
                 params.ir_builder.emit(
                     tvm.call_extern("uint64", 'set_vector_mask',
                                     mask_paras[2][1], mask_paras[2][0]))
@@ -585,7 +598,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
                                 params.vcadd_ub.access_ptr("rw", offset=0),
                                 params.vcadd_ub.access_ptr("r", offset=0), 1,
                                 1, 1, 8))
-            if mask_paras[0] == SCALAR_ZERO:
+            if mask_paras[0] == Constant.SCALAR_ZERO:
                 params.ir_builder.emit(
                     tvm.call_extern("uint64", 'set_vector_mask',
                                     params.uint64_all_one,
@@ -614,9 +627,9 @@ def _fuction_calcu_one_segment(calc_ub_info,
                 params.src_output_ub.access_ptr("r", offset=params.offset), 1,
                 1, 1, 1, 8, 8, 8))
         # add num of index to src_output_ub_p1
-        with params.ir_builder.if_scope(nbins_index_core != SCALAR_ZERO):
+        with params.ir_builder.if_scope(nbins_index_core != Constant.SCALAR_ZERO):
             with params.ir_builder.if_scope(nbins_index_core %
-                                            64 == SCALAR_ZERO):
+                                            64 == Constant.SCALAR_ZERO):
                 params.ir_builder.emit(
                     tvm.call_extern("uint64", 'set_vector_mask', 0,
                                     params.set_mask_list[63]))
@@ -653,7 +666,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
                                          [params.index_ub, 0], params.reg[6],
                                          [1, params.mid_vec_align_len])
     with params.ir_builder.for_range(0,
-                                     params.out_num_per_core + SCALAR_ONE,
+                                     params.out_num_per_core + Constant.SCALAR_ONE,
                                      name='out_index') as out_index:
         # one core only caluc one segment within (0, params.nbins + 1)
         core_index = params.block.var * params.out_num_per_core + out_index
@@ -674,7 +687,8 @@ def _fuction_calcu_one_segment(calc_ub_info,
 
 
 def _fuction_accu_to_output(_ib, params):
-    """accumulate des_output_ub in des_output_ub
+    """
+    accumulate des_output_ub in des_output_ub
 
     Parameters
     ----------
@@ -714,7 +728,8 @@ def _fuction_accu_to_output(_ib, params):
 
 def _function_histogram_process_ir(calc_ub, calc_offset, data_info_list,
                                    params):
-    """calcu histogram in a segment(2048) value, add result to final output ub
+    """
+    calcu histogram in a segment(2048) value, add result to final output ub
 
     Parameters
     ----------
@@ -738,7 +753,7 @@ def _function_histogram_process_ir(calc_ub, calc_offset, data_info_list,
     _addr_list = [[params.src_mid_input_ub, 0], [params.src_mid_input_ub, 0]]
     kernel_api.kernel_scalar_to_one_fuc(params.ir_builder, _addr_list,
                                         _data_info,
-                                        ["vmuls", SCALAR_NEGATIVE_ONE])
+                                        ["vmuls", Constant.SCALAR_NEGATIVE_ONE])
 
     segmet_data_loop, tail_segment, _ = \
         kernel_api.get_loopnum_and_masklist(
@@ -747,12 +762,12 @@ def _function_histogram_process_ir(calc_ub, calc_offset, data_info_list,
     def _histogram_fuc(index, is_tail=False):
         # init tensor : tmp output tensor in src UB
         kernel_api.kernel_vector_dup_fuc(
-            params.ir_builder, [params.src_output_ub, 0], SCALAR_ZERO,
-            [(params.out_num_per_core // params.mid_vec_align_len + SCALAR_ONE)
+            params.ir_builder, [params.src_output_ub, 0], Constant.SCALAR_ZERO,
+            [(params.out_num_per_core // params.mid_vec_align_len + Constant.SCALAR_ONE)
              * params.mid_vec_align_len, params.mid_vec_align_len])
         kernel_api.kernel_vector_dup_fuc(
-            params.ir_builder, [params.src_output_ub_p1, 0], SCALAR_ZERO,
-            [(params.out_num_per_core // params.mid_vec_align_len + SCALAR_ONE)
+            params.ir_builder, [params.src_output_ub_p1, 0], Constant.SCALAR_ZERO,
+            [(params.out_num_per_core // params.mid_vec_align_len + Constant.SCALAR_ONE)
              * params.mid_vec_align_len, params.mid_vec_align_len])
         # calu all num of one segment to src_output_ub
         _fuction_calcu_one_segment([calc_ub, calc_offset], _data_info, index,
@@ -764,7 +779,7 @@ def _function_histogram_process_ir(calc_ub, calc_offset, data_info_list,
                                      name='n') as segment_index:
         _histogram_fuc(segment_index)
 
-    if tail_segment == SCALAR_ONE:
+    if tail_segment == Constant.SCALAR_ONE:
         _histogram_fuc(segmet_data_loop, True)
 
 
@@ -796,17 +811,17 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
     # calc out_begin and out_end  per core
     # init src_mid_input_ub
     kernel_api.kernel_vector_dup_fuc(
-        params.ir_builder, [params.range0_ub, 0], SCALAR_ZERO,
+        params.ir_builder, [params.range0_ub, 0], Constant.SCALAR_ZERO,
         [params.mid_vec_align_len, params.mid_vec_align_len])
     kernel_api.kernel_vector_dup_fuc(
         params.ir_builder, [params.range0_ub, params.mid_vec_align_len],
         2**(-126), [params.mid_vec_align_len, params.mid_vec_align_len])
     # init tensor: output tensor, len=nbins
     kernel_api.kernel_vector_dup_fuc(
-        params.ir_builder, [params.des_output_ub, 0], SCALAR_ZERO,
+        params.ir_builder, [params.des_output_ub, 0], Constant.SCALAR_ZERO,
         [params.out_num_per_core, params.output_vec_align_len])
     kernel_api.kernel_vector_dup_fuc(
-        params.ir_builder, [params.des_tmp_output_ub, 0], SCALAR_ZERO,
+        params.ir_builder, [params.des_tmp_output_ub, 0], Constant.SCALAR_ZERO,
         [params.out_num_per_core, params.output_vec_align_len])
     # copy data_range from out to ub
     kernel_api.kernel_cp_fuc(
@@ -851,7 +866,7 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
     params.get_block_offset_one_core()
     loop_and_mask_list = \
         kernel_api.get_loopnum_and_masklist(params.data_shape[0],
-                                            SEGMENT_SIZE_COPY_GM_TO_UB)
+                                            Constant.SEGMENT_SIZE_COPY_GM_TO_UB)
 
     def _run_fuc(data_len, data_offset, copy_ub):
         # copy data(len=data_len,offset=data_offset) from out to ub
@@ -867,19 +882,19 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
         # - value_range[0])
         _data_info_list = [data_len, params.mid_vec_align_len]
 
-        # clac histogram in one SEGMENT_SIZE_COPY_GM_TO_UB and sum to output UB
+        # clac histogram in one Constant.SEGMENT_SIZE_COPY_GM_TO_UB and sum to output UB
         _function_histogram_process_ir(params.src_mid_input_ub, 0,
                                        _data_info_list, params)
 
-    # data process SEGMENT_SIZE_COPY_GM_TO_UB by SEGMENT_SIZE_COPY_GM_TO_UB
+    # data process Constant.SEGMENT_SIZE_COPY_GM_TO_UB by Constant.SEGMENT_SIZE_COPY_GM_TO_UB
     with params.ir_builder.for_range(0, loop_and_mask_list[0],
                                      name='m') as pre_index:
-        _run_fuc(SEGMENT_SIZE_COPY_GM_TO_UB,
-                 pre_index * SEGMENT_SIZE_COPY_GM_TO_UB, params.src_ub)
-    # tail_data process; len = data_len % SEGMENT_SIZE_COPY_GM_TO_UB
+        _run_fuc(Constant.SEGMENT_SIZE_COPY_GM_TO_UB,
+                 pre_index * Constant.SEGMENT_SIZE_COPY_GM_TO_UB, params.src_ub)
+    # tail_data process; len = data_len % Constant.SEGMENT_SIZE_COPY_GM_TO_UB
     if loop_and_mask_list[1] == 1:
-        _run_fuc(params.data_shape[0] % SEGMENT_SIZE_COPY_GM_TO_UB,
-                 loop_and_mask_list[0] * SEGMENT_SIZE_COPY_GM_TO_UB,
+        _run_fuc(params.data_shape[0] % Constant.SEGMENT_SIZE_COPY_GM_TO_UB,
+                 loop_and_mask_list[0] * Constant.SEGMENT_SIZE_COPY_GM_TO_UB,
                  params.src_ub)
 
     # copy result to out by mul cores
@@ -896,7 +911,7 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
             _copy_out(params.out_num_per_core)
         with params.ir_builder.else_scope():
             tail_core_num = params.nbins % params.out_num_per_core
-            if tail_core_num != SCALAR_ZERO:
+            if tail_core_num != Constant.SCALAR_ZERO:
                 _copy_out(tail_core_num)
     return params.ir_builder.get()
 
@@ -909,7 +924,8 @@ def histogram_fixed_width_d_compute(x,
                                     y,
                                     nbins,
                                     kernel_name="histogram_fixed_width_d"):
-    """TVM calculation process, used for fusion operation
+    """
+    TVM calculation process, used for fusion operation
     compute for histogram_fixed_width
 
     Parameters
@@ -953,7 +969,8 @@ def histogram_fixed_width_d(x,
                             nbins,
                             dtype=3,
                             kernel_name='histogram_fixed_width_d'):
-    """this operation returns a rank 1 histogram counting
+    """
+    this operation returns a rank 1 histogram counting
      the number of entries in `values` that fell into every bin.
       The bins are equal width and determined by the arguments
     `value_range` and `nbins`.

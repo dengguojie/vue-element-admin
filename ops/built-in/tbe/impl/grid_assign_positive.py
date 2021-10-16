@@ -23,9 +23,13 @@ from impl.ascend import AContainer
 from impl.ascend import TensorOperatorParam
 from impl.ascend import VecCmd
 from impl.ascend import VecExecutor
+from impl.util.util_tik_comm_func import ceil_div
 
 
 class GridAssignPositive(object):
+    """
+    The class for GridAssignPositive.
+    """
 
     def __init__(self, k_num, n_num, pos_iou_thr, min_pos_iou, gt_max_assign_all,
                  data_type, flag_type, int_type, kernel_name, cont):
@@ -73,23 +77,28 @@ class GridAssignPositive(object):
         self.assigned_gt_inds_pos = self.tik_inst.Tensor(
             self.data_type, flag_shape, self.tik.scope_gm, "assigned_gt_inds_pos")
 
-    def ceil_div(self, dividend, divisor):
-        result = (dividend + divisor - 1) // divisor
-        return result
-
     def get_loop_info(self, all_data_num, each_loop_num):
-        loop_times = self.ceil_div(all_data_num, each_loop_num)
+        """
+        The function is get loop info.
+        """
+        loop_times = ceil_div(all_data_num, each_loop_num)
         last_loop_num = all_data_num - each_loop_num * (loop_times - 1)
         return loop_times, last_loop_num
 
     def get_align_num(self, input_num, align_num, ceil=True):
+        """
+        The function is get align num.
+        """
         if ceil:
-            result = self.ceil_div(input_num, align_num) * align_num
+            result = ceil_div(input_num, align_num) * align_num
         else:
             result = input_num // align_num * align_num
         return result
 
     def get_type_const(self, data_type):
+        """
+        The function is get type const.
+        """
         data_size = self.cont.const_dtype_byte.get(data_type)
         block_data_num = self.cont.get_vec_proc_num_per_cmd_blk(data_type)
         repeat_data_num = self.cont.get_vec_proc_num_per_cmd(data_type)
@@ -97,7 +106,7 @@ class GridAssignPositive(object):
 
     def mode_compute(self):
         if self.gt_max_assign_all:
-            each_core_n_num = self.ceil_div(self.n_num, self.ai_core_use)
+            each_core_n_num = ceil_div(self.n_num, self.ai_core_use)
             each_core_n_num = self.get_align_num(each_core_n_num, self.data_repeat_data_num)
             self.ai_core_use, last_core_n_num = self.get_loop_info(self.n_num, each_core_n_num)
             with self.tik_inst.for_range(0, self.ai_core_use, block_num=self.ai_core_use) as core_index:
@@ -137,7 +146,7 @@ class GridAssignPositive(object):
             gt_max_overlaps_flag_scalar.set_as(gt_min_pos_iou_ub[k_index])
             with self.tik_inst.if_scope(gt_max_overlaps_flag_scalar == 1):
                 self._mode_1_assign_positive(assigned_gt_inds_ub, flag_ub, k_index, n_index_start, n_num, n_num_align)
-        block_num = self.ceil_div(n_num, self.data_block_data_num)
+        block_num = ceil_div(n_num, self.data_block_data_num)
         self.tik_inst.data_move(self.assigned_gt_inds_pos[n_index_start], assigned_gt_inds_ub, 0, 1, block_num, 0, 0)
 
     def _mode_1_assign_positive(self, assigned_gt_inds_ub, flag_ub, k_index, n_index_start, n_num, n_num_align):
@@ -145,7 +154,7 @@ class GridAssignPositive(object):
         gt_max_overlaps_scalar = self.tik_inst.Scalar(self.data_type)
         overlaps_ub = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_ubuf, "overlaps_ub")
         gt_max_overlaps_ub = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_ubuf, "gt_max_overlaps_ub")
-        block_num = self.ceil_div(n_num, self.data_block_data_num)
+        block_num = ceil_div(n_num, self.data_block_data_num)
         self.tik_inst.data_move(overlaps_ub, self.overlaps[k_index, n_index_start], 0, 1, block_num, 0, 0)
         self.tik_inst.data_move(gt_max_overlaps_ub, self.gt_max_overlaps[k_index], 0, 1, 1, 0, 0)
         gt_max_overlaps_scalar.set_as(gt_max_overlaps_ub[0])
@@ -162,7 +171,7 @@ class GridAssignPositive(object):
         self.tik_inst.vcmpv_eq(gt_max_overlaps_mask_ub, overlaps_ub, one_tensor_ub, 1, 1, 1, 8, 8)
 
         index_int_ub = self.tik_inst.Tensor(self.int_type, data_shape, self.tik.scope_ubuf, "index_int_ub")
-        int_repeat_num = self.ceil_div(n_num_align, self.int_repeat_data_num)
+        int_repeat_num = ceil_div(n_num_align, self.int_repeat_data_num)
         self.tik_inst.vector_dup(self.int_repeat_data_num, index_int_ub, k_index + 1, int_repeat_num, 1, 8)
         index_fp_ub = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_ubuf, "index_fp_ub")
         self._vconv_data(n_num_align, 0, (index_int_ub, index_fp_ub))
@@ -191,7 +200,7 @@ class GridAssignPositive(object):
 
     def _mode_0_assigned_gt_inds_pos_iou_each_loop(self, n_index_start, n_num):
         assigned_gt_inds_ub, flag_ub = self._assigned_gt_inds_pos_iou_each_loop(n_index_start, n_num)
-        data_block_num = self.ceil_div(n_num, self.data_block_data_num)
+        data_block_num = ceil_div(n_num, self.data_block_data_num)
         self.tik_inst.data_move(self.assigned_gt_inds_pos[n_index_start], assigned_gt_inds_ub, 0, 1, data_block_num, 0,
                                 0)
 
@@ -277,7 +286,7 @@ class GridAssignPositive(object):
         min_pos_iou_ub = self._vector_dup_data(data_shape, self.data_type, "min_pos_iou_ub", self.min_pos_iou)
         zero_tensor_ub = self._vector_dup_data(data_shape, self.data_type, "zero_tensor_ub", 0)
         one_tensor_ub = self._vector_dup_data(data_shape, self.data_type, "one_tensor_ub", 1)
-        block_num = self.ceil_div(k_num, self.data_block_data_num)
+        block_num = ceil_div(k_num, self.data_block_data_num)
         self.tik_inst.data_move(gt_max_overlaps_ub, self.gt_max_overlaps[k_index_start], 0, 1, block_num, 0, 0)
 
         min_pos_iou_mask_ub = self.tik_inst.Tensor(self.flag_type, (self.flag_block_data_num,),
@@ -351,7 +360,7 @@ class GridAssignPositive(object):
                 fp16_type, data_shape, self.tik.scope_ubuf, "box_responsible_flags_fp16_ub")
             flag_false_ub = self._vector_dup_data(data_shape, fp16_type, "flag_false_ub", 0)
 
-            block_num = self.ceil_div(n_num, self.flag_block_data_num)
+            block_num = ceil_div(n_num, self.flag_block_data_num)
             self.tik_inst.data_move(box_responsible_flags_ub, self.box_responsible_flags[n_index_start],
                                     0, 1, block_num, 0, 0)
             self._vconv_data(n_num, 2, (box_responsible_flags_ub, box_responsible_flags_fp16_ub))
@@ -371,7 +380,7 @@ class GridAssignPositive(object):
             max_overlaps_ub = self.tik_inst.Tensor(self.data_type, data_shape,
                                                    self.tik.scope_ubuf, "max_overlaps_ub")
             pos_iou_thr_ub = self._vector_dup_data(data_shape, self.data_type, "pos_iou_thr_ub", self.pos_iou_thr)
-            block_num = self.ceil_div(n_num, self.data_block_data_num)
+            block_num = ceil_div(n_num, self.data_block_data_num)
             self.tik_inst.data_move(max_overlaps_ub, self.max_overlaps[n_index_start], 0, 1, block_num, 0, 0)
 
             pos_iou_thr_mask_ub = self.tik_inst.Tensor(self.flag_type, (self.flag_block_data_num,),
@@ -390,8 +399,8 @@ class GridAssignPositive(object):
                                                    self.tik.scope_ubuf, "assigned_gt_inds_ub")
         argmax_overlaps_ub = self.tik_inst.Tensor(self.data_type, data_shape,
                                                   self.tik.scope_ubuf, "argmax_overlaps_ub")
-        data_block_num = self.ceil_div(n_num, self.data_block_data_num)
-        int_block_num = self.ceil_div(n_num, self.int_block_data_num)
+        data_block_num = ceil_div(n_num, self.data_block_data_num)
+        int_block_num = ceil_div(n_num, self.int_block_data_num)
         self.tik_inst.data_move(assigned_gt_inds_ub, self.assigned_gt_inds[n_index_start], 0, 1, data_block_num, 0, 0)
         with self.tik_inst.new_stmt_scope():
             argmax_overlaps_int_ub = self.tik_inst.Tensor(self.int_type, data_shape,
