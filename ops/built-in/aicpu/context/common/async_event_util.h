@@ -24,6 +24,11 @@ namespace aicpu {
 typedef void (*NotifyWaitFunc)(void *notify_param, const uint32_t param_len);
 typedef bool (*RegEventCbFunc)(const uint32_t event_id,
   const uint32_t sub_event_id, const std::function<void(void *)> &cb);
+typedef bool (*RegEventCbWithTimesFunc)(const uint32_t event_id,
+  const uint32_t sub_event_id, const std::function<void(void *)> &cb,
+  const int32_t times);
+typedef void (*UnregEventCbFunc)(const uint32_t event_id,
+  const uint32_t sub_event_id);
 
 class AsyncEventUtil {
  public:
@@ -33,13 +38,21 @@ class AsyncEventUtil {
 
   bool RegEventCb(const uint32_t event_id, const uint32_t sub_event_id,
                   const std::function<void(void *)> &cb);
+
+  bool RegEventCb(const uint32_t event_id, const uint32_t sub_event_id,
+                  const std::function<void(void *)> &cb, const int32_t times);
+
+  void UnregEventCb(const uint32_t event_id, const uint32_t sub_event_id);
  private:
   AsyncEventUtil();
   ~AsyncEventUtil();
+  void InitEventUtil();
  private:
   void *sharder_;
   NotifyWaitFunc notify_wait_func_;
   RegEventCbFunc reg_event_cb_func_;
+  RegEventCbWithTimesFunc reg_event_cb_with_times_func_;
+  UnregEventCbFunc unreg_event_cb_func_;
 };
 } // namespace aicpu
 #endif  // AICPU_CONTEXT_COMMON_ASYNC_EVENT_H_

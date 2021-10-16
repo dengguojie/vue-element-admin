@@ -35,7 +35,7 @@ uint32_t CpuKernelContext::Init(NodeDef *node_def) {
   KERNEL_CHECK_NULLPTR(node_def, KERNEL_STATUS_PARAM_INVALID,
                        "Node def is null.")
   op_ = node_def->GetOpType();
-  KERNEL_LOG_INFO("Construct the ctx of the op[%s] begin.", op_.c_str());
+  KERNEL_LOG_DEBUG("Construct the ctx of the op[%s] begin.", op_.c_str());
   for (int32_t i = 0; i < node_def->InputsSize(); i++) {
     auto input = node_def->MutableInputs(i);
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
@@ -66,8 +66,7 @@ uint32_t CpuKernelContext::Init(NodeDef *node_def) {
     }
   }
 
-  KERNEL_LOG_INFO("Construct the ctx of the op[%s] succcess.", op_.c_str());
-
+  KERNEL_LOG_DEBUG("Construct the ctx of the op[%s] succcess.", op_.c_str());
   return KERNEL_STATUS_OK;
 }
 
@@ -83,8 +82,8 @@ std::string CpuKernelContext::GetOpType() const { return op_; }
  */
 Tensor *CpuKernelContext::Input(uint32_t index) const {
   if (index >= inputs_.size()) {
-    KERNEL_LOG_WARN("Index[%u] should be less than input tensors size[%zu].",
-                    index, inputs_.size());
+    KERNEL_LOG_WARN("Input index[%u] should be less than input tensors total "
+                    "size[%zu].", index, inputs_.size());
     return nullptr;
   }
 
@@ -97,8 +96,8 @@ Tensor *CpuKernelContext::Input(uint32_t index) const {
  */
 Tensor *CpuKernelContext::Output(uint32_t index) const {
   if (index >= outputs_.size()) {
-    KERNEL_LOG_WARN("Index[%u] should be less than output tensors size[%zu].",
-                    index, outputs_.size());
+    KERNEL_LOG_WARN("Output index[%u] should be less than output tensors total "
+                    "size[%zu].", index, outputs_.size());
     return nullptr;
   }
 
