@@ -497,11 +497,14 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
         # for stack limit
         special_case_list = [{"input_shape_nhw": [3, 110, 358], "ksizes": [16, 10],
                               "strides": [8, 8], "padding": [15, 21, 9, 13]}]
+        over_flow_case_list = [{"input_shape_nhw": [46, 1174, 101], "ksizes": [107, 1],
+                                "strides": [35, 25], "padding": [106, 123, 0, 0]}]
         case_info = {"input_shape_nhw": [dout_dilated_shape[0], input_h, input_w],
                      "ksizes": [k_height, k_width],
                      "strides": [stride[0], stride[1]],
                      "padding": [dilated_pad_top, dilated_pad_bottom, dilated_pad_left, dilated_pad_right]}
-        if (stride[0] * stride[1] <= 2000 and tile_dile_h_ub * dout_dilated_w < 4000) or case_info in special_case_list:
+        if ((stride[0] * stride[1] <= 2000 and tile_dile_h_ub * dout_dilated_w < 4000)
+                or case_info in special_case_list) and case_info not in over_flow_case_list:
             s[dout_dilated_ubuf].reorder(dila_i_h, dila_i_w, dila_o_h, dila_o_w)
             s[dout_dilated_ubuf].unroll(dila_i_h)
             s[dout_dilated_ubuf].unroll(dila_i_w)
