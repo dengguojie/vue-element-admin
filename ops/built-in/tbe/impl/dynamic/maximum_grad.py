@@ -208,9 +208,9 @@ def maximum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True, kernel_name="m
     para_check.check_dtype(dtype_y, check_list, param_name="x2")
     ins = classify([grads, x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (grads, x1, x2) in ins:
+    for (grads_dict, x1_dict, x2_dict) in ins:
         with tbe.compute():
-            shape_dz, shape_x, shape_y = shape_util.variable_shape([grads, x1, x2])
+            shape_dz, shape_x, shape_y = shape_util.variable_shape([grads_dict, x1_dict, x2_dict])
             data_dz = tvm.placeholder(shape_dz, dtype=dtype_dz, name="data_dz")
             data_x = tvm.placeholder(shape_x, dtype=dtype_x, name="data_x")
             data_y = tvm.placeholder(shape_y, dtype=dtype_y, name="data_y")

@@ -22,10 +22,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from te.utils.error_manager import error_manager_vector
-
-
-SHAPE_SIZE_LIMIT = 2147483648  # shape limit
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument

@@ -22,10 +22,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from te.utils.error_manager import error_manager_vector
-
-
-SHAPE_SIZE_LIMIT = 2147483648  # shape limit
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -54,8 +51,8 @@ def maximum_compute(x1, x2, y, kernel_name="maximum"):
     shape_x = shape_util.shape_to_list(x1.shape)
     shape_y = shape_util.shape_to_list(x2.shape)
     shape1, shape2, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                 param_name_input1="x1",
-                                                 param_name_input2="x2")
+                                                            param_name_input1="x1",
+                                                            param_name_input2="x2")
 
     dtype = x1.dtype
     if dtype in ("int8", "uint8"):

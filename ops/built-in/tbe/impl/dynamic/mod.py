@@ -128,9 +128,9 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedule, tensors = [], []
 
-    for (input_x, input_y) in ins:
+    for (input_x_dict, input_y_dict) in ins:
         with tbe.compute():
-            shape_x, shape_y = shape_util.variable_shape([input_x, input_y])
+            shape_x, shape_y = shape_util.variable_shape([input_x_dict, input_y_dict])
             reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
             data_x = tvm.placeholder(reshape_x, dtype=input_dtype, name="data_x")
             data_y = tvm.placeholder(reshape_y, dtype=input_dtype, name="data_y")

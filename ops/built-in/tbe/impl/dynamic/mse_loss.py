@@ -20,7 +20,6 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
@@ -161,11 +160,11 @@ def mse_loss(predict, label, y, reduction='mean', kernel_name="mse_loss"):
                                                                         _label_shape,
                                                                         _axis], op_mode="reduce")[0:2]
                 data_predict = tvm.placeholder(predict_shape, name="data_predict",
-                                            dtype=predict_dtype)
+                                               dtype=predict_dtype)
                 data_label = tvm.placeholder(label_shape, name="data_label",
-                                            dtype=label_dtype)
+                                             dtype=label_dtype)
                 res = mse_loss_compute(data_predict, data_label, y,
-                                    _axis, reduction, kernel_name)
+                                       _axis, reduction, kernel_name)
                 tensors.append([data_predict, data_label, res])
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
@@ -177,11 +176,11 @@ def mse_loss(predict, label, y, reduction='mean', kernel_name="mse_loss"):
                 predict_shape, label_shape = shape_util.variable_shape([_predict_shape,
                                                                         _label_shape])[0:2]
                 data_predict = tvm.placeholder(predict_shape, name="data_predict",
-                                            dtype=predict_dtype)
+                                               dtype=predict_dtype)
                 data_label = tvm.placeholder(label_shape, name="data_label",
-                                            dtype=label_dtype)
+                                             dtype=label_dtype)
                 res = mse_loss_compute(data_predict, data_label, y,
-                                    [], reduction, kernel_name)
+                                       [], reduction, kernel_name)
                 tensors.append([data_predict, data_label, res])
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
