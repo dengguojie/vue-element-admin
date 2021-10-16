@@ -32,6 +32,7 @@ static const std::string PATTERN_FUSEDNODE = "NLLLoss";
 
 static const vector<vector<int64_t>> SUPPORT_CASES = {
     {4210704, 21},
+    {8388608, 19},
 };
 
 vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
