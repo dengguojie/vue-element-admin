@@ -253,12 +253,20 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                     datatype="float16,float16,float16",
                                                     format="NC1HWC0,NDC1HWC0,ND")
         if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float16,float16,float",
-                                                   format="NC1HWC0,NDC1HWC0,ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16,float16,float",
-                                                    format="NC1HWC0,NDC1HWC0,ND,ND")
+            if _is_special_cases(shape_x_ori, 0):
+                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                       datatype="float16",
+                                                       format="FRACTAL_NZ")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16",
+                                                        format="FRACTAL_NZ")
+            else:
+                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                       datatype="float16,float16,float16,float",
+                                                       format="NC1HWC0,NDC1HWC0,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,float16,float16,float",
+                                                        format="NC1HWC0,NDC1HWC0,ND,ND")
         if tbe_product in ("Ascend910",) or is_vgatherb:
             if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[-1] * 2 < UB_SIZE_LIMIT:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -353,6 +361,29 @@ def _broadcast_nz(tensor, shape):
     return tensor
 
 
+def _is_special_cases(input_shape, compare_type):
+    white_list_shape = [[8, 8732, 81], [16, 8732, 81]]
+    shape_t = list(input_shape)
+    if compare_type == 0:
+        if shape_t in white_list_shape:
+            return True
+    else:
+        shape_t_size = len(shape_t)
+        for shape_w in white_list_shape:
+            count = 0
+            if shape_t_size == len(shape_w):
+                for i in range(shape_t_size):
+                    if shape_t[i].value == shape_w[i]:
+                        count += 1
+                        continue
+                    else:
+                        break
+                if count == shape_t_size:
+                    return True
+
+    return False
+
+
 @fusion_manager.register("softmax_v2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
@@ -427,8 +458,13 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     data_expsum = te.lang.cce.sum(data_exp, axis, keepdims=True)
 
     if use_tail_block:
-        data_expsum = _broadcast_nz(data_expsum, shape)
-        output = te.lang.cce.vdiv(data_exp, data_expsum)
+        if not _is_special_cases(ori_shape, 1):
+            data_expsum = _broadcast_nz(data_expsum, shape)
+            output = te.lang.cce.vdiv(data_exp, data_expsum)
+        else:
+            data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
+            data_expsum = _broadcast_nz(data_expsum, shape)
+            output = te.lang.cce.vmul(data_exp, data_expsum)
     elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or is_vgatherb) and \
        output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)

@@ -246,6 +246,26 @@ def concat_v2_d_compute(input_values,
     return res
 
 
+def _is_dynamic_concat_better_performance(input_values, axis):
+    if len(input_values) == 0:
+        return False
+
+    shape_dims = len(input_values[0].get("shape"))
+    if shape_dims == 0:
+        return False
+
+    # shapes, axis
+    better_performance_params = [
+        [[[8, 5776, 81], [8, 2166, 81], [8, 600, 81], [8, 150, 81], [8, 36, 81], [8, 4, 81]], 1],
+    ]
+
+    input_shapes = []
+    for input_value in input_values:
+        input_shapes.append(list(input_value.get("shape")))
+
+    return [input_shapes, axis % shape_dims] in better_performance_params
+
+
 def _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name):
     def cal_tiling(_input_values, _axis):
         if len(_input_values) == 0:
@@ -407,7 +427,7 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     concat_s = ConcatSchedule(input_values, output_data, axis, kernel_name)
     if_tik_support = concat_s.check_tik_supported()
 
-    if if_tik_support:
+    if if_tik_support and not _is_dynamic_concat_better_performance(input_values, axis):
         concat_s.concat_compute()
         return
     # end to check where user branch concat tik

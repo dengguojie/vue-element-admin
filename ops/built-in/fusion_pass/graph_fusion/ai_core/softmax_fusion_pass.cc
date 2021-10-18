@@ -38,7 +38,7 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "SoftmaxV2";
 static const std::string PATTERN_FUSEDNODE = "Softmax";
-static const vector<vector<int>> SHAPE = {{8732, 21}, {8732, 81}};
+static const vector<vector<int>> SHAPE = {{8732, 21}};
 static const vector<vector<int>> SHAPE1 = {{224, 224, 160, 4}};
 
 bool SoftmaxFusionPass::CheckISUsePattern(vector<int64_t>& dimInfo) {

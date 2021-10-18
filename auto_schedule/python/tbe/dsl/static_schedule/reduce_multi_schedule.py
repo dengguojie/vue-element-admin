@@ -368,8 +368,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
                     if self._is_special_tensor_of_broadcast_not_last_axis(i):
                         insn = "vector_sub_with_multi_broadcast"
             
-            if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16'):
-                if self._pattern in ('softmax_fp16_nz_non16'):
+            if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16', 'softmax_fp16_nz_special'):
+                if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp16_nz_special'):
                     phony_node = self._mid_tensors[5]
                 else:
                     phony_node = self._mid_tensors[3]
@@ -1200,8 +1200,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
         reused_relation = {}
         used = []
 
-        if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16'):
-            if self._pattern in ('softmax_fp16_nz_non16'):
+        if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16', 'softmax_fp16_nz_special'):
+            if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp16_nz_special'):
                 tensor_before_tail = self._mid_tensors[6]
                 tensor_with_tail = self._mid_tensors[7]
                 tensor_after_tail = self._mid_tensors[5]

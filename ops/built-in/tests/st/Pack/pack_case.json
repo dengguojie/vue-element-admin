@@ -1,0 +1,168 @@
+[
+  {
+    "op": "Pack",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          10,
+          8
+        ],
+        "ori_shape": [
+          2,
+          10,
+          8
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "float",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "shape": [
+          2,
+          10,
+          8
+        ],
+        "ori_shape": [
+          2,
+          10,
+          8
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "float",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          10,
+          16
+        ],
+        "ori_shape": [
+          2,
+          10,
+          16
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "N",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_Pack_000"
+  },
+  {
+    "op": "Pack",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          10,
+          5
+        ],
+        "ori_shape": [
+          2,
+          10,
+          5
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "float",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "shape": [
+          2,
+          10,
+          5
+        ],
+        "ori_shape": [
+          2,
+          10,
+          5
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "float",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "ori_shape": [
+          -2
+        ],
+        "typical_shape": [
+          2,
+          10,
+          10
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "N",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_dynamic_Pack_000"
+  }
+]
+
