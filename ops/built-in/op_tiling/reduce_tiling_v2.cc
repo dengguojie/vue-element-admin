@@ -959,7 +959,7 @@ bool Reduce::GetCompileInfoForCalculate() {
 
 bool Reduce::GetGeInfo() {
   // Get Input
-  int inputs_num = static_cast<int>(op_paras.GetInputsSize());
+  uint32_t inputs_num = op_paras.GetInputsSize();
   V_OP_TILING_CHECK(!(inputs_num == 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs cannot be empty"),
                     return false);
@@ -1115,7 +1115,7 @@ bool Reduce::NewDoTiling(const OpInfo& op_info) {
   if (op_info.GetInputShape().size() > 0) {
     input_shape_ori = op_info.GetInputShape()[0];
   } else {
-    int inputs_num = static_cast<int>(op_paras.GetInputsSize());
+    uint32_t inputs_num = op_paras.GetInputsSize();
     V_OP_TILING_CHECK(!(inputs_num == 0),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs cannot be empty"),
                       return false);
