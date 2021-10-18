@@ -184,7 +184,6 @@ from .mat_mul import mat_mul
 from .batch_matmul import batch_matmul
 from .batch_matmul_v2 import batch_matmul_v2
 from .sub import sub
-from .transpose_d import transpose_d
 from .transpose import transpose
 from .as_strided import as_strided
 from .trans_data import trans_data
