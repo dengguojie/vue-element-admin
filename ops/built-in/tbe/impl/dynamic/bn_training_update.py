@@ -282,7 +282,6 @@ def bn_training_update_compute(x,
 
     return res
 
-
 def _refine_ins_list(ins_list):
     for i in range(len(ins_list)):
         shape_range = []
@@ -294,13 +293,14 @@ def _refine_ins_list(ins_list):
                         if range_top is not None and range_top <= 1:
                             range_top = 2
                         shape_range.append((2, range_top))
+                    else:
+                        shape_range.append((range_bottom, range_top))
                 else:
                     shape_range.append((2, None))
             else:
                 shape_range.append((dim_val, dim_val))
         ins_list[i]["range"] = tuple(shape_range)
     return ins_list
-
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

@@ -6,7 +6,7 @@ ut_case = OpUT("BNTrainingUpdate", "impl.dynamic.bn_training_update", "bn_traini
 
 def gen_bn_training_update_case(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset,
                                 shape_mean, shape_variance, dtype, dtype_others, factor, epsilon, case_name_val):
-    return {"params": [{"shape":shape_x, "ori_shape": shape_x, "dtype":dtype, "format":"NC1HWC0", "ori_format":"NC1HWC0", "range": ((1, None), (1, None), (1, None), (1, None), (1, None))},
+    return {"params": [{"shape":shape_x, "ori_shape": shape_x, "dtype":dtype, "format":"NC1HWC0", "ori_format":"NC1HWC0", "range": ((2, None), (2, None), (2, None), (2, None), (2, None))},
                        {"shape":shape_sum, "ori_shape": shape_sum, "dtype":dtype_others, "format":"NC1HWC0", "ori_format":"NC1HWC0", "range": ((1, None), (1, None), (1, None), (1, None), (1, None))},
                        {"shape":shape_square_sum, "ori_shape": shape_square_sum, "dtype":dtype_others, "format":"NC1HWC0", "ori_format":"NC1HWC0", "range": ((1, None), (1, None), (1, None), (1, None), (1, None))},
                        {"shape":shape_scale, "ori_shape": shape_scale, "dtype":dtype_others, "format":"NC1HWC0", "ori_format":"NC1HWC0", "range": ((1, None), (1, None), (1, None), (1, None), (1, None))},
