@@ -165,7 +165,7 @@ def _get_lstm_tiling(m_size, k_size, n_size):
     return lstm_tiling_map[key]
 
 
-def check_dtype(input_x, weight, bias, output_h):
+def check_dtype(input_x, weight, output_h):
     """
     check parameters dtype
     :return:
@@ -189,7 +189,6 @@ def check(shape_x_input, shape_w_input, shape_b_input, shape_output):
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "w, output_h shape is wrong, please check!")
     if (shape_b_input[0] + 15) // 16 != shape_w_input[1]:
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "w, b shape is wrong, please check!")
-    return
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -215,7 +214,7 @@ def dynamic_lstm(input_x, weight, bias,
         the format can be [FRACTAL_NZ]
     """
 
-    check_dtype(input_x, weight, bias, output_h)
+    check_dtype(input_x, weight, output_h)
 
     shape_x_input = input_x.get("shape")
     shape_w_input = weight.get("shape")

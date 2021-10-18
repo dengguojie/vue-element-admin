@@ -18,8 +18,8 @@ unsorted_segment_sum
 # pylint: disable=too-many-lines
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
-from . import unsorted_segment
 from impl.util.platform_adapter import register_operator
+from . import unsorted_segment
 
 
 @register_operator("UnsortedSegmentProd")

@@ -28,8 +28,13 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import buildcfg
 
-# When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
-MIN_RIGHT_DIM = 8
+class Constant:
+    """
+    The class for constant.
+    """
+    
+    # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
+    MIN_RIGHT_DIM = 8
 
 
 @unique
@@ -202,7 +207,7 @@ class Unpack:
         if not self.right_range[1]:
             self.special_tiling = self.axis_at_last_dim and self.output_num > 1
         else:
-            self.special_tiling = (self.axis_at_last_dim or self.right_range[1] < MIN_RIGHT_DIM) and self.output_num > 1
+            self.special_tiling = (self.axis_at_last_dim or self.right_range[1] < Constant.MIN_RIGHT_DIM) and self.output_num > 1
 
     def _set_dim_var(self, dim_name, dim_range):
         """

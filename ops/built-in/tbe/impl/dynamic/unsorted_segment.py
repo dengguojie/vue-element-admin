@@ -14,6 +14,7 @@
 # ============================================================================
 """
 unsorted_segment
+
 """
 # pylint: disable=too-many-lines
 from impl.util.platform_adapter import tik
@@ -21,83 +22,87 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 
-ONE_BLOCK_E = 1
-ONE_DIV_E = 2
-SMALL_E = 3
-BIG_E = 4
+class Constant:
+    """
+    The class for constant.
+    """
+    ONE_BLOCK_E = 1
+    ONE_DIV_E = 2
+    SMALL_E = 3
+    BIG_E = 4
 
 # SMALL_IID
 SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 10, "ub_div_id": 0, "block_align": False, "e_level": ONE_BLOCK_E, "big_iid": False,
+    [{"select_key": 10, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_BLOCK_E, "big_iid": False,
       "div_oid": True}]
 SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 20, "ub_div_id": 0, "block_align": False, "e_level": ONE_DIV_E, "big_iid": False, "div_oid": True}]
+    [{"select_key": 20, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_DIV_E, "big_iid": False, "div_oid": True}]
 
 SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 30, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 31, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 32, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": True}]
+    [{"select_key": 30, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
+     {"select_key": 31, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
+     {"select_key": 32, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True}]
 
 SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 40, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 41, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 42, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": True}]
+    [{"select_key": 40, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
+     {"select_key": 41, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
+     {"select_key": 42, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True}]
 
 SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 50, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 51, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 52, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": False}]
+    [{"select_key": 50, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
+     {"select_key": 51, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
+     {"select_key": 52, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False}]
 
 SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 60, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 61, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 62, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": False}]
+    [{"select_key": 60, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
+     {"select_key": 61, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
+     {"select_key": 62, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False}]
 
 SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 70, "ub_div_id": 0, "block_align": True, "e_level": BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 71, "ub_div_id": 1, "block_align": True, "e_level": BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 72, "ub_div_id": 2, "block_align": True, "e_level": BIG_E, "big_iid": False, "div_oid": False}]
+    [{"select_key": 70, "ub_div_id": 0, "block_align": True, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
+     {"select_key": 71, "ub_div_id": 1, "block_align": True, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
+     {"select_key": 72, "ub_div_id": 2, "block_align": True, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False}]
 
 SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 80, "ub_div_id": 0, "block_align": False, "e_level": BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 81, "ub_div_id": 1, "block_align": False, "e_level": BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 82, "ub_div_id": 2, "block_align": False, "e_level": BIG_E, "big_iid": False, "div_oid": False}]
+    [{"select_key": 80, "ub_div_id": 0, "block_align": False, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
+     {"select_key": 81, "ub_div_id": 1, "block_align": False, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
+     {"select_key": 82, "ub_div_id": 2, "block_align": False, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False}]
 
 # BIG_IID
 SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 90, "ub_div_id": 0, "block_align": False, "e_level": ONE_BLOCK_E, "big_iid": True, "div_oid": True}]
+    [{"select_key": 90, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_BLOCK_E, "big_iid": True, "div_oid": True}]
 SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 100, "ub_div_id": 0, "block_align": False, "e_level": ONE_DIV_E, "big_iid": True, "div_oid": True}]
+    [{"select_key": 100, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_DIV_E, "big_iid": True, "div_oid": True}]
 
 SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 110, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 111, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 112, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": True}]
+    [{"select_key": 110, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
+     {"select_key": 111, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
+     {"select_key": 112, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True}]
 
 SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 120, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 121, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 122, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": True}]
+    [{"select_key": 120, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
+     {"select_key": 121, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
+     {"select_key": 122, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True}]
 
 SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 130, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 131, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 132, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": False}]
+    [{"select_key": 130, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
+     {"select_key": 131, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
+     {"select_key": 132, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False}]
 
 SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 140, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 141, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 142, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": False}]
+    [{"select_key": 140, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
+     {"select_key": 141, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
+     {"select_key": 142, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False}]
 
 SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 150, "ub_div_id": 0, "block_align": True, "e_level": BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 151, "ub_div_id": 1, "block_align": True, "e_level": BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 152, "ub_div_id": 2, "block_align": True, "e_level": BIG_E, "big_iid": True, "div_oid": False}]
+    [{"select_key": 150, "ub_div_id": 0, "block_align": True, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
+     {"select_key": 151, "ub_div_id": 1, "block_align": True, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
+     {"select_key": 152, "ub_div_id": 2, "block_align": True, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False}]
 
 SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 160, "ub_div_id": 0, "block_align": False, "e_level": BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 161, "ub_div_id": 1, "block_align": False, "e_level": BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 162, "ub_div_id": 2, "block_align": False, "e_level": BIG_E, "big_iid": True, "div_oid": False}]
+    [{"select_key": 160, "ub_div_id": 0, "block_align": False, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
+     {"select_key": 161, "ub_div_id": 1, "block_align": False, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
+     {"select_key": 162, "ub_div_id": 2, "block_align": False, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False}]
 
 TILING_PARAM_DTYPE = "int32"
 
@@ -517,14 +522,14 @@ class UnsortedSegmentTiling(object):
                 e_vector_num = _ceil_div(obj_scalar.e_num, self.mask)
                 if e_vector_num == 1 and obj_scalar.e_num % self.ele_num_per_block != 0:
                     if obj_scalar.e_num >= self.ele_num_per_block:
-                        e_level = ONE_DIV_E
+                        e_level = Constant.ONE_DIV_E
                     else:
-                        e_level = ONE_BLOCK_E
+                        e_level = Constant.ONE_BLOCK_E
                 else:
                     if obj_scalar.e_num <= self.e_max_by_stride:
-                        e_level = SMALL_E
+                        e_level = Constant.SMALL_E
                     else:
-                        e_level = BIG_E
+                        e_level = Constant.BIG_E
 
                 if e_level != key["e_level"]:
                     select_keys_mark[i] = 0
@@ -533,31 +538,29 @@ class UnsortedSegmentTiling(object):
                     select_keys_mark[i] = 0
 
             else:
-                if self.e_num_min > self.e_max_by_stride and key["e_level"] != BIG_E:
+                if self.e_num_min > self.e_max_by_stride and key["e_level"] != Constant.BIG_E:
                     select_keys_mark[i] = 0
-                if self.e_num_max <= self.e_max_by_stride and key["e_level"] == BIG_E:
-                    select_keys_mark[i] = 0
-
-                if self.e_num_min >= self.mask and key["e_level"] == ONE_DIV_E:
+                if self.e_num_max <= self.e_max_by_stride and key["e_level"] == Constant.BIG_E:
                     select_keys_mark[i] = 0
 
-                if self.e_num_min >= self.ele_num_per_block and key["e_level"] == ONE_BLOCK_E:
+                if self.e_num_min >= self.mask and key["e_level"] == Constant.ONE_DIV_E:
                     select_keys_mark[i] = 0
 
-                if self.e_num_max < self.mask and key["e_level"] == BIG_E:
+                if self.e_num_min >= self.ele_num_per_block and key["e_level"] == Constant.ONE_BLOCK_E:
+                    select_keys_mark[i] = 0
+
+                if self.e_num_max < self.mask and key["e_level"] == Constant.BIG_E:
                     select_keys_mark[i] = 0
 
                 if self.e_num_max < self.ele_num_per_block and (
-                        key["e_level"] == SMALL_E or key["e_level"] == ONE_DIV_E):
+                        key["e_level"] == Constant.SMALL_E or key["e_level"] == Constant.ONE_DIV_E):
                     select_keys_mark[i] = 0
 
             if self.e_num_min > self.mask * self.core_num // 2 and key["div_oid"]:
                 select_keys_mark[i] = 0
 
-            in_min = self.e_num_min * self.segment_ids_min * input_byte
             in_max = self.e_num_max * self.segment_ids_max * input_byte
 
-            out_min = self.e_num_min * self.num_segments_min * input_byte
             out_max = self.e_num_max * self.num_segments_max * input_byte
 
             if in_max <= self.scalars[0].input_once_num \
@@ -631,7 +634,7 @@ class UnsortedSegmentTiling(object):
 
 class TikTemplate(object):
     """
-        Function: basic function template
+    Function: basic function template
     """
 
     def __init__(self, block_index, tik_inst, dtype, obj_gm_tensor, obj_ub_tensor, obj_tiling, instruction):
@@ -647,20 +650,20 @@ class TikTemplate(object):
 
     def _basic_module_get_input_and_cal(self, num_segments_part_index, num_segments_part,
                                         e_mov_index_gm2ub, ids_indexa, ids_block_num,
-                                        e_lenBurst, block_align, e_level, last_e, big_iid):
+                                        e_lenburst, block_align, e_level, last_e, big_iid):
         if last_e:
             repeat_time_part = self.obj_scalar.repeat_time_last_part
         else:
             repeat_time_part = self.obj_scalar.repeat_time_front_part
 
-        if e_level != BIG_E and block_align:
+        if e_level != Constant.BIG_E and block_align:
             input_offset_gm = (ids_indexa * self.obj_scalar.ids_param.front) * \
                               self.obj_scalar.e_num + \
                               e_mov_index_gm2ub * self.obj_scalar.e_out_param.front
-            src_stride = self.obj_scalar.e_num // self.ele_num_per_block - e_lenBurst
-            dst_stride = self.obj_scalar.e_num_part_ub_num // self.ele_num_per_block - e_lenBurst
+            src_stride = self.obj_scalar.e_num // self.ele_num_per_block - e_lenburst
+            dst_stride = self.obj_scalar.e_num_part_ub_num // self.ele_num_per_block - e_lenburst
             _tik_mov_input_gm2ub_continue(self.tik_inst, self.obj_gm_tensor.input_gm, self.obj_ub_tensor.input_ub,
-                                          input_offset_gm, 0, ids_block_num, e_lenBurst, src_stride, dst_stride)
+                                          input_offset_gm, 0, ids_block_num, e_lenburst, src_stride, dst_stride)
         else:
             with self.tik_inst.new_stmt_scope(disable_sync=True):
                 with self.tik_inst.for_range(0, ids_block_num, name="ids_indexb") as ids_indexb:
@@ -668,12 +671,12 @@ class TikTemplate(object):
                     input_offset_gm = (ids_indexa * self.obj_scalar.ids_param.front + ids_indexb) * \
                                       self.obj_scalar.e_num + \
                                       e_mov_index_gm2ub * self.obj_scalar.e_out_param.front
-                    if not block_align and last_e and (e_level == BIG_E or e_level == SMALL_E):
+                    if not block_align and last_e and (e_level == Constant.BIG_E or e_level == Constant.SMALL_E):
                         input_offset_gm = input_offset_gm - self.obj_scalar.align_scalar
                     input_offset_ub = ids_indexb * self.obj_scalar.e_num_part_ub_num
                     _tik_mov_input_gm2ub_continue(self.tik_inst, self.obj_gm_tensor.input_gm,
                                                   self.obj_ub_tensor.input_ub,
-                                                  input_offset_gm, input_offset_ub, 1, e_lenBurst)
+                                                  input_offset_gm, input_offset_ub, 1, e_lenburst)
 
         with self.tik_inst.for_range(0, ids_block_num, name="ids_indexb") as ids_indexb:
             if big_iid:
@@ -695,9 +698,9 @@ class TikTemplate(object):
     def _basic_module_ids_cal(self, num_segments_part_index, num_segments_part,
                               e_mov_index_gm2ub, block_align, e_level, last_e, big_iid):
         if last_e:
-            e_lenBurst = self.obj_scalar.e_lenBurst_last
+            e_lenburst = self.obj_scalar.e_lenBurst_last
         else:
-            e_lenBurst = self.obj_scalar.e_lenBurst_front
+            e_lenburst = self.obj_scalar.e_lenBurst_front
         # init output_ub
         _tik_init_ub_tensor_multi(self.tik_inst, self.obj_ub_tensor.output_ub,
                                   _ceil_div(num_segments_part * self.obj_scalar.e_num_part_ub_num,
@@ -717,7 +720,7 @@ class TikTemplate(object):
             self._basic_module_get_input_and_cal(num_segments_part_index, num_segments_part, e_mov_index_gm2ub,
                                                  ids_indexa,
                                                  self.obj_scalar.ids_param.front,
-                                                 e_lenBurst, block_align, e_level=e_level, last_e=last_e,
+                                                 e_lenburst, block_align, e_level=e_level, last_e=last_e,
                                                  big_iid=big_iid)
         # visit ids
         if big_iid:
@@ -729,25 +732,25 @@ class TikTemplate(object):
         self._basic_module_get_input_and_cal(num_segments_part_index, num_segments_part, e_mov_index_gm2ub,
                                              self.obj_scalar.ids_param.times - 1,
                                              self.obj_scalar.ids_param.last,
-                                             e_lenBurst, block_align, e_level=e_level, last_e=last_e,
+                                             e_lenburst, block_align, e_level=e_level, last_e=last_e,
                                              big_iid=big_iid)
 
     def _basic_module_ub2gm(self, num_segments_part_index, num_segments_part,
                             e_mov_index_gm2ub, block_align, e_level, last_e):
         if last_e:
-            e_lenBurst = self.obj_scalar.e_lenBurst_last
+            e_lenburst = self.obj_scalar.e_lenBurst_last
         else:
-            e_lenBurst = self.obj_scalar.e_lenBurst_front
+            e_lenburst = self.obj_scalar.e_lenBurst_front
 
-        if e_level == SMALL_E and block_align:
+        if e_level == Constant.SMALL_E and block_align:
             output_nburst = num_segments_part
             output_offset_gm = e_mov_index_gm2ub * self.obj_scalar.e_out_param.front + \
                                num_segments_part_index * self.obj_scalar.num_segments_param.front * \
                                self.obj_scalar.e_num
-            dst_stride = self.obj_scalar.e_num // self.ele_num_per_block - e_lenBurst
-            src_stride = self.obj_scalar.e_num_part_ub_num // self.ele_num_per_block - e_lenBurst
+            dst_stride = self.obj_scalar.e_num // self.ele_num_per_block - e_lenburst
+            src_stride = self.obj_scalar.e_num_part_ub_num // self.ele_num_per_block - e_lenburst
             _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm, self.obj_ub_tensor.output_ub,
-                                           output_offset_gm, 0, output_nburst, e_lenBurst, src_stride, dst_stride)
+                                           output_offset_gm, 0, output_nburst, e_lenburst, src_stride, dst_stride)
         else:
             with self.tik_inst.new_stmt_scope(disable_sync=True):
                 with self.tik_inst.for_range(0, num_segments_part, name="segment_index") as segment_index:
@@ -760,7 +763,7 @@ class TikTemplate(object):
                     _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm,
                                                    self.obj_ub_tensor.output_ub,
                                                    output_offset_gm, segment_index * self.obj_scalar.e_num_part_ub_num,
-                                                   1, e_lenBurst)
+                                                   1, e_lenburst)
 
     def _basic_module_block_e_ub2gm(self, num_segments_part_index, num_segments_part, e_mov_index_gm2ub):
         num_segments_part_front = num_segments_part * self.obj_scalar.e_out_param.last - self.ele_num_per_block
@@ -792,7 +795,7 @@ class TikTemplate(object):
                                                self.obj_ub_tensor.output_ub, output_offset_gm, 0, 1, 1)
 
     def _basic_module_one_e_ub2gm(self, num_segments_part_index, num_segments_part, e_mov_index_gm2ub):
-        e_lenBurst = self.obj_scalar.e_lenBurst_last
+        e_lenburst = self.obj_scalar.e_lenBurst_last
         align_ub = self.tik_inst.Tensor(self.dtype, (self.ele_num_per_block,), name="align_ub",
                                         scope=tik.scope_ubuf)
         for ele_i in range(self.ele_num_per_block):
@@ -808,14 +811,14 @@ class TikTemplate(object):
             _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm,
                                            self.obj_ub_tensor.output_ub,
                                            output_offset_gm, segment_index * self.obj_scalar.e_num_part_ub_num,
-                                           1, e_lenBurst)
+                                           1, e_lenburst)
         output_offset_gm = e_mov_index_gm2ub * self.obj_scalar.e_out_param.front + (
                 num_segments_part_index * self.obj_scalar.num_segments_param.front + num_segments_part - 1) \
                            * self.obj_scalar.e_num
         _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm,
                                        self.obj_ub_tensor.output_ub,
                                        output_offset_gm, (num_segments_part - 1) * self.obj_scalar.e_num_part_ub_num,
-                                       1, e_lenBurst - 1)
+                                       1, e_lenburst - 1)
         output_offset_gm = output_offset_gm + self.obj_scalar.e_out_param.last - self.ele_num_per_block
 
         _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm, align_ub, output_offset_gm,
@@ -825,11 +828,11 @@ class TikTemplate(object):
                                  block_align, e_level, big_iid, div_oid):
 
         def _call_func(num_segments_part_index, num_segments_part, e_mov_index_gm2ub, last_e):
-            if e_level == ONE_BLOCK_E:
+            if e_level == Constant.ONE_BLOCK_E:
                 self._basic_module_ids_cal(num_segments_part_index, num_segments_part, e_mov_index_gm2ub,
                                            block_align=False, e_level=e_level, last_e=True, big_iid=big_iid)
                 self._basic_module_block_e_ub2gm(num_segments_part_index, num_segments_part, e_mov_index_gm2ub)
-            elif e_level == ONE_DIV_E:
+            elif e_level == Constant.ONE_DIV_E:
                 self._basic_module_ids_cal(num_segments_part_index, num_segments_part, e_mov_index_gm2ub,
                                            block_align=False, e_level=e_level, last_e=True, big_iid=big_iid)
                 self._basic_module_one_e_ub2gm(num_segments_part_index, num_segments_part, e_mov_index_gm2ub)
@@ -892,7 +895,7 @@ class TikTemplate(object):
         None
         """
         self.obj_scalar = obj_scalar
-        if e_level == ONE_DIV_E or e_level == ONE_BLOCK_E:
+        if e_level == Constant.ONE_DIV_E or e_level == Constant.ONE_BLOCK_E:
             num_segments_block_index = self.block_index
             if not big_iid:
                 _tik_mov_ids_gm2ub(self.tik_inst, self.obj_gm_tensor.ids_gm, self.obj_ub_tensor.ids_ub, 0,

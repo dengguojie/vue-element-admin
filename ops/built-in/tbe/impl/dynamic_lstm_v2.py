@@ -45,6 +45,7 @@ from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+
 #pylint: disable=invalid-name
 def sigmoid_compute(input_x):
     """
@@ -197,33 +198,6 @@ def get_emit_insn_map(tensor):
     return insn
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,unused-argument
-def check_prama_dtype(input_x, weight, bias, h0, c0, y, output_h, output_c):
-    """
-    check parameters dtype
-    :return:
-    """
-    pass
-
-
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,unused-argument
-def check_prama_shape(input_x, weight, bias, cont, h0, c0, wci,
-                      wcf, wco, mask, y, output_h, output_c):
-    """
-    check parameters
-    """
-    pass
-
-
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,unused-argument
-def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
-               cell_clip, num_proj, time_major, activation):
-    """
-    check parameters
-    """
-    pass
-
-
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
@@ -241,11 +215,6 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
     """
     dynamic_lstm_v2
     """
-
-    check_prama_dtype(input_x, weight, bias, h0, c0, y, output_h, output_c)
-
-    check_prama_shape(input_x, weight, bias, cont, h0, c0, wci,
-                      wcf, wco, mask, y, output_h, output_c)
 
     shape_x_input = input_x.get("shape")
     shape_w_input = weight.get("shape")
@@ -440,6 +409,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                           build_input_list,
                           build_output_list,
                           config=config_map)
+
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
@@ -1032,6 +1002,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
 
     return return_list, s
 
+
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
@@ -1313,41 +1284,41 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     if bias_dtype == 'float16':
         update_c_fp16_back = tvm.compute(shape_i,
                                         lambda *indices: update_c_gm(*indices),
-                                        name = "update_c_fp16_back",
-                                        tag = "out_to_ub")
+                                        name="update_c_fp16_back",
+                                        tag="out_to_ub")
         if need_output_last:
             last_update_c_gm = tvm.compute(shape_i,
                                         lambda *indices: update_c_fp16_back(*indices),
-                                        name = "last_update_c_gm",
-                                        tag = "ub_to_out")
+                                        name="last_update_c_gm",
+                                        tag="ub_to_out")
             last_update_c_back = tvm.compute(shape_i,
                                         lambda *indices: last_update_c_gm(*indices),
-                                        name = "last_update_c_back",
-                                        tag = "out_to_ub")
+                                        name="last_update_c_back",
+                                        tag="out_to_ub")
             update_c_fp16_back_fp32 = tvm.compute(shape_i,
                                             lambda *indices: last_update_c_back(*indices).astype('float32'),
-                                            name = "update_c_fp16_back_fp32_drnn_cast",
-                                            tag = "elewise_single_cast")
+                                            name="update_c_fp16_back_fp32_drnn_cast",
+                                            tag="elewise_single_cast")
         else:
             update_c_fp16_back_fp32 = tvm.compute(shape_i,
                                             lambda *indices: update_c_fp16_back(*indices).astype('float32'),
-                                            name = "update_c_fp16_back_fp32_drnn_cast",
-                                            tag = "elewise_single_cast")
+                                            name="update_c_fp16_back_fp32_drnn_cast",
+                                            tag="elewise_single_cast")
         c_t_tanh = tanh_compute_high_precision(update_c_fp16_back_fp32)
     else:
         update_c_fp32_back = tvm.compute(shape_i,
                                         lambda *indices: update_c_gm(*indices),
-                                        name = "update_c_fp32_back",
-                                        tag = "out_to_ub")
+                                        name="update_c_fp32_back",
+                                        tag="out_to_ub")
         if need_output_last:
             last_update_c_gm = tvm.compute(shape_i,
                                         lambda *indices: update_c_fp32_back(*indices),
-                                        name = "last_update_c_gm",
-                                        tag = "ub_to_out")
+                                        name="last_update_c_gm",
+                                        tag="ub_to_out")
             last_update_c_back = tvm.compute(shape_i,
                                         lambda *indices: last_update_c_gm(*indices),
-                                        name = "last_update_c_back",
-                                        tag = "out_to_ub") 
+                                        name="last_update_c_back",
+                                        tag="out_to_ub") 
             c_t_tanh = tanh_compute_high_precision(last_update_c_back)           
         else:
             c_t_tanh = tanh_compute_high_precision(update_c_fp32_back)
@@ -1358,69 +1329,69 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     if fp16_input_output:
         update_h_fp16 = tvm.compute(shape_i,
                                     lambda *indices: update_h(*indices).astype('float16'),
-                                    name = "update_h_fp16_drnn_cast",
-                                    tag = "elewise_single_cast")                 
+                                    name="update_h_fp16_drnn_cast",
+                                    tag="elewise_single_cast")                 
         update_h_gm_as_y = tvm.compute(shape_i,
                                         lambda *indices: update_h_fp16(*indices),
-                                        name = "update_h_gm_as_y",
-                                        tag = "ub_to_out")
+                                        name="update_h_gm_as_y",
+                                        tag="ub_to_out")
         update_h_gm_as_y_back = tvm.compute(shape_i,
                                         lambda *indices: update_h_gm_as_y(*indices),
-                                        name = "update_h_gm_as_y_back",
-                                        tag = "out_to_ub")
+                                        name="update_h_gm_as_y_back",
+                                        tag="out_to_ub")
         if need_output_last:
             last_update_h_gm = tvm.compute(shape_i,
                                     lambda *indices: update_h_gm_as_y_back(*indices),
-                                    name = "last_update_h_gm",
-                                    tag = "ub_to_out")   
+                                    name="last_update_h_gm",
+                                    tag="ub_to_out")   
             last_update_h_back = tvm.compute(shape_i,
                                     lambda *indices: last_update_h_gm(*indices),
-                                    name = "last_update_h_back",
-                                    tag = "out_to_ub")   
+                                    name="last_update_h_back",
+                                    tag="out_to_ub")   
             update_h_gm = tvm.compute(shape_i,
                                     lambda *indices: last_update_h_back(*indices),
-                                    name = "update_h_gm",
-                                    tag = "ub_to_out")   
+                                    name="update_h_gm",
+                                    tag="ub_to_out")   
         else:
             update_h_gm = tvm.compute(shape_i,
                                     lambda *indices: update_h_gm_as_y_back(*indices),
-                                    name = "update_h_gm",
-                                    tag = "ub_to_out")                                
+                                    name="update_h_gm",
+                                    tag="ub_to_out")                                
     else:
         update_h_gm_as_y = tvm.compute(shape_i,
                                     lambda *indices: update_h(*indices),
-                                    name = "update_h_gm_as_y",
-                                    tag = "ub_to_out")                 
+                                    name="update_h_gm_as_y",
+                                    tag="ub_to_out")                 
         update_h_gm_as_y_back = tvm.compute(shape_i,
                                         lambda *indices: update_h_gm_as_y(*indices),
-                                        name = "update_h_gm_as_y_back",
-                                        tag = "out_to_ub")
+                                        name="update_h_gm_as_y_back",
+                                        tag="out_to_ub")
         update_h_fp16_cast = tvm.compute(shape_i,
                                         lambda *indices: update_h_gm_as_y_back(*indices).astype('float16'),
-                                        name = "update_h_fp16_cast_drnn_cast",
-                                        tag = "elewise_single_cast")
+                                        name="update_h_fp16_cast_drnn_cast",
+                                        tag="elewise_single_cast")
         if need_output_last:
             last_update_h_gm = tvm.compute(shape_i,
                                     lambda *indices: update_h_fp16_cast(*indices),
-                                    name = "last_update_h_gm",
-                                    tag = "ub_to_out")   
+                                    name="last_update_h_gm",
+                                    tag="ub_to_out")   
             last_update_h_back = tvm.compute(shape_i,
                                     lambda *indices: last_update_h_gm(*indices),
-                                    name = "last_update_h_back",
-                                    tag = "out_to_ub")   
+                                    name="last_update_h_back",
+                                    tag="out_to_ub")   
             update_h_gm = tvm.compute(shape_i,
                                     lambda *indices: last_update_h_back(*indices),
-                                    name = "update_h_gm",
-                                    tag = "ub_to_out") 
+                                    name="update_h_gm",
+                                    tag="ub_to_out") 
             
         else:    
             update_h_gm = tvm.compute(shape_i,
                                     lambda *indices: update_h_fp16_cast(*indices),
-                                    name = "update_h_gm",
-                                    tag = "ub_to_out") 
+                                    name="update_h_gm",
+                                    tag="ub_to_out") 
 
     #end compute
-    return_list = [update_h_gm, update_c_gm, update_h_gm_as_y]
+    return_list=[update_h_gm, update_c_gm, update_h_gm_as_y]
     if need_output_last:
         return_list.extend([last_update_h_gm, last_update_c_gm])
     return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor = sync0)
@@ -1523,27 +1494,27 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     
     l1_n_outer, l1_n_inner = \
         s[c_l0c].split(c_l0c.op.axis[2],
-                        factor = factor_l1_n)
+                        factor=factor_l1_n)
                         
     l1_m_outer, l1_m_inner = \
         s[c_l0c].split(c_l0c.op.axis[3],
-                        factor = factor_l1_m)
+                        factor=factor_l1_m)
     l1_k_outer, l1_k_inner = \
         s[c_l0c].split(c_l0c.op.reduce_axis[0],
-                        factor = factor_l1_k)
+                        factor=factor_l1_k)
 
     l0_n_outer, l0_n_inner = s[c_l0c].split(l1_n_inner,
-                                            factor = factor_l0_n)
+                                            factor=factor_l0_n)
     l0_m_outer, l0_m_inner = s[c_l0c].split(l1_m_inner,
-                                            factor = factor_l0_m)
+                                            factor=factor_l0_m)
     l0_k_outer, l0_k_inner = s[c_l0c].split(l1_k_inner,
-                                            factor = factor_l0_k)  
+                                            factor=factor_l0_k)  
     s[c_l0c].reorder(l1_n_outer, c_l0c.op.axis[1],
-					 l1_m_outer, l1_k_outer,
-					 l0_n_outer, l0_m_outer, l0_k_outer,
-					 l0_n_inner, l0_m_inner, c_l0c.op.axis[3 + 1],
-					 c_l0c.op.axis[4 + 1], l0_k_inner,
-					 c_l0c.op.reduce_axis[1])
+                     l1_m_outer, l1_k_outer,
+                     l0_n_outer, l0_m_outer, l0_k_outer,
+                     l0_n_inner, l0_m_inner, c_l0c.op.axis[3 + 1],
+                     c_l0c.op.axis[4 + 1], l0_k_inner,
+                     c_l0c.op.reduce_axis[1])
 
     s[a_ub].compute_at(s[c_l0c], l1_k_outer)
     s[a_l0a].compute_at(s[c_l0c], l0_k_outer)

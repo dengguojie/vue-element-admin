@@ -45,6 +45,7 @@ from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+
 def sigmoid_compute(input_x):
     """
     calculating sigmoid
@@ -74,6 +75,7 @@ def sigmoid_compute(input_x):
         res = vrec(tmp_sum)
 
     return res
+
 
 def hard_sigmoid_compute(input_x):
     """
@@ -267,6 +269,7 @@ def check_param_dtype(input_x, weight_input, weight_hidden, bias, init_h, init_c
         error_manager_vector.raise_err_specific_reson("DynamicRNNV2",
                                                       "tanhc dtype is not the same as y dtype !")
 
+
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name,line-too-long
 def check_param_shape(input_x, weight_input, weight_hidden, bias, seq_length, init_h, init_c,
                       wci, wcf, wco, mask, y, output_h, output_c, i, j, f, o,
@@ -443,6 +446,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
         error_manager_vector.raise_err_check_params_rules("DynamicRNNV2",
                                                           "merge_mode in ['concat', 'add']",
                                                           "merge_mode", str(merge_mode))
+
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,

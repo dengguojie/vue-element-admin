@@ -57,7 +57,7 @@ def sigmoid(x):
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
-def matrix_to_zZ(matrix, shape, dtype):
+def matrix_to_zz(matrix, shape, dtype):
     """
     ND(m, k) to zZ
     """
@@ -136,7 +136,7 @@ def matrix_to_nZ(matrix, shape, dtype):
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
-def matrix_to_zN(matrix, shape, dtype):
+def matrix_to_zn(matrix, shape, dtype):
     """
     ND(m, n) to zN
     """
@@ -184,9 +184,9 @@ def matrix_to_zN(matrix, shape, dtype):
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
-def maxtrix_zN_reverse(matrix, shape, dtype):
+def maxtrix_zn_reverse(matrix, shape, dtype):
     """
-    maxtrix zN reverse
+    maxtrix zn reverse
     """
 
     idx = 0
@@ -217,9 +217,9 @@ def maxtrix_zN_reverse(matrix, shape, dtype):
 
 
 # pylint: disable=too-many-nested-blocks,invalid-name
-def maxtrix_nZ_reverse(matrix, shape, dtype):
+def maxtrix_nz_reverse(matrix, shape, dtype):
     """
-    maxtrix nZ reverse
+    maxtrix nz reverse
     """
 
     idx = 0
@@ -305,9 +305,9 @@ def dynamic_rnn_np(input_data_list,
         init_from_gm = True
 
     x_data = input_data_list[0]
-    x_data = maxtrix_zN_reverse(x_data.flatten(), shape_x_input, np.float16)
+    x_data = maxtrix_zn_reverse(x_data.flatten(), shape_x_input, np.float16)
     w_data = input_data_list[1]
-    w_data = maxtrix_nZ_reverse(w_data.flatten(), shape_w_input, np.float16)
+    w_data = maxtrix_nz_reverse(w_data.flatten(), shape_w_input, np.float16)
     bias_num = input_data_list[2].flatten()
 
     if init_from_gm:
@@ -372,13 +372,13 @@ def dynamic_rnn_np(input_data_list,
     output_tanc = output_tanc.reshape(t_size, batch, hidden).astype(src_type)
     outputy = output_h
 
-    output_c = matrix_to_zN(output_c, output_c.shape, src_type).reshape(shape_output)
-    output_h = matrix_to_zN(output_h, output_h.shape, src_type).reshape(shape_output)
-    output_i = matrix_to_zN(output_i, output_i.shape, src_type).reshape(shape_output)
-    output_j = matrix_to_zN(output_j, output_j.shape, src_type).reshape(shape_output)
-    output_f = matrix_to_zN(output_f, output_f.shape, src_type).reshape(shape_output)
-    output_o = matrix_to_zN(output_o, output_o.shape, src_type).reshape(shape_output)
-    output_tanc = matrix_to_zN(output_tanc, output_tanc.shape, src_type).reshape(shape_output)
+    output_c = matrix_to_zn(output_c, output_c.shape, src_type).reshape(shape_output)
+    output_h = matrix_to_zn(output_h, output_h.shape, src_type).reshape(shape_output)
+    output_i = matrix_to_zn(output_i, output_i.shape, src_type).reshape(shape_output)
+    output_j = matrix_to_zn(output_j, output_j.shape, src_type).reshape(shape_output)
+    output_f = matrix_to_zn(output_f, output_f.shape, src_type).reshape(shape_output)
+    output_o = matrix_to_zn(output_o, output_o.shape, src_type).reshape(shape_output)
+    output_tanc = matrix_to_zn(output_tanc, output_tanc.shape, src_type).reshape(shape_output)
     outputy = output_h
 
     return [outputy, output_h, output_c, output_i, output_j, output_f, output_o, output_tanc]
@@ -688,6 +688,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
         error_manager_vector.raise_err_check_params_rules("DynamicRNN",
                                                           "gate_order in ['ijfo', 'ifjo']",
                                                           "gate_order", str(gate_order))
+
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT,

@@ -26,8 +26,12 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
 
-SHAPE_SIZE_LIMIT = 2 ** 31
-EPS = 0.001
+class Constant:
+    """
+    The class for constant.
+    """
+    SHAPE_SIZE_LIMIT = 2 ** 31
+    EPS = 0.001
 
 
 # pylint: disable=invalid-name, too-many-locals
@@ -70,7 +74,7 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     w_max = tbe.vmaxs(w_max, const_0)
 
     # const defination
-    const_eps = tvm.const(EPS, 'float16')
+    const_eps = tvm.const(Constant.EPS, 'float16')
     const_1 = tvm.const(1.0, 'float16')
 
     if offset_flag:
@@ -158,7 +162,7 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
     w_shape = w.get('shape')
     w_min_shape = w_min.get('shape')
     w_max_shape = w_max.get('shape')
-    w_range =w.get('range')
+    w_range = w.get('range')
     w_min_range = w_min.get('range')
     w_max_range = w_max.get('range')
 
@@ -179,7 +183,7 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
     for i in range(len(w_shape)):
         if w_shape[i] == -1:
             if w_range[i][1] is None:
-                w_size *= SHAPE_SIZE_LIMIT
+                w_size *= Constant.SHAPE_SIZE_LIMIT
             else:
                 w_size *= w_range[i][1]
             if w_min_shape[i] == -1:
@@ -192,8 +196,8 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
         else:
             w_size *= w_shape[i]
 
-    if w_size > SHAPE_SIZE_LIMIT:
-        error_detail = "The shape size of w must be smaller than {}!".format(SHAPE_SIZE_LIMIT)
+    if w_size > Constant.SHAPE_SIZE_LIMIT:
+        error_detail = "The shape size of w must be smaller than {}!".format(Constant.SHAPE_SIZE_LIMIT)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, 'w', error_detail)
 
     y_shape = y.get('shape')

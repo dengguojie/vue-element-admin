@@ -14,9 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic_rnn
 """
 # pylint: disable=too-many-lines
-import operator
 
-import numpy as np
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
 from te.lang.cce import vabs
@@ -218,10 +216,9 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     if tanhc["dtype"] != bias_dtype:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "tanhc dtype is not the same as bias dtype !")
 
+
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
-def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
-                      wci, wcf, wco, mask, y, output_h, output_c, i, j, f, o,
-                      tanhc):
+def check_prama_shape(weight, bias, seq_length, init_h, init_c, output_h):
     """
     check parameters
     """
@@ -242,10 +239,8 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
                                                       "init_h, init_c should appear together, please check!")
 
 
-
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
-def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
-               cell_clip, num_proj, time_major, activation):
+def check_attr(cell_type, direction, cell_depth, activation):
     """
     check parameters
     """
@@ -308,17 +303,16 @@ def dynamic_rnn_v3(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     if pipe_hole_fun and len(wco["shape"]) == 4:
         wco["shape"] = [1, wco["shape"][0], wco["shape"][1], wco["shape"][2], wco["shape"][3]]
     if real_mask_fun and len(real_mask["shape"]) == 4:
-        real_mask["shape"] = [1, real_mask["shape"][0], real_mask["shape"][1], real_mask["shape"][2], real_mask["shape"][3]]
+        real_mask["shape"] = [1, real_mask["shape"][0], real_mask["shape"][1], real_mask["shape"][2],
+                              real_mask["shape"][3]]
     if project_fun and len(project["shape"]) == 4:
         project["shape"] = [1, project["shape"][0], project["shape"][1], project["shape"][2], project["shape"][3]]
     check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
                       output_c, i, j, f, o, tanhc)
 
-    check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c, wci,
-                      wcf, wco, mask, y, output_h, output_c, i, j, f, o, tanhc)
+    check_prama_shape(weight, bias, seq_length, init_h, init_c, output_h)
 
-    check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
-               cell_clip, num_proj, time_major, activation)
+    check_attr(cell_type, direction, cell_depth, activation)
 
     shape_x_input = input_x.get("shape")
     shape_w_input = weight.get("shape")
@@ -601,8 +595,6 @@ def dynamic_rnn_tik(input_list, custom_list):
     is_first_round = custom_list[1]
     is_global_init = custom_list[2]
     forget_bias = custom_list[3]
-    pipe_hole_fun = custom_list[4]
-    real_mask_fun = custom_list[5]
     project_fun = custom_list[6]
 
     wci_gm = None
@@ -938,7 +930,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     c_t_tanh = tanh_compute(update_c)
 
-    # c_t_tanh_ub = c_t_tanh
     if wci_gm is not None:
         wco_ct_add = vmul(wco_ub, update_c)
         o_t_tmp = vadd(wco_ct_add, o_t)
@@ -1012,7 +1003,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                               lambda *indices: update_c_fp16_back_fake(*indices).astype('float32'),
                                               name="update_c_fp16_back_fp32_drnn_cast_fake",
                                               tag="elewise_single_cast")
-        c_t_tanh_fake = tvm.compute(shape_i, lambda *indices: update_c_fp16_back_fp32_fake(*indices) + c_t_tanh(*indices),
+        c_t_tanh_fake = tvm.compute(shape_i,
+                                    lambda *indices: update_c_fp16_back_fp32_fake(*indices) + c_t_tanh(*indices),
                                     name="c_t_tanh_fake",
                                     tag="phony_insn")
     else:

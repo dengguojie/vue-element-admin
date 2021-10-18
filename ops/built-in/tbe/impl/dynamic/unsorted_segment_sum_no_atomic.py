@@ -19,15 +19,20 @@ unsorted_segment_sum
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
-# int32 select key
-SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9
-SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID = 10
-SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID = 11
-SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID = 12
-SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK = 13
-SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK = 14
-SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE = 15
-SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN = 16
+
+class Constant:
+    """
+    The class for constant.
+    """
+    # int32 select key
+    SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9
+    SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID = 10
+    SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID = 11
+    SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID = 12
+    SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK = 13
+    SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK = 14
+    SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE = 15
+    SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN = 16
 
 DTYPE_FP32 = "float32"
 DTYPE_FP16 = "float16"
@@ -488,7 +493,7 @@ class UnsortedSegmentSum():
             with self.tik_instance.if_scope(block_index < self.obj_common_scalar.need_core_num):
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
                                                                                (self.ub_size // 2 // byte,),
                                                                                name="input_ub",
@@ -503,7 +508,7 @@ class UnsortedSegmentSum():
                                                        self.obj_int32_e_num_input_scalar, self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
@@ -519,7 +524,7 @@ class UnsortedSegmentSum():
                                                         self.obj_int32_e_num_input_scalar, self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
@@ -535,7 +540,7 @@ class UnsortedSegmentSum():
                                                     self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
@@ -551,7 +556,7 @@ class UnsortedSegmentSum():
                                                       self.obj_int32_e_num_input_scalar, self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
@@ -567,7 +572,7 @@ class UnsortedSegmentSum():
                                                       self.obj_int32_e_num_input_scalar, self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000 // byte,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
@@ -583,7 +588,7 @@ class UnsortedSegmentSum():
                                                     self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (mask,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
@@ -602,7 +607,7 @@ class UnsortedSegmentSum():
 
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK):
+                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK):
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (mask,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
