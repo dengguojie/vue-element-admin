@@ -528,6 +528,7 @@ vector_A:
       - ops/built-in/op_tiling/avg_pool.cc
       - ops/built-in/op_tiling/dynamic_lstm_grad_cell.cc
       - ops/built-in/op_tiling/dynamic_rnn.cc
+      - ops/built-in/op_tiling/softmax_tiling.cc
       - ops/built-in/tbe/impl/aipp.py
       - ops/built-in/tbe/impl/aipp_comm.py
       - ops/built-in/tbe/impl/aipp_dynamic.py
@@ -772,17 +773,6 @@ vector_B:
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/data_flow_ops.cc
-      - ops/built-in/op_proto/inc/data_flow_ops.h
-      - ops/built-in/op_proto/inc/elewise_calculation_ops.h
-      - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
-      - ops/built-in/op_proto/inc/nn_norm_ops.h
-      - ops/built-in/op_proto/inc/nn_ops.h
-      - ops/built-in/op_proto/inc/nn_training_ops.h
-      - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
-      - ops/built-in/op_proto/inc/pad_ops.h
-      - ops/built-in/op_proto/inc/rnn.h
-      - ops/built-in/op_proto/inc/spectral_ops.h
-      - ops/built-in/op_proto/inc/transformation_ops.h
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
       - ops/built-in/op_proto/rpn_ops.cc
       - ops/built-in/op_proto/util/axis_util.h
@@ -853,7 +843,6 @@ vector_B:
       - ops/built-in/op_tiling/scatter_sub.cc
       - ops/built-in/op_tiling/scatter_update.cc
       - ops/built-in/op_tiling/smooth_l1_loss_v2.cc
-      - ops/built-in/op_tiling/softmax_tiling.cc
       - ops/built-in/op_tiling/sort.cc
       - ops/built-in/op_tiling/space_to_batch_nd.cc
       - ops/built-in/op_tiling/sparse_apply_ftrl_d.cc
@@ -871,7 +860,6 @@ vector_B:
       - ops/built-in/op_tiling/trans_data_positive_source_ntc_100.cc
       - ops/built-in/op_tiling/trans_data_positive_source_tc_1010.cc
       - ops/built-in/op_tiling/trans_data_positive_source_tc_1011.cc
-      - ops/built-in/op_tiling/transpose_d.cc
       - ops/built-in/op_tiling/unpack.cc
       - ops/built-in/op_tiling/unsorted_segment.cc
       - ops/built-in/op_tiling/unsorted_segment_sum.cc
