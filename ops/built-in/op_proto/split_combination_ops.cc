@@ -630,15 +630,16 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape, in
   return true;
 }
 
-bool ConcatInferShapeCommonStatic(Operator& op, int64_t num_concat, int64_t axis) {
+bool ConcatInferShapeCommonStatic(Operator& op, const int64_t dynamic_input_start_idx,
+                                  int64_t num_concat, int64_t axis) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc(0);
+  auto input_desc = op_info->MutableInputDesc(dynamic_input_start_idx);
   auto output_desc = op_info->MutableOutputDesc(0);
   const GeShape& input_shape = input_desc->MutableShape();
   GeShape& output_shape = output_desc->MutableShape();
   output_shape = input_shape;
-  if (output_shape.IsUnknownShape()) {
-    // dynamic case
+  if (output_shape.IsUnknownShape() || num_concat == 1) {
+    // dynamic case or the input only one will use dynamic infer func
     return false;
   }
 
@@ -659,7 +660,7 @@ bool ConcatInferShapeCommonStatic(Operator& op, int64_t num_concat, int64_t axis
   int64_t concat_dim_size = output_shape.GetDim(axis);
 
   for (int64_t input_idx = 1; input_idx < num_concat; input_idx++) {
-    auto input_i_desc = op_info->MutableInputDesc(input_idx);
+    auto input_i_desc = op_info->MutableInputDesc(input_idx + dynamic_input_start_idx);
     const GeShape& input_i_shape = input_i_desc->MutableShape();
     if (input_i_shape.IsScalar() && output_dim == 1) {
       concat_dim_size += 1;
@@ -688,7 +689,8 @@ bool ConcatInferShapeCommonStatic(Operator& op, int64_t num_concat, int64_t axis
   return true;
 }
 
-static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int64_t axis, bool unknown_axis) {
+static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_start_idx,
+                                          int64_t num_concat, int64_t axis, bool unknown_axis) {
   if (num_concat <= 0) {
     std::string err_msg = GetAttrValueErrMsg("num_concat", std::to_string(num_concat), ConcatString("num_concat > 0"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -697,7 +699,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
 
   // try static infershape directly
   if (!unknown_axis) {
-    if (ConcatInferShapeCommonStatic(op, num_concat, axis)) {
+    if (ConcatInferShapeCommonStatic(op, dy_input_start_idx, num_concat, axis)) {
       return GRAPH_SUCCESS;
     }
   }
@@ -859,7 +861,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2DInferShape) {
     return GRAPH_FAILED;
   }
 
-  return ConcatInferShapeCommon(op, num_concatext2, axis, false);
+  return ConcatInferShapeCommon(op, 0, num_concatext2, axis, false);
 }
 
 COMMON_INFER_FUNC_REG(ConcatV2D, ConcatV2DInferShape);
@@ -1055,7 +1057,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatDInferShape) {
     return GRAPH_FAILED;
   }
 
-  return ConcatInferShapeCommon(op, num_concat, concat_dim, false);
+  return ConcatInferShapeCommon(op, 0, num_concat, concat_dim, false);
 }
 
 COMMON_INFER_FUNC_REG(ConcatD, ConcatDInferShape);
@@ -1110,7 +1112,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
     }
   }
 
-  return ConcatInferShapeCommon(op, N, axis, is_unknown_axis);
+  return ConcatInferShapeCommon(op, 1, N, axis, is_unknown_axis);
 }
 
 COMMON_INFER_FUNC_REG(Concat, ConcatInferShape);
@@ -1145,7 +1147,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
     }
   }
 
-  return ConcatInferShapeCommon(op, N, axis, is_unknown_axis);
+  return ConcatInferShapeCommon(op, 0, N, axis, is_unknown_axis);
 }
 
 COMMON_INFER_FUNC_REG(ConcatV2, ConcatV2InferShape);

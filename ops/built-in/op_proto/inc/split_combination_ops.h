@@ -298,8 +298,8 @@ REG_OP(ConcatD)
 * Compatible with the TensorFlow operator Concat.
 */
 REG_OP(Concat)
-    .DYNAMIC_INPUT(x, TensorType::BasicType())
     .INPUT(concat_dim, TensorType::IndexNumberType())
+    .DYNAMIC_INPUT(x, TensorType::BasicType())
     .OUTPUT(y, TensorType::BasicType())
     .ATTR(N, Int, 1)
     .OP_END_FACTORY_REG(Concat)
