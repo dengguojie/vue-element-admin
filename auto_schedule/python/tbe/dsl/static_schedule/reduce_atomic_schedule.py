@@ -129,6 +129,14 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         self._reduce_tiling_result = {"block_tiling": {}, "ub_tiling": [{}]}
 
+        self._soc_support_atomic = {
+            ASCEND_910: ["float32"],
+            ASCEND_920A: ["float32"],
+            ASCEND_610: ["float32"],
+            ASCEND_615: ["float32"],
+            ASCEND_710: ["float32", "float16"]
+        }
+
     # pylint: disable=too-many-locals
     def _construct_compute_graph(self, out_tensors, spec_node_list):
         """
@@ -279,11 +287,8 @@ class ReduceAtomicSchedule(VectorSchedule):
         if reduce_tensor is None:
             return False
         dtype = reduce_tensor.dtype
-        if dtype != "float32":
-            return False
         soc_ver = get_soc_spec(SOC_VERSION)
-        is_support_atomic = soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710)
-        if not is_support_atomic:
+        if not (dtype in self._soc_support_atomic.get(soc_ver, [])):
             return False
         tag = reduce_tensor.op.tag
         if tag.find("sum") != -1:
