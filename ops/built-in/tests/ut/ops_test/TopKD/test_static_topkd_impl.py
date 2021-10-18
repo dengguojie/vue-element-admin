@@ -35,7 +35,7 @@ case3 = {"params": [{"shape": (8, 5000), "dtype": "float16", "ori_shape": (8, 50
                     {"shape": (8,6), "dtype": "float16", "format": "ND", "ori_shape": (8,6),"ori_format": "ND", "range": ((1, 880), (1, 16))},
                     {"shape": (8,6), "dtype": "int32", "format": "ND", "ori_shape": (8,6),"ori_format": "ND", "range": ((1, 880), (1, 16))},
                     6,True,-1,True],
-         "case_name": "TopkD_k_8",
+         "case_name": "TopkD_k_6",
          "expect": "RuntimeError",
          "support_expect": False}
 # TODO fix me, this comment, run failed

@@ -1,4 +1,4 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
+# Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-top_k
+top_k_d
 """
 import functools
 
@@ -23,8 +23,8 @@ from enum import unique
 from te import platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from impl.util.platform_adapter import tik
 from te.utils.error_manager import error_manager_vector
-from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -32,7 +32,18 @@ from impl.dynamic.top_k_d import top_k_d as top_k_template
 from impl.util.platform_adapter import is_vgatherb
 
 FP16_MINIMUM = -65520
+MAX_INT32 = 2 ** 31 - 1
+INDICES_NUM = MAX_INT32
+DTYPE_INT32 = "int32"
+TILING_PARAMS_NUM = 8
+MAX_SHAPE_SIZE = MAX_INT32
+TILING_PARAM_DTYPE = DTYPE_INT32
 
+# byte of one block
+BYTE_BLOCK = 32
+FULL_MASK_FP16 = 128
+FULL_MASK_INT32 = 64
+FULL_MASK_INT64 = 32
 
 # pylint: disable = unused-argument,redefined-builtin
 def get_op_support_info(input_tensor,
@@ -63,6 +74,7 @@ def get_op_support_info(input_tensor,
     return op_cal_info_in_json
 
 
+# pylint: disable=invalid-name
 @unique
 class Mode(Enum):
     """Mode for Region proposal"""
@@ -95,8 +107,6 @@ class GlobalVar:
         self.region_sorted_ub = None
         self.reg_min_number = None
         self._max_part_num = None
-        self.reg_addr = None
-        self.reg_addr_buffer = None
         self.indices_out_final_ub = None
         self.offset_ub = None
         self.offset_fp16_ub = None
@@ -298,30 +308,6 @@ class GlobalVar:
         """
         self._max_part_num = max_part_num
 
-    def set_reg_addr(self, reg_addr):
-        """"
-        set_reg_addr
-        """
-        self.reg_addr = reg_addr
-
-    def get_reg_addr(self):
-        """"
-        get_reg_addr
-        """
-        return self.reg_addr
-
-    def set_reg_addr_buffer(self, reg_addr_buffer):
-        """"
-        set_reg_addr_buffer
-        """
-        self.reg_addr_buffer = reg_addr_buffer
-
-    def get_reg_addr_buffer(self):
-        """"
-        get_reg_addr_buffer
-        """
-        return self.reg_addr_buffer
-
     def set_indices_out_final_ub(self, indices_out_final_ub):
         """
         set_indices_out_final_ub
@@ -396,186 +382,249 @@ class GlobalVar:
         """
         return self.offset_gm
 
-
 GLOBAL_VAR = GlobalVar()
 
 
-def _new_alloc(tvm_ir, dtype, shape, name, scope):
+
+
+def _emit_copy_ubuf_to_gm(tik_instance, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
     """
-    alloc memory for decl new buffer
+    _emit_copy_ubuf_to_gm
     """
-    buf_var = tvm_ir.allocate(dtype, shape, name=name, scope=scope)
-    new_buffer = tvm.decl_buffer(shape, buf_var.dtype, name=name, scope=scope, data=buf_var)
-    return new_buffer
+    tik_instance.data_move(dst[dst_offset], src[src_offset], 0, nburst, burstlen, srcstride, dststride)
 
 
-def _set_mask(length):
+def _copy_ubuf_to_gm_k_less_16(tik_instance, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
     """
-    calculate MASK in cce
-
-    Parameters
-    ----------
-    length : int
-        calculate length
-
-    Returns
-    -------
-    mask : tuple of int
-        low and high bit of mask.
+    _copy_ubuf_to_gm
     """
-    length = int(length)
-    mask1 = 2**max(length - 64, 0) - 1
-    mask2 = 2**min(length, 64) - 1
-    return mask1, mask2
+    if dtype == 'float16':
+        blocklen = 16
+        zero_length = blocklen - k
+        zero_scalar = tik_instance.Scalar(dtype=dtype, name="zero_scalar", init_value=0)
+        tik_instance.set_atomic_add(2)
+        with tik_instance.for_range(0, num_rows - 1, name='ub2gmi0') as i:
+            for zero_pad in range(zero_length):
+                src[cols_padding * i + k + zero_pad].set_as(zero_scalar)
+            _emit_copy_ubuf_to_gm(tik_instance,
+                                  dtype,
+                                  dst,
+                                  src,
+                                  1,
+                                  1,
+                                  0,
+                                  0,
+                                  dst_offset=k * i + gm_offset,
+                                  src_offset=cols_padding * i)
+        for i in range(blocklen):
+            tail_block_ub[i].set_as(src[cols_padding * (num_rows - 1) + i])
+        for zero_pad in range(zero_length):
+            tail_block_ub[k + zero_pad].set_as(zero_scalar)
+
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              tail_block_ub,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset,
+                              src_offset=0)
+        tik_instance.set_atomic_add(0)
+    elif dtype == 'int32':
+        blocklen = 8
+        with tik_instance.for_range(0, num_rows - 1, name='ub2gmi0') as i:
+            _emit_copy_ubuf_to_gm(tik_instance,
+                                  dtype,
+                                  dst,
+                                  src,
+                                  1,
+                                  2,
+                                  0,
+                                  0,
+                                  dst_offset=k * i + gm_offset,
+                                  src_offset=cols_padding * i)
+
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              src,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset,
+                              src_offset=cols_padding * (num_rows - 1))
+
+        for i in range(blocklen):
+            tail_block_ub[i].set_as(src[cols_padding * (num_rows - 1) + k - blocklen + i])
+
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              tail_block_ub,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset + k - blocklen,
+                              src_offset=0)
 
 
-def _set_mask_insn(tvm_ir, type_, bits=128):
+def _copy_ubuf_to_gm(tik_instance, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
     """
-    _set_mask_insn
+    _copy_ubuf_to_gm
     """
-    mask1, mask2 = _set_mask(bits)
-    tvm_ir.emit(
-        tvm.call_extern(type_, 'set_vector_mask', tvm.const(mask1, dtype='uint64'), tvm.const(mask2, dtype='uint64')))
+    if dtype == 'float16':
+        burstlen = (k * 2 + 31) // 32
+        blocklen = 16
+    elif dtype == 'int32':
+        burstlen = (k * 4 + 31) // 32
+        blocklen = 8
 
+    with tik_instance.for_range(0, num_rows - 1, name='ub2gmi0') as i:
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              src,
+                              1,
+                              burstlen,
+                              0,
+                              0,
+                              dst_offset=k * i + gm_offset,
+                              src_offset=cols_padding * i)
+    if multi_core and k > 16:
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              src,
+                              1,
+                              burstlen - 1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset,
+                              src_offset=cols_padding * (num_rows - 1))
 
-def _conv_fp162s32(tvm_ir, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
+        for i in range(blocklen):
+            tail_block_ub[i].set_as(src[cols_padding * (num_rows - 1) + k - blocklen + i])
+
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              tail_block_ub,
+                              1,
+                              1,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset + k - blocklen,
+                              src_offset=0)
+    else:
+        _emit_copy_ubuf_to_gm(tik_instance,
+                              dtype,
+                              dst,
+                              src,
+                              1,
+                              burstlen,
+                              0,
+                              0,
+                              dst_offset=k * (num_rows - 1) + gm_offset,
+                              src_offset=cols_padding * (num_rows - 1))
+
+def _add(tik_instance, dst, src1, src2, rows, cols_padding):
+    # process 256B data per repeat for vsub
+    vadd_len = 64
+    repeat = (rows * cols_padding) // vadd_len
+    remain = (rows * cols_padding) % vadd_len
+    if repeat > 0:
+        tik_instance.vadd(FULL_MASK_INT32, dst, src1, src2, repeat, 1, 1, 1, 8, 8, 8)
+    if remain > 0:
+        tik_instance.vadd(remain, dst[repeat * vadd_len], src1[repeat * vadd_len], src2[repeat * vadd_len], 1, 1, 1,
+                            1, 8, 8, 8)
+
+def _emit_vmul(tik_instance, dtype, dst, src1, src2, cnt):
+    """
+    _emit_vmul
+    """
+    # Vector instr process data bytes in a cycle
+    vector_process_bytes = 256
+    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
+    calc_num_each_times = vector_process_bytes // dtype_bytes_size
+    repeat_255 = cnt // calc_num_each_times
+    repeat_remain = cnt % calc_num_each_times
+    times = (repeat_255 + 254) // 255
+    if repeat_255 > 0:
+        with tik_instance.for_range(0, times, name='vmul_i0') as i:
+            # times_len改成scalar后会性能下降
+            vmul_src0_scalar = tik_instance.Scalar(dtype="int64", name='vmul_src0_scalar', init_value=repeat_255 - i * 255)
+            vmul_src1_scalar = tik_instance.Scalar(dtype="int64", name='vmul_src1_scalar', init_value=255)
+            vmul_times_len = tik_instance.Scalar(dtype="int64", name='vmul_dst_scalar')
+            tik_instance.scalar_min(vmul_times_len, vmul_src0_scalar, vmul_src1_scalar)
+            tik_instance.vmul(FULL_MASK_INT32, dst[i * calc_num_each_times * 255], src1[i * calc_num_each_times * 255], 
+                                src2, vmul_times_len, 1, 1, 0, 8, 8, 0)
+
+    if repeat_remain > 0:
+       tik_instance.vmul(repeat_remain, dst[repeat_255 * calc_num_each_times], src1[repeat_255 * calc_num_each_times], 
+                            src2, 1, 1, 1, 0, 8, 8, 0)
+
+def _conv_fp162s32(tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
     """
     fp16 to int32
     """
     repeat = (num) // 64
     remain = (num) % 64
     if repeat > 0:
-        tvm_ir.emit(
-            tvm.call_extern('int32', 'vconv_f162s32f', s32ub.access_ptr('w', offset=s32ub_offset),
-                            fp16ub.access_ptr('r', offset=fp16ub_offset), repeat, 1, 1, 8, 4))
+        tik_instance.vconv(64, "round", s32ub[s32ub_offset], fp16ub[fp16ub_offset], repeat, 1, 1, 8, 4)
     if remain > 0:
-        _set_mask_insn(tvm_ir, 'int32', remain)
-        tvm_ir.emit(
-            tvm.call_extern('int32', 'vconv_f162s32f', s32ub.access_ptr('w', offset=s32ub_offset + repeat * 64),
-                            fp16ub.access_ptr('r', offset=fp16ub_offset + repeat * 64), 1, 1, 1, 8, 4))
-        _set_mask_insn(tvm_ir, 'int32', 128)
+        tik_instance.vconv(remain, "round", s32ub[s32ub_offset + repeat * 64], fp16ub[fp16ub_offset + repeat * 64],
+                            1, 1, 1, 8, 4)
 
 
-def _emit_copy_gm_to_ubuf(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
-    """
-    _emit_copy_gm_to_ubuf
-    """
-    tvm_ir.emit(
-        tvm.call_extern(dtype, 'copy_gm_to_ubuf', dst.access_ptr('w', offset=dst_offset),
-                        src.access_ptr('r', offset=src_offset), 0, nburst, burstlen, srcstride, dststride))
-
-
-def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
-    """
-    _emit_copy_ubuf_to_gm
-    """
-    tvm_ir.emit(
-        tvm.call_extern(dtype, 'copy_ubuf_to_gm', dst.access_ptr('w', offset=dst_offset),
-                        src.access_ptr('r', offset=src_offset), 0, nburst, burstlen, srcstride, dststride))
-
-
-def _emit_reg_mov(tvm_ir, dtype, reg_addr, src, src_offset):
-    """"
-    _emit_reg_mov
-    """
-    tvm_ir.emit(
-        tvm.call_extern(dtype, "reg_mov", tvm.call_extern(dtype, "reg", reg_addr), src.access_ptr("r",
-                                                                                                  offset=src_offset)))
-
-
-def _emit_vector_dup(tvm_ir, dtype, dst, value, repeats, dst_offset=0, mask=128):
-    """"
-    _emit_vector_dup
-    """
-    _set_mask_insn(tvm_ir, 'int32', mask)
-    tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', dst.access_ptr('w', offset=dst_offset), value, repeats, 1, 1, 8,
-                                8))
-    _set_mask_insn(tvm_ir, 'int32', 128)
-
-
-def _emit_vmuls(tvm_ir, dst, src, cnt):
-    """
-    _emit_vmuls
-    """
-    repeat_255 = cnt // 128
-    repeat_remain = cnt % 128
-    times = (repeat_255 + 254) // 255
-    if repeat_255 > 0:
-        with tvm_ir.for_range(0, times, name='vmuls_i0') as i:
-            times_len = tvm.min(repeat_255 - i * 255, 255)
-            tvm_ir.emit(
-                tvm.call_extern('float16', 'vmuls', dst.access_ptr('w', offset=i * 128 * 255),
-                                src.access_ptr('r', offset=i * 128 * 255), tvm.const(-1), times_len, 1, 1, 8, 8))
-    if repeat_remain > 0:
-        _set_mask_insn(tvm_ir, 'int32', repeat_remain)
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmuls', dst.access_ptr('w', offset=repeat_255 * 128),
-                            src.access_ptr('r', offset=repeat_255 * 128), tvm.const(-1), 1, 1, 1, 8, 8))
-        _set_mask_insn(tvm_ir, 'int32', 128)
-
-
-def _emit_vconcat(tvm_ir, dst, src, mode, cnt, dst_offset=0, src_offset=0):
-    """
-    _emit_vconcat
-    """
-    repeat_255 = cnt // (16 * 255)
-    repeat_remain = (cnt - repeat_255 * 16 * 255) // 16
-    with tvm_ir.if_scope(repeat_255 > 0):
-        with tvm_ir.for_range(0, repeat_255, name='vconcat_i0') as i:
-            config = tvm.const((255 << 56) + (mode << 16), dtype='uint64')
-            tvm_ir.emit(
-                tvm.call_extern('float16', 'vconcat', dst.access_ptr('w', offset=dst_offset + i * 255 * 16 * 8),
-                                src.access_ptr('r', offset=src_offset + i * 255 * 16), config))
-    if repeat_remain > 0:
-        config = tvm.const((repeat_remain << 56) + (mode << 16), dtype='uint64')
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vconcat', dst.access_ptr('w', offset=dst_offset + 255 * 16 * 8 * repeat_255),
-                            src.access_ptr('r', offset=src_offset + 255 * 16 * repeat_255), config))
-
-
-def _emit_vextract(tvm_ir, dst, src, mode, cnt, dst_offset=0, src_offset=0):
+def _emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vextract
     """
     repeat_255 = cnt // (16 * 255)
     repeat_remain = (cnt - repeat_255 * 16 * 255) // 16
     if repeat_255 > 0:
-        with tvm_ir.for_range(0, repeat_255, name='i0') as i:
-            config = tvm.const((255 << 56) + (mode << 16), dtype='uint64')
-            tvm_ir.emit(
-                tvm.call_extern('float16', 'vextract', dst.access_ptr('w', offset=dst_offset + i * 255 * 16),
-                                src.access_ptr('r', offset=src_offset + i * 255 * 16 * 8), config))
+        with tik_instance.for_range(0, repeat_255, name='i0') as i:
+            tik_instance.vextract(dst[dst_offset + i * 255 * 16], src[src_offset + i * 255 * 16 * 8], 255, mode)
+
     if repeat_remain > 0:
-        config = tvm.const((repeat_remain << 56) + (mode << 16), dtype='uint64')
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vextract', dst.access_ptr('w', offset=dst_offset + 255 * 16 * repeat_255),
-                            src.access_ptr('r', offset=src_offset + 255 * 16 * 8 * repeat_255), config))
+
+        tik_instance.vextract(dst[dst_offset + 255 * 16 * repeat_255], src[src_offset + 255 * 16 * 8 * repeat_255],
+                                repeat_remain, mode)
 
 
-def _emit_vbitsort(tvm_ir, dst, src, cnt, dst_offset=0, src_offset=0):
+def _merge_two_sorted_region(tik_instance, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted):
     """
-    _emit_vbitsort
+    _merge_two_sorted_region
     """
-    repeat_255 = cnt // (16 * 255)
-    repeat_remain = (cnt - repeat_255 * 16 * 255) // 16
-    if repeat_255 > 0:
-        with tvm_ir.for_range(0, repeat_255, name='i0') as i:
-            config = tvm.const((255 << 56), dtype='uint64')
-            tvm_ir.emit(
-                tvm.call_extern('float16', 'vbitsort', dst.access_ptr('w', offset=dst_offset + i * 255 * 16 * 8),
-                                src.access_ptr('r', offset=src_offset + i * 255 * 16 * 8), config))
-    if repeat_remain > 0:
-        config = tvm.const((repeat_remain << 56), dtype='uint64')
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vbitsort', dst.access_ptr('w', offset=dst_offset + 255 * 16 * 8 * repeat_255),
-                            src.access_ptr('r', offset=src_offset + 255 * 16 * 8 * repeat_255), config))
+    if len_region_k < 4096:
+        merge_n0 = len_region_k
+        merge_n1 = len_region_sorted
+        src_list = [src_region_k[0], src_region_sorted[0], src_region_k[16], src_region_k[16]]
+        tik_instance.vmrgsort4(dst, src_list, (merge_n0, merge_n1, 16, 16), False, 3, 1)
+
+    elif len_region_k >= 4096:
+        merge_n0 = 2048
+        merge_n1 = 2048
+        merge_n2 = len_region_sorted
+        src_list = [src_region_k[0], src_region_k[(2048) * 8], src_region_sorted[0],
+                    src_region_k[16]]
+        tik_instance.vmrgsort4(dst, src_list, (merge_n0, merge_n1, merge_n2, 16), False, 7, 1)
 
 
-def _merge_recur(tvm_ir,
+def _copy_region(tik_instance, dst, src, num, dst_offset=0):
+    """
+    _copy_region
+    """
+    burstlen = (num * 2 * 8 + 31) // 32
+    tik_instance.data_move(dst[dst_offset], src, 0, 1, burstlen, 0, 0)
+
+def _merge_recur(tik_instance,
                  src_ub,
                  dst_ub,
-                 reg_addr,
-                 reg_addr_buffer,
                  last_dim,
                  total_region_list,
                  level,
@@ -601,69 +650,24 @@ def _merge_recur(tvm_ir,
             merge_left = last_dim - ((merge_n0 * 4 * (loops - 1)) + n012)
             need_tail_process = True
     if merge_repeat > 0:
-        config = tvm.const(
-            (15 << 60) | (merge_n0 << 8) | (merge_n1 << 20) | (merge_n2 << 32) | (merge_n3 << 44) | merge_repeat,
-            dtype='uint64')
-        reg_addr[0] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r',
-                                                                                              offset=region_offset)))
-        reg_addr[1] = tvm.expr.Cast(
-            'uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + merge_n0 * 8)))
-        reg_addr[2] = tvm.expr.Cast(
-            'uint64',
-            tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + merge_n0 * 8 + merge_n1 * 8)))
-        reg_addr[3] = tvm.expr.Cast(
-            'uint64',
-            tvm.call_extern('handle', '',
-                            src_ub.access_ptr('r', offset=region_offset + merge_n0 * 8 + merge_n1 * 8 + merge_n2 * 8)))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w'),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[0])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=1),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[1])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=2),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[2])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=3),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[3])))
-
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmrgsort4', dst_ub.access_ptr('w', offset=region_offset),
-                            reg_addr_buffer.access_ptr('r'), config))
+        src_list = [
+            src_ub[region_offset], src_ub[region_offset + merge_n0 * 8],
+            src_ub[region_offset + merge_n0 * 8 + merge_n1 * 8],
+            src_ub[region_offset + merge_n0 * 8 + merge_n1 * 8 + merge_n2 * 8]
+        ]
+        tik_instance.vmrgsort4(dst_ub[region_offset], src_list,
+                                (merge_n0, merge_n1, merge_n2, merge_n3), False, 15, merge_repeat)
 
     if need_tail_process:
         tail_offset = 4 * merge_n0 * merge_repeat * 8
-        config = tvm.const((15 << 60) | (merge_n0 << 8) | (merge_n1 << 20) | (merge_n2 << 32) | (merge_left << 44) | 1,
-                           dtype='uint64')
-        reg_addr[0] = tvm.expr.Cast(
-            'uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + tail_offset)))
-        reg_addr[1] = tvm.expr.Cast(
-            'uint64',
-            tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + tail_offset + merge_n0 * 8)))
-        addr2_offset = region_offset + tail_offset + merge_n0 * 8 + merge_n1 * 8
-        reg_addr[2] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r',
-                                                                                              offset=addr2_offset)))
-        addr3_offset = region_offset + tail_offset
-        addr3_offset = addr3_offset + merge_n0 * 8 + merge_n1 * 8 + merge_n2 * 8
-        reg_addr[3] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r',
-                                                                                              offset=addr3_offset)))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w'),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[0])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=1),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[1])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=2),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[2])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=3),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[3])))
+        src_list = [
+            src_ub[region_offset + tail_offset], src_ub[region_offset + tail_offset + merge_n0 * 8],
+            src_ub[region_offset + tail_offset + merge_n0 * 8 + merge_n1 * 8],
+            src_ub[region_offset + tail_offset + merge_n0 * 8 + merge_n1 * 8 + merge_n2 * 8]
+        ]
+        tik_instance.vmrgsort4(dst_ub[region_offset + tail_offset], src_list,
+                                (merge_n0, merge_n1, merge_n2, merge_left), False, 15, 1)
 
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmrgsort4', dst_ub.access_ptr('w', offset=region_offset + tail_offset),
-                            reg_addr_buffer.access_ptr('r'), config))
 
     if loops > 0:
         offset = 4 * loops * 16 * (4**(level - 1))
@@ -674,121 +678,133 @@ def _merge_recur(tvm_ir,
         merge_n0 = 16 * (4**(level - 1))
         merge_n1 = merge_n0
         merge_n2 = last_dim - (offset + merge_n0 + merge_n1)
-        config = tvm.const((7 << 60) | (merge_n0 << 8) | (merge_n1 << 20) | (merge_n2 << 32) | 1, dtype='uint64')
-        reg_addr[0] = tvm.expr.Cast(
-            'uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + offset * 8)))
-        reg_addr[1] = tvm.expr.Cast(
-            'uint64',
-            tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + offset * 8 + merge_n0 * 8)))
-        reg_addr[2] = tvm.expr.Cast(
-            'uint64',
-            tvm.call_extern('handle', '',
-                            src_ub.access_ptr('r', offset=region_offset + offset * 8 + merge_n0 * 8 + merge_n1 * 8)))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w'),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[0])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=1),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[1])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=2),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[2])))
 
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmrgsort4', dst_ub.access_ptr('w', offset=region_offset + offset * 8),
-                            reg_addr_buffer.access_ptr('r'), config))
+        src_list = [
+            src_ub[region_offset + offset * 8], src_ub[region_offset + offset * 8 + merge_n0 * 8],
+            src_ub[region_offset + offset * 8 + merge_n0 * 8 + merge_n1 * 8], src_ub[0]
+        ]
+
+        tik_instance.vmrgsort4(dst_ub[region_offset + offset * 8], src_list,
+                                (merge_n0, merge_n1, merge_n2, 16), False, 7, 1)
+
     elif remain == 2:
         merge_n0 = 16 * (4**(level - 1))
         merge_n1 = last_dim - (offset + merge_n0)
-        config = tvm.const((3 << 60) | (merge_n0 << 8) | (merge_n1 << 20) | 1, dtype='uint64')
-        reg_addr[0] = tvm.expr.Cast(
-            'uint64', tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + offset * 8)))
-        reg_addr[1] = tvm.expr.Cast(
-            'uint64',
-            tvm.call_extern('handle', '', src_ub.access_ptr('r', offset=region_offset + offset * 8 + merge_n0 * 8)))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w'),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[0])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=1),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[1])))
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmrgsort4', dst_ub.access_ptr('w', offset=region_offset + offset * 8),
-                            reg_addr_buffer.access_ptr('r'), config))
+
+        src_list = [
+            src_ub[region_offset + offset * 8],
+            src_ub[region_offset + offset * 8 + merge_n0 * 8]
+        ]
+        tik_instance.vmrgsort4(dst_ub[region_offset + offset * 8], src_list + [src_ub[0], src_ub[0]],
+                                (merge_n0, merge_n1, 16, 16), False, 3, 1)
+
     elif remain == 1:
         merge_n0 = last_dim - offset
         num_blocks_write = (merge_n0 * 16 + 31) // 32
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'copy_ubuf_to_ubuf', dst_ub.access_ptr('w', offset=region_offset + offset * 8),
-                            src_ub.access_ptr('r', offset=region_offset + offset * 8), 0, 1, num_blocks_write, 0, 0))
+        tik_instance.data_move(dst_ub[region_offset + offset * 8], src_ub[region_offset + offset * 8], 0, 1,
+                                num_blocks_write, 0, 0)
 
     next_total_region_list = (total_region_list + 3) // 4
 
     if next_total_region_list <= 1:
         return dst_ub
-    return _merge_recur(tvm_ir, dst_ub, src_ub, reg_addr, reg_addr_buffer, last_dim, next_total_region_list, level + 1,
+    return _merge_recur(tik_instance, dst_ub, src_ub, last_dim, next_total_region_list, level + 1,
                         region_offset)
 
 
-def _merge_region(tvm_ir, dst, src, rows, cols):
+
+
+
+def _merge_region(tik_instance, dst, src, rows, cols):
     """
     _merge_region
     """
-    reg_addr = GLOBAL_VAR.get_reg_addr()
-    reg_addr_buffer = GLOBAL_VAR.get_reg_addr_buffer()
     cols_padding = ((cols + 15) // 16) * 16
-    with tvm_ir.for_range(0, rows, name='merge_i0') as i:
-        result_ub = _merge_recur(tvm_ir,
+    with tik_instance.for_range(0, rows, name='merge_i0') as i:
+        result_ub = _merge_recur(tik_instance,
                                  src,
                                  dst,
-                                 reg_addr,
-                                 reg_addr_buffer,
                                  cols, (cols + 15) // 16,
                                  1,
                                  region_offset=i * cols_padding * 8)
     return result_ub
 
+def _emit_vbitsort(tik_instance, dst, src, cnt, dst_offset=0, src_offset=0):
+    """
+    _emit_vbitsort
+    """
+    repeat_255 = cnt // (16 * 255)
+    repeat_remain = (cnt - repeat_255 * 16 * 255) // 16
+    if repeat_255 > 0:
+        with tik_instance.for_range(0, repeat_255, name='i0') as i:
+            tik_instance.vrpsort16(dst[dst_offset + i * 255 * 16 * 8], src[src_offset + i * 255 * 16 * 8], 255)
 
-def _sort_region(tvm_ir, dst, src, rows, cols):
+    if repeat_remain > 0:
+        tik_instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255],
+                                src[src_offset + 255 * 16 * 8 * repeat_255], repeat_remain)
+
+def _sort_region(tik_instance, dst, src, rows, cols):
     """
     _sort_region
     """
-    _emit_vbitsort(tvm_ir, dst, src, cnt=rows * cols)
+    _emit_vbitsort(tik_instance, dst, src, cnt=rows * cols)
     if cols > 16:
-        result_ub = _merge_region(tvm_ir, dst=src, src=dst, rows=rows, cols=cols)
+        result_ub = _merge_region(tik_instance, dst=src, src=dst, rows=rows, cols=cols)
     else:
         result_ub = dst
     return result_ub
 
 
-def _copy_gm_to_ubuf(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset):
+def _emit_vconcat(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
-    _copy_gm_to_ubuf copy data from gm to ubuf
+    _emit_vconcat
     """
-    cols_padding = ((cols + 15) // 16) * 16
-    burstlen = (cols * 2 + 31) // 32
-    with tvm_ir.for_range(0, num_rows, name='gm2ub_i0') as i:
-        _emit_copy_gm_to_ubuf(tvm_ir,
-                              'float16',
-                              dst,
-                              src,
-                              1,
-                              burstlen,
-                              0,
-                              0,
-                              dst_offset=cols_padding * i,
-                              src_offset=cols * i + col_start + gm_offset)
+    repeat_255 = cnt // (16 * 255)
+    repeat_remain = (cnt - repeat_255 * 16 * 255) // 16
+    with tik_instance.if_scope(repeat_255 > 0):
+        with tik_instance.for_range(0, repeat_255, name='vconcat_i0') as i:
+            tik_instance.vconcat(dst[dst_offset + i * 255 * 16 * 8], src[src_offset + i * 255 * 16], 255, mode)
+    if repeat_remain > 0:
+        tik_instance.vconcat(dst[dst_offset + 255 * 16 * 8 * repeat_255],
+                                src[src_offset + 255 * 16 * repeat_255], repeat_remain, mode)
 
 
-def _copy_gm_to_ubuf_func(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset, largest):
+def _emit_copy_gm_to_ubuf(tik_instance, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
+    """
+    _emit_copy_gm_to_ubuf
+    """
+    tik_instance.data_move(dst[dst_offset], src[src_offset], 0, nburst, burstlen, srcstride, dststride)
+
+
+
+def _emit_vmuls(tik_instance, dst, src, cnt):
+    """
+    _emit_vmuls
+    """
+    repeat_255 = cnt // 128
+    repeat_remain = cnt % 128
+    times = (repeat_255 + 254) // 255
+    if repeat_255 > 0:
+        with tik_instance.for_range(0, times, name='vmuls_i0') as i:
+            src0_scalar = tik_instance.Scalar(dtype="int64", name='src0_scalar', init_value=repeat_255 - i * 255)
+            src1_scalar = tik_instance.Scalar(dtype="int64", name='src1_scalar', init_value=255)
+            times_len = tik_instance.Scalar(dtype="int64", name='dst_scalar')
+            tik_instance.scalar_min(times_len, src0_scalar, src1_scalar)
+            tik_instance.vmuls(FULL_MASK_FP16, dst[i * 128 * 255], src[i * 128 * 255], -1, times_len, 1, 1, 8, 8)
+
+    if repeat_remain > 0:
+        tik_instance.vmuls(repeat_remain, dst[repeat_255 * 128], src[repeat_255 * 128], -1, 1, 1, 1, 8, 8)
+
+
+def _copy_gm_to_ubuf_func(tik_instance, dst, src, num_rows, cols, col_start, gm_offset, largest):
     """
     _copy_gm_to_ubuf copy data from gm to ubuf
     """
     cols_padding = ((cols + 15) // 16) * 16
     burstlen = (cols * 2 + 31) // 32
     reg_min_number = GLOBAL_VAR.get_reg_min_number()
-    with tvm_ir.for_range(0, num_rows, name='gm2ub_i0') as i:
-        _emit_copy_gm_to_ubuf(tvm_ir,
+    with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
+        _emit_copy_gm_to_ubuf(tik_instance,
                               'float16',
                               dst,
                               src,
@@ -799,386 +815,32 @@ def _copy_gm_to_ubuf_func(tvm_ir, dst, src, num_rows, cols, col_start, gm_offset
                               dst_offset=cols_padding * i,
                               src_offset=cols * i + col_start + gm_offset)
     if not largest:
-        _emit_vmuls(tvm_ir, dst, dst, cnt=num_rows * cols_padding)
-
-    with tvm_ir.for_range(0, num_rows, name='gm2ub_i0') as i:
-        for j in range(cols_padding - cols):
-            tvm_ir.emit(
-                tvm.call_extern('float16', 'reg_mov', dst.access_ptr('w', offset=cols_padding * i + cols + j),
-                                tvm.call_extern('float16', 'reg', reg_min_number[0])))
+        _emit_vmuls(tik_instance, dst, dst, cnt=num_rows * cols_padding)
+    with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
+        #可不可以保留python的for循环
+        with tik_instance.for_range(0, cols_padding - cols) as j:
+            dst[cols_padding * i + cols + j].set_as(reg_min_number)
 
 
-def _copy_ubuf_to_gm(tvm_ir, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
+def _copy_gm_to_ubuf(tik_instance, dst, src, num_rows, cols, col_start, gm_offset):
     """
-    _copy_ubuf_to_gm
+    _copy_gm_to_ubuf copy data from gm to ubuf
     """
-    if dtype == 'float16':
-        burstlen = (k * 2 + 31) // 32
-        blocklen = 16
-    elif dtype == 'int32':
-        burstlen = (k * 4 + 31) // 32
-        blocklen = 8
-
-    with tvm_ir.for_range(0, num_rows - 1, name='ub2gmi0') as i:
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              src,
-                              1,
-                              burstlen,
-                              0,
-                              0,
-                              dst_offset=k * i + gm_offset,
-                              src_offset=cols_padding * i)
-    if multi_core and k > 16:
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              src,
-                              1,
-                              burstlen - 1,
-                              0,
-                              0,
-                              dst_offset=k * (num_rows - 1) + gm_offset,
-                              src_offset=cols_padding * (num_rows - 1))
-        for i in range(blocklen):
-            tvm_ir.emit(
-                tvm.call_extern(dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
-                                src.access_ptr('r', offset=cols_padding * (num_rows - 1) + k - blocklen + i)))
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              tail_block_ub,
-                              1,
-                              1,
-                              0,
-                              0,
-                              dst_offset=k * (num_rows - 1) + gm_offset + k - blocklen,
-                              src_offset=0)
-
-    else:
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              src,
-                              1,
-                              burstlen,
-                              0,
-                              0,
-                              dst_offset=k * (num_rows - 1) + gm_offset,
-                              src_offset=cols_padding * (num_rows - 1))
-
-def _copy_ubuf_to_gm_k_less_16(tvm_ir, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
-    """
-    _copy_ubuf_to_gm
-    """
-    if dtype == 'float16':
-        blocklen = 16
-        reg_zero = tvm_ir.allocate(dtype, (1,), name='reg_zero', scope=tbe_platform.scope_reg)
-        reg_zero[0] = tvm.const(0, dtype)
-        zero_length = blocklen - k
-
-        tvm_ir.emit(tvm.call_extern("float16", "set_atomic_write", 2))
-        with tvm_ir.for_range(0, num_rows - 1, name='ub2gmi0') as i:
-            for zero_pad in range(zero_length):
-                tvm_ir.emit(
-                    tvm.call_extern(dtype, "reg_mov",
-                                    src.access_ptr('w', offset=cols_padding * i + k + zero_pad),
-                                    tvm.call_extern(dtype, 'reg', reg_zero[0])))
-            _emit_copy_ubuf_to_gm(tvm_ir,
-                                  dtype,
-                                  dst,
-                                  src,
-                                  1,
-                                  1,
-                                  0,
-                                  0,
-                                  dst_offset=k * i + gm_offset,
-                                  src_offset=cols_padding * i)
-        for i in range(blocklen):
-            tvm_ir.emit(
-                tvm.call_extern(dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
-                                src.access_ptr('r', offset=cols_padding * (num_rows - 1) + i)))
-        for zero_pad in range(zero_length):
-            tvm_ir.emit(
-                tvm.call_extern(dtype, "reg_mov",
-                                tail_block_ub.access_ptr('w', offset=k + zero_pad),
-                                tvm.call_extern(dtype, 'reg', reg_zero[0])))
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              tail_block_ub,
-                              1,
-                              1,
-                              0,
-                              0,
-                              dst_offset=k * (num_rows - 1) + gm_offset,
-                              src_offset=0)
-        tvm_ir.emit(tvm.call_extern("float16", "set_atomic_write", 0))
-
-    elif dtype == 'int32':
-        blocklen = 8
-        with tvm_ir.for_range(0, num_rows - 1, name='ub2gmi0') as i:
-            _emit_copy_ubuf_to_gm(tvm_ir,
-                                  dtype,
-                                  dst,
-                                  src,
-                                  1,
-                                  2,
-                                  0,
-                                  0,
-                                  dst_offset=k * i + gm_offset,
-                                  src_offset=cols_padding * i)
-
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              src,
-                              1,
-                              1,
-                              0,
-                              0,
-                              dst_offset=k * (num_rows - 1) + gm_offset,
-                              src_offset=cols_padding * (num_rows - 1))
-
-        for i in range(blocklen):
-            tvm_ir.emit(
-                tvm.call_extern(dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
-                                src.access_ptr('r', offset=cols_padding * (num_rows - 1) + k - blocklen + i)))
-        _emit_copy_ubuf_to_gm(tvm_ir,
-                              dtype,
-                              dst,
-                              tail_block_ub,
-                              1,
-                              1,
-                              0,
-                              0,
-                              dst_offset=k * (num_rows - 1) + gm_offset + k - blocklen,
-                              src_offset=0)
-
-def _merge_two_sorted_region(tvm_ir, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted):
-    """
-    _merge_two_sorted_region
-    """
-    reg_addr = GLOBAL_VAR.get_reg_addr()
-    reg_addr_buffer = GLOBAL_VAR.get_reg_addr_buffer()
-    if len_region_k < 4096:
-        merge_n0 = len_region_k
-        merge_n1 = len_region_sorted
-        config = tvm.const((3 << 60) | (merge_n0 << 8) | (merge_n1 << 20) | 1, dtype='uint64')
-        reg_addr[0] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_region_k.access_ptr('r', offset=0)))
-        reg_addr[1] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_region_sorted.access_ptr('r',
-                                                                                                         offset=0)))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w'),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[0])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=1),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[1])))
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmrgsort4', dst.access_ptr('w', offset=0), reg_addr_buffer.access_ptr('r'),
-                            config))
-
-    elif len_region_k >= 4096:
-        merge_n0 = 2560
-        merge_n1 = 2560
-        merge_n2 = len_region_sorted
-        config = tvm.const((7 << 60) | (merge_n0 << 8) | (merge_n1 << 20) | (merge_n2 << 32) | 1, dtype='uint64')
-        reg_addr[0] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_region_k.access_ptr('r')))
-        reg_addr[1] = tvm.expr.Cast('uint64',
-                                    tvm.call_extern('handle', '', src_region_k.access_ptr('r', offset=(2560) * 8)))
-        reg_addr[2] = tvm.expr.Cast('uint64', tvm.call_extern('handle', '', src_region_sorted.access_ptr('r')))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w'),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[0])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=1),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[1])))
-        tvm_ir.emit(
-            tvm.call_extern('uint64', 'reg_mov', reg_addr_buffer.access_ptr('w', offset=2),
-                            tvm.call_extern(reg_addr.dtype, 'reg', reg_addr[2])))
-        tvm_ir.emit(
-            tvm.call_extern('float16', 'vmrgsort4', dst.access_ptr('w'), reg_addr_buffer.access_ptr('r'), config))
-
-
-def _copy_region(tvm_ir, dst, src, num, dst_offset=0):
-    """
-    _copy_region
-    """
-    burstlen = (num * 2 * 8 + 31) // 32
-    tvm_ir.emit(
-        tvm.call_extern('float16', 'copy_ubuf_to_ubuf', dst.access_ptr('w', offset=dst_offset), src.access_ptr('r'), 0,
-                        1, burstlen, 0, 0))
-
-
-def _add(tvm_ir, dst, src1, src2, rows, cols_padding):
-    # process 256B data per repeat for vsub
-    vadd_len = 64
-    repeat = (rows * cols_padding) // vadd_len
-    remain = (rows * cols_padding) % vadd_len
-    if repeat > 0:
-        tvm_ir.emit(
-            tvm.call_extern('int32', 'vadd', dst.access_ptr('w'), src1.access_ptr('r'), src2.access_ptr('r'), repeat, 1,
-                            1, 1, 8, 8, 8))
-
-    if remain > 0:
-        _set_mask_insn(tvm_ir, 'int32', remain)
-        tvm_ir.emit(
-            tvm.call_extern('int32', 'vadd', dst.access_ptr('w', offset=repeat * vadd_len),
-                            src1.access_ptr('r', offset=repeat * vadd_len),
-                            src2.access_ptr('r', offset=repeat * vadd_len), 1, 1, 1, 1, 8, 8, 8))
-        _set_mask_insn(tvm_ir, 'int32', 128)
-
-
-def _emit_vmul(tvm_ir, dtype, dst, src1, src2, cnt):
-    """
-    _emit_vmul
-    """
-    # Vector instr process data bytes in a cycle
-    vector_process_bytes = 256
-    dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
-    calc_num_each_times = vector_process_bytes // dtype_bytes_size
-    repeat_255 = cnt // calc_num_each_times
-    repeat_remain = cnt % calc_num_each_times
-    times = (repeat_255 + 254) // 255
-    if repeat_255 > 0:
-        with tvm_ir.for_range(0, times, name='vmul_i0') as i:
-            times_len = tvm.min(repeat_255 - i * 255, 255)
-            tvm_ir.emit(
-                tvm.call_extern(dtype, 'vmul', dst.access_ptr('w', offset=i * calc_num_each_times * 255),
-                                src1.access_ptr('r', offset=i * calc_num_each_times * 255), src2.access_ptr('r'),
-                                times_len, 1, 1, 0, 8, 8, 0))
-    if repeat_remain > 0:
-        _set_mask_insn(tvm_ir, 'int32', repeat_remain)
-        tvm_ir.emit(
-            tvm.call_extern(dtype, 'vmul', dst.access_ptr('w', offset=repeat_255 * calc_num_each_times),
-                            src1.access_ptr('r', offset=repeat_255 * calc_num_each_times), src2.access_ptr('r'), 1, 1,
-                            1, 0, 8, 8, 0))
-        _set_mask_insn(tvm_ir, 'int32', 128)
-
-
-def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
-    """
-    _topk_rows do topk action muilti rows
-    """
-    data_gm = GLOBAL_VAR.get_data_gm()
-    data_gm_out = GLOBAL_VAR.get_data_gm_out()
-    indices_gm = GLOBAL_VAR.get_indices_gm()
-    indices_gm_out = GLOBAL_VAR.get_indices_gm_out()
-    indices_ub = GLOBAL_VAR.get_indices_ub()
-    indices_out_fp16_ub = GLOBAL_VAR.get_indices_out_fp16_ub()
-    indices_out_int32_ub = GLOBAL_VAR.get_indices_out_int32_ub()
-    data_ub = GLOBAL_VAR.get_data_ub()
-    region_ub = GLOBAL_VAR.get_region_ub()
-    region_sorted_ub = GLOBAL_VAR.get_region_sorted_ub()
-    data_tail_block_ub = GLOBAL_VAR.get_data_tail_block_ub()
-    indices_tail_block_ub = GLOBAL_VAR.get_indices_tail_block_ub()
-    offset_ub = GLOBAL_VAR.get_offset_ub()
-    offset_fp16_ub = GLOBAL_VAR.get_offset_fp16_ub()
-    offset_int32_ub = GLOBAL_VAR.get_offset_int32_ub()
-    indices_out_final_ub = GLOBAL_VAR.get_indices_out_final_ub()
     cols_padding = ((cols + 15) // 16) * 16
-    _copy_gm_to_ubuf_func(tvm_ir,
-                          data_ub,
-                          data_gm,
-                          num_rows=rows,
-                          cols=cols,
-                          col_start=0,
-                          gm_offset=row_start_in_core * cols + core_rows_start * cols,
-                          largest=largest)
-    _copy_gm_to_ubuf(tvm_ir, indices_ub, indices_gm, num_rows=1, cols=cols, col_start=0, gm_offset=0)
-    _copy_gm_to_ubuf(tvm_ir, offset_ub, indices_gm, num_rows=1, cols=cols, col_start=4096, gm_offset=0)
-    _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=rows * cols_padding)
-    # for Ascend310 can't support extract score
-    _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=rows * cols_padding)
-    with tvm_ir.for_range(0, rows, name='i0') as i:
-        _emit_vconcat(tvm_ir,
-                      region_ub,
-                      indices_ub,
-                      mode=Mode.X1.value,
-                      cnt=cols_padding,
-                      dst_offset=i * cols_padding * 8,
-                      src_offset=0)
-        _emit_vconcat(tvm_ir,
-                      region_ub,
-                      offset_ub,
-                      mode=Mode.Y1.value,
-                      cnt=cols_padding,
-                      dst_offset=i * cols_padding * 8,
-                      src_offset=0)
-    result_ub = _sort_region(tvm_ir, region_sorted_ub, region_ub, rows, cols_padding)
-    # for Ascend310 can't support extract score
-    _emit_vextract(tvm_ir, data_ub, result_ub, mode=Mode.Y2.value, cnt=rows * cols_padding)
-    with tvm_ir.for_range(0, rows, name='i0') as i:
-        _emit_vextract(tvm_ir,
-                       indices_out_fp16_ub,
-                       result_ub,
-                       mode=Mode.X1.value,
-                       cnt=cols_padding,
-                       dst_offset=i * cols_padding,
-                       src_offset=i * cols_padding * 8)
-        _emit_vextract(tvm_ir,
-                       offset_fp16_ub,
-                       result_ub,
-                       mode=Mode.Y1.value,
-                       cnt=cols_padding,
-                       dst_offset=i * cols_padding,
-                       src_offset=i * cols_padding * 8)
-    if not largest:
-        _emit_vmuls(tvm_ir, data_ub, data_ub, cnt=rows * cols_padding)
-    with tvm_ir.for_range(0, rows, name='i0') as i:
-        _conv_fp162s32(tvm_ir, indices_out_int32_ub, i * cols_padding, indices_out_fp16_ub, i * cols_padding,
-                       cols_padding)
-        _conv_fp162s32(tvm_ir, offset_int32_ub, i * cols_padding, offset_fp16_ub, i * cols_padding, cols_padding)
-    _add(tvm_ir, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, rows, cols_padding)
+    burstlen = (cols * 2 + 31) // 32
+    with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
+        _emit_copy_gm_to_ubuf(tik_instance,
+                              'float16',
+                              dst,
+                              src,
+                              1,
+                              burstlen,
+                              0,
+                              0,
+                              dst_offset=cols_padding * i,
+                              src_offset=cols * i + col_start + gm_offset)
 
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
-        _copy_ubuf_to_gm_k_less_16(tvm_ir,
-                                   'float16',
-                                   data_gm_out,
-                                   data_ub,
-                                   rows,
-                                   cols_padding,
-                                   k,
-                                   tail_block_ub=data_tail_block_ub,
-                                   gm_offset=row_start_in_core * k + core_rows_start * k,
-                                   multi_core=multi_core)
-
-        _copy_ubuf_to_gm_k_less_16(tvm_ir,
-                                   'int32',
-                                   indices_gm_out,
-                                   indices_out_final_ub,
-                                   rows,
-                                   cols_padding,
-                                   k,
-                                   tail_block_ub=indices_tail_block_ub,
-                                   gm_offset=row_start_in_core * k + core_rows_start * k,
-                                   multi_core=multi_core)
-    else:
-        _copy_ubuf_to_gm(tvm_ir,
-                        'float16',
-                        data_gm_out,
-                        data_ub,
-                        rows,
-                        cols_padding,
-                        k,
-                        tail_block_ub=data_tail_block_ub,
-                        gm_offset=row_start_in_core * k + core_rows_start * k,
-                        multi_core=multi_core)
-        _copy_ubuf_to_gm(tvm_ir,
-                        'int32',
-                        indices_gm_out,
-                        indices_out_final_ub,
-                        rows,
-                        cols_padding,
-                        k,
-                        tail_block_ub=indices_tail_block_ub,
-                        gm_offset=row_start_in_core * k + core_rows_start * k,
-                        multi_core=multi_core)
-
-
-def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
+def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_a_row_by_part
     """
@@ -1216,7 +878,7 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
     data_num_per_process = vector_process_bytes // dtype_bytes_size
     repeat_times = cols_per_part // data_num_per_process
 
-    _copy_gm_to_ubuf_func(tvm_ir,
+    _copy_gm_to_ubuf_func(tik_instance,
                           data_ub,
                           data_gm,
                           num_rows=1,
@@ -1224,20 +886,25 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                           col_start=0,
                           gm_offset=gm_offset,
                           largest=largest)
-    _emit_vector_dup(tvm_ir, data_dtype, indices_ub, tvm.const(0.0, dtype=data_dtype), repeat_times)
-    _emit_copy_gm_to_ubuf(tvm_ir, data_dtype, offset_ub, indices_gm, 1, max_part_num // 16, 0, 0)
-    _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=cols_per_part)
-    # for Ascend310 can't support extract score
-    _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=cols_per_part)
-    _emit_vconcat(tvm_ir, region_ub, indices_ub, mode=Mode.X1.value, cnt=cols_per_part)
-    _emit_vconcat(tvm_ir, region_ub, offset_ub, mode=Mode.Y1.value, cnt=cols_per_part)
-    result_ub = _sort_region(tvm_ir, region_sorted_ub, region_ub, 1, cols_per_part)
-    _copy_region(tvm_ir, dst=region_k_ub, src=result_ub, num=cols_per_part)
 
-    with tvm_ir.for_range(0, part_cnt - 2, name='topk_i0') as i:
-        _emit_reg_mov(tvm_ir, data_dtype, index_reg[0], offset_ub, i + 1)
-        _emit_vector_dup(tvm_ir, data_dtype, indices_ub, index_reg[0], repeat_times)
-        _copy_gm_to_ubuf_func(tvm_ir,
+
+    tik_instance.vector_dup(128, indices_ub, 0.0, repeat_times, 1, 8)
+    _emit_copy_gm_to_ubuf(tik_instance, data_dtype, offset_ub, indices_gm, 1, max_part_num // 16, 0, 0)
+    _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Score.value, cnt=cols_per_part)
+    # for Ascend310 can't support extract score
+    _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Y2.value, cnt=cols_per_part)
+    _emit_vconcat(tik_instance, region_ub, indices_ub, mode=Mode.X1.value, cnt=cols_per_part)
+    _emit_vconcat(tik_instance, region_ub, offset_ub, mode=Mode.Y1.value, cnt=cols_per_part)
+    result_ub = _sort_region(tik_instance, region_sorted_ub, region_ub, 1, cols_per_part)
+    _copy_region(tik_instance, dst=region_k_ub, src=result_ub, num=cols_per_part)
+
+    with tik_instance.for_range(0, part_cnt - 2, name='topk_i0') as i:
+
+        index_reg.set_as(offset_ub[i + 1])
+
+        tik_instance.vector_dup(128, indices_ub, index_reg, repeat_times, 1, 8)
+
+        _copy_gm_to_ubuf_func(tik_instance,
                               data_ub,
                               data_gm,
                               num_rows=1,
@@ -1245,48 +912,48 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                               col_start=cols_per_part * (i + 1),
                               gm_offset=gm_offset,
                               largest=largest)
-        _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=cols_per_part)
+        _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Score.value, cnt=cols_per_part)
         # for Ascend310 can't support extract score
-        _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=cols_per_part)
-        _emit_vconcat(tvm_ir, region_ub, indices_ub, mode=Mode.X1.value, cnt=cols_per_part)
-        _emit_vconcat(tvm_ir, region_ub, offset_ub, mode=Mode.Y1.value, cnt=cols_per_part)
-        result_ub = _sort_region(tvm_ir, region_sorted_ub, region_ub, 1, cols_per_part)
+        _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Y2.value, cnt=cols_per_part)
+        _emit_vconcat(tik_instance, region_ub, indices_ub, mode=Mode.X1.value, cnt=cols_per_part)
+        _emit_vconcat(tik_instance, region_ub, offset_ub, mode=Mode.Y1.value, cnt=cols_per_part)
+        result_ub = _sort_region(tik_instance, region_sorted_ub, region_ub, 1, cols_per_part)
 
-        with tvm_ir.if_scope(i == 0):
-            _merge_two_sorted_region(tvm_ir,
+        with tik_instance.if_scope(i == 0):
+            _merge_two_sorted_region(tik_instance,
                                      dst=region_k2_ub,
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part,
                                      len_region_sorted=cols_per_part)
-            _copy_region(tvm_ir, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 2)
-        with tvm_ir.if_scope(i == 1):
-            _merge_two_sorted_region(tvm_ir,
+            _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 2)
+        with tik_instance.if_scope(i == 1):
+            _merge_two_sorted_region(tik_instance,
                                      dst=region_k2_ub,
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 2,
                                      len_region_sorted=cols_per_part)
-            _copy_region(tvm_ir, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 3)
-        with tvm_ir.if_scope(i == 2):
-            _merge_two_sorted_region(tvm_ir,
+            _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 3)
+        with tik_instance.if_scope(i == 2):
+            _merge_two_sorted_region(tik_instance,
                                      dst=region_k2_ub,
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 3,
                                      len_region_sorted=cols_per_part)
-            _copy_region(tvm_ir, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 4)
-        with tvm_ir.if_scope(i >= 3):
-            _merge_two_sorted_region(tvm_ir,
+            _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 4)
+        with tik_instance.if_scope(i >= 3):
+            _merge_two_sorted_region(tik_instance,
                                      dst=region_k2_ub,
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 4,
                                      len_region_sorted=cols_per_part)
 
-            _copy_region(tvm_ir, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 5)
+            _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 5)
 
-    _copy_gm_to_ubuf_func(tvm_ir,
+    _copy_gm_to_ubuf_func(tik_instance,
                           data_ub,
                           data_gm,
                           num_rows=1,
@@ -1295,38 +962,37 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                           gm_offset=gm_offset,
                           largest=largest)
 
-    _emit_reg_mov(tvm_ir, data_dtype, index_reg[0], offset_ub, part_cnt - 1)
-    _emit_vector_dup(tvm_ir, data_dtype, indices_ub, index_reg[0], repeat_times)
-    _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Score.value, cnt=last_part_cols_padding)
+    index_reg.set_as(offset_ub[part_cnt - 1])
+    tik_instance.vector_dup(128, indices_ub, index_reg, repeat_times, 1, 8)
+    _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Score.value, cnt=last_part_cols_padding)
     # for Ascend310 can't support extract score
-    _emit_vconcat(tvm_ir, region_ub, data_ub, mode=Mode.Y2.value, cnt=last_part_cols_padding)
-    _emit_vconcat(tvm_ir, region_ub, indices_ub, mode=Mode.X1.value, cnt=last_part_cols_padding)
-    _emit_vconcat(tvm_ir, region_ub, offset_ub, mode=Mode.Y1.value, cnt=last_part_cols_padding)
-    result_ub = _sort_region(tvm_ir, region_sorted_ub, region_ub, 1, last_part_cols_padding)
-    _merge_two_sorted_region(tvm_ir,
+    _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Y2.value, cnt=last_part_cols_padding)
+    _emit_vconcat(tik_instance, region_ub, indices_ub, mode=Mode.X1.value, cnt=last_part_cols_padding)
+    _emit_vconcat(tik_instance, region_ub, offset_ub, mode=Mode.Y1.value, cnt=last_part_cols_padding)
+    result_ub = _sort_region(tik_instance, region_sorted_ub, region_ub, 1, last_part_cols_padding)
+    _merge_two_sorted_region(tik_instance,
                              dst=region_k2_ub,
                              src_region_k=region_k_ub,
                              src_region_sorted=result_ub,
-                             len_region_k=5120,
+                             len_region_k=4096,
                              len_region_sorted=last_part_cols_padding)
 
     # for Ascend310 can't support extract score
-    _emit_vextract(tvm_ir, region_k_ub, region_k2_ub, mode=Mode.Y2.value, cnt=k_padding)
-    _emit_vextract(tvm_ir, region_k_ub, region_k2_ub, mode=Mode.X1.value, cnt=k_padding, dst_offset=k_padding)
-    _emit_vextract(tvm_ir, region_k_ub, region_k2_ub, mode=Mode.Y1.value, cnt=k_padding, dst_offset=k_padding * 2)
+    _emit_vextract(tik_instance, region_k_ub, region_k2_ub, mode=Mode.Y2.value, cnt=k_padding)
+    _emit_vextract(tik_instance, region_k_ub, region_k2_ub, mode=Mode.X1.value, cnt=k_padding, dst_offset=k_padding)
+    _emit_vextract(tik_instance, region_k_ub, region_k2_ub, mode=Mode.Y1.value, cnt=k_padding, dst_offset=k_padding * 2)
     if not largest:
-        _emit_vmuls(tvm_ir, region_k_ub, region_k_ub, cnt=k_padding)
-    _conv_fp162s32(tvm_ir, indices_out_int32_ub, 0, region_k_ub, k_padding, k_padding)
-    _conv_fp162s32(tvm_ir, offset_int32_ub, 0, region_k_ub, k_padding * 2, k_padding)
+        _emit_vmuls(tik_instance, region_k_ub, region_k_ub, cnt=k_padding)
+    _conv_fp162s32(tik_instance, indices_out_int32_ub, 0, region_k_ub, k_padding, k_padding)
+    _conv_fp162s32(tik_instance, offset_int32_ub, 0, region_k_ub, k_padding * 2, k_padding)
 
-    _emit_vector_dup(tvm_ir, 'int32', indices_tail_block_ub, tvm.const(1024, "int32"), 1, mask=8)
-    _emit_vmul(tvm_ir, 'int32', indices_out_int32_ub, indices_out_int32_ub, indices_tail_block_ub, cnt=k_padding)
-    _add(tvm_ir, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
-
+    tik_instance.vector_dup(8, indices_tail_block_ub, 1024, 1, 0, 0)
+    _emit_vmul(tik_instance, 'int32', indices_out_int32_ub, indices_out_int32_ub, indices_tail_block_ub, cnt=k_padding)
+    _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
 
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
-        _copy_ubuf_to_gm_k_less_16(tvm_ir,
+        _copy_ubuf_to_gm_k_less_16(tik_instance,
                                    'float16',
                                    data_gm_out,
                                    region_k_ub,
@@ -1336,7 +1002,7 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                                    tail_block_ub=data_tail_block_ub,
                                    gm_offset=row_start_in_core * k + core_rows_start * k,
                                    multi_core=multi_core)
-        _copy_ubuf_to_gm_k_less_16(tvm_ir,
+        _copy_ubuf_to_gm_k_less_16(tik_instance,
                                    'int32',
                                    indices_gm_out,
                                    indices_out_final_ub,
@@ -1347,7 +1013,7 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                                    gm_offset=row_start_in_core * k + core_rows_start * k,
                                    multi_core=multi_core)
     else:
-        _copy_ubuf_to_gm(tvm_ir,
+        _copy_ubuf_to_gm(tik_instance,
                         'float16',
                         data_gm_out,
                         region_k_ub,
@@ -1357,11 +1023,132 @@ def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, mul
                         tail_block_ub=data_tail_block_ub,
                         gm_offset=row_start_in_core * k + core_rows_start * k,
                         multi_core=multi_core)
-        _copy_ubuf_to_gm(tvm_ir,
+        _copy_ubuf_to_gm(tik_instance,
                         'int32',
                         indices_gm_out,
                         indices_out_final_ub,
                         1,
+                        cols_padding,
+                        k,
+                        tail_block_ub=indices_tail_block_ub,
+                        gm_offset=row_start_in_core * k + core_rows_start * k,
+                        multi_core=multi_core)
+
+
+def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
+    """
+    _topk_rows do topk action muilti rows
+    """
+    data_gm = GLOBAL_VAR.get_data_gm()
+    data_gm_out = GLOBAL_VAR.get_data_gm_out()
+    indices_gm = GLOBAL_VAR.get_indices_gm()
+    indices_gm_out = GLOBAL_VAR.get_indices_gm_out()
+    indices_ub = GLOBAL_VAR.get_indices_ub()
+    indices_out_fp16_ub = GLOBAL_VAR.get_indices_out_fp16_ub()
+    indices_out_int32_ub = GLOBAL_VAR.get_indices_out_int32_ub()
+    data_ub = GLOBAL_VAR.get_data_ub()
+    region_ub = GLOBAL_VAR.get_region_ub()
+    region_sorted_ub = GLOBAL_VAR.get_region_sorted_ub()
+    data_tail_block_ub = GLOBAL_VAR.get_data_tail_block_ub()
+    indices_tail_block_ub = GLOBAL_VAR.get_indices_tail_block_ub()
+    offset_ub = GLOBAL_VAR.get_offset_ub()
+    offset_fp16_ub = GLOBAL_VAR.get_offset_fp16_ub()
+    offset_int32_ub = GLOBAL_VAR.get_offset_int32_ub()
+    indices_out_final_ub = GLOBAL_VAR.get_indices_out_final_ub()
+    cols_padding = ((cols + 15) // 16) * 16
+    _copy_gm_to_ubuf_func(tik_instance,
+                          data_ub,
+                          data_gm,
+                          num_rows=rows,
+                          cols=cols,
+                          col_start=0,
+                          gm_offset=row_start_in_core * cols + core_rows_start * cols,
+                          largest=largest)
+    _copy_gm_to_ubuf(tik_instance, indices_ub, indices_gm, num_rows=1, cols=cols, col_start=0, gm_offset=0)
+    _copy_gm_to_ubuf(tik_instance, offset_ub, indices_gm, num_rows=1, cols=cols, col_start=4096, gm_offset=0)
+    _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Score.value, cnt=rows * cols_padding)
+    # for Ascend310 can't support extract score
+    _emit_vconcat(tik_instance, region_ub, data_ub, mode=Mode.Y2.value, cnt=rows * cols_padding)
+    with tik_instance.for_range(0, rows, name='i0') as i:
+        _emit_vconcat(tik_instance,
+                      region_ub,
+                      indices_ub,
+                      mode=Mode.X1.value,
+                      cnt=cols_padding,
+                      dst_offset=i * cols_padding * 8,
+                      src_offset=0)
+        _emit_vconcat(tik_instance,
+                      region_ub,
+                      offset_ub,
+                      mode=Mode.Y1.value,
+                      cnt=cols_padding,
+                      dst_offset=i * cols_padding * 8,
+                      src_offset=0)
+    result_ub = _sort_region(tik_instance, region_sorted_ub, region_ub, rows, cols_padding)
+    # for Ascend310 can't support extract score
+    _emit_vextract(tik_instance, data_ub, result_ub, mode=Mode.Y2.value, cnt=rows * cols_padding)
+    with tik_instance.for_range(0, rows, name='i0') as i:
+        _emit_vextract(tik_instance,
+                       indices_out_fp16_ub,
+                       result_ub,
+                       mode=Mode.X1.value,
+                       cnt=cols_padding,
+                       dst_offset=i * cols_padding,
+                       src_offset=i * cols_padding * 8)
+        _emit_vextract(tik_instance,
+                       offset_fp16_ub,
+                       result_ub,
+                       mode=Mode.Y1.value,
+                       cnt=cols_padding,
+                       dst_offset=i * cols_padding,
+                       src_offset=i * cols_padding * 8)
+    if not largest:
+        _emit_vmuls(tik_instance, data_ub, data_ub, cnt=rows * cols_padding)
+    with tik_instance.for_range(0, rows, name='i0') as i:
+        _conv_fp162s32(tik_instance, indices_out_int32_ub, i * cols_padding, indices_out_fp16_ub, i * cols_padding,
+                       cols_padding)
+        _conv_fp162s32(tik_instance, offset_int32_ub, i * cols_padding, offset_fp16_ub, i * cols_padding, cols_padding)
+    _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, rows, cols_padding)
+
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
+        _copy_ubuf_to_gm_k_less_16(tik_instance,
+                                   'float16',
+                                   data_gm_out,
+                                   data_ub,
+                                   rows,
+                                   cols_padding,
+                                   k,
+                                   tail_block_ub=data_tail_block_ub,
+                                   gm_offset=row_start_in_core * k + core_rows_start * k,
+                                   multi_core=multi_core)
+
+        _copy_ubuf_to_gm_k_less_16(tik_instance,
+                                   'int32',
+                                   indices_gm_out,
+                                   indices_out_final_ub,
+                                   rows,
+                                   cols_padding,
+                                   k,
+                                   tail_block_ub=indices_tail_block_ub,
+                                   gm_offset=row_start_in_core * k + core_rows_start * k,
+                                   multi_core=multi_core)
+    else:
+        _copy_ubuf_to_gm(tik_instance,
+                        'float16',
+                        data_gm_out,
+                        data_ub,
+                        rows,
+                        cols_padding,
+                        k,
+                        tail_block_ub=data_tail_block_ub,
+                        gm_offset=row_start_in_core * k + core_rows_start * k,
+                        multi_core=multi_core)
+        _copy_ubuf_to_gm(tik_instance,
+                        'int32',
+                        indices_gm_out,
+                        indices_out_final_ub,
+                        rows,
                         cols_padding,
                         k,
                         tail_block_ub=indices_tail_block_ub,
@@ -1405,11 +1192,10 @@ def _tiling(rows, cols):
     return ret, turning, batch
 
 
-def _kernel_ir(ins, outs, k, largest):
+def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     """
     Funtion for common process in top_k op
     """
-    tvm_ir = tvm.ir_builder.create()
     input_a = ins[0]
     indices = ins[1]
     output = outs[0]
@@ -1424,7 +1210,6 @@ def _kernel_ir(ins, outs, k, largest):
         rows = rows * int(shape[i])
     multi_core = True
     rows_cores, turn, batch = _tiling(rows, cols)
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
     if k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not is_vgatherb):
         rows_cores = [rows]
@@ -1440,77 +1225,46 @@ def _kernel_ir(ins, outs, k, largest):
 
     if cols > 4096:
         cols_per_part = 1024
-        data_ub = _new_alloc(tvm_ir, 'float16', (cols_per_part, ), name='data_ub', scope=tbe_platform.scope_ubuf)
-        indices_ub = _new_alloc(tvm_ir, 'float16', (cols_per_part, ), name='indices_ub', scope=tbe_platform.scope_ubuf)
+        data_ub = tik_instance.Tensor("float16", (cols_per_part,), name="data_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_instance.Tensor("float16", (cols_per_part,), name="indices_ub", scope=tik.scope_ubuf)
         indices_out_fp16_ub = indices_ub
-        indices_out_int32_ub = _new_alloc(tvm_ir,
-                                          'int32', (1, 5120),
-                                          name='indices_out_int32_ub',
-                                          scope=tbe_platform.scope_ubuf)
+        indices_out_int32_ub = tik_instance.Tensor("int32", (1, 4096),
+                                               name="indices_out_int32_ub",
+                                               scope=tik.scope_ubuf)
         indices_out_final_ub = indices_out_int32_ub
-        offset_ub = _new_alloc(tvm_ir, 'float16', (max_part_num, ), name='offset_ub', scope=tbe_platform.scope_ubuf)
+        offset_ub = tik_instance.Tensor("float16", (max_part_num,), name="offset_ub", scope=tik.scope_ubuf)
         offset_fp16_ub = offset_ub
-        offset_int32_ub = _new_alloc(tvm_ir, 'int32', (1, 5120), name='offset_int32_ub', scope=tbe_platform.scope_ubuf)
+        offset_int32_ub = tik_instance.Tensor("int32", (1, 4096), name="offset_int32_ub", scope=tik.scope_ubuf)
 
-        region_ub = _new_alloc(tvm_ir,
-                               'float16', (1, cols_per_part * 8),
-                               name='region_ub',
-                               scope=tbe_platform.scope_ubuf)
-        region_sorted_ub = _new_alloc(tvm_ir,
-                                      'float16', (1, cols_per_part * 8),
-                                      name='region_sorted_ub',
-                                      scope=tbe_platform.scope_ubuf)
-        region_k_ub = _new_alloc(tvm_ir, 'float16', (1, 5120 * 8), name='region_k_ub', scope=tbe_platform.scope_ubuf)
-        region_k2_ub = _new_alloc(tvm_ir, 'float16', (1, 5120 * 8), name='region_k2_ub', scope=tbe_platform.scope_ubuf)
-        index_reg = tvm_ir.allocate("float16", (1, ), name="index_reg", scope=tbe_platform.scope_reg)
+        region_ub = tik_instance.Tensor("float16", (1, cols_per_part * 8), name="region_ub", scope=tik.scope_ubuf)
+        region_sorted_ub = tik_instance.Tensor("float16", (1, cols_per_part * 8), name="region_sorted_ub",
+                                           scope=tik.scope_ubuf)
+
+        region_k_ub = tik_instance.Tensor("float16", (1, 5120 * 8), name="region_k_ub", scope=tik.scope_ubuf)
+        region_k2_ub = tik_instance.Tensor("float16", (1, 5120 * 8), name="region_k2_ub", scope=tik.scope_ubuf)
+
+        index_reg = tik_instance.Scalar(dtype="float16", name="index_reg", init_value=1)
     else:
-        data_ub = _new_alloc(tvm_ir, 'float16', (batch, cols_padding), name='data_ub', scope=tbe_platform.scope_ubuf)
-        indices_ub = _new_alloc(tvm_ir, 'float16', (cols_padding, ), name='indices_ub', scope=tbe_platform.scope_ubuf)
-        indices_out_fp16_ub = _new_alloc(tvm_ir,
-                                         'float16', (batch, cols_padding),
-                                         name='indices_out_fp16_ub',
-                                         scope=tbe_platform.scope_ubuf)
-        indices_out_int32_ub = _new_alloc(tvm_ir,
-                                          'int32', (batch, cols_padding),
-                                          name='indices_out_int32_ub',
-                                          scope=tbe_platform.scope_ubuf)
-
-        indices_out_final_ub = _new_alloc(tvm_ir,
-                                          'int32', (batch, cols_padding),
-                                          name='indices_out_final_ub',
-                                          scope=tbe_platform.scope_ubuf)
-
-        offset_ub = _new_alloc(tvm_ir, 'float16', (cols_padding, ), name='offset_ub', scope=tbe_platform.scope_ubuf)
-        offset_fp16_ub = _new_alloc(tvm_ir,
-                                    'float16', (batch, cols_padding),
-                                    name='offset_fp16_ub',
-                                    scope=tbe_platform.scope_ubuf)
-        offset_int32_ub = _new_alloc(tvm_ir,
-                                     'int32', (batch, cols_padding),
-                                     name='offset_int32_ub',
-                                     scope=tbe_platform.scope_ubuf)
-
-        region_ub = _new_alloc(tvm_ir,
-                               'float16', (batch, cols_padding * 8),
-                               name='region_ub',
-                               scope=tbe_platform.scope_ubuf)
-        region_sorted_ub = _new_alloc(tvm_ir,
-                                      'float16', (batch, cols_padding * 8),
-                                      name='region_sorted_ub',
-                                      scope=tbe_platform.scope_ubuf)
+        data_ub = tik_instance.Tensor("float16", (batch, cols_padding), name="data_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_instance.Tensor("float16", (cols_padding,), name="indices_ub", scope=tik.scope_ubuf)
+        indices_out_fp16_ub = tik_instance.Tensor("float16", (batch, cols_padding), name="indices_out_fp16_ub", scope=tik.scope_ubuf)
+        indices_out_int32_ub = tik_instance.Tensor("int32", (batch, cols_padding), name="indices_out_int32_ub", scope=tik.scope_ubuf)
+        indices_out_final_ub = tik_instance.Tensor("int32", (batch, cols_padding), name="indices_out_final_ub", scope=tik.scope_ubuf)
+        offset_ub = tik_instance.Tensor("float16", (cols_padding, ), name="offset_ub", scope=tik.scope_ubuf)
+        offset_fp16_ub = tik_instance.Tensor("float16", (batch, cols_padding), name="offset_fp16_ub", scope=tik.scope_ubuf)
+        offset_int32_ub = tik_instance.Tensor("int32", (batch, cols_padding), name="offset_int32_ub", scope=tik.scope_ubuf)
+        region_ub = tik_instance.Tensor("float16", (batch, cols_padding * 8), name="region_ub", scope=tik.scope_ubuf)
+        region_sorted_ub = tik_instance.Tensor("float16", (batch, cols_padding * 8), name="region_sorted_ub", scope=tik.scope_ubuf)
         region_k_ub = None
         region_k2_ub = None
         index_reg = None
 
-    data_tail_block_ub = _new_alloc(tvm_ir, 'float16', (16, ), name='data_tail_block_ub', scope=tbe_platform.scope_ubuf)
-    indices_tail_block_ub = _new_alloc(tvm_ir,
-                                       'int32', (8, ),
-                                       name='indices_tail_block_ub',
-                                       scope=tbe_platform.scope_ubuf)
-    reg_min_number = tvm_ir.allocate('float16', (1, ), scope=tbe_platform.scope_reg, name='reg_min_number')
-    reg_min_number[0] = tvm.const(FP16_MINIMUM, dtype='float16')
-    reg_addr = tvm_ir.allocate('uint64', [4], scope=tbe_platform.scope_reg, name='reg_addr')
-    reg_addr_buffer = _new_alloc(tvm_ir, 'uint64', [4], name='reg_addr_buf', scope=tbe_platform.scope_ubuf)
+
+    data_tail_block_ub = tik_instance.Tensor("float16", (16, ), name="data_tail_block_ub", scope=tik.scope_ubuf)
+    indices_tail_block_ub = tik_instance.Tensor("int32", (8, ), name="indices_tail_block_ub", scope=tik.scope_ubuf)
+
+    #TODO FP16_MINIMUM要不要设置const reg_min_number[0] = tvm.const(FP16_MINIMUM, dtype='float16')
+    reg_min_number = tik_instance.Scalar(dtype="float16", name="reg_min_number", init_value=FP16_MINIMUM)
 
     GLOBAL_VAR.set_data_gm_out(output)
     GLOBAL_VAR.set_data_ub(data_ub)
@@ -1518,8 +1272,6 @@ def _kernel_ir(ins, outs, k, largest):
     GLOBAL_VAR.set_region_sorted_ub(region_sorted_ub)
     GLOBAL_VAR.set_region_k_ub(region_k_ub)
     GLOBAL_VAR.set_reg_min_number(reg_min_number)
-    GLOBAL_VAR.set_reg_addr(reg_addr)
-    GLOBAL_VAR.set_reg_addr_buffer(reg_addr_buffer)
     GLOBAL_VAR.set_indices_ub(indices_ub)
     GLOBAL_VAR.set_indices_out_fp16_ub(indices_out_fp16_ub)
     GLOBAL_VAR.set_indices_out_int32_ub(indices_out_int32_ub)
@@ -1537,8 +1289,6 @@ def _kernel_ir(ins, outs, k, largest):
     GLOBAL_VAR.max_part_num = max_part_num
 
     blocks = len(rows_cores)
-    block_index = tvm.thread_axis("blockIdx.x")
-    tvm_ir.scope_attr(block_index, "thread_extent", blocks)
     rows_per_core1 = rows_cores[0]
     rows_per_core2 = rows_cores[0] - 1
 
@@ -1548,69 +1298,70 @@ def _kernel_ir(ins, outs, k, largest):
     remain1 = rows_per_core1 % batch
     remain2 = rows_per_core2 % batch
 
-    with tvm_ir.if_scope(block_index.var < turn):
-        core_rows_start = rows_per_core1 * block_index
-        if cols > 4096:
-            with tvm_ir.for_range(0, loops1, name='i0') as i:
-                _topk_a_row_by_part(tvm_ir,
-                                    row_start_in_core=i,
-                                    cols=cols,
-                                    k=k,
-                                    core_rows_start=core_rows_start,
-                                    multi_core=multi_core,
-                                    largest=largest)
-        else:
-            with tvm_ir.for_range(0, loops1, name='i0') as i:
-                _topk_rows(tvm_ir,
-                           row_start_in_core=i * batch,
-                           rows=batch,
-                           cols=cols,
-                           k=k,
-                           core_rows_start=core_rows_start,
-                           multi_core=multi_core,
-                           largest=largest)
-            if remain1 > 0:
-                _topk_rows(tvm_ir,
-                           row_start_in_core=loops1 * batch,
-                           rows=remain1,
-                           cols=cols,
-                           k=k,
-                           core_rows_start=core_rows_start,
-                           multi_core=multi_core,
-                           largest=largest)
+    with tik_instance.for_range(0, blocks, block_num=blocks) as block_index:
+        #需不需要block_index.var
+        with tik_instance.if_scope(block_index < turn):
+            core_rows_start = rows_per_core1 * block_index
+            if cols > 4096:
+                with tik_instance.for_range(0, loops1, name='i0') as i:
+                    _topk_a_row_by_part(tik_instance,
+                                        row_start_in_core=i,
+                                        cols=cols,
+                                        k=k,
+                                        core_rows_start=core_rows_start,
+                                        multi_core=multi_core,
+                                        largest=largest)
+            else:
+                with tik_instance.for_range(0, loops1, name='i0') as i:
+                    _topk_rows(tik_instance,
+                            row_start_in_core=i * batch,
+                            rows=batch,
+                            cols=cols,
+                            k=k,
+                            core_rows_start=core_rows_start,
+                            multi_core=multi_core,
+                            largest=largest)
+                if remain1 > 0:
+                    _topk_rows(tik_instance,
+                            row_start_in_core=loops1 * batch,
+                            rows=remain1,
+                            cols=cols,
+                            k=k,
+                            core_rows_start=core_rows_start,
+                            multi_core=multi_core,
+                            largest=largest)
 
-    with tvm_ir.if_scope(block_index.var >= turn):
-        core_rows_start = (rows_per_core1 * turn) + (rows_per_core2) * (block_index.var - turn)
-        if cols > 4096:
-            with tvm_ir.for_range(0, loops2, name='i0') as i:
-                _topk_a_row_by_part(tvm_ir,
-                                    row_start_in_core=i,
-                                    cols=cols,
-                                    k=k,
-                                    core_rows_start=core_rows_start,
-                                    multi_core=multi_core,
-                                    largest=largest)
-        else:
-            with tvm_ir.for_range(0, loops2, name='i0') as i:
-                _topk_rows(tvm_ir,
-                           row_start_in_core=i * batch,
-                           rows=batch,
-                           cols=cols,
-                           k=k,
-                           core_rows_start=core_rows_start,
-                           multi_core=multi_core,
-                           largest=largest)
-            if remain2 > 0:
-                _topk_rows(tvm_ir,
-                           row_start_in_core=loops2 * batch,
-                           rows=remain2,
-                           cols=cols,
-                           k=k,
-                           core_rows_start=core_rows_start,
-                           multi_core=multi_core,
-                           largest=largest)
-
-    return tvm_ir.get()
+        #需不需要block_index.var
+        with tik_instance.if_scope(block_index >= turn):
+            core_rows_start = (rows_per_core1 * turn) + (rows_per_core2) * (block_index - turn)
+            if cols > 4096:
+                with tik_instance.for_range(0, loops2, name='i0') as i:
+                    _topk_a_row_by_part(tik_instance,
+                                        row_start_in_core=i,
+                                        cols=cols,
+                                        k=k,
+                                        core_rows_start=core_rows_start,
+                                        multi_core=multi_core,
+                                        largest=largest)
+            else:
+                with tik_instance.for_range(0, loops2, name='i0') as i:
+                    _topk_rows(tik_instance,
+                            row_start_in_core=i * batch,
+                            rows=batch,
+                            cols=cols,
+                            k=k,
+                            core_rows_start=core_rows_start,
+                            multi_core=multi_core,
+                            largest=largest)
+                if remain2 > 0:
+                    _topk_rows(tik_instance,
+                            row_start_in_core=loops2 * batch,
+                            rows=remain2,
+                            cols=cols,
+                            k=k,
+                            core_rows_start=core_rows_start,
+                            multi_core=multi_core,
+                            largest=largest)
 
 
 # pylint: disable=unused-argument,redefined-builtin
@@ -1658,8 +1409,8 @@ def check_supported(input_tensor,
 
     input_size = functools.reduce(lambda x, y: x * y, shape)
     # 1458176 indicates max size of the last dimension.
-    # Due to the UB memory limitation, the value of k must be less than or equal to 5120.
-    if shape[sorted_axis] > 1458176 or k > 5120:
+    # Due to the UB memory limitation, the value of k must be less than or equal to 4096.
+    if shape[sorted_axis] > 1458176 or k > 4096:
         reason = "shape[sorted_axis] or k are too big, shape[sorted_axis]:%s, k:%s"\
                   % (shape[sorted_axis], k)
         return False, reason
@@ -1715,7 +1466,6 @@ def top_k_d(input_tensor,
     -------
     None
     """
-
     if tbe_platform.api_check_support("tik.vbitsort32"):
         return top_k_template(input_tensor,
                               indices_tensor,
@@ -1767,22 +1517,27 @@ def top_k_d(input_tensor,
 
     if k < 1 or k > shape[-1]:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, shape[-1], k)
-    if k > 5120:
-        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, 5120, k)
-    data_input = tvm.placeholder(shape, dtype=input_dtype, name='data_a')
-    indices = tvm.placeholder(indices_shape, dtype=input_indices_dtype, name='indices')
-    data_buf = tvm.decl_buffer(out_shape, dtype=input_dtype)
-    indices_buf = tvm.decl_buffer(out_shape, dtype=out_indices_dtype)
-    res, indices_out = tvm.extern([shape, indices_shape], [data_input, indices],
-                                  lambda ins, outs: _kernel_ir(ins, outs, k, largest),
-                                  name='output',
-                                  dtype=input_dtype,
-                                  out_buffers=[data_buf, indices_buf])
-    sch = tvm.create_schedule([res.op, indices_out.op])
+    if k > 4096:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, 4096, k)
 
-    with tbe_platform.build_config:
-        tvm.build(sch, [data_input, indices, res, indices_out], 'cce', name=kernel_name)
-        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
-            parameters_dict = {"parameters": [0, 0, 1, 0]}
-            write_code(parameters_dict, kernel_name)
+    profile = tik.Dprofile()
+    tik_instance = tik.Tik(profile)
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+
+    data_input = tik_instance.Tensor(input_dtype, shape, name='data_a', scope=tik.scope_gm)
+    indices = tik_instance.Tensor(input_indices_dtype, indices_shape, name='indices', scope=tik.scope_gm)
+    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
+        res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm, is_atomic_add=True)
+    else:
+        res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm)
+    indices_out = tik_instance.Tensor(out_indices_dtype, out_shape, name='indices_out', scope=tik.scope_gm)
+    
+    ins = [data_input, indices]
+    outs = [res, indices_out]
+
+    _kernel_ir(tik_instance, ins, outs, k, largest, soc_version)
+
+    tik_instance.BuildCCE(kernel_name=kernel_name,
+                            inputs=ins,
+                            outputs=outs,
+                            enable_l2=True)
