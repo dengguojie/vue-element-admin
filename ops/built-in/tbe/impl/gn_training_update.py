@@ -25,8 +25,6 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
 
-NONETYPE = type(None)
-
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-arguments,too-many-locals
@@ -83,6 +81,7 @@ def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     if data is None or rule_desc is None:
         return
     error_manager_vector.raise_err_check_params_rules("gn_training_update", rule_desc, param_name, data)
+
 
 def check_input_shape(shape, data_format="NCHW", num_groups=2):
     """

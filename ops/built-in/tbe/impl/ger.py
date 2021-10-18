@@ -20,9 +20,8 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
+from impl import constant_util
 
-# General limitation of the reduce size for input shape: 2***31
-SHAPE_SIZE_LIMIT = 2147483648
 
 # pylint: disable=invalid-name, unused-argument
 @fusion_manager.register("ger")
@@ -54,12 +53,13 @@ def ger_compute(data_x1, data_x2, y, kernel_name="ger"):
     res = tbe.vmul(broa_x1, broa_x2)
     return res
 
+
 # pylint: disable=invalid-name, unused-argument
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def ger(x1, x2, y, kernel_name="ger"):
     """
-    calculate the outer product of x1 and x2. If x1 is a vector of size n and 
+    calculate the outer product of x1 and x2. If x1 is a vector of size n and
     x2 is a vector of size m, then y must be a matrix of size (n*m)
 
     Parameters
@@ -88,8 +88,8 @@ def ger(x1, x2, y, kernel_name="ger"):
     para_check.check_kernel_name(kernel_name)
     para_check.check_shape_rule(shape_x1)
     para_check.check_shape_rule(shape_x2)
-    para_check.check_shape_size(shape_x1, SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(shape_x2, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_x1, constant_util.SHAPE_SIZE_LIMIT - 1)
+    para_check.check_shape_size(shape_x2, constant_util.SHAPE_SIZE_LIMIT - 1)
     para_check.check_dtype_rule(data_type_x1, check_tuple)
     para_check.check_dtype_rule(data_type_x2, check_tuple)
 
@@ -107,7 +107,7 @@ def ger(x1, x2, y, kernel_name="ger"):
         schedule = tbe.auto_schedule(res)
 
     # compile configuration
-    config = {"print_ir": False, 
+    config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": [data_x1, data_x2, res]}
     tbe.cce_build_code(schedule, config)

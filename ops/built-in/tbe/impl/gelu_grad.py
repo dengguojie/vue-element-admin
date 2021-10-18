@@ -27,18 +27,17 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-# CSVALUE equals 0.044715
-CSVALUE = tvm.const(0.044715, "float32")
-# SQURT equals np.sqrt(2 / np.pi)
-SQURT = tvm.const(0.7978846, "float32")
 
-# CSVALUE_4 equals 0.5*np.sqrt(2 / np.pi)*3*CSVALUE
-CSVALUE_4 = tvm.const(0.0535161122, "float32")
-# CSVALUE_5 equals 0.5*np.sqrt(2 / np.pi)
-CSVALUE_5 = tvm.const(0.3989422804, "float32")
-
-# min float32 value
-MIN_FP32 = 2**(-126)
+# pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant.
+    """
+    CSVALUE = tvm.const(0.044715, "float32")
+    SQURT = tvm.const(0.7978846, "float32")
+    CSVALUE_4 = tvm.const(0.0535161122, "float32")
+    CSVALUE_5 = tvm.const(0.3989422804, "float32")
+    MIN_FP32 = 2**(-126)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -78,7 +77,7 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
     up_val_tmp = tbe.vmul(exp_val, input_x)
     up_val = tbe.vsub(input_x, up_val_tmp)
 
-    input_x_tmp = tbe.vadds(input_abs, MIN_FP32)
+    input_x_tmp = tbe.vadds(input_abs, Constant.MIN_FP32)
     down_val_tmp = tbe.vadds(exp_val, tvm.const(1, "float32"))
     down_val = tbe.vmul(down_val_tmp, input_x_tmp)
 
@@ -99,9 +98,9 @@ def _math_four_compute(placeholders):
     data_x = placeholders
     datax_pow = tbe.vmul(data_x, data_x)
     datax_pow1 = tbe.vmul(datax_pow, data_x)
-    datax_muls_c = tbe.vmuls(datax_pow1, CSVALUE)
+    datax_muls_c = tbe.vmuls(datax_pow1, Constant.CSVALUE)
     datax_addx = tbe.vadd(datax_muls_c, data_x)
-    datax_muls_s = tbe.vmuls(datax_addx, SQURT)
+    datax_muls_s = tbe.vmuls(datax_addx, Constant.SQURT)
 
     return datax_muls_s
 
@@ -114,9 +113,9 @@ def _result2_compute(placeholders):
     result equals np.sqrt(2 / np.pi) (1 + 3*0.044715*x2)
     """
     data_x = placeholders
-    val1 = CSVALUE_5
+    val1 = Constant.CSVALUE_5
     data_x_sqr = tbe.vmul(data_x, data_x)
-    data_x_sqr_vmul = tbe.vmuls(data_x_sqr, CSVALUE_4)
+    data_x_sqr_vmul = tbe.vmuls(data_x_sqr, Constant.CSVALUE_4)
     data_x_sqr_vmul_add1 = tbe.vadds(data_x_sqr_vmul, val1)
 
     return data_x_sqr_vmul_add1
@@ -156,7 +155,7 @@ def _result_grad_compute(placeholders):
     mul_result2_3 = tbe.vmul(result2, result3)
 
     # compute res1 = res/x = f1 = x*(0.5*(1+tanh_math_four_result))
-    mul_compute_1 =  tbe.vadds(tanh_math_four_result, 1)
+    mul_compute_1 = tbe.vadds(tanh_math_four_result, 1)
     mul_compute_2 = tbe.vmuls(mul_compute_1, 0.5)
 
     res_grad = tbe.vadd(mul_compute_2, mul_result2_3)
@@ -262,7 +261,7 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     if not (operator.eq(shape_dy, shape_x) and operator.eq(shape_dy, shape_y)):
         error_detail = "all input shape must be equal, shape_dy:%s, shape_x:%s, shape_y:%s" % shape_dy, shape_x, shape_y
         error_manager_vector.raise_err_two_input_shape_invalid("gelu_grad", "shape_dy or shape_x",
-                                                                             "shape_dy or shape_y", error_detail)
+                                                               "shape_dy or shape_y", error_detail)
 
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_dy)

@@ -22,9 +22,6 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 
-# shape size limit for aicore is 2**31
-SHAPE_SIZE_LIMIT = 2147483647
-
 
 # pylint: disable=arguments-out-of-order
 def _compare_value_int32(x_data, y_data, shape_dz):
@@ -208,7 +205,7 @@ def fused_minimum_or_maximum_grad_compute(placeholders, shape_x, shape_y, shape_
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple), bool, bool, str,
-                       str, str, bool, bool)
+                             str, str, bool, bool)
 def fused_minimum_or_maximum_grad_cce(shape_dz, shape_x, shape_y, grad_x=True, grad_y=True,
                                       cmp_type="LE", dtype="float32",
                                       kernel_name="cce_fused_minimum_or_maximum_grad",
@@ -250,7 +247,7 @@ def fused_minimum_or_maximum_grad_cce(shape_dz, shape_x, shape_y, grad_x=True, g
     para_check.check_shape_rule(shape_y)
     shape_x, shape_y, shape_max = shape_util.produce_shapes(shape_x, shape_y)
     para_check.check_shape_rule(shape_max)
-    para_check.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_max)
     if list(shape_dz) != list(shape_max):
         raise RuntimeError("fused_minimum_or_maximum_grad_cce shape_dz != shape_max")
 

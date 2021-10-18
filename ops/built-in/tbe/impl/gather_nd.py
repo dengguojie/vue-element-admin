@@ -76,7 +76,7 @@ def _indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data,
     total_ele = total_ele - 100
     # 0.5 means half ub elements
     half_ele = int(0.5 * total_ele)
-    half_ub_shape = (half_ele, )
+    half_ub_shape = (half_ele,)
     half_data_ub = _new_alloc(ir_build, data.dtype, half_ub_shape, "half_data_ub", scope=tbe_platform.scope_ubuf)
     half_indices_ub = _new_alloc(ir_build,
                                  indices.dtype,
@@ -84,7 +84,7 @@ def _indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data,
                                  "half_indices_ub",
                                  scope=tbe_platform.scope_ubuf)
     # allocate 32 register ub space to reg_block
-    block_ub = _new_alloc(ir_build, data.dtype, (32, ), "block_ub", scope=tbe_platform.scope_ubuf)
+    block_ub = _new_alloc(ir_build, data.dtype, (32,), "block_ub", scope=tbe_platform.scope_ubuf)
     _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_indices, ele_unit, half_indices_ub,
                half_ele, half_data_ub, block_ub, ir_build)
     return ir_build.get()
@@ -99,7 +99,7 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
     calculate offset
     """
     half_param = int(0.5 * half_ele)
-    half_param_ub_shape = (half_param, )
+    half_param_ub_shape = (half_param,)
     indices_ele = int(functools.reduce(lambda i, j: i * j, shape_indices))
     # init params_total_size as 1
     params_total_size = 1
@@ -109,16 +109,16 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
             'gather_nd', "gather_nd only support 1D ~ 8D, the last dimension of indices must less than 8", "indices",
             shape_indices)
     # allocate 8 register space to reg
-    reg = ir_build.allocate(indices.dtype, (8, ), name='reg', scope=tbe_platform.scope_reg)
+    reg = ir_build.allocate(indices.dtype, (8,), name='reg', scope=tbe_platform.scope_reg)
     # check reg size which is 24
     if len(shape_data) > 24:
         error_manager_vector.raise_err_specific_reson('gather_nd', 'only allocating 24 registers spaces')
     # allocate 24 register space to reg_shape
-    reg_shape = ir_build.allocate(indices.dtype, (24, ), name='reg_shape', scope=tbe_platform.scope_reg)
+    reg_shape = ir_build.allocate(indices.dtype, (24,), name='reg_shape', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_gm
-    reg_gm = ir_build.allocate(indices.dtype, (1, ), name='reg_gm', scope=tbe_platform.scope_reg)
+    reg_gm = ir_build.allocate(indices.dtype, (1,), name='reg_gm', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_mul
-    reg_mul = ir_build.allocate(indices.dtype, (1, ), name='reg_mul', scope=tbe_platform.scope_reg)
+    reg_mul = ir_build.allocate(indices.dtype, (1,), name='reg_mul', scope=tbe_platform.scope_reg)
 
     for i, data_dim in enumerate(shape_data):
         shape_value = tvm.const(data_dim, dtype=indices.dtype)
@@ -149,7 +149,7 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
         ub_tiling_times_last_core = data_num_last_core // half_ele
         ub_tiling_remain_last_core = data_num_last_core % half_ele
 
-        # multi_core = platform_core
+        # `multi_core = platform_core`
         block = platform_core_num
         block_tiling = block
         block_index = tvm.thread_axis("blockIdx.x")
@@ -225,16 +225,16 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                 tvm.call_extern(
                                     dst.dtype, "copy_ubuf_to_gm",
                                     dst.access_ptr('w',
-                                                offset=indice_row * ele_num_per_indice_ub + row1 * burst_length +
-                                                ub_tiling_times * half_ele + block_index * data_num_per_core),
+                                                   offset=indice_row * ele_num_per_indice_ub + row1 * burst_length +
+                                                   ub_tiling_times * half_ele + block_index * data_num_per_core),
                                     half_data_ub.access_ptr("r"), 0, 1, burst_len_last - 1, 0, 0))
                             ir_build.emit(
                                 tvm.call_extern(
                                     dst.dtype, "copy_ubuf_to_gm",
                                     dst.access_ptr('w',
-                                                offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
-                                                block_index * data_num_per_core + ub_tiling_times * half_ele +
-                                                (burst_len_last - 1) * ele_per_block - block_last),
+                                                   offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
+                                                   block_index * data_num_per_core + ub_tiling_times * half_ele +
+                                                   (burst_len_last - 1) * ele_per_block - block_last),
                                     block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
 
                     # 1 means the last core number
@@ -264,8 +264,12 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                     data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
                                     data.access_ptr('r',
                                                     offset=gm_offset + (block - 1) * data_num_per_core +
-                                                    ub_tiling_times_last_core * half_ele), 0, 1, burst_len_last_last_core,
-                                    0, 0))
+                                                    ub_tiling_times_last_core * half_ele),
+                                    0,
+                                    1,
+                                    burst_len_last_last_core,
+                                    0,
+                                    0))
                             # calculate offset to move last 32B number to independent ub space
                             block_last = ub_tiling_remain_last_core % ele_per_block
                             if int(block_last) != 0:
@@ -281,16 +285,18 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                 tvm.call_extern(
                                     dst.dtype, "copy_ubuf_to_gm",
                                     dst.access_ptr('w',
-                                                offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
-                                                (block - 1) * data_num_per_core + ub_tiling_times_last_core * half_ele),
+                                                   offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
+                                                   (block - 1) * data_num_per_core + \
+                                                       ub_tiling_times_last_core * half_ele),
                                     half_data_ub.access_ptr("r"), 0, 1, burst_len_last_last_core - 1, 0, 0))
                             ir_build.emit(
                                 tvm.call_extern(
                                     dst.dtype, "copy_ubuf_to_gm",
                                     dst.access_ptr('w',
-                                                offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
-                                                block_index * data_num_per_core + ub_tiling_times_last_core * half_ele +
-                                                (burst_len_last_last_core - 1) * ele_per_block - block_last),
+                                                   offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
+                                                   block_index * data_num_per_core + \
+                                                       ub_tiling_times_last_core * half_ele +
+                                                   (burst_len_last_last_core - 1) * ele_per_block - block_last),
                                     block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
                 else:
                     half_param, half_param_ub_shape = _calculate_ele_num_by_dtype(data, burst_len_last)
@@ -373,15 +379,20 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                 data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
                                 data.access_ptr('r',
                                                 offset=gm_offset + ub_tiling_times * half_ele +
-                                                block_index * data_num_per_core + block_offset), 0, 1, burst_len_last, 0, 0))
+                                                block_index * data_num_per_core + block_offset),
+                                0,
+                                1,
+                                burst_len_last,
+                                0,
+                                0))
                         ir_build.emit(
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
-                                            block_index * data_num_per_core +
-                                            ub_tiling_times * half_ele + (burst_len_last - 1) * ele_per_block -
-                                            block_last), half_data_ub.access_ptr("r"), 0, 1, 1, 0, 0))
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                               block_index * data_num_per_core +
+                                               ub_tiling_times * half_ele + (burst_len_last - 1) * ele_per_block -
+                                               block_last), half_data_ub.access_ptr("r"), 0, 1, 1, 0, 0))
 
                     with ir_build.if_scope(burst_len_last > 1):
                         ir_build.emit(
@@ -400,17 +411,17 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
-                                            ub_tiling_times * half_ele + block_index * data_num_per_core),
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                               ub_tiling_times * half_ele + block_index * data_num_per_core),
                                 half_data_ub.access_ptr("r"), 0, 1, burst_len_last - 1, 0, 0))
                         ir_build.emit(
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
-                                            block_index * data_num_per_core +
-                                            ub_tiling_times * half_ele + (burst_len_last - 1) * ele_per_block -
-                                            block_last), block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                               block_index * data_num_per_core +
+                                               ub_tiling_times * half_ele + (burst_len_last - 1) * ele_per_block -
+                                               block_last), block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
 
                 # 1 means the last core number
                 with ir_build.else_scope():
@@ -444,16 +455,20 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                 data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
                                 data.access_ptr('r',
                                                 offset=gm_offset + (block - 1) * data_num_per_core +
-                                                ub_tiling_times_last_core * half_ele + block_offset), 0, 1, burst_len_last_last_core, 0,
+                                                ub_tiling_times_last_core * half_ele + block_offset),
+                                0,
+                                1,
+                                burst_len_last_last_core,
+                                0,
                                 0))
                         ir_build.emit(
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
-                                            block_index * data_num_per_core +
-                                            ub_tiling_times_last_core * half_ele +
-                                            (burst_len_last_last_core - 1) * ele_per_block - block_last),
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                               block_index * data_num_per_core +
+                                               ub_tiling_times_last_core * half_ele +
+                                               (burst_len_last_last_core - 1) * ele_per_block - block_last),
                                 half_data_ub.access_ptr("r"), 0, 1, 1, 0, 0))
 
                     with ir_build.if_scope(burst_len_last_last_core > 1):
@@ -463,7 +478,11 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                 data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
                                 data.access_ptr('r',
                                                 offset=gm_offset + (block - 1) * data_num_per_core +
-                                                ub_tiling_times_last_core * half_ele), 0, 1, burst_len_last_last_core, 0,
+                                                ub_tiling_times_last_core * half_ele),
+                                0,
+                                1,
+                                burst_len_last_last_core,
+                                0,
                                 0))
 
                         with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
@@ -474,17 +493,17 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
-                                            block_index * data_num_per_core + ub_tiling_times_last_core * half_ele),
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                               block_index * data_num_per_core + ub_tiling_times_last_core * half_ele),
                                 half_data_ub.access_ptr("r"), 0, 1, burst_len_last_last_core - 1, 0, 0))
                         ir_build.emit(
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
-                                            block_index * data_num_per_core +
-                                            ub_tiling_times_last_core * half_ele +
-                                            (burst_len_last_last_core - 1) * ele_per_block - block_last),
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                               block_index * data_num_per_core +
+                                               ub_tiling_times_last_core * half_ele +
+                                               (burst_len_last_last_core - 1) * ele_per_block - block_last),
                                 block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
             else:
                 half_param, half_param_ub_shape = _calculate_ele_num_by_dtype(data, burst_len_last)
@@ -510,7 +529,7 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                         half_data_ub.access_ptr("r"), 0, 1, burst_len_last, 0, 0))
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# pylint: disable=too-many-locals,too-many-arguments,unused-variable
 def _scalar_performence_indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data, shape_indices,
                                            dict_out):
     """
@@ -529,7 +548,7 @@ def _scalar_performence_indice_unit_tiling(dst, data, indices, step_indices, jum
     # 0.5 means half ub elements
     half_ele = int(0.5 * total_ele)
     # allocate 32 register ub space to reg_block
-    block_ub = _new_alloc(ir_build, data.dtype, (32, ), "block_ub", scope=tbe_platform.scope_ubuf)
+    block_ub = _new_alloc(ir_build, data.dtype, (32,), "block_ub", scope=tbe_platform.scope_ubuf)
     _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, shape_indices, half_ele, block_ub,
                                   ir_build)
     return ir_build.get()
@@ -553,38 +572,38 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
             'gather_nd', "gather_nd only support 1D ~ 8D, the last dimension of indices must less than 8", "indices",
             shape_indices)
     # allocate 8 register space to reg
-    reg = ir_build.allocate(indices.dtype, (8, ), name='reg', scope=tbe_platform.scope_reg)
+    reg = ir_build.allocate(indices.dtype, (8,), name='reg', scope=tbe_platform.scope_reg)
     # check reg size which is 24
     if len(shape_data) > 24:
         error_manager_vector.raise_err_specific_reson('gather_nd', 'only allocating 24 registers spaces')
     # allocate 24 register space to reg_shape
-    reg_shape = ir_build.allocate(indices.dtype, (24, ), name='reg_shape', scope=tbe_platform.scope_reg)
+    reg_shape = ir_build.allocate(indices.dtype, (24,), name='reg_shape', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_gm
-    reg_gm = ir_build.allocate(indices.dtype, (4, ), name='reg_gm', scope=tbe_platform.scope_reg)
+    reg_gm = ir_build.allocate(indices.dtype, (4,), name='reg_gm', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_mul
-    reg_mul = ir_build.allocate(indices.dtype, (4, ), name='reg_mul', scope=tbe_platform.scope_reg)
+    reg_mul = ir_build.allocate(indices.dtype, (4,), name='reg_mul', scope=tbe_platform.scope_reg)
     for i, data_dim in enumerate(shape_data):
         shape_value = tvm.const(data_dim, dtype=indices.dtype)
         reg_shape[i] = shape_value
     # calculate multi-core number
     params_total_size = data.shape[0].value
     if indices_ele <= 26000:
-        param_total_shape = (15000, )
-        indice_total_shape = (26000, )
-        out_put_shape = (20000, )
+        param_total_shape = (15000,)
+        indice_total_shape = (26000,)
+        out_put_shape = (20000,)
     else:
         ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 1024
         indice_dtype_bytes_size = tbe_platform.get_bit_len(indices.dtype) // 8
         param_dtype_bytes_size = tbe_platform.get_bit_len(data.dtype) // 8
-        param_total_shape = (15000, )
+        param_total_shape = (15000,)
         output_num = (ub_size_bytes - (param_total_shape[0] * param_dtype_bytes_size)) // (shape_indices[-1] + 1)
         indice_shape_num = output_num * shape_indices[-1]
 
         output_num = output_num // param_dtype_bytes_size
         indice_shape_num = indice_shape_num // indice_dtype_bytes_size
 
-        indice_total_shape = (indice_shape_num, )
-        out_put_shape = (output_num, )
+        indice_total_shape = (indice_shape_num,)
+        out_put_shape = (output_num,)
     three_indices_ub = _new_alloc(ir_build,
                                   indices.dtype,
                                   indice_total_shape,
@@ -660,7 +679,7 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
             last_ele = ele_per_core % ele_per_block
             aglined_ele_num = (ele_per_core // ele_per_block) * ele_per_block
             aglined_offset = aglined_ele_num - (ele_per_block - last_ele)
-            reg_tmp = ir_build.allocate(data.dtype, (4, ), name='reg_tmp', scope=tbe_platform.scope_reg)
+            reg_tmp = ir_build.allocate(data.dtype, (4,), name='reg_tmp', scope=tbe_platform.scope_reg)
             compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
             if compile_plat in ("Ascend310", "Ascend710"):
                 with ir_build.for_range(0, ele_per_core, name='core_row') as core_row:
@@ -874,7 +893,7 @@ def _large_param_shape_performence_indice_unit_tiling(dst, data, indices, step_i
     """
     ir_build = tvm.ir_builder.create()
     # allocate 32 register ub space to reg_block
-    block_ub = _new_alloc(ir_build, data.dtype, (32, ), "block_ub", scope=tbe_platform.scope_ubuf)
+    block_ub = _new_alloc(ir_build, data.dtype, (32,), "block_ub", scope=tbe_platform.scope_ubuf)
     _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shape_data, shape_indices, step_indices,
                                              block_ub, ir_build)
     return ir_build.get()
@@ -898,23 +917,23 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
             'gather_nd', "gather_nd only support 1D ~ 8D, the last dimension of indices must less than 8", "indices",
             shape_indices)
     # allocate 8 register space to reg
-    reg = ir_build.allocate(indices.dtype, (8, ), name='reg', scope=tbe_platform.scope_reg)
+    reg = ir_build.allocate(indices.dtype, (8,), name='reg', scope=tbe_platform.scope_reg)
     # check reg size which is 24
     if len(shape_data) > 24:
         error_manager_vector.raise_err_specific_reson('gather_nd', 'only allocating 24 registers spaces')
     # allocate 24 register space to reg_shape
-    reg_shape = ir_build.allocate(indices.dtype, (24, ), name='reg_shape', scope=tbe_platform.scope_reg)
+    reg_shape = ir_build.allocate(indices.dtype, (24,), name='reg_shape', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_gm
-    reg_gm = ir_build.allocate(indices.dtype, (1, ), name='reg_gm', scope=tbe_platform.scope_reg)
+    reg_gm = ir_build.allocate(indices.dtype, (1,), name='reg_gm', scope=tbe_platform.scope_reg)
     # allocate 1 register space to reg_mul
-    reg_mul = ir_build.allocate(indices.dtype, (1, ), name='reg_mul', scope=tbe_platform.scope_reg)
+    reg_mul = ir_build.allocate(indices.dtype, (1,), name='reg_mul', scope=tbe_platform.scope_reg)
     for i, data_dim in enumerate(shape_data):
         shape_value = tvm.const(data_dim, dtype=indices.dtype)
         reg_shape[i] = shape_value
     # calculate multi-core number
     params_total_size = data.shape[0].value
-    indice_total_shape = (14000, )
-    out_put_shape = (35000, )
+    indice_total_shape = (14000,)
+    out_put_shape = (35000,)
     three_indices_ub = _new_alloc(ir_build,
                                   indices.dtype,
                                   indice_total_shape,
@@ -1007,7 +1026,10 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
                 for row2 in range(indices_move_length):
                     ir_build.emit(
                         tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
-                                        three_indices_ub.access_ptr('r', offset=param_times_per_output_ub * indices_loop_times + last_core_row * jump_step + row2)))
+                                        three_indices_ub.access_ptr('r', offset=param_times_per_output_ub * \
+                                                                                indices_loop_times + \
+                                                                                last_core_row * \
+                                                                                jump_step + row2)))
                     gm_offset += reg[row2] * shape_list[row2]
                 # calculate the start position to fetch num
                 ir_build.emit(
@@ -1016,7 +1038,8 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
                                     data.access_ptr('r', offset=gm_offset), 0, 1, param_core_len, 0, 0))
             ir_build.emit(
                 tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
-                                dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + indices_loop_times * param_times_per_output_ub * post_step),
+                                dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + \
+                                        indices_loop_times * param_times_per_output_ub * post_step),
                                 output_ub.access_ptr("r"), 0, 1, core_len_last, 0, 0))
 
         with ir_build.for_range(0, indices_loops_remain, name='last_core_row_remain') as last_core_row_remain:
@@ -1025,7 +1048,10 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
             for row2 in range(indices_move_length):
                 ir_build.emit(
                     tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
-                                    three_indices_ub.access_ptr('r', offset=param_times_per_output_ub * indices_loops + last_core_row_remain * jump_step + row2)))
+                                    three_indices_ub.access_ptr('r', offset=param_times_per_output_ub * \
+                                        indices_loops + \
+                                            last_core_row_remain * \
+                                                jump_step + row2)))
                 gm_offset += reg[row2] * shape_list[row2]
             # calculate the start position to fetch num
             ir_build.emit(
@@ -1035,7 +1061,8 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
         if indices_loops_remain != 0:
             ir_build.emit(
                 tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
-                                dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + indices_loops * param_times_per_output_ub * post_step),
+                                dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + \
+                                    indices_loops * param_times_per_output_ub * post_step),
                                 output_ub.access_ptr("r"), 0, 1, core_len_last_remain, 0, 0))
 
 
@@ -1117,13 +1144,13 @@ def _calculate_ele_num_by_dtype(data, ele_num):
 
     if data.dtype == "int32" or data.dtype == "float32":
         half_param = int(type_dict["dtype32_ele"] * ele_num)
-        half_param_ub_shape = (half_param, )
+        half_param_ub_shape = (half_param,)
     elif data.dtype == "float16":
         half_param = int(type_dict["dtype16_ele"] * ele_num)
-        half_param_ub_shape = (half_param, )
+        half_param_ub_shape = (half_param,)
     elif data.dtype == "int8" or data.dtype == "uint8":
         half_param = int(type_dict["dtype8_ele"] * ele_num)
-        half_param_ub_shape = (half_param, )
+        half_param_ub_shape = (half_param,)
     return half_param, half_param_ub_shape
 
 
@@ -1277,7 +1304,7 @@ def _tvm_dummy_placeholder(input_dtype, indice_dtype, kernel_name="dummy_placeho
     """
     do nothing in operator
     """
-    shape = (1, )
+    shape = (1,)
     data = tvm.placeholder(shape, dtype=input_dtype, name='data')
     indice = tvm.placeholder(shape, dtype=indice_dtype, name='dummy_placeholder')
     data_ub = tvm.compute(shape, lambda *i: data(*i), name='data_ub')
@@ -1486,8 +1513,8 @@ def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):
                 _tvm_dummy_placeholder(data_dtype, indice_dtype, kernel_name)
             else:
                 ele_cnt = functools.reduce(lambda x, y: x * y, shape_data)
-                _just_dma((ele_cnt, ), shape_indices, (repeat, ele_cnt), data_dtype, kernel_name)
+                _just_dma((ele_cnt,), shape_indices, (repeat, ele_cnt), data_dtype, kernel_name)
     else:
         para_check.check_shape(shape_indices, param_name="dict_indices")
         ele_cnt = functools.reduce(lambda x, y: x * y, shape_data)
-        _just_dma((ele_cnt, ), shape_indices, (1, ele_cnt), data_dtype, kernel_name)
+        _just_dma((ele_cnt,), shape_indices, (1, ele_cnt), data_dtype, kernel_name)

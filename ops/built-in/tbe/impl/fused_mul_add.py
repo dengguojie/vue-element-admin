@@ -21,21 +21,19 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
+from tbe.dsl import broadcast
+from impl import constant_util
 from impl.util import util_select_op_base
 from impl.util.util_compute import batchmatmul_elem_nd2nz
 from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
-from tbe.dsl import broadcast
 from impl.util.platform_adapter import error_manager_vector
 
-SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
-SIZE_SIXTEEN = 16
 
 # pylint: disable=locally-disabled,unused-variable,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,too-many-statements
 # pylint: disable=locally-disabled,too-many-branches,unused-variable
 def _division_sixteen(shape):
-
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = 'value of shape is illegal, shape[-1] == 0'
@@ -46,7 +44,7 @@ def _division_sixteen(shape):
         error_detail = 'value of shape is illegal, shape[-1] == %s, shape[-2] == %s' % (shape[-1], shape[-2])
         error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
 
-    return shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0
+    return shape[-1] % constant_util.SIZE_SIXTEEN == 0 and shape[-2] % constant_util.SIZE_SIXTEEN == 0
 
 
 def op_select_format(input0, input1, input2, output,
@@ -300,6 +298,7 @@ def check_ori_shape(input0, input1, input2):
                                     param_name_input2="input2")
 
 
+# pylint: disable=arguments-out-of-order
 def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
     """
     shape_input0 : FRACTAL_NZ, [N,...,A,B,16,16]
@@ -512,10 +511,10 @@ def fusion_mul_add_compute(data_input0, data_input1, data_input2,
     else:
         para_name = "muladd"
     batch_shape = shape_util.shape_to_list(data_input0.op.attrs["batch_shape"])
-    para_dict_1= {"format_elem":data_input1.op.attrs["format"],
-                  "batch_shape": batch_shape}
-    para_dict_2= {"format_elem":data_input2.op.attrs["format"],
-                  "batch_shape": batch_shape}
+    para_dict_1 = {"format_elem": data_input1.op.attrs["format"],
+                   "batch_shape": batch_shape}
+    para_dict_2 = {"format_elem": data_input2.op.attrs["format"],
+                   "batch_shape": batch_shape}
 
     if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
         data_input1, shape_max = batchmatmul_elem_nd2nz(data_input0, data_input1, para_dict_1, para_name + "1")

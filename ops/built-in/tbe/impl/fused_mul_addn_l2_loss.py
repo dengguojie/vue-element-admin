@@ -42,7 +42,7 @@ def get_op_support_info(input_x,
     format_x = input_x.get("format")
     shape_x = input_x.get("shape")
     support_format = ["FRACTAL_Z", "C1HWNCoC0", "NC1HWC0", "ND", "NCHW", "NHWC"]
-    REDUCE_ADD = 1  # enumerated value
+    reduce_add = 1  # enumerated value
     if format_x in support_format:
         axis_reduce_list = []
         axis_split_list = []
@@ -50,7 +50,7 @@ def get_op_support_info(input_x,
             split_info = [SplitInput([0, [idx], [-1], [-1]], [1, [idx], [-1], [-1]]),
                           SplitOutput([0, [idx]])]
             reduce_info = [ReduceInput([0, [idx]]),
-                           ReduceOutput([1, REDUCE_ADD, True])]
+                           ReduceOutput([1, reduce_add, True])]
             axis_split_list.append(split_info)
             axis_reduce_list.append(reduce_info)
     else:
@@ -87,7 +87,7 @@ def fused_mul_addn_l2loss_compute(weight, const_input, weight_grad):
     data_mul = tbe.vmul(weight, const_input)
     data_addn = tbe.vadd(data_mul, weight_grad)
 
-    axis = [i for i in range(len(weight.shape))]
+    axis = list(range(len(weight.shape)))
     # cal l2 loss
     coeff_sqrt = tvm.const(1.0 / (2**(0.5)), dtype=weight.dtype)
     l2_loss_vmuls = tbe.vmuls(weight, coeff_sqrt)
@@ -131,7 +131,7 @@ def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_
     shape_y = input_y.get("shape")
     dtype_y = input_y.get("dtype").lower()
 
-    shape_z = [1 for _ in range(len(shape_x))]
+    shape_z = [1] * len(shape_x)
     dtype_z = input_z.get("dtype").lower()
 
     check_list = ("float16", "float32")
@@ -154,16 +154,16 @@ def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_
 
     if dtype_x == "float32":
         if not tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
-            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16',), dtype_x)
 
         if not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
-            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16',), dtype_x)
 
         if not tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
-            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16',), dtype_x)
 
         if not tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
-            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16', ), dtype_x)
+            error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ('float16',), dtype_x)
 
     fused_x_shape = [functools.reduce(lambda a, b: a * b, shape_x[:])]
     fused_y_shape = [functools.reduce(lambda a, b: a * b, shape_y[:])]

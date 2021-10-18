@@ -65,7 +65,7 @@ def fused_mul_add_n(input_x, input_y, input_z, output, kernel_name="fused_mul_ad
     para_check.check_shape(shape_y, param_name="input_y")
     para_check.check_dtype(dtype_y, check_list, param_name="input_y")
     dtype_z = input_z.get("dtype")
-    shape_z = [1 for i in range(len(shape_x))]
+    shape_z = [1] * len(shape_x)
     para_check.check_shape(shape_z, param_name="input_z")
     para_check.check_dtype(dtype_z, check_list, param_name="input_z")
 

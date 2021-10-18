@@ -15,7 +15,7 @@
 """
 giou
 """
-from os import read
+
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -26,14 +26,16 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# MAX ELIMENT NUM OF FP16 IN 1BLOCK
-FP16_ELIMENTS_BLOCK = 16
-# MAX ELIMENT NUM OF FP32 IN 1BLOCK
-FP32_ELIMENTS_BLOCK = 8
-# CONST GTBOX SLICE SEGMENT
-GTBOX_SEGMENT = 4096 * 2
-# CONST BBOX SLICE SEGMENT
-BBOX_SEGMENT = 4096 * 2
+
+# pylint: disable=too-few-public-methods,invalid-name,unused-variable
+class Constant:
+    """
+    The class for constant.
+    """
+    FP16_ELIMENTS_BLOCK = 16
+    FP32_ELIMENTS_BLOCK = 8
+    GTBOX_SEGMENT = 4096 * 2
+    BBOX_SEGMENT = 4096 * 2
 
 
 # pylint: disable = unused-argument
@@ -44,7 +46,7 @@ def get_op_support_info(bboxes, gtboxes, overlap, trans, is_cross, mode="iou", k
     format_bboxes = bboxes.get("format").upper()
     format_gtboxes = gtboxes.get("format").upper()
     if format_bboxes == "ND" and format_gtboxes == "ND":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
             [SplitInput([1, [0], [-1], [-1]]), SplitOutput([0, [0]])]
         ]
@@ -103,7 +105,7 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-lines
 class GIoU():
     """Function: use to finish Iou main functions
     """
@@ -211,15 +213,15 @@ class GIoU():
         self.gtboxes_y1 = None
         self.index_reg = []
         block_parm_dict = {
-            "float16": FP16_ELIMENTS_BLOCK,
-            "float32": FP32_ELIMENTS_BLOCK,
+            "float16": Constant.FP16_ELIMENTS_BLOCK,
+            "float32": Constant.FP32_ELIMENTS_BLOCK,
         }
         self.min_point_per_core = block_parm_dict[self.bboxes_dtype]
         self.eliments_per_block = block_parm_dict[self.bboxes_dtype]
-        self.gt_ub_segment = GTBOX_SEGMENT if self.bboxes_dtype == "float16" \
-            else GTBOX_SEGMENT // 2
-        self.bb_ub_segment = BBOX_SEGMENT if self.bboxes_dtype == "float16" \
-            else BBOX_SEGMENT // 2
+        self.gt_ub_segment = Constant.GTBOX_SEGMENT if self.bboxes_dtype == "float16" \
+            else Constant.GTBOX_SEGMENT // 2
+        self.bb_ub_segment = Constant.BBOX_SEGMENT if self.bboxes_dtype == "float16" \
+            else Constant.BBOX_SEGMENT // 2
         self.max_eliments = block_parm_dict[self.bboxes_dtype] * 8
         if self.product is False:
             self.bb_ub_segment = self.bb_ub_segment // 2
@@ -265,22 +267,22 @@ class GIoU():
                 0, self.core_num, block_num=self.core_num) as _core_id:
             # calcu gt area
             self.bboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "bboxes_x0")
+                                        [self.area_x0_size], "bboxes_x0")
             self.bboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "bboxes_x1")
+                                        [self.area_x0_size], "bboxes_x1")
             self.bboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "bboxes_y0")
+                                        [self.area_x0_size], "bboxes_y0")
             self.bboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "bboxes_y1")
+                                        [self.area_x0_size], "bboxes_y1")
 
             self.gtboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "gtboxes_x0")
+                                         [self.area_x0_size], "gtboxes_x0")
             self.gtboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "gtboxes_x1")
+                                         [self.area_x0_size], "gtboxes_x1")
             self.gtboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "gtboxes_y0")
+                                         [self.area_x0_size], "gtboxes_y0")
             self.gtboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                      [self.area_x0_size], "gtboxes_y1")
+                                         [self.area_x0_size], "gtboxes_y1")
 
             self.inter_area_x0 = _apply_mem(self.tik_instance, self.dtype,
                                             [self.area_x0_size],
@@ -294,7 +296,6 @@ class GIoU():
             self.inter_area_y1 = _apply_mem(self.tik_instance, self.dtype,
                                             [self.area_x0_size],
                                             "inter_area_y1")
-            
             self.outer_area_x0 = _apply_mem(self.tik_instance, self.dtype,
                                             [self.area_x0_size],
                                             "outer_area_x0")
@@ -566,13 +567,13 @@ class GIoU():
         self.bboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
                                     [self.area_x0_size], "bboxes_y1")
         self.gtboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.area_x0_size], "gtboxes_x0")
+                                     [self.area_x0_size], "gtboxes_x0")
         self.gtboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.area_x0_size], "gtboxes_x1")
+                                     [self.area_x0_size], "gtboxes_x1")
         self.gtboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.area_x0_size], "gtboxes_y0")
+                                     [self.area_x0_size], "gtboxes_y0")
         self.gtboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.area_x0_size], "gtboxes_y1")
+                                     [self.area_x0_size], "gtboxes_y1")
         self.inter_area_x0 = _apply_mem(self.tik_instance, self.dtype,
                                         [self.area_x0_size],
                                         "inter_area_x0")
@@ -627,7 +628,7 @@ class GIoU():
         self.out_ub = _apply_mem(self.tik_instance, self.dtype,
                                  [self.area_ub_size], "out_ub")
         self.other_ub = _apply_mem(self.tik_instance, self.dtype,
-                                 [self.area_ub_size], "other_ub")
+                                   [self.area_ub_size], "other_ub")
         self.bboxes_area_ub = _apply_mem(self.tik_instance, self.dtype,
                                          [self.area_ub_size],
                                          "bboxes_area_ub")
@@ -649,27 +650,26 @@ class GIoU():
 
         if not self.is_cross:
             self.gtboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.area_ub_size], "gtboxes_x0")
+                                         [self.area_ub_size], "gtboxes_x0")
             self.gtboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.area_ub_size], "gtboxes_x1")
+                                         [self.area_ub_size], "gtboxes_x1")
             self.gtboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.area_ub_size], "gtboxes_y0")
+                                         [self.area_ub_size], "gtboxes_y0")
             self.gtboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.area_ub_size], "gtboxes_y1")
+                                         [self.area_ub_size], "gtboxes_y1")
         else:
             self.gtboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.eliments_per_block], "gtboxes_x0")
+                                         [self.eliments_per_block], "gtboxes_x0")
             self.gtboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.eliments_per_block], "gtboxes_x1")
+                                         [self.eliments_per_block], "gtboxes_x1")
             self.gtboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.eliments_per_block], "gtboxes_y0")
+                                         [self.eliments_per_block], "gtboxes_y0")
             self.gtboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                        [self.eliments_per_block], "gtboxes_y1")
+                                         [self.eliments_per_block], "gtboxes_y1")
 
         if not self.is_cross:
             self.tik_instance.data_move(
                 self.gtboxes_ub, self.gtboxes_gm[src_gm_offset], 0, 1, nbust, 0, 0)
-            
             # [n,4] --> 4*[n,1] by scalar
             self.data_rerange(run_bb_point, self.gtboxes_ub)
             # calcu area
@@ -718,25 +718,22 @@ class GIoU():
                                    self.bboxes_y1,
                                    self.gtboxes_y1,
                                    repeat_time, 1, 1, 1, 8, 8, 8)
-            
             self.calcu_area(run_bb_point, self.inter_area_ub, inter_mode=True)
             self.calcu_area(run_bb_point, self.outer_area_ub, outer_mode=True)
 
             if self.mode == "iou":
                 self.tik_instance.vadd(self.max_eliments, self.out_ub,
-                                        self.bboxes_area_ub,
-                                        self.gt_boxes_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
+                                       self.bboxes_area_ub,
+                                       self.gt_boxes_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.vsub(
                     self.max_eliments, self.out_ub, self.out_ub,
                     self.inter_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
             elif self.mode == "iof":
                 self.tik_instance.data_move(self.out_ub, self.gt_boxes_area_ub,
                                             0, 1, (nbust - 1) // 4 + 1, 0, 0)
-            
             self.tik_instance.vsub(self.max_eliments, self.other_ub,
                                    self.outer_area_ub,
                                    self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
-
             if self.product is True:
                 self.tik_instance.vdiv(
                     self.max_eliments, self.out_ub, self.inter_area_ub,
@@ -783,12 +780,10 @@ class GIoU():
                                        rec_1,
                                        rec_2, repeat_time, 1,
                                        1, 1, 8, 8, 8)
-
                 self.tik_instance.vmul(self.max_eliments, self.out_ub,
                                        rec_1,
                                        self.inter_area_ub, repeat_time, 1,
                                        1, 1, 8, 8, 8)
-
                 self.tik_instance.vrec(self.max_eliments, rec_1,
                                        self.outer_area_ub,
                                        repeat_time, 1, 1, 8, 8)
@@ -820,24 +815,19 @@ class GIoU():
                                        rec_1,
                                        rec_2, repeat_time, 1,
                                        1, 1, 8, 8, 8)
-
                 self.tik_instance.vmul(self.max_eliments, self.outer_area_ub,
                                        rec_1,
                                        self.other_ub, repeat_time, 1,
                                        1, 1, 8, 8, 8)
-
             self.tik_instance.vsub(self.max_eliments, self.out_ub,
                                    self.out_ub, self.outer_area_ub, repeat_time, 1,
                                    1, 1, 8, 8, 8)
-            
             dst_gm_offset = src_gm_offset // 4
             dst_nbust = nbust // 4
             self.tik_instance.data_move(self.giou_gm[dst_gm_offset],
                                         self.out_ub, 0, 1, dst_nbust, 0, 0)
-        
         else:
-            scalar_addr = \
-                [self.tik_instance.Scalar(dtype=self.dtype) for _ in range(4)]
+            scalar_addr = [self.tik_instance.Scalar(dtype=self.dtype)] * 4
             scalar_area = self.tik_instance.Scalar(dtype=self.dtype)
             with self.tik_instance.for_range(
                     0, self.gtboxes_num) as gt_global_index:
@@ -845,61 +835,59 @@ class GIoU():
                 for i in range(4):
                     scalar_addr[i].set_as(self.gtboxes_ub[gt_global_index * 4 + i])
                 self.tik_instance.vector_dup(self.eliments_per_block,
-                                            self.gtboxes_x0, scalar_addr[0],
-                                            1, 1, 8)
+                                             self.gtboxes_x0, scalar_addr[0],
+                                             1, 1, 8)
                 self.tik_instance.vector_dup(self.eliments_per_block,
-                                            self.gtboxes_y0, scalar_addr[1],
-                                            1, 1, 8)
+                                             self.gtboxes_y0, scalar_addr[1],
+                                             1, 1, 8)
                 self.tik_instance.vector_dup(self.eliments_per_block,
-                                            self.gtboxes_x1, scalar_addr[2],
-                                            1, 1, 8)
+                                             self.gtboxes_x1, scalar_addr[2],
+                                             1, 1, 8)
                 self.tik_instance.vector_dup(self.eliments_per_block,
-                                            self.gtboxes_y1, scalar_addr[3],
-                                            1, 1, 8)
+                                             self.gtboxes_y1, scalar_addr[3],
+                                             1, 1, 8)
                 # vmin vmax
                 repeat_time = _get_ceil_int(run_bb_point, self.max_eliments)
                 self.tik_instance.vmax(self.max_eliments,
-                                    self.inter_area_x0,
-                                    self.bboxes_x0,
-                                    self.gtboxes_x0,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
+                                       self.inter_area_x0,
+                                       self.bboxes_x0,
+                                       self.gtboxes_x0,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmax(self.max_eliments,
-                                    self.inter_area_y0,
-                                    self.bboxes_y0,
-                                    self.gtboxes_y0,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
+                                       self.inter_area_y0,
+                                       self.bboxes_y0,
+                                       self.gtboxes_y0,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmin(self.max_eliments,
-                                    self.inter_area_x1,
-                                    self.bboxes_x1,
-                                    self.gtboxes_x1,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
+                                       self.inter_area_x1,
+                                       self.bboxes_x1,
+                                       self.gtboxes_x1,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmin(self.max_eliments,
-                                    self.inter_area_y1,
-                                    self.bboxes_y1,
-                                    self.gtboxes_y1,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
-
+                                       self.inter_area_y1,
+                                       self.bboxes_y1,
+                                       self.gtboxes_y1,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmin(self.max_eliments,
-                                    self.outer_area_x0,
-                                    self.bboxes_x0,
-                                    self.gtboxes_x0,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
+                                       self.outer_area_x0,
+                                       self.bboxes_x0,
+                                       self.gtboxes_x0,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmin(self.max_eliments,
-                                    self.outer_area_y0,
-                                    self.bboxes_y0,
-                                    self.gtboxes_y0,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
+                                       self.outer_area_y0,
+                                       self.bboxes_y0,
+                                       self.gtboxes_y0,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmax(self.max_eliments,
-                                    self.outer_area_x1,
-                                    self.bboxes_x1,
-                                    self.gtboxes_x1,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
+                                       self.outer_area_x1,
+                                       self.bboxes_x1,
+                                       self.gtboxes_x1,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.tik_instance.vmax(self.max_eliments,
-                                    self.outer_area_y1,
-                                    self.bboxes_y1,
-                                    self.gtboxes_y1,
-                                    repeat_time, 1, 1, 0, 8, 8, 0)
-                
+                                       self.outer_area_y1,
+                                       self.bboxes_y1,
+                                       self.gtboxes_y1,
+                                       repeat_time, 1, 1, 0, 8, 8, 0)
                 self.calcu_area(run_bb_point, self.inter_area_ub, inter_mode=True)
                 self.calcu_area(run_bb_point, self.outer_area_ub, outer_mode=True)
 
@@ -912,12 +900,10 @@ class GIoU():
                         self.inter_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
                 elif self.mode == "iof":
                     self.tik_instance.vector_dup(self.max_eliments, self.out_ub,
-                                                scalar_area, repeat_time, 1, 8)
-                
+                                                 scalar_area, repeat_time, 1, 8)
                 self.tik_instance.vsub(self.max_eliments, self.other_ub,
-                                    self.outer_area_ub,
-                                    self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
-
+                                       self.outer_area_ub,
+                                       self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
                 if self.product is True:
                     self.tik_instance.vdiv(
                         self.max_eliments, self.out_ub, self.inter_area_ub,
@@ -928,18 +914,18 @@ class GIoU():
                 else:
                     # for mini
                     rec_1 = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.area_x0_size],
-                                    "rec_1")
+                                       [self.area_x0_size],
+                                       "rec_1")
                     rec_2 = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.area_x0_size],
-                                    "rec_2")
+                                       [self.area_x0_size],
+                                       "rec_2")
                     self.tik_instance.vrec(self.max_eliments, rec_1,
-                                        self.out_ub,
-                                        repeat_time, 1, 1, 8, 8)
+                                           self.out_ub,
+                                           repeat_time, 1, 1, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_2,
-                                        rec_1,
-                                        self.out_ub, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
+                                           rec_1,
+                                           self.out_ub, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmuls(self.max_eliments, rec_2,
                                             rec_2,
                                             -1, repeat_time, 1, 1, 8, 8)
@@ -947,13 +933,13 @@ class GIoU():
                                             rec_2,
                                             2, repeat_time, 1, 1, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_2,
-                                        rec_2,
-                                        rec_1, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
+                                           rec_2,
+                                           rec_1, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_1,
-                                        rec_2,
-                                        self.out_ub, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
+                                           rec_2,
+                                           self.out_ub, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmuls(self.max_eliments, rec_1,
                                             rec_1,
                                             -1, repeat_time, 1, 1, 8, 8)
@@ -961,22 +947,20 @@ class GIoU():
                                             rec_1,
                                             2, repeat_time, 1, 1, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_1,
-                                        rec_1,
-                                        rec_2, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
-
+                                           rec_1,
+                                           rec_2, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, self.out_ub,
-                                        rec_1,
-                                        self.inter_area_ub, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
-
+                                           rec_1,
+                                           self.inter_area_ub, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vrec(self.max_eliments, rec_1,
-                                        self.outer_area_ub,
-                                        repeat_time, 1, 1, 8, 8)
+                                           self.outer_area_ub,
+                                           repeat_time, 1, 1, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_2,
-                                        rec_1,
-                                        self.outer_area_ub, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
+                                           rec_1,
+                                           self.outer_area_ub, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmuls(self.max_eliments, rec_2,
                                             rec_2,
                                             -1, repeat_time, 1, 1, 8, 8)
@@ -984,13 +968,13 @@ class GIoU():
                                             rec_2,
                                             2, repeat_time, 1, 1, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_2,
-                                        rec_2,
-                                        rec_1, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
+                                           rec_2,
+                                           rec_1, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_1,
-                                        rec_2,
-                                        self.outer_area_ub, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
+                                           rec_2,
+                                           self.outer_area_ub, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmuls(self.max_eliments, rec_1,
                                             rec_1,
                                             -1, repeat_time, 1, 1, 8, 8)
@@ -998,20 +982,18 @@ class GIoU():
                                             rec_1,
                                             2, repeat_time, 1, 1, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, rec_1,
-                                        rec_1,
-                                        rec_2, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
-
+                                           rec_1,
+                                           rec_2, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                     self.tik_instance.vmul(self.max_eliments, self.outer_area_ub,
-                                        rec_1,
-                                        self.other_ub, repeat_time, 1,
-                                        1, 1, 8, 8, 8)
-
+                                           rec_1,
+                                           self.other_ub, repeat_time, 1,
+                                           1, 1, 8, 8, 8)
                 giou_gm_offset = gt_global_index * self.bboxes_shape[
                     0] + gm_offset + gm_out_offset
                 self.tik_instance.vsub(self.max_eliments, self.out_ub,
-                                    self.out_ub, self.outer_area_ub, repeat_time, 1,
-                                    1, 1, 8, 8, 8)
+                                       self.out_ub, self.outer_area_ub, repeat_time, 1,
+                                       1, 1, 8, 8, 8)
                 nbust = _get_ceil_int(run_bb_point, self.eliments_per_block)
                 self.tik_instance.data_move(self.giou_gm[giou_gm_offset],
                                             self.out_ub, 0, 1, nbust, 0, 0)
@@ -1056,9 +1038,7 @@ class GIoU():
         None
         """
         for_range = _get_ceil_int(run_point, 2)
-        self.index_reg = [
-            self.tik_instance.Scalar(dtype=self.dtype) for _ in range(8)
-        ]
+        self.index_reg = [self.tik_instance.Scalar(dtype=self.dtype)] * 8
         with self.tik_instance.for_range(0, for_range) as conv_index:
             for i in range(8):
                 self.index_reg[i].set_as(point_ub[conv_index * 8 + i])
@@ -1141,7 +1121,6 @@ class GIoU():
                                y1_ub,
                                y0_ub, repeat_time, 1,
                                1, 1, 8, 8, 8)
-        
         if not inter_mode:
             self.tik_instance.vadds(self.max_eliments, area_ub,
                                     area_ub, 1e-16, repeat_time, 1, 1, 8,
@@ -1149,7 +1128,6 @@ class GIoU():
             self.tik_instance.vadds(self.max_eliments, self.area_y1_y0,
                                     self.area_y1_y0, 1e-16, repeat_time, 1, 1, 8,
                                     8)
-
         # vmuls 0.2 to evade fp16 overflows
         self.tik_instance.vmuls(self.max_eliments, area_ub,
                                 area_ub, 0.2, repeat_time, 1, 1, 8,
@@ -1168,7 +1146,6 @@ class GIoU():
                                self.area_y1_y0,
                                area_ub, repeat_time, 1,
                                1, 1, 8, 8, 8)
-
         if outer_mode:
             self.tik_instance.vadds(self.max_eliments, area_ub,
                                     area_ub, 1e-16, repeat_time, 1, 1, 8, 8)

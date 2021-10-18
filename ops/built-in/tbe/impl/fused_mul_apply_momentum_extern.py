@@ -15,8 +15,7 @@
 """
 fused_mul_apply_momentum_extern
 
-  Op_description :
-    Update '*var' according to the ApplyMomentum algorithm.
+Op_description: Update '*var' according to the ApplyMomentum algorithm.
 """
 
 import te.platform as tbe_platform
@@ -125,6 +124,11 @@ def fused_mul_apply_momentum_extern_compute(var,
     var_out_accum = tbe.vadds(accum_t, tvm.const(0.0, accum_t.dtype))
 
     def _compute(*index):
+        """
+        compute for multi output
+        :param index: int.
+        :return: multi output.
+        """
         return accum_t(*index), var_t_fp32(*index), var_t_fp16(*index), var_out_fp32(*index), var_out_fp16(
             *index), var_out_accum(*index)
 
@@ -189,9 +193,9 @@ def fused_mul_apply_momentum_extern(var,
     None
     """
     var_dtype = var.get("dtype")
-    para_check.check_dtype(var_dtype, ("float32", ), param_name="var")
+    para_check.check_dtype(var_dtype, ("float32",), param_name="var")
     var_copy_dtype = var_copy.get("dtype")
-    para_check.check_dtype(var_copy_dtype, ("float16", ), param_name="var_copy")
+    para_check.check_dtype(var_copy_dtype, ("float16",), param_name="var_copy")
     input_dict = (var, accum, lr, x1, momentum, x2, var_copy)
     outputs = [out_fp32, out_fp16, out_accum]
 

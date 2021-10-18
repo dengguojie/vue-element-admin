@@ -15,16 +15,26 @@
 """
 fused_dbn_dw
 """
+
 from tbe.common.utils import shape_util
 from impl.util import util_deconv_comm
 from impl.util.platform_adapter import error_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
 
-BLOCK_DIM = 32
-BATCH_256 = 256
-BATCH_PER_CORE = 8
-class Dbn2Conv2dBackpropFilter(object):
+
+# pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant.
+    """
+    BLOCK_DIM = 32
+    BATCH_256 = 256
+    BATCH_PER_CORE = 8
+
+
+# pylint: disable=too-many-lines,too-few-public-methods,unused-variable,invalid-name,no-else-raise
+class Dbn2Conv2dBackpropFilter:
     """
     class of fused_dbn2_dw
     """
@@ -75,7 +85,7 @@ class Dbn2Conv2dBackpropFilter(object):
         get split_dict according to shape
         case_dedyh_fmap_h_dedychannel_fmapchannel
         """
-        CASE_56_56_256_64_SPLIT_DICT = {
+        case_56_56_256_64_split_dict = {
             "batch_status": "outer",
             "mode": "common",
             "dedy_wigth": 56,
@@ -90,7 +100,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 1
         }
 
-        CASE_28_28_512_128_SPLIT_DICT = {
+        case_28_28_512_128_split = {
             "batch_status": "outer",
             "mode": "common",
             "dedy_wigth": 28,
@@ -105,7 +115,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 1
         }
 
-        CASE_56_56_64_64_SPLIT_DICT = {
+        case_56_56_64_64_split_dict = {
             "batch_status": "outer",
             "mode": "big_x",
             "dedy_wigth": 56,
@@ -120,8 +130,8 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 1
         }
 
-        CASE_28_56_512_256_SPLIT_DICT = {
-            "batch_status":"outer",
+        case_28_56_512_256_split_dict = {
+            "batch_status": "outer",
             "mode": "common",
             "dedy_wigth": 28,
             "dedy_height": 28,
@@ -135,7 +145,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 1
         }
 
-        CASE_56_56_64_256_SPLIT_DICT = {
+        case_56_56_64_256_split_dict = {
             "batch_status": "outer",
             "mode": "big_x",
             "dedy_wigth": 56,
@@ -150,7 +160,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 2
         }
 
-        CASE_56_56_64_64_3_SPLIT_DICT = {
+        case_56_56_64_64_3_split_dict = {
             "batch_status": "outer",
             "mode": "big_x",
             "dedy_wigth": 56,
@@ -165,7 +175,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 4,
         }
 
-        CASE_28_28_128_512_SPLIT_DICT = {
+        case_28_28_128_512_split_dict = {
             "batch_status": "inner",
             "mode": "big_x",
             "dedy_wigth": 28,
@@ -180,7 +190,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 8
         }
 
-        CASE_56_56_128_256_SPLIT_DICT = {
+        case_56_56_128_256_split_dict = {
             "batch_status": "outer",
             "mode": "big_x",
             "dedy_wigth": 56,
@@ -195,7 +205,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 4
         }
 
-        CASE_112_224_64_3_7_2_SPLIT_DICT = {
+        case_112_224_64_3_7_2_split_dict = {
             "batch_status": "outer",
             "mode": "conv1",
             "dedy_wigth": 112,
@@ -211,7 +221,7 @@ class Dbn2Conv2dBackpropFilter(object):
             "cub_N": 7
         }
 
-        CASE_14_14_1024_256_SPLIT_DICT = {
+        case_14_14_1024_256_split_dict = {
             "batch_status": "inner",
             "mode": "big_x",
             "dedy_wigth": 14,
@@ -229,16 +239,16 @@ class Dbn2Conv2dBackpropFilter(object):
 
 
         split_dict_all = {
-            "case_56_56_256_64": CASE_56_56_256_64_SPLIT_DICT,
-            "case_28_28_512_128": CASE_28_28_512_128_SPLIT_DICT,
-            "case_56_56_64_64": CASE_56_56_64_64_SPLIT_DICT,
-            "case_28_56_512_256": CASE_28_56_512_256_SPLIT_DICT,
-            "case_56_56_64_256": CASE_56_56_64_256_SPLIT_DICT,
-            "case_56_56_64_64_3": CASE_56_56_64_64_3_SPLIT_DICT,
-            "case_28_28_128_512": CASE_28_28_128_512_SPLIT_DICT,
-            "case_56_56_128_256": CASE_56_56_128_256_SPLIT_DICT,
-            "case_112_224_64_3_7_2": CASE_112_224_64_3_7_2_SPLIT_DICT,
-            "case_14_14_1024_256": CASE_14_14_1024_256_SPLIT_DICT,
+            "case_56_56_256_64": case_56_56_256_64_split_dict,
+            "case_28_28_512_128": case_28_28_512_128_split,
+            "case_56_56_64_64": case_56_56_64_64_split_dict,
+            "case_28_56_512_256": case_28_56_512_256_split_dict,
+            "case_56_56_64_256": case_56_56_64_256_split_dict,
+            "case_56_56_64_64_3": case_56_56_64_64_3_split_dict,
+            "case_28_28_128_512": case_28_28_128_512_split_dict,
+            "case_56_56_128_256": case_56_56_128_256_split_dict,
+            "case_112_224_64_3_7_2": case_112_224_64_3_7_2_split_dict,
+            "case_14_14_1024_256": case_14_14_1024_256_split_dict,
         }
         dedy_c, dedy_h = self.shape_4d_dedy[1:3]
         fmap_c, fmap_h = self.shape_4d_x[1:3]
@@ -313,7 +323,7 @@ class Dbn2Conv2dBackpropFilter(object):
         self.tik_instance.vsqrt(mask, batch_variance_ub, batch_variance_ub, repeat_times,
                                 1, 1, dma_stride, dma_stride)
         self.tik_instance.vdiv(mask, batch_variance_ub, inv_one_ub, batch_variance_ub, repeat_times,
-                                1, 1, 1, dma_stride, dma_stride, dma_stride)
+                               1, 1, 1, dma_stride, dma_stride, dma_stride)
         self.tik_instance.vmuls(mask, diff_scale_ub, diff_scale_ub, inv_reduce, repeat_times,
                                 1, 1, dma_stride, dma_stride)
         self.tik_instance.vmul(mask, diff_scale_ub, diff_scale_ub, batch_variance_ub, repeat_times,
@@ -335,7 +345,7 @@ class Dbn2Conv2dBackpropFilter(object):
                                 1, 1, dma_stride, dma_stride)
 
     def _cal_dbn_fm_fun(self, loop_m, loop_k, mn_context, split_dict, block_idx):
-        loop_SN = split_dict.get("cal_M") // self.block
+        sn_loop = split_dict.get("cal_M") // self.block
         cal_hw = split_dict.get("cal_hw")
         mode = split_dict.get("mode")
         dedy_h, dedy_w = self.shape_4d_dedy[2:]
@@ -347,18 +357,18 @@ class Dbn2Conv2dBackpropFilter(object):
         one_repeat = 64
         mask = 64
         block_fp32 = 8
-        dbn_dy_shape1 = (1, loop_SN, (split_dict.get("cal_hw") + block_fp32 - 1) // block_fp32 * block_fp32,
+        dbn_dy_shape1 = (1, sn_loop, (split_dict.get("cal_hw") + block_fp32 - 1) // block_fp32 * block_fp32,
                          self.block)
         src_stride = (split_dict.get("cal_hw") + block_fp32 - 1) // block_fp32 * block_fp32 - cal_hw
         pub_dy_temp1 = self.tik_instance.Tensor("float16", dbn_dy_shape1, name="pub_dy_temp1", scope=tik.scope_ubuf)
-        with self.tik_instance.for_range(0, loop_SN, thread_num=min(2, loop_SN)) as loop_sn:
+        with self.tik_instance.for_range(0, sn_loop, thread_num=min(2, sn_loop)) as loop_sn:
             diff_scale_ub = mn_context.get("diff_scale_ub")
             batch_mean_ub = mn_context.get("batch_mean_ub")
             scale_ub = mn_context.get("scale_ub")
             cal_hw = split_dict.get("cal_hw")
             repeat_times = (cal_hw * self.block + one_repeat - 1) // one_repeat
 
-            c_idx = loop_m * loop_SN + loop_sn
+            c_idx = loop_m * sn_loop + loop_sn
             w_idx = loop_k * cal_hw % self.shape_grads_5hd[3]
             h_idx = loop_k * cal_hw // self.shape_grads_5hd[3]
             dbn_dy_shape = (1, 1, (split_dict.get("cal_hw") + block_fp32 - 1) // block_fp32 * block_fp32, self.block)
@@ -397,16 +407,16 @@ class Dbn2Conv2dBackpropFilter(object):
             dbn_dedy_l1 = dedy_l1[loop_sn, 0, 0]
             self.tik_instance.data_move(dbn_dedy_l1, pub_dy_temp1[0, loop_sn, 0, 0], 0, 1, cal_hw, 0, 0)
             if mode != "conv1":
-                dedy_l0A0 = mn_context.get("dedy_l0A0")
-                self.tik_instance.load2dv1(dedy_l0A0[loop_sn, 0, 0, 0], dbn_dedy_l1, 0,
+                dedy_l0a0 = mn_context.get("dedy_l0A0")
+                self.tik_instance.load2dv1(dedy_l0a0[loop_sn, 0, 0, 0], dbn_dedy_l1, 0,
                                            (cal_hw + self.block - 1) // self.block, 1, 0, True)
             # copy data to dbn_res
-        res_dbn = self.dbn_res[block_idx, loop_m * loop_SN, h_idx, w_idx, 0]
-        self.tik_instance.data_move(res_dbn, pub_dy_temp1, 0, loop_SN, cal_hw, src_stride, gm_stride)
+        res_dbn = self.dbn_res[block_idx, loop_m * sn_loop, h_idx, w_idx, 0]
+        self.tik_instance.data_move(res_dbn, pub_dy_temp1, 0, sn_loop, cal_hw, src_stride, gm_stride)
 
     def _cal_dbn_fm_fun_va(self, loop_m, loop_k, mn_context, split_dict, block_idx):
         repeats = 4
-        loop_SN = split_dict.get("cal_M") // (self.block * repeats)
+        sn_loop = split_dict.get("cal_M") // (self.block * repeats)
         cal_hw = split_dict.get("cal_hw")
         dedy_h, dedy_w = self.shape_4d_dedy[2:]
         gm_stride = dedy_h * dedy_w - cal_hw
@@ -419,13 +429,13 @@ class Dbn2Conv2dBackpropFilter(object):
         stride_fp32 = 8
         stride_fp16 = 4
         str_channel = 2
-        with self.tik_instance.for_range(0, loop_SN, thread_num=min(2, loop_SN)) as loop_sn:
+        with self.tik_instance.for_range(0, sn_loop, thread_num=min(2, sn_loop)) as loop_sn:
             diff_scale_ub = mn_context.get("diff_scale_ub")
             batch_mean_ub = mn_context.get("batch_mean_ub")
             scale_ub = mn_context.get("scale_ub")
             cal_hw = split_dict.get("cal_hw")
 
-            c_idx = loop_m * loop_SN * repeats + loop_sn * repeats
+            c_idx = loop_m * sn_loop * repeats + loop_sn * repeats
             w_idx = loop_k * cal_hw % self.shape_grads_5hd[3]
             h_idx = loop_k * cal_hw // self.shape_grads_5hd[3]
             dbn_dy_shape = (1, 4, split_dict.get("cal_hw") + 1, self.block)
@@ -504,13 +514,13 @@ class Dbn2Conv2dBackpropFilter(object):
 
         fmap_l0_shape = [(split_dict.get("cal_hw") + self.block - 1) // self.block, cal_n // self.block,
                          self.block, self.block]
-        fmap_l0B0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0", scope=tik.scope_cb)
-        dw_l0C = mn_context.get("dw_l0C")
-        dedy_l0A0 = mn_context.get("dedy_l0A0")
+        fmap_l0b0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0", scope=tik.scope_cb)
+        dw_l0c = mn_context.get("dw_l0C")
+        dedy_l0a0 = mn_context.get("dedy_l0A0")
 
         c1_index = self.tik_instance.Scalar("int32", "c1_index", loop_n * cal_n // self.block // (filter_h * filter_w))
         k_dim = self.tik_instance.Scalar("int32", "k_dim", loop_n * cal_n // self.block % (filter_h * filter_w))
-        dw_l0C_addr = dw_l0C[loop_n * cal_n // self.block, 0, 0, 0]
+        dw_l0c_addr = dw_l0c[loop_n * cal_n // self.block, 0, 0, 0]
         left_top_h = loop_k * cal_hw // (self.shape_4d_dedy[3]) * self.strides[0] - self.padding[0]
         left_top_w = loop_k * cal_hw % (self.shape_4d_dedy[3]) * self.strides[1] - self.padding[2]
         padu, padd, padl, padr = self.padding
@@ -519,96 +529,96 @@ class Dbn2Conv2dBackpropFilter(object):
         feach_filter_w = self.tik_instance.Scalar("int32", "feach_filter_w", k_dim % filter_w)
         fmap_l1 = mn_context.get("fmap_l1")
         with self.tik_instance.for_range(0, cal_n // self.block) as c_i:
-            self.tik_instance.load3dv1(fmap_l0B0[0, c_i, 0, 0], fmap_l1, [padl, padr, padu, padd], fmap_h, fmap_w,
+            self.tik_instance.load3dv1(fmap_l0b0[0, c_i, 0, 0], fmap_l1, [padl, padr, padu, padd], fmap_h, fmap_w,
                                        c1_index, feach_filter_w, feach_filter_h, left_top_w, left_top_h,
                                        stride_w, stride_h, filter_w, filter_h, 1, 1,
                                        cal_n // self.block, 1, (cal_hw // self.block))
             _update_filter_hw_position()
 
         with self.tik_instance.if_scope(loop_k == 0):
-            self.tik_instance.mmad(dw_l0C_addr, dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 0)
+            self.tik_instance.mmad(dw_l0c_addr, dedy_l0a0, fmap_l0b0, cal_m, cal_hw, cal_n, 0)
         with self.tik_instance.else_scope():
-            self.tik_instance.mmad(dw_l0C_addr, dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 1)
+            self.tik_instance.mmad(dw_l0c_addr, dedy_l0a0, fmap_l0b0, cal_m, cal_hw, cal_n, 1)
 
-    def _ub_mpp_fun(self, loop_n, loop_m, split_dict, mn_context, loop_N):
+    def _ub_mpp_fun(self, loop_n, loop_m, split_dict, mn_context, n_loop):
         """copy data from cc to gm"""
         cal_m = split_dict.get("cal_M")
-        dw_l0C = mn_context.get("dw_l0C")
+        dw_l0c = mn_context.get("dw_l0C")
         dw_cub = mn_context.get("dw_cub")
         mode = split_dict.get("mode")
-        if mode == "common" or mode == "conv1":
-            shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1] // loop_N
+        if mode in ("common", "conv1"):
+            shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1] // n_loop
             dw_res = self.dw_res[loop_n * shape_n, loop_m * cal_m // self.block, 0, 0]
-            dw_l0C = dw_l0C[loop_n * shape_n, 0, 0, 0]
+            dw_l0c = dw_l0c[loop_n * shape_n, 0, 0, 0]
         elif mode == "big_x":
-            shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1] // loop_N
+            shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1] // n_loop
             dw_res = self.dw_res[loop_n * shape_n, loop_m * cal_m // self.block, 0, 0]
-            dw_l0C = dw_l0C[loop_n * shape_n, 0, 0, 0]
-        self.tik_instance.data_move(dw_cub, dw_l0C, 0, 1, shape_n * cal_m // self.block, 0, 0)
+            dw_l0c = dw_l0c[loop_n * shape_n, 0, 0, 0]
+        self.tik_instance.data_move(dw_cub, dw_l0c, 0, 1, shape_n * cal_m // self.block, 0, 0)
         self.tik_instance.set_atomic_add(1)
         self.tik_instance.data_move(dw_res, dw_cub, 0, shape_n, 2 * cal_m, 0, 2 * (self.shape_4d_dedy[1] - cal_m))
         self.tik_instance.set_atomic_add(0)
 
     def _outer_loop_mpp_fun_common(self, mn_context, split_dict, block_idx):
         """common model"""
-        loop_M = split_dict.get("loop_M")
-        loop_N = split_dict.get("loop_N")
-        loop_K = split_dict.get("loop_K")
-        cub_N = split_dict.get("cub_N")
+        m_loop = split_dict.get("loop_M")
+        n_loop = split_dict.get("loop_N")
+        k_loop = split_dict.get("loop_K")
+        cub_n = split_dict.get("cub_N")
         # fmap is full loaded in L1
         if self.strides[0] == 2 and self.shape_4d_filters[2] == 1:
             # stride is 2 kernel is 1, copy gm to L1 can jump in h dim.
             fmap_l1_shape = [1, self.shape_x_5hd[1], self.shape_4d_dedy[2], self.shape_x_5hd[3], self.shape_x_5hd[4]]
-            fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
-            self.tik_instance.data_move(fmap_L1, self.fmap[block_idx, 0, 0, 0, 0], 0,
+            l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
+            self.tik_instance.data_move(l1_fmap, self.fmap[block_idx, 0, 0, 0, 0], 0,
                                         self.shape_x_5hd[1] * fmap_l1_shape[2],
                                         self.shape_x_5hd[3], self.shape_x_5hd[3], 0)
             self.strides[0] = 1
             self.shape_x_5hd[2] = self.shape_4d_dedy[2]
         else:
             fmap_l1_shape = [1, self.shape_x_5hd[1], self.shape_x_5hd[2], self.shape_x_5hd[3], self.shape_x_5hd[4]]
-            fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
-            self.tik_instance.data_move(fmap_L1, self.fmap[block_idx, 0, 0, 0, 0], 0, self.shape_x_5hd[1],
+            l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
+            self.tik_instance.data_move(l1_fmap, self.fmap[block_idx, 0, 0, 0, 0], 0, self.shape_x_5hd[1],
                                         self.shape_x_5hd[2] * self.shape_x_5hd[3], 0, 0)
 
-        mn_context["fmap_l1"] = fmap_L1
+        mn_context["fmap_l1"] = l1_fmap
         shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1]
-        l0C_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
-        dw_l0C = self.tik_instance.Tensor("float32", l0C_shape, name="dw_l0C", scope=tik.scope_cc)
-        cub_shape = [shape_n // cub_N, split_dict.get("cal_M") // self.block, self.block, self.block]
+        l0c_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        dw_l0c = self.tik_instance.Tensor("float32", l0c_shape, name="dw_l0C", scope=tik.scope_cc)
+        cub_shape = [shape_n // cub_n, split_dict.get("cal_M") // self.block, self.block, self.block]
         dw_cub = self.tik_instance.Tensor("float32", cub_shape, name="dw_cub", scope=tik.scope_ubuf)
-        mn_context["dw_l0C"] = dw_l0C
+        mn_context["dw_l0C"] = dw_l0c
         mn_context["dw_cub"] = dw_cub
-        with self.tik_instance.for_range(0, loop_M, thread_num=min(2, loop_M)) as loop_m:
-            pipe_k_loop = loop_K
+        with self.tik_instance.for_range(0, m_loop, thread_num=min(2, m_loop)) as loop_m:
+            pipe_k_loop = k_loop
             k_thread_num = 2
-            if loop_K % 2 != 0:
-                if loop_K == 1:
+            if k_loop % 2 != 0:
+                if k_loop == 1:
                     k_thread_num = 1
                 else:
-                    pipe_k_loop = loop_K - 1
-            # if k % 2 is 1, split the cycle of k_dim with double buffer and the last once 
+                    pipe_k_loop = k_loop - 1
+            # if k % 2 is 1, split the cycle of k_dim with double buffer and the last once
             with self.tik_instance.for_range(0, pipe_k_loop, thread_num=k_thread_num) as loop_k:
                 # double buffer part
                 dedy_l0_shape = [split_dict.get("cal_M") // self.block,
                                  (split_dict.get("cal_hw") + self.block - 1) // self.block, self.block, self.block]
-                dedy_l0A0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
-                mn_context["dedy_l0A0"] = dedy_l0A0
+                dedy_l0a0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
+                mn_context["dedy_l0A0"] = dedy_l0a0
                 # vector in ub
                 self._cal_dbn_fm_fun(loop_m, loop_k, mn_context, split_dict, block_idx)
-                with self.tik_instance.for_range(0, loop_N, thread_num=min(loop_N, 2)) as loop_n:
+                with self.tik_instance.for_range(0, n_loop, thread_num=min(n_loop, 2)) as loop_n:
                     self._loopk_mpp(loop_k, loop_n, mn_context, split_dict)
             # the last k
-            if pipe_k_loop != loop_K:
+            if pipe_k_loop != k_loop:
                 dedy_l0_shape = [split_dict.get("cal_M") // self.block,
                                  (split_dict.get("cal_hw") + self.block - 1) // self.block, self.block, self.block]
-                dedy_l0A0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
-                mn_context["dedy_l0A0"] = dedy_l0A0
+                dedy_l0a0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
+                mn_context["dedy_l0A0"] = dedy_l0a0
                 self._cal_dbn_fm_fun(loop_m, pipe_k_loop, mn_context, split_dict, block_idx)
-                with self.tik_instance.for_range(0, loop_N, thread_num=min(loop_N, 2)) as loop_n:
+                with self.tik_instance.for_range(0, n_loop, thread_num=min(n_loop, 2)) as loop_n:
                     self._loopk_mpp(pipe_k_loop, loop_n, mn_context, split_dict)
-            with self.tik_instance.for_range(0, cub_N) as loop_n:
-                self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_N)
+            with self.tik_instance.for_range(0, cub_n) as loop_n:
+                self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_n)
 
     def _loopk_mpp_big_x(self, loop_k, loop_n, mn_context, split_dict, loop_batch=0):
         """load3d and mad for big_x model which fmap is load """
@@ -617,10 +627,10 @@ class Dbn2Conv2dBackpropFilter(object):
         cal_n = split_dict.get("cal_N")
         cal_hw = split_dict.get("cal_hw")
         cal_m = split_dict.get("cal_M")
-        loop_K = split_dict.get("loop_K")
-        fmap_l0B0 = mn_context.get("fmap_l0B0")
-        dw_l0C = mn_context.get("dw_l0C")
-        dedy_l0A0 = mn_context.get("dedy_l0A0")
+        k_loop = split_dict.get("loop_K")
+        fmap_l0b0 = mn_context.get("fmap_l0B0")
+        dw_l0c = mn_context.get("dw_l0C")
+        dedy_l0a0 = mn_context.get("dedy_l0A0")
         stride_h, stride_w = self.strides
         _, dedy_w = self.shape_4d_dedy[2:]
         c_index = loop_n * cal_n // self.block
@@ -628,7 +638,7 @@ class Dbn2Conv2dBackpropFilter(object):
         if filter_w == 1:
             fmap_l1 = mn_context.get("fmap_l1")[0, c_index, 0, 0]
             with self.tik_instance.for_range(0, cal_n // self.block, thread_num=1) as c_i:
-                self.tik_instance.load3dv1(fmap_l0B0[0, c_i, 0, 0], fmap_l1, self.padding, cal_hw // fmap_w,
+                self.tik_instance.load3dv1(fmap_l0b0[0, c_i, 0, 0], fmap_l1, self.padding, cal_hw // fmap_w,
                                            fmap_w, c_i, 0, 0, 0, 0, self.strides[1], self.strides[0], filter_w,
                                            filter_h, 1, 1, cal_n // self.block, 1, k_dim)
         else:
@@ -645,7 +655,7 @@ class Dbn2Conv2dBackpropFilter(object):
                 fmap_h.set_as(fmap_l1_h - padu)
                 left_top_h.set_as(-padu)
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(loop_k == loop_K - 1):
+                with self.tik_instance.if_scope(loop_k == k_loop - 1):
                     pad_u.set_as(0)
                     pad_d.set_as(padd)
                     fmap_h.set_as(fmap_l1_h - padd)
@@ -656,116 +666,115 @@ class Dbn2Conv2dBackpropFilter(object):
                     fmap_h.set_as(fmap_l1_h)
                     left_top_h.set_as(0)
             with self.tik_instance.for_range(0, cal_n // self.block, thread_num=1) as c_i:
-                self.tik_instance.load3dv1(fmap_l0B0[0, c_i, 0, 0], fmap_l1, [padl, padr, pad_u, pad_d], fmap_h,
+                self.tik_instance.load3dv1(fmap_l0b0[0, c_i, 0, 0], fmap_l1, [padl, padr, pad_u, pad_d], fmap_h,
                                            fmap_w, 0, c_i % filter_w, c_i // filter_w, -padl,
                                            left_top_h, self.strides[1], self.strides[0], filter_w, filter_h, 1,
                                            1, cal_n // self.block, 1, (cal_hw // self.block))
 
         with self.tik_instance.if_scope(loop_k == 0):
             with self.tik_instance.if_scope(loop_batch == 0):
-                self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 0)
+                self.tik_instance.mmad(dw_l0c[c_index, 0, 0, 0], dedy_l0a0, fmap_l0b0, cal_m, cal_hw, cal_n, 0)
             with self.tik_instance.else_scope():
-                self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 1)
+                self.tik_instance.mmad(dw_l0c[c_index, 0, 0, 0], dedy_l0a0, fmap_l0b0, cal_m, cal_hw, cal_n, 1)
         with self.tik_instance.else_scope():
-            self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 1)
+            self.tik_instance.mmad(dw_l0c[c_index, 0, 0, 0], dedy_l0a0, fmap_l0b0, cal_m, cal_hw, cal_n, 1)
 
     def _outer_loop_mpp_fun_big_x(self, mn_context, split_dict, block_idx):
         cal_hw = split_dict.get("cal_hw")
-        loop_M = split_dict.get("loop_M")
-        loop_N = split_dict.get("loop_N")
-        loop_K = split_dict.get("loop_K")
+        m_loop = split_dict.get("loop_M")
+        n_loop = split_dict.get("loop_N")
+        k_loop = split_dict.get("loop_K")
         stride_h, stride_w = self.strides
         _, dedy_w = self.shape_4d_dedy[2:]
         fmap_h, fmap_w = self.shape_4d_x[2:]
         kernel_h = self.shape_4d_filters[2]
         cal_n = split_dict.get("cal_N")
-        cub_N = split_dict.get("cub_N")
+        cub_n = split_dict.get("cub_N")
         fmap_l0_shape = [(split_dict.get("cal_hw") + self.block - 1) // self.block,
                          cal_n // self.block, self.block, self.block]
-        if loop_K % 2 != 0:
-            fmap_l0B0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0", scope=tik.scope_cb)
-            mn_context["fmap_l0B0"] = fmap_l0B0
+        if k_loop % 2 != 0:
+            fmap_l0b0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0", scope=tik.scope_cb)
+            mn_context["fmap_l0B0"] = fmap_l0b0
         shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1]
-        l0C_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
-        cub_shape = [shape_n // cub_N, split_dict.get("cal_M") // self.block, self.block, self.block]
-        dw_l0C = self.tik_instance.Tensor("float32", l0C_shape, name="dw_l0C", scope=tik.scope_cc)
+        l0c_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        cub_shape = [shape_n // cub_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        dw_l0c = self.tik_instance.Tensor("float32", l0c_shape, name="dw_l0C", scope=tik.scope_cc)
         dw_cub = self.tik_instance.Tensor("float32", cub_shape, name="dw_cub", scope=tik.scope_ubuf)
-        mn_context["dw_l0C"] = dw_l0C
+        mn_context["dw_l0C"] = dw_l0c
         mn_context["dw_cub"] = dw_cub
-        with self.tik_instance.for_range(0, loop_M, thread_num=min(2, loop_M)) as loop_m:
-            pipe_k_loop = loop_K
+        with self.tik_instance.for_range(0, m_loop, thread_num=min(2, m_loop)) as loop_m:
+            pipe_k_loop = k_loop
             k_thread_num = 2
-            if loop_K % 2 != 0:
-                if loop_K == 1:
+            if k_loop % 2 != 0:
+                if k_loop == 1:
                     k_thread_num = 1
                 else:
-                    pipe_k_loop = loop_K - 1
+                    pipe_k_loop = k_loop - 1
             with self.tik_instance.for_range(0, pipe_k_loop, thread_num=k_thread_num) as loop_k:
-                dedy_l0_shape = [split_dict.get("cal_M") // self.block, 
+                dedy_l0_shape = [split_dict.get("cal_M") // self.block,
                                  (split_dict.get("cal_hw") + self.block - 1) // self.block, self.block, self.block]
-                dedy_l0A0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
-                mn_context["dedy_l0A0"] = dedy_l0A0
+                dedy_l0a0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
+                mn_context["dedy_l0A0"] = dedy_l0a0
                 self._cal_dbn_fm_fun_va(loop_m, loop_k, mn_context, split_dict, block_idx)
                 fmap_l1_shape = fmap_l1_shape = [1, self.shape_x_5hd[1], (cal_hw // fmap_w + kernel_h - 1) * fmap_w,
                                                  self.shape_x_5hd[4]]
                 if self.shape_4d_filters[2] == 3:
-                    fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
+                    l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
                     padu, padd, _, _ = self.padding
                     with self.tik_instance.if_scope(loop_k == 0):
                         burst = fmap_l1_shape[2] - padu * fmap_w
-                        self.tik_instance.data_move(fmap_L1, self.fmap[block_idx, 0, 0, 0, 0], 0, fmap_l1_shape[1],
+                        self.tik_instance.data_move(l1_fmap, self.fmap[block_idx, 0, 0, 0, 0], 0, fmap_l1_shape[1],
                                                     burst, fmap_w * fmap_h - burst, padu * fmap_w)
                     with self.tik_instance.else_scope():
                         fmap_gm = self.fmap[block_idx, 0, 2 * loop_k - padu, 0, 0]
-                        with self.tik_instance.if_scope(loop_k == loop_K - 1):
+                        with self.tik_instance.if_scope(loop_k == k_loop - 1):
                             burst = fmap_l1_shape[2] - padd * fmap_w
-                            self.tik_instance.data_move(fmap_L1, fmap_gm, 0, fmap_l1_shape[1], burst,
+                            self.tik_instance.data_move(l1_fmap, fmap_gm, 0, fmap_l1_shape[1], burst,
                                                         fmap_w * fmap_h - burst, padd * fmap_w)
                         with self.tik_instance.else_scope():
                             burst = fmap_l1_shape[2]
-                            self.tik_instance.data_move(fmap_L1, fmap_gm, 0, fmap_l1_shape[1], burst,
+                            self.tik_instance.data_move(l1_fmap, fmap_gm, 0, fmap_l1_shape[1], burst,
                                                         fmap_w * fmap_h - burst, 0)
                 else:
-                    fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
+                    l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
                     fmap_gm = self.fmap[block_idx, 0,
                                         loop_k * stride_h * (cal_hw // dedy_w) + kernel_h - stride_h, 0, 0]
-                    self.tik_instance.data_move(fmap_L1, fmap_gm, 0, self.shape_x_5hd[1],
+                    self.tik_instance.data_move(l1_fmap, fmap_gm, 0, self.shape_x_5hd[1],
                                                 fmap_l1_shape[2], fmap_h * fmap_w - fmap_l1_shape[2], 0)
-                mn_context["fmap_l1"] = fmap_L1
+                mn_context["fmap_l1"] = l1_fmap
 
                 cub_m = split_dict.get("cal_M") // self.block
                 dedy_l1 = mn_context.get("dedy_l1")
-                self.tik_instance.load2dv1(dedy_l0A0, dedy_l1, 0,
+                self.tik_instance.load2dv1(dedy_l0a0, dedy_l1, 0,
                                            cub_m * (cal_hw + self.block - 1) // self.block, 1, 0, True)
-                with self.tik_instance.for_range(0, loop_N, thread_num=min(loop_N, 2)) as loop_n:
-                    if pipe_k_loop == loop_K:
-                        fmap_l0B0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0",
+                with self.tik_instance.for_range(0, n_loop, thread_num=min(n_loop, 2)) as loop_n:
+                    if pipe_k_loop == k_loop:
+                        fmap_l0b0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0",
                                                              scope=tik.scope_cb)
-                        mn_context["fmap_l0B0"] = fmap_l0B0
+                        mn_context["fmap_l0B0"] = fmap_l0b0
                     self._loopk_mpp_big_x(loop_k, loop_n, mn_context, split_dict)
 
-            if pipe_k_loop != loop_K:
-
+            if pipe_k_loop != k_loop:
                 dedy_l0_shape = [split_dict.get("cal_M") // self.block,
                                  (split_dict.get("cal_hw") + self.block - 1) // self.block, self.block, self.block]
-                dedy_l0A0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
-                mn_context["dedy_l0A0"] = dedy_l0A0
+                dedy_l0a0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
+                mn_context["dedy_l0A0"] = dedy_l0a0
                 self._cal_dbn_fm_fun_va(loop_m, pipe_k_loop, mn_context, split_dict, block_idx)
                 fmap_l1_shape = [1, self.shape_x_5hd[1], cal_hw * stride_h * stride_w, self.shape_x_5hd[4]]
-                fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
-                mn_context["fmap_l1"] = fmap_L1
+                l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
+                mn_context["fmap_l1"] = l1_fmap
                 fmap_gm = self.fmap[block_idx, 0, pipe_k_loop * stride_h * cal_hw // dedy_w, 0, 0]
-                self.tik_instance.data_move(fmap_L1, fmap_gm, 0, self.shape_x_5hd[1],
+                self.tik_instance.data_move(l1_fmap, fmap_gm, 0, self.shape_x_5hd[1],
                                             fmap_l1_shape[2], fmap_h * fmap_w - fmap_l1_shape[2], 0)
 
                 cub_m = split_dict.get("cal_M") // self.block
                 dedy_l1 = mn_context.get("dedy_l1")
-                self.tik_instance.load2dv1(dedy_l0A0, dedy_l1, 0,
+                self.tik_instance.load2dv1(dedy_l0a0, dedy_l1, 0,
                                            cub_m * (cal_hw + self.block - 1) // self.block, 1, 0, True)
-                with self.tik_instance.for_range(0, loop_N, thread_num=min(loop_N, 2)) as loop_n:
+                with self.tik_instance.for_range(0, n_loop, thread_num=min(n_loop, 2)) as loop_n:
                     self._loopk_mpp_big_x(pipe_k_loop, loop_n, mn_context, split_dict)
-            with self.tik_instance.for_range(0, cub_N) as loop_n:
-                self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_N)
+            with self.tik_instance.for_range(0, cub_n) as loop_n:
+                self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_n)
 
     def _loopk_mpp_conv1(self, loop_k1, loop_k, loop_k2, mn_context, split_dict):
         fmap_w = self.shape_x_5hd[3]
@@ -773,13 +782,13 @@ class Dbn2Conv2dBackpropFilter(object):
         cal_n = split_dict.get("cal_N")
         cal_hw = split_dict.get("cal_hw")
         cal_m = split_dict.get("cal_M")
-        loop_K = split_dict.get("loop_K")
-        loop_K_BL1 = split_dict.get("loop_K_BL1")
+        k_loop = split_dict.get("loop_K")
+        loop_k_bl1 = split_dict.get("loop_K_BL1")
 
-        dw_l0C = mn_context.get("dw_l0C")
-        dedy_l0A0 = mn_context.get("dedy_l0A0")
+        dw_l0c = mn_context.get("dw_l0C")
+        dedy_l0a0 = mn_context.get("dedy_l0A0")
         fmap_l0_shape = [1, cal_n // self.block, self.block, self.block]
-        fmap_l0B0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0", scope=tik.scope_cb)
+        fmap_l0b0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0", scope=tik.scope_cb)
 
         fmap_l1 = mn_context.get("fmap_l1")
         padu, padd, padl, padr = self.padding
@@ -791,87 +800,87 @@ class Dbn2Conv2dBackpropFilter(object):
         with self.tik_instance.if_scope(loop_k1 == 0):
             pad_u.set_as(padu)
             pad_d.set_as(0)
-            fmap_h.set_as(2 * loop_K * stride_h + filter_h - stride_h - padu)
+            fmap_h.set_as(2 * k_loop * stride_h + filter_h - stride_h - padu)
             left_top_h.set_as((2 * loop_k + loop_k2 // filter_w) * stride_h - padu)
         with self.tik_instance.else_scope():
-            with self.tik_instance.if_scope(loop_k1 == loop_K_BL1 - 1):
+            with self.tik_instance.if_scope(loop_k1 == loop_k_bl1 - 1):
                 pad_u.set_as(0)
                 pad_d.set_as(padd)
-                fmap_h.set_as(2 * loop_K * stride_h + filter_h - stride_h - padd)
+                fmap_h.set_as(2 * k_loop * stride_h + filter_h - stride_h - padd)
                 left_top_h.set_as((2 * loop_k + loop_k2 // filter_w) * stride_h)
             with self.tik_instance.else_scope():
                 pad_u.set_as(0)
                 pad_d.set_as(0)
-                fmap_h.set_as(2 * loop_K * stride_h + filter_h - stride_h)
+                fmap_h.set_as(2 * k_loop * stride_h + filter_h - stride_h)
                 left_top_h.set_as((2 * loop_k + loop_k2 // filter_w) * stride_h)
 
         left_top_w = self.tik_instance.Scalar("int32", "left_top_w",
                                               loop_k2 % filter_w * self.strides[1] * self.block - padl)
 
-        self.tik_instance.load3dv1(fmap_l0B0[0, 0, 0, 0], fmap_l1, [padl, padr, pad_u, pad_d], fmap_h, fmap_w, 0,
+        self.tik_instance.load3dv1(fmap_l0b0[0, 0, 0, 0], fmap_l1, [padl, padr, pad_u, pad_d], fmap_h, fmap_w, 0,
                                    0, 0, left_top_w, left_top_h, self.strides[1],
                                    self.strides[0], filter_w, filter_h, 1, 1, 1, 0, cal_n // self.block)
 
-        dw_l0C_addr = dw_l0C[0, 0, 0, 0]
+        dw_l0c_addr = dw_l0c[0, 0, 0, 0]
         cal_k = 16
         with self.tik_instance.if_scope(loop_k1 + loop_k + loop_k2 == 0):
-            self.tik_instance.mmad(dw_l0C_addr, dedy_l0A0, fmap_l0B0, cal_m, cal_k, cal_n, 0)
+            self.tik_instance.mmad(dw_l0c_addr, dedy_l0a0, fmap_l0b0, cal_m, cal_k, cal_n, 0)
         with self.tik_instance.else_scope():
-            self.tik_instance.mmad(dw_l0C_addr, dedy_l0A0, fmap_l0B0, cal_m, cal_k, cal_n, 1)
+            self.tik_instance.mmad(dw_l0c_addr, dedy_l0a0, fmap_l0b0, cal_m, cal_k, cal_n, 1)
 
     def _outer_loop_mpp_fun_conv1(self, mn_context, split_dict, block_idx):
 
-        loop_K = split_dict.get("loop_K")
-        loop_K_BL1 = split_dict.get("loop_K_BL1")
+        k_loop = split_dict.get("loop_K")
+        loop_k_bl1 = split_dict.get("loop_K_BL1")
         stride_h, _ = self.strides
         kernel_h = self.shape_4d_filters[2]
         _, fmap_w = self.shape_4d_x[2:]
         padu, padd, _, _ = self.padding
-        cub_N = split_dict.get("cub_N")
+        cub_n = split_dict.get("cub_N")
         cal_hw = split_dict.get("cal_hw")
         cal_m = split_dict.get("cal_M")
-        fmap_l1_shape = [1, self.shape_x_5hd[1], (stride_h * 2 * loop_K + kernel_h - stride_h) * fmap_w,
+        fmap_l1_shape = [1, self.shape_x_5hd[1], (stride_h * 2 * k_loop + kernel_h - stride_h) * fmap_w,
                          self.shape_x_5hd[4]]
-        fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_L1", scope=tik.scope_cbuf)
+        l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_L1", scope=tik.scope_cbuf)
         shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1]
-        l0C_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
-        cub_shape = [shape_n // cub_N, split_dict.get("cal_M") // self.block, self.block, self.block]
-        dw_l0C = self.tik_instance.Tensor("float32", l0C_shape, name="dw_l0C", scope=tik.scope_cc)
+        l0c_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        cub_shape = [shape_n // cub_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        dw_l0c = self.tik_instance.Tensor("float32", l0c_shape, name="dw_l0C", scope=tik.scope_cc)
         dw_cub = self.tik_instance.Tensor("float32", cub_shape, name="dw_cub", scope=tik.scope_ubuf)
-        mn_context["dw_l0C"] = dw_l0C
+        mn_context["dw_l0C"] = dw_l0c
         mn_context["dw_cub"] = dw_cub
-        mn_context["fmap_l1"] = fmap_L1
-        with self.tik_instance.for_range(0, loop_K_BL1) as loop_k1:
+        mn_context["fmap_l1"] = l1_fmap
+        with self.tik_instance.for_range(0, loop_k_bl1) as loop_k1:
             with self.tik_instance.if_scope(loop_k1 == 0):
-                self.tik_instance.data_move(fmap_L1, self.fmap[block_idx, 0, 0, 0, 0], 0, 1,
+                self.tik_instance.data_move(l1_fmap, self.fmap[block_idx, 0, 0, 0, 0], 0, 1,
                                             fmap_l1_shape[2] - padu * fmap_w, 0, 0)
             with self.tik_instance.else_scope():
-                fmap_gm = self.fmap[block_idx, 0, stride_h * loop_k1 * loop_K * 2 - padu, 0, 0]
-                with self.tik_instance.if_scope(loop_k1 == loop_K_BL1 - 1):
-                    self.tik_instance.data_move(fmap_L1, fmap_gm, 0, 1, fmap_l1_shape[2] - padd * fmap_w, 0, 0)
+                fmap_gm = self.fmap[block_idx, 0, stride_h * loop_k1 * k_loop * 2 - padu, 0, 0]
+                with self.tik_instance.if_scope(loop_k1 == loop_k_bl1 - 1):
+                    self.tik_instance.data_move(l1_fmap, fmap_gm, 0, 1, fmap_l1_shape[2] - padd * fmap_w, 0, 0)
                 with self.tik_instance.else_scope():
-                    self.tik_instance.data_move(fmap_L1, fmap_gm, 0, 1, fmap_l1_shape[2], 0, 0)
-            with self.tik_instance.for_range(0, loop_K, thread_num=1) as loop_k:
-                self._cal_dbn_fm_fun(0, loop_k1 * loop_K + loop_k, mn_context, split_dict, block_idx)
+                    self.tik_instance.data_move(l1_fmap, fmap_gm, 0, 1, fmap_l1_shape[2], 0, 0)
+            with self.tik_instance.for_range(0, k_loop, thread_num=1) as loop_k:
+                self._cal_dbn_fm_fun(0, loop_k1 * k_loop + loop_k, mn_context, split_dict, block_idx)
                 dedy_l1 = mn_context.get("dedy_l1")
-                loop_K2 = cal_hw // self.block
-                with self.tik_instance.for_range(0, loop_K2, thread_num=2) as loop_k2:
+                k2_loop = cal_hw // self.block
+                with self.tik_instance.for_range(0, k2_loop, thread_num=2) as loop_k2:
                     dedy_l0_shape = [split_dict.get("cal_M") // self.block, 1, self.block, self.block]
-                    dedy_l0A0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
-                    mn_context["dedy_l0A0"] = dedy_l0A0
-                    self.tik_instance.load2dv1(dedy_l0A0, dedy_l1[0, loop_k2 * self.block, 0],
-                                               0, cal_m // self.block, loop_K2, 0, True)
+                    dedy_l0a0 = self.tik_instance.Tensor("float16", dedy_l0_shape, name="dedy_l0A0", scope=tik.scope_ca)
+                    mn_context["dedy_l0A0"] = dedy_l0a0
+                    self.tik_instance.load2dv1(dedy_l0a0, dedy_l1[0, loop_k2 * self.block, 0],
+                                               0, cal_m // self.block, k2_loop, 0, True)
                     self._loopk_mpp_conv1(loop_k1, loop_k, loop_k2, mn_context, split_dict)
-        with self.tik_instance.for_range(0, cub_N) as loop_n:
-            self._ub_mpp_fun(loop_n, 0, split_dict, mn_context, cub_N)
+        with self.tik_instance.for_range(0, cub_n) as loop_n:
+            self._ub_mpp_fun(loop_n, 0, split_dict, mn_context, cub_n)
 
     def _mov_fmap2L1(self, loop_k, mn_context, split_dict, batch_dim):
         cal_hw = split_dict.get("cal_hw")
-        loop_K = split_dict.get("loop_K")
+        k_loop = split_dict.get("loop_K")
         dedy_w = self.shape_4d_dedy[3]
         fmap_h, fmap_w = self.shape_4d_x[2:]
         kernel_h = self.shape_4d_filters[2]
-        padu, padd= self.padding[0:2]
+        padu, padd = self.padding[0:2]
         stride_h, stride_w = self.strides
         fmap_l1_h = cal_hw // dedy_w * stride_h + kernel_h - 1
         fmap_l1_shape = [1, self.shape_x_5hd[1], fmap_l1_h * self.shape_x_5hd[3], self.shape_x_5hd[4]]
@@ -885,7 +894,7 @@ class Dbn2Conv2dBackpropFilter(object):
                                         src_stride_hdim * fmap_w, padu * fmap_w)
         with self.tik_instance.else_scope():
             fmap_gm = self.fmap[batch_dim, 0, cal_hw * loop_k // dedy_w - padu, 0, 0]
-            with self.tik_instance.if_scope(loop_k == loop_K - 1):
+            with self.tik_instance.if_scope(loop_k == k_loop - 1):
                 burst_hdim = fmap_l1_h - padd
                 src_stride_hdim = fmap_h - burst_hdim
                 self.tik_instance.data_move(fmap_l1, fmap_gm, 0, repeat_times, burst_hdim * fmap_w,
@@ -898,52 +907,51 @@ class Dbn2Conv2dBackpropFilter(object):
         mn_context["fmap_l1"] = fmap_l1
 
     def _outer_loop_mpp_fun_big_xy(self, mn_context, split_dict, block_idx):
-
         cal_hw = split_dict.get("cal_hw")
-        loop_M = split_dict.get("loop_M")
-        loop_N = split_dict.get("loop_N")
-        loop_K = split_dict.get("loop_K")
+        m_loop = split_dict.get("loop_M")
+        n_loop = split_dict.get("loop_N")
+        k_loop = split_dict.get("loop_K")
         stride_h, stride_w = self.strides
         _, dedy_w = self.shape_4d_dedy[2:]
         fmap_h, fmap_w = self.shape_4d_x[2:]
         kernel_h = self.shape_4d_filters[2]
         cal_n = split_dict.get("cal_N")
-        cub_N = split_dict.get("cub_N")
-        if loop_K == 1:
-            fmap_l1_shape = [BATCH_PER_CORE, self.shape_x_5hd[1], fmap_h * fmap_w, self.shape_x_5hd[4]]
-            fmap_L1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
-            self.tik_instance.data_move(fmap_L1, self.fmap[block_idx * BATCH_PER_CORE, 0, 0, 0, 0],
-                                        0, BATCH_PER_CORE, fmap_l1_shape[1] * fmap_l1_shape[2], 0, 0)
+        cub_n = split_dict.get("cub_N")
+        if k_loop == 1:
+            fmap_l1_shape = [Constant.BATCH_PER_CORE, self.shape_x_5hd[1], fmap_h * fmap_w, self.shape_x_5hd[4]]
+            l1_fmap = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
+            self.tik_instance.data_move(l1_fmap, self.fmap[block_idx * Constant.BATCH_PER_CORE, 0, 0, 0, 0],
+                                        0, Constant.BATCH_PER_CORE, fmap_l1_shape[1] * fmap_l1_shape[2], 0, 0)
         fmap_l0_shape = [(split_dict.get("cal_hw") + self.block - 1) // self.block, cal_n // self.block,
                          self.block, self.block]
         shape_n = self.shape_4d_filters[2] * self.shape_4d_filters[3] * self.shape_x_5hd[1]
-        l0C_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
-        cub_shape = [shape_n // cub_N, split_dict.get("cal_M") // self.block, self.block, self.block]
-        dw_l0C = self.tik_instance.Tensor("float32", l0C_shape, name="dw_l0C", scope=tik.scope_cc)
+        l0c_shape = [shape_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        cub_shape = [shape_n // cub_n, split_dict.get("cal_M") // self.block, self.block, self.block]
+        dw_l0c = self.tik_instance.Tensor("float32", l0c_shape, name="dw_l0C", scope=tik.scope_cc)
         dw_cub = self.tik_instance.Tensor("float32", cub_shape, name="dw_cub", scope=tik.scope_ubuf)
-        mn_context["dw_l0C"] = dw_l0C
+        mn_context["dw_l0C"] = dw_l0c
         mn_context["dw_cub"] = dw_cub
-        with self.tik_instance.for_range(0, loop_M) as loop_m:
-            with self.tik_instance.for_range(0, loop_K) as loop_k:
-                with self.tik_instance.for_range(0, BATCH_PER_CORE, thread_num=2) as loop_batch:
-                    batch_dim = block_idx * BATCH_PER_CORE + loop_batch
+        with self.tik_instance.for_range(0, m_loop) as loop_m:
+            with self.tik_instance.for_range(0, k_loop) as loop_k:
+                with self.tik_instance.for_range(0, Constant.BATCH_PER_CORE, thread_num=2) as loop_batch:
+                    batch_dim = block_idx * Constant.BATCH_PER_CORE + loop_batch
                     dedy_l0_shape = [split_dict.get("cal_M") // self.block,
                                      (split_dict.get("cal_hw") + self.block - 1) // self.block, self.block, self.block]
-                    dedy_l0A0 = self.tik_instance.Tensor("float16", dedy_l0_shape,
+                    dedy_l0a0 = self.tik_instance.Tensor("float16", dedy_l0_shape,
                                                          name="dedy_l0A0", scope=tik.scope_ca)
-                    mn_context["dedy_l0A0"] = dedy_l0A0
+                    mn_context["dedy_l0A0"] = dedy_l0a0
                     self._cal_dbn_fm_fun(loop_m, loop_k, mn_context, split_dict, batch_dim)
-                    if loop_K != 1:
+                    if k_loop != 1:
                         self._mov_fmap2L1(loop_k, mn_context, split_dict, batch_dim)
                     else:
-                        mn_context["fmap_l1"] = fmap_L1[loop_batch, 0, 0, 0]
-                    with self.tik_instance.for_range(0, loop_N, thread_num=min(loop_N, 2)) as loop_n:
-                        fmap_l0B0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0",
+                        mn_context["fmap_l1"] = l1_fmap[loop_batch, 0, 0, 0]
+                    with self.tik_instance.for_range(0, n_loop, thread_num=min(n_loop, 2)) as loop_n:
+                        fmap_l0b0 = self.tik_instance.Tensor("float16", fmap_l0_shape, name="fmap_l0B0",
                                                              scope=tik.scope_cb)
-                        mn_context["fmap_l0B0"] = fmap_l0B0
+                        mn_context["fmap_l0B0"] = fmap_l0b0
                         self._loopk_mpp_big_x(loop_k, loop_n, mn_context, split_dict, loop_batch)
-            with self.tik_instance.for_range(0, cub_N) as loop_n:
-                self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_N)
+            with self.tik_instance.for_range(0, cub_n) as loop_n:
+                self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_n)
 
     def dbn2_dw_compute(self):
         """
@@ -958,7 +966,7 @@ class Dbn2Conv2dBackpropFilter(object):
             if split_dict.get("mode") == "conv1":
                 self._outer_loop_mpp_fun_conv1(mn_context, split_dict, block_idx)
 
-        with self.tik_instance.for_range(0, BLOCK_DIM, block_num=BLOCK_DIM) as block_idx:
+        with self.tik_instance.for_range(0, Constant.BLOCK_DIM, block_num=Constant.BLOCK_DIM) as block_idx:
             diff_scale_ub = self.tik_instance.Tensor(self.diff_scale_dtype, self.dedy_channel_wise,
                                                      name="diff_scale_ub", scope=tik.scope_ubuf)
 
@@ -969,8 +977,8 @@ class Dbn2Conv2dBackpropFilter(object):
 
             batch_mean_ub = self.tik_instance.Tensor(self.batch_mean_dtype, self.dedy_channel_wise,
                                                      name="batch_mean_ub", scope=tik.scope_ubuf)
-            batch_variance_ub= self.tik_instance.Tensor(self.batch_variance_dtype, self.dedy_channel_wise,
-                                                        name="batch_variance_ub", scope=tik.scope_ubuf)
+            batch_variance_ub = self.tik_instance.Tensor(self.batch_variance_dtype, self.dedy_channel_wise,
+                                                         name="batch_variance_ub", scope=tik.scope_ubuf)
             mn_context = {
                 "diff_scale_ub": diff_scale_ub,
                 "diff_offset_ub": diff_offset_ub,
@@ -982,25 +990,25 @@ class Dbn2Conv2dBackpropFilter(object):
             self._cal_dbn_abc(mn_context)
             split_dict = self._choose_split_dict()
             batch_num = self.shape_4d_dedy[0]
-            if batch_num == BATCH_256:
+            if batch_num == Constant.BATCH_256:
                 if split_dict.get("batch_status") == "inner":
                     self._outer_loop_mpp_fun_big_xy(mn_context, split_dict, block_idx)
                 else:
-                    with self.tik_instance.for_range(0, BATCH_PER_CORE) as loop_batch:
-                        batch_dim = block_idx * BATCH_PER_CORE + loop_batch
+                    with self.tik_instance.for_range(0, Constant.BATCH_PER_CORE) as loop_batch:
+                        batch_dim = block_idx * Constant.BATCH_PER_CORE + loop_batch
                         _choose_mode(mn_context, split_dict, batch_dim)
             else:
                 _choose_mode(mn_context, split_dict, block_idx)
 
 
 def _check_shape_and_format(
-    x,
-    out_backprop,
-    y,
-    filter_size,
-    strides,
-    dilations,
-    data_format
+        x,
+        out_backprop,
+        y,
+        filter_size,
+        strides,
+        dilations,
+        data_format
     ):
     """
     check the shape dims, format and get NCHW format shape

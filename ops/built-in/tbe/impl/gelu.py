@@ -24,23 +24,22 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 
-# const CSVALUE equals 0.044715
-CSVALUE = tvm.const(0.044715, "float32")
 
-
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,invalid-name
 def _tanh_parameter_compute(placeholders):
     """
     compute the parameter of tanh:
     :param placeholders: input data
     return: result equals (x+0.044715*tf.pow(x,3))
     """
+    CSVALUE = tvm.const(0.044715, "float32")
     mul_0 = tbe.vmul(placeholders, placeholders)
     pow_0 = tbe.vmul(mul_0, placeholders)
     mul_1 = tbe.vmuls(pow_0, CSVALUE)
     result = tbe.vadd(placeholders, mul_1)
 
     return result
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("gelu")

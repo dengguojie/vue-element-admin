@@ -118,21 +118,21 @@ def fused_mul_apply_keras_momentum_compute(var,
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 
     # update var and accum according to the momentum scheme
-    # accum = accum * momentum - grad * lr
+    # `accum = accum * momentum - grad * lr`
     x2_brc = tbe.broadcast(x2, x1.shape)
     grad = tbe.vmul(x1, x2_brc)
     accum_momen = tvm.compute(accum.shape, lambda *indices: accum(*indices) * momentum[0], tag='elewise_single_VS_mul')
     grad_lr = tvm.compute(grad.shape, lambda *indices: grad(*indices) * lr[0], tag='elewise_single_VS_mul')
     out_accum = tbe.vsub(accum_momen, grad_lr)
 
-    # var = var + accum * momentum - grad * lr
+    # `var = var + accum * momentum - grad * lr`
     if use_nesterov is True:
         accum_momen2 = tvm.compute(accum.shape,
                                    lambda *indices: out_accum(*indices) * momentum[0],
                                    tag='elewise_single_VS_mul')
         add_var_am = tbe.vadd(var, accum_momen2)
         out_var = tbe.vsub(add_var_am, grad_lr)
-    # var = var + accum
+    # `var = var + accum`
     else:
         out_var = tbe.vadd(var, out_accum)
 
@@ -149,16 +149,21 @@ def _get_placeholder(dict_list, name_list):
         if name == 'var':
             var_shape = list(shape)
         if name != 'lr' and name != 'momentum' and name != 'x2' and var_shape != list(shape):
-            error_manager_vector.raise_err_inputs_shape_not_equal('fused_mul_apply_keras_momentum', 'var', name, var_shape,
-                                                                  shape, var_shape)
+            error_manager_vector.raise_err_inputs_shape_not_equal('fused_mul_apply_keras_momentum',
+                                                                  'var',
+                                                                  name,
+                                                                  var_shape,
+                                                                  shape,
+                                                                  var_shape)
         if (name in ('lr', 'momentum', 'x2')) and shape[0] != 1:
             error_manager_vector.raise_err_check_params_rules('fused_mul_apply_keras_momentum',
-                                                              'the shapes of lr, momentum and x2 must be scalar', name,
+                                                              'the shapes of lr, momentum and x2 must be scalar',
+                                                              name,
                                                               shape)
 
         para_check.check_dtype(dtype, ('float32', 'float16'), param_name="var")
         para_check.check_shape(shape, param_name="var")
-        shape_refine = (functools.reduce(operator.mul, shape), )
+        shape_refine = (functools.reduce(operator.mul, shape),)
         list_placeholder.append(tvm.placeholder(shape=shape_refine, name=name, dtype=dtype))
     return list_placeholder
 
