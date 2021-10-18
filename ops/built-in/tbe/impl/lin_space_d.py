@@ -22,7 +22,6 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("lin_space_d")
@@ -61,12 +60,8 @@ def lin_space_d_compute(input_assist, input_start, input_stop, input_num,
     step_divider = tbe.vsub(input_stop, input_start)
     step = tbe.vdiv(step_divider, num_divided)
 
-    res_temp = tbe.vmul(input_assist,
-                                tbe.broadcast(step,
-                                                      input_assist.shape))
-    res = tbe.vadd(res_temp,
-                           tbe.broadcast(input_start,
-                                                 input_assist.shape))
+    res_temp = tbe.vmul(input_assist, tbe.broadcast(step, input_assist.shape))
+    res = tbe.vadd(res_temp, tbe.broadcast(input_start, input_assist.shape))
 
     return res
 
@@ -126,14 +121,14 @@ def lin_space_d(input_assist, input_start, input_stop,
     if shape_start != (1,) or shape_stop != (1,) or shape_num != (1,):
         error_detail = "lin_space only support rank=1 while shape " \
                        "of start or stop or num is not (1,)"
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, \
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name,
                                                            "input_start,input_stop,input_num", error_detail)
 
     # check shape of assist, only support 1dim
     if len(shape_assist) != 1:
         error_detail = "lin_space only support rank=1 while length of assist shape is %d"\
                        % (len(shape_assist))
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, \
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name,
                                                            "input_assist", error_detail)
 
     assist_input = tvm.placeholder(shape_assist, name="assist_input",

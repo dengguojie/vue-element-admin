@@ -22,9 +22,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# define a scalar , value = -1
-SCALAR_NEGATIVE_ONE = -1
-
 
 # pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("inv_grad")
@@ -51,12 +48,12 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_y.dtype
 
-    inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype=dtype)
+    inv_const = tvm.const(-1, dtype=dtype)
     has_improve_precision = False
     if dtype in ("float16", "int8"):
         if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls",
                                                    "float32"):
-            inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype="float32")
+            inv_const = tvm.const(-1, dtype="float32")
             input_y = tbe.cast_to(input_y, "float32")
             input_dy = tbe.cast_to(input_dy, "float32")
             has_improve_precision = True

@@ -116,7 +116,7 @@ def lamb_apply_optimizer_assign_compute(grad, input_v, input_m, input_param,
     # mul_2
     input_v, beta_2 = shape_broadcast(input_v, beta_2)
     mul_2_result = tbe.vmul(input_v, beta_2)
-    # compute: next_v = (tf.multiply(self.beta_2, v) + tf.multiply(1.0 - self.beta_2,tf.square(grad)))
+    # compute: `next_v = (tf.multiply(self.beta_2, v) + tf.multiply(1.0 - self.beta_2,tf.square(grad)))`
     mul_2_result, mul_3_result = shape_broadcast(mul_2_result, mul_3_result)
     next_v = tbe.vadd(mul_2_result, mul_3_result)
 
@@ -126,35 +126,35 @@ def lamb_apply_optimizer_assign_compute(grad, input_v, input_m, input_param,
     # mul_1
     grad, one_minus_beta_1 = shape_broadcast(grad, one_minus_beta_1)
     mul_1_result = tbe.vmul(grad, one_minus_beta_1)
-    # compute: next_m = (tf.multiply(self.beta_1, m) + tf.multiply(1.0 - self.beta_1, grad))
+    # compute: `next_m = (tf.multiply(self.beta_1, m) + tf.multiply(1.0 - self.beta_1, grad))`
     mul_0_result, mul_1_result = shape_broadcast(mul_0_result, mul_1_result)
     next_m = tbe.vadd(mul_0_result, mul_1_result)
 
-    # compute: beta1_correction = (1 - self.beta_1 ** steps)
+    # compute: `beta1_correction = (1 - self.beta_1 ** steps)`
     beta_1, steps = shape_broadcast(beta_1, steps)
     beta_1_steps = pow_compute(beta_1, steps)
     neg_beta_1_step = tbe.vmuls(beta_1_steps, -1)
     beta1_correction = tbe.vadds(neg_beta_1_step, 1)
 
-    # compute: beta2_correction = (1 - self.beta_1 ** steps)
+    # compute: `beta2_correction = (1 - self.beta_1 ** steps)`
     beta_2, steps = shape_broadcast(beta_2, steps)
     beta_2_steps = pow_compute(beta_2, steps)
     neg_beta_2_step = tbe.vmuls(beta_2_steps, -1)
     beta2_correction = tbe.vadds(neg_beta_2_step, 1)
 
-    # compute: next_m_unbiased = next_m / beta1_correction
+    # compute: `next_m_unbiased = next_m / beta1_correction`
     next_m, beta1_correction = shape_broadcast(next_m, beta1_correction)
     next_m_unbiased = tbe.vdiv(next_m, beta1_correction)
-    # compute: next_v_unbiased = next_v / beta2_correction
+    # compute: `next_v_unbiased = next_v / beta2_correction`
     next_v, beta2_correction = shape_broadcast(next_v, beta2_correction)
     next_v_unbiased = tbe.vdiv(next_v, beta2_correction)
 
-    # comupte update
+    # compute update
     sqrt_next_v = tbe.vsqrt(next_v_unbiased)
     # add_2
     epsilon, sqrt_next_v = shape_broadcast(epsilon, sqrt_next_v)
     add_2_result = tbe.vadd(sqrt_next_v, epsilon)
-    # compute: update = next_m / (tf.sqrt(next_v) + self.epsilon)
+    # compute: `update = next_m / (tf.sqrt(next_v) + self.epsilon)`
     next_m_unbiased, add_2_result = shape_broadcast(next_m_unbiased, add_2_result)
     update = tbe.vdiv(next_m_unbiased, add_2_result)
 

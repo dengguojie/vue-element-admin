@@ -74,9 +74,9 @@ def test_op_check_supported_nz(test_arg):
                     trans_a=False, trans_b=False, kernel_name="gemm")
 
 
-for t in gemm_op_testcase:
-    print("adding gemm op testcases")
-    ut_case.add_case("Ascend910A", gen_trans_data_case(t[0], t[1],t[2],t[3],t[7],t[8],t[6], "success"))
+# for t in gemm_op_testcase:
+#     print("adding gemm op testcases")
+#     ut_case.add_case("Ascend910A", gen_trans_data_case(t[0], t[1],t[2],t[3],t[7],t[8],t[6], "success"))
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_nz)

@@ -27,12 +27,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util import util_select_op_base
-
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
-# Minimum positive number greater than 0
-EPSLON = 1e-12
+from impl.constant_util import EPSLON
 
 
 # pylint: disable = unused-argument,too-many-arguments,too-many-locals
@@ -56,14 +51,14 @@ def get_op_support_info(input_dy, input_x, input_variance, input_mean,
                     break
             if flag == -1:
                 for i in range(len(shape_x) - 1):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]], \
-                                          [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]), \
+                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
+                                          [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]),
                                SplitOutput([0, [i]])]
                     axis_split_matrix.append(split_0)
             else:
                 for i in range(flag):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]], \
-                                          [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]), \
+                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
+                                          [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]),
                                SplitOutput([0, [i]], [1, [i]])]
                     axis_split_matrix.append(split_0)
         else:
@@ -237,13 +232,13 @@ def _check_shape(params_map):
     if operator.ne(tuple(params_map.get("shape_dy")),
                    tuple(params_map.get("shape_x"))):
         error_detail = "shape of input_dy and input_x should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
                                                                "input_dy", "input_x", error_detail)
 
     if operator.ne(tuple(params_map.get("shape_var")),
                    tuple(params_map.get("shape_mean"))):
         error_detail = "shape of input_variance and input_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
                                                                "input_variance", "input_mean", error_detail)
 
     shape_x = params_map.get("shape_x")
@@ -275,12 +270,12 @@ def _check_shape_mean(shape_x, shape_mean):
     """
     if len(shape_x) != len(shape_mean):
         error_detail = "length of shape_x and shape_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
                                                                "input_x", "input_mean", error_detail)
 
     if shape_mean[-1] != 1:
         error_detail = "value of shape_mean's last dim must be 1"
-        error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2", \
+        error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2",
                                                            "input_mean", error_detail)
 
     flag = -1
@@ -295,7 +290,7 @@ def _check_shape_mean(shape_x, shape_mean):
                 continue
             if mean != 1:
                 error_detail = "value of shape_mean must be 1"
-                error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2", \
+                error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2",
                                                                    "input_mean", error_detail)
 
 
@@ -316,13 +311,13 @@ def _check_shape_gamma(shape_x, shape_gamma):
     """
     if len(shape_gamma) > len(shape_x):
         error_detail = "length of shape_gamma can not be longer than shape_x"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
                                                                "input_gamma", "input_x", error_detail)
 
     for xtem, gamma in zip(reversed(shape_x), reversed(shape_gamma)):
         if xtem != gamma:
             error_detail = "value of shape_gamma is wrong"
-            error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2", \
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2",
                                                                "input_gamma", error_detail)
 
 

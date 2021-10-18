@@ -20,10 +20,7 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-
-
-# shape limit for aicore equals 2**31
-SHAPE_SIZE_LIMIT = 2147483648
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -168,7 +165,9 @@ def l2_normalize_grad(input_x,
 
     assert (input_shape_x == input_shape_y and input_shape_x == input_shape_dy
             ), "all input/output should have the same shape"
-
+    if input_shape_x != input_shape_y or input_shape_x != input_shape_dy:
+        error_manager_vector.raise_err_inputs_shape_not_equal("l2_normalize_grad", input_y, input_dy,
+                                                              input_shape_y, input_shape_dy, input_shape_x)
     result = l2_normalize_grad_compute(input_data_x, input_data_y,
                                        input_data_dy, output_dx, dim, eps,
                                        kernel_name)

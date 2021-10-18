@@ -63,7 +63,7 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         base_data_type.remove("float")
 
-    dtype_base_out = base_data_type.copy()
+    dtype_base_out = list(base_data_type)
     format_base_out = ["ND"] * len(base_data_type) + ["C1HWNCoC0"] * len(base_data_type)
     dtype_base_out = dtype_base_out + base_data_type
     if is_support_hd:
@@ -79,10 +79,10 @@ def op_select_format(x, y, kernel_name="l2_loss"):
         dtype_base_out = dtype_base_out + base_data_type
         format_base_out = format_base_out + [other_format] * len(base_data_type)
 
-    dtype_base_in = dtype_base_out.copy()
+    dtype_base_in = list(dtype_base_out)
     if tbe_platform.api_check_support("tik.set_atomic_add") \
-        and tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
-        dtype_base_out = ["float" for _ in dtype_base_out]
+            and tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+        dtype_base_out = ["float"] * len(dtype_base_out)
     if util_common.is_dynamic_input(x):
         dtype_base_out = dtype_base_in
     dtype_in_str = ','.join(dtype_base_in)

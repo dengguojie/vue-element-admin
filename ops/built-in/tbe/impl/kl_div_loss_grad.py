@@ -23,10 +23,6 @@ from te.utils import shape_util
 import te.platform as tbe_platform
 
 
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
-
 # pylint: disable=redefined-builtin,too-many-locals,consider-using-in
 # pylint: disable=unused-variable,invalid-name,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("KlDivLossGrad")
@@ -146,9 +142,9 @@ def kl_div_loss_grad(grad, input, target, y, reduction="mean",
     para_check.check_shape(shape_grad)
     para_check.check_shape(input_shape)
     para_check.check_shape(shape_target)
-    para_check.check_shape_size(shape_grad, SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(input_shape, SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(shape_target, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_grad)
+    para_check.check_shape_size(input_shape)
+    para_check.check_shape_size(shape_target)
 
     check_tuple = ("float16", "float32")
     input_dtype = input.get("dtype").lower()

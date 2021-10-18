@@ -363,7 +363,7 @@ def lamb_next_m_v_with_decay(input_mul3, input_mul2, input_realdiv1,
                                            data_add2_y, y1, y2, y3, y4,
                                            kernel_name)
 
-    inputlist = [data_input_mul3, data_input_mul2, data_input_realdiv1,
+    input_list = [data_input_mul3, data_input_mul2, data_input_realdiv1,
                  data_input_mul1, data_input_mul0, data_input_realdiv0,
                  data_input_mul4, data_mul0_x, data_mul1_sub, data_mul2_x,
                  data_mul3_sub1, data_mul4_x, data_add2_y]
@@ -372,6 +372,6 @@ def lamb_next_m_v_with_decay(input_mul3, input_mul2, input_realdiv1,
         sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
-              "tensor_list": list(inputlist) + list(res)}
+              "tensor_list": list(input_list) + list(res)}
 
     tbe.cce_build_code(sch, config)

@@ -22,9 +22,6 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 
-# shape size limit for aicore is 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
 
 def _less_compare(data, shape, dtype, data_min):
     """
@@ -66,6 +63,7 @@ def _less_compare(data, shape, dtype, data_min):
         res = tbe.cast_to(res_max, "float16")
 
     return tbe.cast_to(res, "uint8", True)
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("less")

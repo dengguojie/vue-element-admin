@@ -28,12 +28,7 @@ from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
-# Minimum positive number greater than 0
-EPSLON = 1e-12
+from impl.common_util import constant
 
 
 # pylint: disable = unused-argument,invalid-name,too-many-locals,too-many-arguments,too-many-branches
@@ -58,14 +53,14 @@ def get_op_support_info(input_dy, input_x, input_variance,
                     break
             if flag == -1:
                 for i in range(len(shape_x)-1):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]], \
-                                          [3, [i], [-1], [-1]]), \
+                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
+                                          [3, [i], [-1], [-1]]),
                                SplitOutput([0, [i]], [1, [i]])]
                     axis_split_matrix.append(split_0)
             else:
                 for i in range(flag):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]], \
-                                          [3, [i], [-1], [-1]]), \
+                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
+                                          [3, [i], [-1], [-1]]),
                                SplitOutput([0, [i]], [1, [i]])]
                     axis_split_matrix.append(split_0)
         else:
@@ -231,13 +226,13 @@ def _check_shape(params_map):
     if operator.ne(tuple(params_map.get("shape_dy")),
                    tuple(params_map.get("shape_x"))):
         error_detail = "shape of input_dy and input_x should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                                "input_dy", "input_x", error_detail)
 
     if operator.ne(tuple(params_map.get("shape_var")),
                    tuple(params_map.get("shape_mean"))):
         error_detail = "shape of input_variance and input_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                                "input_variance", "input_mean", error_detail)
 
     shape_x = params_map.get("shape_x")
@@ -247,7 +242,6 @@ def _check_shape(params_map):
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_mean, param_name="input_mean")
     para_check.check_shape(shape_gamma, param_name="shape_gamma")
-
 
     _check_shape_mean(shape_x, shape_mean)
     _check_shape_gamma(shape_x, shape_gamma)
@@ -270,12 +264,12 @@ def _check_shape_mean(shape_x, shape_mean):
     """
     if len(shape_x) != len(shape_mean):
         error_detail = "length of shape_x and shape_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                                "input_x", "input_mean", error_detail)
 
     if shape_mean[-1] != 1:
         error_detail = "value of shape_mean's last dim must be 1"
-        error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+        error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                            "input_mean", error_detail)
 
     flag = -1
@@ -290,7 +284,7 @@ def _check_shape_mean(shape_x, shape_mean):
                 continue
             if mean != 1:
                 error_detail = "value of shape_mean must be 1"
-                error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+                error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                                    "input_mean", error_detail)
 
 
@@ -311,13 +305,13 @@ def _check_shape_gamma(shape_x, shape_gamma):
     """
     if len(shape_gamma) > len(shape_x):
         error_detail = "length of shape_gamma can not be longer than shape_x"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                                "input_gamma", "input_x", error_detail)
 
     for xtem, gamma in zip(reversed(shape_x), reversed(shape_gamma)):
         if xtem != gamma:
             error_detail = "value of shape_gamma is wrong"
-            error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop", \
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop",
                                                                "input_gamma", error_detail)
 
 
@@ -447,7 +441,7 @@ def _get_pd_var_front(data, dtype):
         np.power((data_variance + EPSLON), (-0.5))
     """
     var_elta = tbe.vadds(data.get("data_variance"),
-                         tvm.const(EPSLON, dtype=dtype))
+                         tvm.const(constant.EPSLON, dtype=dtype))
     var_elta_log = tbe.vlog(var_elta)
     var_elta_mul = tbe.vmuls(var_elta_log,
                              tvm.const(-0.5, dtype=dtype))
@@ -883,7 +877,7 @@ def _get_pd_var_front_nz(data, dtype):
         np.power((data_variance + EPSLON), (-0.5))
     """
     var_elta = tbe.vadds(data.get("data_variance"),
-                         tvm.const(EPSLON, dtype=dtype))
+                         tvm.const(constant.EPSLON, dtype=dtype))
     var_elta_log = tbe.vlog(var_elta)
     var_elta_mul = tbe.vmuls(var_elta_log,
                              tvm.const(-0.5, dtype=dtype))
@@ -923,8 +917,6 @@ def _get_pd_x_front_nz(data, param_nz, dtype):
 
     """
     var_elta_2, sub_x_mean = _get_pd_var_nz(data, param_nz, dtype)
-
-
     return var_elta_2, sub_x_mean
 
 

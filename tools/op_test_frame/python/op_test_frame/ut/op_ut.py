@@ -395,6 +395,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         :param case: case info
         :return: None
         """
+        return self.add_case(support_soc, case)
         if not support_soc:
             support_soc = ("all",)
         if not isinstance(support_soc, (tuple, list)):

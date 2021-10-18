@@ -272,9 +272,9 @@ def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported_dynamic)
     ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported_error)
 
-_gen_conv2d_bp_input_op_fusion_case()
-_gen_conv2d_bp_input_op_slice_case()
-_gen_conv2d_bp_input_check_support_case()
+# _gen_conv2d_bp_input_op_fusion_case()
+# _gen_conv2d_bp_input_op_slice_case()
+# _gen_conv2d_bp_input_check_support_case()
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])

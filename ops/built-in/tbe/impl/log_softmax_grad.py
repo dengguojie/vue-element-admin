@@ -25,9 +25,6 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# shape limit for aicore equals 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
 # pylint: disable = locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("log_softmax_grad")
 def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
@@ -126,7 +123,7 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
 
     if not operator.eq(list(shape1), list(shape2)):
         error_detail = "shape of input_dy and input_x should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_dy", \
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_dy",
                                                                "input_x", error_detail)
 
     shape1, axis = shape_util.shape_refine(list(shape1), axis)

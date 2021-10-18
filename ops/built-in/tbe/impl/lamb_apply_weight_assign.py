@@ -24,12 +24,10 @@ from te.utils import para_check
 from te.utils import shape_util
 from .greater import greater_compute
 
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
 # pylint: disable=relative-beyond-top-level
-unuse_tensor = tvm.const(0, "float32")
-
-
 def select_compute(condition, data_x=None, data_y=None):
     """
     select data from data_x or data_y according to the condition.
@@ -75,22 +73,20 @@ def shape_broadcast(data_1, data_2):
 
 
 def compute_ratio(w_norm, g_norm):
-    '''
-    comuute :ratio = array_ops.where(math_ops.greater(w_norm, 0), array_ops.where(math_ops.greater(g_norm, 0),
+    """
+    compute :ratio = array_ops.where(math_ops.greater(w_norm, 0), array_ops.where(math_ops.greater(g_norm, 0),
     (w_norm / g_norm), 1.0), 1.0)
     :param w_norm:
     :param g_norm:
     :return: ratio
-    '''
+    """
     g_norm_shape = shape_util.shape_to_list(g_norm.shape)
     dtype = 'float32'
     data_zero = tbe.broadcast(tvm.const(0, dtype), g_norm_shape, dtype)
-    # compute: math_ops.greater(g_norm, 0)
-    greater_g_norm_zero = greater_compute(g_norm, data_zero, unuse_tensor)
-    # compute: math_ops.greater(w_norm, 0)
-    greater_w_norm_zero = greater_compute(w_norm, data_zero, unuse_tensor)
+    scalar_zero = tvm.const(0, "float32")
+    greater_g_norm_zero = greater_compute(g_norm, data_zero, scalar_zero)
+    greater_w_norm_zero = greater_compute(w_norm, data_zero, scalar_zero)
 
-    # compute: array_ops.where(math_ops.greater(g_norm, 0), (w_norm / g_norm), 1.0)
     w_norm_g_norm = tbe.vdiv(w_norm, g_norm)
     data_one = tbe.broadcast(tvm.const(1, dtype), g_norm_shape, dtype)
     select_1 = select_compute(greater_g_norm_zero, w_norm_g_norm, data_one, )
@@ -130,13 +126,11 @@ def lamb_apply_weight_assign_compute(w_norm, g_norm, input_lr, update, input_par
 
     ratio = compute_ratio(w_norm, g_norm)
 
-    # compute ratio_update_with_lr=  ratio * self.learning_rate * update
     update, input_lr = shape_broadcast(update, input_lr)
     update_with_lr = tbe.vmul(update, input_lr)
     ratio, update_with_lr = shape_broadcast(ratio, update_with_lr)
     ratio_update_with_lr = tbe.vmul(ratio, update_with_lr)
 
-    # next_param = param_fp32 - update_with_lr
     ratio_update_with_lr, input_param = shape_broadcast(ratio_update_with_lr, input_param)
     next_param = tbe.vsub(input_param, ratio_update_with_lr)
 

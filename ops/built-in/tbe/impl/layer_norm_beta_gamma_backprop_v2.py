@@ -29,12 +29,6 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
-# Minimum positive number greater than 0
-EPSLON = 1e-12
-
 
 # pylint: disable = unused-argument,invalid-name,too-many-locals,too-many-arguments,too-many-branches
 def get_op_support_info(input_dy, input_x, output_pd_gamma,
@@ -49,7 +43,7 @@ def get_op_support_info(input_dy, input_x, output_pd_gamma,
         if len(shape_x) == len(shape_gamma):
             axis_split_matrix = []
             for i in range(len(shape_x)):
-                split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]]), \
+                split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]]),
                            SplitOutput([0, [i]], [1, [i]])]
                 axis_split_matrix.append(split_0)
         else:
@@ -164,7 +158,7 @@ def _check_shape(params_map):
     if operator.ne(tuple(params_map.get("shape_dy")),
                    tuple(params_map.get("shape_x"))):
         error_detail = "shape of input_dy and input_x should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop_v2", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop_v2",
                                                                "input_dy", "input_x", error_detail)
 
     shape_x = params_map.get("shape_x")
@@ -182,13 +176,13 @@ def _check_shape_gamma(shape_x, shape_gamma):
     """
     if len(shape_gamma) > len(shape_x):
         error_detail = "length of shape_gamma can not be longer than shape_x"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop_v2", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_beta_gamma_backprop_v2",
                                                                "input_gamma", "input_x", error_detail)
 
     for xtem, gamma in zip(reversed(shape_x), reversed(shape_gamma)):
         if xtem != gamma:
             error_detail = "value of shape_gamma is wrong"
-            error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop_v2", \
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm_beta_gamma_backprop_v2",
                                                                "input_gamma", error_detail)
 
 

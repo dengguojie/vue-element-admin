@@ -247,7 +247,6 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     :return: success or failed
     """
     print("start run ops ut time: %s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
-
     if not _check_args(case_dir, test_report, cov_report):
         return FAILED
 

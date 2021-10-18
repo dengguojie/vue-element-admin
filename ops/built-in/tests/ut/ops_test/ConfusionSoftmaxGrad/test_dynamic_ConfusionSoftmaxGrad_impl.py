@@ -22,9 +22,9 @@ case2 = gen_bn_training_update_grad_case((-1,-1,-1), (1,1,48), (-1,-1,48), "floa
 case3 = gen_bn_training_update_grad_case((-1,-1,-1), (1,1,16), (-1,-1,16), "float16", "float16", "float16",
                                          "confusion_softmax_grad_1")
 
-ut_case.add_case(["Ascend910A"], case1)
-ut_case.add_case(["Ascend910A"], case2)
-ut_case.add_case(["Ascend910A"], case3)
+# ut_case.add_case(["Ascend910A"], case1)
+# ut_case.add_case(["Ascend910A"], case2)
+# ut_case.add_case(["Ascend910A"], case3)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):

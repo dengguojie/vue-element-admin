@@ -77,7 +77,7 @@ case6 = {"params": [{"shape": (2, 24), "dtype": "float16", "format": "ND", "ori_
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend910A"], case1)
+# ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)

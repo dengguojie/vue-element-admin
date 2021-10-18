@@ -22,14 +22,12 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-SHAPE_SIZE_LIMIT = 2147483648
-
-
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @fusion_manager.register("is_close")
 def is_close_compute(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal_nan=False, kernel_name="is_close"):
     """
-    calculating a new tensor with bool elements representing if each element of input_x1 is "close" to the corresponding element of input_x2.
+    calculating a new tensor with bool elements representing if each element of input_x1 is "close" to the corresponding
+    element of input_x2.
     Closeness is defined as:∣input_x1−input_x2∣≤atol+rtol×∣input_x2∣
 
     Parameters
@@ -72,7 +70,8 @@ def is_close_compute(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal
 def is_close(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal_nan=False, kernel_name="is_close"):
     """
     algorithm: is_close
-    calculating a new tensor with bool elements representing if each element of input_x1 is "close" to the corresponding element of input_x2.
+    calculating a new tensor with bool elements representing if each element of input_x1 is "close" to the corresponding
+    element of input_x2.
     Closeness is defined as:∣input_x1−input_x2∣≤atol+rtol×∣input_x2∣
 
     Parameters
@@ -101,8 +100,8 @@ def is_close(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal_nan=Fal
     para_check.check_kernel_name(kernel_name)
     para_check.check_shape_rule(shape_x1)
     para_check.check_shape_rule(shape_x2)
-    para_check.check_shape_size(shape_x1, SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(shape_x2, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_x1)
+    para_check.check_shape_size(shape_x2)
 
     input_data_type = input_x1.get("dtype").lower()
 
@@ -115,7 +114,7 @@ def is_close(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal_nan=Fal
         shape_x2 = shape_x2 if len(shape_x2) == 1 else shape_x2[:-1]
         shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
 
-    para_check.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_max)
     data_x1 = tvm.placeholder(shape_x1, name="data_1", dtype=input_data_type)
     data_x2 = tvm.placeholder(shape_x2, name="data_2", dtype=input_data_type)
     if input_data_type == "float16":

@@ -22,7 +22,6 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-
 # pylint: disable = locally-disabled,invalid-name,too-many-locals
 # pylint: disable = too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("inplace_update_d")

@@ -20,13 +20,7 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-
-MIN_FP32 = 2 ** (-126)
-# min float16 value
-MIN_FP16 = 2 ** (-24)
-VALUE_ONE = 1
-# shape limit, 2**31
-SHAPE_SIZE_LIMIT = 2147483648
+from impl.common_util import constant
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -34,7 +28,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals
 def real_div_compute(data_1, data_2, output_z, kernel_name="real_div"):
     """
-    calculating data's realdiv, c = a / b
+    calculating data's realdiv, `c = a / b`
 
     Parameters
     ----------
@@ -92,14 +86,14 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
 
     if num_dtype in ("int8", "uint8"):
         x1_dtype = "float32"
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"),
-                                       shape, output_dtype="float32")
+        ones = tbe.broadcast(tvm.const(1, dtype="float32"),
+                             shape, output_dtype="float32")
         x1 = tbe.cast_to(x1, "float32")
         x2 = tbe.cast_to(x2, "float32")
     else:
         x1_dtype = num_dtype
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype),
-                                       shape, output_dtype=num_dtype)
+        ones = tbe.broadcast(tvm.const(1, dtype=num_dtype),
+                             shape, output_dtype=num_dtype)
 
     if bool_dtype == "int8":
         if x1_dtype == "int32":
@@ -214,16 +208,16 @@ def greater_compute(x, y, z, kernel_name="greater"):
     if dtype == "float32":
         # minimun num of float32 2**(-126)
         data_min = \
-            tbe.broadcast(tvm.const(MIN_FP32, dtype=dtype), shape,
-                                  dtype)
+            tbe.broadcast(tvm.const(constant.MIN_FP32, dtype=dtype), shape,
+                          dtype)
     elif dtype == "float16":
         # minimun num of float16 2**(-24)
         data_min = \
-            tbe.broadcast(tvm.const(MIN_FP16, dtype=dtype), shape,
-                                  dtype)
+            tbe.broadcast(tvm.const(constant.MIN_FP16, dtype=dtype), shape,
+                          dtype)
     else:
         data_min = tbe.broadcast(tvm.const(1, dtype=dtype), shape,
-                                         dtype)
+                                 dtype)
 
     return _greater_compare((data_x, data_y), shape, dtype, data_min)
 
@@ -233,7 +227,7 @@ def reduce_sum_d_compute(x,
                          axis=None,
                          keepdims=None,
                          kernel_name="reduce_sum_d"):
-    """redusce_sum_d compute
+    """reduce_sum_d compute
 
     Parameters:
     ----------

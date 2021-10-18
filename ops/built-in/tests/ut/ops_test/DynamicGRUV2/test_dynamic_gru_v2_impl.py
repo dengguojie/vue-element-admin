@@ -549,3 +549,7 @@ ut_case.add_case("all", {
     "params": [x, w1, w2, b1, b2, seq_wrong, None, output_y, output_h, i, r, n, hn],
     "expect": RuntimeError
 })
+
+if __name__ == '__main__':
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
+    exit(0)

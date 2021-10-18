@@ -17,24 +17,20 @@ layer_norm
 """
 from te import tvm
 from te import platform as tbe_platform
+from te.utils import shape_util
+from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 import te.lang.cce as tbe
 from tbe.dsl.compute.layer_norm_cube import LayerNormCube
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import SOC_VERSION
-from te.utils import shape_util
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.common_util import constant
 from impl.layer_norm_tik import if_tik_support
 from impl.layer_norm_tik import layer_normalize
-
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
-SIZE_SIXTEEN = 16
 
 
 # pylint: disable = unused-argument
@@ -52,7 +48,7 @@ def get_op_support_info(input_x, input_gamma, input_beta,
     begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
     begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
     if format_x in ("ND", "NCHW", "NHWC", "NC1HWC0"):
-        axis_split_matrix=[]
+        axis_split_matrix = []
         if begin_params_axis == 0:
             for i in range(begin_norm_axis):
                 split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]]), \
@@ -80,7 +76,9 @@ def get_op_support_info(input_x, input_gamma, input_beta,
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def _division_sixteen(shape, begin_norm_axis):
-
+    """
+    division_sixteen
+    """
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = "value of shape_x is illegal"
@@ -93,9 +91,9 @@ def _division_sixteen(shape, begin_norm_axis):
         error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", \
                                                            error_detail)
 
-    is_reduce_last = True if begin_norm_axis == -1 or begin_norm_axis == len(shape) - 1 else False
-    if shape[-2] % SIZE_SIXTEEN == 0:
-        if shape[-1] % SIZE_SIXTEEN == 0 or (shape[-1] % SIZE_SIXTEEN != 0 and is_reduce_last):
+    is_reduce_last = begin_norm_axis in (-1, len(shape) - 1)
+    if shape[-2] % constant.C0_SIZE == 0:
+        if shape[-1] % constant.C0_SIZE == 0 or (shape[-1] % constant.C0_SIZE != 0 and is_reduce_last):
             return True
     return False
 
@@ -292,6 +290,9 @@ def to_frac_z_axis(ori_shape, ori_axis):
 
 
 def _broadcast_nz(tensor, shape):
+    """
+    broadcast_nz
+    """
     broadcast_axes = []
     src_shape = shape_util.shape_to_list(tensor.shape)
     for i, _ in enumerate(shape):
@@ -325,7 +326,7 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
             return False
         return True
 
-    return (impl_mode == "high_performance" and _check_shape_and_dtype())
+    return impl_mode == "high_performance" and _check_shape_and_dtype()
 
 
 def nz_non_aligned(input_x, input_gamma, input_beta,
@@ -339,14 +340,12 @@ def nz_non_aligned(input_x, input_gamma, input_beta,
     shape_x = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
     cast_dtype = "float16"
-    cast_dtype_precision = dtype
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
                   ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         cast_dtype = "float32"
-        cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
         input_gamma = tbe.cast_to(input_gamma, "float32")
         input_beta = tbe.cast_to(input_beta, "float32")
@@ -364,7 +363,7 @@ def nz_non_aligned(input_x, input_gamma, input_beta,
 
     # DSL description of the mean calculation process
     with tvm.tag_scope("tail_block_pretreatment"):
-        lambda_func = lambda *indice : tvm.const(0, input_x.dtype)
+        lambda_func = lambda *indice: tvm.const(0, input_x.dtype)
         temp = tvm.compute(input_x.shape, lambda_func, name="tail_block_pretreatment")
 
     input_x = tbe.vadd(input_x, temp)
@@ -684,7 +683,10 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
 
 
 def is_support_nz_non_aligned(ori_shape_x, begin_params_axis, impl_mode):
-    if ori_shape_x[-1] % SIZE_SIXTEEN != 0:
+    """
+    is_support_nz_non_aligned
+    """
+    if ori_shape_x[-1] % constant.C0_SIZE != 0:
         if begin_params_axis != 0:
             return True
 
@@ -773,18 +775,17 @@ def layer_norm(input_x, input_gamma, input_beta,
             begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
 
             flag_vector2cube = _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mode)
-            if input_gamma_format == "FRACTAL_NZ" or \
-                    input_beta_format == "FRACTAL_NZ":
+            if input_gamma_format == "FRACTAL_NZ" or input_beta_format == "FRACTAL_NZ":
                 error_detail = "gamma and beta not support Nz in bert"
-                error_manager_vector.raise_err_two_input_format_invalid(kernel_name, "input_gamma", \
+                error_manager_vector.raise_err_two_input_format_invalid(kernel_name, "input_gamma",
                                                                         "input_beta", error_detail)
             if shape_gamma != shape_beta:
                 error_detail = "gamma and beta's shape must be same."
-                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma",
                                                                        "input_beta", error_detail)
             if ori_shape_x[begin_params_axis:] != shape_gamma:
                 error_detail = "x or gamma or begin_params_axis is wrong."
-                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x",
                                                                        "input_gamma", error_detail)
             if len(shape_gamma) > 1:
                 error_detail = "shape of gamma or beta only support 1D in bert"
@@ -809,7 +810,7 @@ def layer_norm(input_x, input_gamma, input_beta,
 
             if shape_gamma != shape_beta:
                 error_detail = "gamma and beta's shape must be same."
-                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma",
                                                                        "input_beta", error_detail)
             no_need_fix_gamma = False
             no_need_fix_beta = False
@@ -818,14 +819,14 @@ def layer_norm(input_x, input_gamma, input_beta,
                     no_need_fix_gamma = True
                 else:
                     error_detail = "x or gamma or begin_params_axis is wrong."
-                    error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                    error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x",
                                                                            "input_gamma", error_detail)
             if shape_x[begin_params_axis:] != shape_beta:
                 if len(shape_x) == len(shape_beta):
                     no_need_fix_beta = True
                 else:
                     error_detail = "x or gamma or begin_params_axis is wrong."
-                    error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                    error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x",
                                                                            "input_beta", error_detail)
             # make shape_x,shape_gamma,shape_beta dim same
             if begin_params_axis != 0 and not no_need_fix_gamma:
@@ -852,7 +853,7 @@ def layer_norm(input_x, input_gamma, input_beta,
                                    output_y, output_mean, output_variance,
                                    begin_norm_axis, begin_params_axis,
                                    ori_shape_x, epsilon, kernel_name, impl_mode)
-            else: 
+            else:
                 mean, variance, res = \
                     layer_norm_compute_nz(data_x, data_gamma, data_beta,
                                         output_y, output_mean, output_variance,

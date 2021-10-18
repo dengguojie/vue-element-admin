@@ -22,9 +22,10 @@ from impl.ascend import AContainer
 from impl.ascend import TensorOperatorParam
 from impl.ascend import VecCmd
 from impl.ascend import VecExecutor
+from impl.util.util_tik_comm_func import ceil_div
 
 
-class LayerNormalizeBase(object):
+class LayerNormalizeBase:
     """
     layer normalize
     """
@@ -83,18 +84,16 @@ class LayerNormalizeBase(object):
                 self.variance_ub_type = self.tik_inst.Tensor(self.ub_type, batch_shape_align, self.tik.scope_gm,
                                                              "variance_ub_type", is_workspace=True, is_atomic_add=True)
 
-    def _ceil_div(self, dividend, divisor):
-        result = (dividend + divisor - 1) // divisor
-        return result
-
-    def _get_loop_info(self, all_data_num, each_loop_num):
-        loop_times = self._ceil_div(all_data_num, each_loop_num)
+    @staticmethod
+    def _get_loop_info( all_data_num, each_loop_num):
+        loop_times = ceil_div(all_data_num, each_loop_num)
         last_loop_num = all_data_num - each_loop_num * (loop_times - 1)
         return loop_times, last_loop_num
 
-    def _get_align_num(self, input_num, align_num, ceil=True):
+    @staticmethod
+    def _get_align_num(input_num, align_num, ceil=True):
         if ceil:
-            result = self._ceil_div(input_num, align_num) * align_num
+            result = ceil_div(input_num, align_num) * align_num
         else:
             result = input_num // align_num * align_num
         return result
@@ -129,6 +128,7 @@ class LayerNormalizeBase(object):
     def split_shape(input_tensor, dim_split):
         """
         split shape
+        :return: number, batch_num, data_num, dim_split
         """
         shape_split = input_tensor.get("shape")
         if dim_split < 0:
@@ -144,6 +144,10 @@ class LayerNormalizeBase(object):
 
     @staticmethod
     def _get_each_data_size(gm_type, cont):
+        """
+        get each data size
+        :return: number, each data size
+        """
         ub_type = "float32"
         ub_data_size = float(cont.const_dtype_byte.get(ub_type))
         ub_repeat_data_num = cont.get_vec_proc_num_per_cmd(ub_type)
@@ -159,6 +163,7 @@ class LayerNormalizeBase(object):
     def mode_split_n_max_num(ub_size, gm_type, cont):
         """
         split max number
+        :return: number
         """
         block_size = cont.const_block_byte
         # expand_tensor: batch_mean_ub, batch_mean_square_ub, batch_variance_ub, work_tensor_ub
@@ -206,9 +211,9 @@ class LayerNormalizeBase(object):
             variance_gm = self.variance
         if self.output_mean_var:
             self.tik_inst.set_atomic_add(1)
-            block_num = self._ceil_div(batch_num, self.ub_block_data_num)
-            self.data_move(mean_gm[batch_index_start,], batch_mean_ub, 0, 1, block_num, 0, 0)
-            self.data_move(variance_gm[batch_index_start,], batch_variance_ub, 0, 1, block_num, 0, 0)
+            block_num = ceil_div(batch_num, self.ub_block_data_num)
+            self._data_move(mean_gm[batch_index_start], batch_mean_ub, 0, 1, block_num, 0, 0)
+            self._data_move(variance_gm[batch_index_start], batch_variance_ub, 0, 1, block_num, 0, 0)
             self.tik_inst.set_atomic_add(0)
 
     def _mean_var_move_out_fp16(self, batch_index_start, batch_num):
@@ -234,15 +239,15 @@ class LayerNormalizeBase(object):
                      VecCmd(cmd_name="vconv", dst_name="var_gm_type_ub",
                             src0_name="var_ub_type_ub", round_mode="")
                      ]
-        self.data_move(mean_ub_type_ub, self.mean_ub_type[batch_index_start,],
-                       0, 1, block_num_move_in, 0, 0)
-        self.data_move(var_ub_type_ub, self.variance_ub_type[batch_index_start,],
-                       0, 1, block_num_move_in, 0, 0)
+        self._data_move(mean_ub_type_ub, self.mean_ub_type[batch_index_start],
+                        0, 1, block_num_move_in, 0, 0)
+        self._data_move(var_ub_type_ub, self.variance_ub_type[batch_index_start],
+                        0, 1, block_num_move_in, 0, 0)
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_vconv, "mean_ub_type_ub")
-        self.data_move(self.mean[batch_index_start,], mean_gm_type_ub,
-                       0, 1, block_num_move_out, 0, 0)
-        self.data_move(self.variance[batch_index_start,], var_gm_type_ub,
-                       0, 1, block_num_move_out, 0, 0)
+        self._data_move(self.mean[batch_index_start], mean_gm_type_ub,
+                        0, 1, block_num_move_out, 0, 0)
+        self._data_move(self.variance[batch_index_start], var_gm_type_ub,
+                        0, 1, block_num_move_out, 0, 0)
 
     def _count_rec_std_ne_mean(self, buf_mean_all):
         cmd_count_rec_std_ne_mean = [
@@ -256,7 +261,7 @@ class LayerNormalizeBase(object):
                    src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"), ]  # 1/std(x)
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_count_rec_std_ne_mean, "batch_mean_ub")
 
-    def data_move(self, dst, src, sid, nburst, burst, src_stride, dst_stride):
+    def _data_move(self, dst, src, sid, nburst, burst, src_stride, dst_stride):
         """
         move data
         """
@@ -264,7 +269,7 @@ class LayerNormalizeBase(object):
             self.tik_inst.data_move(dst, src, sid, nburst, burst, src_stride, dst_stride)
 
     def _mode_compute(self, mode_compute_each_core):
-        each_core_batch_num = self._ceil_div(self.batch_num, self.ai_core_use)
+        each_core_batch_num = ceil_div(self.batch_num, self.ai_core_use)
         self.ai_core_use, last_core_batch_num = self._get_loop_info(self.batch_num, each_core_batch_num)
         sync_workspace = None
         if self.gm_type != self.ub_type and self.ai_core_use > 1:
@@ -407,8 +412,8 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
         cmd_dup_tensor = [VecCmd(cmd_name="vector_dup", dst_name=tensor_name, scalar=0)]
         VecExecutor.exec_vec_cmd(buf_sum_ub, cmd_dup_tensor, tensor_name)
         if mode == 0:
-            block_num = self._ceil_div(data_num, self.gm_block_data_num)
-            self.data_move(tensor_ub, tensor_gm[batch_index, start_index], 0, 1, block_num, 0, 0)
+            block_num = ceil_div(data_num, self.gm_block_data_num)
+            self._data_move(tensor_ub, tensor_gm[batch_index, start_index], 0, 1, block_num, 0, 0)
             if data_num % self.gm_block_data_num != 0:
                 mask_h, mask_l, data_num_floor = self._get_mask(data_num,
                                                                 self.gm_repeat_data_num,
@@ -416,12 +421,12 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
                 self.tik_inst.vector_dup([mask_h, mask_l], tensor_ub[data_num_floor], 0.0, 1, 1, 8)
         else:
             block_num = data_num // self.gm_block_data_num
-            self.data_move(tensor_ub, tensor_gm[batch_index, start_index], 0, 1, block_num, 0, 0)
+            self._data_move(tensor_ub, tensor_gm[batch_index, start_index], 0, 1, block_num, 0, 0)
             if data_num % self.gm_block_data_num != 0:
                 last_block_ub_index, last_block_gm_index = self._get_last_block_info(start_index, data_num)
-                self.data_move(tensor_ub[last_block_ub_index],
-                               tensor_gm[batch_index, last_block_gm_index],
-                               0, 1, 1, 0, 0)
+                self._data_move(tensor_ub[last_block_ub_index],
+                                tensor_gm[batch_index, last_block_gm_index],
+                                0, 1, 1, 0, 0)
 
         if self.gm_type != self.ub_type:
             cmd_vconv = [VecCmd(cmd_name="vconv", dst_name=ub_data_tensor_ub_name,
@@ -440,7 +445,8 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
         self.tik_inst.vmuls(mask_mean, mean_temp_ub, mean_temp_ub, 1.0 / self.data_num, 1, 1, 1, 8, 8)
         self.tik_inst.vadd(mask_mean, mean_data_ub, mean_data_ub, mean_temp_ub, 1, 1, 1, 1, 8, 8, 8)
 
-    def _count_mean_var(self, buf_mean_all):
+    @staticmethod
+    def _count_mean_var(buf_mean_all):
         # count mean, mean_square, variance
         cmd_count_mean_var = [
             VecCmd(cmd_name="vmul", dst_name="batch_variance_ub",
@@ -540,11 +546,11 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
         else:
             tensor_ub = data_tensor_ub
         block_num = data_num // self.gm_block_data_num
-        self.data_move(self.input_y[batch_index, start_index], tensor_ub, 0, 1, block_num, 0, 0)
+        self._data_move(self.input_y[batch_index, start_index], tensor_ub, 0, 1, block_num, 0, 0)
         if data_num % self.gm_block_data_num != 0:
             last_block_ub_index, last_block_gm_index = self._get_last_block_info(start_index, data_num)
-            self.data_move(self.input_y[batch_index, last_block_gm_index], tensor_ub[last_block_ub_index], 0, 1, 1, 0,
-                           0)
+            self._data_move(self.input_y[batch_index, last_block_gm_index], tensor_ub[last_block_ub_index], 0, 1, 1, 0,
+                            0)
 
 
 class LayerNormalizeSplitN(LayerNormalizeBase):
@@ -584,7 +590,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         each_data_size = self._get_each_data_size(self.gm_type, self.cont)
         each_batch_data_size = each_data_size * each_batch_data_num_align + ub_data_size * expand_tensor_num
         max_loop_batch_num = int(ub_size_remain / each_batch_data_size)
-        each_thread_batch_num = self._ceil_div(batch_num, thread_num)
+        each_thread_batch_num = ceil_div(batch_num, thread_num)
         each_loop_batch_num = min(max_loop_batch_num, each_thread_batch_num)
         return each_loop_batch_num
 
@@ -675,10 +681,10 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         each_batch_gm_block_num = self.data_num // self.gm_block_data_num
         # if data 32byte align
         if self.data_num == data_num_align:
-            self.data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, 1, batch_num * each_batch_gm_block_num, 0, 0)
+            self._data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, 1, batch_num * each_batch_gm_block_num, 0, 0)
         elif self.data_num % self.gm_block_data_num == 0:
-            self.data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, batch_num, each_batch_gm_block_num,
-                           0, each_batch_ub_block_num - each_batch_gm_block_num)
+            self._data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, batch_num, each_batch_gm_block_num,
+                            0, each_batch_ub_block_num - each_batch_gm_block_num)
         # if data not 32byte align
         else:
             self._data_move_in_not_align(tensor_ub, tensor_gm, batch_index_start, batch_num, mode)
@@ -687,25 +693,25 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
 
     def _data_move_in_not_align(self, tensor_ub, tensor_gm, batch_index_start, batch_num, mode):
         if mode == 0:
-            each_batch_block_num = self._ceil_div(self.data_num, self.gm_block_data_num)
+            each_batch_block_num = ceil_div(self.data_num, self.gm_block_data_num)
             mask_h, mask_l, data_num_floor = self._get_mask(self.data_num, self.gm_repeat_data_num,
                                                             self.gm_block_data_num)
             with self.tik_inst.for_range(0, batch_num) as batch_index:
-                self.data_move(tensor_ub[batch_index, 0],
-                               tensor_gm[batch_index_start + batch_index, 0],
-                               0, 1, each_batch_block_num, 0, 0)
+                self._data_move(tensor_ub[batch_index, 0],
+                                tensor_gm[batch_index_start + batch_index, 0],
+                                0, 1, each_batch_block_num, 0, 0)
                 self.tik_inst.vector_dup([mask_h, mask_l], tensor_ub[batch_index, data_num_floor],
                                          0.0, 1, 1, 8)
         else:
             block_num_floor = self.data_num // self.gm_block_data_num
             last_block_ub_index, last_block_gm_index = self._get_last_block_info()
             with self.tik_inst.for_range(0, batch_num) as batch_index:
-                self.data_move(tensor_ub[batch_index, 0],
-                               tensor_gm[batch_index_start + batch_index, 0],
-                               0, 1, block_num_floor, 0, 0)
-                self.data_move(tensor_ub[0, last_block_ub_index],
-                               tensor_gm[batch_index_start + batch_index, last_block_gm_index],
-                               0, 1, 1, 0, 0)
+                self._data_move(tensor_ub[batch_index, 0],
+                                tensor_gm[batch_index_start + batch_index, 0],
+                                0, 1, block_num_floor, 0, 0)
+                self._data_move(tensor_ub[0, last_block_ub_index],
+                                tensor_gm[batch_index_start + batch_index, last_block_gm_index],
+                                0, 1, 1, 0, 0)
 
     def _get_last_block_info(self):
         last_block_ub_index = self._get_align_num(self.data_num, self.gm_block_data_num, False)
@@ -753,14 +759,14 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
             last_block_ub_index, last_block_gm_index = self._get_last_block_info()
             if self.gm_type == self.ub_type:
                 with self.tik_inst.for_range(0, batch_num) as batch_index:
-                    self.data_move(input_data_ub[batch_index, last_block_ub_index],
-                                   self.input_x[batch_index_start + batch_index, last_block_gm_index],
-                                   0, 1, 1, 0, 0)
+                    self._data_move(input_data_ub[batch_index, last_block_ub_index],
+                                    self.input_x[batch_index_start + batch_index, last_block_gm_index],
+                                    0, 1, 1, 0, 0)
             else:
                 with self.tik_inst.for_range(0, batch_num) as batch_index:
-                    self.data_move(gm_data_tensor_ub,
-                                   self.input_x[batch_index_start + batch_index, last_block_gm_index],
-                                   0, 1, 1, 0, 0)
+                    self._data_move(gm_data_tensor_ub,
+                                    self.input_x[batch_index_start + batch_index, last_block_gm_index],
+                                    0, 1, 1, 0, 0)
                     self.tik_inst.vconv(self.gm_block_data_num, "",
                                         input_data_ub[batch_index, last_block_ub_index],
                                         gm_data_tensor_ub, 1, 1, 1, 8, 8)
@@ -807,18 +813,18 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         each_batch_ub_block_num = data_num_align // self.gm_block_data_num
         each_batch_gm_block_num = self.data_num // self.gm_block_data_num
         if self.data_num == data_num_align:
-            self.data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, 1, batch_num * each_batch_gm_block_num, 0,
-                           0)
+            self._data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, 1, batch_num * each_batch_gm_block_num, 0,
+                            0)
         elif self.data_num % self.gm_block_data_num == 0:
-            self.data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, batch_num, each_batch_gm_block_num,
-                           each_batch_ub_block_num - each_batch_gm_block_num, 0)
+            self._data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, batch_num, each_batch_gm_block_num,
+                            each_batch_ub_block_num - each_batch_gm_block_num, 0)
         else:
             last_block_ub_index, last_block_gm_index = self._get_last_block_info()
             with self.tik_inst.for_range(0, batch_num) as batch_index:
-                self.data_move(self.input_y[batch_index_start + batch_index, 0], tensor_ub[batch_index, 0],
-                               0, 1, each_batch_gm_block_num, 0, 0)
-                self.data_move(self.input_y[batch_index_start + batch_index, last_block_gm_index],
-                               tensor_ub[batch_index, last_block_ub_index], 0, 1, 1, 0, 0)
+                self._data_move(self.input_y[batch_index_start + batch_index, 0], tensor_ub[batch_index, 0],
+                                0, 1, each_batch_gm_block_num, 0, 0)
+                self._data_move(self.input_y[batch_index_start + batch_index, last_block_gm_index],
+                                tensor_ub[batch_index, last_block_ub_index], 0, 1, 1, 0, 0)
 
 
 def if_support_dtype(params, support_dtype):

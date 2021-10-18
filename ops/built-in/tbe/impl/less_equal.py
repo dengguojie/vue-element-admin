@@ -20,22 +20,21 @@ import te.lang.cce as tbe
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from impl.constant_util import MIN_FP32 as SCALAR_MIN_FP32
+from impl.constant_util import MIN_FP16 as SCALAR_MIN_FP16
 
-# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2**(-126)
-# define a scalar, value = 2**(50)
-SCALAR_MUL_FP32 = 2**(50)
-# define a scalar, value = 2**(26)
-SCALAR_MUL2_FP32 = 2**(26)
-# define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-SCALAR_MIN_FP16 = 2**(-24)
-# define a scalar, value = 2**(12)
-SCALAR_MUL_FP16 = 2**(12)
-# define a scalar, value = 1
-SCALAR_ONE = 1
 
-# limit of input shape
-MAX_SHAPE_NUM = 10000000
+class Constant:
+    """
+    Constant for less_equal
+    """
+    # define a scalar, `value = 2**(50)`
+    SCALAR_MUL_FP32 = 2 ** 50
+    # define a scalar, `value = 2**(26)`
+    SCALAR_MUL2_FP32 = 2 ** 26
+    # define a scalar, `value = 2**(12)`
+    SCALAR_MUL_FP16 = 2 ** 12
+
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("less_equal")
@@ -70,23 +69,23 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
         tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP32,
                                              dtype="float32"),
                                    shape_broadcast)
-        tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP32,
+        tensor_mul = tbe.broadcast(tvm.const(Constant.SCALAR_MUL_FP32,
                                              dtype="float32"),
                                    shape_broadcast)
-        tensor_mul1 = tbe.broadcast(tvm.const(SCALAR_MUL2_FP32,
+        tensor_mul1 = tbe.broadcast(tvm.const(Constant.SCALAR_MUL2_FP32,
                                               dtype="float32"),
                                     shape_broadcast)
-        tensor_one = tbe.broadcast(tvm.const(SCALAR_ONE,
+        tensor_one = tbe.broadcast(tvm.const(1,
                                              dtype="float32"),
                                    shape_broadcast)
     else:
         tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP16,
                                              dtype="float16"),
                                    shape_broadcast)
-        tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP16,
+        tensor_mul = tbe.broadcast(tvm.const(Constant.SCALAR_MUL_FP16,
                                              dtype="float16"),
                                    shape_broadcast)
-        tensor_one = tbe.broadcast(tvm.const(SCALAR_ONE,
+        tensor_one = tbe.broadcast(tvm.const(1,
                                              dtype="float16"),
                                    shape_broadcast)
 

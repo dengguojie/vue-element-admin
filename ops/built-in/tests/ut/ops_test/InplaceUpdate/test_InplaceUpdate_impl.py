@@ -51,12 +51,12 @@ case6 = {"params": [{"shape": (32,16), "dtype": "float32", "format": "ND", "ori_
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
 
 def test_op_select_format(test_arg):
     from impl.inplace_update import check_supported
@@ -67,6 +67,35 @@ def test_op_select_format(test_arg):
         {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"}
     )
 
+
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+
+
+def test_check_supported(test_arg):
+    from impl.inplace_update import check_supported
+    x = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    indices = {"shape": (32, ), "dtype": "int32", "format": "ND", "ori_shape": (32, ),"ori_format": "ND"}
+    v = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    y = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    supported, reason = check_supported(x, indices, v, y)
+    assert supported
+
+    x = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    indices = {"shape": (32, 32), "dtype": "int32", "format": "ND", "ori_shape": (32, 32),"ori_format": "ND"}
+    v = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    y = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    supported, reason = check_supported(x, indices, v, y)
+    assert not supported
+
+    x = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    indices = {"shape": (32, 32), "dtype": "int32", "format": "ND", "ori_format": "ND"}
+    v = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    y = {"shape": (32,16), "dtype": "float32", "format": "ND", "ori_shape": (32,16),"ori_format": "ND"}
+    supported, reason = check_supported(x, indices, v, y)
+    assert not supported
+
+
+ut_case.add_cust_test_func(test_func=test_check_supported)
+
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")

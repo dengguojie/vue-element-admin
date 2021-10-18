@@ -21,10 +21,8 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
-SHAPE_SIZE_LIMIT = 2147483648   # max shape size
 
-
-#pylint: disable=unused-argument
+# pylint: disable=unused-argument
 @fusion_manager.register("log_sigmoid_grad")
 def log_sigmoid_grad_compute(grads, features, backprops, kernel_name='log_sigmoid_grad'):
     """
@@ -35,7 +33,7 @@ def log_sigmoid_grad_compute(grads, features, backprops, kernel_name='log_sigmoi
     :param kernel_name: cce kernel name, default value is 'log_sigmoid_grad'
     :return: gradient of log_sigmoid
     """
-    # input tensor broadcasr
+    # input tensor broadcast
     shape_1 = shape_util.shape_to_list(grads.shape)
     shape_2 = shape_util.shape_to_list(features.shape)
     shape_1, shape_2, shape_max = shape_util.produce_shapes(shape_1, shape_2)
@@ -67,7 +65,7 @@ def log_sigmoid_grad_compute(grads, features, backprops, kernel_name='log_sigmoi
     return res
 
 
-#pylint: disable=unused-argument
+# pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def log_sigmoid_grad(grads, features, backprops, kernel_name='log_sigmoid_grad'):
@@ -89,14 +87,14 @@ def log_sigmoid_grad(grads, features, backprops, kernel_name='log_sigmoid_grad')
     # operator check
     para_check.check_shape_rule(grads_shape)
     para_check.check_shape_rule(features_shape)
-    para_check.check_shape_size(grads_shape, limit=SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(features_shape, limit=SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(grads_shape)
+    para_check.check_shape_size(features_shape)
     para_check.check_dtype_rule(grads_dtype, check_list)
     para_check.check_dtype_rule(features_dtype, check_list)
     para_check.check_kernel_name(kernel_name)
 
     # tensor placeholder
-    data_grads = tvm.placeholder(grads_shape, name='data_grads', dtype= grads_dtype)
+    data_grads = tvm.placeholder(grads_shape, name='data_grads', dtype=grads_dtype)
     data_features = tvm.placeholder(features_shape, name='data_features', dtype=features_dtype)
 
     # log sigmoid backward compute function

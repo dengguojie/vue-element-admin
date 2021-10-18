@@ -22,9 +22,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_select_op_base
 
-# shape limit for aicore equals 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
 
 # pylint: disable = unused-argument,unused-variable,too-many-locals
 def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):

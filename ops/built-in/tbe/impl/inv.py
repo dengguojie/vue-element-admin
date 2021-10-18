@@ -23,9 +23,6 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 
-# define a scalar , value = 1
-SCALAR_ONE = 1
-
 
 # pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("inv")
@@ -50,7 +47,7 @@ def inv_compute(input_x, output_y, kernel_name="inv"):
     dtype = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)
 
-    temp_const = tvm.const(SCALAR_ONE, dtype=dtype)
+    temp_const = tvm.const(1, dtype=dtype)
     temp_tensor = tbe.broadcast(temp_const, shape, dtype)
     res = tbe.vdiv(temp_tensor, input_x)
 

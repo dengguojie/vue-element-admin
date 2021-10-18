@@ -23,15 +23,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-
-# MAX ELIMENT NUM OF FP16 IN 1BLOCK
-FP16_ELIMENTS_BLOCK = 16
-# MAX ELIMENT NUM OF FP32 IN 1BLOCK
-FP32_ELIMENTS_BLOCK = 8
-# CONST GTBOX SLICE SEGMENT
-GTBOX_SEGMENT = 4096 * 4
-# CONST BBOX SLICE SEGMENT
-BBOX_SEGMENT = 4096 * 4
+from impl import common_util
 
 
 # pylint: disable = unused-argument
@@ -42,7 +34,7 @@ def get_op_support_info(bboxes, gtboxes, overlap, mode="iou", kernel_name="iou")
     format_bboxes = bboxes.get("format").upper()
     format_gtboxes = gtboxes.get("format").upper()
     if format_bboxes == "ND" and format_gtboxes == "ND":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
             [SplitInput([1, [0], [-1], [-1]]), SplitOutput([0, [0]])]
         ]
@@ -102,9 +94,14 @@ def _get_ceil_int(int1, int2):
 
 
 # pylint: disable=too-many-instance-attributes
-class Iou():
+class Iou:
     """Function: use to finish Iou main functions
     """
+
+    # CONST GTBOX SLICE SEGMENT
+    GTBOX_SEGMENT = 4096 * 4
+    # CONST BBOX SLICE SEGMENT
+    BBOX_SEGMENT = 4096 * 4
 
     # pylint: disable=too-many-statements
     def __init__(self, bboxes, gtboxes, mode, eps):
@@ -197,17 +194,14 @@ class Iou():
         self.gtboxes_y0 = None
         self.gtboxes_y1 = None
         self.index_reg = []
-        block_parm_dict = {
-            "float16": FP16_ELIMENTS_BLOCK,
-            "float32": FP32_ELIMENTS_BLOCK,
-        }
-        self.min_point_per_core = block_parm_dict[self.bboxes_dtype]
-        self.eliments_per_block = block_parm_dict[self.bboxes_dtype]
-        self.gt_ub_segment = GTBOX_SEGMENT if self.bboxes_dtype == "float16" \
-            else GTBOX_SEGMENT // 2
-        self.bb_ub_segment = BBOX_SEGMENT if self.bboxes_dtype == "float16" \
-            else BBOX_SEGMENT // 2
-        self.max_eliments = block_parm_dict[self.bboxes_dtype] * 8
+        block_element = common_util.get_block_element(self.bboxes_dtype)
+        self.min_point_per_core = block_element
+        self.eliments_per_block = block_element
+        self.gt_ub_segment = self.GTBOX_SEGMENT if self.bboxes_dtype == "float16" \
+            else self.GTBOX_SEGMENT // 2
+        self.bb_ub_segment = self.BBOX_SEGMENT if self.bboxes_dtype == "float16" \
+            else self.BBOX_SEGMENT // 2
+        self.max_eliments = block_element * 8
         if self.product is False:
             self.bb_ub_segment = self.bb_ub_segment // 2
 
@@ -368,7 +362,7 @@ class Iou():
                     self._run_segment(bb_tail, gm_point_offset)
 
     def iou_process_cut_by_gt(self):
-        """do process and scedule by gt
+        """do process and schedule by gt
            main function
 
         Parameters
@@ -533,6 +527,9 @@ class Iou():
                     _run(self.point_per_core * 4)
 
     def _apply_all_ub(self):
+        """
+        _apply_all_ub
+        """
         self.area_x0 = _apply_mem(self.tik_instance, self.dtype,
                                   [self.area_x0_size], "area_x0")
         self.area_x1 = _apply_mem(self.tik_instance, self.dtype,
@@ -560,6 +557,12 @@ class Iou():
         self.gt_boxes_area_ub = _apply_mem(self.tik_instance, self.dtype,
                                            [self.gt_area_ub_size],
                                            "gt_boxes_area_ub")
+
+    def _get_scalar_list(self, dtype, count):
+        result = []
+        for _ in range(count):
+            result.append(self.tik_instance.Scalar(dtype=self.dtype))
+        return result
 
     def _run_segment(self, run_bb_point_segment, gm_offset, gm_out_offset=0):
         """
@@ -606,8 +609,7 @@ class Iou():
                                      [self.eliments_per_block], "gtboxes_y0")
         self.gtboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
                                      [self.eliments_per_block], "gtboxes_y1")
-        scalar_addr = \
-            [self.tik_instance.Scalar(dtype=self.dtype) for _ in range(4)]
+        scalar_addr = self._get_scalar_list(self.dtype, 4)
         scalar_area = self.tik_instance.Scalar(dtype=self.dtype)
         with self.tik_instance.for_range(
                 0, self.gtboxes_num) as gt_global_index:
@@ -729,7 +731,7 @@ class Iou():
         result: tik_instance
             tik_instance
         """
-        if self.gtboxes_shape[0] * 4 <= GTBOX_SEGMENT:
+        if self.gtboxes_shape[0] * 4 <= self.GTBOX_SEGMENT:
             self.iou_process()
         else:
             self.iou_process_cut_by_gt()

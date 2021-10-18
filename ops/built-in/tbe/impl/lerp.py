@@ -21,11 +21,8 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-SHAPE_SIZE_LIMIT = 2147483648
-
-
 @fusion_manager.register("lerp")
-#pylint: disable=unused-argument
+# pylint: disable=unused-argument
 def lerp_compute(start, end, weight, y, kernel_name="lerp"):
     """
     Compute
@@ -105,9 +102,9 @@ def lerp(start, end, weight, y, kernel_name="lerp"):
     para_check.check_shape_rule(shape_y)
     para_check.check_shape_rule(shape_z)
 
-    para_check.check_shape(shape_x, 0, SHAPE_SIZE_LIMIT)
-    para_check.check_shape(shape_y, 0, SHAPE_SIZE_LIMIT)
-    para_check.check_shape(shape_x, 0, SHAPE_SIZE_LIMIT)
+    para_check.check_shape(shape_x)
+    para_check.check_shape(shape_y)
+    para_check.check_shape(shape_x)
 
     para_check.check_kernel_name(kernel_name)
 
@@ -117,7 +114,7 @@ def lerp(start, end, weight, y, kernel_name="lerp"):
     shape_x, shape_y, shape_tmp = shape_util.produce_shapes(shape_x, shape_y)
     shape_tmp, shape_z, shape_max = shape_util.produce_shapes(shape_tmp, shape_z)
 
-    para_check.check_shape(shape_max, 0, SHAPE_SIZE_LIMIT)
+    para_check.check_shape(shape_max)
 
     data_x = tvm.placeholder(shape_x, name="data_1", dtype=input_dtype)
     data_y = tvm.placeholder(shape_y, name="data_2", dtype=input_dtype)

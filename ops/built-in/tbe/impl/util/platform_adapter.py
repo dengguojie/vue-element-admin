@@ -27,6 +27,7 @@ from tbe.common import buildcfg
 from tbe.common.buildcfg import get_current_build_config
 from tbe.common.platform import platform_info
 from tbe.common.utils import log as tbe_log
+from tbe.common.utils.errormgr import error_manager_vector
 from te.platform.fusion_manager import fusion_manager as tbe_fusion_manager
 import te.platform.cce_build as tbe_cce_build
 from te.lang.cce import tuple_sum as te_tuple_sum
@@ -263,7 +264,6 @@ shape_util = platform_tbe.common.utils.shape_util
 error_manager = platform_tbe.common.utils.errormgr
 op_tiling = platform_tbe.common.utils.op_tiling
 
-error_manager_vector = platform_tbe.common.utils.errormgr
 error_manager_util = platform_tbe.common.utils.errormgr.error_manager_util
 error_manager_cube = platform_tbe.common.utils.errormgr.error_manager_cube
 classify = tbe.classify

@@ -174,7 +174,6 @@ def lamb_next_right(input_square, input_mul2, mul2_x, mul3_x,
     dtype_truediv1_recip = truediv1_recip.get("dtype").lower()
     dtype_add2_y = add2_y.get("dtype").lower()
 
-
     # broadcast
     shape_input_square, shape_mul3_x, shape_max_mul3 = \
         shape_util.broadcast_shapes(shape_input_square, shape_mul3_x,

@@ -127,3 +127,15 @@ SIZE_SIXTEEN = 16
 
 # int32's max value 2 ** 31 - 1
 SHAPE_SIZE_LIMIT = 2147483647
+
+# min float32 value
+MIN_FP32 = 2 ** (-126)
+
+# min float16 value
+MIN_FP16 = 2 ** (-24)
+
+# size of c0
+C0_SIZE = 16
+
+# Minimum positive number greater than 0
+EPSLON = 1e-12

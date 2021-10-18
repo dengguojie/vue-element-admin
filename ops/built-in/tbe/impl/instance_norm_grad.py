@@ -23,9 +23,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
-# minimum positive number greater than 0
-EPSLON = 1e-6
-
 
 # pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
 def _check_params(params):
@@ -109,7 +106,8 @@ def _get_pd_var_front(data):
     compute front part of pd_var according to data_variance
     """
     shape_var = shape_util.shape_to_list(data.get("data_variance").shape)
-    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(EPSLON, dtype="float32"))
+    default_instance_norm_grad_epsilon = 1e-6
+    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(default_instance_norm_grad_epsilon, dtype="float32"))
     var_elta_sqrt = tbe.vsqrt(var_elta)
     tesor_one = tbe.broadcast(tvm.const(1, "float32"), shape_var)
     var_elta_rsqrt = tbe.vdiv(tesor_one, var_elta_sqrt)

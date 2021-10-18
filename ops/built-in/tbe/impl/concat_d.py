@@ -18,7 +18,7 @@
 concat_d
 """
 from te.utils import para_check
-from impl import concat_v2_d
+from impl.concat_v2_d import concat_v2_d
 from impl.concat_v2_d import op_select_format as concat_v2_op_select_format
 from impl.concat_v2_d import get_op_support_info as concat_v2_get_op_support_info
 from impl.util.util_select_op_base import SplitInput
@@ -82,4 +82,4 @@ def concat_d(input_values, output_data, concat_dim, kernel_name="concat"):
     """
     # concat_d is the same as concat_v2_d
     # use concat_v2_d to replace
-    concat_v2_d.concat_v2_d(input_values, output_data, concat_dim, kernel_name)
+    concat_v2_d(input_values, output_data, concat_dim, kernel_name)

@@ -60,11 +60,10 @@ def kl_div_compute(input_x, input_target, output_y, reduction, batch_size, kerne
     tmp_result = tbe.vsub(log_target, input_x)
     output_pos = tbe.vmul(input_target, tmp_result)
 
-    # max(output_pos, 0)
     target_gt_zero = tbe.vmaxs(input_target, 0)
 
     if input_dtype == "float16":
-        # algrithm : Y = X*1024/(X*1024+ESP_MIN)
+        # algorithm : `Y = X*1024/(X*1024+ESP_MIN)`
         # for float16, add a small number which value is 1.18e-7, so that the
         # divisor is not equal to 0, and for accuracy, multiply by a number
         # which value is 1024.
@@ -72,7 +71,7 @@ def kl_div_compute(input_x, input_target, output_y, reduction, batch_size, kerne
         add_espmin = tbe.vadds(mul_big, 1.18e-7)
         y_espmin = tbe.vdiv(mul_big, add_espmin)
     if input_dtype == "float32":
-        # algrithm : Y = X/(X*+ESP_MIN)
+        # algorithm : `Y = X/(X+ESP_MIN)`
         # for float32, add a small number which value is 1.18e-38, so that
         # the divisor is not equal to 0.
         add_espmin = tbe.vadds(target_gt_zero, 1.18e-38)

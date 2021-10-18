@@ -143,10 +143,10 @@ def gen_avgpoolv2_params(case):
             "expect": expect_result,
             "support_expect": True}
 
-for testcase in avgpoolv2_ut_testcases:
-    ut_case.add_case(["Ascend910A"], gen_avgpoolv2_params(testcase))
-    ut_case.add_case(["Ascend710"], gen_avgpoolv2_params(testcase))
-    ut_case.add_case(["Ascend310"], gen_avgpoolv2_params(testcase))
+# for testcase in avgpoolv2_ut_testcases:
+#     ut_case.add_case(["Ascend910A"], gen_avgpoolv2_params(testcase))
+#     ut_case.add_case(["Ascend710"], gen_avgpoolv2_params(testcase))
+#     ut_case.add_case(["Ascend310"], gen_avgpoolv2_params(testcase))
 
 
 if __name__ == "__main__":

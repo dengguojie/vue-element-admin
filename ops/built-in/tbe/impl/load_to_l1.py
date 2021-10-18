@@ -20,8 +20,6 @@ from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te import platform as cce
 
-PARA_LIST_LEN = 5
-
 
 # pylint: disable=locally-disabled,unused-argument,unnecessary-lambda
 @fusion_manager.register("load_to_l1")

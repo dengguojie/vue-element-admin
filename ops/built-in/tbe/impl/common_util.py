@@ -91,7 +91,7 @@ def get_data_size(datatype):
                     }
     data_size = datatype_map.get(datatype)
     if data_size is None:
-        raise RuntimeError("datatype %s is not support!", datatype)
+        raise RuntimeError("datatype %s is not support!" % (datatype))
 
     return data_size
 
@@ -170,3 +170,13 @@ def move_out_non32_alignment(input_dict):
                            constant.SID, constant.DEFAULT_NBURST,
                            constant.DEFAULT_BURST_LEN,
                            constant.STRIDE_ZERO, constant.STRIDE_ZERO)
+
+
+def get_block_element(datatype):
+    """
+    get the count of element that one block has.
+    :param datatype: data type
+    :return: count
+    """
+    data_type_size = get_data_size(datatype)
+    return constant.BLOCK_SIZE // data_type_size

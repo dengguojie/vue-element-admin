@@ -478,3 +478,7 @@ ut_case.add_case("all", {
     "params": [cache, w2, b2, seq_wrong, None, output_y, output_h, None, None, None, None],
     "expect": RuntimeError
 })
+
+if __name__ == '__main__':
+    ut_case.run("Ascend310")
+    exit(0)

@@ -18,16 +18,14 @@ log_sigmoid
 import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
-from te.utils.shape_util import broadcast_shapes, shape_to_list
+from te.utils.shape_util import shape_to_list
 from te.utils import para_check
 from te.platform.cce_conf import api_check_support
 
-SHAPE_SIZE_LIMIT = 2147483648       # max shape size
-
 
 @fusion_manager.register("log_sigmoid")
-#pylint: disable=unused-argument
-def log_sigmoid_compute(x, y, kernel_name='log_sigmoid'): 
+# pylint: disable=unused-argument
+def log_sigmoid_compute(x, y, kernel_name='log_sigmoid'):
     """
     log-sigmoid function compute
     :param x: the shape and dtype of input tensor
@@ -70,14 +68,13 @@ def log_sigmoid_compute(x, y, kernel_name='log_sigmoid'):
         res = tbe.cast_to(res, "float16")
     if dtype_x == "float32" and not cloud_flag:
         res = tbe.cast_to(res, "float32")
-    
+
     return res
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-                            
 def log_sigmoid(x, y, kernel_name='log_sigmoid'):
     """
     log-sigmoid function compute
@@ -90,23 +87,23 @@ def log_sigmoid(x, y, kernel_name='log_sigmoid'):
     x_shape = x.get("shape")
     x_dtype = x.get("dtype").lower()
     check_list = ("float16", "float32")
-    
+
     # operator check
     para_check.check_shape_rule(x_shape)
-    para_check.check_shape_size(x_shape, limit=SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(x_shape)
     para_check.check_dtype_rule(x_dtype, check_list)
     para_check.check_kernel_name(kernel_name)
-    
+
     # tensor placeholder
     data_x = tvm.placeholder(x_shape, name='data_x', dtype=x_dtype)
-    
+
     # log sigmoid compute function
     res = log_sigmoid_compute(data_x, y, kernel_name)
-    
+
     # auto schedule
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
-    
+
     # compile configuration
     config = {"print_ir": False,
               "name": kernel_name,
