@@ -407,11 +407,23 @@ class Conv2dDxOptiSchedule:
                 dy_w = DIM_MAP["img_shape"][3]
                 tilling_ub_m0 = TILING.get("CUB_matrix")[3]
                 real_m = n_is_hfactor * dy_w
-                if (dy_w % tilling_ub_m0 != 0) and default_tiling_flag == 1:
+                if ((dy_w % tilling_ub_m0 != 0) and default_tiling_flag == 1
+                    and TENSOR_MAP.get("c_ub").dtype != "float16"):
                     # add tiling_ub_m0 is needed by buffer_tile of ub
                     real_m = n_is_hfactor * align(dy_w + tilling_ub_m0, tilling_ub_m0)
+
+                dy_h = DIM_MAP["img_shape"][2]
+                if dy_w == 1 and dy_h == 1:
+                    expansion = 1
+                elif dy_w == 1:
+                    expansion = strideh
+                elif dy_h == 1:
+                    expansion = stridew
+                else:
+                    expansion = stridew * strideh
+
                 dilate_cub_size = (
-                    (1 + strideh * stridew)
+                    (1 + expansion)
                     * nc_factor
                     * real_m
                     * tilling_ub_m0
