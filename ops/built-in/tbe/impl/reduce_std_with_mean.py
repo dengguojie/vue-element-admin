@@ -126,7 +126,8 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
     else:
         epsilon_value = tvm.const(epsilon, dtype=var.dtype)
         var_epsilon = tbe.vadds(var, epsilon_value)
-        y_invert = tbe.vrsqrt(var_epsilon)
+        y = tbe.vrec(var_epsilon)
+        y_invert = tbe.vsqrt(y)
         if y_invert.dtype != x_type:
             y_invert = tbe.cast_to(y_invert, dtype=x_type)
 
