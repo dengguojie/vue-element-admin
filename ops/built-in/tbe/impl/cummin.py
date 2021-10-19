@@ -653,7 +653,7 @@ def cummin(x, y, argmin, dim, kernel_name="cummin"):
     """
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
-    check_tuple = ("float16", "float32", "int32", "int8", "uint32", "uint8")
+    check_tuple = ("float16", "float32", "int32", "int8", "uint8")
     check_dtype(dtype.lower(), check_tuple)
     dims = len(shape)
     ne_dims = dims * -1
