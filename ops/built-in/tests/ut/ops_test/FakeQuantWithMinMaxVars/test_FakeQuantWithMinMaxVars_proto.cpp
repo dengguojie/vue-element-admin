@@ -80,7 +80,7 @@ TEST_F(fake_quant_with_min_max_vars, fake_quant_with_min_max_vars_failed_case) {
                                                {-1, -1},
                                                ge::FORMAT_ND, shape_range);
 
-    auto min_tensor_desc = create_desc_shape_range({1, 1},
+    auto min_tensor_desc = create_desc_shape_range({1},
                                                  ge::DT_FLOAT16, ge::FORMAT_ND,
                                                  {1},
                                                  ge::FORMAT_ND, {{1, 1}, {1, 1}});
@@ -93,7 +93,7 @@ TEST_F(fake_quant_with_min_max_vars, fake_quant_with_min_max_vars_failed_case) {
     op.UpdateInputDesc("x", input_tensor_desc);
     op.UpdateInputDesc("min", min_tensor_desc);
     op.UpdateInputDesc("max", max_tensor_desc);
-    int8_t num_bits = 8;
+    int8_t num_bits = 200;
     op.SetAttr("num_bits", num_bits);
     bool narrow_range = false;
     op.SetAttr("narrow_range", narrow_range);
@@ -121,7 +121,7 @@ TEST_F(fake_quant_with_min_max_vars, fake_quant_with_min_max_vars_failed_case_2)
                                                  ge::FORMAT_ND, {{1, 1}});
 
     auto max_tensor_desc = create_desc_shape_range({2},
-                                                 ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                 ge::DT_FLOAT, ge::FORMAT_ND,
                                                  {1},
                                                  ge::FORMAT_ND, {{2, 2}});
 

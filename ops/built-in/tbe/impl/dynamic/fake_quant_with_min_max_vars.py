@@ -205,10 +205,7 @@ def fake_quant_with_min_max_vars_compute(x, min, max, y, num_bits, narrow_range)
     scale = tbe.vdiv(tbe.vsub(max, min),
                      tbe.vsub(quant_max_fp32, quant_min_fp32))
     zero_point_from_min = tbe.vsub(quant_min_fp32, tbe.vdiv(min, scale))
-    nudged_min, nudged_max = _nudged_min_max_compute(zero_point_from_min,
-                                                     quant_min_fp32,
-                                                     quant_max_fp32, scale,
-                                                     min)
+    nudged_min, nudged_max = _nudged_min_max_compute(zero_point_from_min, quant_min_fp32, quant_max_fp32, scale, min)
 
     clamped_tmp = tbe.vmin(x, nudged_max)
     clamped = tbe.vmax(clamped_tmp, nudged_min)
@@ -237,8 +234,7 @@ def fake_quant_with_min_max_vars_compute(x, min, max, y, num_bits, narrow_range)
                             para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-def fake_quant_with_min_max_vars(x, min, max, y, num_bits=8,
-                                 narrow_range=False,
+def fake_quant_with_min_max_vars(x, min, max, y, num_bits=8, narrow_range=False,
                                  kernel_name="fake_quant_with_min_max_vars"):
     """
     algorithm: calculate the fake quant value of input tensor
@@ -302,10 +298,7 @@ def fake_quant_with_min_max_vars(x, min, max, y, num_bits=8,
             data_min = tvm.placeholder(shape_min, dtype=min_dtype, name="data_min")
             data_max = tvm.placeholder(shape_max, dtype=max_dtype, name="data_max")
 
-            res = fake_quant_with_min_max_vars_compute(data, data_min,
-                                                       data_max,
-                                                       y, num_bits,
-                                                       narrow_range)
+            res = fake_quant_with_min_max_vars_compute(data, data_min, data_max, y, num_bits, narrow_range)
 
             tensors.append([data, data_min, data_max, res])
 

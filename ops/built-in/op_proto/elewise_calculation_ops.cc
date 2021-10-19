@@ -1884,23 +1884,6 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  Shape shape_min = op.GetInputDesc("min").GetShape();
-  Shape shape_max = op.GetInputDesc("max").GetShape();
-  std::vector<int64_t> dims_min = shape_min.GetDims();
-  std::vector<int64_t> dims_max = shape_max.GetDims();
-  if ((dims_min.size() != 1) || (dims_max.size() != 1)) {
-    string input = ConcatString("dims_min.size(),","dims_max.size()");
-    string expected_list = ConcatString("shape of min and max must be rank 1");
-    string input_list = ConcatString("dims_min.size():",dims_min.size(),",","dims_max.size():",dims_max.size());
-    std::string err_msg = GetAttrValueErrMsg(input, input_list, expected_list);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  if (dims_min[0] != dims_max[0]) {
-    std::string err_msg = GetAttrValueErrMsg("dims_min[0]", std::to_string(dims_min[0]), std::to_string(dims_max[0]));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
 
