@@ -20,7 +20,7 @@ import json
 
 from impl.util import util_common
 from impl.util import util_tik_auto_tune
-from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 
 
 def tune_space_resize_bilinear_v2(images, size, y, align_corners, half_pixel_centers, kernel_name):
@@ -48,7 +48,7 @@ def tune_space_resize_bilinear_v2(images, size, y, align_corners, half_pixel_cen
     -------
     tune_param: param lists of auto tune
     """
-    aicore_num = tik.Dprofile().get_aicore_num()
+    aicore_num = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.CORE_NUM)
     if util_common.is_unknown([images, y, size]):
         return '{}'
     param = util_tik_auto_tune.PARAM
@@ -103,7 +103,7 @@ def tune_param_check_supported_resize_bilinear_v2(images, size, y, align_corners
     """
     if tune_param is None:
         return False
-    aicore_num = tik.Dprofile().get_aicore_num()
+    aicore_num = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.CORE_NUM)
     tiling_mode_list = [999999, 100110, 100000]
     tune_param_dict = json.loads(tune_param)
     tiling_mode = tune_param_dict["tune_param"]["tiling_key"]
