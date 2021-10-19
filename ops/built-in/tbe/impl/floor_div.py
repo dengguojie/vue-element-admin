@@ -22,6 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
+
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("floor_div")

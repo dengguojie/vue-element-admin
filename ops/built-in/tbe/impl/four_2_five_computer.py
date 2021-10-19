@@ -15,7 +15,9 @@
 """
 four_2_five_computer
 """
+
 from __future__ import absolute_import
+
 from te import tvm
 from te import platform as tbe_platform
 from te.platform import cce_params as param
@@ -27,9 +29,14 @@ from te.platform import cce_util
 # pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
 # pylint: disable=too-many-branches,unnecessary-comprehension
 
-# parameter naming allocated UB
-OUTPUT_NAME_SUFFIX = [0]
-UB_NAME_SUFFIX = [0]
+
+class Constant:
+    """
+    common constants
+    """
+    # parameter naming allocated UB
+    OUTPUT_NAME_SUFFIX = [0]
+    UB_NAME_SUFFIX = [0]
 
 
 class FormatTransferParams():
@@ -88,42 +95,42 @@ def compute_four_2_five(input_tensor, output_tensor, raw_shape_4d, src_format,
         target format must be NC1HWC0!")
 
     if (src_format.upper() == "NHWC" and
-            raw_shape_4d[0] < core_num) and \
-        ((input_tensor.dtype.lower() == "float32" and
-          raw_shape_4d[3] > 992) or
-         (input_tensor.dtype.lower() == "float16" and
-          raw_shape_4d[3] > 1984)):
+        raw_shape_4d[0] < core_num) and \
+            ((input_tensor.dtype.lower() == "float32" and
+              raw_shape_4d[3] > 992) or
+             (input_tensor.dtype.lower() == "float16" and
+              raw_shape_4d[3] > 1984)):
         axis_n, axis_h, axis_w, axis_c = raw_shape_4d
         axis_c1 = (axis_c + 16 - 1) // 16
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_n, axis_c1, axis_h, axis_w, 16)], [input_tensor],
             lambda ins, outs:
             _four2five_ir_nhwc(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     elif src_format.upper() == "NHWC":
         axis_n, axis_h, axis_w, axis_c = raw_shape_4d
         axis_c1 = (axis_c + 16 - 1) // 16
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_n, axis_c1, axis_h, axis_w, 16)], [input_tensor],
             lambda ins, outs:
             _four2five_ir_nhwc_hp(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     elif src_format.upper() == "NCHW":
         axis_n, axis_c, axis_h, axis_w = raw_shape_4d
         axis_c1 = (axis_c + 16 - 1) // 16
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_n, axis_c1, axis_h, axis_w, 16)], [input_tensor],
             lambda ins, outs:
             _four2five_ir_nchw(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     return ir_schedule
 
@@ -144,7 +151,7 @@ def _allocate_ub(ib_, dtype, size, name):
     :return:
         desc: ub buffer
     '''
-    name = name + ".local.UB" + hex(UB_NAME_SUFFIX[0])
+    name = name + ".local.UB" + hex(Constant.UB_NAME_SUFFIX[0])
     buf_var = ib_.allocate(dtype, (size,), name, scope=param.scope_ubuf)
     return tvm.decl_buffer((size,),
                            dtype,
@@ -179,13 +186,13 @@ def _emit_copy_gm_ubuf(ib_, cmd, dtype, size, dst, dst_offset,
         None
     '''
     # the size of UB in bit, 1024*256*8
-    n_burst = size // (2**16 * 32)
-    tail = size % (2**16 * 32)
+    n_burst = size // (2 ** 16 * 32)
+    tail = size % (2 ** 16 * 32)
     burst_ele_num = 256 // intrin.get_bit_len(dtype)
 
     if tail > 0:
-        dst_offset = dst_offset + n_burst * (2**16 * 32)
-        src_offset = src_offset + n_burst * (2**16 * 32)
+        dst_offset = dst_offset + n_burst * (2 ** 16 * 32)
+        src_offset = src_offset + n_burst * (2 ** 16 * 32)
         len_burst = (tail + burst_ele_num - 1) // burst_ele_num
         sid = 0
         if cmd == "copy_gm_to_ubuf":
@@ -295,7 +302,7 @@ def _get_vnhwcconv_buf_max_hp(actual_col_size, c_axis, dtype):
     # Byte, a split is axis_h*axis_w*axis_c round up by dividing 16, for fp16
     # costs 2 Bytes, so buf size is axis_h*axis_w*axis_c*dtype_factor
     actual_cube_buf_size = (((actual_col_size - 1) // 16 + 1) * 16) * (
-        (c_axis + 15) // 16 * 16) * dtype_factor
+            (c_axis + 15) // 16 * 16) * dtype_factor
     ub_cut_upper_limit = (tbe_platform.cce_conf.get_soc_spec(
         tbe_platform.cce_conf.UB_SIZE)) // 4  # Byte, allocate 4 parts
     if ub_cut_upper_limit > (248 * 1024 // 4):
@@ -330,8 +337,8 @@ def _get_vnhwcconv_cube_buf_max(actual_col_size, c_axis, dtype):
         byte_len = 4
 
     actual_cube_buf_size = ((actual_col_size + 15) // 16 * 16) * (
-        (c_axis + 15) // 16 * 16) * byte_len  # Byte
-    ub_cut_upper_limit =\
+            (c_axis + 15) // 16 * 16) * byte_len  # Byte
+    ub_cut_upper_limit = \
         (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE))
     if ub_cut_upper_limit > (248 * 1024):
         ub_cut_upper_limit = 248 * 1024
@@ -362,9 +369,9 @@ def _get_vnchwconv_cube_buf_max_hp(actual_col_size, dtype):
         byte_len = 4
 
     actual_cube_buf_size = (
-        (actual_col_size - 1) // 16 + 1) * 16 * 16 * byte_len  # Byte
+                                   (actual_col_size - 1) // 16 + 1) * 16 * 16 * byte_len  # Byte
     ub_cut_upper_limit = (
-        tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)) // 2
+                             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)) // 2
     if ub_cut_upper_limit > (248 * 1024 // 2):
         ub_cut_upper_limit = 248 * 1024 // 2
 
@@ -395,7 +402,7 @@ def _padding_zero(ib_, ubuf, ubuf_offset, dup_len):
     """
     uint64_all_one = tvm.const(18446744073709551615, dtype="uint64")
     uint64_all_zero = tvm.const(0, dtype="uint64")
-    mask = tvm.const(2**16 - 1 - (2**dup_len - 1), dtype="uint64")
+    mask = tvm.const(2 ** 16 - 1 - (2 ** dup_len - 1), dtype="uint64")
     constant_values = tvm.const(0.0, dtype=ubuf.dtype)
 
     if dup_len > 0:
@@ -430,7 +437,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
     :return:
         None
     """
-    uint64_all_one = tvm.const(2**64 - 1, dtype="uint64")
+    uint64_all_one = tvm.const(2 ** 64 - 1, dtype="uint64")
     uint64_all_zero = tvm.const(0, dtype="uint64")
     dtype_factor = 32 // intrin.get_bit_len(src.dtype)
     dup_value = tvm.const(0.0, dtype=src.dtype)
@@ -458,7 +465,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                             src.access_ptr(
                                 "rw",
                                 offset=(255 * batch_cnt * dtype_factor) * i +
-                                src_offset), dup_value, 255, 1, 1, 8, 8))
+                                       src_offset), dup_value, 255, 1, 1, 8, 8))
                 with ib_.else_scope():
                     ib_.emit(
                         tvm.call_extern(
@@ -466,7 +473,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                             src.access_ptr(
                                 "rw",
                                 offset=(255 * batch_cnt * dtype_factor) * i +
-                                src_offset), dup_value, repeat % 255, 1, 1, 8,
+                                       src_offset), dup_value, repeat % 255, 1, 1, 8,
                             8))
 
         else:
@@ -494,7 +501,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                                     src.access_ptr(
                                         "rw",
                                         offset=src_offset +
-                                        repeat * batch_cnt * dtype_factor),
+                                               repeat * batch_cnt * dtype_factor),
                                     dup_value, 1, 1, 1, 8, 8))
 
         ib_.emit(
@@ -573,8 +580,8 @@ def _mov_data_p2p(args):
                             dst_ub.access_ptr(
                                 "w",
                                 offset=(dst_offset +
-                                 (left_loop + hw_loop * c0_factor) * 16 +
-                                 (reg_w_index))),
+                                        (left_loop + hw_loop * c0_factor) * 16 +
+                                        (reg_w_index))),
                             tvm.call_extern(reg.dtype, "reg",
                                             reg[reg_w_index])))
 
@@ -594,9 +601,9 @@ def _mov_data_p2p(args):
                                 src_ub.access_ptr(
                                     "r",
                                     offset=(src_offset +
-                                     hw_i +
-                                     (reg_r_index +
-                                      c0_loop_i * reg_count) * interv_len))))
+                                            hw_i +
+                                            (reg_r_index +
+                                             c0_loop_i * reg_count) * interv_len))))
 
                     for reg_w_index in reg_list:
                         ib_.emit(
@@ -605,8 +612,8 @@ def _mov_data_p2p(args):
                                 dst_ub.access_ptr(
                                     "w",
                                     offset=(dst_offset +
-                                     hw_i * 16 + (
-                                         reg_w_index + c0_loop_i * reg_count))),
+                                            hw_i * 16 + (
+                                                    reg_w_index + c0_loop_i * reg_count))),
                                 tvm.call_extern(reg.dtype, "reg",
                                                 reg[reg_w_index])))
 
@@ -648,7 +655,7 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
     # get dtype factor based one block
     dtype_factor = intrin.get_bit_len(output.dtype) // 16
     # allocate buf
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(params.ib_, input_tensor.dtype,
                             vnhwcconv_cube_buf_max, "input_ub")
     # calculate the c count for one core
@@ -669,7 +676,7 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
 
         def _inner_intrin(n_index, c_per_core, in_offset, out_offset):
             virtual_col_size = (
-                axis_c + 15) // 16 * 16  # the real buf needed for one split
+                                       axis_c + 15) // 16 * 16  # the real buf needed for one split
             buf_cube_range = (virtual_col_size + vnhwcconv_cube_buf_max -
                               1) // vnhwcconv_cube_buf_max
             # axis_c > buf size or axis_c == buf size, do not to do
@@ -682,8 +689,8 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                     # calculate how many axis_c0 the buf can have
                     c0_count = vnhwcconv_cube_buf_max // axis_c0
                     # calculate the loop count of one axis_c
-                    c_loop_count =\
-                        (axis_c + c0_count * axis_c0 - 1) //\
+                    c_loop_count = \
+                        (axis_c + c0_count * axis_c0 - 1) // \
                         (c0_count * axis_c0)
                     # get the left axis_c
                     c_left_len = axis_c % (c0_count * axis_c0)
@@ -697,8 +704,8 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                         input_offset = n_index * (axis_h * axis_w * axis_c) + \
                                        cube_i * (c0_count * axis_c0) + \
                                        c_core_loop * axis_c + \
-                                       params.block.var *\
-                                       c_per_core * axis_c +\
+                                       params.block.var * \
+                                       c_per_core * axis_c + \
                                        in_offset
                         if c_left_len > 0:
                             with ib_.if_scope(cube_i != c_loop_count - 1):
@@ -714,12 +721,12 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                                     output_offset = \
                                         n_index * ((c1_range * axis_c0) *
                                                    axis_h * axis_w) + \
-                                        c0_i * (axis_c0 * axis_h * axis_w) +\
+                                        c0_i * (axis_c0 * axis_h * axis_w) + \
                                         cube_i * \
                                         (c0_count *
                                          axis_c0 * axis_h * axis_w) + \
                                         c_core_loop * axis_c0 + \
-                                        params.block.var *\
+                                        params.block.var * \
                                         (c_per_core * axis_c0) + \
                                         out_offset
 
@@ -752,12 +759,12 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                                     output_offset = \
                                         n_index * ((c1_range * axis_c0) *
                                                    axis_h * axis_w) + \
-                                        c0_i * (axis_c0 * axis_h * axis_w) +\
+                                        c0_i * (axis_c0 * axis_h * axis_w) + \
                                         cube_i * \
                                         (c0_count *
                                          axis_c0 * axis_h * axis_w) + \
                                         c_core_loop * axis_c0 + \
-                                        params.block.var *\
+                                        params.block.var * \
                                         (c_per_core * axis_c0) + \
                                         out_offset
 
@@ -782,11 +789,11 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                                 output_offset = \
                                     n_index * ((c1_range * axis_c0) *
                                                axis_h * axis_w) + \
-                                    c0_i * (axis_c0 * axis_h * axis_w) +\
+                                    c0_i * (axis_c0 * axis_h * axis_w) + \
                                     cube_i * \
-                                    (c0_count*axis_c0 * axis_h * axis_w) + \
+                                    (c0_count * axis_c0 * axis_h * axis_w) + \
                                     c_core_loop * axis_c0 + \
-                                    params.block.var *\
+                                    params.block.var * \
                                     (c_per_core * axis_c0) + \
                                     out_offset
 
@@ -807,7 +814,7 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
 
                 # calculate how many axis_c the buf can hold
                 max_c_count = vnhwcconv_cube_buf_max // (
-                    (axis_c + 15) // 16 * 16) - 1
+                        (axis_c + 15) // 16 * 16) - 1
                 copy_loop_count = (c_per_core + max_c_count - 1) // max_c_count
                 copy_c_left = c_per_core % max_c_count
 
@@ -846,7 +853,7 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                         # Copy ub to gm by skipping n*axis_c0
                         with ib_.for_range(
                                 0, c1_range, name="c1_range") as c0_i:
-                            output_offset =\
+                            output_offset = \
                                 n_index * ((c1_range * axis_c0) *
                                            axis_h * axis_w) + \
                                 c0_i * (axis_c0 * axis_h * axis_w) + \
@@ -864,7 +871,7 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                                         input_ub.access_ptr(
                                             "rw",
                                             offset=c0_i * axis_c0 +
-                                            c1_range * axis_c0),
+                                                   c1_range * axis_c0),
                                         0,
                                         loop_count,
                                         1 * dtype_factor,
@@ -890,11 +897,11 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
                         with ib_.if_scope(copy_i != copy_loop_count - 1):
                             _inner_copy(
                                 max_c_count, copy_i * max_c_count * axis_c,
-                                copy_i * max_c_count * axis_c0)
+                                             copy_i * max_c_count * axis_c0)
                         with ib_.else_scope():
                             _inner_copy(
                                 copy_c_left, copy_i * max_c_count * axis_c,
-                                copy_i * max_c_count * axis_c0)
+                                             copy_i * max_c_count * axis_c0)
                     else:
                         _inner_copy(max_c_count, copy_i * max_c_count * axis_c,
                                     copy_i * max_c_count * axis_c0)
@@ -958,7 +965,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                      "addr_array_buf",
                                      scope=param.scope_reg,
                                      data=addr_array)
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     src0_array_stride = vnchwconv_cube_col_size * repeat_factor
     dst0_array_stride = axis_c0
     src1_array_stride = axis_c0
@@ -973,7 +980,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
     dst1_output_offset = 3 * vnchwconv_cube_buf_max * repeat_factor
 
     # set all the buf's value to 0.0 which will be used by 2nd conv
-    _clean_ubuf(ib_, input_ub, 2*vnchwconv_cube_buf_max,
+    _clean_ubuf(ib_, input_ub, 2 * vnchwconv_cube_buf_max,
                 vnchwconv_cube_buf_max)
 
     # get the value of axis C1
@@ -988,7 +995,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
 
         def _inner_intrin(n_index, c_per_core, in_offset, out_offset):
             # checking if the real need buf is larger than the allocated buf
-            virtual_buf =\
+            virtual_buf = \
                 ((c_per_core + 15) // 16) * 16 * ((axis_c + 15) // 16)
             buf_cube_range = (virtual_buf + vnchwconv_cube_col_size -
                               1) // vnchwconv_cube_col_size
@@ -1075,6 +1082,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                             repeat_conv1 * repeat_factor,
                                             dst_stride_conv1,
                                             src_stride_conv1))
+
                     _inner_first_conv()
 
                     if axis_c <= axis_c0:
@@ -1099,7 +1107,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     0,
                                     repeat_conv2, axis_c * repeat_factor,
                                     0,
-                                    (16 - axis_c) * repeat_factor))
+                                                  (16 - axis_c) * repeat_factor))
 
                             # do the conv2
                             # change the dst_array_stride in order to make
@@ -1159,7 +1167,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                         # caution! the option maybe cover memory larger than
                         # one vnchwconv_cube_buf_max
                         # so it's better to split the input data by 16 lines
-                        repeat_conv2 =\
+                        repeat_conv2 = \
                             (actual_head_col_size + axis_c - 1) // axis_c
                         ib_.emit(
                             tvm.call_extern(
@@ -1241,12 +1249,12 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                         axis_h * axis_w + cube_i *
                                         (repeat_conv2 * axis_c0 * 16) +
                                         params.block.var *
-                                        (c_per_core*axis_c0) +
+                                        (c_per_core * axis_c0) +
                                         c0_i * (axis_c0 * axis_h * axis_w) +
                                         out_offset,
                                         output_ub, offset)
                                 with ib_.else_scope():
-                                    tail_size =\
+                                    tail_size = \
                                         c_per_core * (c1_range * axis_c0) - \
                                         repeat_conv2 * c1_range * 16 * \
                                         axis_c0 * (loop_range - 1)
@@ -1280,12 +1288,12 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                 with ib_.for_range(0, loop_cnt, name="col") as col:
                     _emit_copy_gm_ubuf(ib_, "copy_gm_to_ubuf",
                                        input_tensor.dtype,
-                                       (c_per_core+15) // 16 * axis_c,
+                                       (c_per_core + 15) // 16 * axis_c,
                                        input_ub, col * vnchwconv_cube_col_size,
                                        input_tensor,
                                        n_index * axis_c * axis_h * axis_w +
-                                       ((c_per_core+15) // 16 * axis_c) * col +
-                                       params.block.var*c_per_core*axis_c +
+                                       ((c_per_core + 15) // 16 * axis_c) * col +
+                                       params.block.var * c_per_core * axis_c +
                                        in_offset)
                 _emit_copy_gm_ubuf(ib_, "copy_gm_to_ubuf",
                                    input_tensor.dtype,
@@ -1294,9 +1302,9 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                    loop_cnt * vnchwconv_cube_col_size,
                                    input_tensor,
                                    n_index * axis_c * axis_h * axis_w +
-                                   ((c_per_core+15) // 16 * axis_c) *
+                                   ((c_per_core + 15) // 16 * axis_c) *
                                    loop_cnt +
-                                   params.block.var*c_per_core*axis_c +
+                                   params.block.var * c_per_core * axis_c +
                                    in_offset)
 
                 # set VA address for conv1, the address should be aligned with
@@ -1306,9 +1314,9 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                   dst0_output_offset, src0_input_offset)
                 # do the conv1
                 repeat_conv1 = ((c_per_core + 15) // 16 * axis_c + 15) // 16
-                src_stride_conv1 = 0\
+                src_stride_conv1 = 0 \
                     if repeat_conv1 * repeat_factor == 1 else 1
-                dst_stride_conv1 = 0\
+                dst_stride_conv1 = 0 \
                     if repeat_conv1 * repeat_factor == 1 else 16
                 ib_.emit(
                     tvm.call_extern("int32",
@@ -1324,7 +1332,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                     # caution! the option maybe cover memory larger than one
                     # vnchwconv_cube_buf_max
                     # so it's better to split the input data by 16 lines
-                    repeat_conv2 =\
+                    repeat_conv2 = \
                         ((c_per_core + 15) // 16 * axis_c +
                          axis_c - 1) // axis_c
                     ib_.emit(
@@ -1350,9 +1358,9 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                       repeat_conv2 * 16 * repeat_factor,
                                       dst1_output_offset,
                                       src1_input_offset)
-                    src_stride_conv2 = 0\
+                    src_stride_conv2 = 0 \
                         if repeat_conv2 * repeat_factor == 1 else 16
-                    dst_stride_conv2 = 0\
+                    dst_stride_conv2 = 0 \
                         if repeat_conv2 * repeat_factor == 1 else 1
                     ib_.emit(
                         tvm.call_extern("int32",
@@ -1379,7 +1387,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                     # caution! the option maybe cover memory larger than one
                     # vnchwconv_cube_buf_max
                     # so it's better to split the input data by 16 lines
-                    repeat_conv2 =\
+                    repeat_conv2 = \
                         ((c_per_core + 15) // 16 * axis_c +
                          axis_c - 1) // axis_c
                     ib_.emit(
@@ -1397,7 +1405,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                             (c1_range * axis_c0 - axis_c) * repeat_factor))
 
                     # do the conv2
-                    src_stride_conv2 = 0 if repeat_conv2 == 1 else c1_range*16
+                    src_stride_conv2 = 0 if repeat_conv2 == 1 else c1_range * 16
                     dst_stride_conv2 = 0 if repeat_conv2 == 1 else 1
                     # repeat the vnchwconv by the (axis_c+16-1)//axis_c0
                     with ib_.for_range(0, c1_range, name="o") as c0_i:
@@ -1430,7 +1438,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     dst1_output_offset +
                                     repeat_i * 16 * repeat_factor,
                                     src1_input_offset + c0_i * 512 +
-                                    repeat_i*c1_range * 256 * repeat_factor)
+                                    repeat_i * c1_range * 256 * repeat_factor)
                                 ib_.emit(tvm.call_extern(
                                     "int32",
                                     "scatter_vnchwconv_b16",
@@ -1470,7 +1478,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
 
         def _inner_intrin_axis_n(n_loop_index, in_offset, out_offset):
             # checking if the real need buf is larger than the allocated buf
-            virtual_buf =\
+            virtual_buf = \
                 ((axis_h * axis_w + 15) // 16) * 16 * ((axis_c + 15) // 16)
             buf_cube_range = (virtual_buf + vnchwconv_cube_col_size -
                               1) // vnchwconv_cube_col_size
@@ -1485,7 +1493,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                 actual_head_col_size = c_count * axis_c
                 # get the loop count for one split
                 loop_range = (axis_h * axis_w * axis_c +
-                              (actual_head_col_size * 16 - 1)) //\
+                              (actual_head_col_size * 16 - 1)) // \
                              (actual_head_col_size * 16)
                 hwc_left = (axis_h * axis_w * axis_c) % \
                            (actual_head_col_size * 16)
@@ -1562,6 +1570,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                             repeat_conv1 * repeat_factor,
                                             dst_stride_conv1,
                                             src_stride_conv1))
+
                     _inner_first_conv_n()
 
                     if axis_c <= axis_c0:
@@ -1586,7 +1595,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     0,
                                     repeat_conv2, axis_c * repeat_factor,
                                     0,
-                                    (16 - axis_c) * repeat_factor))
+                                                  (16 - axis_c) * repeat_factor))
 
                             # do the conv2
                             # change the dst_array_stride in order to make the data
@@ -1607,6 +1616,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                                 repeat_conv2 * repeat_factor,
                                                 dst_stride_conv2,
                                                 src_stride_conv2))
+
                         _inner_vnconv_c_less_c0_n()
 
                         # output the result
@@ -1639,6 +1649,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     (repeat_conv2 * axis_c0 * 16) +
                                     out_offset,
                                     output_ub, offset)
+
                         output_result(0)
 
                     else:
@@ -1646,7 +1657,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                         # caution! the option maybe cover memory larger than
                         # one vnchwconv_cube_buf_max
                         # so it's better to split the input data by 16 lines
-                        repeat_conv2 =\
+                        repeat_conv2 = \
                             (actual_head_col_size + axis_c - 1) // axis_c
                         ib_.emit(
                             tvm.call_extern(
@@ -1734,9 +1745,9 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                         out_offset,
                                         output_ub, offset)
                                 with ib_.else_scope():
-                                    tail_size =\
+                                    tail_size = \
                                         axis_h * axis_w * axis_c0 - \
-                                        repeat_conv2 * 16 * axis_c0 *\
+                                        repeat_conv2 * 16 * axis_c0 * \
                                         (loop_range - 1)
                                     _emit_copy_gm_ubuf(
                                         ib_, 'copy_ubuf_to_gm',
@@ -1782,10 +1793,10 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
 
                     # set VA address for conv1, the address should
                     # be aligned with 32Byte
-                    # src0_array_stride = vnchwconv_cube_col_size
-                    # src0_input_offset = 0
-                    # dst0_array_stride = axis_c0
-                    # dst0_output_offset = vnchwconv_cube_buf_max
+                    # src0_array_stride is equals vnchwconv_cube_col_size
+                    # src0_input_offset is equals 0
+                    # dst0_array_stride is equals axis_c0
+                    # dst0_output_offset is equals vnchwconv_cube_buf_max
                     _set_array_config(ib_, addr_array,
                                       addr_array_buf,
                                       src0_array_stride,
@@ -1897,10 +1908,10 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
 
                     # set VA address for conv1, the address should
                     # be aligned with 32Byte
-                    # src0_array_stride = vnchwconv_cube_col_size
-                    # src0_input_offset = 0
-                    # dst0_array_stride = axis_c0
-                    # dst0_output_offset = vnchwconv_cube_buf_max
+                    # src0_array_stride is equals vnchwconv_cube_col_size
+                    # src0_input_offset is equals 0
+                    # dst0_array_stride is equals axis_c0
+                    # dst0_output_offset is equals vnchwconv_cube_buf_max
                     _set_array_config(ib_, addr_array,
                                       addr_array_buf,
                                       src0_array_stride,
@@ -1987,7 +1998,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                 axis_h * axis_w +
                                 hw_lp_i * (axis_c0 * 16) +
                                 (repeat_i +
-                                 c_lp_i * (vnchwconv_cube_col_size//axis_c0)) *
+                                 c_lp_i * (vnchwconv_cube_col_size // axis_c0)) *
                                 (axis_h * axis_w * axis_c0) +
                                 out_offset,
                                 input_ub,
@@ -2032,14 +2043,14 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                 with ib_.for_range(0, loop_cnt, name="col") as col:
                     _emit_copy_gm_ubuf(ib_, "copy_gm_to_ubuf",
                                        input_tensor.dtype,
-                                       (axis_h*axis_w+15) // 16 * axis_c,
+                                       (axis_h * axis_w + 15) // 16 * axis_c,
                                        input_ub, col * vnchwconv_cube_col_size,
                                        input_tensor,
                                        (params.block.var +
                                         n_loop_index *
                                         params.device_core_num) *
                                        axis_c * axis_h * axis_w +
-                                       ((axis_h*axis_w+15)//16*axis_c) * col +
+                                       ((axis_h * axis_w + 15) // 16 * axis_c) * col +
                                        in_offset)
                 _emit_copy_gm_ubuf(ib_, "copy_gm_to_ubuf",
                                    input_tensor.dtype,
@@ -2051,7 +2062,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     n_loop_index *
                                     params.device_core_num) *
                                    axis_c * axis_h * axis_w +
-                                   ((axis_h*axis_w+15)//16*axis_c) * loop_cnt +
+                                   ((axis_h * axis_w + 15) // 16 * axis_c) * loop_cnt +
                                    in_offset)
 
                 # set VA address for conv1, the address should be aligned with
@@ -2061,9 +2072,9 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                   dst0_output_offset, src0_input_offset)
                 # do the conv1
                 repeat_conv1 = ((axis_h * axis_w + 15) // 16 * axis_c + 15) // 16
-                src_stride_conv1 = 0\
+                src_stride_conv1 = 0 \
                     if repeat_conv1 * repeat_factor == 1 else 1
-                dst_stride_conv1 = 0\
+                dst_stride_conv1 = 0 \
                     if repeat_conv1 * repeat_factor == 1 else 16
                 ib_.emit(
                     tvm.call_extern("int32",
@@ -2079,7 +2090,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                     # caution! the option maybe cover memory larger than one
                     # vnchwconv_cube_buf_max
                     # so it's better to split the input data by 16 lines
-                    repeat_conv2 =\
+                    repeat_conv2 = \
                         ((axis_h * axis_w + 15) // 16 * axis_c +
                          axis_c - 1) // axis_c
                     ib_.emit(
@@ -2105,9 +2116,9 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                       repeat_conv2 * 16 * repeat_factor,
                                       dst1_output_offset,
                                       src1_input_offset)
-                    src_stride_conv2 = 0\
+                    src_stride_conv2 = 0 \
                         if repeat_conv2 * repeat_factor == 1 else 16
-                    dst_stride_conv2 = 0\
+                    dst_stride_conv2 = 0 \
                         if repeat_conv2 * repeat_factor == 1 else 1
                     ib_.emit(
                         tvm.call_extern("int32",
@@ -2135,7 +2146,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                     # caution! the option maybe cover memory larger than one
                     # vnchwconv_cube_buf_max
                     # so it's better to split the input data by 16 lines
-                    repeat_conv2 =\
+                    repeat_conv2 = \
                         ((axis_h * axis_w + 15) // 16 * axis_c +
                          axis_c - 1) // axis_c
                     ib_.emit(
@@ -2153,7 +2164,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                             (c1_range * axis_c0 - axis_c) * repeat_factor))
 
                     # do the conv2
-                    src_stride_conv2 = 0 if repeat_conv2 == 1 else c1_range*16
+                    src_stride_conv2 = 0 if repeat_conv2 == 1 else c1_range * 16
                     dst_stride_conv2 = 0 if repeat_conv2 == 1 else 1
                     # repeat the vnchwconv by the (axis_c+16-1)//axis_c0
                     with ib_.for_range(0, c1_range, name="o") as c0_i:
@@ -2186,7 +2197,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                     dst1_output_offset +
                                     repeat_i * 16 * repeat_factor,
                                     src1_input_offset + c0_i * 512 +
-                                    repeat_i*c1_range * 256 * repeat_factor)
+                                    repeat_i * c1_range * 256 * repeat_factor)
                                 ib_.emit(tvm.call_extern(
                                     "int32",
                                     "scatter_vnchwconv_b16",
@@ -2217,8 +2228,8 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                 _inner_intrin_axis_n(n_count_per_core, 0, 0)
 
     if n_count_per_core < 1 < c_count_per_core and \
-        ((input_tensor.dtype.lower() == "float16" and axis_c <= 1984) or
-         (input_tensor.dtype.lower() == "float32" and axis_c <= 992)):
+            ((input_tensor.dtype.lower() == "float16" and axis_c <= 1984) or
+             (input_tensor.dtype.lower() == "float32" and axis_c <= 992)):
         _four2five_intrin(params.ib_)
     else:
         _four2five_intrin_axis_n(params.ib_)
@@ -2250,7 +2261,7 @@ def _four2five_ir_nchw(input_tensor, shape_4d, output):
     ib_ = tvm.ir_builder.create()
     params = FormatTransferParams(ib_)
 
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(ib_, input_tensor.dtype, vnchwconv_cube_buf_max,
                             "input_ub")
     output_ub = _allocate_ub(ib_, output.dtype, vnchwconv_cube_buf_max,
@@ -2279,7 +2290,7 @@ def _four2five_ir_nchw(input_tensor, shape_4d, output):
     hw_per_core_count = (actual_col_size // params.device_core_num // 16) * 16
     # left element count in axis_h*axis_w
     if hw_per_core_count > 0:
-        hw_left =\
+        hw_left = \
             actual_col_size % (hw_per_core_count * params.device_core_num)
     else:
         hw_left = actual_col_size
@@ -2406,12 +2417,12 @@ def _four2five_ir_nchw(input_tensor, shape_4d, output):
                                         input_tensor.dtype, tail_c0_col_size,
                                         input_ub, col * col_size,
                                         input_tensor,
-                                        n_index * axis_c * axis_h * axis_w +
-                                        ((c1_index + c1_begin) *
-                                         axis_c0 + col) * actual_col_size +
-                                        cube_i * vnchwconv_cube_col_size +
-                                        params.block.var * hw_per_core +
-                                        in_offset)
+                                                  n_index * axis_c * axis_h * axis_w +
+                                                  ((c1_index + c1_begin) *
+                                                   axis_c0 + col) * actual_col_size +
+                                                  cube_i * vnchwconv_cube_col_size +
+                                                  params.block.var * hw_per_core +
+                                                  in_offset)
 
                                 args = (ib_, input_ub, output_ub, 0, 0,
                                         tail_c0_col_size, c0_loop, reg_array)

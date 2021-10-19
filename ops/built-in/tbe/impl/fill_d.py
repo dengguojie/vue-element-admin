@@ -14,20 +14,6 @@
 # ============================================================================
 """
 fill_d
-
-  Op_description :
-    This operation creates a tensor of shape `dims` and fills it with `value`.
-
-    # fill_d(
-    #   value,
-    #   y,
-    #   dims,
-    #   kernel_name='fill_d')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
 """
 
 from functools import reduce as functools_reduce

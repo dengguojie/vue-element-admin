@@ -23,27 +23,28 @@ from te import platform as tbe_platform
 from te import tik
 from impl.util.platform_adapter import para_check
 
-# available ub size: split double ub
-TOTAL_UB_MEMORY = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - 1024) // 2
-# available number of cores
-MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# bytes of type float16
-SIZE_TWO_BYTES = 2
-# bytes of type float32
-SIZE_FOUR_BYTES = 4
-# minimum unit of data_move: 32Bytes
-DATA_MOVE_MIN_UNIT = 32
 
-# Maximum Stride
-MAX_STRIDE = 65535
+class Constant:
+    """
+    The class for common constants
+    """
 
-MASK = 128
+    # available ub size: split double ub
+    TOTAL_UB_MEMORY = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - 1024) // 2
+    # available number of cores
+    MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # bytes of type float16
+    SIZE_TWO_BYTES = 2
+    # bytes of type float32
+    SIZE_FOUR_BYTES = 4
+    # minimum unit of data_move: 32Bytes
+    DATA_MOVE_MIN_UNIT = 32
 
-MASK_FP32 = 64
-
-MASK_FP16 = 128
-
-MAX_REPEAT = 255
+    # Maximum Stride
+    MAX_STRIDE = 65535
+    MASK_FP32 = 64
+    MASK_FP16 = 128
+    MAX_REPEAT = 255
 
 
 def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
@@ -53,15 +54,15 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     core_loop = tik_instance.Scalar("uint64")
     sum_core = tik_instance.Scalar("uint64")
     with tik_instance.if_scope(num_core < total_core_loop_num %
-                               MAX_CORE_NUM):
+                               Constant.MAX_CORE_NUM):
         core_loop.set_as((total_core_loop_num + core_number - 1) //
                          core_number)
         sum_core.set_as(core_loop*num_core)
     with tik_instance.else_scope():
         core_loop.set_as(total_core_loop_num//core_number)
-        sum_core.set_as((core_loop + 1)*(total_core_loop_num % MAX_CORE_NUM) +
+        sum_core.set_as((core_loop + 1)*(total_core_loop_num % Constant.MAX_CORE_NUM) +
                         core_loop*(num_core - total_core_loop_num %
-                                   MAX_CORE_NUM))
+                                   Constant.MAX_CORE_NUM))
     return core_loop, sum_core
 
 
@@ -112,14 +113,14 @@ def factorization(number, core_num, hwc0, step_move):
     return n0
 
 
-class four2fiveCompute:
+class Four2fiveCompute:
     """
         Function: use to store concat base parameters
     """
     def __init__(self, input_shape, output_shape, dtype, src_format, kernel_name):
 
-        self.input_shape = list(input_shape).copy()
-        self.output_shape = list(output_shape).copy()
+        self.input_shape = list(input_shape)
+        self.output_shape = list(output_shape)
 
         self.input_sum_elements = self.calc_element(self.input_shape)
         self.output_sum_elements = self.calc_element(self.output_shape)
@@ -129,25 +130,27 @@ class four2fiveCompute:
         self.format = src_format
 
         self.mask, self.num_bit, self.maximum_size_ub = self.params_pattern(self.dtype)
-        self.step_move = DATA_MOVE_MIN_UNIT // self.num_bit
+        self.step_move = Constant.DATA_MOVE_MIN_UNIT // self.num_bit
         self.maximum_gm = math.ceil(self.input_sum_elements / self.step_move) * self.step_move
         self.input_x_gm = None
         self.output_y_gm = None
 
-    def params_pattern(self, dtype):
+    @staticmethod
+    def params_pattern(dtype):
         """
         params_pattern
         """
-        num_bit = int(SIZE_TWO_BYTES)
-        mask = int(MASK_FP16)
+        num_bit = int(Constant.SIZE_TWO_BYTES)
+        mask = int(Constant.MASK_FP16)
         if dtype == "float32":
-            num_bit = int(SIZE_FOUR_BYTES)
-            mask = int(MASK_FP32)
-        maximum_size_ub = int(TOTAL_UB_MEMORY // num_bit)
+            num_bit = int(Constant.SIZE_FOUR_BYTES)
+            mask = int(Constant.MASK_FP32)
+        maximum_size_ub = int(Constant.TOTAL_UB_MEMORY // num_bit)
 
         return mask, num_bit, maximum_size_ub
 
-    def calc_element(self, shape):
+    @staticmethod
+    def calc_element(shape):
         """
         calc_element
         """
@@ -197,7 +200,7 @@ class four2fiveCompute:
         """
         set_vector_dup
         """
-        dup_psm = MAX_REPEAT * self.mask
+        dup_psm = Constant.MAX_REPEAT * self.mask
         dup_repeat_merchant = psm // dup_psm
         dup_repeat_remainder = psm % dup_psm
         dst_blk_stride = 1
@@ -207,7 +210,7 @@ class four2fiveCompute:
             tik_instance.vector_dup(self.mask,
                                     dst[0 + i * dup_psm],
                                     number,
-                                    MAX_REPEAT,
+                                    Constant.MAX_REPEAT,
                                     dst_blk_stride,
                                     dst_rep_stride)
 
@@ -275,7 +278,7 @@ class four2fiveCompute:
         dststride_gm2ub = 0
 
         condition_0 = srcstride_gm2ub_ori % self.step_move == 0
-        condition_1 = srcstride_gm2ub <= MAX_STRIDE
+        condition_1 = srcstride_gm2ub <= Constant.MAX_STRIDE
 
         if condition_0 and condition_1:
             tik_instance.data_move(dst_ub_tensor[0],
@@ -316,7 +319,7 @@ class four2fiveCompute:
 
         condition_0 = dststride_ub2gm_ori == dststride_ub2gm
         condition_1 = burstlen_ub2gm == burstlen_ub2gm_ori
-        condition_2 = (dststride_ub2gm * self.num_bit // 32) <= MAX_STRIDE
+        condition_2 = (dststride_ub2gm * self.num_bit // 32) <= Constant.MAX_STRIDE
 
         if condition_0 and condition_1 and condition_2:
             burstlen_ub2gm = burstlen_ub2gm * self.num_bit // 32
@@ -403,7 +406,7 @@ class four2fiveCompute:
         srcstride_ub2gm = 0
         burstlen_ub2gm = c0 * len_hw * self.num_bit // 32
         dststride_ub2gm = (self.input_shape[0] * self.input_shape[1] * c0 - c0 * len_hw) * self.num_bit
-        condition_0 = dststride_ub2gm <= MAX_STRIDE
+        condition_0 = dststride_ub2gm <= Constant.MAX_STRIDE
         condition_1 = dststride_ub2gm % 32 == 0
         if condition_0 and condition_1:
             dststride_ub2gm = dststride_ub2gm // 32
@@ -548,7 +551,7 @@ class four2fiveCompute:
                     else:
                         src_x_offset = tail_block % self.step_move
                         srcstride_gm2ub = int(tail * split_hw * self.num_bit / 32)
-                        if src_x_offset == 0 and srcstride_gm2ub <= MAX_STRIDE:
+                        if src_x_offset == 0 and srcstride_gm2ub <= Constant.MAX_STRIDE:
                             nburst_gm2ub = c_axis
                             burstlen_gm2ub = int(tail_block * self.num_bit / 32)
                             dststride_gm2ub = 0
@@ -615,7 +618,7 @@ class four2fiveCompute:
                         srcstride_gm2ub = (hw - split_hw) * self.num_bit / 32
                         srcstirde_gm2ub_ceil = math.ceil(srcstride_gm2ub)
 
-                        if srcstride_gm2ub == srcstirde_gm2ub_ceil and srcstride_gm2ub <= MAX_STRIDE:
+                        if srcstride_gm2ub == srcstirde_gm2ub_ceil and srcstride_gm2ub <= Constant.MAX_STRIDE:
                             nburst_gm2ub = c_axis
                             burstlen_gm2ub = int(split_hw * self.num_bit / 32)
                             srcstride_gm2ub = int(srcstride_gm2ub)
@@ -1773,7 +1776,6 @@ class four2fiveCompute:
         tail_block_hw = hw1 % split_hw
         tail_hw = hw1 // split_hw
         move_mark = 0
-        move_MARK = 0
 
         with tik_instance.for_range(0, core_number, block_num=core_number) as num_core:
 
@@ -1815,7 +1817,7 @@ class four2fiveCompute:
 
                     condition_0 = dststride_ub2gm_ori == dststride_ub2gm
                     condition_1 = burstlen_ub2gm == burstlen_ub2gm_ori
-                    condition_2 = (dststride_ub2gm * self.num_bit // 32) <= MAX_STRIDE
+                    condition_2 = (dststride_ub2gm * self.num_bit // 32) <= Constant.MAX_STRIDE
 
                     if condition_0 and condition_1 and condition_2:
                         move_mark = 1
@@ -1908,7 +1910,7 @@ class four2fiveCompute:
                         dststride_ub2gm = \
                             (self.input_shape[0] * self.input_shape[1] * c0 - c0 * split_hw) * self.num_bit
 
-                        condition_0 = dststride_ub2gm <= MAX_STRIDE
+                        condition_0 = dststride_ub2gm <= Constant.MAX_STRIDE
                         condition_1 = dststride_ub2gm % 32 == 0
                         if condition_0 and condition_1:
                             dststride_ub2gm = dststride_ub2gm // 32
@@ -1979,10 +1981,10 @@ class four2fiveCompute:
         psm_move_in = chw_move_in
         tiling_shape = [shape[1], shape[2], shape[3]]
 
-        if total_core_loop_num < MAX_CORE_NUM:
+        if total_core_loop_num < Constant.MAX_CORE_NUM:
             core_num = total_core_loop_num
         else:
-            core_num = MAX_CORE_NUM
+            core_num = Constant.MAX_CORE_NUM
 
         param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
                              "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
@@ -2005,7 +2007,7 @@ class four2fiveCompute:
         c1, c0 = 1, 4
         hwc0 = h * w * c0
 
-        n0 = factorization(n, MAX_CORE_NUM, hwc0, self.step_move)
+        n0 = factorization(n, Constant.MAX_CORE_NUM, hwc0, self.step_move)
         n1 = n // n0
         if n % n0 != 0:
             raise RuntimeError("n0 is illegal in the branch")
@@ -2025,10 +2027,10 @@ class four2fiveCompute:
         psm_move_out = chw_move_out
         psm_move_in = chw_move_in
 
-        if total_core_loop_num < MAX_CORE_NUM:
+        if total_core_loop_num < Constant.MAX_CORE_NUM:
             core_num = total_core_loop_num
         else:
-            core_num = MAX_CORE_NUM
+            core_num = Constant.MAX_CORE_NUM
 
         param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
                              "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
@@ -2064,10 +2066,10 @@ class four2fiveCompute:
         psm_move_in = chw_move_in
         tiling_shape = [shape[1], shape[2], shape[3]]
 
-        if total_core_loop_num < MAX_CORE_NUM:
+        if total_core_loop_num < Constant.MAX_CORE_NUM:
             core_num = total_core_loop_num
         else:
-            core_num = MAX_CORE_NUM
+            core_num = Constant.MAX_CORE_NUM
 
         param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
                              "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
@@ -2082,7 +2084,7 @@ class four2fiveCompute:
         h, w, c, n = shape[0], shape[1], shape[2], shape[3]
         hw = h*w
         c1, c0 = 1, 4
-        hw0 = factorization(hw, MAX_CORE_NUM, c0, self.step_move)
+        hw0 = factorization(hw, Constant.MAX_CORE_NUM, c0, self.step_move)
         hw1 = hw // hw0
         tiling_shape = [hw1, c, n]
 
@@ -2097,10 +2099,10 @@ class four2fiveCompute:
         psm_move_out = chw_move_out
         psm_move_in = chw_move_in
 
-        if total_core_loop_num < MAX_CORE_NUM:
+        if total_core_loop_num < Constant.MAX_CORE_NUM:
             core_num = total_core_loop_num
         else:
-            core_num = MAX_CORE_NUM
+            core_num = Constant.MAX_CORE_NUM
 
         param_split_shape = {"core_num": core_num, "total_core_loop_num": total_core_loop_num,
                              "tiling_shape": tiling_shape, "psm_in_ac": psm_in_ac,
@@ -2147,7 +2149,7 @@ class four2fiveCompute:
         """
         pattern_format
         """
-        input_shape = self.input_shape.copy()
+        input_shape = list(self.input_shape)
         src_format = self.format
         if src_format == "NCHW":
             n = input_shape[0]
@@ -2187,7 +2189,7 @@ class four2fiveCompute:
             h, w, c, n = input_shape[0], input_shape[1], input_shape[2], input_shape[3]
             hw = h*w
             c0 = 4
-            hw0 = factorization(hw, MAX_CORE_NUM, c0, self.step_move)
+            hw0 = factorization(hw, Constant.MAX_CORE_NUM, c0, self.step_move)
             hw1 = hw // hw0
 
             # The output is maximum ub tensor in core
@@ -2249,6 +2251,7 @@ def check_c_axis_rule(format, shape):
         if c > 4 or c < 1:
             raise RuntimeError("value of C axis is illeagl")
 
+
 # pylint: disable=invalid-name,unused-argument
 @para_check.check_input_type(dict, dict, str, str, str)
 def four_2_five_c04(src, dst, src_format, dst_format, kernel_name="four_2_five_c04"):
@@ -2296,6 +2299,6 @@ def four_2_five_c04(src, dst, src_format, dst_format, kernel_name="four_2_five_c
     check_list_format = ("NCHW", "NHWC", "HWCN")
     check_format_rule(src_format, check_list_format)
     check_c_axis_rule(src_format, input_shape)
-    result = four2fiveCompute(input_shape, output_shape, dtype, src_format, kernel_name)
+    result = Four2fiveCompute(input_shape, output_shape, dtype, src_format, kernel_name)
 
     return result.get_tik_instance()

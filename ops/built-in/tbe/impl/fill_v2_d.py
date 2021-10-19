@@ -23,9 +23,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.platform import cce_util
 from te import platform as tbe_platform
-
-# Alignment requirement
-ALIGNMENT_BYTES = 32
+from impl.constant_util import BLOCK_SIZE as ALIGNMENT_BYTES
 
 
 # pylint: disable=protected-access,invalid-name,unused-argument

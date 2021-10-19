@@ -3427,7 +3427,7 @@ def _less_ub_ir_nhwc(output_data, input_data, base_shape, core_num):
     data_y_ub = _new_alloc(tvm_ib, input_data.dtype, base_shape,
                            'data_y_ub', scope=tbe_platform.scope_ubuf)
     psm = functools_reduce(lambda x, y: x * y, base_shape[:])
-    base_shape_out = base_shape.copy()
+    base_shape_out = list(base_shape)
     base_shape_out[-1] = output_data.shape[-1]
     psm_out = functools_reduce(lambda x, y: x * y, base_shape_out[:])
     num_bit = 4
@@ -3506,7 +3506,7 @@ def _more_ub_ir_nhwc(output_data, input_data, base_shape, core_num):
     data_y_ub = _new_alloc(tvm_ib, input_data.dtype, [16 * num_gm2ub, 16, 16],
                            'data_y_ub', scope=tbe_platform.scope_ubuf)
     psm = functools_reduce(lambda x, y: x * y, base_shape[:])
-    base_shape_out = base_shape.copy()
+    base_shape_out = list(base_shape)
     base_shape_out[-1] = output_data.shape[-1]
     psm_out = functools_reduce(lambda x, y: x * y, base_shape_out[:])
 

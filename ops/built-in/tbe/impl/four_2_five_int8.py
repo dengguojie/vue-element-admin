@@ -15,6 +15,7 @@
 """
 four_2_five_int8
 """
+
 from __future__ import absolute_import
 from functools import reduce as function_reduce
 
@@ -30,9 +31,13 @@ import te.lang.cce
 from impl.util.util_common import write_code
 
 
-# parameter naming allocated UB
-OUTPUT_NAME_SUFFIX = [0]
-UB_NAME_SUFFIX = [0]
+class Constant:
+    """
+    common constants
+    """
+    # parameter naming allocated UB
+    OUTPUT_NAME_SUFFIX = [0]
+    UB_NAME_SUFFIX = [0]
 
 
 # pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
@@ -95,7 +100,7 @@ def compute_four_2_five(input_tensor, output_tensor, raw_shape_4d, src_format,
     # ---------------------BEGIN cast before----------------
     src_type = input_tensor.dtype.lower()
     param_ir = {}
-    if src_type in("int8", "uint8"):
+    if src_type in ("int8", "uint8"):
         data_gm2ub = tvm.compute(raw_shape_4d, lambda *i: input_tensor(*i),
                                  name="data_gm2ub")
         data_cast = tvm.compute(raw_shape_4d,
@@ -121,35 +126,35 @@ def compute_four_2_five(input_tensor, output_tensor, raw_shape_4d, src_format,
               raw_shape_4d[3] > 1984)):
         axis_n, axis_h, axis_w, axis_c = raw_shape_4d
         axis_c1 = (axis_c + 16 - 1) // 16
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_n, axis_c1, axis_h, axis_w, 16)], [data_ub2gm],
             lambda ins, outs:
             _four2five_ir_nhwc(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     elif src_format.upper() == "NHWC":
         axis_n, axis_h, axis_w, axis_c = raw_shape_4d
         axis_c1 = (axis_c + 16 - 1) // 16
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_n, axis_c1, axis_h, axis_w, 16)], [data_ub2gm],
             lambda ins, outs:
             _four2five_ir_nhwc_hp(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     elif src_format.upper() == "NCHW":
         axis_n, axis_c, axis_h, axis_w = raw_shape_4d
         axis_c1 = (axis_c + 16 - 1) // 16
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_n, axis_c1, axis_h, axis_w, 16)], [data_ub2gm],
             lambda ins, outs:
             _four2five_ir_nchw(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     # ------------------BEGIN cast after-----------
     if param_ir != {}:
@@ -258,7 +263,7 @@ def _allocate_ub(ib_, dtype, size, name):
     :return:
         desc: ub buffer
     '''
-    name = name + ".local.UB" + hex(UB_NAME_SUFFIX[0])
+    name = name + ".local.UB" + hex(Constant.UB_NAME_SUFFIX[0])
     buf_var = ib_.allocate(dtype, (size,), name, scope=param.scope_ubuf)
     return tvm.decl_buffer((size,),
                            dtype,
@@ -763,7 +768,7 @@ def _four2five_ir_nhwc(input_tensor, shape_4d, output):
     # get dtype factor based one block
     dtype_factor = intrin.get_bit_len(output.dtype) // 16
     # allocate buf
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(params.ib_, input_tensor.dtype,
                             vnhwcconv_cube_buf_max, "input_ub")
     # calculate the c count for one core
@@ -1073,7 +1078,7 @@ def _four2five_ir_nhwc_hp(input_tensor, shape_4d, output):
                                      "addr_array_buf",
                                      scope=param.scope_reg,
                                      data=addr_array)
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     src0_array_stride = vnchwconv_cube_col_size * repeat_factor
     dst0_array_stride = axis_c0
     src1_array_stride = axis_c0
@@ -2261,7 +2266,7 @@ def _four2five_ir_nchw(input_tensor, shape_4d, output):
     ib_ = tvm.ir_builder.create()
     params = FormatTransferParams(ib_)
 
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(ib_, input_tensor.dtype, vnchwconv_cube_buf_max,
                             "input_ub")
     output_ub = _allocate_ub(ib_, output.dtype, vnchwconv_cube_buf_max,

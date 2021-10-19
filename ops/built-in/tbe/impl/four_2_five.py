@@ -32,10 +32,13 @@ from impl.four_2_five_computer import compute_four_2_five
 from impl import trans_data_positive_source_tc
 from impl import trans_data_positive_source_ntc
 
-# available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-# available number of cores
-AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+
+class Constant:
+    """
+    common constants
+    """
+    UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+    AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # pylint: disable=locally-disabled, unused-argument, too-many-lines
@@ -92,9 +95,9 @@ def _move_full(dst, data):
     dim_ele = functools_reduce(lambda x, y: x * y, data.shape[1:])
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len)*cp_align_len
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
 
     data_ub = _new_alloc(tvm_ib, data.dtype, ub_ele,
                          "data_ub", scope=cce.scope_ubuf)
@@ -426,8 +429,8 @@ def _ci_align_nhwc_fp16(dst, data):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 1024
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 1024
     ub_ele = (ub_bytes // 2 // float_size // c_i) * c_i
 
     group_index = n_i // device_core_num
@@ -619,8 +622,8 @@ def _ci_align_nhwc_fp16_one(dst, data):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 1024
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 1024
     ub_ele = (ub_bytes // 2 // float_size // c_i) * c_i
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -1021,10 +1024,10 @@ def _move_vconv_one_diff(dst, data):
     n_a = data.shape[0]
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // 33 // cp_align_len)*cp_align_len
     ub_ele_one = ub_ele*16
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
                           "data_one", scope=cce.scope_ubuf)
@@ -1099,7 +1102,7 @@ def _check_move_full(shape_nhwc, src_format, dtype):
     if c_i != c_0:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if n_i == 1:
         if h_i*w_i % device_core_num > 0:
             return False
@@ -1130,13 +1133,13 @@ def _check_ci_align_nhwc_fp16(shape_nhwc, src_format, dtype):
         return False
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    ub_bytes = UB_SIZE_B - 1024
+    ub_bytes = Constant.UB_SIZE_B - 1024
     ub_ele_a = ub_bytes // 2 // float_size
 
     if ub_ele_a < c_i:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if n_i == 1:
         if h_i*w_i % device_core_num > 0:
             return False
@@ -1165,7 +1168,7 @@ def _check_vconv_one(shape_nhwc, src_format, dtype):
     if h_i*w_i % 256 > 0:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if n_i == 1:
         zu_g = h_i*w_i // 256
         if zu_g % device_core_num > 0:
@@ -1224,7 +1227,7 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
         if n_i == 1:
             h_i = shape_input[1]
             w_i = shape_input[2]
-            device_core_num = AICORE_NUM
+            device_core_num = Constant.AICORE_NUM
             n_new = device_core_num
             hw_i = h_i * w_i // device_core_num
             h_new = 1
@@ -1269,7 +1272,7 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
         n_i, h_i, w_i, c_i = shape_input
         c_0 = 16
         if n_i == 1:
-            device_core_num = AICORE_NUM
+            device_core_num = Constant.AICORE_NUM
             n_new = device_core_num
             h_new = h_i*w_i // 256 // device_core_num
             w_new = 256

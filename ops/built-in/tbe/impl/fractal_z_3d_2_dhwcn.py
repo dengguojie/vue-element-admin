@@ -15,28 +15,30 @@
 """
 fractal_z_3d_2_dhwcn
 """
+
 # pylint: disable=W0614
 # pylint: disable=bad-option-value,too-many-lines,wildcard-import,no-else-return,undefined-variable
 from functools import reduce as functools_reduce
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
-from te.utils.op_utils import *
+from te.utils.para_check import REQUIRED_INPUT
+from te.utils.para_check import REQUIRED_OUTPUT
+from te.utils.para_check import REQUIRED_ATTR_STR
+from te.utils.para_check import KERNEL_NAME
+from te.utils.para_check import check_op_params
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import check_shape
 
-# available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-# available number of cores
-AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
-# maximum repeat number
-MAX_REPEATS = 255
-# maximum burst number
-MAX_BURST_NUMBER = 4095
-# maximum rep stride
-MAX_STRIDE_REP = 255
-# maximum blk stride
-MAX_STRIDE_BLK = 65535
-# maximum mask
-MAX_MASK = 128
+
+class Constant:
+    """
+    common constants
+    """
+    # available ub size
+    UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+    # available number of cores
+    AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-locals
@@ -177,9 +179,9 @@ def _set_core_num(origin_num):
     """
     function of set core num
     """
-    if origin_num < AICORE_NUM:
+    if origin_num < Constant.AICORE_NUM:
         return origin_num
-    return AICORE_NUM
+    return Constant.AICORE_NUM
 
 
 def _set_loop(tik_instance, num_core, max_core, total_dim):
@@ -188,7 +190,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     """
     core_loop = tik_instance.Scalar("uint64")
 
-    with tik_instance.if_scope(num_core < total_dim % AICORE_NUM):
+    with tik_instance.if_scope(num_core < total_dim % Constant.AICORE_NUM):
         core_loop.set_as(_ceil_div(total_dim, max_core))
     with tik_instance.else_scope():
         core_loop.set_as(total_dim // max_core)
@@ -197,7 +199,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
 
 
 # pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,old-style-class,too-many-return-statements
+# pylint: disable=locally-disabled,too-many-return-statements
 # pylint: disable=locally-disabled,too-many-statements, too-many-branches
 # pylint: disable=locally-disabled,too-many-public-methods
 class Fz3d2DhwcnCompute:
@@ -218,7 +220,7 @@ class Fz3d2DhwcnCompute:
         self.kernel_name = kernel_name
         self.float_size = cce.cce_intrin.get_bit_len(dtype) // 8
         self.cp_align_len = cce_params.BLOCK_REDUCE_INT8 // self.float_size
-        self.ub_ele = ((UB_SIZE_B - 64) // self.float_size // 2
+        self.ub_ele = ((Constant.UB_SIZE_B - 64) // self.float_size // 2
                        // self.cp_align_len) * self.cp_align_len
         self.c_0 = self.src_shape[3]
         self.n_i = self.src_shape[2]
@@ -240,16 +242,16 @@ class Fz3d2DhwcnCompute:
             big_in_ele = h_d * w_d * self.c_1 * self.c_0 * n_o * self.n_i
             mid_in_ele = self.c_1 * self.c_0 * n_o * self.n_i
 
-            if big_in_ele <= self.ub_ele and d_d >= AICORE_NUM:
+            if big_in_ele <= self.ub_ele and d_d >= Constant.AICORE_NUM:
                 num_dim_ub = self.ub_ele // big_in_ele
-                num_dim_group = num_dim_ub * AICORE_NUM
+                num_dim_group = num_dim_ub * Constant.AICORE_NUM
                 if num_dim_group <= d_d and num_dim_ub > 1:
                     return "n_align_multi_small"
                 else:
                     return "n_align_small"
             elif mid_in_ele <= self.ub_ele:
                 num_dim_ub = self.ub_ele // mid_in_ele
-                num_dim_group = num_dim_ub * AICORE_NUM
+                num_dim_group = num_dim_ub * Constant.AICORE_NUM
                 dhw_d = d_d * h_d * w_d
                 if num_dim_group <= dhw_d and num_dim_ub > 1:
                     return "n_align_multi_mid"
@@ -297,7 +299,7 @@ class Fz3d2DhwcnCompute:
                 big_unit_ele = h_d * w_d * n_o * self.n_i\
                                * self.c_1 * self.c_0 * 16
                 num_big_unit_ub = self.ub_ele // big_unit_ele
-                num_big_unit_group = num_big_unit_ub * AICORE_NUM
+                num_big_unit_group = num_big_unit_ub * Constant.AICORE_NUM
                 if num_big_unit_group <= d_d and num_big_unit_ub > 1\
                         and num_big_unit_ub * big_dim_ele >= self.cp_align_len\
                         and little_ele_plus <= self.ub_ele:
@@ -330,7 +332,7 @@ class Fz3d2DhwcnCompute:
 
             dhwc1_d = d_d * h_d * w_d * self.c_1
 
-            if dhwc1_d < AICORE_NUM:
+            if dhwc1_d < Constant.AICORE_NUM:
                 return "not_align_splitn_fencore"
             else:
                 return "not_align_splitn"

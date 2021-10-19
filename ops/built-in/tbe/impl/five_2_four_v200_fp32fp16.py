@@ -24,8 +24,10 @@ class VnchwConv(object):
     """
     VnchwConv
     """
+
     # pylint: disable=no-self-use,
-    def _align16(self, value):
+    @staticmethod
+    def _align16(value):
         """
         Calculate align 16 size of value
         Parameters
@@ -111,7 +113,7 @@ class VnchwConv(object):
              self.dst_width),
             name="dst_image",
             scope=tik.scope_gm)
-        
+
         self.chw = self.dst_channel * self.dst_height * self.dst_width
         self.hw = self.dst_height * self.dst_width
         self.w = self.dst_width
@@ -322,7 +324,7 @@ class VnchwConv(object):
                     dst_channel_one_loop = self.tik_instance.Scalar("int32")
                     dst_channel_one_loop.set_as(self.C0_const)
                     if self.dst_channel % self.C0_const > 0:
-                        #have c1 tail
+                        # have c1 tail
                         with self.tik_instance.if_scope(
                                 index_c == self.src_channel1 - 1):
                             dst_channel_one_loop.set_as(
@@ -341,7 +343,7 @@ class VnchwConv(object):
                             0,
                             0)
 
-    #pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_hw_fp32(self, hw_st, hw_tail):
         """
         Calculate five 2 four result cut input shape at hw dimension
@@ -405,9 +407,9 @@ class VnchwConv(object):
                             1,
                             1)
 
-                    dst_C_st = index_c * 16
-                    dst_C_end = (index_c + 1) * 16
-                    with self.tik_instance.for_range(dst_C_st, dst_C_end) \
+                    dst_c_st = index_c * 16
+                    dst_c_end = (index_c + 1) * 16
+                    with self.tik_instance.for_range(dst_c_st, dst_c_end) \
                             as index_cm:
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
@@ -429,9 +431,9 @@ class VnchwConv(object):
                                     index_cm * self.hw +
                                     h_st * self.w +
                                     w_st],
-                                output_ub_fp32[(index_cm - dst_C_st) % 8 \
+                                output_ub_fp32[(index_cm - dst_c_st) % 8 \
                                                * 2,
-                                               (index_cm - dst_C_st) // 8 * 8],
+                                               (index_cm - dst_c_st) // 8 * 8],
                                 0,
                                 dst_hw_nbrust,
                                 1,
@@ -462,9 +464,9 @@ class VnchwConv(object):
                                     index_cm * self.hw +
                                     (h_st + ((w_st + 8) // self.dst_width)) * self.w +
                                     (w_st + 8) % self.dst_width],
-                                output_ub_fp32[(index_cm - dst_C_st) % 8 \
+                                output_ub_fp32[(index_cm - dst_c_st) % 8 \
                                                * 2 + 1,
-                                               (index_cm - dst_C_st) // 8 * 8],
+                                               (index_cm - dst_c_st) // 8 * 8],
                                 0,
                                 dst_channel_one_loop,
                                 1,
@@ -503,10 +505,10 @@ class VnchwConv(object):
                             1,
                             1)
 
-                    dst_C_st = index_c * 16
-                    dst_C_end = self.dst_channel
+                    dst_c_st = index_c * 16
+                    dst_c_end = self.dst_channel
 
-                    with self.tik_instance.for_range(dst_C_st, dst_C_end) \
+                    with self.tik_instance.for_range(dst_c_st, dst_c_end) \
                             as index_cm:
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
@@ -524,12 +526,12 @@ class VnchwConv(object):
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[index_n * self.chw +
-                                               index_cm * self.hw + 
+                                               index_cm * self.hw +
                                                h_st * self.w +
                                                w_st],
                                 output_ub_fp32[
-                                    (index_cm - dst_C_st) % 8 * 2,
-                                    (index_cm - dst_C_st) // 8 * 8],
+                                    (index_cm - dst_c_st) % 8 * 2,
+                                    (index_cm - dst_c_st) // 8 * 8],
                                 0,
                                 dst_hw_nbrust,
                                 1,
@@ -559,15 +561,15 @@ class VnchwConv(object):
                                     (h_st + ((w_st + 8) // self.dst_width)) * self.w +
                                     (w_st + 8) % self.dst_width],
                                 output_ub_fp32
-                                [(index_cm - dst_C_st) % 8 * 2 + 1,
-                                 (index_cm - dst_C_st) // 8 * 8],
+                                [(index_cm - dst_c_st) % 8 * 2 + 1,
+                                 (index_cm - dst_c_st) // 8 * 8],
                                 0,
                                 dst_channel_one_loop,
                                 1,
                                 1,
                                 1)
 
-    #pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_c1_fp16(self, c1_st, c1_one_slice, dst_channel):
         """
         Calculate five 2 four result cut input shape at c1 dimension
@@ -667,7 +669,7 @@ class VnchwConv(object):
                         0,
                         0)
 
-    #pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_c1_fp32(self, c1_st, c1_one_slice, dst_channel):
         """
         Calculate five 2 four result cut input shape at c1 dimension
@@ -759,17 +761,17 @@ class VnchwConv(object):
                             1,
                             1)
 
-                    dst_C_st = (index_c + c1_st) * 16
-                    dst_C_end = (index_c + 1 + c1_st) * 16
+                    dst_c_st = (index_c + c1_st) * 16
+                    dst_c_end = (index_c + 1 + c1_st) * 16
 
-                    with self.tik_instance.for_range(dst_C_st, dst_C_end) \
+                    with self.tik_instance.for_range(dst_c_st, dst_c_end) \
                             as index_cm:
                         dst_n = index_n
                         dst_c = index_cm
                         dst_h = 0
                         dst_w = 0
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + index_c * 16
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + index_c * 16
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
 
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
@@ -808,8 +810,8 @@ class VnchwConv(object):
                         dst_c = index_cm
                         dst_h = 8 // self.dst_width
                         dst_w = 8 % self.dst_width
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + 1 + index_c * 16
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + 1 + index_c * 16
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
 
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
@@ -862,17 +864,17 @@ class VnchwConv(object):
                             1,
                             1)
 
-                    dst_C_st = (index_c + c1_st) * 16
-                    dst_C_end = c1_st * 16 + dst_channel
+                    dst_c_st = (index_c + c1_st) * 16
+                    dst_c_end = c1_st * 16 + dst_channel
 
-                    with self.tik_instance.for_range(dst_C_st, dst_C_end) \
+                    with self.tik_instance.for_range(dst_c_st, dst_c_end) \
                             as index_cm:
                         dst_n = index_n
                         dst_c = index_cm
                         dst_h = 0
                         dst_w = 0
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + index_c * 16
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + index_c * 16
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
 
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
@@ -911,9 +913,9 @@ class VnchwConv(object):
                         dst_c = index_cm
                         dst_h = 8 // self.dst_width
                         dst_w = 8 % self.dst_width
-                        src_c = (index_cm - dst_C_st) % 8 \
+                        src_c = (index_cm - dst_c_st) % 8 \
                                 * 2 + 1 + index_c * 16
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
                         move_size = dst_c * self.dst_height * self.dst_width \
@@ -958,8 +960,8 @@ class VnchwConv(object):
                         0,
                         0)
 
-    #pylint: disable=too-many-locals,too-many-statements
-    #pylint: disable=invalid-name
+    # pylint: disable=too-many-locals,too-many-statements
+    # pylint: disable=invalid-name
     def _compute_core_all_fp16(self):
         """
         Calculate five 2 four result without cutting input shape
@@ -1048,7 +1050,8 @@ class VnchwConv(object):
                         dst_hw_nbrust,
                         0,
                         0)
-    #pylint: disable=too-many-locals,invalid-name,too-many-statements
+
+    # pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_all_fp32(self):
         """
         Calculate five 2 four result without cutting input shape
@@ -1115,17 +1118,17 @@ class VnchwConv(object):
                             1,
                             1)
 
-                    dst_C_st = index_c * 16
-                    dst_C_end = (index_c + 1) * 16
+                    dst_c_st = index_c * 16
+                    dst_c_end = (index_c + 1) * 16
 
-                    with self.tik_instance.for_range(dst_C_st, dst_C_end) \
+                    with self.tik_instance.for_range(dst_c_st, dst_c_end) \
                             as index_cm:
                         dst_n = index_n
                         dst_c = index_cm
                         dst_h = 0
                         dst_w = 0
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + dst_C_st
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + dst_c_st
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
                         move_size = dst_c * self.dst_height * self.dst_width \
@@ -1161,8 +1164,8 @@ class VnchwConv(object):
                         dst_c = index_cm
                         dst_h = 8 // self.dst_width
                         dst_w = 8 % self.dst_width
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + 1 + dst_C_st
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + 1 + dst_c_st
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
                         total_outgm_size = self.dst_channel * self.dst_height \
                                            * self.dst_width
                         move_size = dst_c * self.dst_height * self.dst_width \
@@ -1213,17 +1216,17 @@ class VnchwConv(object):
                             1,
                             1)
 
-                    dst_C_st = index_c * 16
-                    dst_C_end = self.dst_channel
+                    dst_c_st = index_c * 16
+                    dst_c_end = self.dst_channel
 
-                    with self.tik_instance.for_range(dst_C_st, dst_C_end) \
+                    with self.tik_instance.for_range(dst_c_st, dst_c_end) \
                             as index_cm:
                         dst_n = index_n
                         dst_c = index_cm
                         dst_h = 0
                         dst_w = 0
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + dst_C_st
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + dst_c_st
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
                         total_outgm_size = self.dst_channel \
                                            * self.dst_height * self.dst_width
                         move_size = dst_c * self.dst_height * self.dst_width \
@@ -1261,8 +1264,8 @@ class VnchwConv(object):
                         dst_c = index_cm
                         dst_h = 8 // self.dst_width
                         dst_w = 8 % self.dst_width
-                        src_c = (index_cm - dst_C_st) % 8 * 2 + 1 + dst_C_st
-                        src_hw = (index_cm - dst_C_st) // 8 * 8
+                        src_c = (index_cm - dst_c_st) % 8 * 2 + 1 + dst_c_st
+                        src_hw = (index_cm - dst_c_st) // 8 * 8
                         total_outgm_size = self.dst_channel \
                                            * self.dst_height * self.dst_width
                         move_size = dst_c * self.dst_height * self.dst_width \
@@ -1296,8 +1299,8 @@ class VnchwConv(object):
                                 1,
                                 1)
 
-    #pylint: disable=too-many-locals,too-many-statements,too-many-arguments
-    #pylint: disable=invalid-name
+    # pylint: disable=too-many-locals,too-many-statements,too-many-arguments
+    # pylint: disable=invalid-name
     def _move_slice(self, dst_n, dst_c, dst_h, dst_w,
                     src_c, src_hw,
                     dst_hw_nbrust, output_ub_fp32):
@@ -1355,7 +1358,7 @@ class VnchwConv(object):
                 1)
 
     # pylint: disable=unused-argument
-    def _chk_mov(self, dst_C_st, dst_C_end,
+    def _chk_mov(self, dst_c_st, dst_c_end,
                  index_n, index_cm, dst_hw_nbrust, output_ub_fp32):
         """
         Calculate start point and length for data move
@@ -1363,9 +1366,9 @@ class VnchwConv(object):
 
         Parameters
         ----------
-        dst_C_st : int
+        dst_c_st : int
             c1 start point at c1 dimension
-        dst_C_end : int
+        dst_c_end : int
             c1 end point at c1 dimension
         index_n : int
             n index of input tensor
@@ -1381,8 +1384,8 @@ class VnchwConv(object):
         dst_c = index_cm
         dst_h = 0
         dst_w = 0
-        src_c = (index_cm - dst_C_st) % 8 * 2 + dst_C_st
-        src_hw = (index_cm - dst_C_st) // 8 * 8
+        src_c = (index_cm - dst_c_st) % 8 * 2 + dst_c_st
+        src_hw = (index_cm - dst_c_st) // 8 * 8
         self._move_slice(dst_n, dst_c, dst_h, dst_w, src_c,
                          src_hw, dst_hw_nbrust, output_ub_fp32)
 
@@ -1390,8 +1393,8 @@ class VnchwConv(object):
         dst_c = index_cm
         dst_h = 8 // self.dst_width
         dst_w = 8 % self.dst_width
-        src_c = (index_cm - dst_C_st) % 8 * 2 + 1 + dst_C_st
-        src_hw = (index_cm - dst_C_st) // 8 * 8
+        src_c = (index_cm - dst_c_st) % 8 * 2 + 1 + dst_c_st
+        src_hw = (index_cm - dst_c_st) // 8 * 8
         self._move_slice(dst_n, dst_c, dst_h, dst_w,
                          src_c, src_hw, dst_hw_nbrust, output_ub_fp32)
 

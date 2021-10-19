@@ -20,22 +20,24 @@ fractal_nz_2_nc1hwc0
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
-from te.utils.op_utils import *
+from te.utils.para_check import REQUIRED_INPUT
+from te.utils.para_check import REQUIRED_OUTPUT
+from te.utils.para_check import REQUIRED_ATTR_STR
+from te.utils.para_check import KERNEL_NAME
+from te.utils.para_check import check_op_params
+from te.utils.op_utils import functools_reduce
+from te.utils.op_utils import check_dtype
+from te.utils.op_utils import check_shape
 
-# available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-# available number of cores
-AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
-# maximum repeat number
-MAX_REPEATS = 255
-# maximum burst number
-MAX_BURST_NUMBER = 4095
-# maximum rep stride
-MAX_STRIDE_REP = 255
-# maximum blk stride
-MAX_STRIDE_BLK = 65535
-# maximum mask
-MAX_MASK = 128
+
+class Constant:
+    """
+    common constants
+    """
+    # available ub size
+    UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+    # available number of cores
+    AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # pylint: disable=locally-disabled,too-many-lines,too-many-locals
@@ -224,9 +226,9 @@ def _set_core_num(origin_num):
     """
     function of set core num
     """
-    if origin_num < AICORE_NUM:
+    if origin_num < Constant.AICORE_NUM:
         return origin_num
-    return AICORE_NUM
+    return Constant.AICORE_NUM
 
 
 def _set_loop(tik_instance, num_core, max_core, total_dim):
@@ -235,7 +237,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     """
     core_loop = tik_instance.Scalar("uint64")
 
-    with tik_instance.if_scope(num_core < total_dim % AICORE_NUM):
+    with tik_instance.if_scope(num_core < total_dim % Constant.AICORE_NUM):
         core_loop.set_as(_ceil_div(total_dim, max_core))
     with tik_instance.else_scope():
         core_loop.set_as(total_dim // max_core)
@@ -244,7 +246,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
 
 
 # pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,old-style-class,too-many-return-statements
+# pylint: disable=locally-disabled,too-many-return-statements
 # pylint: disable=locally-disabled,too-many-statements, too-many-branches
 # pylint: disable=locally-disabled,too-many-public-methods
 class Fnz2Nc1hwc0Compute:
@@ -265,7 +267,7 @@ class Fnz2Nc1hwc0Compute:
         self.kernel_name = kernel_name
         self.float_size = cce.cce_intrin.get_bit_len(dtype) // 8
         self.cp_align_len = cce_params.BLOCK_REDUCE_INT8 // self.float_size
-        self.ub_ele = ((UB_SIZE_B - 64) // self.float_size // 2
+        self.ub_ele = ((Constant.UB_SIZE_B - 64) // self.float_size // 2
                        // self.cp_align_len) * self.cp_align_len
         self.n_true = self.dst_shape[0]
         self.c_1 = self.dst_shape[1]
