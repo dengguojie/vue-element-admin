@@ -537,14 +537,12 @@ class RoiAlign:
                             with self.tik_inst.else_scope():
                                 tile_height.set_as(tile_end - tile_start + 1)
                                 s.set_as(tile_height * width)
-                                # cce : for (uint64_t currC1 = 0; currC1 < C1; currC1++)
                                 with self.tik_inst.for_range(0, self.input_c1) as loop_c1:
                                     self.tik_inst.data_move(feature_map_ub[loop_c1 * s * C0SIZE], \
                                                             self.feature_map[batch_index, loop_c1,
                                                                 tile_start, wstart, 0], \
                                                             0, tile_height, width, src_stride, dst_stride)
 
-                                # cce : for (gh = gridStart; gh < (gridEnd + 1); gh++)
                                 grid_len.set_as(grid_end - grid_start + 1)
                                 with self.tik_inst.for_range(0, grid_len) as loop_gh:
                                     loop_gh = loop_gh + grid_start
@@ -669,14 +667,12 @@ class RoiAlign:
                                     t.set_as(grid_h - 1)
                                     if self.sample_ratio != 1:
                                         with self.tik_inst.if_scope(gh_left == t):
-                                            # cce : vmuls scale  scale = 1 / pow(sample_ratio, 2)
                                             self.tik_inst.vec_muls(128, output_ub, output_ub, scale, \
                                                                    self.repeat * self.pooled_w, 8, 8)
 
                                     with self.tik_inst.if_scope(gh_left == (grid_h - 1)):
                                         # mov ub to gm
                                         out_index.set_as(loop_gh // grid_h)
-                                        # out_index.set_as(1)
                                         self.tik_inst.data_move(self.output_gm[rois_index + loop_n, 0, \
                                                                                out_index, 0, 0], output_ub, 0, \
                                                                 self.input_c1, self.pooled_w, 0, \
@@ -923,7 +919,7 @@ class RoiAlign:
                 scaleGH = self.flowtable_scale[3]
                 scaleGW = self.flowtable_scale[4]
 
-                # roi_grid_h = ceil(roiH / pooledH) , roi_grid_w = ceil(roiW / pooledW)
+                # `roi_grid_h = ceil(roiH / pooledH) , roi_grid_w = ceil(roiW / pooledW)`
                 self.tik_inst.vec_muls(128, roi_bin_w_ub, roi_w_ub, scaleW, \
                                        1, 8, 8)
                 self.tik_inst.vec_muls(128, roi_bin_h_ub, roi_h_ub, scaleH, \
@@ -1114,12 +1110,10 @@ class RoiAlign:
         # maxium grid number is 128,
         # as the indexAddr is set to a vector
         # which contains 128 elements.
-        # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
         if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             tik_instance.vec_conv(MASK_FP32, 'none', index_arr_fp32, \
                                   index_arr, 2, 8, 4)   # fp16 -> fp32
 
-            # fp32Xt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 2)
             tik_instance.vec_muls(MASK_FP32, xpos_fp32, index_arr_fp32, delta_w, \
                                   2, 8, 8)
             tik_instance.vec_muls(MASK_FP32, ypos_fp32, index_arr_fp32, delta_h, \
@@ -1130,20 +1124,17 @@ class RoiAlign:
             tik_instance.vec_muls(MASK_FP16, ypos_fp32, index_arr, delta_h, \
                                   1, 8, 8)
 
-        # fp32Xt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 2)
         tik_instance.vec_adds(MASK_FP32 * dtype_num, xpos_fp32, xpos_fp32, w0, \
                               2 // dtype_num, 8, 8)
         tik_instance.vec_adds(MASK_FP32 * dtype_num, ypos_fp32, ypos_fp32, h0, \
                               2 // dtype_num, 8, 8)
 
         if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-            # deqXt = CalcXtForOneSrcVectorOP(1, 1, 4, 8, 2)
             tik_instance.vec_conv(MASK_FP32, 'none', xpos, xpos_fp32, \
                                   2, 4, 8)  # fp32 -> fp16
             tik_instance.vec_conv(MASK_FP32, 'none', ypos, ypos_fp32, \
                                   2, 4, 8)  # fp32 -> fp16
 
-            # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
             tik_instance.vec_conv(MASK_FP32, 'floor', xlow_int, xpos, \
                                   2, 8, 4)   # fp16  -> int32
             tik_instance.vec_conv(MASK_FP32, 'floor', ylow_int, ypos, \
@@ -1164,26 +1155,22 @@ class RoiAlign:
             self.tik_inst.vcbd(64, ylow_int16, ylow_int, 2, 1, 1, 4, 8)
             self.tik_inst.vec_conv(128, '', ylow, ylow_int16, 1, 8, 8)
         else:
-            # deqXt = CalcXtForOneSrcVectorOP(1, 1, 4, 8, 2)
             tik_instance.vec_conv(MASK_FP32, 'none', xlow, xlow_int, \
                                   2, 4, 8, 1.0)  # int32 -> fp16
             tik_instance.vec_conv(MASK_FP32, 'none', ylow, ylow_int, \
                                   2, 4, 8, 1.0)  # int32 -> fp16
 
         # add 0.5 to avoid incorrect ceiling
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
         tik_instance.vec_adds(MASK_FP16, xhigh, xlow, POINT_FIVE, \
                               1, 8, 8)
         tik_instance.vec_adds(MASK_FP16, yhigh, ylow, POINT_FIVE, \
                               1, 8, 8)
 
-        # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
         tik_instance.vec_conv(MASK_FP32, 'ceil', xhigh_int, xhigh, \
                               2, 8, 4)   # fp16  -> int32
         tik_instance.vec_conv(MASK_FP32, 'ceil', yhigh_int, yhigh, \
                               2, 8, 4)   # fp16  -> int32
 
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
         tik_instance.vec_adds(MASK_FP16, xhigh, xlow, ONE, 1, 8, 8)
         tik_instance.vec_adds(MASK_FP16, yhigh, ylow, ONE, 1, 8, 8)
 
@@ -1199,7 +1186,6 @@ class RoiAlign:
             tik_instance.vec_conv(MASK_FP32, 'none', yhigh_fp32, yhigh, \
                                   2, 8, 4)   # fp16 -> fp32
 
-            # fp32TwoXt = CalcXtForTwoSrcVectorOP(1, 1, 1, 8, 8, 8, 2)
             tik_instance.vec_sub(MASK_FP32, lx_fp32, xpos_fp32, xlow_fp32, \
                                  2, 8, 8, 8)
             tik_instance.vec_sub(MASK_FP32, ly_fp32, ypos_fp32, ylow_fp32, \
@@ -1229,7 +1215,6 @@ class RoiAlign:
                                  1, 8, 8, 8)
 
         # temporary data for comparision
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
         tik_instance.vec_adds(MASK_FP16, lx_pos_cmp, lx, ONE, \
                               1, 8, 8)
         tik_instance.vec_adds(MASK_FP16, ly_pos_cmp, ly, ONE, \
@@ -1270,15 +1255,13 @@ class RoiAlign:
                                   name="sel", scope=tbe_platform.scope_ubuf)
         tik_instance.vec_dup(8, sel, 0, 1, 8)
         # compare lx ly with 0 and 1
-        # if lx > 1:
-        #   lx = lx - 1
-        #   hx = hx + 1
-        #   xlow = xlow + 1
-        #   xhigh = xhigh + 1
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
+        # `if lx > 1:`
+        #   `lx = lx - 1`
+        #   `hx = hx + 1`
+        #   `xlow = xlow + 1`
+        #   `xhigh = xhigh + 1`
         tik_instance.vec_dup(MASK_FP16, cmp_const, ONE, 1, 8)
 
-        # twoXt = CalcXtForTwoSrcVectorOP(1, 1, 1, 8, 8, 8, 1)
         tik_instance.vec_cmpv_gt(sel, lx, cmp_const, 1, 8, 8)
         tik_instance.vec_sel(MASK_FP16, 0, lx, sel, lx_neg_cmp, lx, \
                              1, 8, 8, 8)
@@ -1289,12 +1272,11 @@ class RoiAlign:
         tik_instance.vec_sel(MASK_FP16, 0, xhigh, sel, xhigh_pos_cmp, xhigh, \
                              1, 8, 8, 8)
 
-        # if lx < 0:
-        #   lx = lx + 1
-        #   hx = hx - 1
-        #   xlow = xlow - 1
-        #   xhigh = xhigh - 1
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
+        # `if lx < 0:`
+        #   `lx = lx + 1`
+        #   `hx = hx - 1`
+        #   `xlow = xlow - 1`
+        #   `xhigh = xhigh - 1`
         tik_instance.vec_dup(MASK_FP16, cmp_const, ZERO, 1, 8)
 
         # twoXt = CalcXtForTwoSrcVectorOP(1, 1, 1, 8, 8, 8, 1)
@@ -1308,15 +1290,13 @@ class RoiAlign:
         tik_instance.vec_sel(MASK_FP16, 0, xhigh, sel, xhigh_neg_cmp, xhigh, \
                              1, 8, 8, 8)
 
-        # if ly > 1:
-        #   ly = ly - 1
-        #   hy = hy + 1
-        #   ylow = ylow + 1
-        #   yhigh = yhigh + 1
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
+        # `if ly > 1:`
+        #   `ly = ly - 1`
+        #   `hy = hy + 1`
+        #   `ylow = ylow + 1`
+        #   `yhigh = yhigh + 1`
         tik_instance.vec_dup(MASK_FP16, cmp_const, ONE, 1, 8)
 
-        # twoXt = CalcXtForTwoSrcVectorOP(1, 1, 1, 8, 8, 8, 1)
         tik_instance.vec_cmpv_gt(sel, ly, cmp_const, 1, 8, 8)
         tik_instance.vec_sel(MASK_FP16, 0, ly, sel, ly_neg_cmp, ly, \
                              1, 8, 8, 8)
@@ -1327,15 +1307,13 @@ class RoiAlign:
         tik_instance.vec_sel(MASK_FP16, 0, yhigh, sel, yhigh_pos_cmp, yhigh, \
                              1, 8, 8, 8)
 
-        # if ly < 0:
-        #   ly = ly + 1
-        #   hy = hy - 1
-        #   ylow = ylow - 1
-        #   yhigh = yhigh - 1
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
+        # `if ly < 0:`
+        #   `ly = ly + 1`
+        #   `hy = hy - 1`
+        #   `ylow = ylow - 1`
+        #   `yhigh = yhigh - 1`
         tik_instance.vec_dup(MASK_FP16, cmp_const, ZERO, 1, 8)
 
-        # twoXt = CalcXtForTwoSrcVectorOP(1, 1, 1, 8, 8, 8, 1)
         tik_instance.vec_cmpv_lt(sel, ly, cmp_const, 1, 8, 8)
         tik_instance.vec_sel(MASK_FP16, 0, ly, sel, ly_pos_cmp, ly, \
                              1, 8, 8, 8)
@@ -1347,20 +1325,16 @@ class RoiAlign:
                              1, 8, 8, 8)
 
         # update xlowInt, ylowInt, xhighInt, yhighInt
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
         tik_instance.vec_adds(MASK_FP16, cmp_buf, xlow, POINT_FIVE, 1, 8, 8)
 
-        # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
         tik_instance.vec_conv(MASK_FP32, 'floor', xlow_int, cmp_buf, \
                               2, 8, 4)   # fp16  -> int32
         tik_instance.vec_conv(MASK_FP32, 'ceil', xhigh_int, cmp_buf, \
                               2, 8, 4)   # fp16  -> int32
 
-        # binXt = CalcXtForOneSrcVectorOP(1, 1, 8, 8, 1)
         tik_instance.vec_adds(MASK_FP16, cmp_buf, ylow, POINT_FIVE, \
                               1, 8, 8)
 
-        # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
         tik_instance.vec_conv(MASK_FP32, 'floor', ylow_int, cmp_buf, \
                               2, 8, 4)   # fp16  -> int32
         tik_instance.vec_conv(MASK_FP32, 'ceil', yhigh_int, cmp_buf, \

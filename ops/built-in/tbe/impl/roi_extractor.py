@@ -437,8 +437,7 @@ class RoiExtractor:
 
     def map_roi_levels(self, target_lvls):
         """
-        calculate scale = torch.sqrt(
-            (rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
+        calculate scale = torch.sqrt((rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
         :return: target_lvls
         """
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.rois_dtype) // BIT_EACH_BYTE
@@ -514,7 +513,6 @@ class RoiExtractor:
                     self.tik_instance.vextract(y2_fp32[0], rois_ub[0], 8, 4)
 
             # calc levels
-            # scale = torch.sqrt((rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
             self.tik_instance.vec_sub(64, x1_fp32, x2_fp32, x1_fp32, REPEAT_FP32, 8, 8, 8)  # x2_fp32 - x1_fp32
             self.tik_instance.vec_sub(64, y1_fp32, y2_fp32, y1_fp32, REPEAT_FP32, 8, 8, 8)  # y2_fp32 - y1_fp32
             self.tik_instance.vec_mul(64, y1_fp32, x1_fp32, y1_fp32, REPEAT_FP32, 8, 8, 8)  # (x2_fp32 - x1_fp32) * (y2_fp32 - y1_fp32)
@@ -529,8 +527,6 @@ class RoiExtractor:
                 _tf_n52n8(self.tik_instance, rois_ub, rois_ub_n5, ALIGN_LEN)
                 inner_compute(loop_i * ALIGN_LEN)
         if tail > 0:
-            # with self.tik_instance.for_range(0, tail) as i:
-                # self.tik_instance.data_move(rois_ub[i, 0], self.data_rois[loop * ALIGN_LEN + i, 0], 0, 1, 1, 0, 0)
             self.tik_instance.data_move(rois_ub_n5[0, 0], self.data_rois[loop * ALIGN_LEN, 0],
                                         0, 1, 40 * n_burst, 0, 0)
             _tf_n52n8(self.tik_instance, rois_ub, rois_ub_n5, tail)
@@ -589,7 +585,6 @@ class RoiExtractor:
         with self.tik_instance.for_range(0, repeat) as i:
             self.tik_instance.vec_sel(128, 0, i_ub, cmp_ub[128 // cmp_bit_size * i], one_ub, zero_ub, 1, 1, 8, 8)
             self.tik_instance.vec_conv(64, "floor", inds_buf[128 * i], i_ub, 2, 8, 4)  # fp16->i32
-        # inds = mask.nonzero(as_tuple=False).squeeze(1)
         idx = self.tik_instance.Scalar("int32", name="roi_idx")
         index_reg.set_as(0)
         with self.tik_instance.for_range(0, self.rois_total_num) as roi_i:
@@ -623,7 +618,6 @@ class RoiExtractor:
                 self.where_and_nonzero(target_lvls, index_reg, inds, block_idx)
                 roisn_ub[0].set_as(index_reg)
 
-                # rois_ = rois[inds]
                 rois_ub = self.tik_instance.Tensor(self.rois_dtype, (data_each_block, ),
                                                    name="rois_ub", scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, index_reg) as roi_i:
@@ -632,7 +626,6 @@ class RoiExtractor:
                     self.tik_instance.data_move(roi_buf[block_idx * self.y_shape[0] + roi_i, 0], rois_ub, 0, 1, 1, 0, 0)
 
             # call roi_align module
-            # roi_feats_t = self.roi_layers[i](feats[i], rois_)
             with self.tik_instance.if_scope(index_reg > 0):
                 for i in self.index_arr:
                     with self.tik_instance.if_scope(block_idx == i):
@@ -652,7 +645,6 @@ class RoiExtractor:
                     with self.tik_instance.else_scope():
                         pass
 
-            # roi_feats[inds] = roi_feats_t
             with self.tik_instance.new_stmt_scope():
                 out_ub = self.tik_instance.Tensor(self.rois_dtype, (roi_elem_len, ), name="out_ub", scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, index_reg) as roi_i:

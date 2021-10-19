@@ -113,31 +113,31 @@ class SparseApplyProximalAdagrad(SparseApply):
             accum_ub = self._get_ub("accum_ub")[offset]
             grad_ub = self.grad_ub[offset]
 
-        # Procedure1: accum = accum + grad * grad
+        # `Procedure1: accum = accum + grad * grad`
         self.tik_instance.vmla(mask, accum_ub, grad_ub, grad_ub, repeat_times, 1, 1, 1, 8, 8, 8)
         # End Procedure1
 
-        # Procedure2: lr1 = lr / sqrt(accum)
-        # Step1: tmp = sqrt(accum)
+        # `Procedure2: lr1 = lr / sqrt(accum)`
+        # Step1: `tmp = sqrt(accum)`
         self.tik_instance.vsqrt(mask, tmp_ub, accum_ub, repeat_times, 1, 1, 8, 8)
         if self.vdiv_support:
-            # Step2: oct_float_ub = lr_scalar
+            # Step2: `oct_float_ub = lr_scalar`
             self.tik_instance.vector_dup(8, oct_float_ub, self.lr_scalar, 1, 1, 8)
-            # Step3: lr1 = oct_float_ub / tmp
+            # Step3: `lr1 = oct_float_ub / tmp`
             self.tik_instance.vdiv(mask, lr1_ub, oct_float_ub, tmp_ub, repeat_times, 1, 0, 1, 8, 0, 8)
         else:
-            # Step2: tmp = tmp ^ -1
+            # Step2: `tmp = tmp ^ -1`
             self.tik_instance.vrec(mask, tmp_ub, tmp_ub, repeat_times, 1, 1, 8, 8)
-            # Step3: lr1 = tmp * lr_scalar
+            # Step3: `lr1 = tmp * lr_scalar`
             self.tik_instance.vmuls(mask, lr1_ub, tmp_ub, self.lr_scalar, repeat_times, 1, 1, 8, 8)
         # End Procedure2
 
-        # Procedure3: lr2 = 1.0 / (1.0 + l2 * lr1)
-        # Step1: lr2 = lr1 * l2
+        # Procedure3: `lr2 = 1.0 / (1.0 + l2 * lr1)`
+        # Step1: `lr2 = lr1 * l2`
         self.tik_instance.vmuls(mask, lr2_ub, lr1_ub, self.l2_scalar, repeat_times, 1, 1, 8, 8)
-        # Step2: lr2 = lr2 + 1.0
+        # Step2: `lr2 = lr2 + 1.0`
         self.tik_instance.vadds(mask, lr2_ub, lr2_ub, 1.0, repeat_times, 1, 1, 8, 8)
-        # Step3: lr2 = 1.0 / lr2
+        # Step3: `lr2 = 1.0 / lr2`
         if self.vdiv_support:
             self.tik_instance.vector_dup(8, oct_float_ub, 1, 1, 1, 8)
             self.tik_instance.vdiv(mask, lr2_ub, oct_float_ub, lr2_ub, repeat_times, 1, 0, 1, 8, 0, 8)
@@ -145,43 +145,43 @@ class SparseApplyProximalAdagrad(SparseApply):
             self.tik_instance.vrec(mask, lr2_ub, lr2_ub, repeat_times, 1, 1, 8, 8)
         # End Procedure3
 
-        # Procedure4: prox_var = var - grad * lr1
-        # Step1: prox_var = grad * lr1
+        # Procedure4: `prox_var = var - grad * lr1`
+        # Step1: `prox_var = grad * lr1`
         self.tik_instance.vmul(mask, prox_var_ub, grad_ub, lr1_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-        # Step2: prox_var = var - prox_var
+        # Step2: `prox_var = var - prox_var`
         self.tik_instance.vsub(mask, prox_var_ub, var_ub, prox_var_ub, repeat_times, 1, 1, 1, 8, 8, 8)
         # End Procedure4
 
         with self.tik_instance.if_scope(self.l1_scalar > 0):
-            # Procedure5: var = np.sign(prox_var) * np.maximum(np.abs(prox_var) - lr1 * l1, 0.0) * lr2
-            # Step1: grad_as_temp = abs(prox_var)
+            # Procedure5: `var = np.sign(prox_var) * np.maximum(np.abs(prox_var) - lr1 * l1, 0.0) * lr2`
+            # Step1: `grad_as_temp = abs(prox_var)`
             self.tik_instance.vabs(mask, grad_ub, prox_var_ub, repeat_times, 1, 1, 8, 8)
-            # Step2: var = lr1 * l1
+            # Step2: `var = lr1 * l1`
             self.tik_instance.vmuls(mask, var_ub, lr1_ub, self.l1_scalar, repeat_times, 1, 1, 8, 8)
-            # Step3: var = grad_as_temp - var
+            # Step3: `var = grad_as_temp - var`
             self.tik_instance.vsub(mask, var_ub, grad_ub, var_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-            # Step4: tmp = 0.0
+            # Step4: `tmp = 0.0`
             self.tik_instance.vmuls(mask, tmp_ub, var_ub, 0.0, repeat_times, 1, 1, 8, 8)
-            # Step4: var = maximum(var, tmp)
+            # Step4: `var = maximum(var, tmp)`
             self.tik_instance.vmax(mask, var_ub, var_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-            # Step5: tmp = sign(prox_var)
-            #            = abs(prox_var) / (prox_var + 1.18e-38)
-            #            = grad_as_temp / (prox_var + 1.18e-38)
-            # Step5-1: tmp = prox_var + 1.18e-38
+            # Step5: `tmp = sign(prox_var)`
+            #            = `abs(prox_var) / (prox_var + 1.18e-38)`
+            #            = `grad_as_temp / (prox_var + 1.18e-38)`
+            # Step5-1: `tmp = prox_var + 1.18e-38`
             self.tik_instance.vadds(mask, tmp_ub, prox_var_ub, 1.18e-38, repeat_times, 1, 1, 8, 8)
-            # Step5-2: tmp = grad_as_temp / tmp
+            # Step5-2: `tmp = grad_as_temp / tmp`
             if self.vdiv_support:
                 self.tik_instance.vdiv(mask, tmp_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             else:
                 self.tik_instance.vrec(mask, tmp_ub, tmp_ub, repeat_times, 1, 1, 8, 8)
                 self.tik_instance.vmul(mask, tmp_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-            # Step6: var = tmp * var
+            # Step6: `var = tmp * var`
             self.tik_instance.vmul(mask, var_ub, var_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-            # Step7: var = var * lr2
+            # Step7: `var = var * lr2`
             self.tik_instance.vmul(mask, var_ub, var_ub, lr2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             # End Procedure5
         with self.tik_instance.else_scope():
-            # Procedure6: var = prox_var * lr2
+            # Procedure6: `var = prox_var * lr2`
             self.tik_instance.vmul(mask, var_ub, prox_var_ub, lr2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             # End Procedure6
 
