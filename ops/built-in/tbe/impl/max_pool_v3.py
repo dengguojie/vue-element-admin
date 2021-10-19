@@ -85,9 +85,9 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
-@fusion_manager.register("max_pool")
+@fusion_manager.register("max_pool_v3")
 def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
-                          data_format="NC1HWC0", kernel_name="max_pool_fuse"):
+                          data_format="NC1HWC0", kernel_name="max_pool_v3"):
     """
     Performs max pooling on the input.
 
@@ -147,7 +147,7 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
 
 # pylint: disable=unnecessary-lambda,too-many-locals
 def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads,
-                     data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool"):
+                     data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
     """
     Performs max pooling on the input.
 
