@@ -143,6 +143,12 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
  */
 Status TbeConv2DAddMulQuantPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do Conv2DAddMulQuant!");
+  auto output0_node = GetMatchedNodesByDescName(kPatternOutput1, mapping);
+  auto output1_node = GetMatchedNodesByDescName(kPatternOutput2, mapping);
+  FUSION_PASS_CHECK((!output0_node.empty() && !output1_node.empty()) && \
+                    (output0_node[0]->GetType() == "MaxPoolV3" || output1_node[0]->GetType() == "MaxPoolV3"),
+                    OP_LOGD(fused_op_type_.c_str(), "MaxPoolV3 not support ub fusion"),
+                    return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
   SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(fused_op_type_.c_str(), "End to do Conv2DAddMulQuant!");
