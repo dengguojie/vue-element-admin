@@ -32,7 +32,7 @@ from impl.dynamic.top_k_d import top_k_d as top_k_template
 from impl.util.platform_adapter import is_vgatherb
 
 FP16_MINIMUM = -65520
-MAX_INT32 = 2 ** 31 - 1
+MAX_INT32 = 2**31 - 1
 INDICES_NUM = MAX_INT32
 DTYPE_INT32 = "int32"
 TILING_PARAMS_NUM = 8
@@ -44,6 +44,7 @@ BYTE_BLOCK = 32
 FULL_MASK_FP16 = 128
 FULL_MASK_INT32 = 64
 FULL_MASK_INT64 = 32
+
 
 # pylint: disable = unused-argument,redefined-builtin
 def get_op_support_info(input_tensor,
@@ -382,19 +383,36 @@ class GlobalVar:
         """
         return self.offset_gm
 
+
 GLOBAL_VAR = GlobalVar()
 
 
-
-
-def _emit_copy_ubuf_to_gm(tik_instance, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
+def _emit_copy_ubuf_to_gm(tik_instance,
+                          dtype,
+                          dst,
+                          src,
+                          nburst,
+                          burstlen,
+                          srcstride,
+                          dststride,
+                          dst_offset=0,
+                          src_offset=0):
     """
     _emit_copy_ubuf_to_gm
     """
     tik_instance.data_move(dst[dst_offset], src[src_offset], 0, nburst, burstlen, srcstride, dststride)
 
 
-def _copy_ubuf_to_gm_k_less_16(tik_instance, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
+def _copy_ubuf_to_gm_k_less_16(tik_instance,
+                               dtype,
+                               dst,
+                               src,
+                               num_rows,
+                               cols_padding,
+                               k,
+                               tail_block_ub,
+                               gm_offset=0,
+                               multi_core=False):
     """
     _copy_ubuf_to_gm
     """
@@ -472,7 +490,16 @@ def _copy_ubuf_to_gm_k_less_16(tik_instance, dtype, dst, src, num_rows, cols_pad
                               src_offset=0)
 
 
-def _copy_ubuf_to_gm(tik_instance, dtype, dst, src, num_rows, cols_padding, k, tail_block_ub, gm_offset=0, multi_core=False):
+def _copy_ubuf_to_gm(tik_instance,
+                     dtype,
+                     dst,
+                     src,
+                     num_rows,
+                     cols_padding,
+                     k,
+                     tail_block_ub,
+                     gm_offset=0,
+                     multi_core=False):
     """
     _copy_ubuf_to_gm
     """
@@ -531,6 +558,7 @@ def _copy_ubuf_to_gm(tik_instance, dtype, dst, src, num_rows, cols_padding, k, t
                               dst_offset=k * (num_rows - 1) + gm_offset,
                               src_offset=cols_padding * (num_rows - 1))
 
+
 def _add(tik_instance, dst, src1, src2, rows, cols_padding):
     # process 256B data per repeat for vsub
     vadd_len = 64
@@ -539,8 +567,9 @@ def _add(tik_instance, dst, src1, src2, rows, cols_padding):
     if repeat > 0:
         tik_instance.vadd(FULL_MASK_INT32, dst, src1, src2, repeat, 1, 1, 1, 8, 8, 8)
     if remain > 0:
-        tik_instance.vadd(remain, dst[repeat * vadd_len], src1[repeat * vadd_len], src2[repeat * vadd_len], 1, 1, 1,
-                            1, 8, 8, 8)
+        tik_instance.vadd(remain, dst[repeat * vadd_len], src1[repeat * vadd_len], src2[repeat * vadd_len], 1, 1, 1, 1,
+                          8, 8, 8)
+
 
 def _emit_vmul(tik_instance, dtype, dst, src1, src2, cnt):
     """
@@ -555,17 +584,19 @@ def _emit_vmul(tik_instance, dtype, dst, src1, src2, cnt):
     times = (repeat_255 + 254) // 255
     if repeat_255 > 0:
         with tik_instance.for_range(0, times, name='vmul_i0') as i:
-            # times_len改成scalar后会性能下降
-            vmul_src0_scalar = tik_instance.Scalar(dtype="int64", name='vmul_src0_scalar', init_value=repeat_255 - i * 255)
+            vmul_src0_scalar = tik_instance.Scalar(dtype="int64",
+                                                   name='vmul_src0_scalar',
+                                                   init_value=repeat_255 - i * 255)
             vmul_src1_scalar = tik_instance.Scalar(dtype="int64", name='vmul_src1_scalar', init_value=255)
             vmul_times_len = tik_instance.Scalar(dtype="int64", name='vmul_dst_scalar')
             tik_instance.scalar_min(vmul_times_len, vmul_src0_scalar, vmul_src1_scalar)
-            tik_instance.vmul(FULL_MASK_INT32, dst[i * calc_num_each_times * 255], src1[i * calc_num_each_times * 255], 
-                                src2, vmul_times_len, 1, 1, 0, 8, 8, 0)
+            tik_instance.vmul(FULL_MASK_INT32, dst[i * calc_num_each_times * 255], src1[i * calc_num_each_times * 255],
+                              src2, vmul_times_len, 1, 1, 0, 8, 8, 0)
 
     if repeat_remain > 0:
-       tik_instance.vmul(repeat_remain, dst[repeat_255 * calc_num_each_times], src1[repeat_255 * calc_num_each_times], 
-                            src2, 1, 1, 1, 0, 8, 8, 0)
+        tik_instance.vmul(repeat_remain, dst[repeat_255 * calc_num_each_times], src1[repeat_255 * calc_num_each_times],
+                          src2, 1, 1, 1, 0, 8, 8, 0)
+
 
 def _conv_fp162s32(tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
     """
@@ -576,8 +607,8 @@ def _conv_fp162s32(tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num
     if repeat > 0:
         tik_instance.vconv(64, "round", s32ub[s32ub_offset], fp16ub[fp16ub_offset], repeat, 1, 1, 8, 4)
     if remain > 0:
-        tik_instance.vconv(remain, "round", s32ub[s32ub_offset + repeat * 64], fp16ub[fp16ub_offset + repeat * 64],
-                            1, 1, 1, 8, 4)
+        tik_instance.vconv(remain, "round", s32ub[s32ub_offset + repeat * 64], fp16ub[fp16ub_offset + repeat * 64], 1,
+                           1, 1, 8, 4)
 
 
 def _emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
@@ -593,25 +624,25 @@ def _emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0
     if repeat_remain > 0:
 
         tik_instance.vextract(dst[dst_offset + 255 * 16 * repeat_255], src[src_offset + 255 * 16 * 8 * repeat_255],
-                                repeat_remain, mode)
+                              repeat_remain, mode)
 
 
-def _merge_two_sorted_region(tik_instance, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted):
+def _merge_two_sorted_region(tik_instance, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted,
+                             len_region_k_limit, merge_num):
     """
     _merge_two_sorted_region
     """
-    if len_region_k < 4096:
+    if len_region_k < len_region_k_limit:
         merge_n0 = len_region_k
         merge_n1 = len_region_sorted
         src_list = [src_region_k[0], src_region_sorted[0], src_region_k[16], src_region_k[16]]
         tik_instance.vmrgsort4(dst, src_list, (merge_n0, merge_n1, 16, 16), False, 3, 1)
 
-    elif len_region_k >= 4096:
-        merge_n0 = 2048
-        merge_n1 = 2048
+    elif len_region_k >= len_region_k_limit:
+        merge_n0 = merge_num
+        merge_n1 = merge_num
         merge_n2 = len_region_sorted
-        src_list = [src_region_k[0], src_region_k[(2048) * 8], src_region_sorted[0],
-                    src_region_k[16]]
+        src_list = [src_region_k[0], src_region_k[(merge_num) * 8], src_region_sorted[0], src_region_k[16]]
         tik_instance.vmrgsort4(dst, src_list, (merge_n0, merge_n1, merge_n2, 16), False, 7, 1)
 
 
@@ -622,13 +653,8 @@ def _copy_region(tik_instance, dst, src, num, dst_offset=0):
     burstlen = (num * 2 * 8 + 31) // 32
     tik_instance.data_move(dst[dst_offset], src, 0, 1, burstlen, 0, 0)
 
-def _merge_recur(tik_instance,
-                 src_ub,
-                 dst_ub,
-                 last_dim,
-                 total_region_list,
-                 level,
-                 region_offset=0):
+
+def _merge_recur(tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
     """
     _merge_recur
     merge multi sorted region proposal list to one sorted region proposal list
@@ -655,8 +681,8 @@ def _merge_recur(tik_instance,
             src_ub[region_offset + merge_n0 * 8 + merge_n1 * 8],
             src_ub[region_offset + merge_n0 * 8 + merge_n1 * 8 + merge_n2 * 8]
         ]
-        tik_instance.vmrgsort4(dst_ub[region_offset], src_list,
-                                (merge_n0, merge_n1, merge_n2, merge_n3), False, 15, merge_repeat)
+        tik_instance.vmrgsort4(dst_ub[region_offset], src_list, (merge_n0, merge_n1, merge_n2, merge_n3), False, 15,
+                               merge_repeat)
 
     if need_tail_process:
         tail_offset = 4 * merge_n0 * merge_repeat * 8
@@ -666,8 +692,7 @@ def _merge_recur(tik_instance,
             src_ub[region_offset + tail_offset + merge_n0 * 8 + merge_n1 * 8 + merge_n2 * 8]
         ]
         tik_instance.vmrgsort4(dst_ub[region_offset + tail_offset], src_list,
-                                (merge_n0, merge_n1, merge_n2, merge_left), False, 15, 1)
-
+                               (merge_n0, merge_n1, merge_n2, merge_left), False, 15, 1)
 
     if loops > 0:
         offset = 4 * loops * 16 * (4**(level - 1))
@@ -684,35 +709,28 @@ def _merge_recur(tik_instance,
             src_ub[region_offset + offset * 8 + merge_n0 * 8 + merge_n1 * 8], src_ub[0]
         ]
 
-        tik_instance.vmrgsort4(dst_ub[region_offset + offset * 8], src_list,
-                                (merge_n0, merge_n1, merge_n2, 16), False, 7, 1)
+        tik_instance.vmrgsort4(dst_ub[region_offset + offset * 8], src_list, (merge_n0, merge_n1, merge_n2, 16), False,
+                               7, 1)
 
     elif remain == 2:
         merge_n0 = 16 * (4**(level - 1))
         merge_n1 = last_dim - (offset + merge_n0)
 
-        src_list = [
-            src_ub[region_offset + offset * 8],
-            src_ub[region_offset + offset * 8 + merge_n0 * 8]
-        ]
+        src_list = [src_ub[region_offset + offset * 8], src_ub[region_offset + offset * 8 + merge_n0 * 8]]
         tik_instance.vmrgsort4(dst_ub[region_offset + offset * 8], src_list + [src_ub[0], src_ub[0]],
-                                (merge_n0, merge_n1, 16, 16), False, 3, 1)
+                               (merge_n0, merge_n1, 16, 16), False, 3, 1)
 
     elif remain == 1:
         merge_n0 = last_dim - offset
         num_blocks_write = (merge_n0 * 16 + 31) // 32
         tik_instance.data_move(dst_ub[region_offset + offset * 8], src_ub[region_offset + offset * 8], 0, 1,
-                                num_blocks_write, 0, 0)
+                               num_blocks_write, 0, 0)
 
     next_total_region_list = (total_region_list + 3) // 4
 
     if next_total_region_list <= 1:
         return dst_ub
-    return _merge_recur(tik_instance, dst_ub, src_ub, last_dim, next_total_region_list, level + 1,
-                        region_offset)
-
-
-
+    return _merge_recur(tik_instance, dst_ub, src_ub, last_dim, next_total_region_list, level + 1, region_offset)
 
 
 def _merge_region(tik_instance, dst, src, rows, cols):
@@ -721,13 +739,9 @@ def _merge_region(tik_instance, dst, src, rows, cols):
     """
     cols_padding = ((cols + 15) // 16) * 16
     with tik_instance.for_range(0, rows, name='merge_i0') as i:
-        result_ub = _merge_recur(tik_instance,
-                                 src,
-                                 dst,
-                                 cols, (cols + 15) // 16,
-                                 1,
-                                 region_offset=i * cols_padding * 8)
+        result_ub = _merge_recur(tik_instance, src, dst, cols, (cols + 15) // 16, 1, region_offset=i * cols_padding * 8)
     return result_ub
+
 
 def _emit_vbitsort(tik_instance, dst, src, cnt, dst_offset=0, src_offset=0):
     """
@@ -740,8 +754,9 @@ def _emit_vbitsort(tik_instance, dst, src, cnt, dst_offset=0, src_offset=0):
             tik_instance.vrpsort16(dst[dst_offset + i * 255 * 16 * 8], src[src_offset + i * 255 * 16 * 8], 255)
 
     if repeat_remain > 0:
-        tik_instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255],
-                                src[src_offset + 255 * 16 * 8 * repeat_255], repeat_remain)
+        tik_instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255], src[src_offset + 255 * 16 * 8 * repeat_255],
+                               repeat_remain)
+
 
 def _sort_region(tik_instance, dst, src, rows, cols):
     """
@@ -765,16 +780,24 @@ def _emit_vconcat(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0)
         with tik_instance.for_range(0, repeat_255, name='vconcat_i0') as i:
             tik_instance.vconcat(dst[dst_offset + i * 255 * 16 * 8], src[src_offset + i * 255 * 16], 255, mode)
     if repeat_remain > 0:
-        tik_instance.vconcat(dst[dst_offset + 255 * 16 * 8 * repeat_255],
-                                src[src_offset + 255 * 16 * repeat_255], repeat_remain, mode)
+        tik_instance.vconcat(dst[dst_offset + 255 * 16 * 8 * repeat_255], src[src_offset + 255 * 16 * repeat_255],
+                             repeat_remain, mode)
 
 
-def _emit_copy_gm_to_ubuf(tik_instance, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
+def _emit_copy_gm_to_ubuf(tik_instance,
+                          dtype,
+                          dst,
+                          src,
+                          nburst,
+                          burstlen,
+                          srcstride,
+                          dststride,
+                          dst_offset=0,
+                          src_offset=0):
     """
     _emit_copy_gm_to_ubuf
     """
     tik_instance.data_move(dst[dst_offset], src[src_offset], 0, nburst, burstlen, srcstride, dststride)
-
 
 
 def _emit_vmuls(tik_instance, dst, src, cnt):
@@ -817,7 +840,6 @@ def _copy_gm_to_ubuf_func(tik_instance, dst, src, num_rows, cols, col_start, gm_
     if not largest:
         _emit_vmuls(tik_instance, dst, dst, cnt=num_rows * cols_padding)
     with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
-        #可不可以保留python的for循环
         with tik_instance.for_range(0, cols_padding - cols) as j:
             dst[cols_padding * i + cols + j].set_as(reg_min_number)
 
@@ -840,7 +862,8 @@ def _copy_gm_to_ubuf(tik_instance, dst, src, num_rows, cols, col_start, gm_offse
                               dst_offset=cols_padding * i,
                               src_offset=cols * i + col_start + gm_offset)
 
-def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
+
+def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest, soc_version):
     """
     _topk_a_row_by_part
     """
@@ -864,7 +887,20 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
     indices_out_final_ub = GLOBAL_VAR.get_indices_out_final_ub()
     index_reg = GLOBAL_VAR.index_reg
 
-    cols_per_part = 1024
+    # set lhisi version
+    if soc_version == "Hi3796CV300CS":
+        cols_per_part = 512
+        len_region_k_limit = 2048
+        merge_num = 1024
+        region_k_num = 2048
+        cnt_num = 512
+    else:
+        cols_per_part = 1024
+        len_region_k_limit = 4096
+        merge_num = 2048
+        region_k_num = 4096
+        cnt_num = 1024
+
     k_padding = ((k + 15) // 16) * 16
     cols_padding = ((cols + 15) // 16) * 16
     part_cnt = (cols + cols_per_part - 1) // cols_per_part
@@ -886,7 +922,6 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                           col_start=0,
                           gm_offset=gm_offset,
                           largest=largest)
-
 
     tik_instance.vector_dup(128, indices_ub, 0.0, repeat_times, 1, 8)
     _emit_copy_gm_to_ubuf(tik_instance, data_dtype, offset_ub, indices_gm, 1, max_part_num // 16, 0, 0)
@@ -925,7 +960,9 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part,
-                                     len_region_sorted=cols_per_part)
+                                     len_region_sorted=cols_per_part,
+                                     len_region_k_limit=len_region_k_limit,
+                                     merge_num=merge_num)
             _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 2)
         with tik_instance.if_scope(i == 1):
             _merge_two_sorted_region(tik_instance,
@@ -933,7 +970,9 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 2,
-                                     len_region_sorted=cols_per_part)
+                                     len_region_sorted=cols_per_part,
+                                     len_region_k_limit=len_region_k_limit,
+                                     merge_num=merge_num)
             _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 3)
         with tik_instance.if_scope(i == 2):
             _merge_two_sorted_region(tik_instance,
@@ -941,7 +980,9 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 3,
-                                     len_region_sorted=cols_per_part)
+                                     len_region_sorted=cols_per_part,
+                                     len_region_k_limit=len_region_k_limit,
+                                     merge_num=merge_num)
             _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 4)
         with tik_instance.if_scope(i >= 3):
             _merge_two_sorted_region(tik_instance,
@@ -949,7 +990,9 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                                      src_region_k=region_k_ub,
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 4,
-                                     len_region_sorted=cols_per_part)
+                                     len_region_sorted=cols_per_part,
+                                     len_region_k_limit=len_region_k_limit,
+                                     merge_num=merge_num)
 
             _copy_region(tik_instance, dst=region_k_ub, src=region_k2_ub, num=cols_per_part * 5)
 
@@ -974,8 +1017,10 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                              dst=region_k2_ub,
                              src_region_k=region_k_ub,
                              src_region_sorted=result_ub,
-                             len_region_k=4096,
-                             len_region_sorted=last_part_cols_padding)
+                             len_region_k=region_k_num,
+                             len_region_sorted=last_part_cols_padding,
+                             len_region_k_limit=len_region_k_limit,
+                             merge_num=merge_num)
 
     # for Ascend310 can't support extract score
     _emit_vextract(tik_instance, region_k_ub, region_k2_ub, mode=Mode.Y2.value, cnt=k_padding)
@@ -986,7 +1031,8 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
     _conv_fp162s32(tik_instance, indices_out_int32_ub, 0, region_k_ub, k_padding, k_padding)
     _conv_fp162s32(tik_instance, offset_int32_ub, 0, region_k_ub, k_padding * 2, k_padding)
 
-    tik_instance.vector_dup(8, indices_tail_block_ub, 1024, 1, 0, 0)
+    #fix cnt 512
+    tik_instance.vector_dup(8, indices_tail_block_ub, cnt_num, 1, 0, 0)
     _emit_vmul(tik_instance, 'int32', indices_out_int32_ub, indices_out_int32_ub, indices_tail_block_ub, cnt=k_padding)
     _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
 
@@ -1014,25 +1060,25 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                                    multi_core=multi_core)
     else:
         _copy_ubuf_to_gm(tik_instance,
-                        'float16',
-                        data_gm_out,
-                        region_k_ub,
-                        num_rows=1,
-                        cols_padding=cols_padding,
-                        k=k,
-                        tail_block_ub=data_tail_block_ub,
-                        gm_offset=row_start_in_core * k + core_rows_start * k,
-                        multi_core=multi_core)
+                         'float16',
+                         data_gm_out,
+                         region_k_ub,
+                         num_rows=1,
+                         cols_padding=cols_padding,
+                         k=k,
+                         tail_block_ub=data_tail_block_ub,
+                         gm_offset=row_start_in_core * k + core_rows_start * k,
+                         multi_core=multi_core)
         _copy_ubuf_to_gm(tik_instance,
-                        'int32',
-                        indices_gm_out,
-                        indices_out_final_ub,
-                        1,
-                        cols_padding,
-                        k,
-                        tail_block_ub=indices_tail_block_ub,
-                        gm_offset=row_start_in_core * k + core_rows_start * k,
-                        multi_core=multi_core)
+                         'int32',
+                         indices_gm_out,
+                         indices_out_final_ub,
+                         1,
+                         cols_padding,
+                         k,
+                         tail_block_ub=indices_tail_block_ub,
+                         gm_offset=row_start_in_core * k + core_rows_start * k,
+                         multi_core=multi_core)
 
 
 def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
@@ -1135,28 +1181,28 @@ def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, 
                                    multi_core=multi_core)
     else:
         _copy_ubuf_to_gm(tik_instance,
-                        'float16',
-                        data_gm_out,
-                        data_ub,
-                        rows,
-                        cols_padding,
-                        k,
-                        tail_block_ub=data_tail_block_ub,
-                        gm_offset=row_start_in_core * k + core_rows_start * k,
-                        multi_core=multi_core)
+                         'float16',
+                         data_gm_out,
+                         data_ub,
+                         rows,
+                         cols_padding,
+                         k,
+                         tail_block_ub=data_tail_block_ub,
+                         gm_offset=row_start_in_core * k + core_rows_start * k,
+                         multi_core=multi_core)
         _copy_ubuf_to_gm(tik_instance,
-                        'int32',
-                        indices_gm_out,
-                        indices_out_final_ub,
-                        rows,
-                        cols_padding,
-                        k,
-                        tail_block_ub=indices_tail_block_ub,
-                        gm_offset=row_start_in_core * k + core_rows_start * k,
-                        multi_core=multi_core)
+                         'int32',
+                         indices_gm_out,
+                         indices_out_final_ub,
+                         rows,
+                         cols_padding,
+                         k,
+                         tail_block_ub=indices_tail_block_ub,
+                         gm_offset=row_start_in_core * k + core_rows_start * k,
+                         multi_core=multi_core)
 
 
-def _tiling(rows, cols):
+def _tiling(rows, cols, cols_limit):
     """
     Funcion for _tiling
     """
@@ -1179,7 +1225,7 @@ def _tiling(rows, cols):
     for i in range(remain):
         ret[i] = ret[i] + 1
 
-    if cols <= 4096:
+    if cols <= cols_limit:
         ub_bytes = ub_bytes - cols_padding * 4  # indices_ub
         row_bytes = cols_padding * 50
         batch = ub_bytes // row_bytes
@@ -1205,11 +1251,19 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     cols_padding = ((cols + 15) // 16) * 16
     rows = 1
     # max_part_num must be a multiple of 16
-    max_part_num = 1424
+    if soc_version == "Hi3796CV300CS":
+        max_part_num = 2080
+        cols_limit = 2048
+        cols_per_part = 512
+    else:
+        max_part_num = 1424
+        cols_limit = 4096
+        cols_per_part = 1024
+
     for i in range(len(shape) - 1):
         rows = rows * int(shape[i])
     multi_core = True
-    rows_cores, turn, batch = _tiling(rows, cols)
+    rows_cores, turn, batch = _tiling(rows, cols, cols_limit)
 
     if k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not is_vgatherb):
         rows_cores = [rows]
@@ -1223,47 +1277,62 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     if len(rows_cores) <= 1:
         multi_core = False
 
-    if cols > 4096:
-        cols_per_part = 1024
-        data_ub = tik_instance.Tensor("float16", (cols_per_part,), name="data_ub", scope=tik.scope_ubuf)
-        indices_ub = tik_instance.Tensor("float16", (cols_per_part,), name="indices_ub", scope=tik.scope_ubuf)
+    if cols > cols_limit:
+        data_ub = tik_instance.Tensor("float16", (cols_per_part, ), name="data_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_instance.Tensor("float16", (cols_per_part, ), name="indices_ub", scope=tik.scope_ubuf)
         indices_out_fp16_ub = indices_ub
         indices_out_int32_ub = tik_instance.Tensor("int32", (1, 4096),
-                                               name="indices_out_int32_ub",
-                                               scope=tik.scope_ubuf)
+                                                   name="indices_out_int32_ub",
+                                                   scope=tik.scope_ubuf)
         indices_out_final_ub = indices_out_int32_ub
-        offset_ub = tik_instance.Tensor("float16", (max_part_num,), name="offset_ub", scope=tik.scope_ubuf)
+        offset_ub = tik_instance.Tensor("float16", (max_part_num, ), name="offset_ub", scope=tik.scope_ubuf)
         offset_fp16_ub = offset_ub
         offset_int32_ub = tik_instance.Tensor("int32", (1, 4096), name="offset_int32_ub", scope=tik.scope_ubuf)
 
         region_ub = tik_instance.Tensor("float16", (1, cols_per_part * 8), name="region_ub", scope=tik.scope_ubuf)
-        region_sorted_ub = tik_instance.Tensor("float16", (1, cols_per_part * 8), name="region_sorted_ub",
-                                           scope=tik.scope_ubuf)
+        region_sorted_ub = tik_instance.Tensor("float16", (1, cols_per_part * 8),
+                                               name="region_sorted_ub",
+                                               scope=tik.scope_ubuf)
 
-        region_k_ub = tik_instance.Tensor("float16", (1, 5120 * 8), name="region_k_ub", scope=tik.scope_ubuf)
-        region_k2_ub = tik_instance.Tensor("float16", (1, 5120 * 8), name="region_k2_ub", scope=tik.scope_ubuf)
+        # merge sort need cols_per_part * 5 * 8
+        region_k_ub = tik_instance.Tensor("float16", (1, cols_per_part * 5 * 8),
+                                          name="region_k_ub",
+                                          scope=tik.scope_ubuf)
+        region_k2_ub = tik_instance.Tensor("float16", (1, cols_per_part * 5 * 8),
+                                           name="region_k2_ub",
+                                           scope=tik.scope_ubuf)
 
         index_reg = tik_instance.Scalar(dtype="float16", name="index_reg", init_value=1)
     else:
         data_ub = tik_instance.Tensor("float16", (batch, cols_padding), name="data_ub", scope=tik.scope_ubuf)
-        indices_ub = tik_instance.Tensor("float16", (cols_padding,), name="indices_ub", scope=tik.scope_ubuf)
-        indices_out_fp16_ub = tik_instance.Tensor("float16", (batch, cols_padding), name="indices_out_fp16_ub", scope=tik.scope_ubuf)
-        indices_out_int32_ub = tik_instance.Tensor("int32", (batch, cols_padding), name="indices_out_int32_ub", scope=tik.scope_ubuf)
-        indices_out_final_ub = tik_instance.Tensor("int32", (batch, cols_padding), name="indices_out_final_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_instance.Tensor("float16", (cols_padding, ), name="indices_ub", scope=tik.scope_ubuf)
+        indices_out_fp16_ub = tik_instance.Tensor("float16", (batch, cols_padding),
+                                                  name="indices_out_fp16_ub",
+                                                  scope=tik.scope_ubuf)
+        indices_out_int32_ub = tik_instance.Tensor("int32", (batch, cols_padding),
+                                                   name="indices_out_int32_ub",
+                                                   scope=tik.scope_ubuf)
+        indices_out_final_ub = tik_instance.Tensor("int32", (batch, cols_padding),
+                                                   name="indices_out_final_ub",
+                                                   scope=tik.scope_ubuf)
         offset_ub = tik_instance.Tensor("float16", (cols_padding, ), name="offset_ub", scope=tik.scope_ubuf)
-        offset_fp16_ub = tik_instance.Tensor("float16", (batch, cols_padding), name="offset_fp16_ub", scope=tik.scope_ubuf)
-        offset_int32_ub = tik_instance.Tensor("int32", (batch, cols_padding), name="offset_int32_ub", scope=tik.scope_ubuf)
+        offset_fp16_ub = tik_instance.Tensor("float16", (batch, cols_padding),
+                                             name="offset_fp16_ub",
+                                             scope=tik.scope_ubuf)
+        offset_int32_ub = tik_instance.Tensor("int32", (batch, cols_padding),
+                                              name="offset_int32_ub",
+                                              scope=tik.scope_ubuf)
         region_ub = tik_instance.Tensor("float16", (batch, cols_padding * 8), name="region_ub", scope=tik.scope_ubuf)
-        region_sorted_ub = tik_instance.Tensor("float16", (batch, cols_padding * 8), name="region_sorted_ub", scope=tik.scope_ubuf)
+        region_sorted_ub = tik_instance.Tensor("float16", (batch, cols_padding * 8),
+                                               name="region_sorted_ub",
+                                               scope=tik.scope_ubuf)
         region_k_ub = None
         region_k2_ub = None
         index_reg = None
 
-
     data_tail_block_ub = tik_instance.Tensor("float16", (16, ), name="data_tail_block_ub", scope=tik.scope_ubuf)
     indices_tail_block_ub = tik_instance.Tensor("int32", (8, ), name="indices_tail_block_ub", scope=tik.scope_ubuf)
 
-    #TODO FP16_MINIMUM要不要设置const reg_min_number[0] = tvm.const(FP16_MINIMUM, dtype='float16')
     reg_min_number = tik_instance.Scalar(dtype="float16", name="reg_min_number", init_value=FP16_MINIMUM)
 
     GLOBAL_VAR.set_data_gm_out(output)
@@ -1299,10 +1368,9 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     remain2 = rows_per_core2 % batch
 
     with tik_instance.for_range(0, blocks, block_num=blocks) as block_index:
-        #需不需要block_index.var
         with tik_instance.if_scope(block_index < turn):
             core_rows_start = rows_per_core1 * block_index
-            if cols > 4096:
+            if cols > cols_limit:
                 with tik_instance.for_range(0, loops1, name='i0') as i:
                     _topk_a_row_by_part(tik_instance,
                                         row_start_in_core=i,
@@ -1310,31 +1378,31 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
                                         k=k,
                                         core_rows_start=core_rows_start,
                                         multi_core=multi_core,
-                                        largest=largest)
+                                        largest=largest,
+                                        soc_version=soc_version)
             else:
                 with tik_instance.for_range(0, loops1, name='i0') as i:
                     _topk_rows(tik_instance,
-                            row_start_in_core=i * batch,
-                            rows=batch,
-                            cols=cols,
-                            k=k,
-                            core_rows_start=core_rows_start,
-                            multi_core=multi_core,
-                            largest=largest)
+                               row_start_in_core=i * batch,
+                               rows=batch,
+                               cols=cols,
+                               k=k,
+                               core_rows_start=core_rows_start,
+                               multi_core=multi_core,
+                               largest=largest)
                 if remain1 > 0:
                     _topk_rows(tik_instance,
-                            row_start_in_core=loops1 * batch,
-                            rows=remain1,
-                            cols=cols,
-                            k=k,
-                            core_rows_start=core_rows_start,
-                            multi_core=multi_core,
-                            largest=largest)
+                               row_start_in_core=loops1 * batch,
+                               rows=remain1,
+                               cols=cols,
+                               k=k,
+                               core_rows_start=core_rows_start,
+                               multi_core=multi_core,
+                               largest=largest)
 
-        #需不需要block_index.var
         with tik_instance.if_scope(block_index >= turn):
             core_rows_start = (rows_per_core1 * turn) + (rows_per_core2) * (block_index - turn)
-            if cols > 4096:
+            if cols > cols_limit:
                 with tik_instance.for_range(0, loops2, name='i0') as i:
                     _topk_a_row_by_part(tik_instance,
                                         row_start_in_core=i,
@@ -1342,26 +1410,27 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
                                         k=k,
                                         core_rows_start=core_rows_start,
                                         multi_core=multi_core,
-                                        largest=largest)
+                                        largest=largest,
+                                        soc_version=soc_version)
             else:
                 with tik_instance.for_range(0, loops2, name='i0') as i:
                     _topk_rows(tik_instance,
-                            row_start_in_core=i * batch,
-                            rows=batch,
-                            cols=cols,
-                            k=k,
-                            core_rows_start=core_rows_start,
-                            multi_core=multi_core,
-                            largest=largest)
+                               row_start_in_core=i * batch,
+                               rows=batch,
+                               cols=cols,
+                               k=k,
+                               core_rows_start=core_rows_start,
+                               multi_core=multi_core,
+                               largest=largest)
                 if remain2 > 0:
                     _topk_rows(tik_instance,
-                            row_start_in_core=loops2 * batch,
-                            rows=remain2,
-                            cols=cols,
-                            k=k,
-                            core_rows_start=core_rows_start,
-                            multi_core=multi_core,
-                            largest=largest)
+                               row_start_in_core=loops2 * batch,
+                               rows=remain2,
+                               cols=cols,
+                               k=k,
+                               core_rows_start=core_rows_start,
+                               multi_core=multi_core,
+                               largest=largest)
 
 
 # pylint: disable=unused-argument,redefined-builtin
@@ -1381,6 +1450,7 @@ def check_supported(input_tensor,
     sorted should == True
     input size > 32768 and k > 0 and k < 16 three conditions cannot be met at the same time
     """
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     unknown_shape = input_tensor.get('shape')
     unknwon_dim_status = unknown_shape[0]
     if unknwon_dim_status == -2:
@@ -1408,6 +1478,13 @@ def check_supported(input_tensor,
         return True, ""
 
     input_size = functools.reduce(lambda x, y: x * y, shape)
+    # 1040000 indicates max size of the last dimension.
+    # Due to the UB memory limitation, the value of k must be less than or equal to 2048 under lhisi.
+    if soc_version == "Hi3796CV300CS" and (shape[sorted_axis] > 1040000 or k > 2048):
+        reason = "under lhisi version, shape[sorted_axis] or k are too big, shape[sorted_axis]:%s, k:%s"\
+                  % (shape[sorted_axis], k)
+        return False, reason
+
     # 1458176 indicates max size of the last dimension.
     # Due to the UB memory limitation, the value of k must be less than or equal to 4096.
     if shape[sorted_axis] > 1458176 or k > 4096:
@@ -1420,7 +1497,6 @@ def check_supported(input_tensor,
     # When input_size > 32768 and k < 16 and (soc version is not ["Ascend710", "Ascend610"] or not is_vgatherb),
     # the AICPU performance is better than the AICore performance.
     # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     if input_size > 32768 and k > 0 and k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not is_vgatherb):
         reason = "input_size is too big, and k is in (0-16), input_size:%s, k:%s"\
                   % (input_size, k)
@@ -1475,7 +1551,8 @@ def top_k_d(input_tensor,
                               sorted=sorted,
                               dim=dim,
                               largest=largest,
-                              kernel_name=kernel_name, mode="static")
+                              kernel_name=kernel_name,
+                              mode="static")
 
     shape = input_tensor.get("shape")
     input_dtype = input_tensor.get("dtype").lower()
@@ -1531,13 +1608,10 @@ def top_k_d(input_tensor,
     else:
         res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm)
     indices_out = tik_instance.Tensor(out_indices_dtype, out_shape, name='indices_out', scope=tik.scope_gm)
-    
+
     ins = [data_input, indices]
     outs = [res, indices_out]
 
     _kernel_ir(tik_instance, ins, outs, k, largest, soc_version)
 
-    tik_instance.BuildCCE(kernel_name=kernel_name,
-                            inputs=ins,
-                            outputs=outs,
-                            enable_l2=True)
+    tik_instance.BuildCCE(kernel_name=kernel_name, inputs=ins, outputs=outs, enable_l2=True)

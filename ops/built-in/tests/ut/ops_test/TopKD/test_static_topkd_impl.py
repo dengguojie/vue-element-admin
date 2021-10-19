@@ -17,6 +17,8 @@ Dynamic Topk ut case
 """
 import te
 from op_test_frame.ut import OpUT
+from impl.top_k_d import top_k_d
+from tbe.common.platform.platform_info import set_current_compile_soc_info
 
 
 ut_case = OpUT("TopkD", "impl.top_k_d", "top_k_d")
@@ -52,8 +54,18 @@ def test_static_1951(test_arg):
           {"shape": (8, 8), "format": "ND", "dtype": "int32", "ori_shape": (8, 8), "ori_format": "ND"},
           8, True, -1, True)
     te_set_version(test_arg)
-ut_case.add_cust_test_func(test_func=test_static_1951)
 
-if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend310","Ascend610", "Ascend710","Ascend920A"])
-    exit(0)
+
+
+
+def test_static_lhisi(test_arg):
+    set_current_compile_soc_info("Hi3796CV300CS")
+    top_k_d({"shape": (1000000, ), "format": "ND", "dtype": "float16", "ori_shape": (1000000, ), "ori_format": "ND"},
+            {"shape": (8192, ), "format": "ND", "dtype": "float16", "ori_shape": (8192, ), "ori_format": "ND"},
+            {"shape": (100, ), "format": "ND", "dtype": "float16", "ori_shape": (100, ), "ori_format": "ND"},
+            {"shape": (100, ), "format": "ND", "dtype": "int32", "ori_shape": (100, ), "ori_format": "ND"},
+            100, True, -1, True)
+    set_current_compile_soc_info(test_arg)
+
+ut_case.add_cust_test_func(test_func=test_static_1951)
+ut_case.add_cust_test_func(test_func=test_static_lhisi)

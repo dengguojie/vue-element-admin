@@ -904,8 +904,10 @@ REG_OP(SliceDV2)
 * @li indices: A Tensor of type int32, specifying the indices of sorted data . \n
 
 * @attention Constraints:
-* @li k =< 5120
+* @li k =< 4096
 * @li Size of the last dimension =< 1458176
+* @li k =< 2048 under lhisi version
+* @li Size of the last dimension =< 1040000 under lhisi version
 * @li sorted = true
 * @li It's unstable sorted indices on the platform of Ascend310
 
