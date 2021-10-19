@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights losserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 sigmoid_cross_entropy_with_logits_v2
 """
 
@@ -27,9 +29,7 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = 1
 SCALAR_ONE = 1
-# define a scalar, value = 0
 SCALAR_ZREO = 0
 
 
@@ -109,8 +109,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
                                                  loss,
                                                  reduction,
                                                  kernel_name):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -203,8 +202,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
 def sigmoid_cross_entropy_with_logits_v2(
         predict, target, weight, pos_weight, loss, reduction="mean",
         kernel_name="sigmoid_cross_entropy_with_logits_v2"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

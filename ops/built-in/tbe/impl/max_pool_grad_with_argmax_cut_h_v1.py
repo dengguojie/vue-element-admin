@@ -280,11 +280,8 @@ class MaxpoolGradBase(object):
                     if kernelh * kernelw * mask_one_window > (L1_SIZE // 2):
                         true_val = False
                     else:
-                        if ((dyw % 16) == 0) or \
-                                (ho_max == 1 and h_cycle == 1):
-                            true_val = True
-                        else:
-                            true_val = False
+                        true_val = ((dyw % 16) == 0) or \
+                                (ho_max == 1 and h_cycle == 1)
 
                     if true_val is True:
                         l1_len = ((kernelh * kernelw * mask_one_window + 127) // 128) * 128
@@ -1034,6 +1031,7 @@ class MaxpoolGradBase(object):
             res_repeat_time = v_res_time * dtype_size // constant.BLOCK_SIZE
             self.tik_instance.vector_dup(8, data_vmul_ub_col2img_fp32[v_res_last], 0, res_repeat_time,
                                          constant.STRIDE_ONE, 1)
+
 
     def clean_fp16_multi_repeat(self, data_vmul_ub_col2img_fp16, dtype_size):
         """

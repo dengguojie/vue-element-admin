@@ -22,9 +22,9 @@ from te.platform.fusion_manager import fusion_manager
 
 
 @fusion_manager.register("soft_shrink_grad")
+# pylint: disable=unused-argument
 def soft_shrink_grad_compute(input_grad, input_x, output_y, lambd=0.5, kernel_name="soft_shrink_grad"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -53,14 +53,13 @@ def soft_shrink_grad_compute(input_grad, input_x, output_y, lambd=0.5, kernel_na
     return result
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, 
-                            para_check.REQUIRED_INPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, 
+                            para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def soft_shrink_grad(input_grad, input_x, output_y, lambd=0.5, kernel_name="soft_shrink_grad"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -92,7 +91,7 @@ def soft_shrink_grad(input_grad, input_x, output_y, lambd=0.5, kernel_name="soft
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     para_check.check_dtype(grad_dtype, check_list, param_name="input_grad")
     para_check.check_kernel_name(kernel_name)
-    if(lambd < 0):
+    if lambd < 0:
         raise RuntimeError("Only support lambd >= 0 while lambd is {}".format(lambd))
 
     data_input_grad = tvm.placeholder(shape_grad, name="data_input_grad", dtype=input_dtype)

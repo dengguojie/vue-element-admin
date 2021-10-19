@@ -21,8 +21,8 @@ yolo
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 RESV_UB = 512
 FP16_MINI = -65504
@@ -82,7 +82,8 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
         error_manager_vector.raise_err_input_value_invalid("yolo", "coords", "4", str(param_dic['coords']))
 
     if param_dic['classes'] <= 0:
-        error_manager_vector.raise_err_input_param_range_invalid("yolo", "classes", "1", "inf", str(param_dic['classes']))
+        error_manager_vector.raise_err_input_param_range_invalid("yolo", "classes", "1", "inf",
+                                                                 str(param_dic['classes']))
 
     para_check.check_shape(in_shape, param_name="input")
     para_check.check_shape(out1_shape, param_name="output1")

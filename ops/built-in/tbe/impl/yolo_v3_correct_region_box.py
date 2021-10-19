@@ -69,7 +69,7 @@ class GetCorrectBoxBase():
     Function: store yolov3 ClsProb parameters
     Modify : 2019-11-06
     """
-    # pylint:disble=no-member
+    # pylint:disable=no-member
     def __init__(self, input_dict):
         """
       init the CorrectBox parameters
@@ -250,7 +250,8 @@ class GetCorrectBoxParam2(GetCorrectBoxParam):
         self.height3 = input_dict.get("box3_info").get("shape")[2]
         self.width3 = input_dict.get("box3_info").get("shape")[3]
 
-    def get_adj_hw(self, height, width):
+    @staticmethod
+    def get_adj_hw(height, width):
         """
           compute height and weight with 32 alignment
 

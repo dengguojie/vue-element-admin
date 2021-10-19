@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +27,6 @@ from te import tvm
 from impl.util.platform_adapter import error_manager_vector
 
 
-# define a VALUE, value = 1
 VALUE_ONE = 1
 
 
@@ -34,8 +35,7 @@ VALUE_ONE = 1
 # pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("select")
 def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
-    """
-    compute for select_v2
+    """compute for select_v2
 
     Parameters
     ----------
@@ -78,27 +78,26 @@ def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
 
 @para_check.check_input_type(dict, dict, dict, dict, str)
 def select_v2(condition, x1, x2, y, kernel_name="select_v2"):
+    """Selects elements from `x1` or `x2`, depending on `condition`.
+
+    Parameters
+    ----------
+    condition: dict
+        dict of condition, include keys(shape and dtype),
+        only support bool
+    x1: dict
+        dict of x1, only support float16, float32, int32, int8, uint8
+    x2: dict
+        dict of x2, only support float16, float32, int32, int8, uint8
+    y: dict
+        dict of output
+    kernel_name: str
+        cce kernel name, default value is "select"
+
+    Returns
+    -------
+    None
     """
-      Selects elements from `x1` or `x2`, depending on `condition`.
-
-      Parameters
-      ----------
-      condition: dict
-          dict of condition, include keys(shape and dtype),
-          only support bool
-      x1: dict
-          dict of x1, only support float16, float32, int32, int8, uint8
-      x2: dict
-          dict of x2, only support float16, float32, int32, int8, uint8
-      y: dict
-          dict of output
-      kernel_name: str
-          cce kernel name, default value is "select"
-
-      Returns
-      -------
-      None
-      """
     shape_x1 = x1.get("shape")
     dtype_x1 = x1.get("dtype")
     shape_x2 = x2.get("shape")

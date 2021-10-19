@@ -57,7 +57,7 @@ def check_supported(x, y, argmax, ksize, strides, pads, dtype, dilation,
     check whether ai_core is supported
     """
     if ksize[1] * ksize[2] > SCALAR_255:
-        reason  = "ksize is too large, kszie is %s" %(str(ksize),)
+        reason  = "ksize is too large, kszie is %s" % (str(ksize),)
         return False, reason
 
     return True, ""
@@ -1229,7 +1229,8 @@ class MaxPoolWithargmaxPytorch(object):
             with self.tik_instance.for_range(0, cut_h_num) as cur_h_idx:
                 self._calc_need_cut_h_w(nc1_num, cut_h_size, cut_h_num, cur_h_idx, cut_stride)
 
-    def _pooling_output_shape_pad_lr(self, input_size, kernel_size, pad_l, pad_r, stride, dilation, ceil_mode):
+    @staticmethod
+    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l, pad_r, stride, dilation, ceil_mode):
         temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
         if ceil_mode is True:
             output_size = ((temp + (stride - 1)) // stride) + 1
@@ -1246,7 +1247,8 @@ class MaxPoolWithargmaxPytorch(object):
     def _pooling_output_shape(self, input_size, kernel_size, pad, stride, dilation, ceil_mode):
         return self._pooling_output_shape_pad_lr(input_size, kernel_size, pad, pad, stride, dilation, ceil_mode)
 
-    def _pool2d_shape_check(self, kernel_h, kernel_w, stride_h, stride_w,
+    @staticmethod
+    def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
                             pad_h, pad_w, dilation_h, dilation_w, output_h,
                             output_w):
         if kernel_w <= 0 or kernel_h <= 0:

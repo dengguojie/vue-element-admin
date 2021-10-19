@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -760,20 +762,20 @@ class NllLossGradCompute:
             last_line = line_num
         names = locals()
         for i in range(0, vars_num):
-            names["index_x" + str(i)] = self.tik_instance.Scalar(dtype="int32")
+            names["".join(["index_x", str(i)])] = self.tik_instance.Scalar(dtype="int32")
             if self.invalid_target and dst_need_index and src_need_index:
                 names["index_x" + "w" + str(i)] = self.tik_instance.Scalar(dtype="int32")
         with self.tik_instance.for_range(0, loop_num) as time:
             offset_set = 8 * time
             for i in range(0, vars_num):
-                names["index_x" + str(i)].set_as(target[offset_set + i])
+                names["".join(["index_x", str(i)])].set_as(target[offset_set + i])
                 if self.invalid_target and dst_need_index and src_need_index:
                     names["index_x" + "w" + str(i)].set_as(target[offset_set + i])
 
             for i in range(0, vars_num):
                 dst_offset = (offset_set+i)*line_size +\
-                             names["index_x" + str(i)]
-                src_offset = names["index_x" + str(i)]
+                             names["".join(["index_x", str(i)])]
+                src_offset = names["".join(["index_x", str(i)])]
                 if self.invalid_target and dst_need_index and src_need_index:
                     src_offset = names["index_x" + "w" + str(i)]
                 if not dst_need_index:
@@ -783,13 +785,13 @@ class NllLossGradCompute:
                 self._set_valid_target(names, i, dst_need_index, src_need_index)
                 dst[dst_offset].set_as(src[src_offset])
         for i in range(0, last_line):
-            names["index_x" + str(i)].set_as(target[loop_num*8 + i])
+            names["".join(["index_x", str(i)])].set_as(target[loop_num*8 + i])
             if self.invalid_target and dst_need_index and src_need_index:
                 names["index_x" + "w" + str(i)].set_as(target[loop_num*8 + i])
         for i in range(0, last_line):
             dst_offset = (loop_num*8+i)*line_size + \
-                             names["index_x" + str(i)]
-            src_offset = names["index_x" + str(i)]
+                             names["".join(["index_x", str(i)])]
+            src_offset = names["".join(["index_x", str(i)])]
             if self.invalid_target and dst_need_index and src_need_index:
                 src_offset = names["index_x" + "w" + str(i)]
             if not dst_need_index:

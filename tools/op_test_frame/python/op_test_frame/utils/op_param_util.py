@@ -18,6 +18,7 @@
 op param util module
 """
 import random
+import secrets
 import json
 import copy
 import numpy as np
@@ -206,8 +207,9 @@ def gen_shape(rank_range=None, size_range=None, dim_limit=None):
         rank_range = [1, 8]
     if dim_limit is None:
         dim_range = 2000000 - 1
-    rank = random.randint(*rank_range)
-    size = random.randint(*size_range)
+    secret_gen = secrets.SystemRandom()
+    rank = secret_gen.randint(*rank_range)
+    size = secret_gen.randint(*size_range)
     p_d = np.exp(np.log(size) / rank)
     dims = np.random.normal(loc=10, scale=3.0, size=(rank,))
     dims = np.maximum(dims, 0)
@@ -227,10 +229,11 @@ def gen_broadcast_shape():
     """
 
     def _random_broadcast_dims(shape_rank):
-        cnt = random.randint(0, shape_rank)
+        secret_gen = secrets.SystemRandom()
+        cnt = secret_gen.randint(0, shape_rank)
         b_dims = []
         for _ in range(cnt):
-            b_dim = random.randint(0, shape_rank - 1)
+            b_dim = secret_gen.randint(0, shape_rank - 1)
             if b_dim not in b_dims:
                 b_dims.append(b_dim)
         return b_dims
@@ -258,5 +261,6 @@ def random_dtype(dtype_list=("float16", "float32", "int32")):
     :return: a dtype
     """
     d_len = len(dtype_list)
-    idx = random.randint(0, d_len - 1)
+    secret_gen = secrets.SystemRandom()
+    idx = secret_gen.randint(0, d_len - 1)
     return dtype_list[idx]

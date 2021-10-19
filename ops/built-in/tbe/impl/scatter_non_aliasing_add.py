@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +37,7 @@ MAX_CORE_NUMBER = 65536
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
 # pylint: disable=useless-object-inheritance
 class ScatterNonAliasingAdd(object):
-    """
-       Function: use to store scatter base parameters
-    """
+    """Function: use to store scatter base parameters"""
 
     # pylint: disable=too-many-arguments
     def __init__(self, inputs, indices, updates, outputs, kernel_name):
@@ -425,10 +425,8 @@ class ScatterNonAliasingAdd(object):
 
 
 # pylint: disable=too-many-arguments
-
     def _calc_process(self, mask, dest_addr, src_addr1, src_addr2, repeat_times, is_tile):
-        """
-        Execute the corresponding calculation instruction
+        """Execute the corresponding calculation instruction
 
         Parameters
         ----------
@@ -574,8 +572,7 @@ class ScatterNonAliasingAdd(object):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def scatter_non_aliasing_add(inputs, indices, updates, outpus, kernel_name="ScatterNonAliasingAdd"):
-    """
-    Generate scatter_non_aliasing_add operator use scatter_non_aliasing_add
+    """Generate scatter_non_aliasing_add operator use scatter_non_aliasing_add
 
     Parameters
     ----------n

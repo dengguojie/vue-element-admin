@@ -162,7 +162,8 @@ class GetCorrectBoxBase():
         return tuple(old_shape)
 
 
-    def get_adj_hw(self, total_len):
+    @staticmethod
+    def get_adj_hw(total_len):
         """
           compute height and weight with 32 alignment
 

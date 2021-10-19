@@ -44,7 +44,7 @@ def get_op_support_info(input_matrix, input_diagonal, input_help, output_matrix,
     shape_input_matrix = input_matrix.get("shape")
     if format_matrix in ("ND", "NHWC", "NCHW") and format_diagonal in ("ND", "NHWC", "NCHW"):
         if len(shape_input_matrix) > 2:
-            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
                                 SplitOutput([0, [0]])]]
         else:
             axis_split_matrix = None

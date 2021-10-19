@@ -60,7 +60,7 @@ def check_supported(input_x, out_y, output_argmax, ksize, strides,
         return False, reason
     input_format = input_x.get("ori_format").upper()
     input_shape = input_x.get("ori_shape")
-    if input_format == "NHWC": 
+    if input_format == "NHWC":
         in_size_h = input_shape[1]
         in_size_w = input_shape[2]
     else:

@@ -17,9 +17,7 @@ max_pool_grad_with_argmax_v1
 """
 
 import math
-from te import tik
 from te.utils import para_check
-from impl import constant_util_v1 as constant
 from impl.max_pool_grad_with_argmax_cut_one_h_v1 import MaxpoolGradCustom
 from impl import max_pool_grad_with_argmax_v1_resnet50 as resnet50
 

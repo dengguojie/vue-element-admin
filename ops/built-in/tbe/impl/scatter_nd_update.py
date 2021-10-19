@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +30,7 @@ def scatter_nd_update(var,
                       var_out,
                       use_locking=False,
                       kernel_name="scatter_nd_update"):
-    """
-    Update the variable referenced by resource.
+    """Update the variable referenced by resource.
 
     Parameters
     ----------

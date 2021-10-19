@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-sign
-"""
+
 import functools
 
 import te.lang.cce as tbe
@@ -33,9 +33,7 @@ SCALAR_MIN_FP32 = 2 ** (-126)
 # pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("sign")
 def sign_compute(input_x, output_y, kernel_name="sign"):
-    """
-    compute for sign
-    """
+    """compute for sign"""
     dtype = input_x.dtype.lower()
     if dtype == "float32":
         data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype)
@@ -68,8 +66,7 @@ def sign_compute(input_x, output_y, kernel_name="sign"):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sign(input_x, output_y, kernel_name="sign"):
-    """
-    algrithm: if input_x < 0 output_y=0,input_x > 0 output_y=1
+    """algrithm: if input_x < 0 output_y=0,input_x > 0 output_y=1
     if input_x=0 output_y=0
 
     Parameters

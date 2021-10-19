@@ -18,9 +18,9 @@ max_pool_with_argmax_resnet50
 import math
 
 from te import tik
+from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util as constant
-from te import platform as tbe_platform
 from impl.util.platform_adapter import tbe_context
 
 # min value of fp16

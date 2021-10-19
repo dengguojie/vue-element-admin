@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +35,8 @@ def _broadcast_shape_check(input_shape, target_shape):
         shape_util.produce_shapes(input_shape, target_shape)
     except RuntimeError:
         raise RuntimeError("input_shape can't be broadcast to target_shape")
+    finally:
+        pass
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("sigmoid_cross_entropy_with_logits_grad_v2")

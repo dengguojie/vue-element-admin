@@ -131,7 +131,7 @@ def _func_more_row(args):
                     n_cur = n_t - num_no*n_ni
                     with tvm_ib.if_scope(n_cur % reg_count == 0):
                         n_cur_times_8 = n_cur // reg_count
-                        reg_list = [n for n in range(reg_count)]
+                        reg_list = list(range(reg_count))
                         with tvm_ib.for_range(0, n_cur_times_8,
                                               name="num_nc") as num_nc:
                             for reg_idx in reg_list:
@@ -377,7 +377,7 @@ def _res_to_gm_more_row(args):
             cp_align_len = param.get("cp_align_len")
             if cp_align_len % reg_count == 0:
                 cp_align_len_time_8 = cp_align_len // reg_count
-                reg_list = [n for n in range(reg_count)]
+                reg_list = list(range(reg_count))
                 with tvm_ib.for_range(0, cp_align_len_time_8, name="num_a") \
                         as num_a:
                     for reg_idx in reg_list:

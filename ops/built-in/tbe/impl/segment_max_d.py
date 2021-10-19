@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,9 +65,7 @@ def _check_segment_ids(shape, segment_ids):
 # pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("segment_max_d")
 def segment_max_d_compute(x, y, segment_ids, kernel_name="segment_max_d"):
-    """
-    compute for tf_segment_max_cce
-    """
+    """compute for tf_segment_max_cce"""
     res = tbe.unsorted_segment_max(x, segment_ids, segment_ids[-1] + 1)
 
     return res
@@ -73,8 +73,7 @@ def segment_max_d_compute(x, y, segment_ids, kernel_name="segment_max_d"):
 
 @para_check.check_input_type(dict, dict, (list, tuple), str)
 def segment_max_d(x, y, segment_ids, kernel_name="segment_max_d"):
-    """
-    Operation and Schedule for segment_max
+    """Operation and Schedule for segment_max
 
 
     Parameters

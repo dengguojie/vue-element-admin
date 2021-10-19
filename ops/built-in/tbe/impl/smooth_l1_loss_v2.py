@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-smooth_l1_loss_v2
-"""
+
 import functools
 from te import tvm
 from te.utils import para_check
@@ -28,8 +26,7 @@ def smooth_l1_loss_v2_compute(input_predict,
                               input_label,
                               sigma,
                               reduction):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -101,8 +98,7 @@ def smooth_l1_loss_v2(predict,
                       sigma=1.0,
                       reduction="mean",
                       kernel_name="smooth_l1_loss_v2"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

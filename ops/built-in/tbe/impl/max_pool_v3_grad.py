@@ -64,6 +64,7 @@ CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 # maximum dma_copy stride
 MAX_STRIDE = 65535
 
+
 def ceil_div(num, divisor):
     """calcu use ceil_div
 
@@ -133,7 +134,7 @@ def prod(values):
         res *= value
 
     return res
-    
+
 
 def cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     """
@@ -157,7 +158,7 @@ def cal_core(tik_instance, total_core_loop_num, num_core, core_number):
                                          CORE_NUM))
     return core_loop, sum_core
 
-    
+
 def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
     """
     init_coordinate
@@ -173,7 +174,7 @@ def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
         xi_coord = xi_coordinate
 
     return xi_coord
-    
+
 
 def calc_pad(tik_instance, pad_top, pad_bottom,
              xi_coord, xi_value, boundary):
@@ -201,6 +202,19 @@ def calc_pad(tik_instance, pad_top, pad_bottom,
 
 
 def check_config(config):
+    """
+    check configuration
+
+    Parameters
+    ----------
+    config: tuple
+        configurations to be checked
+
+    Returns
+    -------
+    mark: boolean
+        pass check or not
+    """
     config = list(config)
     mark = True
     for i in config:
@@ -293,6 +307,29 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_forma
 
 
 def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, ceil_mode):
+    """
+    choose branch
+
+    Parameters
+    ----------
+    ori_input_shape: list or tuple
+        shape and data type of ori_input_shape
+    ksize: list or tuple
+        the size of the window
+    strides: list or tuple
+        the stride of the sliding window
+    padding: str
+        value from `SAME`, `VALID`, 'CALCULATED'
+    pads: list or tuple
+        padding size of height and width while padding is CALCULATED
+    data_format: str
+        format of input
+    ceil_mode: boolean
+
+    Returns
+    -------
+        atomic_flag
+    """
     atomic_flag = False
     if data_format == "NCHW":
         ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
@@ -344,8 +381,6 @@ def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, c
     fp16_data_size = tbe_platform.get_bit_len("float16") // 8
     fp32_data_size = tbe_platform.get_bit_len("float32") // 8
     uint16_data_size = tbe_platform.get_bit_len("uint16") // 8
-
-    need_cut_l1 = bool(input_l1_size >= L1_SIZE)
 
     if ho != 1 and wo == 1:
         col2img_ub_shape = (max(kernel_h, stride_h), fmap_w, C0)
@@ -444,11 +479,11 @@ def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, c
         if wo_mode2_effect:
             each_process_wo_min = each_process_wo_mode2
             each_process_wo_max = each_process_wo_mode2
-    
+
     if each_process_wo_min < 1 or each_process_wo_max < 1:
         atomic_flag = True
         return atomic_flag
-    
+
     if stride_h < kernel_h:
         overlap_l1_shape = (kernel_h - stride_h, (fmap_w + pad_left + pad_right)*C0)
         each_process_wi = max(kernel_w, stride_w)
@@ -596,12 +631,12 @@ def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, c
         if cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) + extra_ub > UB_SIZE:
             atomic_flag = True
         return atomic_flag
-    
+
     if stride_w >= kernel_w:
         col_w = each_process_wo * stride_w
     else:
         col_w = (each_process_wo - 1) * stride_w + kernel_w
-    
+
     col_ub_shape = (max(stride_h, kernel_h), col_w, C0)
     if stride_h < kernel_h:
         overlap_l1_shape = (kernel_h - stride_h, (fmap_w + pad_left + pad_right) * C0)
@@ -686,7 +721,8 @@ def max_pool_v3_grad(ori_input,
             ksize = (ksize[0], 1, ksize[1], ksize[2], ksize[3])
             strides = (strides[0], 1, strides[1], strides[2], strides[3])
         check_param(ori_input, ori_output, grad, [ksize[0], ksize[2], ksize[3], ksize[4]], [
-                     strides[0], strides[2], strides[3], strides[4]], padding, data_format, global_pooling, pads, kernel_name)
+                     strides[0], strides[2], strides[3], strides[4]], padding,
+                     data_format, global_pooling, pads, kernel_name)
         forward_in_shape.insert(1, 1)
         forward_ou_shape.insert(1, 1)
         grad_shape.insert(1, 1)
@@ -694,14 +730,15 @@ def max_pool_v3_grad(ori_input,
         ksize = list(ksize)
         strides = list(strides)
         shape_list = [forward_in_shape, forward_ou_shape, grad_shape, forward_in_shape]
-        params = [ksize, strides, [0,0,0,0,0,0], dtype, kernel_name, padding]
+        params = [ksize, strides, [0, 0, 0, 0, 0, 0], dtype, kernel_name, padding]
         result = MaxpoolV3GradAtomic(shape_list, params)
         return result.get_tik_instance()
-    else:    
+    else:
         if ori_format == "NCHW":
             ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
             strides = (strides[0], strides[2], strides[3], strides[1])
-        check_param(ori_input, ori_output, grad, ksize, strides, padding, data_format, global_pooling, pads, kernel_name)
+        check_param(ori_input, ori_output, grad, ksize, strides, padding,
+                    data_format, global_pooling, pads, kernel_name)
         ori_input_shape = ori_input.get("shape")
         ori_output_shape = ori_output.get("shape")
         grad_shape = grad.get("shape")
@@ -2724,7 +2761,8 @@ class MaxpoolV3Grad():
                                               temp_zero.shape))
 
     # pylint: disable=unused-variable,no-self-use
-    def _get_core_divlist(self):
+    @staticmethod
+    def _get_core_divlist():
         div_list = []
         for i in range(1, CORE_NUM + 1):
             if CORE_NUM % i == 0:
@@ -2754,7 +2792,8 @@ class MaxpoolV3Grad():
         return True
 
     # pylint: disable=unused-variable,no-self-use
-    def _get_block_num(self, block_num):
+    @staticmethod
+    def _get_block_num(block_num):
         if block_num > CORE_NUM:
             real_block = CORE_NUM
             block_cycle = (block_num + CORE_NUM - 1) // CORE_NUM
@@ -3116,7 +3155,7 @@ class MaxpoolV3GradAtomic:
         self.sh = self.strides[2]
         self.sw = self.strides[3]
 
-        if self.pads in ["CALCULATED",]:
+        if self.pads in ["CALCULATED", ]:
             # Pytorch
             self.pads = "SAME"
             self.pad = [[params[2][0], params[2][1]],
@@ -3284,7 +3323,8 @@ class MaxpoolV3GradAtomic:
 
         return invalid_d, invalid_h, invalid_w
 
-    def _overlap_mode(self, stride, size, xo, xi):
+    @staticmethod
+    def _overlap_mode(stride, size, xo, xi):
         # xo: direction of x can be slided by xo times
         # xi: the length of x
         if xo == 1:
@@ -3357,7 +3397,7 @@ class MaxpoolV3GradAtomic:
                         grad_size + zero_size +
                         grad_sel_fp16_size) * self.num_bit + \
                        (grad_sel_fp32_size + f_map_fp32_size) * 4
-                       
+
         ub_split = used_ub_byte > self.ub_maxsize * self.num_bit
 
         param = Params(ub_split, col_in_size, forward_ou_size,
@@ -3365,7 +3405,8 @@ class MaxpoolV3GradAtomic:
                        grad_sel_fp32_size, f_map_fp32_size, l1_in_size)
         return param
 
-    def _check_cut_model(self, cut_model, split_model, all_do, core_branch):
+    @staticmethod
+    def _check_cut_model(cut_model, split_model, all_do, core_branch):
         # "not_tiling": 0
         # "tiling_do": 1
         # "tiling_do_ho": 2
@@ -3446,7 +3487,8 @@ class MaxpoolV3GradAtomic:
 
         return branch, split_model, param
 
-    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
+    @staticmethod
+    def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
         src_idx, dst_idx = in_list[-2], in_list[-1]
         n_burst, burst_len = in_list[0], in_list[1]
         src_stride, dst_stride = in_list[2], in_list[3]
@@ -3459,7 +3501,8 @@ class MaxpoolV3GradAtomic:
                                    src_buf[src_idx],
                                    0, 1, burst_len, 0, 0)
 
-    def norm_data_move(self, tik_instance, src_buf, dst_buf, in_list):
+    @staticmethod
+    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
         """
         norm_data_move
         """
@@ -3532,7 +3575,7 @@ class MaxpoolV3GradAtomic:
                                input0, input1):
 
         di_val, hi_val, wi_val = input0[0], input0[1], input0[2]
-        di_batch, hi_batch, wi_batch = input1[0], input1[1], input1[2]
+        _, hi_batch, wi_batch = input1[0], input1[1], input1[2]
 
         # ==================================
         # copy gm to l1
@@ -3731,7 +3774,8 @@ class MaxpoolV3GradAtomic:
                                    src_stride,
                                    dst_stride)
 
-    def set_vector_dup(self, tik_instance, psm, dst, idx, number, dtype):
+    @staticmethod
+    def set_vector_dup(tik_instance, psm, dst, idx, number, dtype):
         """
         set_vector_dup
         """
@@ -3775,7 +3819,8 @@ class MaxpoolV3GradAtomic:
                                         dst_blk_stride,
                                         dst_rep_stride)
 
-    def _vconv(self, tik_instance, src, src_start, dst,
+    @staticmethod
+    def _vconv(tik_instance, src, src_start, dst,
                dst_start, ele_num, src_dtype):
         total_repeat_time = ele_num // VECTOR_FP32_SIZE
         remain_ele = ele_num % VECTOR_FP32_SIZE
@@ -3907,15 +3952,16 @@ class MaxpoolV3GradAtomic:
                                   stride_config[2], stride_config[3],
                                   stride_config[4], stride_config[5])
 
-    def _rewrite_fmap(self, tik_instance, operator,
+    @staticmethod
+    def _rewrite_fmap(tik_instance, operator,
                       src1, src2, dst, dtype, once_elem,
                       repeat_times, shape_map, shape_grad, config=None):
         # once_elem: amount of data processed at a time in the Wo direction.
         # shape_map: container size of src1[1:].
         # shape_grad: valid data size of src2.
 
-        h, w, c0 = shape_map[0], shape_map[1], shape_map[2]
-        ho, wo = shape_grad[0], shape_grad[1]
+        _, w, c0 = shape_map[0], shape_map[1], shape_map[2]
+        _, wo = shape_grad[0], shape_grad[1]
         config = list(config)
         if dtype == "float16":
             max_mask = 128
@@ -3966,48 +4012,48 @@ class MaxpoolV3GradAtomic:
     def _set_buf_tensor(self, tik_instance, param):
 
         l1_in_buf = tik_instance.Tensor(self.dtype,
-                                        [param.l1_in_size,],
+                                        [param.l1_in_size, ],
                                         name="l1_in_buf",
                                         scope=tik.scope_cbuf)
         forward_ou_buf = tik_instance.Tensor(self.dtype,
-                                             [param.forward_ou_size,],
+                                             [param.forward_ou_size, ],
                                              name="forward_ou_buf",
                                              scope=tik.scope_ubuf)
         grad_buf = tik_instance.Tensor(self.dtype,
-                                       [param.grad_size,],
+                                       [param.grad_size, ],
                                        name="grad_buf",
                                        scope=tik.scope_ubuf)
         col_in_buf = tik_instance.Tensor(self.dtype,
-                                         [param.col_in_size,],
+                                         [param.col_in_size, ],
                                          name="col_in_buf",
                                          scope=tik.scope_ubuf)
         mask_buf = tik_instance.Tensor("uint16",
-                                       [param.mask_size,],
+                                       [param.mask_size, ],
                                        name='mask_buf',
                                        scope=tik.scope_ubuf)
         mask_or_buf = tik_instance.Tensor("uint16",
-                                          [param.mask_size,],
+                                          [param.mask_size, ],
                                           name='mask_or_buf',
                                           scope=tik.scope_ubuf)
         mask_not_buf = tik_instance.Tensor("uint16",
-                                           [param.mask_size,],
+                                           [param.mask_size, ],
                                            name='mask_not_buf',
                                            scope=tik.scope_ubuf)
         zero_buf = tik_instance.Tensor(self.dtype,
-                                       [param.zero_size,],
+                                       [param.zero_size, ],
                                        name='zero_buf',
                                        scope=tik.scope_ubuf)
 
         grad_sel_fp16_buf = tik_instance.Tensor(self.dtype,
-                                                [param.grad_sel_fp16_size,],
+                                                [param.grad_sel_fp16_size, ],
                                                 name='grad_sel_fp16_buf',
                                                 scope=tik.scope_ubuf)
         grad_sel_fp32_buf = tik_instance.Tensor("float32",
-                                                [param.grad_sel_fp32_size,],
+                                                [param.grad_sel_fp32_size, ],
                                                 name='grad_sel_fp32_buf',
                                                 scope=tik.scope_ubuf)
         f_map_fp32_buf = tik_instance.Tensor("float32",
-                                             [param.f_map_fp32_size,],
+                                             [param.f_map_fp32_size, ],
                                              name='f_map_fp32_buf',
                                              scope=tik.scope_ubuf)
 
@@ -4310,7 +4356,7 @@ class MaxpoolV3GradAtomic:
                                                                "more than or equal to 1",
                                                                str(loop_do))
         do_tail = self.do % do_batch
-        di_tail, hi_tail, wi_tail = self._infer_dim_return(do_tail, ho, wo, True)
+        di_tail, _, _ = self._infer_dim_return(do_tail, ho, wo, True)
         if do_tail == 0:
             di_tail = 0
 
@@ -4563,7 +4609,7 @@ class MaxpoolV3GradAtomic:
 
         di_batch, hi_batch, wi = self._infer_dim_return(do_batch, ho_batch,
                                                         wo, True)
-        di_tail, hi_tail, wi_tail = self._infer_dim_return(do_batch, ho_tail,
+        di_tail, hi_tail, _ = self._infer_dim_return(do_batch, ho_tail,
                                                            wo, True)
         if ho_tail == 0:
             hi_tail = 0
@@ -5141,11 +5187,11 @@ class MaxpoolV3GradAtomic:
                                                               ho_batch,
                                                               wo_batch, True)
         do_tail = self.core_ou_shape[0] % do_batch
-        di_tail, hi_tail, wi_tail = self._infer_dim_return(do_tail,
+        di_tail, _, _ = self._infer_dim_return(do_tail,
                                                            ho_batch,
                                                            wo_batch, True)
         # feature_map's size
-        map_di, map_hi, map_wi = self._infer_map_return(do_batch, ho_batch,
+        _, map_hi, map_wi = self._infer_map_return(do_batch, ho_batch,
                                                         wo_batch)
 
         pad_d_top, pad_d_bottom = self.pad[0][0], self.pad[0][1]
@@ -5413,12 +5459,12 @@ class MaxpoolV3GradAtomic:
         di_batch, hi_batch, wi_batch = self._infer_dim_return(do_batch,
                                                               ho_batch,
                                                               wo_batch, True)
-        di_tail, hi_tail, wi_tail = self._infer_dim_return(do_batch,
+        di_tail, hi_tail, _ = self._infer_dim_return(do_batch,
                                                            ho_tail,
                                                            wo_batch, True)
 
         # size of feature map
-        map_di, map_hi, map_wi = self._infer_map_return(do_batch, ho_batch,
+        _, map_hi, map_wi = self._infer_map_return(do_batch, ho_batch,
                                                         wo_batch)
 
         pad_d_top, pad_d_bottom = self.pad[0][0], self.pad[0][1]
@@ -5744,7 +5790,7 @@ class MaxpoolV3GradAtomic:
                                                            wo_tail, True)
 
         # size of feature_map
-        map_di, map_hi, map_wi = self._infer_map_return(do_batch, ho_batch,
+        _, map_hi, map_wi = self._infer_map_return(do_batch, ho_batch,
                                                         wo_batch)
         pad_d_top, pad_d_bottom = self.pad[0][0], self.pad[0][1]
         pad_hw_top, pad_hw_bottom = self.pad[1][0], self.pad[1][1]
@@ -6074,7 +6120,8 @@ class MaxpoolV3GradAtomic:
                                     dst_buf, 0, MIN_VALUE_FP16, "float16")
                 mark.set_as(1)
 
-    def _division_nearest(self, number, base_num):
+    @staticmethod
+    def _division_nearest(number, base_num):
         # split number as n0 and n1,
         # return n1, base_num*n0 as new_number and core_num
         n1 = number
@@ -6112,7 +6159,8 @@ class MaxpoolV3GradAtomic:
 
         return total_num, core_num, core_ou_shape, core_in_shape, core_branch
 
-    def grad(self, tik_instance, split_model,
+    @staticmethod
+    def grad(tik_instance, split_model,
              param, total_num, core_num, func):
         """
         grad

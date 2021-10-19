@@ -17,9 +17,9 @@ max_pool_with_argmax_v1_resnet50
 """
 import math
 from te import tik
+from te import platform as tbe_platform
 from impl import common_util_v1
 from impl import constant_util_v1 as constant
-from te import platform as tbe_platform
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -143,7 +143,8 @@ class MaxPoolWithArgmaxV1Resnet50(object):
 
         self._tik_instance_function_init()
 
-    def _pooling_output_shape_pad_lr(self, input_size, kernel_size, pad_l, pad_r, stride, dilation, ceil_mode):
+    @staticmethod
+    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l, pad_r, stride, dilation, ceil_mode):
         temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
         if ceil_mode is True:
             output_size = ((temp + (stride - 1)) // stride) + 1
@@ -160,7 +161,8 @@ class MaxPoolWithArgmaxV1Resnet50(object):
     def _pooling_output_shape(self, input_size, kernel_size, pad, stride, dilation, ceil_mode):
         return self._pooling_output_shape_pad_lr(input_size, kernel_size, pad, pad, stride, dilation, ceil_mode)
 
-    def _pool2d_shape_check(self, kernel_h, kernel_w, stride_h, stride_w,
+    @staticmethod
+    def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
                             pad_h, pad_w, dilation_h, dilation_w, output_h,
                             output_w):
         if kernel_w <= 0 or kernel_h <= 0:
@@ -317,9 +319,9 @@ class MaxPoolWithArgmaxV1Resnet50(object):
                     (looph * 2 * output_block_h + output_block_h_index) * self.stride_h - self.pad_t + h_index)
                 with self.tik_inst.if_scope(cur_h >= 0):
                     instance.data_move(
-                        ub_buff[(filter_index * output_block_h + output_block_h_index) * 
-                                self.out_size_w * c0_dim + start_ub_pos * c0_dim], 
-                        input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim], 
+                        ub_buff[(filter_index * output_block_h + output_block_h_index) *
+                                self.out_size_w * c0_dim + start_ub_pos * c0_dim],
+                        input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim],
                         0, gm_len, 1, 1, 0)
 
     def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
@@ -363,9 +365,9 @@ class MaxPoolWithArgmaxV1Resnet50(object):
                 cur_h.set_as(
                     ((looph * 2 + 1) * output_block_h + output_block_h_index) * self.stride_h - self.pad_t + h_index)
                 instance.data_move(
-                    ub_buff[(filter_index * output_block_h + output_block_h_index) * 
-                            self.out_size_w * c0_dim + start_ub_pos * c0_dim], 
-                    input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim], 
+                    ub_buff[(filter_index * output_block_h + output_block_h_index) *
+                            self.out_size_w * c0_dim + start_ub_pos * c0_dim],
+                    input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim],
                     0, gm_len, 1, 1, 0)
 
     def _tik_instance_function_init(self):
@@ -440,7 +442,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
             self.tik_inst.data_move(self.l1_buff0[self.l1_idx], self.input_fmap_gm[self.input_idx], 0, 1,
                                     self.fm_size, 0, 0)
             self._load3d_fm_to_ub(
-                self.buf_0, self.l1_buff0, 0 - self.pad_l, 
+                self.buf_0, self.l1_buff0, 0 - self.pad_l,
                 looph * 2 * self.output_block_h * self.stride_h - self.pad_t)
         else:
             self._load_gm_to_ub_ping(self.buf_0, self.output_block_h, self.input_fmap_gm, self.input_idx, looph)
@@ -461,7 +463,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
                                    self.buf_0[idx * self.output_block_h * output_w * DIM_C0],
                                    self.ub_max_buff, repeat_0, 1, 1, repeat_stride, repeat_stride)
         self.tik_inst.vnot(
-            constant.MASK128, self.ub_mask_not_buff, self.ub_mask_buff, repeat_1, 1, 1, repeat_stride, 
+            constant.MASK128, self.ub_mask_not_buff, self.ub_mask_buff, repeat_1, 1, 1, repeat_stride,
             repeat_stride)
         self.tik_inst.vor(constant.MASK128, self.ub_mask_or_buff, self.ub_mask_buff,
                           self.ub_mask_buff[self.output_block_h * output_w],
@@ -474,7 +476,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
             self.output_mask_gm[self.mask_idx], self.ub_mask_buff, 0, 1, self.output_block_h * output_w // DIM_C0, 0,
             0)
         self.tik_inst.data_move(
-            self.output_mask_gm[self.mask_idx + mask_one_window], self.ub_mask_temp, 0, filter_size - 1, 
+            self.output_mask_gm[self.mask_idx + mask_one_window], self.ub_mask_temp, 0, filter_size - 1,
             self.output_block_h * output_w // DIM_C0, 0, mask_gap)
 
         self.mask_idx.set_as(self.mask_idx + self.output_block_h * output_w * DIM_C0 // 16)
@@ -620,5 +622,18 @@ def is_max_pool_with_argmax_param(x, ksize, strides, padding):
 # pylint: disable=unused-argument
 def max_pool_with_argmax_v1_resnet50(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
                                      ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
+    """
+    implementation of max_pool_with_argmax and return the tik instance
+    :param x: dict of shape and dtype of the input x
+    :param y: dict of shape and dtype of the output y
+    :param ksize: value of strides
+    :param strides: value of strides
+    :param pads: value of padding
+    :param dtype: value of dtype
+    :param dilation: value of dilation
+    :param ceil_mode: value of ceil_mode
+    :param kernel_name: the kernel's name
+    :return: tik instance
+    """
     max_pool_grad = MaxPoolWithArgmaxV1Resnet50(x, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name)
     return max_pool_grad.tik_instance_function(kernel_name)

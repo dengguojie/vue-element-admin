@@ -51,6 +51,7 @@ def generate_param(dtypes, formats):
                         format=",".join(format_output))
     return input0, input1, output0
 
+
 # op get_format_same
 def get_format_same(dtype_list, format_list, dtype_total, mask_dtypes):
     """
@@ -78,6 +79,7 @@ def get_format_same(dtype_list, format_list, dtype_total, mask_dtypes):
     dtypes = [dtype_total, mask_dtype_total, dtype_total]
     formats = [format_list, format_list, format_list]
     return dtypes, formats
+
 
 # pylint: disable=unused-argument
 def op_select_format(x, mask, y, value=1.0, kernel_name="masked_scale"):
@@ -119,6 +121,7 @@ def op_select_format(x, mask, y, value=1.0, kernel_name="masked_scale"):
 
     raise RuntimeError("The shape of x and mask must be the same.")
 
+
 # pylint: disable=unused-argument
 def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
     """
@@ -159,6 +162,7 @@ def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
 
     return res
 
+
 # pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
@@ -193,7 +197,7 @@ def masked_scale(x, mask, y, value=1.0, kernel_name="masked_scale"):
 
     # check shape
     if x_shape != mask_shape:
-        error_manager_vector.raise_err_two_input_shape_invalid("masked_scale", "x", 
+        error_manager_vector.raise_err_two_input_shape_invalid("masked_scale", "x",
                                                                "mask", "shou1d be same shape")
 
     # do compute

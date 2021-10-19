@@ -1,11 +1,30 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# Copyright 2019 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 from impl.ascend import AContainer
-from impl.merge_sort import CommonMethod, MergeSort
+from impl.merge_sort import CommonMethod
+from impl.merge_sort import MergeSort
 
 
 class SingleMerge(object):
+    """method to merge and sort on single core"""
 
     def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
         self.channel_num = input_shape[0]
@@ -46,6 +65,7 @@ class SingleMerge(object):
                                                  self.tik.scope_gm, "output_index")
 
     def mode_compute(self):
+        """main compute mode"""
         self._mode_compute_each_core()
         inputs_all = [self.input_proposal]
         outputs_all = [self.output_data, self.output_index]
@@ -55,7 +75,7 @@ class SingleMerge(object):
             kernel_name=self.kernel_name)
 
     def _mode_compute_each_core(self):
-        src_gm_rem_list = [self.sorted_num for _ in range(self.channel_num)]
+        src_gm_rem_list = [self.sorted_num] * self.channel_num
         with self.tik_inst.new_stmt_scope():
             self.merge_sort.merge_sort_gm_loop(self.temp_proposal, self.input_proposal, 0, 0, 0,
                                                src_gm_rem_list, self.k_proposal_num, self.sorted_num)
@@ -75,8 +95,7 @@ class SingleMerge(object):
         return data_num_align
 
     def _result_move_out_each_loop(self, data_index_start, data_num):
-        """
-        algorithm: get result_data, result_index
+        """algorithm: get result_data, result_index
             result_data = gm_tensor[0, :, 3]
             result_index = gm_tensor[0, :, 0] + gm_tensor[0, :, 0]*each_loop_index_num
                            + gm_tensor[0, :, 0]*each_loop_index_num*each_loop_index_num
@@ -133,20 +152,11 @@ class SingleMerge(object):
         self.tik_inst.vadd(mask, result_index, result_index, index_int_ub, repeat_num, 1, 1, 1, 8, 8, 8)
 
 
-def check_params(input_proposal, kernel_name):
-    input_shape = input_proposal.get("shape")
-    if len(input_shape) != 3 or input_shape[0] > 4 or input_shape[2] != 8:
-        error_manager_vector.raise_err_input_value_invalid(
-            kernel_name, "shape of input_proposal", "support", "not support")
-
-
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
 def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="top_k_3"):
-    """
-    algorithm: merge and sort on single core
+    """algorithm: merge and sort on single core
     Parameters
     ----------
     input_proposal:
@@ -163,6 +173,12 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
     -------
     None
     """
+    def _check_params(input_proposal, kernel_name):
+        input_shape = input_proposal.get("shape")
+        if len(input_shape) != 3 or input_shape[0] > 4 or input_shape[2] != 8:
+            error_manager_vector.raise_err_input_value_invalid(
+                kernel_name, "shape of input_proposal", "support", "not support")
+
     input_shape = input_proposal.get("shape")
     input_dtype = input_proposal.get("dtype").lower()
     input_format = input_proposal.get("format")
@@ -170,7 +186,7 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
     para_check.check_dtype(input_dtype, check_list, param_name="input_proposal")
     para_check.check_shape(input_shape, param_name="input_proposal")
     para_check.check_format(input_format)
-    check_params(input_proposal, kernel_name)
+    _check_params(input_proposal, kernel_name)
     AContainer.reset_instance()
     cont = AContainer.get_instance()
     obj = SingleMerge(input_shape, k_num, input_dtype, kernel_name, cont)

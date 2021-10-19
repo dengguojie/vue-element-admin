@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,7 +183,6 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
     support_vreduce = tbe_platform.api_check_support("tik.vreduce", "float16")
     support_v4dtrans = tbe_platform.api_check_support("tik.v4dtrans", "float16")
     # output shape is [N,5]
-    input_ceil = _ceil_div(total_input_proposal_num * VALID_COLUMN_NUM, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM
     ret = tik_instance.Tensor("float16", (total_output_proposal_num, VALID_COLUMN_NUM), name="out_proposals",
                               scope=tik.scope_gm)
     out_index = tik_instance.Tensor("int32", (total_output_proposal_num,), name="out_index", scope=tik.scope_gm)
@@ -1741,7 +1742,7 @@ def _nms_with_mask_basic_api(box_scores, selected_boxes, selected_idx, selected_
     return _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, iou_thr, output_size, kernel_name)
 
 
-def _used_ub_size(N, input_dtype):
+def _used_ub_size(n, input_dtype):
     """
     used size in ub
 
@@ -1764,7 +1765,7 @@ def _used_ub_size(N, input_dtype):
         input_vector_mask_max = BURST_PROPOSAL_NUM // 2
 
     vector_mask_max = BURST_PROPOSAL_NUM // 2
-    ceil_N = _ceiling(N, vector_mask_max)
+    ceil_N = _ceiling(n, vector_mask_max)
     valid_mask_size_int8 = ceil_N
     dsorts_size = ceil_N
     bytes_each_elem = FP32_SIZE

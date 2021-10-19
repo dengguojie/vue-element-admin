@@ -14,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-slice_d
-"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 
@@ -41,9 +39,7 @@ from impl.strided_slice_d import strided_slice_d
 
 BURST_LEN = 65535
 BLOCK_SIZE = 32
-# available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-# available number of cores
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
@@ -724,8 +720,7 @@ def _get_align_axis(out_shape):
 # pylint: disable=locally-disabled,unnecessary-lambda
 @fusion_manager.register("slice_d")
 def slice_d_compute(x, y, begin, size, kernel_name="slice_d"):
-    """
-    calculating: this operation extracts a slice of size size
+    """calculating: this operation extracts a slice of size size
                  from a tensor input
                  starting at the location specified by begin.
 
@@ -910,10 +905,10 @@ def _func_gm_to_ub(args):
                                             data.access_ptr('r', offset=data_cur),
                                             0, 1, burst_len, 0, 0))
 
+
 def _func_gm_to_ub_align(args):
     """
     function of moving data from data to data_ub
-
     """
     tvm_ib, data, data_ub, data_offset, ub_offset, ori_nburst,\
     burst_len, src_stride, dst_stride, cp_align_len = args
@@ -1012,7 +1007,6 @@ def _func_gm_to_ub_align(args):
 def _reg_mov_row(args):
     """
     move row from data_ub to data_res
-
     """
     tvm_ib, data_ub, data_res, reg, num_d, num_c, dim_ele_in, dim_ele_out,\
     col_begin, row_begin, row_in, row_out = args
@@ -2841,7 +2835,7 @@ def _func_91_90_fp32(args):
                    ub_offset, res_offset, \
                    repeat, srcm0, dstm0, srcm1, dstm1, cp_align_len
             _func_vadds(args)
- 
+
             #set mask slice
             mask1, mask2 = _set_mask_slice(0, 128 - 90 - 2 * (num_zi % 4))
             tvm_ib.emit(tvm.call_extern(
@@ -7205,7 +7199,7 @@ def _check_last_two_diff_fp16(shape, size, dtype):
 
     shape = shape[1:]
     size = size[1:]
-        
+
     if (shape, size) not in (([64, 568, 568], [64, 392, 392]),
                              ([128, 280, 280], [128, 200, 200]),
                              ([256, 136, 136], [256, 104, 104]),
@@ -7322,8 +7316,7 @@ def get_fused_str(format_char_list):
 
 
 def op_select_format(x, y, begin, size, kernel_name="slice_d"):
-    """
-    1.when length of input x's ori_shape is equal to length of
+    """1.when length of input x's ori_shape is equal to length of
     input x's ori_format, and ori_shape in ["NCHW", “NDCHW”], and
     the dim C can be divisible by 16. the Op Select can support
     ND, NC1HWC0 and NDC1HWC0.
@@ -7405,7 +7398,7 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
 
     base_data_type = ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"]
     other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
-    dtype_base_out = base_data_type.copy()
+    dtype_base_out = base_data_type
     format_base_out = ["ND"] * len(base_data_type)
     if is_support_hd:
         other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
@@ -7434,9 +7427,7 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
 
 
 def _use_strided_slice(ori_x, ori_begin, ori_size, ori_y):
-    """
-    can use strided_slice
-    """
+    """can use strided_slice"""
     dtype = ori_x.get("dtype")
     input_shape = list(ori_x.get("ori_shape"))
     ori_y_shape = list(ori_y.get("ori_shape"))
@@ -7517,8 +7508,7 @@ def _use_strided_slice(ori_x, ori_begin, ori_size, ori_y):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d(x, y, begin, size, kernel_name="slice_d"):
-    """
-    algorithm: slice_d
+    """algorithm: slice_d
     calculating: this operation extracts a slice of size size
                  from a tensor input
                  starting at the location specified by begin.

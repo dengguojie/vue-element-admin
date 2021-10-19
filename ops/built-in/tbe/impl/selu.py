@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-selu
-if < 0:`scale * alpha * (exp(features) - 1)`
-otherwise:`scale * features`
-"""
 import functools
 
 import te.lang.cce as tbe
@@ -37,9 +34,9 @@ SCALAR_NEGATIVE_ONE = -1
 # pylint: disable=invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("selu")
 def selu_compute(input_x, y, kernel_name="selu"):
-    """
-    Computes scaled exponential linear: `scale * alpha * (exp(features) - 1)`
-    if < 0, `scale * features` otherwise.
+    """Computes scaled exponential linear:
+    `scale * alpha * (exp(features) - 1)` if < 0,
+    `scale * features` otherwise.
     alpha =  1.6732632423543772848170429916717
     scale =  1.0507009873554804934193349852946
 
@@ -91,8 +88,7 @@ def selu_compute(input_x, y, kernel_name="selu"):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def selu(x, y, kernel_name="selu"):
-    """
-    Generate selu_cce operator use selu_compute
+    """Generate selu_cce operator use selu_compute
 
     Parameters
     ----------

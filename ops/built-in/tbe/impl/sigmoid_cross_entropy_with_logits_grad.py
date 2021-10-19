@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,9 +25,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-# define a scalar, value = 1
 SCALAR_ONE = 1
-# define a scalar, value = -1
 SCALAR_NEGTIVE_ONE = -1
 
 
@@ -37,8 +37,7 @@ def sigmoid_cross_entropy_with_logits_grad_compute(
         dout,
         gradient,
         kernel_name):
-    """
-    calculating sigmoid_cross_entropy_with_logits_grad_compute
+    """calculating sigmoid_cross_entropy_with_logits_grad_compute
 
     Parameters
     ----------
@@ -87,8 +86,7 @@ def sigmoid_cross_entropy_with_logits_grad(
         dout,
         gradient,
         kernel_name="sigmoid_cross_entropy_with_logits_grad"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

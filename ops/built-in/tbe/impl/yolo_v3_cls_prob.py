@@ -828,18 +828,18 @@ def check_param(input_dict):
     width = input_dict.get("box1_info").get("shape")[3]
     if height * width * dsize < constant.BLOCK_SIZE:
         rule_desc = "box1_info's height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", 
-                            rule_desc, "height * width * dsize", height * width * dsize)
+        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", rule_desc,
+                                                          "height * width * dsize", height * width * dsize)
 
     height = input_dict.get("box2_info").get("shape")[2]
     width = input_dict.get("box2_info").get("shape")[3]
     if height * width * dsize < constant.BLOCK_SIZE:
         rule_desc = "box2_info's height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", 
-                            rule_desc, "height * width * dsize", height * width * dsize)
+        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", rule_desc,
+                                                          "height * width * dsize", height * width * dsize)
     height = input_dict.get("box3_info").get("shape")[2]
     width = input_dict.get("box3_info").get("shape")[3]
     if height * width * dsize < constant.BLOCK_SIZE:
         rule_desc = "box3_info's height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", 
-                            rule_desc, "height * width * dsize", height * width * dsize)
+        error_manager_vector.raise_err_check_params_rules("yolo_v3_detection_output_d", rule_desc,
+                                                          "height * width * dsize", height * width * dsize)

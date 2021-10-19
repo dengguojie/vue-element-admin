@@ -638,8 +638,7 @@ class YoloBoxesEncode(object):
             self.tik_inst.vconv(VEC_MASK[FP32], 'none', delta_out_fp16_ub,
                                 delta_out_ub, repeat_times * 8, 1, 1, REP_STRIDE[FP16], REP_STRIDE[FP32])
             return delta_out_fp16_ub
-        else:
-            return delta_out_ub
+        return delta_out_ub
 
 
 # pylint: disable=too-many-arguments
@@ -669,7 +668,8 @@ def yolo_boxes_encode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, performan
     -------
     None
     """
-    bounding_box_encode_ = YoloBoxesEncode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, performance_mode, kernel_name)
+    bounding_box_encode_ = YoloBoxesEncode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, performance_mode,
+                                           kernel_name)
     bounding_box_encode_.tik_inst_function()
 
     return bounding_box_encode_.tik_inst

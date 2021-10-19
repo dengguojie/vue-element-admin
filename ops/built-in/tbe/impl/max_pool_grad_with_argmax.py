@@ -675,7 +675,7 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name):
 
     if y_dtype != grad_dtype or y_dtype_arg != y_dtype:
         rule_desc = "The dtype of tensor must be same"
-        param_value = "%s,%s,%s"%(y_dtype, grad_dtype, y_dtype_arg)
+        param_value = "%s,%s,%s" % (y_dtype, grad_dtype, y_dtype_arg)
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "x,grad,y", param_value)
 
     check_padding(padding, ("SAME", "VALID"))

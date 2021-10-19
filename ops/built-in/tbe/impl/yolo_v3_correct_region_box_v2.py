@@ -199,7 +199,8 @@ class CorrectBoxComputer():
 
         return block_num, outer_loop, outer_tail
 
-    def get_adj_hw(self, height, width):
+    @staticmethod
+    def get_adj_hw(height, width):
         """
           compute height and weight with 32 alignment
 

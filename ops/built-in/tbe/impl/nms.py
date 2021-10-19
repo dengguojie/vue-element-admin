@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -621,8 +623,7 @@ def vec_dup(inputs, ub_to_dup, const=0):
             tail_tail // (16*2 // size))
 
 
-def vec_conv(tik_instance, src_ub, dst_ub,
-             output_dtype, cur_process_num, base):
+def vec_conv(tik_instance, src_ub, dst_ub, output_dtype, cur_process_num, base):
     """
     :param tik_instance:
     :param src_ub:
@@ -729,7 +730,7 @@ def nms_output_tiling_postproposal(tik_instance, inputs, input_index,
 
             temp = real_batch_index
             vec_dup((tik_instance, tiling*16, "int32"), temp_dup, temp)
-            vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 6) 
+            vec_conv(tik_instance, temp_dup, ret_ub, dtype, tiling, 6)
 
         tik_instance.data_move(new_ret_ub[0], ret_ub[0, 0], 0, tiling,
                                ratio, 0, 15*ratio)
@@ -1133,13 +1134,13 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
             size = 4
             ratio = 2
 
-        N = (pre_nms_topn + 15)//16
-        if N % 2 != 0:
-            N = N + 1
+        n = (pre_nms_topn + 15)//16
+        if n % 2 != 0:
+            n = n + 1
 
-        supvec_ub = tik_instance.Tensor("uint16", [N*16], name="supvec_ub",
+        supvec_ub = tik_instance.Tensor("uint16", [n*16], name="supvec_ub",
                                         scope=tik.scope_ubuf)
-        tik_instance.vector_dup(32, supvec_ub[0], 1, N//2, 1, 2)
+        tik_instance.vector_dup(32, supvec_ub[0], 1, n//2, 1, 2)
         scalar_uint16 = tik_instance.Scalar(dtype="uint16")
         scalar_uint16.set_as(0)
         supvec_ub[0].set_as(scalar_uint16)
@@ -1179,7 +1180,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
 
         reserved_ub_size = (12*16*8*size)*2
 
-        factor = ((ub_size - N*16*2) - N*16*2-4) // reserved_ub_size
+        factor = ((ub_size - n*16*2) - n*16*2-4) // reserved_ub_size
 
         tiling_num = tik_instance.Scalar(dtype="uint16")
         tiling_num.set_as((proposal_actual_num // 16) // factor)
@@ -1198,7 +1199,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                                              (proposal_actual_num + 15)//16,
                                              scale_factor))
 
-            nms_process_object.nms(0, N*16, input_offset, proposal_box,
+            nms_process_object.nms(0, n*16, input_offset, proposal_box,
                                    supvec_ub)
 
         #need tiling
@@ -1212,7 +1213,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                                                  factor,
                                                  factor,
                                                  scale_factor))
-                nms_process_object.nms(i, N*16, input_offset, proposal_box,
+                nms_process_object.nms(i, n*16, input_offset, proposal_box,
                                        supvec_ub)
 
             with tik_instance.if_scope(tail > 0):
@@ -1226,7 +1227,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                                                  factor,
                                                  tail_num,
                                                  scale_factor))
-                nms_process_object.nms(tiling_num, N*16, input_offset,
+                nms_process_object.nms(tiling_num, n*16, input_offset,
                                        proposal_box, supvec_ub)
 
         selected_count = tik_instance.Scalar(dtype="int32")
@@ -1234,18 +1235,18 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
 
         with tik_instance.if_scope(True):
             nms_select_proposal(
-                (tik_instance, dtype, ub_size, N*16*2, batch_index,
+                (tik_instance, dtype, ub_size, n*16*2, batch_index,
                  proposal_actual_num, post_nms_topn, pre_nms_topn),
                 selected_count, input_offset, proposal_box, supvec_ub,
                 temp_proposal_out)
 
         if used_in_proposal == True:
-            nms_output_proposal((tik_instance, dtype, size, ub_size, N*16*2,
+            nms_output_proposal((tik_instance, dtype, size, ub_size, n*16*2,
                                  batch_index, ratio), post_nms_topn,
                                 selected_count, temp_proposal_out, proposal_out)
         else:
             nms_output_postproposal(
-                (tik_instance, dtype, size, ub_size, N*16*2, batch_index,
+                (tik_instance, dtype, size, ub_size, n*16*2, batch_index,
                  real_batch_index, ratio, class_index), post_nms_topn,
                 selected_count, temp_proposal_out, proposal_out)
 

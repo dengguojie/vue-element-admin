@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-sinh
-"""
+
 import functools
 
 import te.lang.cce as tbe
@@ -22,19 +22,14 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 
-# define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
-# define a scaler , value = 0.5
 SCALER_ZERO_POINT_FIVE = 0.5
-# define a scaler , value = 2
 SCALAR_TWO = 2
 
 
-# pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("sinh")
 def sinh_compute(input_data, output_data, kernel_name="sinh"):
-    """
-    algorithm: sinh
+    """algorithm: sinh
     calculating data's sinh = (exp(x) - exp(-x)) / 2
 
     Parameters
@@ -84,8 +79,7 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sinh(input_data, output_data, kernel_name="sinh"):
-    """
-    algorithm: sinh
+    """algorithm: sinh
     calculating data's sinh = (exp(x) - exp(-x)) / 2
 
     Parameters

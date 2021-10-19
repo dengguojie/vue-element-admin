@@ -1,12 +1,29 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 from impl.ascend import AContainer
-from impl.merge_sort import CommonMethod, MergeSort
+from impl.merge_sort import CommonMethod
+from impl.merge_sort import MergeSort
 
 
 class SegmentSort:
-
+    """define SegmentSort"""
     def __init__(self, data_num, index_num, data_type, k_num, kernel_name, cont):
         self.data_num = data_num
         self.k_num = k_num
@@ -42,6 +59,7 @@ class SegmentSort:
                                                     self.tik.scope_gm, "output_proposal")
 
     def get_result_info(self):
+        """get result shape, ai_core_use, channel_num"""
         ai_core_num = 32
         each_core_data_num = self.method.ceil_div(self.data_num, ai_core_num)
         each_core_data_num = self.method.get_align_num(each_core_data_num, self.each_loop_index_num)
@@ -57,6 +75,7 @@ class SegmentSort:
         return result_shape, ai_core_use_num, channel_num
 
     def mode_compute(self):
+        """main compute"""
         each_core_data_num = self.result_shape[1] - self.tail_proposal_num
         last_core_data_num = self.data_num - each_core_data_num * (self.channel_num - 1)
         with self.tik_inst.for_range(0, self.ai_core_use, block_num=self.ai_core_use) as core_index:
@@ -191,6 +210,7 @@ class SegmentSort:
 
 
 def check_params(input_data, input_index, kernel_name):
+    """checking input params"""
     input_dtype = input_data.get("dtype").lower()
     if input_index.get("dtype") != input_dtype:
         error_manager_vector.raise_err_input_value_invalid(
@@ -210,8 +230,7 @@ def check_params(input_data, input_index, kernel_name):
                             para_check.KERNEL_NAME)
 # pylint: disable=unused-argument
 def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="SegmentSort"):
-    """
-    algorithm: Segment merge sort on multiple core
+    """algorithm: Segment merge sort on multiple core
     Parameters
     ----------
     input_data:

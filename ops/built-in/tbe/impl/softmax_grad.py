@@ -27,8 +27,7 @@ from te import tvm
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_grad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
                          kernel_name="softmax_grad"):
-    """
-    Computes softmax gradients for a softmax operation
+    """Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
     grad_x = grad_softmax * softmax - sum(grad_softmax * softmax) * softmax
 
@@ -89,8 +88,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME)
 def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad"):
-    """
-    Computes softmax gradients for a softmax operation
+    """Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
     grad_x = grad_softmax * softmax - sum(grad_softmax * softmax) * softmax
 

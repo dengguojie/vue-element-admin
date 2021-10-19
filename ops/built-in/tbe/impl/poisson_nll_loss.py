@@ -27,19 +27,19 @@ import te.utils.shape_util as tsu
 
 @fusion_manager.register("poisson_nll_loss")
 #pylint: disable=unused-argument,too-many-locals,invalid-name
-def poisson_nll_loss_compute(input_x, 
-                             target, 
-                             loss, 
-                             log_input=True, 
-                             full=False, 
-                             eps=1e-8, 
-                             reduction="mean", 
+def poisson_nll_loss_compute(input_x,
+                             target,
+                             loss,
+                             log_input=True,
+                             full=False,
+                             eps=1e-8,
+                             reduction="mean",
                              number=0.0):
     """
     possion_nll_loss
 
     Parameters
-    ----------    
+    ----------
     input_x: shape dtype
     target: shape dtype
     log_input: scalar parameter, default value = True
@@ -66,7 +66,7 @@ def poisson_nll_loss_compute(input_x,
     scalar_param_doublepi = tvm.const(2 * math.pi, dtype=input_x.dtype)
     scalar_param_half = tvm.const(0.5, dtype=input_x.dtype)
 
-    tensor_scalar_number = tbe.broadcast(tvm.const(number, dtype=input_x.dtype), [1,])
+    tensor_scalar_number = tbe.broadcast(tvm.const(number, dtype=input_x.dtype), [1, ])
     tensor_scalar_one = tbe.broadcast(tvm.const(1.0, dtype=input_x.dtype), shape)
     tensor_scalar_zero = tbe.broadcast(tvm.const(0, dtype=input_x.dtype), shape)
 
@@ -77,9 +77,9 @@ def poisson_nll_loss_compute(input_x,
         tensor_output = tbe.vsub(input_x, tbe.vmul(target, tensor_logfalse_log))
 
     if full:
-        tensor_full_doublePitarget = tbe.vmuls(target, scalar_param_doublepi)
+        tensor_full_double_pitarget = tbe.vmuls(target, scalar_param_doublepi)
         tensoe_full_left = tbe.vmul(target, tbe.vlog(target))
-        tensoe_full_right = tbe.vmuls(tbe.vlog(tensor_full_doublePitarget), scalar_param_half)
+        tensoe_full_right = tbe.vmuls(tbe.vlog(tensor_full_double_pitarget), scalar_param_half)
         tensor_output_full = tbe.vadd(tbe.vsub(tensoe_full_left, target), tensoe_full_right)
         tensor_output_full = tbe.vcmpsel(target, tensor_scalar_one, 'le', tensor_scalar_zero, tensor_output_full)
         tensor_output = tbe.vadd(tensor_output, tensor_output_full)
@@ -102,19 +102,19 @@ def poisson_nll_loss_compute(input_x,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-def poisson_nll_loss(input_x, 
-                     target, 
-                     loss, 
-                     log_input=True, 
-                     full=False, 
-                     eps=1e-8, 
-                     reduction="mean", 
+def poisson_nll_loss(input_x,
+                     target,
+                     loss,
+                     log_input=True,
+                     full=False,
+                     eps=1e-8,
+                     reduction="mean",
                      kernel_name="poisson_nll_loss"):
     """
     possion_nll_loss
 
     Parameters
-    ----------    
+    ----------
     input_x: shape dtype
     target: shape dtype
     log_input: scalar parameter, default value = True

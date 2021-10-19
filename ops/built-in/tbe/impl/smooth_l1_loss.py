@@ -29,8 +29,7 @@ def smooth_l1_loss_compute(input_predict,
                            output_loss,
                            sigma,
                            kernel_name="smooth_l1_loss"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -79,8 +78,7 @@ def smooth_l1_loss(predict,
                    loss,
                    sigma=1.0,
                    kernel_name="smooth_l1_loss"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

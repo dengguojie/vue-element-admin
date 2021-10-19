@@ -242,7 +242,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     :param simulator_lib_path: simulator library path
     :param simulator_data_path: test data directory, input, output and expect output data
     :param test_data_path: when run ca or tm mode, dump data save in this dirctory
-    :param process_num: when 0 means use cpu_count, else means process count 
+    :param process_num: when 0 means use cpu_count, else means process count
 
     :return: success or failed
     """
@@ -292,7 +292,6 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
 
     multiprocess_run_args, total_count = _build_multiprocess_run_args()
 
-   
     logger.log_info("multiprocess_run_args count: %d" % total_count)
 
     if process_num == 1:
@@ -310,7 +309,6 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
         else:
             cpu_count = process_num
             logger.log_info("process_num is %s" % process_num)
-            
 
         if simulator_mode == "esl":
             cpu_count = 1

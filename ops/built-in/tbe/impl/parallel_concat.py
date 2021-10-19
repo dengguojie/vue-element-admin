@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -187,7 +189,7 @@ def parallel_concat(values, output_data, shape, num, kernel_name="parallel_conca
     """
     if len(values) != num:
         rule_desc = "The size of input and num must be same."
-        param_value = "%d,%d"%(len(values), num)
+        param_value = "%d,%d" % (len(values), num)
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
                                                           "values'size,num", param_value)
 

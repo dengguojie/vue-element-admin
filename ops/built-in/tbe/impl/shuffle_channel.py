@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +33,7 @@ RESERVE_SIZE = 16 * 1024
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):
-    """
-    the main function of shuffle_channel
+    """the main function of shuffle_channel
 
     Parameters
     ----------
@@ -93,11 +94,10 @@ class ShuffleChannel:
     """
 
     def __init__(self, input_dict):
-        """
-      init the ShuffleChannel parameters
+        """init the ShuffleChannel parameters
 
-      Parameters
-      ----------
+        Parameters
+        ----------
         input_dict: input_dict is a dict, the keys as follow:
             x: dict,shape and datatype,datatype supports int8,uint8,int16,
               uint16,int32,uint32,int64,uint64,float16,float32
@@ -105,10 +105,10 @@ class ShuffleChannel:
               uint16,int32,uint32,int64,uint64,float16,float32
             group: 1 channel group
             kernel_name: cce kernel name, default value is "shuffle_channel"
-      Returns
-      -------
-      None
-      """
+        Returns
+        -------
+        None
+        """
         self.instance = tik.Tik(tik.Dprofile())
         self.dtype = input_dict.get("x").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
@@ -131,8 +131,7 @@ class ShuffleChannel:
         self.input_dict = input_dict
 
     def get_blockdim_and_loop_cycle(self):
-        """
-        get block dim and loop cycle
+        """get block dim and loop cycle
 
         Parameters
         ----------
@@ -203,9 +202,7 @@ class ShuffleChannel:
         return False
 
     def vadds_compute(self, n_i, dst_ub, src_ub):
-        """
-        describe the process of calculating the vadds instruction
-        """
+        """describe the process of calculating the vadds instruction"""
         shape_out = self.input_dict.get("y").get("shape")
         each_block_num = constant.VECTOR_BYTE_SIZE // self.dsize
         channel = shape_out[1]
@@ -223,9 +220,7 @@ class ShuffleChannel:
                                    constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
 
     def vadds_move(self, input_dict):
-        """
-        describe the process of moving in and out and calculating the vadds instruction
-        """
+        """describe the process of moving in and out and calculating the vadds instruction"""
         ub_size = input_dict.get("ub_size")
         data_size = input_dict.get("data_size")
         gm_offset = input_dict.get("gm_offset")
@@ -257,9 +252,7 @@ class ShuffleChannel:
                                     n_burst, constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
     def get_ub_block_size(self, tensor_size):
-        """
-        get ub size and core number
-        """
+        """get ub size and core number"""
         block_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         total_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         reserve_size = 4 * 1024
@@ -268,9 +261,7 @@ class ShuffleChannel:
         return block_num, ub_size
 
     def move_with_vadds(self):
-        """
-        move with vadds instruction
-        """
+        """move with vadds instruction"""
         shape_out = self.input_dict.get("y").get("shape")
         shape_size = _get_shape_total_number(shape_out)
         element_num = shape_out[1] * shape_out[2] * shape_out[3]
@@ -344,9 +335,7 @@ class ShuffleChannel:
                 self.vadds_move(input_dict)
 
     def move_without_transform(self):
-        """
-        when group = 1 or group = channel, directly move data in and out
-        """
+        """when group = 1 or group = channel, directly move data in and out"""
         size = _get_shape_total_number(self.input_dict.get("x").get("shape"))
         ai_core_num, ub_size = self.get_ub_block_size(self.dsize)
         block_size = constant.BLOCK_SIZE // self.dsize
@@ -425,8 +414,7 @@ class ShuffleChannel:
                                             constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
     def compute_shuffle_channel(self):
-        """
-        compute shuffle_channel
+        """compute shuffle_channel
 
         Parameters
         ----------
@@ -536,8 +524,7 @@ class ShuffleChannel:
                         common_util.move_out_non32_alignment(input_dict)
 
     def get_start_address(self, loop):
-        """
-        get the start address of the source and dest tensor
+        """get the start address of the source and dest tensor
 
         Parameters
         ----------
@@ -561,8 +548,7 @@ class ShuffleChannel:
         return src_start, dest_start
 
     def move_out_less_than32b(self, input_dict):
-        """
-        move data from ub to gm
+        """move data from ub to gm
 
         Parameters
         ----------
@@ -626,8 +612,7 @@ class ShuffleChannel:
                                     constant.STRIDE_ZERO)
 
     def data_move(self, input_dict):
-        """
-        move data from ub to gm
+        """move data from ub to gm
 
         Parameters
         ----------
@@ -769,7 +754,7 @@ def _check_param(input_dict):
                            ["int8", "uint8", "int16", "uint16", "int32",
                             "uint32", "int64", "uint64", "float16", "float32"],
                            param_name="output_y")
-    error_info = {}
+
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("shuffle_channel", "x", "y", x_dtype, y_dtype)
 
@@ -777,18 +762,18 @@ def _check_param(input_dict):
         error_manager_vector.raise_err_input_param_range_invalid("shuffle_channel", "x", "3", "4", str(len(x_shape)))
 
     if len(x_shape) == 3:
-        x_shape = list((x_shape[0], x_shape[1], x_shape[2], 1))
+        x_shape = (x_shape[0], x_shape[1], x_shape[2], 1)
     if len(x_shape) == 2:
-        x_shape = list((x_shape[0], x_shape[1], 1, 1))
+        x_shape = (x_shape[0], x_shape[1], 1, 1)
     input_dict["x"]["shape"] = x_shape
 
     if len(y_shape) > 4 or len(y_shape) < 2:
         error_manager_vector.raise_err_input_param_range_invalid("shuffle_channel", "y", "3", "4", str(len(y_shape)))
 
     if len(y_shape) == 3:
-        y_shape = list((y_shape[0], y_shape[1], y_shape[2], 1))
+        y_shape = (y_shape[0], y_shape[1], y_shape[2], 1)
     if len(y_shape) == 2:
-        y_shape = list((y_shape[0], y_shape[1], 1, 1))
+        y_shape = (y_shape[0], y_shape[1], 1, 1)
     input_dict["y"]["shape"] = y_shape
 
     if not _check_same_dim(y_shape, x_shape):

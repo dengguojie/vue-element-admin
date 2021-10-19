@@ -33,14 +33,14 @@ def op_select_format(x1, x2, grad, y, ksize, strides,
                      padding, data_format="NHWC", kernel_name="maxpoolgrad"):
     """
     Operator output under dynamic shape only supports float32,
-    fixed shape output only supports float16 
+    fixed shape output only supports float16
     """
     x1_shape = list(x1.get("ori_shape"))
     x2_shape = list(x2.get("ori_shape"))
     grad_shape = list(grad.get("ori_shape"))
     dynamic = False
     atomic_flag = _branch_choice(x1_shape, ksize, strides, padding, data_format)
-    for i in range(len(x1_shape)):
+    for i, _ in enumerate(x1_shape):
         if x1_shape[i] == -1 or x2_shape[i] == -1 or grad_shape[i] == -1:
             dynamic = True
             break
@@ -105,6 +105,7 @@ def op_select_format(x1, x2, grad, y, ksize, strides,
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
+
 def _ceil_div(num, divisor):
     """calcu use _ceil_div
 
@@ -166,7 +167,7 @@ def _cal_byte_size(shape, dtype):
         return _cal_shape_ele(shape) * 4
     error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad", "ori_input", ('float16', 'float32'),
                                                              dtype)
-    return None
+
 
 def _prod(values):
     """
@@ -301,8 +302,6 @@ MAX_NBURST = 4095
 FIXED_USED_UB = 512 * 4 + 256 * 4 + 1024
 
 
-
-
 # pylint: disable=too-many-arguments
 def _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_name):
     """
@@ -393,6 +392,7 @@ def _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_na
 
     if strides_h > 63 or strides_w > 63 or strides_h < 1 or strides_w < 1:
         error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "strides", 1, 63, strides)
+
 
 def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
     atomic_flag = False
@@ -537,11 +537,13 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         if wo_mode2_effect:
             each_process_wo_min = each_process_wo_mode2
             each_process_wo_max = each_process_wo_mode2
-    
+
+
     if each_process_wo_min < 1 or each_process_wo_max < 1:
         atomic_flag = True
         return atomic_flag
-    
+
+
     if stride_h < kernel_h:
         overlap_l1_shape = (kernel_h - stride_h, (fmap_w + pad_left + pad_right)*C0)
         each_process_wi = max(kernel_w, stride_w)
@@ -549,6 +551,7 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         if _cal_shape_ele(overlap_l1_shape) * fp32_data_size + _cal_shape_ele(ori_l1_shape) * fp16_data_size > SIZE_L1:
             atomic_flag = True
             return atomic_flag
+
 
     if each_process_wo_min >= wo:
         wi = fmap_w + pad_left + pad_right
@@ -689,12 +692,12 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) + extra_ub > SIZE_UB:
             atomic_flag = True
         return atomic_flag
-    
+
     if stride_w >= kernel_w:
         col_w = each_process_wo * stride_w
     else:
         col_w = (each_process_wo - 1) * stride_w + kernel_w
-    
+
     col_ub_shape = (max(stride_h, kernel_h), col_w, C0)
     if stride_h < kernel_h:
         overlap_l1_shape = (kernel_h - stride_h, (fmap_w + pad_left + pad_right) * C0)
@@ -771,7 +774,7 @@ def max_pool_grad(ori_input,
         ksize = list(ksize)
         strides = list(strides)
         shape_list = [forward_in_shape, forward_ou_shape, grad_shape, forward_in_shape]
-        params = [ksize, strides, [0,0,0,0,0,0], dtype, kernel_name, padding]
+        params = [ksize, strides, [0, 0, 0, 0, 0, 0], dtype, kernel_name, padding]
         result = MaxpoolGradAtomic(shape_list, params)
         return result.get_tik_instance()
     else:
@@ -1594,7 +1597,8 @@ class MaxpoolGrad:
         repeate_time = (mov_len_ho * self.wo + 15) // 16
 
         ori_input_l1, ori_output_ub, grad_ub = self._data_move_ub(ori_input_shape, ori_output_shape, input_data_nums,
-                                                                  output_data_nums, src_input_offset, src_output_offset)
+                                                                  output_data_nums, src_input_offset,
+                                                                  src_output_offset)
         ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
                                                     ori_output_shape,
                                                     name='ori_input_col_ub',
@@ -1616,13 +1620,13 @@ class MaxpoolGrad:
             if offset_gm_block is None:
                 with self.tik_instance.for_range(0, hi) as re_times:
                     self.tik_instance.data_move(self.res_gm[self.offset_gm + re_times * self.wi * C0],
-                                                col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, self.wi * C0 // 16,
-                                                pad_left + pad_right, 0)
+                                                col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1,
+                                                self.wi * C0 // 16, pad_left + pad_right, 0)
             else:
                 with self.tik_instance.for_range(0, mov_len_hi) as re_times:
                     self.tik_instance.data_move(self.res_gm[offset_gm_block + re_times * self.wi * C0],
-                                                col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, self.wi * C0 // 16,
-                                                pad_left + pad_right, 0)
+                                                col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1,
+                                                self.wi * C0 // 16, pad_left + pad_right, 0)
 
             with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
                 self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
@@ -1691,9 +1695,10 @@ class MaxpoolGrad:
             with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
                 with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
                     self.tik_instance.load3dv1(ori_input_col_ub[0], ori_input_l1[0],
-                                               (pad_left, pad_right, pad_top, pad_bottom), mov_len_hi, self.wi, 0, index_w,
-                                               index_h, -pad_left, -pad_top, self.stride_w, self.stride_h, self.kw, self.kh,
-                                               1, 1, 1, 1, repeate_time, 0, self.pad_value)
+                                               (pad_left, pad_right, pad_top, pad_bottom),
+                                               mov_len_hi, self.wi, 0, index_w,
+                                               index_h, -pad_left, -pad_top, self.stride_w, self.stride_h,
+                                               self.kw, self.kh, 1, 1, 1, 1, repeate_time, 0, self.pad_value)
 
                     # calculate mask here
                     mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
@@ -1733,7 +1738,8 @@ class MaxpoolGrad:
 
             if offset_gm_block is None:
                 pad_top_offset = pad_top * wi * C0
-                self.tik_instance.data_move(self.res_gm[self.offset_gm], col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
+                self.tik_instance.data_move(self.res_gm[self.offset_gm],
+                                            col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
                                             self.hi, self.wi * C0 // 16, pad_left + pad_right, 0)
             else:
                 with self.tik_instance.if_scope(start_threshold > pad_top):
@@ -2882,7 +2888,8 @@ class MaxpoolGrad:
                     self.offset_gm.set_as(self.offset_gm + _cal_shape_ele(temp_zero.shape))
 
     # pylint:disable=no-self-use
-    def _get_core_divlist(self):
+    @staticmethod
+    def _get_core_divlist():
         div_list = []
         for i in range(1, CORE_NUM + 1):
             if CORE_NUM % i == 0:
@@ -2913,7 +2920,8 @@ class MaxpoolGrad:
         return True
 
     # pylint:disable=no-self-use
-    def _get_block_num(self, block_num):
+    @staticmethod
+    def _get_block_num(block_num):
         if block_num > CORE_NUM:
             real_block = CORE_NUM
             block_cycle = (block_num + CORE_NUM - 1) // CORE_NUM
@@ -3188,6 +3196,7 @@ class MaxpoolGrad:
                                    enable_l2=False)
         return self.tik_instance
 
+
 class MaxpoolGradAtomic:
     """
         Function: use to store concat base parameters
@@ -3222,7 +3231,7 @@ class MaxpoolGradAtomic:
         self.sh = self.strides[2]
         self.sw = self.strides[3]
 
-        if self.pads in ["CALCULATED",]:
+        if self.pads in ["CALCULATED", ]:
             # Pytorch
             self.pads = "SAME"
             self.pad = [[params[2][0], params[2][1]],
@@ -3390,7 +3399,8 @@ class MaxpoolGradAtomic:
 
         return invalid_d, invalid_h, invalid_w
 
-    def _overlap_mode(self, stride, size, xo, xi):
+    @staticmethod
+    def _overlap_mode(stride, size, xo, xi):
         # xo: direction of x can be slided by xo times
         # xi: the length of x
         if xo == 1:
@@ -3471,7 +3481,8 @@ class MaxpoolGradAtomic:
                        grad_sel_fp32_size, f_map_fp32_size, l1_in_size)
         return param
 
-    def _check_cut_model(self, cut_model, split_model, all_do, core_branch):
+    @staticmethod
+    def _check_cut_model(cut_model, split_model, all_do, core_branch):
         # "not_tiling": 0
         # "tiling_do": 1
         # "tiling_do_ho": 2
@@ -3552,7 +3563,8 @@ class MaxpoolGradAtomic:
 
         return branch, split_model, param
 
-    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
+    @staticmethod
+    def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
         src_idx, dst_idx = in_list[-2], in_list[-1]
         n_burst, burst_len = in_list[0], in_list[1]
         src_stride, dst_stride = in_list[2], in_list[3]
@@ -3565,7 +3577,8 @@ class MaxpoolGradAtomic:
                                    src_buf[src_idx],
                                    0, 1, burst_len, 0, 0)
 
-    def norm_data_move(self, tik_instance, src_buf, dst_buf, in_list):
+    @staticmethod
+    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
         """
         norm_data_move
         """
@@ -3837,7 +3850,8 @@ class MaxpoolGradAtomic:
                                    src_stride,
                                    dst_stride)
 
-    def set_vector_dup(self, tik_instance, psm, dst, idx, number, dtype):
+    @staticmethod
+    def set_vector_dup(tik_instance, psm, dst, idx, number, dtype):
         """
         set_vector_dup
         """
@@ -3881,7 +3895,8 @@ class MaxpoolGradAtomic:
                                         dst_blk_stride,
                                         dst_rep_stride)
 
-    def _vconv(self, tik_instance, src, src_start, dst,
+    @staticmethod
+    def _vconv(tik_instance, src, src_start, dst,
                dst_start, ele_num, src_dtype):
         total_repeat_time = ele_num // VECTOR_FP32_SIZE
         remain_ele = ele_num % VECTOR_FP32_SIZE
@@ -4013,7 +4028,8 @@ class MaxpoolGradAtomic:
                                   stride_config[2], stride_config[3],
                                   stride_config[4], stride_config[5])
 
-    def _rewrite_fmap(self, tik_instance, operator,
+    @staticmethod
+    def _rewrite_fmap(tik_instance, operator,
                       src1, src2, dst, dtype, once_elem,
                       repeat_times, shape_map, shape_grad, config=None):
         # once_elem: amount of data processed at a time in the Wo direction.
@@ -4072,48 +4088,48 @@ class MaxpoolGradAtomic:
     def _set_buf_tensor(self, tik_instance, param):
 
         l1_in_buf = tik_instance.Tensor(self.dtype,
-                                        [param.l1_in_size,],
+                                        [param.l1_in_size, ],
                                         name="l1_in_buf",
                                         scope=tik.scope_cbuf)
         forward_ou_buf = tik_instance.Tensor(self.dtype,
-                                             [param.forward_ou_size,],
+                                             [param.forward_ou_size, ],
                                              name="forward_ou_buf",
                                              scope=tik.scope_ubuf)
         grad_buf = tik_instance.Tensor(self.dtype,
-                                       [param.grad_size,],
+                                       [param.grad_size, ],
                                        name="grad_buf",
                                        scope=tik.scope_ubuf)
         col_in_buf = tik_instance.Tensor(self.dtype,
-                                         [param.col_in_size,],
+                                         [param.col_in_size, ],
                                          name="col_in_buf",
                                          scope=tik.scope_ubuf)
         mask_buf = tik_instance.Tensor("uint16",
-                                       [param.mask_size,],
+                                       [param.mask_size, ],
                                        name='mask_buf',
                                        scope=tik.scope_ubuf)
         mask_or_buf = tik_instance.Tensor("uint16",
-                                          [param.mask_size,],
+                                          [param.mask_size, ],
                                           name='mask_or_buf',
                                           scope=tik.scope_ubuf)
         mask_not_buf = tik_instance.Tensor("uint16",
-                                           [param.mask_size,],
+                                           [param.mask_size, ],
                                            name='mask_not_buf',
                                            scope=tik.scope_ubuf)
         zero_buf = tik_instance.Tensor(self.dtype,
-                                       [param.zero_size,],
+                                       [param.zero_size, ],
                                        name='zero_buf',
                                        scope=tik.scope_ubuf)
 
         grad_sel_fp16_buf = tik_instance.Tensor(self.dtype,
-                                                [param.grad_sel_fp16_size,],
+                                                [param.grad_sel_fp16_size, ],
                                                 name='grad_sel_fp16_buf',
                                                 scope=tik.scope_ubuf)
         grad_sel_fp32_buf = tik_instance.Tensor("float32",
-                                                [param.grad_sel_fp32_size,],
+                                                [param.grad_sel_fp32_size, ],
                                                 name='grad_sel_fp32_buf',
                                                 scope=tik.scope_ubuf)
         f_map_fp32_buf = tik_instance.Tensor("float32",
-                                             [param.f_map_fp32_size,],
+                                             [param.f_map_fp32_size, ],
                                              name='f_map_fp32_buf',
                                              scope=tik.scope_ubuf)
 
@@ -6180,7 +6196,8 @@ class MaxpoolGradAtomic:
                                     dst_buf, 0, MIN_VALUE_FP16, "float16")
                 mark.set_as(1)
 
-    def _division_nearest(self, number, base_num):
+    @staticmethod
+    def _division_nearest(number, base_num):
         # split number as n0 and n1,
         # return n1, base_num*n0 as new_number and core_num
         n1 = number
@@ -6218,7 +6235,8 @@ class MaxpoolGradAtomic:
 
         return total_num, core_num, core_ou_shape, core_in_shape, core_branch
 
-    def grad(self, tik_instance, split_model,
+    @staticmethod
+    def grad(tik_instance, split_model,
              param, total_num, core_num, func):
         """
         grad
@@ -6303,6 +6321,7 @@ class MaxpoolGradAtomic:
                               outputs=[self.ou_y_gm])
 
         return tik_instance
+
 
 class Params:
     """

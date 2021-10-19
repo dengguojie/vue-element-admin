@@ -1,7 +1,20 @@
-from te import tik
-from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import register_operator
-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+max_pool3d_with_argmax
+"""
 import math
 from functools import partial
 from abc import ABCMeta
@@ -9,31 +22,49 @@ from abc import abstractmethod
 from enum import Enum
 from enum import unique
 
+from te import tik
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import register_operator
+
 
 @unique
 class L1MoveStrategy(Enum):
+    """
+    L1 move strategy Enum: EMPTY, NO_NEED_TO_CUT
+    """
     EMPTY = 0
     NO_NEED_TO_CUT = 1
 
 
 @unique
 class UbKernelStrategy(Enum):
+    """
+    UB kernel strategy Enum: EMPTY, WHOLE_KERNEL, KH_AND_KW, ONLY_KW
+    """
     EMPTY = 0
     WHOLE_KERNEL = 1
     KH_AND_KW = 2
     ONLY_KW = 3
 
 
+# pylint: disable=too-few-public-methods
 class Core:
+    """
+    Calculate n, c1, d_step based on core_index
+    """
 
-    def __init__(self, core_ind, C1, d_step):
-        self.ind_N = core_ind // (C1 * d_step)
-        N_rest = core_ind % (C1 * d_step)
-        self.ind_d = N_rest // C1
-        self.ind_C1 = N_rest % C1
+    def __init__(self, core_ind, c1, d_step):
+        self.ind_N = core_ind // (c1 * d_step)
+        n_rest = core_ind % (c1 * d_step)
+        self.ind_d = n_rest // c1
+        self.ind_C1 = n_rest % c1
 
 
+# pylint: disable=too-few-public-methods
 class MaxPool3DWithArgmax(metaclass=ABCMeta):
+    """
+    MaxPool3DWithArgmax: compute definition of max_pool3d_with_argmax
+    """
 
     def __init__(self, x, kernel_size, stride, kernel_name):
         self.inst = tik.Tik()
@@ -165,18 +196,18 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                 )
 
     def _init_gm_tensor(self):
-        input_gm_T = self.inst.Tensor(dtype=self.input_dtype,
-                                      shape=self.input_shape,
-                                      name='input_tensor',
-                                      scope=tik.scope_gm)
-        output_gm_T = self.inst.Tensor(dtype=self.input_dtype,
+        input_gm_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                           shape=self.input_shape,
+                                           name='input_tensor',
+                                           scope=tik.scope_gm)
+        output_gm_tensor = self.inst.Tensor(dtype=self.input_dtype,
                                        shape=self.output_shape,
                                        name='output_tensor',
                                        scope=tik.scope_gm)
-        output_gm_T = output_gm_T.reshape((self.N, self.d_step, self.C1, self.h_step * self.w_step * self.C0))
+        output_gm_tensor = output_gm_tensor.reshape((self.N, self.d_step, self.C1, self.h_step * self.w_step * self.C0))
 
         # the output bitmask
-        final_bitmask_gm_T = self.inst.Tensor(
+        final_bitmask_gm_tensor = self.inst.Tensor(
             dtype=self.out_mask_type,
             # the last two dimension of the shape aim to align to 32B.
             shape=[self.N, self.d_step, self.C1 * self.k_elem, self.aligned_bm_line // 16, 16],
@@ -184,9 +215,9 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
             scope=tik.scope_gm
         )
 
-        tensor_info = {'input': input_gm_T,
-                       'output': output_gm_T,
-                       'argmax': final_bitmask_gm_T}
+        tensor_info = {'input': input_gm_tensor,
+                       'output': output_gm_tensor,
+                       'argmax': final_bitmask_gm_tensor}
 
         return tensor_info
 
@@ -253,10 +284,17 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
 
     @abstractmethod
     def run(self):
+        """
+        run function
+        """
         pass
 
 
+# pylint: disable=too-few-public-method
 class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
+    """
+    MaxPool3DWithArgmaxWholeKernel: inherited from MaxPool3DWithArgmax
+    """
 
     def __init__(self, x, kernel_size, stride, kernel_name):
         super().__init__(x, kernel_size, stride, kernel_name)
@@ -304,34 +342,34 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
 
     def _cut_ub_process(self, ind_ctx, mode):
         tensor_info = ind_ctx['tensor_info']
-        ind_N = ind_ctx['ind_N']
-        ind_C1 = ind_ctx['ind_C1']
+        ind_n = ind_ctx['ind_N']
+        ind_c1 = ind_ctx['ind_C1']
         ind_d = ind_ctx['ind_d']
 
         # init a big matrix in ub, for register the img2col.
-        bigmat_ub_T = self.inst.Tensor(dtype=self.input_dtype,
-                                       shape=[self.k_elem, self.cut_ub_val * self.C0],
-                                       name='big_matrix',
-                                       scope=tik.scope_ubuf)
+        bigmat_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                            shape=[self.k_elem, self.cut_ub_val * self.C0],
+                                            name='big_matrix',
+                                            scope=tik.scope_ubuf)
         # init a register to store the max line.
-        maxline_ub_T = self.inst.Tensor(dtype=self.input_dtype,
-                                        shape=[self.cut_ub_val * self.C0, ],
-                                        name='max_line',
-                                        scope=tik.scope_ubuf)
+        maxline_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                             shape=[self.cut_ub_val * self.C0, ],
+                                             name='max_line',
+                                             scope=tik.scope_ubuf)
         # init a uint16 bitmask, each number represents 16 bits. (16 pairs of numbers)
-        bitmask_ub_T = self.inst.Tensor(dtype=self.out_mask_type,
-                                        shape=[self.k_elem, self.cut_ub_val],
-                                        name='bitmask_ub',
-                                        scope=tik.scope_ubuf)
+        bitmask_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                             shape=[self.k_elem, self.cut_ub_val],
+                                             name='bitmask_ub',
+                                             scope=tik.scope_ubuf)
         # init some tensors for deduplication during the inter process.
-        maskor_ub_T = self.inst.Tensor(dtype=self.out_mask_type,
-                                       shape=[self.cut_ub_val, ],
-                                       name='mask_or',
-                                       scope=tik.scope_ubuf)
-        masknot_ub_T = self.inst.Tensor(dtype=self.out_mask_type,
-                                        shape=[self.cut_ub_val, ],
-                                        name='mask_not',
-                                        scope=tik.scope_ubuf)
+        maskor_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                            shape=[self.cut_ub_val, ],
+                                            name='mask_or',
+                                            scope=tik.scope_ubuf)
+        masknot_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                             shape=[self.cut_ub_val, ],
+                                             name='mask_not',
+                                             scope=tik.scope_ubuf)
 
         # loop process
         if mode == 'loop':
@@ -341,41 +379,41 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
             l1_begin_w = (self.cut_ub_val * cut_ub_ind % self.w_step) * self.stride_w
             l1_begin_pos = (l1_begin_h, l1_begin_w)
             super()._img2col(aux_l1=tensor_info['aux_l1'],
-                             big_matrix_ub=bigmat_ub_T,
+                             big_matrix_ub=bigmat_ub_tensor,
                              l1_begin_pos=l1_begin_pos,
                              rep_times=self.cut_ub_val // 16)
 
             # step2: begin to calculate max line.
-            super()._calc_maxline(max_line_ub=maxline_ub_T,
-                                  big_matrix_ub=bigmat_ub_T,
+            super()._calc_maxline(max_line_ub=maxline_ub_tensor,
+                                  big_matrix_ub=bigmat_ub_tensor,
                                   line_blk=self.cut_ub_val,
                                   super_line_loop=self.super_line_loop,
                                   super_line_tail=self.super_line_tail)
 
             # step3: move the max_line_ub to gm
-            self._move_ctn(dst=tensor_info['output'][ind_N, ind_d, ind_C1, cut_ub_ind * self.ub_line],
-                           src=maxline_ub_T,
+            self._move_ctn(dst=tensor_info['output'][ind_n, ind_d, ind_c1, cut_ub_ind * self.ub_line],
+                           src=maxline_ub_tensor,
                            burst=self.ub_line * self.each_fp16_bytes // self.block_size)
 
             # step4: compute the bitmask
-            super()._calc_bitmask(big_matrix_ub=bigmat_ub_T,
-                                  bitmask_ub=bitmask_ub_T,
-                                  max_line_ub=maxline_ub_T,
+            super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
+                                  bitmask_ub=bitmask_ub_tensor,
+                                  max_line_ub=maxline_ub_tensor,
                                   super_line_loop=self.super_line_loop_cmp,
                                   super_line_tail=self.super_line_tail_cmp)
 
             # step5: deduplicate the bitmask, each column must have at most one '1'.
-            super()._deduplicate_bitmask(mask_or_ub=maskor_ub_T,
-                                         mask_not_ub=masknot_ub_T,
-                                         bitmask_ub=bitmask_ub_T,
+            super()._deduplicate_bitmask(mask_or_ub=maskor_ub_tensor,
+                                         mask_not_ub=masknot_ub_tensor,
+                                         bitmask_ub=bitmask_ub_tensor,
                                          bm_loop=self.bm_line_loop,
                                          bm_tail=self.bm_line_tail,
                                          data_blk=self.cut_ub_val // 16)
 
             # step6: move bitmask to gm
             self.inst.data_move(
-                dst=tensor_info['argmax'][ind_N, ind_d, ind_C1 * self.k_elem, cut_ub_ind * self.cut_ub_val // 16, 0],
-                src=bitmask_ub_T,
+                dst=tensor_info['argmax'][ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_ind * self.cut_ub_val // 16, 0],
+                src=bitmask_ub_tensor,
                 sid=0,
                 nburst=self.k_elem,
                 burst=self.cut_ub_val * self.each_uint16_bytes // self.block_size,
@@ -390,41 +428,41 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         l1_begin_w = (self.cut_ub_val * self.cut_ub_loop % self.w_step) * self.stride_w
         l1_begin_pos = (l1_begin_h, l1_begin_w)
         super()._img2col(aux_l1=tensor_info['aux_l1'],
-                         big_matrix_ub=bigmat_ub_T,
+                         big_matrix_ub=bigmat_ub_tensor,
                          l1_begin_pos=l1_begin_pos,
                          rep_times=self.cut_ub_tail_aligned // 16)
 
         # step2: begin to calculate max line.
-        super()._calc_maxline(max_line_ub=maxline_ub_T,
-                              big_matrix_ub=bigmat_ub_T,
+        super()._calc_maxline(max_line_ub=maxline_ub_tensor,
+                              big_matrix_ub=bigmat_ub_tensor,
                               line_blk=self.cut_ub_tail_aligned,
                               super_line_loop=self.ubtail_super_loop,
                               super_line_tail=self.ubtail_super_tail)
 
         # step3: move the max_line_ub to gm
-        self._move_ctn(dst=tensor_info['output'][ind_N, ind_d, ind_C1, self.cut_ub_loop * self.ub_line],
-                       src=maxline_ub_T,
+        self._move_ctn(dst=tensor_info['output'][ind_n, ind_d, ind_c1, self.cut_ub_loop * self.ub_line],
+                       src=maxline_ub_tensor,
                        burst=self.cut_ub_tail_ori * self.C0 * self.each_fp16_bytes // self.block_size)
 
         # step4: compute the bitmask
-        super()._calc_bitmask(big_matrix_ub=bigmat_ub_T,
-                              bitmask_ub=bitmask_ub_T,
-                              max_line_ub=maxline_ub_T,
+        super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
+                              bitmask_ub=bitmask_ub_tensor,
+                              max_line_ub=maxline_ub_tensor,
                               super_line_loop=self.ubtail_super_loop_cmp,
                               super_line_tail=self.ubtail_super_tail_cmp)
 
         # step5: deduplicate the bitmask, each column must have at most one '1'.
-        super()._deduplicate_bitmask(mask_or_ub=maskor_ub_T,
-                                     mask_not_ub=masknot_ub_T,
-                                     bitmask_ub=bitmask_ub_T,
+        super()._deduplicate_bitmask(mask_or_ub=maskor_ub_tensor,
+                                     mask_not_ub=masknot_ub_tensor,
+                                     bitmask_ub=bitmask_ub_tensor,
                                      bm_loop=self.ubtail_bm_loop,
                                      bm_tail=self.ubtail_bm_tail,
                                      data_blk=self.cut_ub_tail_aligned // 16)
 
         # step6: move bitmask to gm
         self.inst.data_move(
-            dst=tensor_info['argmax'][ind_N, ind_d, ind_C1 * self.k_elem, self.cut_ub_loop * self.cut_ub_val // 16, 0],
-            src=bitmask_ub_T,
+            dst=tensor_info['argmax'][ind_n, ind_d, ind_c1 * self.k_elem, self.cut_ub_loop * self.cut_ub_val // 16, 0],
+            src=bitmask_ub_tensor,
             sid=0,
             nburst=self.k_elem,
             burst=self.cut_ub_tail_aligned // 16,
@@ -441,11 +479,11 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         else:
             l1_shape = [0, ]
 
-        aux_l1_T = self.inst.Tensor(dtype=self.input_dtype,
-                                    shape=l1_shape,
-                                    name='aux_l1',
-                                    scope=tik.scope_cbuf)
-        tensor_info['aux_l1'] = aux_l1_T
+        aux_l1_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                         shape=l1_shape,
+                                         name='aux_l1',
+                                         scope=tik.scope_cbuf)
+        tensor_info['aux_l1'] = aux_l1_tensor
         core_nums = self.N * self.C1 * self.d_step
 
         with self.inst.for_range(0, core_nums, block_num=core_nums) as core_ind:
@@ -456,7 +494,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
             if self.l1_strategy is L1MoveStrategy.NO_NEED_TO_CUT:
                 if (self.C1 - 1) * self.input_h * self.input_w <= 65535:
                     self.inst.data_move(
-                        dst=aux_l1_T[0],
+                        dst=aux_l1_tensor[0],
                         src=tensor_info['input'][core.ind_N, core.ind_d * self.stride_d, core.ind_C1, 0, 0, 0],
                         sid=0,
                         nburst=self.k_d,
@@ -467,7 +505,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                 else:
                     with self.inst.for_range(0, self.k_d) as d_ind:
                         self._move_ctn(
-                            dst=aux_l1_T[0, d_ind, 0, 0, 0],
+                            dst=aux_l1_tensor[0, d_ind, 0, 0, 0],
                             src=tensor_info['input'][core.ind_N, core.ind_d * self.stride_d + d_ind,
                                                      core.ind_C1, 0, 0, 0],
                             burst=self.input_h * self.input_w
@@ -530,18 +568,19 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
     k_bound = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // 32 - 18) // 17
     if ksize[2] * ksize[3] * ksize[4] > k_bound:
         raise RuntimeError("the kernel is so big, we don't support such generalization!")
-    Wo = (input_shape[4] - ksize[4]) // strides[4] + 1
-    Ho = (input_shape[3] - ksize[3]) // strides[3] + 1
-    l1_h_pad = math.ceil((math.ceil(Ho * Wo / 16) * 16 - Ho * Wo) / Wo) * strides[3]
+    wo = (input_shape[4] - ksize[4]) // strides[4] + 1
+    ho = (input_shape[3] - ksize[3]) // strides[3] + 1
+    l1_h_pad = math.ceil((math.ceil(ho * wo / 16) * 16 - ho * wo) / wo) * strides[3]
 
     # this version only support the strategy that with out cutting l1.
     # so we put size kernel_d * input_h * input_w into l1 at one time.
     if ksize[2] * (input_shape[3] + l1_h_pad) * input_shape[4] * 16 > tbe_platform.get_soc_spec(tbe_platform.L1_SIZE):
         raise RuntimeError("l1 is not enough, please try a smaller kernel_d, or a smaller input_h or input_w!")
-    if Wo == 1 and Ho != 1 and tbe_platform.get_soc_spec('SOC_VERSION') != 'Ascend310':
+    if wo == 1 and ho != 1 and tbe_platform.get_soc_spec('SOC_VERSION') != 'Ascend310':
         raise RuntimeError("current version don't support W_out = 1 in this environment!")
 
 
+# pylint: disable=unused-argument
 @register_operator("MaxPool3DWithArgmax")
 def max_pool3d_with_argmax(x, y, argmax, kernel_size, strides, pads=((0, 0), (0, 0), (0, 0)),
                            dilation=(1, 1, 1, 1, 1), ceil_mode=False, data_format="NCDHW", argmax_type="bitmask",
@@ -572,4 +611,3 @@ def max_pool3d_with_argmax(x, y, argmax, kernel_size, strides, pads=((0, 0), (0,
     _check_param(x, kernel_size, strides, pads, dilation, ceil_mode, argmax_type)
     obj = MaxPool3DWithArgmaxWholeKernel(x, kernel_size, strides, kernel_name)
     return obj.run()
-

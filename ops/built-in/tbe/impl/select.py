@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +25,13 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
-# define a VALUE, value = 1
 VALUE_ONE = 1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # pylint: disable=locally-disabled,too-many-statements,too-many-branches
 def op_select_format(condition, x1, x2, y, kernel_name="select"):
-    """
-    1.when all input(condition, x1, x2) have the same ori_shape, ori_format,
+    """1.when all input(condition, x1, x2) have the same ori_shape, ori_format,
        and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"],
        the Op Select can support ND, FRACTAL_NZ, NC1HWC0 and FRACTAL_Z.
 
@@ -90,8 +90,6 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
                 and list(shape_condition) == list(shape_x1) == list(shape_x2):
             # do nothing now
             pass
-            # modify: format_support_flag[("FRACTAL_Z_3D", "FRACTAL_Z_3D", "FRACTAL_Z_3D", "FRACTAL_Z_3D")] = 1
-            # modify: format_support_flag[("NDC1HWC0", "NDC1HWC0", "NDC1HWC0", "NDC1HWC0")] = 1
 
     elif format_x1 == format_x2:
         if len(shape_x1) == 4 and len(shape_x2) == 4 and format_x1 in ("NHWC", "NCHW"):
@@ -145,8 +143,7 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
 # pylint: disable=too-many-locals, invalid-name, unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("select")
 def select_compute(condition, x1, x2, y, kernel_name="select"):
-    """
-    compute for select
+    """compute for select
 
     Parameters
     ----------
@@ -212,27 +209,26 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def select(condition, x1, x2, y, kernel_name="select"):
+    """Selects elements from `x1` or `x2`, depending on `condition`.
+
+    Parameters
+    ----------
+    condition: dict
+        dict of condition, include keys(shape and dtype),
+        only support int8,int32
+    x1: dict
+        dict of x1, only support float16, float32, int32, int8, uint8
+    x2: dict
+        dict of x2, only support float16, float32, int32, int8, uint8
+    y: dict
+        dict of output
+    kernel_name: str
+        cce kernel name, default value is "select"
+
+    Returns
+    -------
+    None
     """
-      Selects elements from `x1` or `x2`, depending on `condition`.
-
-      Parameters
-      ----------
-      condition: dict
-          dict of condition, include keys(shape and dtype),
-          only support int8,int32
-      x1: dict
-          dict of x1, only support float16, float32, int32, int8, uint8
-      x2: dict
-          dict of x2, only support float16, float32, int32, int8, uint8
-      y: dict
-          dict of output
-      kernel_name: str
-          cce kernel name, default value is "select"
-
-      Returns
-      -------
-      None
-      """
     shape_x1 = x1.get("shape")
     dtype_x1 = x1.get("dtype").lower()
     shape_x2 = x2.get("shape")

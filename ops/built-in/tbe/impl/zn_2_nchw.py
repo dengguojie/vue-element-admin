@@ -342,7 +342,7 @@ def _perm_to_flag(perm):
     get the flag for permutation according to perm
 
     """
-    flag = [i for i in perm]
+    flag = list(perm)
     for i, item in enumerate(perm):
         flag[item] = i
 
@@ -572,11 +572,6 @@ def _tranpose_notchange_last_two(data, shape_5hd, dst_shape_full, dst_shape,
                              lambda ins, outs: five_2_four._split_dim_ir_fp16(
                                  outs[0], ins[0], max_dim, shape_all, 1),
                              name="res", dtype=dtype)
-
-    # delete the lines: res_end = tvm.extern(dst_shape, [res],
-    # ################     lambda ins, outs: _temp_ir(outs[0], ins[0]),
-    # ################     name="res_end", dtype=dtype)
-    # in order to fix issues caused by multiple core
 
     sch = tvm.create_schedule(res.op)
     args = [sch, data, res_5hd, data_ub, shape_5hd, dtype]

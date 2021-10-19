@@ -21,7 +21,8 @@ from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_conf import api_check_support
 from te.utils import shape_util
 from te.utils import para_check
-from te.utils.shape_util import broadcast_shapes, shape_to_list
+from te.utils.shape_util import broadcast_shapes
+from te.utils.shape_util import shape_to_list
 
 SHAPE_SIZE_LIMIT = 2147483648
 
@@ -30,8 +31,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 @fusion_manager.register("soft_margin_loss_grad")
 def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
                                   reduction, kernel_name="soft_margin_loss_grad"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -52,7 +52,7 @@ def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
     """
     predict_shape = shape_to_list(input_predict.shape)
     label_shape = shape_to_list(input_label.shape)
-    shape_1, shape_2, shape_max = broadcast_shapes(predict_shape, label_shape)
+    _, _, shape_max = broadcast_shapes(predict_shape, label_shape)
     para_check.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
 
     input_predict = tbe.broadcast(input_predict, shape_max)
@@ -86,14 +86,12 @@ def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
     if reduction == 'mean':
         for shape in predict_shape:
             num *= shape
-    # -label * norm, where norm equal to reduction=='mean'? 1/predict.nelement():1
+
     res1 = tbe.vmuls(tbe.vmuls(label_data, tvm.const(-1, dtype)),
                      tvm.const(1 / num, dtype))
-    # z / (1. + z)
     res2 = tbe.vdiv(z, tbe.vadds(z, tvm.const(1, dtype)))
     res3 = tbe.vmul(res1, res2)
 
-    # -norm * label * z / (1. + z) * dout
     res = tbe.vmul(res3, dout_data)
 
     if dtype == "float16" and cloud_flag:
@@ -109,8 +107,7 @@ def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
 def soft_margin_loss_grad(input_predict, input_label, input_dout, output_gdient,
                           reduction="mean",
                           kernel_name="soft_margin_loss_grad"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

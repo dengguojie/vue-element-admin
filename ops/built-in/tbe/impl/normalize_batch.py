@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -26,14 +42,19 @@ class NormalizeBatch(object):
         self.ub_size = self.cont.const_ub_max_byte
         self.block_size = self.cont.const_block_byte
 
-        self.data_size, self.data_block_data_num, self.data_repeat_data_num = self.get_type_const(self.data_type)
-        self.int_size, self.int_block_data_num, self.int_repeat_data_num = self.get_type_const(self.int_type)
+        self.data_size, self.data_block_data_num, self.data_repeat_data_num = self.get_type_const(
+            self.data_type)
+        self.int_size, self.int_block_data_num, self.int_repeat_data_num = self.get_type_const(
+            self.int_type)
 
-        self.d_num_align = self.get_align_num(self.d_num, self.data_repeat_data_num)
+        self.d_num_align = self.get_align_num(
+            self.d_num, self.data_repeat_data_num)
         input_shape = (self.n_num, self.c_num, self.d_num)
         seq_shape = (self.n_num, )
-        self.input_x = self.tik_inst.Tensor(self.data_type, input_shape, self.tik.scope_gm, "input_x")
-        self.seq_len = self.tik_inst.Tensor(self.int_type, seq_shape, self.tik.scope_gm, "seq_len")
+        self.input_x = self.tik_inst.Tensor(
+            self.data_type, input_shape, self.tik.scope_gm, "input_x")
+        self.seq_len = self.tik_inst.Tensor(
+            self.int_type, seq_shape, self.tik.scope_gm, "seq_len")
         is_atomic_add = (self.d_num % self.data_block_data_num != 0)
         self.output_y = self.tik_inst.Tensor(self.data_type, input_shape, self.tik.scope_gm, "output_y",
                                              is_atomic_add=is_atomic_add)
@@ -89,13 +110,16 @@ class NormalizeBatch(object):
 
     def _mode_compute(self, batch_num):
         each_core_batch_num = self.ceil_div(batch_num, self.ai_core_use)
-        self.ai_core_use, last_core_batch_num = self.get_loop_info(batch_num, each_core_batch_num)
+        self.ai_core_use, last_core_batch_num = self.get_loop_info(
+            batch_num, each_core_batch_num)
         with self.tik_inst.for_range(0, self.ai_core_use, block_num=self.ai_core_use) as core_index_s:
             batch_index_core_s = each_core_batch_num * core_index_s
             with self.tik_inst.if_scope(core_index_s != self.ai_core_use - 1):
-                self._mode_compute_each_core(batch_index_core_s, each_core_batch_num)
+                self._mode_compute_each_core(
+                    batch_index_core_s, each_core_batch_num)
             with self.tik_inst.else_scope():
-                self._mode_compute_each_core(batch_index_core_s, last_core_batch_num)
+                self._mode_compute_each_core(
+                    batch_index_core_s, last_core_batch_num)
 
     def _mode_compute_each_core(self, batch_index_core_s, batch_num):
         if self.normalize_type == "per_feature":
@@ -170,7 +194,8 @@ class NormalizeBatch(object):
         # data move in
         self._data_move_in(data_buf, n_index_s, c_index_s, 0, 0, self.d_num)
         # get seq_len
-        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(
+            n_index_s)
         # count sum(x) and sum(x^2)
         self._per_count_sum_n(data_buf, mean_buf, seq_len_i_s)
         # count rec_std and ne_mean
@@ -189,7 +214,8 @@ class NormalizeBatch(object):
         data_shape = (batch_num, data_num_align)
         proc_num = batch_num * data_num_align
         repeat_num = data_num_align // self.data_repeat_data_num
-        work_tensor_num = self.get_align_num(repeat_num, self.data_block_data_num)
+        work_tensor_num = self.get_align_num(
+            repeat_num, self.data_block_data_num)
         input_data_ub = self.tik_inst.Tensor(self.data_type, data_shape,
                                              self.tik.scope_ubuf, "input_data_ub")
         input_data_square_ub = self.tik_inst.Tensor(self.data_type, data_shape,
@@ -204,7 +230,8 @@ class NormalizeBatch(object):
 
     def _per_count_sum_n(self, data_buf, mean_buf, seq_len_i_s):
         input_data_ub = data_buf.get("input_data_ub").const_tensor
-        input_data_square_ub = data_buf.get("input_data_square_ub").const_tensor
+        input_data_square_ub = data_buf.get(
+            "input_data_square_ub").const_tensor
         work_tensor_ub = data_buf.get("work_tensor_ub").const_tensor
         sum_ub = mean_buf.get("batch_mean_ub").const_tensor
         square_sum_ub = mean_buf.get("batch_mean_square_ub").const_tensor
@@ -213,8 +240,10 @@ class NormalizeBatch(object):
         cmd_square_ub = [VecCmd(cmd_name="vmul", dst_name="input_data_square_ub",
                                 src0_name="input_data_ub", src1_name="input_data_ub")]
         VecExecutor.exec_vec_cmd(data_buf, cmd_square_ub, "input_data_ub")
-        self._vector_reduce_add(sum_ub, input_data_ub, work_tensor_ub, seq_len_i_s, 0)
-        self._vector_reduce_add(square_sum_ub, input_data_square_ub, work_tensor_ub, seq_len_i_s, 0)
+        self._vector_reduce_add(sum_ub, input_data_ub,
+                                work_tensor_ub, seq_len_i_s, 0)
+        self._vector_reduce_add(
+            square_sum_ub, input_data_square_ub, work_tensor_ub, seq_len_i_s, 0)
 
     def _per_compute_d(self, batch_index_s):
         """
@@ -223,7 +252,8 @@ class NormalizeBatch(object):
         n_index_s, c_index_s = self._per_init_index(batch_index_s)
         # init mean tensor
         mean_buf = self._init_mean()
-        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(
+            n_index_s)
         # count sum(x) and sum(x^2)
         self._per_count_sum_d(mean_buf, n_index_s, c_index_s, seq_len_i_s)
         # count rec_std and ne_mean
@@ -233,7 +263,8 @@ class NormalizeBatch(object):
 
     def _per_count_sum_d(self, mean_buf, n_index_, c_index_, seq_len_i_s):
         each_loop_d_num = self._get_loop_num_count_sum_d()
-        loop_times_s, last_loop_index_s, last_loop_d_num_s = self._init_loop_info(seq_len_i_s, each_loop_d_num)
+        loop_times_s, last_loop_index_s, last_loop_d_num_s = self._init_loop_info(
+            seq_len_i_s, each_loop_d_num)
         self._vector_mean_tensor(mean_buf)
         with self.tik_inst.new_stmt_scope():
             data_buf = self._init_data_tensor_d(each_loop_d_num)
@@ -263,23 +294,29 @@ class NormalizeBatch(object):
         temp_ub = mean_buf.get("batch_variance_ub").const_tensor
         cmd_square_vec = [VecCmd(cmd_name="vmul", dst_name="input_data_ub",
                                  src0_name="input_data_ub", src1_name="input_data_ub")]
-        self._vector_reduce_add_d(temp_ub, input_data_ub, work_tensor_ub, d_num_, 0)
+        self._vector_reduce_add_d(
+            temp_ub, input_data_ub, work_tensor_ub, d_num_, 0)
         self.tik_inst.vadd(1, sum_ub, sum_ub, temp_ub, 1, 1, 1, 1, 8, 8, 8)
         VecExecutor.exec_vec_cmd(data_buf, cmd_square_vec, "input_data_ub")
-        self._vector_reduce_add_d(temp_ub, input_data_ub, work_tensor_ub, d_num_, 0)
-        self.tik_inst.vadd(1, square_sum_ub, square_sum_ub, temp_ub, 1, 1, 1, 1, 8, 8, 8)
+        self._vector_reduce_add_d(
+            temp_ub, input_data_ub, work_tensor_ub, d_num_, 0)
+        self.tik_inst.vadd(1, square_sum_ub, square_sum_ub,
+                           temp_ub, 1, 1, 1, 1, 8, 8, 8)
 
     def _vector_reduce_add_d(self, result_ub, data_ub, work_ub, d_num_, n_index_ub_):
         if isinstance(d_num_, int):
             mask = self.data_repeat_data_num
             repeat_num = d_num_ // mask
-            self.tik_inst.vec_reduce_add(mask, result_ub, data_ub[n_index_ub_, 0], work_ub, repeat_num, 8)
+            self.tik_inst.vec_reduce_add(
+                mask, result_ub, data_ub[n_index_ub_, 0], work_ub, repeat_num, 8)
         else:
-            self._vector_reduce_add(result_ub, data_ub, work_ub, d_num_, n_index_ub_)
+            self._vector_reduce_add(
+                result_ub, data_ub, work_ub, d_num_, n_index_ub_)
 
     def _per_stand_data_d(self, mean_buf, n_index_, c_index_):
         each_loop_d_num = self._get_loop_num_stand_data_d()
-        loop_times, last_loop_d_num = self.get_loop_info(self.d_num, each_loop_d_num)
+        loop_times, last_loop_d_num = self.get_loop_info(
+            self.d_num, each_loop_d_num)
         ne_mean_s, rec_std_s = self._get_ne_mean_rec_std_scalar(mean_buf)
         with self.tik_inst.for_range(0, loop_times) as loop_index_s:
             d_index_s = loop_index_s * each_loop_d_num
@@ -308,15 +345,19 @@ class NormalizeBatch(object):
         batch_num = 1
         data_shape = (batch_num, data_num_align)
         proc_num = batch_num * data_num_align
-        input_data_ub = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_ubuf, "input_data_ub")
-        data_buf = {"input_data_ub": TensorOperatorParam(input_data_ub, proc_num, 0)}
+        input_data_ub = self.tik_inst.Tensor(
+            self.data_type, data_shape, self.tik.scope_ubuf, "input_data_ub")
+        data_buf = {"input_data_ub": TensorOperatorParam(
+            input_data_ub, proc_num, 0)}
         if init_work_tensor:
             repeat_num = data_num_align // self.data_repeat_data_num
-            work_tensor_num = self.get_align_num(repeat_num, self.data_block_data_num)
+            work_tensor_num = self.get_align_num(
+                repeat_num, self.data_block_data_num)
 
             work_tensor_ub = self.tik_inst.Tensor(self.data_type, (work_tensor_num,),
                                                   self.tik.scope_ubuf, "work_tensor_ub")
-            data_buf["work_tensor_ub"] = TensorOperatorParam(work_tensor_ub, work_tensor_num, 0)
+            data_buf["work_tensor_ub"] = TensorOperatorParam(
+                work_tensor_ub, work_tensor_num, 0)
         return data_buf
 
     def _per_init_index(self, batch_index_s):
@@ -334,7 +375,8 @@ class NormalizeBatch(object):
         mean_buf = self._init_mean()
         data_buf = self._init_data_tensor_n(self.c_num)
         self._all_data_move_in_n(data_buf, n_index_s)
-        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s, self.c_num)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(
+            n_index_s, self.c_num)
         # count sum(x) and sum(x^2)
         self._all_count_sum_n(data_buf, mean_buf, seq_len_i_s)
         # count rec_std and ne_mean
@@ -364,7 +406,8 @@ class NormalizeBatch(object):
         square_sum_ub = mean_buf.get("batch_mean_square_ub").const_tensor
         temp_ub = mean_buf.get("batch_variance_ub").const_tensor
         input_data_ub = data_buf.get("input_data_ub").const_tensor
-        input_data_square_ub = data_buf.get("input_data_square_ub").const_tensor
+        input_data_square_ub = data_buf.get(
+            "input_data_square_ub").const_tensor
         work_tensor_ub = data_buf.get("work_tensor_ub").const_tensor
 
         self._vector_mean_tensor(mean_buf)
@@ -372,18 +415,23 @@ class NormalizeBatch(object):
                                 src0_name="input_data_ub", src1_name="input_data_ub")]
         VecExecutor.exec_vec_cmd(data_buf, cmd_square_ub, "input_data_ub")
         with self.tik_inst.for_range(0, self.c_num) as c_index_s:
-            self._vector_reduce_add(temp_ub, input_data_ub, work_tensor_ub, seq_len_i_s, c_index_s)
+            self._vector_reduce_add(
+                temp_ub, input_data_ub, work_tensor_ub, seq_len_i_s, c_index_s)
             self.tik_inst.vadd(1, sum_ub, sum_ub, temp_ub, 1, 1, 1, 1, 8, 8, 8)
-            self._vector_reduce_add(temp_ub, input_data_square_ub, work_tensor_ub, seq_len_i_s, c_index_s)
-            self.tik_inst.vadd(1, square_sum_ub, square_sum_ub, temp_ub, 1, 1, 1, 1, 8, 8, 8)
+            self._vector_reduce_add(
+                temp_ub, input_data_square_ub, work_tensor_ub, seq_len_i_s, c_index_s)
+            self.tik_inst.vadd(1, square_sum_ub, square_sum_ub,
+                               temp_ub, 1, 1, 1, 1, 8, 8, 8)
 
     def _all_data_move_out(self, data_buf, n_index_):
         input_data_ub = data_buf.get("input_data_ub").const_tensor
         if self.d_num % self.data_block_data_num != 0:
             block_num = self.ceil_div(self.d_num, self.data_block_data_num)
-            mask_h, mask_l, mask_index = self.get_mask(self.d_num, self.data_repeat_data_num, self.data_block_data_num)
+            mask_h, mask_l, mask_index = self.get_mask(
+                self.d_num, self.data_repeat_data_num, self.data_block_data_num)
             with self.tik_inst.for_range(0, self.c_num) as c_index_s:
-                self.tik_inst.vector_dup([mask_h, mask_l], input_data_ub[c_index_s, mask_index], 0.0, 1, 1, 8)
+                self.tik_inst.vector_dup(
+                    [mask_h, mask_l], input_data_ub[c_index_s, mask_index], 0.0, 1, 1, 8)
                 add_mode = 1
                 self.tik_inst.set_atomic_add(add_mode)
                 self.tik_inst.data_move(self.output_y[n_index_, c_index_s, 0], input_data_ub[c_index_s, 0],
@@ -402,7 +450,8 @@ class NormalizeBatch(object):
         """
         # init mean tensor
         mean_buf = self._init_mean()
-        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s, self.c_num)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(
+            n_index_s, self.c_num)
         # count sum(x) and sum(x^2)
         self._all_count_sum_d(mean_buf, n_index_s, seq_len_i_s)
         # count rec_std and ne_mean
@@ -415,7 +464,8 @@ class NormalizeBatch(object):
         algorithm: start count sum.
         """
         each_loop_d_num = self._get_loop_num_count_sum_d()
-        loop_times_s, last_loop_index_s, last_loop_d_num_s = self._init_loop_info(seq_len_i_s, each_loop_d_num)
+        loop_times_s, last_loop_index_s, last_loop_d_num_s = self._init_loop_info(
+            seq_len_i_s, each_loop_d_num)
         self._vector_mean_tensor(mean_buf)
         with self.tik_inst.new_stmt_scope():
             data_buf = self._init_data_tensor_d(each_loop_d_num)
@@ -431,7 +481,8 @@ class NormalizeBatch(object):
 
     def _all_stand_data_d(self, mean_buf, n_index_):
         each_loop_d_num = self._get_loop_num_stand_data_d()
-        loop_times, last_loop_d_num = self.get_loop_info(self.d_num, each_loop_d_num)
+        loop_times, last_loop_d_num = self.get_loop_info(
+            self.d_num, each_loop_d_num)
         ne_mean_s, rec_std_s = self._get_ne_mean_rec_std_scalar(mean_buf)
         with self.tik_inst.for_range(0, self.c_num) as c_index_s:
             data_buf = self._init_data_tensor_d(each_loop_d_num, False)
@@ -454,17 +505,22 @@ class NormalizeBatch(object):
             with self.tik_inst.new_stmt_scope():
                 seq_len_i_ub = self.tik_inst.Tensor(self.int_type, (self.int_block_data_num,),
                                                     self.tik.scope_ubuf, "seq_len_i_ub")
-                self.tik_inst.data_move(seq_len_i_ub, self.seq_len[n_index_], 0, 1, 1, 0, 0)
+                self.tik_inst.data_move(
+                    seq_len_i_ub, self.seq_len[n_index_], 0, 1, 1, 0, 0)
                 seq_len_i_s.set_as(seq_len_i_ub[0])
                 mask, repeat = 1, 1
-                self.tik_inst.vconv(mask, "", seq_len_f_ub, seq_len_i_ub, repeat, 1, 1, 8, 8)
+                self.tik_inst.vconv(mask, "", seq_len_f_ub,
+                                    seq_len_i_ub, repeat, 1, 1, 8, 8)
             unbiased_f_ub = self.tik_inst.Tensor(self.data_type, (self.data_block_data_num,),
                                                  self.tik.scope_ubuf, "unbiased_f_ub")
             if c_num > 1:
-                self.tik_inst.vmuls(mask, seq_len_f_ub, seq_len_f_ub, c_num, repeat, 1, 1, 8, 8)
+                self.tik_inst.vmuls(mask, seq_len_f_ub,
+                                    seq_len_f_ub, c_num, repeat, 1, 1, 8, 8)
             seq_len_f_s.set_as(seq_len_f_ub[0])
-            self.tik_inst.vadds(mask, unbiased_f_ub, seq_len_f_ub, -1, repeat, 1, 1, 8, 8)
-            self.tik_inst.vdiv(mask, seq_len_f_ub, seq_len_f_ub, unbiased_f_ub, repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadds(mask, unbiased_f_ub,
+                                seq_len_f_ub, -1, repeat, 1, 1, 8, 8)
+            self.tik_inst.vdiv(mask, seq_len_f_ub, seq_len_f_ub,
+                               unbiased_f_ub, repeat, 1, 1, 1, 8, 8, 8)
             unbiased_f_s.set_as(seq_len_f_ub[0])
         return seq_len_i_s, seq_len_f_s, unbiased_f_s
 
@@ -486,9 +542,11 @@ class NormalizeBatch(object):
     def _vector_mean_tensor(self, mean_buf):
         cmd_dup_mean_tensor = [
             VecCmd(cmd_name="vector_dup", dst_name="batch_mean_ub", scalar=0),
-            VecCmd(cmd_name="vector_dup", dst_name="batch_mean_square_ub", scalar=0),
+            VecCmd(cmd_name="vector_dup",
+                   dst_name="batch_mean_square_ub", scalar=0),
             VecCmd(cmd_name="vector_dup", dst_name="batch_variance_ub", scalar=0), ]
-        VecExecutor.exec_vec_cmd(mean_buf, cmd_dup_mean_tensor, "batch_mean_ub")
+        VecExecutor.exec_vec_cmd(
+            mean_buf, cmd_dup_mean_tensor, "batch_mean_ub")
 
     def _data_move_in(self, data_buf, n_index_, c_index_, d_index_, n_index_ub_, data_num_):
         input_data_ub = data_buf.get("input_data_ub").const_tensor
@@ -498,15 +556,20 @@ class NormalizeBatch(object):
 
     def _vector_reduce_add(self, result_ub, data_ub, work_ub, seq_len_i_s, n_index_ub_):
         mask = self.data_repeat_data_num
-        repeat_num_s, last_index_s, last_num_s = self._init_loop_info(seq_len_i_s, mask)
+        repeat_num_s, last_index_s, last_num_s = self._init_loop_info(
+            seq_len_i_s, mask)
         with self.tik_inst.if_scope(repeat_num_s > 0):
-            self.tik_inst.vec_reduce_add(mask, result_ub, data_ub[n_index_ub_, 0], work_ub, repeat_num_s, 8)
+            self.tik_inst.vec_reduce_add(
+                mask, result_ub, data_ub[n_index_ub_, 0], work_ub, repeat_num_s, 8)
             with self.tik_inst.if_scope(last_num_s > 0):
-                self.tik_inst.vcadd(last_num_s, work_ub, data_ub[n_index_ub_, last_index_s], 1, 1, 1, 8)
-                self.tik_inst.vadd(1, result_ub, result_ub, work_ub, 1, 1, 1, 1, 8, 8, 8)
+                self.tik_inst.vcadd(
+                    last_num_s, work_ub, data_ub[n_index_ub_, last_index_s], 1, 1, 1, 8)
+                self.tik_inst.vadd(1, result_ub, result_ub,
+                                   work_ub, 1, 1, 1, 1, 8, 8, 8)
         with self.tik_inst.else_scope():
             with self.tik_inst.if_scope(last_num_s > 0):
-                self.tik_inst.vcadd(last_num_s, result_ub, data_ub[n_index_ub_, last_index_s], 1, 1, 1, 8)
+                self.tik_inst.vcadd(
+                    last_num_s, result_ub, data_ub[n_index_ub_, last_index_s], 1, 1, 1, 8)
 
     def _count_rec_std_ne_mean(self, mean_buf, seq_len_f_, unbiased_f_):
         cmd_count_rec_std_ne_mean = [
@@ -530,10 +593,12 @@ class NormalizeBatch(object):
                    src0_name="batch_variance_ub"),  # std(x)
             VecCmd(cmd_name="vadds", dst_name="batch_variance_ub",
                    src0_name="batch_variance_ub", scalar=self.epsilon),  # std(x) + eps
-            VecCmd(cmd_name="vector_dup", dst_name="batch_mean_square_ub", scalar=1),  # 1
+            VecCmd(cmd_name="vector_dup",
+                   dst_name="batch_mean_square_ub", scalar=1),  # 1
             VecCmd(cmd_name="vdiv", dst_name="batch_variance_ub",
                    src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"), ]  # 1/std(x)
-        VecExecutor.exec_vec_cmd(mean_buf, cmd_count_rec_std_ne_mean, "batch_mean_ub")
+        VecExecutor.exec_vec_cmd(
+            mean_buf, cmd_count_rec_std_ne_mean, "batch_mean_ub")
 
     def _stand_data(self, data_buf, ne_mean_, rec_std_):
         count_stand_cmd = [
@@ -557,8 +622,10 @@ class NormalizeBatch(object):
         input_data_ub = data_buf.get("input_data_ub").const_tensor
         if data_num % self.data_block_data_num != 0:
             block_num = self.ceil_div(data_num, self.data_block_data_num)
-            mask_h, mask_l, mask_index = self.get_mask(data_num, self.data_repeat_data_num, self.data_block_data_num)
-            self.tik_inst.vector_dup([mask_h, mask_l], input_data_ub[n_index_ub_, mask_index], 0.0, 1, 1, 8)
+            mask_h, mask_l, mask_index = self.get_mask(
+                data_num, self.data_repeat_data_num, self.data_block_data_num)
+            self.tik_inst.vector_dup(
+                [mask_h, mask_l], input_data_ub[n_index_ub_, mask_index], 0.0, 1, 1, 8)
 
             add_mode = 1
             self.tik_inst.set_atomic_add(add_mode)
@@ -643,11 +710,13 @@ def normalize_batch(input_x, seq_len, output_y, normalize_type, epsilon=0.00001,
     -------
     None
     """
-    check_params(input_x, seq_len, output_y, normalize_type, epsilon, kernel_name)
+    check_params(input_x, seq_len, output_y,
+                 normalize_type, epsilon, kernel_name)
     AContainer.reset_instance()
     cont = AContainer.get_instance()
     n_num, c_num, d_num = input_x.get("shape")
     data_type = input_x.get("dtype")
     int_type = seq_len.get("dtype")
-    obj = NormalizeBatch(n_num, c_num, d_num, normalize_type, epsilon, data_type, int_type, kernel_name, cont)
+    obj = NormalizeBatch(n_num, c_num, d_num, normalize_type,
+                         epsilon, data_type, int_type, kernel_name, cont)
     obj.mode_compute()

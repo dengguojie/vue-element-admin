@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,8 +75,7 @@ def ceil_div(num_a, num_bulk):
 
 
 class InitGmTensor:
-    """
-    define some tensors in the DDR
+    """define some tensors in the DDR
     used for v200
     """
     def __init__(self, tik_instance, input_para):
@@ -245,8 +246,7 @@ class InitMiddleTensor:
 
 
 def score_filter_one(tik_instance, data_gm, data_cb, data_ub, input_param):
-    """
-    perform the score filter one whole part
+    """perform the score filter one whole part
     param tik_instance:
     param data_gm:
     param data_cb:
@@ -421,8 +421,7 @@ def score_filter_one(tik_instance, data_gm, data_cb, data_ub, input_param):
 
 
 def score_filter_processing(tik_instance, data_gm, data_cb, input_param):
-    """
-    perform the score filter
+    """perform the score filter
     param tik_instance:
     param data_gm:
     param data_cb: the tensors and scalars in the L1 buffer
@@ -468,8 +467,7 @@ def score_filter_processing(tik_instance, data_gm, data_cb, input_param):
 
 
 def tik_scalar_min(tik_instance, val_a, val_b, result_):
-    """
-    get min val
+    """get min val
 
     Parameters
     ----------
@@ -490,8 +488,7 @@ def tik_scalar_min(tik_instance, val_a, val_b, result_):
 
 
 def tik_topk_6114(tik_instance, data_ub, actual_num, score_threshold):
-    """
-    the input data in data_ub_a
+    """the input data in data_ub_a
     the output results in data_ub_a
     param tik_instance:
     param data_tensor:
@@ -635,8 +632,7 @@ def tik_topk_6114(tik_instance, data_ub, actual_num, score_threshold):
 
 
 def tik_topk_internal_sort(tik_instance, data_gm, param_list, core_offset):
-    """
-    the proposals can be moved in at one time
+    """the proposals can be moved in at one time
     param tik_instance:
     param data_gm: a list
             src_tensor = data_gm[0] : the tensor store the original proposals
@@ -719,8 +715,7 @@ def tik_topk_internal_sort(tik_instance, data_gm, param_list, core_offset):
 
 def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count_list,
                   valid_bit, topk_k, score_threshold):
-    """
-    combine the sorted list into one list
+    """combine the sorted list into one list
     param tik_instance:
 
     param dst_tensor: the tensor to sort the results
@@ -1130,8 +1125,7 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
 
 
 def tik_topk_external_sort(tik_instance, data_gm, input_param, core_offset):
-    """
-    the proposals can not be moved in at one time
+    """the proposals can not be moved in at one time
     param tik_instance:
     param data_gm:
         0  src_tensor
@@ -1375,8 +1369,7 @@ def tik_topk_external_sort(tik_instance, data_gm, input_param, core_offset):
 
 
 def tik_topk(tik_instance, data_tensor, input_param, core_offset):
-    """
-    do the topk
+    """do the topk
     param tik_instance:
     param data_tensor: a list
         data_in = data_tensor[0]  : proposals to be sorted
@@ -1420,8 +1413,7 @@ def tik_topk(tik_instance, data_tensor, input_param, core_offset):
 
 
 def call_topk_sort(tik_instance, input_tensor, proposal_num, input_param, core_offset):
-    """
-    call the topk function to perform the topk
+    """call the topk function to perform the topk
     param tik_instance:
     param input_tensor: data_gm
            0 proposal_post_topk : the tensor to store the results
@@ -1557,8 +1549,7 @@ def call_topk_sort(tik_instance, input_tensor, proposal_num, input_param, core_o
 
 
 def check_input_param(input_para, kernel_name):
-    """
-    check other input of generate_rpn_proposals()
+    """zheck other input of generate_rpn_proposals()
     0  score_threshold (-inf, inf)
     1  k: [0, 6000]
     2  core_max_num
@@ -1588,8 +1579,7 @@ def check_input_param(input_para, kernel_name):
 
 
 def check_input_dict(dict_list, param_list):
-    """
-    check the input dict of score_filter_pre_sort()
+    """check the input dict of score_filter_pre_sort()
     Parameters
     ----------
     dict_list: a list of input dict
@@ -1707,8 +1697,7 @@ def check_input_dict(dict_list, param_list):
 
 
 def score_filter_pre_sort_compute(dict_list, param_list, kernel_name):
-    """
-    check the input dict of score_filter_pre_sort()
+    """check the input dict of score_filter_pre_sort()
     Parameters
     ----------
     dict_list: a list of input dict
@@ -2011,8 +2000,7 @@ def score_filter_pre_sort(rois, cls_bg_prob, sorted_proposal, proposal_num,
                           score_threshold, k,
                           score_filter=True, core_max_num=CONFIG_EIGHT,
                           kernel_name="score_filter_pre_sort"):
-    """
-    the entry function of score_filter_pre_sort
+    """the entry function of score_filter_pre_sort
     Parameters
     ----------
     rois : dict

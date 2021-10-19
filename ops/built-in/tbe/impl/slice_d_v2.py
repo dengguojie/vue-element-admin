@@ -14,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-slice_d_v2
-"""
+
 # pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
 from types import MethodType
 import math
@@ -66,8 +64,7 @@ def _check_parameters(shape, size, kernel_name):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
-    """
-    algorithm: slice
+    """algorithm: slice
     calculating: this operation extracts a slice of size
                  from a tensor input
                  starting at the location specified by begin.

@@ -649,5 +649,5 @@ def check_param(input_dict):
     width = input_dict.get("width")
     if height * width * dsize < constant.BLOCK_SIZE:
         rule_desc = "height multi with width's size must bigger than 32b"
-        error_manager_vector.raise_err_check_params_rules("yolo_v2_detection_output_d", 
-                            rule_desc, "height * width * dsize", height * width * dsize)
+        error_manager_vector.raise_err_check_params_rules("yolo_v2_detection_output_d", rule_desc,
+                                                          "height * width * dsize", height * width * dsize)

@@ -38,9 +38,7 @@ def get_op_support_info(input_features,
                         output_loss,
                         output_backprop,
                         kernel_name="softmax_cross_entropy_with_logits"):
-    """
-    get softmax_cross_entropy_with_logits slice info
-    """
+    """get softmax_cross_entropy_with_logits slice info"""
     shape_features = input_features.get("shape")
     shape_labels = input_labels.get("shape")
 
@@ -87,14 +85,14 @@ def get_op_support_info(input_features,
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_cross_entropy_with_logits")
+# pylint: disable=unused-argument
 def softmax_cross_entropy_with_logits_nchw_compute(
         input_features,
         input_labels,
         output_loss,
         output_backprop,
         kernel_name="softmax_cross_entropy_with_logits"):
-    """
-    Computes softmax cross entropy cost.
+    """Computes softmax cross entropy cost.
     softmax = e^(x-max) / ∑(e^(x-max))
     log(softmax) = (x-max) - log(∑e^(x-max))
     cross_entropy = -∑(y * log⁡(softmax))
@@ -154,14 +152,14 @@ def softmax_cross_entropy_with_logits_nchw_compute(
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_cross_entropy_with_logits")
+# pylint: disable=unused-argument
 def softmax_cross_entropy_with_logits_compute(
         input_features,
         input_labels,
         output_loss,
         output_backprop,
         kernel_name="softmax_cross_entropy_with_logits"):
-    """
-    Computes softmax cross entropy cost.
+    """Computes softmax cross entropy cost.
     softmax = e^(x-max) / ∑(e^(x-max))
     log(softmax) = (x-max) - log(∑e^(x-max))
     cross_entropy = -∑(y * log⁡(softmax))
@@ -247,8 +245,7 @@ def softmax_cross_entropy_with_logits_compute(
 
 
 def softmax_cross_entropy_with_logits_compute_no_reduce(input_features, input_labels):
-    """
-    special reduce axis for softmax_cross_entropy_with_logits
+    """special reduce axis for softmax_cross_entropy_with_logits
     the computation can be replaced as follows
     """
     loss = tbe.vmuls(input_features, 0)
@@ -262,8 +259,7 @@ def softmax_cross_entropy_with_logits_compute_no_reduce(input_features, input_la
 
 def softmax_cross_entropy_with_logits_compute_ex(input_features,
                                                  input_labels):
-    """
-    Computes softmax cross entropy cost.
+    """Computes softmax cross entropy cost.
     softmax = e^(x-max) / ∑(e^(x-max))
     log(softmax) = (x-max) - log(∑e^(x-max))
     cross_entropy = -∑(y * log⁡(softmax))
@@ -367,8 +363,7 @@ def softmax_cross_entropy_with_logits(
         output_loss,
         output_backprop,
         kernel_name="softmax_cross_entropy_with_logits"):
-    """
-    Computes softmax cross entropy cost.
+    """Computes softmax cross entropy cost.
 
     Parameters
     ----------

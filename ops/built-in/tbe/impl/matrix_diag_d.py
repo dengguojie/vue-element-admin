@@ -40,7 +40,7 @@ def get_op_support_info(input_diagonal, input_help, output_diagonal,
     shape_input_diagonal = input_diagonal.get("shape")
     if format_diagonal == "ND":
         if len(shape_input_diagonal) > 1:
-            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), \
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), \
                                 SplitOutput([0, [0]])]]
         else:
             axis_split_matrix = None

@@ -426,7 +426,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         if fmap_w + pad_l + pad_r - kernel_w < stride_w:
             error_manager_vector.raise_err_specific_reson(
                 'max_pool_grad_grad',
-                "Platform cloud and DC DO NOT support these invalid params, it must be fmap_w +  pad_l + pad_r - kernel_w >= stride_w"
+                "Platform cloud and DC DO NOT support these invalid params, "
+                "it must be fmap_w +  pad_l + pad_r - kernel_w >= stride_w"
             )
 
     BUFFER_SIZE_IN_SEL_GRAD = 4

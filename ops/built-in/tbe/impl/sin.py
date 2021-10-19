@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-sin
-"""
+
 import functools
 
 import te.lang.cce as tbe
@@ -40,8 +40,7 @@ FIRST_FACTOR = -1.0 / 6.0
 
 # pylint: disable=invalid-name,too-many-locals
 def _sin(x):
-    """
-    algorithm: sin
+    """algorithm: sin
     calculating data's sin x = x-x^3/3!+x ^5/5!-x^7/7!+x^9/9!-x^11/11! (-pai/2 < x < pai/2)
 
     Parameters
@@ -71,8 +70,7 @@ def _sin(x):
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("sin")
 def sin_compute(x, y, kernel_name="sin"):
-    """
-    algorithm: sin
+    """algorithm: sin
     calculating data's sin x = x - x^3/3! + x ^5/5! + ... + (-1)^k*x^2(k+1)/(2(k+1))!
 
     Parameters
@@ -127,8 +125,7 @@ def sin_compute(x, y, kernel_name="sin"):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sin(x, y, kernel_name="sin"):
-    """
-    algorithm: sin
+    """algorithm: sin
     calculating data's sin x = x - x^3/3! + x^5/5! + ... + (-1)^k*x^2(k+1)/(2(k+1))!
 
     Parameters

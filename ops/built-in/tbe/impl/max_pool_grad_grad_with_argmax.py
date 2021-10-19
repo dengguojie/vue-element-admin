@@ -727,7 +727,7 @@ def max_pool_grad_grad_with_argmax(x,
     # argmax is continuous bool, real type is uint16
     _, _, _, howo, _ = shape_argmax
     shape_argmax_boolean = (shape_argmax[0], shape_argmax[1] * shape_argmax[2], howo // 16, 16, shape_argmax[4])
-    shape_argmax_boolean = list(shape_argmax_boolean[:-1]) + list([shape_argmax_boolean[-1] * 16])
+    shape_argmax_boolean = list(shape_argmax_boolean[:-1]) + [shape_argmax_boolean[-1] * 16]
     argmax_tensor = tvm.placeholder(shape_argmax_boolean, dtype="bool", name="argmax")
 
     grad_tensor = tvm.placeholder(shape_grad, dtype=dtype_grad, name="input_grad")

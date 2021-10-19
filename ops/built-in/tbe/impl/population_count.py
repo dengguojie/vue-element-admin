@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,14 +52,14 @@ def get_op_support_info(x, y, kernel_name="population_count"):
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
     if format_x in ("ND", "NHWC", "NCHW"):
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(0, shape_x_len):
             split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
             axis_split_matrix.append(split_0)
         axis_reduce_list = None
 
     elif format_x == "NC1HWC0":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
             [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
             [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]

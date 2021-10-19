@@ -46,6 +46,7 @@ def _ceil_div(value, factor):
 
     return quotient
 
+
 # pylint: disable=too-many-arguments,unused-argument
 @para_check.check_input_type(dict, dict, dict, (list, tuple), (list, tuple), str, (list, tuple), str)
 def mask2_argmax(input_x, mask, argmax, ksize, strides, padding, originshape,
@@ -77,6 +78,7 @@ class Mask2Argmax():
        Function: use to finish Mask2Argmax main functions
        Modify : 2020-6-16
     """
+
     def __init__(self, input_x, mask, ksize, strides, padding, originshape):
         """
         init Mask2Argmax parameters
@@ -130,7 +132,7 @@ class Mask2Argmax():
                                     self.out_size_w, self.c_block_size)
 
         self.mask_gm_shape = (
-            self.batch_size*self.c1_size*self.fmap_img2col_w*(
+            self.batch_size * self.c1_size * self.fmap_img2col_w * (
                 self.fmap_img2col_h_num + 1) * self.c_block_size,)
         # input and output
         self.output_argmax_gm = self.tik_instance.Tensor("float32",
@@ -190,7 +192,7 @@ class Mask2Argmax():
                         self.fun_no_cut(block_index, nc1_size, nc1_index)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.for_range(
-                            0, nc1 - (block_dim - 1)*nc1_size) as nc1_index:
+                            0, nc1 - (block_dim - 1) * nc1_size) as nc1_index:
                         self.fun_no_cut(block_index, nc1_size, nc1_index)
         else:
             with self.tik_instance.for_range(0, block_dim, block_num=block_dim) \
@@ -200,7 +202,7 @@ class Mask2Argmax():
                         self.fun_cut_mask(block_index, nc1_size, nc1_index)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.for_range(
-                            0, nc1 - (block_dim - 1)*nc1_size) as nc1_index:
+                            0, nc1 - (block_dim - 1) * nc1_size) as nc1_index:
                         self.fun_cut_mask(block_index, nc1_size, nc1_index)
         images_buf = self.tik_instance.Tensor(self.input_dtype, (16,),
                                               name="one_value_buf",
@@ -396,7 +398,7 @@ class Mask2Argmax():
         reg_argmax = self.tik_instance.Scalar(dtype="float32")
         self.tik_instance.vector_dup(128, data_vsel_ub_zero, 0, 1, 1, 8)
         self.tik_instance.vector_dup(128, data_vsel_ub_one, 1, 1, 1, 8)
-        data_out_ub = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+        data_out_ub = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                name="data_out_ub",
                                                scope=tik.scope_ubuf)
         self.dup_one_repeat(data_out_ub, 0, "float32")
@@ -410,7 +412,7 @@ class Mask2Argmax():
                 data_vsel_ub = self.tik_instance.Tensor("float16", (cmp_num, 128),
                                                         name="data_vsel_ub",
                                                         scope=tik.scope_ubuf)
-                data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                              name="data_vsel_ub",
                                                              scope=tik.scope_ubuf)
                 self.tik_instance.\
@@ -430,7 +432,7 @@ class Mask2Argmax():
                               (self.fmap_img2col_h_num + 1),
                               0,
                               0)
-                data_out_tmp = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                data_out_tmp = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                         name="data_out_tmp",
                                                         scope=tik.scope_ubuf)
                 self.dup_one_repeat(data_out_tmp, 1, "float32")
@@ -446,12 +448,12 @@ class Mask2Argmax():
                                            1,
                                            1, 1, 1,
                                            8, 8, 8)
-                if cmp_num*2 < 255:
+                if cmp_num * 2 < 255:
                     self.tik_instance.vconv(64, '', data_vsel_ub_fp32[0],
-                                            data_vsel_ub[0], cmp_num*2,
+                                            data_vsel_ub[0], cmp_num * 2,
                                             1, 1, 8, 4)
                 else:
-                    repeat_times = _ceil_div(cmp_num*2, 255)
+                    repeat_times = _ceil_div(cmp_num * 2, 255)
                     with self.tik_instance.for_range(0, repeat_times) as repeat_index:
                         with self.tik_instance.if_scope(repeat_index !=
                                                         (repeat_times - 1)):
@@ -465,7 +467,7 @@ class Mask2Argmax():
                                                     '',
                                                     data_vsel_ub_fp32[repeat_index * 255 * 64],
                                                     data_vsel_ub[repeat_index * 255 * 64],
-                                                    cmp_num*2 - repeat_index * 255,
+                                                    cmp_num * 2 - repeat_index * 255,
                                                     1, 1, 8, 4)
 
                 with self.tik_instance.for_range(0, self.out_size_h) as out_h_index:
@@ -493,22 +495,22 @@ class Mask2Argmax():
                                                 1,
                                                 1, 1,
                                                 8, 8)
-                if cmp_num*2 < 255:
+                if cmp_num * 2 < 255:
                     self.tik_instance.vmul(64, data_out_tmp[0],
                                            data_vsel_ub_fp32[0],
                                            data_out_tmp[0],
-                                           cmp_num*2,
+                                           cmp_num * 2,
                                            1, 1, 1,
                                            8, 8, 8)
                     self.tik_instance.vadd(64,
                                            data_out_ub[0],
                                            data_out_tmp[0],
                                            data_out_ub[0],
-                                           cmp_num*2,
+                                           cmp_num * 2,
                                            1, 1, 1,
                                            8, 8, 8)
                 else:
-                    repeat_times = _ceil_div(cmp_num*2, 255)
+                    repeat_times = _ceil_div(cmp_num * 2, 255)
                     with self.tik_instance.for_range(0, repeat_times) as repeat_index:
                         with self.tik_instance.if_scope(repeat_index !=
                                                         (repeat_times - 1)):
@@ -529,14 +531,14 @@ class Mask2Argmax():
                             self.tik_instance.vmul(64, data_out_tmp[repeat_index * 255 * 64],
                                                    data_vsel_ub_fp32[repeat_index * 255 * 64],
                                                    data_out_tmp[repeat_index * 255 * 64],
-                                                   cmp_num*2 - repeat_index*255,
+                                                   cmp_num * 2 - repeat_index*255,
                                                    1, 1, 1,
                                                    8, 8, 8)
                             self.tik_instance.vadd(64,
                                                    data_out_ub[repeat_index * 255 * 64],
                                                    data_out_tmp[repeat_index * 255 * 64],
                                                    data_out_ub[repeat_index * 255 * 64],
-                                                   cmp_num*2 - repeat_index*255,
+                                                   cmp_num * 2 - repeat_index*255,
                                                    1, 1, 1,
                                                    8, 8, 8)
         index_16 = self.tik_instance.Tensor("float32", (64,),
@@ -558,16 +560,16 @@ class Mask2Argmax():
             index_16[order].set_as(reg_w_tmp)
             order = order + 1
 
-        if cmp_num*2 < 255:
+        if cmp_num * 2 < 255:
             self.tik_instance.vadd(64,
                                    data_out_ub[0],
                                    index_16[0],
                                    data_out_ub[0],
-                                   cmp_num*2,
+                                   cmp_num * 2,
                                    1, 1, 1,
                                    8, 0, 8)
         else:
-            repeat_times = _ceil_div(cmp_num*2, 255)
+            repeat_times = _ceil_div(cmp_num * 2, 255)
             with self.tik_instance.for_range(0, repeat_times) as repeat_index:
                 with self.tik_instance.if_scope(repeat_index !=
                                                 (repeat_times - 1)):
@@ -583,7 +585,7 @@ class Mask2Argmax():
                                            data_out_ub[repeat_index * 255 * 64],
                                            index_16[0],
                                            data_out_ub[repeat_index * 255 * 64],
-                                           cmp_num*2 - repeat_index * 255,
+                                           cmp_num * 2 - repeat_index * 255,
                                            1, 1, 1,
                                            8, 0, 8)
         self.tik_instance.data_move(self.output_argmax_gm[(block_index * nc1_size + nc1_index) *
@@ -653,7 +655,7 @@ class Mask2Argmax():
                 reg_argmax = self.tik_instance.Scalar(dtype="float32")
                 self.tik_instance.vector_dup(128, data_vsel_ub_zero, 0, 1, 1, 8)
                 self.tik_instance.vector_dup(128, data_vsel_ub_one, 1, 1, 1, 8)
-                data_out_ub = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                data_out_ub = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                        name="data_out_ub",
                                                        scope=tik.scope_ubuf)
                 self.dup_one_repeat(data_out_ub, 0, "float32")
@@ -667,7 +669,7 @@ class Mask2Argmax():
                         data_vsel_ub = self.tik_instance.Tensor("float16", (cmp_num, 128),
                                                                 name="data_vsel_ub",
                                                                 scope=tik.scope_ubuf)
-                        data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                        data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                                      name="data_vsel_ub",
                                                                      scope=tik.scope_ubuf)
                         self.tik_instance. \
@@ -688,7 +690,7 @@ class Mask2Argmax():
                                       50,
                                       0,
                                       0)
-                        data_out_tmp = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                        data_out_tmp = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                                 name="data_out_tmp",
                                                                 scope=tik.scope_ubuf)
                         self.dup_one_repeat(data_out_tmp, 1, "float32")
@@ -705,7 +707,7 @@ class Mask2Argmax():
                                                    1, 1, 1,
                                                    8, 8, 8)
                         self.tik_instance.vconv(64, '', data_vsel_ub_fp32[0],
-                                                data_vsel_ub[0], cmp_num*2,
+                                                data_vsel_ub[0], cmp_num * 2,
                                                 1, 1, 8, 4)
                         with self.tik_instance.for_range(0, 800) as cut_h_w_index:
                             out_h_index = (cut_index * 800 + cut_h_w_index) // self.out_size_w
@@ -735,14 +737,14 @@ class Mask2Argmax():
                         self.tik_instance.vmul(64, data_out_tmp[0],
                                                data_vsel_ub_fp32[0],
                                                data_out_tmp[0],
-                                               cmp_num*2,
+                                               cmp_num * 2,
                                                1, 1, 1,
                                                8, 8, 8)
                         self.tik_instance.vadd(64,
                                                data_out_ub[0],
                                                data_out_tmp[0],
                                                data_out_ub[0],
-                                               cmp_num*2,
+                                               cmp_num * 2,
                                                1, 1, 1,
                                                8, 8, 8)
                 index_16 = self.tik_instance.Tensor("float32", (64,),
@@ -768,7 +770,7 @@ class Mask2Argmax():
                                        data_out_ub[0],
                                        index_16[0],
                                        data_out_ub[0],
-                                       cmp_num*2,
+                                       cmp_num * 2,
                                        1, 1, 1,
                                        8, 0, 8)
                 self.tik_instance.data_move(self.output_argmax_gm[(block_index *
@@ -794,13 +796,12 @@ class Mask2Argmax():
                 reg_argmax = self.tik_instance.Scalar(dtype="float32")
                 self.tik_instance.vector_dup(128, data_vsel_ub_zero, 0, 1, 1, 8)
                 self.tik_instance.vector_dup(128, data_vsel_ub_one, 1, 1, 1, 8)
-                data_out_ub = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                data_out_ub = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                        name="data_out_ub",
                                                        scope=tik.scope_ubuf)
                 self.dup_one_repeat(data_out_ub, 0, "float32")
                 with self.tik_instance.for_range(0, self.window_h) as window_h_index:
                     with self.tik_instance.for_range(0, self.window_w) as window_w_index:
-
                         mask_ub_shape = ((self.fmap_img2col_h_num + 1) *
                                          self.c_block_size - (cut_num - 1) * 800,)
                         data_mask_ub = self.tik_instance.Tensor("uint16",
@@ -810,7 +811,7 @@ class Mask2Argmax():
                         data_vsel_ub = self.tik_instance.Tensor("float16", (cmp_num, 128),
                                                                 name="data_vsel_ub",
                                                                 scope=tik.scope_ubuf)
-                        data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                        data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                                      name="data_vsel_ub",
                                                                      scope=tik.scope_ubuf)
                         reg_num = self.tik_instance.Scalar(dtype="int32")
@@ -832,7 +833,7 @@ class Mask2Argmax():
                                       reg_num,
                                       0,
                                       0)
-                        data_out_tmp = self.tik_instance.Tensor("float32", (cmp_num*2, 64),
+                        data_out_tmp = self.tik_instance.Tensor("float32", (cmp_num * 2, 64),
                                                                 name="data_out_tmp",
                                                                 scope=tik.scope_ubuf)
                         self.dup_one_repeat(data_out_tmp, 1, "float32")
@@ -848,7 +849,7 @@ class Mask2Argmax():
                                                    1, 1, 1,
                                                    8, 8, 8)
                         self.tik_instance.vconv(64, '', data_vsel_ub_fp32[0],
-                                                data_vsel_ub[0], cmp_num*2,
+                                                data_vsel_ub[0], cmp_num * 2,
                                                 1, 1, 8, 4)
                         with self.tik_instance. \
                                 for_range(0, self.fmap_img2col_h - (cut_num - 1) * 800) \
@@ -880,14 +881,14 @@ class Mask2Argmax():
                         self.tik_instance.vmul(64, data_out_tmp[0],
                                                data_vsel_ub_fp32[0],
                                                data_out_tmp[0],
-                                               cmp_num*2,
+                                               cmp_num * 2,
                                                1, 1, 1,
                                                8, 8, 8)
                         self.tik_instance.vadd(64,
                                                data_out_ub[0],
                                                data_out_tmp[0],
                                                data_out_ub[0],
-                                               cmp_num*2,
+                                               cmp_num * 2,
                                                1, 1, 1,
                                                8, 8, 8)
                 index_16 = self.tik_instance.Tensor("float32", (64,),
@@ -912,11 +913,11 @@ class Mask2Argmax():
                                        data_out_ub[0],
                                        index_16[0],
                                        data_out_ub[0],
-                                       cmp_num*2,
+                                       cmp_num * 2,
                                        1, 1, 1,
                                        8, 0, 8)
                 reg_move = self.tik_instance.Scalar(dtype="int32")
-                reg_move.set_as((self.fmap_img2col_h - cut_index*800) * 2)
+                reg_move.set_as((self.fmap_img2col_h - cut_index * 800) * 2)
                 self.tik_instance.data_move(self.output_argmax_gm[(block_index *
                                                                    nc1_size + nc1_index) *
                                                                   self.fmap_img2col_h *

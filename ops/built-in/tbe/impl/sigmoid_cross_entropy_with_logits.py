@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,18 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-sigmoid_cross_entropy_with_logits
-"""
+
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-# define a scalar, value = 1
 SCALAR_ONE = 1
-# define a scalar, value = 0
 SCALAR_ZREO = 0
 
 
@@ -33,8 +31,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict,
                                               target,
                                               loss,
                                               kernel_name):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -88,8 +85,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict,
 def sigmoid_cross_entropy_with_logits(
         predict, target, loss,
         kernel_name="sigmoid_cross_entropy_with_logits"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

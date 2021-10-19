@@ -28,8 +28,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 # pylint: disable=unused-argument
 @fusion_manager.register("soft_margin_loss")
 def soft_margin_loss_compute(input_x, input_y, output_z, reduction='mean', kernel_name="soft_margin_loss"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -65,7 +64,7 @@ def soft_margin_loss_compute(input_x, input_y, output_z, reduction='mean', kerne
         result = tbe.sum(result, ax, False)
         if reduction == 'mean':
             size = 1.0
-            for index, val in enumerate(x_shape):
+            for val in x_shape:
                 size = size * val
             result = tbe.vmuls(result, 1.0 / size)
 
@@ -79,8 +78,7 @@ def soft_margin_loss_compute(input_x, input_y, output_z, reduction='mean', kerne
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
 def soft_margin_loss(input_x, input_y, output_z, reduction='mean', kernel_name="soft_margin_loss"):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------

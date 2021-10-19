@@ -28,8 +28,7 @@ from te import tvm
 @tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_grad")
 def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
                                 kernel_name):
-    """
-    calculating data
+    """calculating data
 
     Parameters
     ----------
@@ -62,9 +61,7 @@ def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
         predict = tbe.broadcast(predict, shape, dtype)
         label = tbe.broadcast(label, shape, dtype)
     out_sub = tbe.vsub(predict, label)
-    # out = sigma if out_sub > sigma
     out_sub_one = tbe.vmins(out_sub, sigma)
-    # out = -sigma if out_sub < -sigma
     out_sub_one_neg_one = tbe.vmaxs(out_sub_one, -sigma)
     out_sub_one_neg_one_sigma = tbe.vmuls(out_sub_one_neg_one,
                                                   1 / float(sigma))
@@ -82,8 +79,7 @@ def smooth_l1_loss_grad(predict,
                         gradient,
                         sigma=1.0,
                         kernel_name="smooth_l1_loss_grad"):
-    """
-    calculating data
+    """calculating data
     smooth = x/sigma        if -sigma < x < sigma
              1              if x > sigma
              -1             if x < -sigma

@@ -59,7 +59,7 @@ def get_op_support_info(x, y, argmax, ksize, strides, pads, dtype=DT_INT32,
     """
     format_x = x.get("format").upper()
     if format_x == "NC1HWC0":
-        axis_split_matrix=[
+        axis_split_matrix = [
             [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]], [1, [0]])],
             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]], [1, [1]])]
         ]
@@ -937,7 +937,8 @@ class MaxPoolWithargmaxPytorch():
                                       fmap_cut_h, mask_shape_ub, nc1_num)
 
     # pylint: disable=no-self-use
-    def _pooling_output_shape_pad_lr(self, input_size, kernel_size, pad_l,
+    @staticmethod
+    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
                                      pad_r, stride, dilation, ceil_mode):
         temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
 

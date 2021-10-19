@@ -49,9 +49,7 @@ def _division_sixteen(shape):
 
 def op_select_format(grad, x1, x2, y, axis, keepdims,
                      kernel_name="softmax_grad_ext"):
-    """
-    select format dynamically
-    """
+    """select format dynamically"""
     origin_shape0 = shape_util.scalar2tensor_one(grad.get("ori_shape"))
     origin_shape1 = shape_util.scalar2tensor_one(x1.get("ori_shape"))
     origin_shape2 = shape_util.scalar2tensor_one(x2.get("ori_shape"))
@@ -160,8 +158,7 @@ def _check_nz_rule(grad, x1, x2, axis):
 
 
 def shape_broadcast(data_1, data_2):
-    """
-    broadcast the two input
+    """broadcast the two input
 
     Parameters
     ----------
@@ -207,8 +204,7 @@ def _broadcast_nz(tensor, shape):
 def softmax_grad_ext_compute(data_grad, data_x1, data_x2,
                              y, axis, keepdims,
                              kernel_name="softmax_grad_ext"):
-    """
-    apply one adam calculation function
+    """apply one adam calculation function
 
     Parameters
     ----------
@@ -266,8 +262,7 @@ def softmax_grad_ext_compute(data_grad, data_x1, data_x2,
                             para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def softmax_grad_ext(grad, x1, x2, y, axis, keepdims,
                      kernel_name="softmax_grad_ext"):
-    """
-    function: softmax_grad_ext
+    """function: softmax_grad_ext
 
     Parameters
     ----------

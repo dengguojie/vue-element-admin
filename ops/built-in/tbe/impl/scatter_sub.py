@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +30,7 @@ def scatter_sub(var,
                 var_out,
                 use_locking=False,
                 kernel_name="scatter_sub"):
-    """
-    Subtracts sparse updates to a variable reference.
+    """Subtracts sparse updates to a variable reference.
 
     Parameters
     ----------
