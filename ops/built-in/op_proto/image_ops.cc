@@ -2950,6 +2950,49 @@ IMPLEMT_INFERFUNC(GridSampler2D, GridSampler2DInferShape) {
 INFER_FUNC_REG(GridSampler2D, GridSampler2DInferShape);
 // ----------------GridSampler2D END---------------------
 
+// ---------------GridSampler2DGrad Op start-------------------
+IMPLEMT_INFERFUNC(GridSampler2DGrad, GridSampler2DGradInferShape) {
+  AscendString op_name;
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  const int64_t input_grad_id = 0;
+  const int64_t input_x_id = 1;
+  const int64_t input_grid_id = 2;
+  const int64_t output_dx_id = 0;
+  const int64_t output_dgrid_id = 1;
+  auto grad_desc = op_desc->MutableInputDesc(input_grad_id);
+  auto x_desc = op_desc->MutableInputDesc(input_x_id);
+  auto grid_desc = op_desc->MutableInputDesc(input_grid_id);
+  const GeShape &grad_shape = grad_desc->MutableShape();
+  const GeShape &x_shape = x_desc->MutableShape();
+  const GeShape &grid_shape = grid_desc->MutableShape();
+  const int64_t GridSampler2DGradInputSizeLimit = 4;
+  
+  if (grad_shape.GetDimNum() != GridSampler2DGradInputSizeLimit) {
+    OP_LOGE(op_name.GetString(), "Expected dim of grad should be 4. real value is %d.", grad_shape.GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  if (x_shape.GetDimNum() != GridSampler2DGradInputSizeLimit) {
+    OP_LOGE(op_name.GetString(), "Expected dim of x should be 4. real value is %d.", x_shape.GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  if (grid_shape.GetDimNum() != GridSampler2DGradInputSizeLimit) {
+    OP_LOGE(op_name.GetString(), "Expected dim of grid should be 4. real value is %d.", grid_shape.GetDimNum());
+    return GRAPH_FAILED;
+  }
+  
+  auto dx_desc = op_desc->MutableOutputDesc(output_dx_id);
+  auto dgrid_desc = op_desc->MutableOutputDesc(output_dgrid_id);
+  dx_desc->SetShape(x_shape);
+  dx_desc->SetDataType(x_desc->GetDataType());
+  dgrid_desc->SetShape(grid_shape);
+  dgrid_desc->SetDataType(grid_desc->GetDataType());
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(GridSampler2DGrad, GridSampler2DGradInferShape);
+// ---------------GridSampler2DGrad Op END-------------------
+
 // ---------------GridUnnormal Op start-------------------
 IMPLEMT_INFERFUNC(GridUnnormal, GridUnnormalInferShape) {
     vector<int64_t> grid_shape = op.GetInputDesc("grid").GetShape().GetDims();
@@ -3118,7 +3161,7 @@ IMPLEMT_INFERFUNC(GridSampler3D, GridSampler3DInferShape) {
 INFER_FUNC_REG(GridSampler3D, GridSampler3DInferShape);
 // ----------------GridSampler3D END---------------------
 
-// ---------------GridSampler3DGrid Op start-------------------
+// ---------------GridSampler3DGrad Op start-------------------
 IMPLEMT_INFERFUNC(GridSampler3DGrad, GridSampler3DGradInferShape) {
   vector<int64_t> grad_shape = op.GetInputDescByName("grad").GetShape().GetDims();  // NCDHW
   TensorDesc x_desc = op.GetInputDescByName("x");
@@ -3146,7 +3189,7 @@ IMPLEMT_INFERFUNC(GridSampler3DGrad, GridSampler3DGradInferShape) {
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(GridSampler3DGrad, GridSampler3DGradInferShape);
-// ----------------GridSampler3DGrid END---------------------
+// ----------------GridSampler3DGrad END---------------------
 
 // ---------------Upsample3dForward Op START-------------------
 static bool Upasmple3dForwardInferShape(Operator& op) {
