@@ -31,6 +31,7 @@ UB_RESERVED = 2048
 DBL_BUF_SW = True
 
 
+# pylint: disable=unused-argument
 def check_param(x_dic, y_dic, param_dic, kernel_name):
     """
     check ops param interface
@@ -62,7 +63,7 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
     if param_dic['window'][0] < 1 or param_dic['window'][1] < 1:
         error_manager_vector.raise_err_input_param_range_invalid("spp_pooling", "window", "1", "inf",
                                                                  str(param_dic['window']))
-                             
+
     if param_dic['stride'][0] < 1 or param_dic['stride'][1] < 1:
         error_manager_vector.raise_err_input_param_range_invalid("spp_pooling", "stride", "1", "inf",
                                                                  str(param_dic["stride"]))
@@ -86,6 +87,7 @@ class BaseParam:
     """
     Define Base Param
     """
+
     def __init__(self, x_param):
         self.dtype = x_param['dtype']
         self.dtype_size = 2 if (x_param['dtype'] == "float16") else 4
@@ -139,6 +141,7 @@ class CurParam(BaseParam):
     """
     Define Current Param
     """
+
     def __init__(self, tik_inst, x_param):
         super(CurParam, self).__init__(x_param)
         self.cur_h = tik_inst.Scalar(dtype="int32", name="cur_h")
@@ -175,6 +178,7 @@ class PoolingParam(CurParam):
     """
     Define Pooling Param
     """
+
     def __init__(self, tik_inst, x_param, attr_param):
         super(PoolingParam, self).__init__(tik_inst, x_param)
         self.window = attr_param['window']
@@ -210,6 +214,7 @@ class PoolingCommon(PoolingParam):
     """
     Define Pooling common option
     """
+
     def __init__(self, x_param, attr_param, base_param):
         self.tik_inst = base_param['tik_inst']
         super(PoolingCommon, self).__init__(self.tik_inst, x_param, attr_param)
@@ -258,6 +263,7 @@ class PoolingCompute(PoolingCommon):
     """
     Define Pooling compute option
     """
+
     def __init__(self, x_param, attr_param, base_param):
         super(PoolingCompute, self).__init__(x_param, attr_param, base_param)
         shape_in = x_param['shape']
@@ -297,9 +303,9 @@ class PoolingCompute(PoolingCommon):
         nburst_tail = load_size // pooling_w % 4095
         with self.tik_inst.for_range(0, nburst_loop) as nburst_loopi:
             src_ofst = self.cur_n_c1 * self.in_size['c1'] + \
-                       self.cur_h * self.in_size['h'] + \
-                       self.w_start * self.in_size['w'] + \
-                       nburst_loopi * 4095 * pooling_w * self.shape[4]
+                self.cur_h * self.in_size['h'] + \
+                self.w_start * self.in_size['w'] + \
+                nburst_loopi * 4095 * pooling_w * self.shape[4]
             dst_ofst = nburst_loopi * 4095 * pooling_w * self.shape[4]
             self.tik_inst.data_move(self.src_ub[dst_ofst],
                                     self.src_gm[src_ofst],
@@ -308,9 +314,9 @@ class PoolingCompute(PoolingCommon):
 
         with self.tik_inst.if_scope(nburst_tail > 0):
             src_ofst = self.cur_n_c1 * self.in_size['c1'] + \
-                       self.cur_h * self.in_size['h'] + \
-                       self.w_start * self.in_size['w'] + \
-                       nburst_loop * 4095 * pooling_w * self.shape[4]
+                self.cur_h * self.in_size['h'] + \
+                self.w_start * self.in_size['w'] + \
+                nburst_loop * 4095 * pooling_w * self.shape[4]
             dst_ofst = nburst_loop * 4095 * pooling_w * self.shape[4]
             self.tik_inst.data_move(self.src_ub[dst_ofst],
                                     self.src_gm[src_ofst],
@@ -330,8 +336,8 @@ class PoolingCompute(PoolingCommon):
         None
         """
         dst_ofst = self.cur_n_c1 * self.out_size['c1'] + \
-                   self.cur_ph * self.out_size['h'] + \
-                   self.cur_pw * self.out_size['w']
+            self.cur_ph * self.out_size['h'] + \
+            self.cur_pw * self.out_size['w']
         self.tik_inst.data_move(self.dst_gm[dst_ofst], self.res_ub, 0, 1,
                                 self.shape[4] * self.dtype_size // 32, 0, 0)
 
@@ -568,12 +574,12 @@ def pooling_compute(x_param, pooling_attr):
                                                           must start strictly inside the image. Image height \
                                                           is {}, stride_h is {}, pad_h is {}.".format(
                                                           str(shape_in[2]), str(stride[0]), str(pad[0])))
-            
+
         if (out['w'] - 1) * stride[1] >= shape_in[3] + pad[2]:
             error_manager_vector.raise_err_specific_reson("spp_pooling", "the last pooling(width direction) must \
                                                           start strictly inside the image. Image width is {}, \
                                                           stride_w is {}, pad_w is {}.".format(str(shape_in[3]),
-                                                          str(stride[1]), str(pad[2])))
+                                                                                               str(stride[1]), str(pad[2])))
 
     if pooling_attr['global_pooling'] is True:
         out = {'h': 1, 'w': 1}
@@ -632,4 +638,3 @@ def spp_pooling(x_dic, y_dic, global_pooling, mode, window, pad,
                           inputs=src_gm, outputs=dst_gm)
 
     return tik_instance
-

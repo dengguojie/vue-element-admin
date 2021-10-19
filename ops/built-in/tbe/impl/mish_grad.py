@@ -43,23 +43,17 @@ def mish_compute(data_grad, data_x):
         the result of mish_grad
     """
     dtype = data_x.dtype
-    # exp(x)
     exp_val = tbe.vexp(data_x)
-    # exp(x) + 1
     add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
-    # 1/ ((1 + exp(x)) ^ 2 + 1)
     pow_add_exp_val = tbe.vmul(add_exp_val, add_exp_val)
     add_pow_add_exp_val = tbe.vadds(pow_add_exp_val, tvm.const(1, dtype))
     rec_add_pow_add_exp_val = tbe.vrec(add_pow_add_exp_val)
-    # (4 * x * exp(x) * (exp(x) + 1)) * (y1 ^ 2)
     val_1_1 = tbe.vmuls(data_x, tvm.const(4, dtype))
     val_2_1 = tbe.vmul(val_1_1, exp_val)
     val_3_1 = tbe.vmul(val_2_1, add_exp_val)
     val_4_1 = tbe.vmul(val_3_1, rec_add_pow_add_exp_val)
     val_5_1 = tbe.vmul(val_4_1, rec_add_pow_add_exp_val)
-    # y1 ^ 2
     val_1_2 = tbe.vmuls(rec_add_pow_add_exp_val, tvm.const(-2, dtype))
-    # val_5_1 - val_1_2 + 1
     val_1_3 = tbe.vadd(val_5_1, val_1_2)
     val_1_3 = tbe.vadds(val_1_3, tvm.const(1, dtype))
 
@@ -89,18 +83,14 @@ def mish_compute_tanh(data_grad, data_x, data_tanh):
         the result of mish_grad
     """
     dtype = data_x.dtype
-    # 1/(exp(x) + 1)
     exp_val = tbe.vexp(data_x)
     add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
     rec_add_exp_val = tbe.vrec(add_exp_val)
-    # tanhx^2 - 1
     pow_tanh = tbe.vmul(data_tanh, data_tanh)
     sub_pow_tanh = tbe.vadds(pow_tanh, tvm.const(-1, dtype))
-    # x * exp(x) * (tanhx^2 - 1) * (1/(exp(x) + 1))
     val_1 = tbe.vmul(data_x, exp_val)
     val_2 = tbe.vmul(val_1, sub_pow_tanh)
     val_3 = tbe.vmul(val_2, rec_add_exp_val)
-    # tanh(x) - x * exp(x) * (tanhx^2 - 1) * (1/(exp(x) + 1))
     val_4 = tbe.vsub(data_tanh, val_3)
     res = tbe.vmul(val_4, data_grad)
     return res

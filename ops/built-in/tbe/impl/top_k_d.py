@@ -1459,7 +1459,7 @@ def check_supported(input_tensor,
 
     shape = input_tensor.get("ori_shape")
     sorted_axis = dim
-    if (sorted_axis < 0):
+    if sorted_axis < 0:
         sorted_axis = sorted_axis + len(shape)
 
     shape_range = input_tensor.get("range")
@@ -1574,7 +1574,7 @@ def top_k_d(input_tensor,
     shape_dim = len(shape)
     out_shape_dim = len(out_shape)
 
-    if dim != -1 and dim != (shape_dim - 1):
+    if dim not in (-1, shape_dim - 1):
         error_manager_vector.raise_err_check_params_rules(kernel_name,
                                                           "Dim should equal last dim of shape, actural dim is %d" % dim)
 

@@ -22,14 +22,26 @@ from te.utils import para_check
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_FLOAT,
-                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
-def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
-                   img_w=0, step_h=0.0, step_w=0.0, flip=True, clip=False,
-                   offset=0.5, variance=[0.1], kernel_name="prior_box"):
+def prior_box_d_v2(feature,
+                   img,
+                   boxes,
+                   y,
+                   min_size,
+                   max_size,
+                   img_h=0,
+                   img_w=0,
+                   step_h=0.0,
+                   step_w=0.0,
+                   flip=True,
+                   clip=False,
+                   offset=0.5,
+                   variance=[0.1],
+                   kernel_name="prior_box"):
     """
     calculating data
 
@@ -67,12 +79,9 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
     para_check.check_shape(img_shape)
     para_check.check_shape(boxes_shape)
 
-    feature_input = tik_instance.Tensor(feature_type, feature_shape, name="feature_input",
-                                        scope=tik.scope_gm)
-    img_input = tik_instance.Tensor(img_type, img_shape, name="img_input",
-                                    scope=tik.scope_gm)
-    boxes_input = tik_instance.Tensor(boxes_type, boxes_shape, name="boxes_input",
-                                      scope=tik.scope_gm)
+    feature_input = tik_instance.Tensor(feature_type, feature_shape, name="feature_input", scope=tik.scope_gm)
+    img_input = tik_instance.Tensor(img_type, img_shape, name="img_input", scope=tik.scope_gm)
+    boxes_input = tik_instance.Tensor(boxes_type, boxes_shape, name="boxes_input", scope=tik.scope_gm)
 
     ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 
@@ -89,8 +98,7 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
 
     loop_num = math.ceil((burse_length * block_bite_size) / result_ub_size)
 
-    output_data_ub = tik_instance.Tensor(boxes_type, (result_ub_size,), name="output_data_ub",
-                                         scope=tik.scope_ubuf)
+    output_data_ub = tik_instance.Tensor(boxes_type, (result_ub_size, ), name="output_data_ub", scope=tik.scope_ubuf)
 
     # Need move some data to ub, from feature and image.
     tik_instance.data_move(output_data_ub, feature_input, 0, 1, 1, 0, 0)
@@ -98,9 +106,7 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
     # y is output, take value of boxes
     y_shape = y.get("shape")
     y_type = y.get("dtype").lower()
-    y_data = tik_instance.Tensor(y_type, y_shape,
-                                 name="y_data",
-                                 scope=tik.scope_gm)
+    y_data = tik_instance.Tensor(y_type, y_shape, name="y_data", scope=tik.scope_gm)
 
     # Move value from boxes to ub, then move it to y
     offset = int(result_ub_size / block_bite_size)
@@ -114,7 +120,5 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
             tik_instance.data_move(output_data_ub, boxes_input[i0 * data_each_block * offset], 0, 1, last_offset, 0, 0)
             tik_instance.data_move(y_data[i0 * data_each_block * offset], output_data_ub, 0, 1, last_offset, 0, 0)
 
-    tik_instance.BuildCCE(kernel_name, inputs=[feature_input, img_input, boxes_input],
-                          outputs=[y_data])
+    tik_instance.BuildCCE(kernel_name, inputs=[feature_input, img_input, boxes_input], outputs=[y_data])
     return tik_instance
-

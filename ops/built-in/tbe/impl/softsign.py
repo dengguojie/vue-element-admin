@@ -53,7 +53,7 @@ def softsign_compute(input_x, y, kernel_name="softsign"):
     dtype = input_x.dtype
     if dtype == "float16" and \
         tbe_platform.api_check_support("te.lang.cce.vmul",
-                                                "float32"):
+                                       "float32"):
         input_x = tbe.cast_to(input_x, "float32")
 
     data_abs = tbe.vabs(input_x)

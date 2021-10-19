@@ -19,7 +19,8 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
 import te.platform as tbe_platform
-from te.utils.shape_util import broadcast_shapes, shape_to_list
+from te.utils.shape_util import broadcast_shapes
+from te.utils.shape_util import shape_to_list
 
 
 # pylint: disable=too-many-locals,too-many-arguments,unused-argument

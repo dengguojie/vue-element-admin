@@ -19,10 +19,10 @@ sort
 """
 
 # pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
+from functools import reduce as functools_reduce
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from impl.util.platform_adapter import para_check
-from functools import reduce as functools_reduce
 import te.platform as tbe_platform
 
 # proposal struct contains 8 elements
@@ -37,7 +37,7 @@ REM_IDX = 1
 MIN_VAL = -65504
 # max val in fp16
 MAX_VAL = 65504
-# sorting threshold for normal data volume 
+# sorting threshold for normal data volume
 BLOCK = 16
 # sorting threshold for data volume over 2048
 NUM_BLOCK = 2048
@@ -48,7 +48,7 @@ DATA_LIMITE = 100000
 def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
     """
     check the op support situation.
-    Go to AICPU when the date in sort axis is over 100K. 
+    Go to AICPU when the date in sort axis is over 100K.
     """
     input_shape = x.get("shape")
     if input_shape[-1] > DATA_LIMITE:
@@ -305,16 +305,16 @@ def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, o
         # aline for NUM_BLOCK
         aline = NUM_BLOCK - num % NUM_BLOCK
         if descending:
-            Tmp = tik_instance.Scalar('float16', init_value=MIN_VAL)
+            tmp = tik_instance.Scalar('float16', init_value=MIN_VAL)
         # descend
         else:
-            Tmp = tik_instance.Scalar('float16', init_value=MAX_VAL)
+            tmp = tik_instance.Scalar('float16', init_value=MAX_VAL)
         # Add ineffective object for 16 alignment
         for j in range(aline % BLOCK):
-            input_ub[dest_pos_ub + num % NUM_BLOCK + j].set_as(Tmp)
+            input_ub[dest_pos_ub + num % NUM_BLOCK + j].set_as(tmp)
         # Add ineffective object for NUM_BLOCK alignment
         if aline > BLOCK - 1:
-            tik_instance.vec_dup(BLOCK, input_ub[dest_pos_ub + num % NUM_BLOCK + aline % BLOCK], Tmp,
+            tik_instance.vec_dup(BLOCK, input_ub[dest_pos_ub + num % NUM_BLOCK + aline % BLOCK], tmp,
                                  aline // BLOCK, 1)
 
     tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_IDX)
@@ -448,8 +448,8 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
 
     if num <= NUM_BLOCK:
         repeat_times = num_16 // BLOCK
-        threadNum = 2 if rounds > 1 else 1
-        with tik_instance.for_range(0, rounds, thread_num=threadNum) as i:
+        thread_num = 2 if rounds > 1 else 1
+        with tik_instance.for_range(0, rounds, thread_num=thread_num) as i:
             float_ub = tik_instance.Tensor("float16", [num_16], name="float_ub", scope=tik.scope_ubuf)
             int_ub = tik_instance.Tensor("int32", [num_16], name="int_ub", scope=tik.scope_ubuf)
 
@@ -462,9 +462,9 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
     else:
         num_res_align = ((num % NUM_BLOCK) + BLOCK - 1) // BLOCK * BLOCK
         repeat_times = NUM_BLOCK // BLOCK
-        threadNum = 2 if num_gm > 2 else 1
+        thread_num = 2 if num_gm > 2 else 1
         with tik_instance.for_range(0, rounds) as i:
-            with tik_instance.for_range(0, num_gm - 1, thread_num=threadNum) as j:
+            with tik_instance.for_range(0, num_gm - 1, thread_num=thread_num) as j:
                 float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
                 int_ub = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
                 tik_instance.data_move(float_ub[0], data_out[i * num_2048 + j * NUM_BLOCK], 0, 1,
@@ -476,7 +476,7 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
                                        2 * repeat_times, 0, 0)
                 tik_instance.data_move(data_indices_[i * num + j * NUM_BLOCK], int_ub[0], 0, 1,
                                        2 * repeat_times, 0, 0)
-            # for last block in 32Byte align                  
+            # for last block in 32Byte align
             float_ub = tik_instance.Tensor("float16", [num_res_align], name="float_ub", scope=tik.scope_ubuf)
             int_ub = tik_instance.Tensor("int32", [num_res_align], name="int_ub", scope=tik.scope_ubuf)
             tik_instance.data_move(float_ub[0], data_out[i * num_2048 + (num_gm - 1) * NUM_BLOCK], 0, 1,
@@ -518,15 +518,15 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
         n_repeat_total = num_16 // BLOCK
         # 1. Move data from OUT to UB
         tik_instance.data_move(input_ub[dest_pos_ub], input_gm[offset_in], 0, 1, n_repeat_total, 0, 0)
-        Max = tik_instance.Scalar('float16', init_value=MAX_VAL)
-        Min = tik_instance.Scalar('float16', init_value=MIN_VAL)
+        max_num = tik_instance.Scalar('float16', init_value=MAX_VAL)
+        min_num = tik_instance.Scalar('float16', init_value=MIN_VAL)
         # Add ineffective object for 16 alignment
         if descending:
             with tik_instance.for_range(0, num_16 - num) as i:
-                input_ub[(num + i) + dest_pos_ub].set_as(Min)
+                input_ub[(num + i) + dest_pos_ub].set_as(min_num)
         else:
             with tik_instance.for_range(0, num_16 - num) as i:
-                input_ub[(num + i) + dest_pos_ub].set_as(Max)
+                input_ub[(num + i) + dest_pos_ub].set_as(max_num)
 
         tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_IDX)
 

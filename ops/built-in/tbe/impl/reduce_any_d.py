@@ -50,8 +50,7 @@ NONE_TYPE = type(None)
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_any_d")
-def reduce_any_d_compute(x, y, axes, keepdims,
-                         kernel_name="reduce_any_d"):
+def reduce_any_d_compute(x, y, axes, keepdims, kernel_name="reduce_any_d"):
     """
     Parameters
     ----------
@@ -122,7 +121,7 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
 
     if dtype == "bool":
         dtype = "int8"
-    check_list = ("int8",)
+    check_list = ("int8", )
     para_check.check_dtype(dtype, check_list, param_name="x")
 
     shape_len = len(shape)
@@ -150,6 +149,5 @@ def reduce_any_d(x, y, axes, keepdims=None, kernel_name="reduce_any_d"):
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_input, res]}
+    config = {"name": kernel_name, "tensor_list": [data_input, res]}
     tbe.cce_build_code(sch, config)

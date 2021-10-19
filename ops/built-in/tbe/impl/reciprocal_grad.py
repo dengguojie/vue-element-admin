@@ -28,8 +28,7 @@ SCALER_NEGATIVE_ONE = -1
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("reciprocal_grad")
-def reciprocal_grad_compute(input_y, input_dy, output_data,
-                            kernel_name="reciprocal_grad"):
+def reciprocal_grad_compute(input_y, input_dy, output_data, kernel_name="reciprocal_grad"):
     """
     compute reciprocal_grad
 
@@ -55,7 +54,7 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
     reciprocal_const = tvm.const(SCALER_NEGATIVE_ONE, dtype=dtype)
     is_cast = False
 
-    if dtype in ("int32",):
+    if dtype in ("int32", ):
         reciprocal_const = tbe.broadcast(reciprocal_const, shape_y, "int32")
         const_res = tbe.vmul(reciprocal_const, input_y)
     if dtype == "float32" and tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
@@ -79,8 +78,7 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-def reciprocal_grad(input_y, input_dy, output_data,
-                    kernel_name="reciprocal_grad"):
+def reciprocal_grad(input_y, input_dy, output_data, kernel_name="reciprocal_grad"):
     """
     algorithm: reciprocal_grad
     calculating data's reciprocal grad,dx = -1*dy*y*y,
@@ -127,6 +125,5 @@ def reciprocal_grad(input_y, input_dy, output_data,
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_y, data_dy, res]}
+    config = {"name": kernel_name, "tensor_list": [data_y, data_dy, res]}
     tbe.cce_build_code(sch, config)

@@ -21,7 +21,6 @@ from te.utils import para_check
 from te.utils import shape_util
 import te.platform as tbe_platform
 
-
 SHAPE_SIZE_LIMIT = 2147483648
 
 
@@ -97,7 +96,7 @@ def reduce_std_compute(x, dim, unbiased, keepdim, kernel_name="reduce_std"):
 
     # Divided by N or (N-1)
     if unbiased:
-        cof_unbiased = (reduce_ele-1.0)**(-1)
+        cof_unbiased = (reduce_ele - 1.0)**(-1)
         var_muls = tbe.vmuls(var_mul, cof_unbiased)
     else:
         var_muls = tbe.vmuls(var_mul, cof)
@@ -115,12 +114,10 @@ def reduce_std_compute(x, dim, unbiased, keepdim, kernel_name="reduce_std"):
     return [y, mu_res]
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-def reduce_std(x, y1, y2, dim=None, unbiased=True, keepdim=False,
-               kernel_name="reduce_std"):
+def reduce_std(x, y1, y2, dim=None, unbiased=True, keepdim=False, kernel_name="reduce_std"):
 
     # calculating data parameters
     check_list = ("float16", "float32")
@@ -137,7 +134,5 @@ def reduce_std(x, y1, y2, dim=None, unbiased=True, keepdim=False,
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "enable_group_inplace": True,
-              "tensor_list": [data_x] + list(res)}
+    config = {"name": kernel_name, "enable_group_inplace": True, "tensor_list": [data_x] + list(res)}
     tbe.cce_build_code(schedule, config)

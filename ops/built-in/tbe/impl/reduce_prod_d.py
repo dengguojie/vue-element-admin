@@ -41,8 +41,7 @@ def check_supported(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
 
 # pylint: disable=locally-disabled, unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_prod_d")
-def reduce_prod_d_compute(data_input, output_y, axes,
-                          keepdims, kernel_name="reduce_prod_d"):
+def reduce_prod_d_compute(data_input, output_y, axes, keepdims, kernel_name="reduce_prod_d"):
     """
     Reduce a tensor on a certain axes based on product.
 
@@ -131,7 +130,5 @@ def reduce_prod_d(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
         res = reduce_prod_d_compute(data_input, y, axes, keep_dims, kernel_name)
         sch = tbe.auto_schedule(res)
 
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data_input, res]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data_input, res]}
     tbe.cce_build_code(sch, config)

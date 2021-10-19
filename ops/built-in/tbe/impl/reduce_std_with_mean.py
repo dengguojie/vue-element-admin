@@ -91,7 +91,7 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
     reduce_ele = 1.0
     for i in axis_dim:
         reduce_ele *= shape_x[i]
-    cof = reduce_ele ** (-1)
+    cof = reduce_ele**(-1)
 
     # broadcast
     mu_broadcast = tbe.broadcast(mean, shape_x)
@@ -104,7 +104,7 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
 
     # Divided by N or (N-1)
     if unbiased:
-        cof_unbiased = (reduce_ele - 1.0) ** (-1)
+        cof_unbiased = (reduce_ele - 1.0)**(-1)
         var_muls = tbe.vmuls(var_mul, cof_unbiased)
     else:
         var_muls = tbe.vmuls(var_mul, cof)
@@ -135,12 +135,17 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
         return y_invert
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
-                            para_check.KERNEL_NAME)
-def reduce_std_with_mean(x, mean, y, dim=None, unbiased=True, keepdims=False, invert=False, epsilon=0.001,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+def reduce_std_with_mean(x,
+                         mean,
+                         y,
+                         dim=None,
+                         unbiased=True,
+                         keepdims=False,
+                         invert=False,
+                         epsilon=0.001,
                          kernel_name="reduce_std_with_mean"):
     """
     calculating data
@@ -190,6 +195,5 @@ def reduce_std_with_mean(x, mean, y, dim=None, unbiased=True, keepdims=False, in
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_x, data_mean, res]}
+    config = {"name": kernel_name, "tensor_list": [data_x, data_mean, res]}
     tbe.cce_build_code(schedule, config)

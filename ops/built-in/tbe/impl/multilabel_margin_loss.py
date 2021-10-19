@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""
+multilabel_margin_loss
+"""
 import operator
 import math
 from te import tik
@@ -162,17 +164,17 @@ class MultilabelMarginLoss(object):
     def compute_is_target_each_loop(self, move_offset, need_num, data_each_block, dim):
         """
         compute_is_target_each_loop
-        
+
         Parameters
         ----------
         move_offset : int
 
         need_num : int
-        
+
         data_each_block : int
-        
+
         dim: int
-        
+
         return
         """
         burse_len = (need_num + data_each_block) // data_each_block
@@ -214,13 +216,13 @@ class MultilabelMarginLoss(object):
     def compute_is_target_per_core(self, target_loop_index):
         """
         compute_is_target_per_core
-        
+
         Parameters
         target_loop_index: int
             the index of target
-        
+
         return
-        
+
         """
         move_begin = self.tik_instance.Scalar(dtype=self.dtype_target)
         move_offset = self.tik_instance.Scalar(dtype=self.dtype_target)
@@ -256,8 +258,8 @@ class MultilabelMarginLoss(object):
         compute_is_target_per_core
         Parameters
         target_loop_index: int
-        
-        return 
+
+        return
         """
         block_bite_size = 32
 

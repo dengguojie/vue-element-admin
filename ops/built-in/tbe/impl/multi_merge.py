@@ -1,11 +1,32 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+multi_merge
+"""
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 from impl.ascend import AContainer
-from impl.merge_sort import CommonMethod, MergeSort
+from impl.merge_sort import CommonMethod
+from impl.merge_sort import MergeSort
 
 
 class MultiMerge(object):
+    """
+    MultiMerge
+    """
 
     def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
         self.sorted_num = input_shape[1]
@@ -27,7 +48,7 @@ class MultiMerge(object):
         self.merge_channel = self.merge_sort.merge_channel_num
         self.fp16_ne_inf = -65504.0
 
-        self.result_shape, self.ai_core_use, self.channel_num, self.k_num = self.get_result_info(input_shape, k_num)
+        self.result_shape, self.ai_core_use, self.channel_num, self.k_num = self._get_result_info(input_shape, k_num)
 
         input_proposal_shape = (self.channel_num, input_shape[1] * self.merge_channel, self.pro_data_num)
         self.input_proposal = self.tik_inst.Tensor(self.data_type, input_proposal_shape,
@@ -35,7 +56,7 @@ class MultiMerge(object):
         self.output_proposal = self.tik_inst.Tensor(self.data_type, self.result_shape,
                                                     self.tik.scope_gm, "output_proposal")
 
-    def get_result_info(self, input_shape, k_num):
+    def _get_result_info(self, input_shape, k_num):
         sorted_num_align = self.method.get_align_num(k_num, self.pro_repeat_num)
         k_num_new = (input_shape[1] - self.tail_proposal_num) * self.merge_channel
         k_num_new = min(sorted_num_align, k_num_new)
@@ -51,6 +72,9 @@ class MultiMerge(object):
         return result_shape, ai_core_use_num, channel_num, k_num_new
 
     def mode_compute(self):
+        """
+        compute function
+        """
         with self.tik_inst.for_range(0, self.ai_core_use, block_num=self.ai_core_use) as core_index:
             with self.tik_inst.if_scope(core_index < self.channel_num):
                 self._mode_compute_each_core(core_index)
@@ -80,6 +104,9 @@ class MultiMerge(object):
 
 
 def check_params(input_proposal, kernel_name):
+    """
+    check params
+    """
     input_shape = input_proposal.get("shape")
     if len(input_shape) != 3 or input_shape[0] % 4 != 0 or input_shape[2] != 8:
         error_manager_vector.raise_err_input_value_invalid(

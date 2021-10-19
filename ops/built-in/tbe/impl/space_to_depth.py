@@ -21,7 +21,15 @@ space_to_depth
 from te import tik
 from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
-from te.utils.op_utils import *
+from te.utils.op_utils import check_op_params
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import OPTION_INPUT
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import REQUIRED_ATTR_INT
+from te.utils.op_utils import OPTION_ATTR_STR
+from te.utils.op_utils import KERNEL_NAME
+from te.utils.op_utils import check_shape
+from te.utils.op_utils import check_dtype
 
 import impl
 from impl import common_util
@@ -127,9 +135,9 @@ def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_t
         format=input_format,
         unknownshape_format=input_format)
     input1 = gen_param(classify="input1", name="filter",
-                       datatype="float16, float16, float16, float16, float16, float16," \
+                       datatype="float16, float16, float16, float16, float16, float16,"
                                 "float16, float16, float16, float16",
-                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z," \
+                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,"
                               "FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z")
     output0 = gen_param(
         classify="output0",
@@ -163,7 +171,7 @@ def _check_param(x, y, block_size, data_format, kernel_name):
     data_format_tuple = ("NCHW", "NHWC")
     if data_format not in data_format_tuple:
         excepted_format_list = "NCHW, NHWC"
-        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format", \
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format",
                                                             excepted_format_list, data_format)
 
     shape = x.get("shape")
@@ -179,16 +187,16 @@ def _check_param(x, y, block_size, data_format, kernel_name):
     if dtype != "float16":
         if len(shape) != DIM_CNT_FOUR:
             error_detail = "The input x only supported 4D"
-            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", \
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x",
                                                                error_detail)
 
         if block_size < BLOCK_SIZE_MIN:
-            error_manager_vector.raise_err_input_value_invalid(kernel_name, "block_size", \
+            error_manager_vector.raise_err_input_value_invalid(kernel_name, "block_size",
                                                                "greater than one", block_size)
 
         if shape[1] % block_size != 0 or shape[2] % block_size != 0:
             error_detail = "both height and width of x must be divisible by block_size"
-            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", \
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x",
                                                                error_detail)
         output_shape = (shape[0], shape[1] // block_size, shape[2] // block_size,
                         shape[3] * block_size * block_size)
@@ -200,6 +208,7 @@ class SpaceToDepthBase:
     Function: use to store space_to_depth base parameters
     Modify : 2019-10-28
     """
+
     def __init__(self, input_data, block_size, kernel_name):
         """
         init space_to_depth base parameters
@@ -255,6 +264,7 @@ class SpaceToDepthComputeParam:
     Function: use to store space_to_depth compute parameters
     Modify : 2019-10-28
     """
+
     def __init__(self, n_dim, h_dim, w_dim, bs_info):
         """
         init space_to_depth dim parameters
@@ -295,6 +305,7 @@ class SpaceToDepth(SpaceToDepthBase):
     Function: use to store space_to_depth compute parameters
     Modify : 2019-10-28
     """
+
     def __init__(self, input_data, block_size, kernel_name):
         """
         init space_to_depth base parameters
@@ -356,7 +367,7 @@ class SpaceToDepth(SpaceToDepthBase):
         else:
             size = (self.input_shape[3] * self.block_size +
                     self.element_size - 1) // \
-                   self.element_size * self.element_size
+                self.element_size * self.element_size
         return size
 
     def get_bs_c(self):
@@ -394,8 +405,8 @@ class SpaceToDepth(SpaceToDepthBase):
             buf_size_needed = reduce(lambda x1, x2: x1 * x2,
                                      self.tiling_shape[tiling_case:])
             buf_num = buf_size // \
-                      reduce(lambda x1, x2: x1 * x2,
-                             self.tiling_shape[tiling_case:5])
+                reduce(lambda x1, x2: x1 * x2,
+                       self.tiling_shape[tiling_case:5])
             buf_size = buf_size_needed
             for i in range(buf_num, 0, -1):
                 if self.block_size % i == 0:
@@ -422,20 +433,20 @@ class SpaceToDepth(SpaceToDepthBase):
                                              self.get_bs_c()) as l_i:
                 if offset_flag:
                     index = ub_index + \
-                            (burst_n - 1 - loop_n + 1 + l_j) * ub_offset + l_i
+                        (burst_n - 1 - loop_n + 1 + l_j) * ub_offset + l_i
                 else:
                     index = (index_info[1] - loop_n + burst_n) * \
-                            ub_offset + l_i
+                        ub_offset + l_i
                 tensor[1][loop_r + l_j * self.get_bs_c() + l_i].set_as(
                     tensor[0][index])
         if loop_r > 0:
             with self.tik_instance.for_range(0, loop_r) as l_k:
                 if offset_flag:
                     index = ub_index + (burst_n - 1 - loop_n) * ub_offset + \
-                            self.get_bs_c() - loop_r + l_k
+                        self.get_bs_c() - loop_r + l_k
                 else:
                     index = (index_info[1] - loop_n + burst_n - 1) * \
-                            ub_offset + self.get_bs_c() - loop_r + l_k
+                        ub_offset + self.get_bs_c() - loop_r + l_k
                 tensor[1][l_k].set_as(tensor[0][index])
 
     def move_tail_less_32(self, data_ub, index_info, burst_info, offset_info):
@@ -464,9 +475,9 @@ class SpaceToDepth(SpaceToDepthBase):
             dtype=constant.DATA_TYPE_UINT64, name="offset_align")
         offset_align.set_as((offset + self.get_bs_c() - 1) // self.get_bs_c())
         buf_num = self.buf_size // \
-                  reduce(lambda x1, x2: x1 * x2,
-                         self.tiling_shape[self.tiling_case:
-                                           len(self.tiling_shape)])
+            reduce(lambda x1, x2: x1 * x2,
+                   self.tiling_shape[self.tiling_case:
+                                     len(self.tiling_shape)])
         loop_n = self.tik_instance.Scalar(dtype=constant.DATA_TYPE_UINT64,
                                           name="loop_n")
         loop_n.set_as(self.element_size // self.get_bs_c())
@@ -719,13 +730,13 @@ class SpaceToDepth(SpaceToDepthBase):
         """
         param = self.get_compute_param(block_i, loop_info[0])
         in_index = param.n_dim * self.get_input_size(1) \
-                   + param.h_dim * self.block_size * self.get_input_size(2) \
-                   + param.w_dim * self.block_size * self.get_input_size(3) \
-                   + param.bs_h_dim * self.get_input_size(2) \
-                   + param.ub_dim * self.buf_size
+            + param.h_dim * self.block_size * self.get_input_size(2) \
+            + param.w_dim * self.block_size * self.get_input_size(3) \
+            + param.bs_h_dim * self.get_input_size(2) \
+            + param.ub_dim * self.buf_size
         src_stride = (self.input_shape[2] - self.block_size) * \
-                     self.input_shape[3] * self.dtype_size // \
-                     constant.BLOCK_SIZE
+            self.input_shape[3] * self.dtype_size // \
+            constant.BLOCK_SIZE
         if self.tiling_case == 0:
             self.move_gm_to_ub(
                 data_ub,
@@ -745,9 +756,9 @@ class SpaceToDepth(SpaceToDepthBase):
             self.move_data_tiling_5(data_ub, in_index, block_i, param)
         elif self.tiling_case == 4:
             buf_num = self.buf_size // \
-                      reduce(lambda x1, x2: x1 * x2,
-                             self.tiling_shape[self.tiling_case:
-                                               len(self.tiling_shape)])
+                reduce(lambda x1, x2: x1 * x2,
+                       self.tiling_shape[self.tiling_case:
+                                         len(self.tiling_shape)])
             self.move_gm_to_ub(
                 data_ub, (0, in_index),
                 (buf_num, self.get_bs_c_align_size() * self.dtype_size //
@@ -761,8 +772,8 @@ class SpaceToDepth(SpaceToDepthBase):
                                 self.block_size * self.input_shape[3]))
         else:
             buf_num = self.buf_size // \
-                      self.get_tiling_shape_size(self.tiling_case,
-                                                 len(self.tiling_shape))
+                self.get_tiling_shape_size(self.tiling_case,
+                                           len(self.tiling_shape))
             loop_num = buf_num * self.get_tiling_shape_size(
                 self.tiling_case, 3)
             self.move_gm_to_ub(
@@ -839,28 +850,28 @@ class SpaceToDepth(SpaceToDepthBase):
         bs_h_dim = 0
         ub_dim = 0
         buf_num = self.buf_size // \
-                  self.get_tiling_shape_size(self.tiling_case,
-                                             len(self.tiling_shape))
+            self.get_tiling_shape_size(self.tiling_case,
+                                       len(self.tiling_shape))
         if self.tiling_case == 1:
             index = block_i * buf_num * self.get_tiling_shape_size(1, 3)
             n_dim = index // self.get_tiling_shape_size(1, 3)
             h_dim = index % self.get_tiling_shape_size(1, 3) // \
-                    self.output_shape[2]
+                self.output_shape[2]
             w_dim = index % self.get_tiling_shape_size(1, 3) % \
-                    self.output_shape[2]
+                self.output_shape[2]
         elif self.tiling_case == 2:
             index = block_i * buf_num * self.output_shape[2]
             n_dim = index // self.get_tiling_shape_size(1, 3)
             h_dim = index % self.get_tiling_shape_size(1, 3) // \
-                    self.output_shape[2]
+                self.output_shape[2]
             w_dim = index % self.get_tiling_shape_size(1, 3) % \
-                    self.output_shape[2]
+                self.output_shape[2]
         elif self.tiling_case == 3:
             n_dim = (block_i * buf_num) // self.get_output_size(1, 3)
             h_dim = (block_i * buf_num) % self.get_output_size(1, 3) // \
-                    self.output_shape[2]
+                self.output_shape[2]
             w_dim = (block_i * buf_num) % self.get_output_size(1, 3) % \
-                    self.output_shape[2]
+                self.output_shape[2]
         elif self.tiling_case == 4:
             n_dim = param.get_n_dim()
             h_dim = param.get_h_dim()
@@ -873,10 +884,10 @@ class SpaceToDepth(SpaceToDepthBase):
             bs_h_dim = param.bs_h_dim
             ub_dim = param.ub_dim
         return n_dim * self.get_output_size(1) + \
-               h_dim * self.get_output_size(2) + \
-               w_dim * self.get_output_size(3) + \
-               bs_h_dim * self.block_size * self.input_shape[3] + \
-               ub_dim * self.buf_size
+            h_dim * self.get_output_size(2) + \
+            w_dim * self.get_output_size(3) + \
+            bs_h_dim * self.block_size * self.input_shape[3] + \
+            ub_dim * self.buf_size
 
     def get_compute_param(self, block_i, loop_i):
         """
@@ -898,9 +909,9 @@ class SpaceToDepth(SpaceToDepthBase):
         if self.tiling_case == 0:
             n_dim = loop_i // self.get_tiling_shape_size(1, 3)
             h_dim = loop_i % self.get_tiling_shape_size(1, 3) // \
-                    self.output_shape[2]
+                self.output_shape[2]
             w_dim = loop_i % self.get_tiling_shape_size(1, 3) % \
-                    self.output_shape[2]
+                self.output_shape[2]
         elif self.tiling_case == 5:
             num = self.get_bs_c() // self.buf_size
             h_w_b_n = self.get_tiling_shape_size(1, 4) * num
@@ -913,39 +924,39 @@ class SpaceToDepth(SpaceToDepthBase):
             ub_dim = block_i % h_w_b_n % w_b_n % b_n % num
         else:
             buf_num = self.buf_size // \
-                      self.get_tiling_shape_size(self.tiling_case,
-                                                 len(self.tiling_shape))
+                self.get_tiling_shape_size(self.tiling_case,
+                                           len(self.tiling_shape))
             if self.tiling_case == 1:
                 index = block_i * buf_num * \
-                        self.get_tiling_shape_size(1, 3) + loop_i
+                    self.get_tiling_shape_size(1, 3) + loop_i
                 n_dim = index // self.get_tiling_shape_size(1, 3)
                 h_dim = index % self.get_tiling_shape_size(1, 3) // \
-                        self.output_shape[2]
+                    self.output_shape[2]
                 w_dim = index % self.get_tiling_shape_size(1, 3) % \
-                        self.output_shape[2]
+                    self.output_shape[2]
             elif self.tiling_case == 2:
                 index = block_i * buf_num * self.output_shape[2] + loop_i
                 n_dim = index // self.get_tiling_shape_size(1, 3)
                 h_dim = index % self.get_tiling_shape_size(1, 3) // \
-                        self.output_shape[2]
+                    self.output_shape[2]
                 w_dim = index % self.get_tiling_shape_size(1, 3) % \
-                        self.output_shape[2]
+                    self.output_shape[2]
             elif self.tiling_case == 3:
                 index = block_i * buf_num + loop_i
                 n_dim = index // self.get_tiling_shape_size(1, 3)
                 h_dim = index % self.get_tiling_shape_size(1, 3) // \
-                        self.output_shape[2]
+                    self.output_shape[2]
                 w_dim = index % self.get_tiling_shape_size(1, 3) % \
-                        self.output_shape[2]
+                    self.output_shape[2]
             elif self.tiling_case == 4:
                 index = block_i * buf_num
                 n_dim = index // self.get_tiling_shape_size(1, 4)
                 h_dim = index % self.get_tiling_shape_size(1, 4) \
-                        // self.get_tiling_shape_size(2, 4)
+                    // self.get_tiling_shape_size(2, 4)
                 w_dim = index % self.get_tiling_shape_size(1, 4) \
-                        % self.get_tiling_shape_size(2, 4) // self.block_size
+                    % self.get_tiling_shape_size(2, 4) // self.block_size
                 bs_h_dim = index % self.get_tiling_shape_size(1, 4) \
-                           % self.get_tiling_shape_size(2, 4) % self.block_size
+                    % self.get_tiling_shape_size(2, 4) % self.block_size
         param = SpaceToDepthComputeParam(n_dim, h_dim, w_dim,
                                          (bs_h_dim, ub_dim))
         return param
@@ -968,13 +979,13 @@ class SpaceToDepth(SpaceToDepthBase):
             loop_num = 1
         else:
             buf_num = self.buf_size // \
-                      self.get_tiling_shape_size(self.tiling_case,
-                                                 len(self.tiling_shape))
+                self.get_tiling_shape_size(self.tiling_case,
+                                           len(self.tiling_shape))
             last_num = self.get_tiling_shape_size(
                 0, self.tiling_case) - block_num * buf_num
             last_flag = (block_i + 1) // block_num
             loop_num = (buf_num + last_flag * last_num) * \
-                       self.get_tiling_shape_size(self.tiling_case, 3)
+                self.get_tiling_shape_size(self.tiling_case, 3)
         return loop_num
 
     def get_block_num(self):

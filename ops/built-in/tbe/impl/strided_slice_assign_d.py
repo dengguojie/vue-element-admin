@@ -436,11 +436,14 @@ def strided_slice_assign_d(ref_dict,
         if len(slice_shape) > 1 and slice_shape[-1] < 8:
             error_manager_vector.raise_err_specific_reson(
                 "strided_slice_assign_d",
-                "Under int32 and fp32, except dim num is 1, last dimension of input shape must bigger and equal than 8.")
+                "Under int32 and fp32, except dim num is 1, \
+                last dimension of input shape must bigger and equal than 8.")
     if input_dtype == "float16":
         if len(slice_shape) > 1 and slice_shape[-1] < 16:
             error_manager_vector.raise_err_specific_reson(
-                "strided_slice_assign_d", "Under fp16, except dim num is 1, last dimension of input shape must bigger and equal than 16.")
+                "strided_slice_assign_d", 
+                "Under fp16, except dim num is 1, \
+                last dimension of input shape must bigger and equal than 16.")
 
     input_tensor = tvm.placeholder(input_shape, dtype=input_dtype, name='input_tensor')
     input_value_tensor = tvm.placeholder(slice_shape, dtype=input_dtype, name='input_value_tensor')

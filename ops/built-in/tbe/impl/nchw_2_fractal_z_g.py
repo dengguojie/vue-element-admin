@@ -141,7 +141,6 @@ class Nchw2Fractalzg(object):
             self.pf_src_n_repeat = []
             self.pf_src_c_base = []
             self.pf_src_c_repeat = []
-            #self.pf_src_c_tail = []
 
             #c_gt_16
             self.gc_tail = self.groups * self.src_c % SRC_C_UNIT
@@ -170,17 +169,6 @@ class Nchw2Fractalzg(object):
                 self.src_c_unit = self.src_c
             else:
                 self.src_c_unit = SRC_C_UNIT
-
-                #if self.khw >= 32:
-                #    self.src_c_unit = EPB
-                #else:
-                #    self.src_c_unit = EPB
-                #    while self.src_c_unit * self.khw < 1024:
-                #        if self.src_c_unit >= self.src_c:
-                #            self.src_c_unit = self.src_c_unit // 2
-                #            break
-                #        else:
-                #            self.src_c_unit = self.src_c_unit * 2
                 self.loop_on_src_c = self.src_c // self.src_c_unit
                 self.src_c_tail = self.src_c - self.loop_on_src_c * self.src_c_unit
 
@@ -661,5 +649,5 @@ def nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="nc
         instance.compute_c_le_16(tp, data_in, data_out)
     else:
         instance.compute_c_gt_16(tp, data_in, data_out)
-    #build_config = {"enable_const_fold":True}
+
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[data_in], outputs=[data_out])

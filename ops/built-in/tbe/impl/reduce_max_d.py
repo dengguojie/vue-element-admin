@@ -16,11 +16,11 @@
 reduce_max_d
 """
 import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl import reduce_max_d_tik
-import te.platform as tbe_platform
 
 NoneType = type(None)
 
@@ -123,11 +123,8 @@ def reduce_max_d(x, y, axis, keepdims=False, kernel_name="reduce_max_d"):
             and ((axis[0] == (shape_len - 1)) or (axis[0] == -1)):
         reduce_max_d_tik.reduce_max_d_tik(x, y, axis[0], kernel_name)
     else:
-        data_input = tvm.placeholder(shape,
-                                     name="data_input_" + kernel_name,
-                                     dtype=input_dtype)
-        res = reduce_max_d_compute(data_input, y, axis,
-                                   keepdims, kernel_name)
+        data_input = tvm.placeholder(shape, name="data_input_" + kernel_name, dtype=input_dtype)
+        res = reduce_max_d_compute(data_input, y, axis, keepdims, kernel_name)
 
         if is_5hdc:
             res.ori_shape = x["ori_shape"]

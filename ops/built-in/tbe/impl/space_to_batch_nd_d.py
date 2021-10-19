@@ -525,8 +525,8 @@ class SpaceToBatchNdSix(object):
                                     # move out
                                     offset_gm_out = (((((
                                         (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
-                                                        * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
-                                                      idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
+                                        * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
+                                        idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
                                     offset_ub = idx_blk_2 * self.output_w * self.c_0
                                     burst_len = self.output_w * self.c_0 // self.block_ele
                                     self.tik_instance.data_move(self.output_tensor[offset_gm_out],
@@ -594,8 +594,8 @@ class SpaceToBatchNdSix(object):
                                     # move out
                                     offset_gm_out = (((((
                                         (idx_blk_0 * self.block_shape[1] + idx_blk_1) * self.block_shape[2] + idx_blk_2)
-                                                        * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
-                                                      idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
+                                        * self.input_b + idx_b) * self.output_d + idx_d) * self.c_1 +
+                                        idx_c1) * self.output_h + idx_h) * self.output_w * self.c_0
                                     offset_ub = idx_blk_2 * self.output_w * self.c_0
                                     burst_len = self.output_w * self.c_0 // self.block_ele
                                     self.tik_instance.data_move(self.output_tensor[offset_gm_out],
@@ -634,9 +634,9 @@ class SpaceToBatchNdSix(object):
                                         # move in
                                         with self.tik_instance.else_scope():
                                             offset_b = idx_b * self.input_d * self.c_1 * self.input_h * \
-                                                       self.input_w * self.c_0
+                                                self.input_w * self.c_0
                                             offset_d = (idx_d * self.block_shape[0] + idx_blk_0 - self.pads[0][0]
-                                                       ) * self.c_1 * self.input_h * self.input_w * self.c_0
+                                                        ) * self.c_1 * self.input_h * self.input_w * self.c_0
                                             offset_c1 = idx_c1 * self.input_h * self.input_w * self.c_0
                                             offset_h = (idx_h * self.block_shape[1] + idx_blk_1 -
                                                         self.pads[1][0]) * self.input_w * self.c_0

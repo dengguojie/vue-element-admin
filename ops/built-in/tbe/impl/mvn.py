@@ -43,7 +43,7 @@ def get_op_support_info(x, y, normalize_variance=True, across_channels=False, ep
         else:
             split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
             split_1 = [util_select_op_base.SplitInput([0, [1], [-1], [-1]]), util_select_op_base.SplitOutput([0, [1]])]
-            axis_split_list= [split_0, split_1]
+            axis_split_list = [split_0, split_1]
     else:
         axis_split_list = None
 
@@ -186,6 +186,7 @@ def mvn_compute(x, y, normalize_variance, across_channels,
         res = tbe.cast_to(res, dtype_x)
 
     return res
+
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                  para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)

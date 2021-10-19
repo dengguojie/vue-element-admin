@@ -17,20 +17,19 @@ resize_d
 """
 
 import math
+from collections import namedtuple
 from te import tik
 from te.utils import para_check
 from te import platform as cce
-from collections import namedtuple
 
 # get available ub size
 UB_SIZE = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 
+
 class ResizeBicubic(object):
     """ResizeBicubic main functions
     """
-    def __init__(self, x, sizes, scales,
-                 coordinate_transformation_mode,
-                 cubic_coeff_a, kernel_name="resize_d"):
+    def __init__(self, x, sizes, scales, coordinate_transformation_mode, cubic_coeff_a, kernel_name="resize_d"):
         """init ResizeNearestNeighbor base parameters
         """
         self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
@@ -50,14 +49,8 @@ class ResizeBicubic(object):
         self.out_size_h = self.sizes[0]
         self.out_size_w = self.sizes[1]
 
-        self.check_param2(self.in_size_h,
-                          self.in_size_w,
-                          self.out_size_h,
-                          self.out_size_w)
-        output_shape = (self.batch_size,
-                        self.c1_size,
-                        self.out_size_h,
-                        self.out_size_w)
+        self.check_param2(self.in_size_h, self.in_size_w, self.out_size_h, self.out_size_w)
+        output_shape = (self.batch_size, self.c1_size, self.out_size_h, self.out_size_w)
 
         self.in_num = self.batch_size * self.c1_size * self.in_size_h * self.in_size_w
         self.out_num = self.batch_size * self.c1_size * self.out_size_h * self.out_size_w
@@ -68,10 +61,8 @@ class ResizeBicubic(object):
         self.ub_tensor_size = UB_SIZE // dtype_bytes_size // \
                               self.data_each_block * self.data_each_block
 
-        self.x_gm = self.tik_instance.Tensor(self.x_dtype, self.x_shape,
-                                             name="x_gm", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.x_dtype, output_shape,
-                                                  name="output_gm", scope=tik.scope_gm)
+        self.x_gm = self.tik_instance.Tensor(self.x_dtype, self.x_shape, name="x_gm", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(self.x_dtype, output_shape, name="output_gm", scope=tik.scope_gm)
 
     def resize_bicubic_compute(self):
         """
@@ -108,24 +99,19 @@ class ResizeBicubic(object):
 
                     with self.tik_instance.for_range(0, self.batch_size * self.c1_size) as c:
                         # get x 16 elements
-                        coefficients1 = self.tik_instance.Tensor("float32",
-                                                                 (self.data_each_block,),
+                        coefficients1 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
                                                                  name="coefficients1",
                                                                  scope=tik.scope_ubuf)
-                        coefficients2 = self.tik_instance.Tensor("float32",
-                                                                 (self.data_each_block,),
+                        coefficients2 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
                                                                  name="coefficients2",
                                                                  scope=tik.scope_ubuf)
-                        coefficients3 = self.tik_instance.Tensor("float32",
-                                                                 (self.data_each_block,),
+                        coefficients3 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
                                                                  name="coefficients3",
                                                                  scope=tik.scope_ubuf)
-                        coefficients4 = self.tik_instance.Tensor("float32",
-                                                                 (self.data_each_block,),
+                        coefficients4 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
                                                                  name="coefficients4",
                                                                  scope=tik.scope_ubuf)
-                        temp = self.tik_instance.Tensor("float32",
-                                                        (self.data_each_block,),
+                        temp = self.tik_instance.Tensor("float32", (self.data_each_block, ),
                                                         name="temp",
                                                         scope=tik.scope_ubuf)
 
@@ -136,83 +122,55 @@ class ResizeBicubic(object):
                             move_offset3 = self.upsample_get_index_bounded(input_x + 1, input_y - 1 + i)
                             move_offset4 = self.upsample_get_index_bounded(input_x + 2, input_y - 1 + i)
 
-                            x_ub = self.upsample_get_value_bounded(c,
-                                                                   move_offset1,
-                                                                   move_offset2,
-                                                                   move_offset3,
+                            x_ub = self.upsample_get_value_bounded(c, move_offset1, move_offset2, move_offset3,
                                                                    move_offset4)
                             with self.tik_instance.if_scope(i == 0):
-                                self.tik_instance.data_move(coefficients1,
-                                                            self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2,
-                                                                                x_ub.x_ub3, x_ub.x_ub4,
-                                                                                out_w_index_scalar,
-                                                                                input_x,
-                                                                                self.in_size_w,
-                                                                                self.out_size_w,
-                                                                                0),
-                                                            0, 1, 1, 0, 0)
+                                self.tik_instance.data_move(
+                                    coefficients1,
+                                    self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2, x_ub.x_ub3, x_ub.x_ub4,
+                                                        out_w_index_scalar, input_x, self.in_size_w, self.out_size_w,
+                                                        0), 0, 1, 1, 0, 0)
                             with self.tik_instance.if_scope(i == 1):
-                                self.tik_instance.data_move(coefficients2,
-                                                            self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2,
-                                                                                x_ub.x_ub3, x_ub.x_ub4,
-                                                                                out_w_index_scalar,
-                                                                                input_x,
-                                                                                self.in_size_w,
-                                                                                self.out_size_w,
-                                                                                0),
-                                                            0, 1, 1, 0, 0)
+                                self.tik_instance.data_move(
+                                    coefficients2,
+                                    self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2, x_ub.x_ub3, x_ub.x_ub4,
+                                                        out_w_index_scalar, input_x, self.in_size_w, self.out_size_w,
+                                                        0), 0, 1, 1, 0, 0)
                             with self.tik_instance.if_scope(i == 2):
-                                self.tik_instance.data_move(coefficients3,
-                                                            self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2,
-                                                                                x_ub.x_ub3, x_ub.x_ub4,
-                                                                                out_w_index_scalar,
-                                                                                input_x,
-                                                                                self.in_size_w,
-                                                                                self.out_size_w,
-                                                                                0),
-                                                            0, 1, 1, 0, 0)
+                                self.tik_instance.data_move(
+                                    coefficients3,
+                                    self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2, x_ub.x_ub3, x_ub.x_ub4,
+                                                        out_w_index_scalar, input_x, self.in_size_w, self.out_size_w,
+                                                        0), 0, 1, 1, 0, 0)
                             with self.tik_instance.if_scope(i == 3):
-                                self.tik_instance.data_move(coefficients4,
-                                                            self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2,
-                                                                                x_ub.x_ub3, x_ub.x_ub4,
-                                                                                out_w_index_scalar,
-                                                                                input_x,
-                                                                                self.in_size_w,
-                                                                                self.out_size_w,
-                                                                                0),
-                                                            0, 1, 1, 0, 0)
-                                self.tik_instance.data_move(temp,
-                                                            self.cubic_interp1d(coefficients1,
-                                                                                coefficients2,
-                                                                                coefficients3,
-                                                                                coefficients4,
-                                                                                out_h_index_scalar,
-                                                                                input_y,
-                                                                                self.in_size_h,
-                                                                                self.out_size_h,
-                                                                                1),
-                                                            0, 1, 1, 0, 0)
+                                self.tik_instance.data_move(
+                                    coefficients4,
+                                    self.cubic_interp1d(x_ub.x_ub1, x_ub.x_ub2, x_ub.x_ub3, x_ub.x_ub4,
+                                                        out_w_index_scalar, input_x, self.in_size_w, self.out_size_w,
+                                                        0), 0, 1, 1, 0, 0)
+                                self.tik_instance.data_move(
+                                    temp,
+                                    self.cubic_interp1d(coefficients1, coefficients2, coefficients3, coefficients4,
+                                                        out_h_index_scalar, input_y, self.in_size_h, self.out_size_h,
+                                                        1), 0, 1, 1, 0, 0)
 
                                 chw = c * self.out_size_h * self.out_size_w
                                 out_move_offset = chw + out_h_index * self.out_size_w + out_w_index
                                 out_max_offset = self.out_num - self.data_each_block
 
                                 data_out = self.compute_data_out(temp)
-                                dst_data_out = self.tik_instance.Tensor("float16",
-                                                                        (self.data_each_block,),
+                                dst_data_out = self.tik_instance.Tensor("float16", (self.data_each_block, ),
                                                                         name="dst_data_out",
                                                                         scope=tik.scope_ubuf)
 
                                 if self.x_dtype == "float16":
-                                    self.tik_instance.vec_conv(self.data_each_block, "none",
-                                                               dst_data_out, data_out, 1, 1, 1)
+                                    self.tik_instance.vec_conv(self.data_each_block, "none", dst_data_out, data_out, 1,
+                                                               1, 1)
                                     self.move_to_output_gm(dst_data_out, out_move_offset, out_max_offset)
                                 else:
                                     self.move_to_output_gm(data_out, out_move_offset, out_max_offset)
 
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.x_gm],
-                                   outputs=[self.output_gm])
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.x_gm], outputs=[self.output_gm])
 
         return self.tik_instance
 
@@ -249,28 +207,22 @@ class ResizeBicubic(object):
         """
         The input shape is the same as the output shape.
         """
-        x_ub = self.tik_instance.Tensor(self.x_dtype,
-                                        (self.ub_tensor_size,),
-                                        name="x_ub",
-                                        scope=tik.scope_ubuf)
+        x_ub = self.tik_instance.Tensor(self.x_dtype, (self.ub_tensor_size, ), name="x_ub", scope=tik.scope_ubuf)
         loop_time = self.in_num // self.ub_tensor_size
         burst_len = math.ceil(self.ub_tensor_size / self.data_each_block)
         # self.in_num >= self.ub_tensor_size 63488
         if loop_time > 0:
             with self.tik_instance.for_range(0, loop_time) as loop_index:
                 offset = loop_index * self.ub_tensor_size
-                self.tik_instance.data_move(x_ub, self.x_gm[offset], 0, 1,
-                                            burst_len, 0, 0)
-                self.tik_instance.data_move(self.output_gm[offset], x_ub, 0, 1,
-                                            burst_len, 0, 0)
+                self.tik_instance.data_move(x_ub, self.x_gm[offset], 0, 1, burst_len, 0, 0)
+                self.tik_instance.data_move(self.output_gm[offset], x_ub, 0, 1, burst_len, 0, 0)
         offset = loop_time * self.ub_tensor_size
         last_num = self.in_num % self.ub_tensor_size
         # self.in_num < self.ub_tensor_size
         if last_num > 0:
-            self.tik_instance.data_move(x_ub, self.x_gm[offset], 0, 1,
-                                        math.ceil(last_num / self.data_each_block), 0, 0)
-            self.tik_instance.data_move(self.output_gm[offset], x_ub, 0, 1,
-                                        math.ceil(last_num / self.data_each_block), 0, 0)
+            self.tik_instance.data_move(x_ub, self.x_gm[offset], 0, 1, math.ceil(last_num / self.data_each_block), 0, 0)
+            self.tik_instance.data_move(self.output_gm[offset], x_ub, 0, 1, math.ceil(last_num / self.data_each_block),
+                                        0, 0)
 
     def compute_real_x(self, out_w_index_scalar):
         """
@@ -280,25 +232,18 @@ class ResizeBicubic(object):
         :return: real_x
         """
         real_x = self.tik_instance.Scalar(dtype="float32")
-        out_w_index_scalar = self.tik_instance.Scalar(dtype="float32",
-                                                      init_value=out_w_index_scalar)
-        in_size_w = self.tik_instance.Scalar(dtype="float32",
-                                             init_value=self.in_size_w)
-        out_size_w = self.tik_instance.Scalar(dtype="float32",
-                                              init_value=self.out_size_w)
-        one_scalar = self.tik_instance.Scalar(dtype="float32",
-                                              init_value=1.0)
+        out_w_index_scalar = self.tik_instance.Scalar(dtype="float32", init_value=out_w_index_scalar)
+        in_size_w = self.tik_instance.Scalar(dtype="float32", init_value=self.in_size_w)
+        out_size_w = self.tik_instance.Scalar(dtype="float32", init_value=self.out_size_w)
+        one_scalar = self.tik_instance.Scalar(dtype="float32", init_value=1.0)
         if self.out_size_w > 1:
             if self.coordinate_transformation_mode == "align_corners":
-                real_x.set_as((out_w_index_scalar *
-                               (in_size_w - one_scalar)) /
-                              (out_size_w - one_scalar))
+                real_x.set_as((out_w_index_scalar * (in_size_w - one_scalar)) / (out_size_w - one_scalar))
             else:
                 if self.scales[1] > 0:
                     real_x.set_as((out_w_index_scalar + 0.5) / self.scales[1] - 0.5)
                 else:
-                    real_x.set_as((out_w_index_scalar + 0.5) *
-                                  self.in_size_w / self.out_size_w - 0.5)
+                    real_x.set_as((out_w_index_scalar + 0.5) * self.in_size_w / self.out_size_w - 0.5)
         else:
             real_x.set_as(0.0)
         return real_x
@@ -311,25 +256,18 @@ class ResizeBicubic(object):
         :return: real_y
         """
         real_y = self.tik_instance.Scalar(dtype="float32")
-        out_h_index_scalar = self.tik_instance.Scalar(dtype="float32",
-                                                      init_value=out_h_index_scalar)
-        in_size_h = self.tik_instance.Scalar(dtype="float32",
-                                             init_value=self.in_size_h)
-        out_size_h = self.tik_instance.Scalar(dtype="float32",
-                                              init_value=self.out_size_h)
-        one_scalar = self.tik_instance.Scalar(dtype="float32",
-                                              init_value=1.0)
+        out_h_index_scalar = self.tik_instance.Scalar(dtype="float32", init_value=out_h_index_scalar)
+        in_size_h = self.tik_instance.Scalar(dtype="float32", init_value=self.in_size_h)
+        out_size_h = self.tik_instance.Scalar(dtype="float32", init_value=self.out_size_h)
+        one_scalar = self.tik_instance.Scalar(dtype="float32", init_value=1.0)
         if self.out_size_h > 1:
             if self.coordinate_transformation_mode == "align_corners":
-                real_y.set_as((out_h_index_scalar *
-                               (in_size_h - one_scalar)) /
-                              (out_size_h - one_scalar))
+                real_y.set_as((out_h_index_scalar * (in_size_h - one_scalar)) / (out_size_h - one_scalar))
             else:
                 if self.scales[0] > 0:
                     real_y.set_as((out_h_index_scalar + 0.5) / self.scales[0] - 0.5)
                 else:
-                    real_y.set_as((out_h_index_scalar + 0.5) *
-                                  self.in_size_h / self.out_size_h - 0.5)
+                    real_y.set_as((out_h_index_scalar + 0.5) * self.in_size_h / self.out_size_h - 0.5)
         else:
             real_y.set_as(0.0)
         return real_y
@@ -349,17 +287,13 @@ class ResizeBicubic(object):
         y_max_left = self.tik_instance.Scalar(dtype="int64")
         zero = self.tik_instance.Scalar(dtype="int64", init_value=0)
 
-        x_min_left = self.tik_instance.Scalar(dtype="int64",
-                                              init_value=input_x)
-        x_min_right = self.tik_instance.Scalar(dtype="int64",
-                                               init_value=self.in_size_w - 1)
+        x_min_left = self.tik_instance.Scalar(dtype="int64", init_value=input_x)
+        x_min_right = self.tik_instance.Scalar(dtype="int64", init_value=self.in_size_w - 1)
         self.tik_instance.scalar_min(x_max_left, x_min_left, x_min_right)
         self.tik_instance.scalar_max(access_x_scalar, x_max_left, zero)
 
-        y_min_left = self.tik_instance.Scalar(dtype="int64",
-                                              init_value=input_y)
-        y_min_right = self.tik_instance.Scalar(dtype="int64",
-                                               init_value=self.in_size_h - 1)
+        y_min_left = self.tik_instance.Scalar(dtype="int64", init_value=input_y)
+        y_min_right = self.tik_instance.Scalar(dtype="int64", init_value=self.in_size_h - 1)
         self.tik_instance.scalar_min(y_max_left, y_min_left, y_min_right)
         self.tik_instance.scalar_max(access_y_scalar, y_max_left, zero)
 
@@ -368,8 +302,7 @@ class ResizeBicubic(object):
 
         return move_offset
 
-    def upsample_get_value_bounded(self, c, move_offset1, move_offset2,
-                                   move_offset3, move_offset4):
+    def upsample_get_value_bounded(self, c, move_offset1, move_offset2, move_offset3, move_offset4):
         """
         Get the value of the point by move_offset.
 
@@ -380,86 +313,55 @@ class ResizeBicubic(object):
         :param move_offset4: The move_offset of input.
         :return: x_ub1, x_ub2, x_ub3 and x_ub4.
         """
-        x_ub_tensor = self.tik_instance.Tensor(self.x_dtype,
-                                               (self.data_each_block,),
+        x_ub_tensor = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ),
                                                name="x_ub_tensor",
                                                scope=tik.scope_ubuf)
-        x_ub1 = self.tik_instance.Tensor(self.x_dtype,
-                                         (self.data_each_block,),
-                                         name="x_ub1",
-                                         scope=tik.scope_ubuf)
-        x_ub2 = self.tik_instance.Tensor(self.x_dtype,
-                                         (self.data_each_block,),
-                                         name="x_ub2",
-                                         scope=tik.scope_ubuf)
-        x_ub3 = self.tik_instance.Tensor(self.x_dtype,
-                                         (self.data_each_block,),
-                                         name="x_ub3",
-                                         scope=tik.scope_ubuf)
-        x_ub4 = self.tik_instance.Tensor(self.x_dtype,
-                                         (self.data_each_block,),
-                                         name="x_ub4",
-                                         scope=tik.scope_ubuf)
-        x_gm = self.x_gm.reshape((self.in_num,))
+        x_ub1 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub1", scope=tik.scope_ubuf)
+        x_ub2 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub2", scope=tik.scope_ubuf)
+        x_ub3 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub3", scope=tik.scope_ubuf)
+        x_ub4 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub4", scope=tik.scope_ubuf)
+        x_gm = self.x_gm.reshape((self.in_num, ))
         nc_move_offset = c * self.in_size_h * self.in_size_w
 
         # get x_ub1, x_ub2, x_ub3, x_ub4
-        # self.in_num <= self.data_each_block
         if self.in_num <= self.data_each_block:
             self.tik_instance.data_move(x_ub_tensor, x_gm, 0, 1, 1, 0, 0)
             x_ub1[0].set_as(x_ub_tensor[nc_move_offset + move_offset1])
             x_ub2[0].set_as(x_ub_tensor[nc_move_offset + move_offset2])
             x_ub3[0].set_as(x_ub_tensor[nc_move_offset + move_offset3])
             x_ub4[0].set_as(x_ub_tensor[nc_move_offset + move_offset4])
-        # self.in_num > self.data_each_block
         else:
             max_offset = self.in_num - self.data_each_block
             # Consider the size of the max_offset
             with self.tik_instance.if_scope(nc_move_offset + move_offset1 < max_offset):
-                self.tik_instance.data_move(x_ub1,
-                                            x_gm[nc_move_offset + move_offset1],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub1, x_gm[nc_move_offset + move_offset1], 0, 1, 1, 0, 0)
             with self.tik_instance.else_scope():
                 relative = nc_move_offset + move_offset1 - max_offset
-                self.tik_instance.data_move(x_ub_tensor,
-                                            x_gm[max_offset],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub_tensor, x_gm[max_offset], 0, 1, 1, 0, 0)
                 x_ub1[0].set_as(x_ub_tensor[relative])
 
             # same as x_ub1
             with self.tik_instance.if_scope(nc_move_offset + move_offset2 < max_offset):
-                self.tik_instance.data_move(x_ub2,
-                                            x_gm[nc_move_offset + move_offset2],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub2, x_gm[nc_move_offset + move_offset2], 0, 1, 1, 0, 0)
             with self.tik_instance.else_scope():
                 relative = nc_move_offset + move_offset2 - max_offset
-                self.tik_instance.data_move(x_ub_tensor,
-                                            x_gm[max_offset],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub_tensor, x_gm[max_offset], 0, 1, 1, 0, 0)
                 x_ub2[0].set_as(x_ub_tensor[relative])
 
             # same as x_ub1
             with self.tik_instance.if_scope(nc_move_offset + move_offset3 < max_offset):
-                self.tik_instance.data_move(x_ub3,
-                                            x_gm[nc_move_offset + move_offset3],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub3, x_gm[nc_move_offset + move_offset3], 0, 1, 1, 0, 0)
             with self.tik_instance.else_scope():
                 relative = nc_move_offset + move_offset3 - max_offset
-                self.tik_instance.data_move(x_ub_tensor,
-                                            x_gm[max_offset],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub_tensor, x_gm[max_offset], 0, 1, 1, 0, 0)
                 x_ub3[0].set_as(x_ub_tensor[relative])
 
             # same as x_ub1
             with self.tik_instance.if_scope(nc_move_offset + move_offset4 < max_offset):
-                self.tik_instance.data_move(x_ub4,
-                                            x_gm[nc_move_offset + move_offset4],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub4, x_gm[nc_move_offset + move_offset4], 0, 1, 1, 0, 0)
             with self.tik_instance.else_scope():
                 relative = nc_move_offset + move_offset4 - max_offset
-                self.tik_instance.data_move(x_ub_tensor,
-                                            x_gm[max_offset],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(x_ub_tensor, x_gm[max_offset], 0, 1, 1, 0, 0)
                 x_ub4[0].set_as(x_ub_tensor[relative])
 
         X_ub = namedtuple('x_ub', 'x_ub1 x_ub2 x_ub3 x_ub4')
@@ -467,8 +369,7 @@ class ResizeBicubic(object):
         return X_ub(x_ub1, x_ub2, x_ub3, x_ub4)
 
     # pylint: disable=too-many-arguments
-    def cubic_interp1d(self, x_a, x_b, x_c, x_d, index_scalar,
-                       input_index, in_length, out_length, flag):
+    def cubic_interp1d(self, x_a, x_b, x_c, x_d, index_scalar, input_index, in_length, out_length, flag):
         """
         Interpolation algorithm main part.
 
@@ -493,8 +394,7 @@ class ResizeBicubic(object):
         cast_input_index = self.tik_instance.Scalar(dtype="float32")
         self.tik_instance.scalar_conv('none', cast_input_index, temp_scalar)
 
-        input_index_scalar = self.tik_instance.Scalar(dtype="float32", 
-                                                      init_value=cast_input_index)
+        input_index_scalar = self.tik_instance.Scalar(dtype="float32", init_value=cast_input_index)
         one_length = self.tik_instance.Scalar(dtype="float32")
         two_length = self.tik_instance.Scalar(dtype="float32")
         three_length = self.tik_instance.Scalar(dtype="float32")
@@ -524,64 +424,33 @@ class ResizeBicubic(object):
                     two_length.set_as(out_length * out_length)
                     three_length.set_as(out_length * out_length * out_length)
                     x1.set_as((index_scalar + 0.5) * in_length - (0.5 + input_index_scalar) * out_length)
-            coeffs1.set_as(((A * (x1 + one_length) - 5.0 * A * one_length) * (x1 + one_length) +
-                            8.0 * A * two_length) * (x1 + one_length) - 4.0 * A * three_length)
+            coeffs1.set_as(((A * (x1 + one_length) - 5.0 * A * one_length) * (x1 + one_length) + 8.0 * A * two_length) *
+                           (x1 + one_length) - 4.0 * A * three_length)
             coeffs2.set_as(((A + 2.0) * x1 - (A + 3.0) * one_length) * x1 * x1 + 1.0 * three_length)
             x2 = one_length - x1
             coeffs3.set_as(((A + 2.0) * x2 - (A + 3.0) * one_length) * x2 * x2 + 1.0 * three_length)
-            coeffs4.set_as(((A * (x2 + one_length) - 5.0 * A * one_length) * (x2 + one_length) +
-                            8.0 * A * two_length) * (x2 + one_length) - 4.0 * A * three_length)
+            coeffs4.set_as(((A * (x2 + one_length) - 5.0 * A * one_length) * (x2 + one_length) + 8.0 * A * two_length) *
+                           (x2 + one_length) - 4.0 * A * three_length)
         else:
             coeffs1.set_as(0.0)
             coeffs2.set_as(1.0)
             coeffs3.set_as(0.0)
             coeffs4.set_as(0.0)
 
-        temp1 = self.tik_instance.Tensor("float32",
-                                         (self.data_each_block,),
-                                         name="temp1",
-                                         scope=tik.scope_ubuf)
-        temp2 = self.tik_instance.Tensor("float32",
-                                         (self.data_each_block,),
-                                         name="temp2",
-                                         scope=tik.scope_ubuf)
-        temp3 = self.tik_instance.Tensor("float32",
-                                         (self.data_each_block,),
-                                         name="temp3",
-                                         scope=tik.scope_ubuf)
-        temp4 = self.tik_instance.Tensor("float32",
-                                         (self.data_each_block,),
-                                         name="temp4",
-                                         scope=tik.scope_ubuf)
-        temp5 = self.tik_instance.Tensor("float32",
-                                         (self.data_each_block,),
-                                         name="temp5",
-                                         scope=tik.scope_ubuf)
-        temp6 = self.tik_instance.Tensor("float32",
-                                         (self.data_each_block,),
-                                         name="temp6",
-                                         scope=tik.scope_ubuf)
-        coefficients = self.tik_instance.Tensor("float32",
-                                                (self.data_each_block,),
+        temp1 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp1", scope=tik.scope_ubuf)
+        temp2 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp2", scope=tik.scope_ubuf)
+        temp3 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp3", scope=tik.scope_ubuf)
+        temp4 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp4", scope=tik.scope_ubuf)
+        temp5 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp5", scope=tik.scope_ubuf)
+        temp6 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp6", scope=tik.scope_ubuf)
+        coefficients = self.tik_instance.Tensor("float32", (self.data_each_block, ),
                                                 name="coefficients",
                                                 scope=tik.scope_ubuf)
 
-        dst_x_a = self.tik_instance.Tensor("float32",
-                                           (self.data_each_block,),
-                                           name="dst_x_a",
-                                           scope=tik.scope_ubuf)
-        dst_x_b = self.tik_instance.Tensor("float32",
-                                           (self.data_each_block,),
-                                           name="dst_x_b",
-                                           scope=tik.scope_ubuf)
-        dst_x_c = self.tik_instance.Tensor("float32",
-                                           (self.data_each_block,),
-                                           name="dst_x_c",
-                                           scope=tik.scope_ubuf)
-        dst_x_d = self.tik_instance.Tensor("float32",
-                                           (self.data_each_block,),
-                                           name="dst_x_d",
-                                           scope=tik.scope_ubuf)
+        dst_x_a = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_a", scope=tik.scope_ubuf)
+        dst_x_b = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_b", scope=tik.scope_ubuf)
+        dst_x_c = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_c", scope=tik.scope_ubuf)
+        dst_x_d = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_d", scope=tik.scope_ubuf)
 
         if x_a.dtype == "float16":
             self.tik_instance.vec_conv(self.data_each_block, "none", dst_x_a, x_a, 1, 1, 1)
@@ -619,42 +488,32 @@ class ResizeBicubic(object):
         # same as cubic_interp1d function
         if self.out_size_w > 1:
             if self.coordinate_transformation_mode == "align_corners":
-                in_three_length.set_as((self.out_size_w - 1) *
-                                       (self.out_size_w - 1) *
-                                       (self.out_size_w - 1))
+                in_three_length.set_as((self.out_size_w - 1) * (self.out_size_w - 1) * (self.out_size_w - 1))
             else:
                 if self.scales[1] > 0.0:
-                    in_three_length.set_as(self.scales[1] *
-                                           self.scales[1] *
-                                           self.scales[1])
+                    in_three_length.set_as(self.scales[1] * self.scales[1] * self.scales[1])
                 else:
-                    in_three_length.set_as(self.out_size_w *
-                                           self.out_size_w *
-                                           self.out_size_w)
+                    in_three_length.set_as(self.out_size_w * self.out_size_w * self.out_size_w)
         else:
             in_three_length.set_as(1)
 
         if self.out_size_h > 1:
             if self.coordinate_transformation_mode == "align_corners":
-                out_three_length.set_as((self.out_size_h - 1) *
-                                        (self.out_size_h - 1) *
-                                        (self.out_size_h - 1))
+                out_three_length.set_as((self.out_size_h - 1) * (self.out_size_h - 1) * (self.out_size_h - 1))
             else:
                 if self.scales[0] > 0.0:
-                    out_three_length.set_as(self.scales[0] *
-                                            self.scales[0] *
-                                            self.scales[0])
+                    out_three_length.set_as(self.scales[0] * self.scales[0] * self.scales[0])
                 else:
-                    out_three_length.set_as(self.out_size_h *
-                                            self.out_size_h *
-                                            self.out_size_h)
+                    out_three_length.set_as(self.out_size_h * self.out_size_h * self.out_size_h)
         else:
             out_three_length.set_as(1)
 
-        data_out1 = self.tik_instance.Tensor("float32", (self.data_each_block,),
-                                             name="data_out1", scope=tik.scope_ubuf)
-        data_out2 = self.tik_instance.Tensor("float32", (self.data_each_block,),
-                                             name="data_out2", scope=tik.scope_ubuf)
+        data_out1 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                                             name="data_out1",
+                                             scope=tik.scope_ubuf)
+        data_out2 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                                             name="data_out2",
+                                             scope=tik.scope_ubuf)
         out_length_scalar1 = self.tik_instance.Scalar(dtype="float32")
         out_length_scalar1.set_as(1.0 / in_three_length)
         self.tik_instance.vec_muls(1, data_out1, temp, out_length_scalar1, 1, 1, 1)
@@ -674,44 +533,28 @@ class ResizeBicubic(object):
         :param out_max_offset: equals to (self.out_num - self.data_each_block)
         :return:
         """
-        temp_ub = self.tik_instance.Tensor(self.x_dtype,
-                                           (self.data_each_block,),
-                                           name="temp_ub",
-                                           scope=tik.scope_ubuf)
-        # self.out_num <= self.data_each_block
+        temp_ub = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="temp_ub", scope=tik.scope_ubuf)
         if self.out_num <= self.data_each_block:
             self.tik_instance.data_move(temp_ub, self.output_gm, 0, 1, 1, 0, 0)
             temp_ub[out_move_offset].set_as(data_out[0])
             self.tik_instance.data_move(self.output_gm, temp_ub, 0, 1, 1, 0, 0)
-        # self.out_num > self.data_each_block
         else:
             with self.tik_instance.if_scope(out_move_offset < out_max_offset):
-                self.tik_instance.data_move(temp_ub,
-                                            self.output_gm[out_move_offset],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(temp_ub, self.output_gm[out_move_offset], 0, 1, 1, 0, 0)
                 temp_ub[0].set_as(data_out[0])
-                self.tik_instance.data_move(self.output_gm[out_move_offset],
-                                            temp_ub, 0, 1, 1, 0, 0)
+                self.tik_instance.data_move(self.output_gm[out_move_offset], temp_ub, 0, 1, 1, 0, 0)
             with self.tik_instance.else_scope():
                 relative = out_move_offset - out_max_offset
-                self.tik_instance.data_move(temp_ub,
-                                            self.output_gm[out_max_offset],
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.data_move(temp_ub, self.output_gm[out_max_offset], 0, 1, 1, 0, 0)
                 temp_ub[relative].set_as(data_out[0])
-                self.tik_instance.data_move(self.output_gm[out_max_offset],
-                                            temp_ub, 0, 1, 1, 0, 0)
+                self.tik_instance.data_move(self.output_gm[out_max_offset], temp_ub, 0, 1, 1, 0, 0)
 
 
 class ResizeLinear(object):
     """
     ResizeLinear main functions
     """
-    def __init__(self,
-                 x,
-                 sizes,
-                 scales,
-                 coordinate_transformation_mode="align_corners",
-                 kernel_name="resize_d"):
+    def __init__(self, x, sizes, scales, coordinate_transformation_mode="align_corners", kernel_name="resize_d"):
 
         self.tik_instance = tik.Tik()
 
@@ -741,14 +584,12 @@ class ResizeLinear(object):
         dtype_bytes_size = cce.cce_intrin.get_bit_len(self.x_dtype) // 8
         self.data_each_block = block_bite_size // dtype_bytes_size
 
-        self.x_gm = self.tik_instance.Tensor(self.x_dtype,
-                                             (self.dim0, self.dim1, 1, self.dim2),
+        self.x_gm = self.tik_instance.Tensor(self.x_dtype, (self.dim0, self.dim1, 1, self.dim2),
                                              name="x_gm",
                                              scope=tik.scope_gm)
         self.x_gm.reshape(self.x_shape)
 
-        self.output_gm = self.tik_instance.Tensor(self.x_dtype,
-                                                  (self.dim0, self.dim1, 1, self.size),
+        self.output_gm = self.tik_instance.Tensor(self.x_dtype, (self.dim0, self.dim1, 1, self.size),
                                                   name="output_gm",
                                                   scope=tik.scope_gm)
 
@@ -756,91 +597,77 @@ class ResizeLinear(object):
         """
         ResizeLinear main logic
         """
-        self.x_gm.reshape([self.input_num, ])
+        self.x_gm.reshape([
+            self.input_num,
+        ])
 
         if self.output_num <= self.data_each_block:
-            res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype,
-                                                      [self.data_each_block],
+            res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
                                                       name="res_lastdim_ub",
                                                       scope=tik.scope_ubuf)
             with self.tik_instance.for_range(0, self.dim0) as i:
                 with self.tik_instance.for_range(0, self.dim1) as j:
-                    Current_Index_Output = self.tik_instance.Scalar("int32",
+                    current_index_output = self.tik_instance.Scalar("int32",
                                                                     init_value=i * (self.dim1 * self.size) +
                                                                     j * self.size)
                     with self.tik_instance.for_range(0, self.size) as k:
-                        res_lastdim_ub[Current_Index_Output + k].set_as(self.get_number_in_global_memory(i *
-                                                                                                         (self.dim1 *
-                                                                                                         self.dim2) +
-                                                                                                         j * self.dim2)
-                                                                        if self.size == 1 else
-                                                                        self.compute_helper(self.scale_w,
-                                                                                            k,
-                                                                                            i *
-                                                                                            (self.dim1 * self.dim2) +
-                                                                                            j * self.dim2))
+                        res_lastdim_ub[current_index_output + k].set_as(
+                            self.get_number_in_global_memory(i * (self.dim1 * self.dim2) +
+                                                             j * self.dim2) if self.size ==
+                            1 else self.compute_helper(self.scale_w, k,
+                                                       i * (self.dim1 * self.dim2) + j * self.dim2))
 
             self.tik_instance.data_move(self.output_gm, res_lastdim_ub, 0, 1, 1, 0, 0)
 
         elif self.size < self.data_each_block:
             loop_time = self.output_num // self.data_each_block
             with self.tik_instance.for_range(0, loop_time) as i:
-                res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype,
-                                                          [self.data_each_block],
+                res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
                                                           name="res_lastdim_ub",
                                                           scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, self.data_each_block) as j:
-                    CurrentIndex = i * self.data_each_block + j
-                    Current_dim1 = CurrentIndex // self.size
-                    res_lastdim_ub[j].set_as(self.get_number_in_global_memory(Current_dim1 * self.dim2)
-                                             if self.size == 1 else
-                                             self.compute_helper(self.scale_w,
-                                                                 CurrentIndex % self.size,
-                                                                 Current_dim1 * self.dim2))
+                    currentIndex = i * self.data_each_block + j
+                    current_dim1 = currentIndex // self.size
+                    res_lastdim_ub[j].set_as(
+                        self.get_number_in_global_memory(current_dim1 * self.dim2) if self.size ==
+                        1 else self.compute_helper(self.scale_w, currentIndex % self.size, current_dim1 * self.dim2))
                 self.tik_instance.data_move(self.output_gm[i * self.data_each_block], res_lastdim_ub, 0, 1, 1, 0, 0)
 
             remainder = self.output_num % self.data_each_block
             with self.tik_instance.if_scope(remainder != 0):
                 remainder_begin_index = self.output_num - self.data_each_block
-                res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype,
-                                                          [self.data_each_block],
+                res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
                                                           name="res_lastdim_ub",
                                                           scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, self.data_each_block) as k:
-                    CurrentIndex = remainder_begin_index + k
-                    Current_dim1 = CurrentIndex // self.size
-                    res_lastdim_ub[k].set_as(self.get_number_in_global_memory(Current_dim1 * self.dim2)
-                                             if self.size == 1 else
-                                             self.compute_helper(self.scale_w,
-                                                                 CurrentIndex % self.size,
-                                                                 Current_dim1 * self.dim2))
+                    currentIndex = remainder_begin_index + k
+                    current_dim1 = currentIndex // self.size
+                    res_lastdim_ub[k].set_as(
+                        self.get_number_in_global_memory(current_dim1 * self.dim2) if self.size ==
+                        1 else self.compute_helper(self.scale_w, CurrentIndex % self.size, current_dim1 * self.dim2))
                 self.tik_instance.data_move(self.output_gm[remainder_begin_index], res_lastdim_ub, 0, 1, 1, 0, 0)
 
         else:
             with self.tik_instance.for_range(0, self.dim0) as i:
                 with self.tik_instance.for_range(0, self.dim1) as j:
                     loop_time = self.tik_instance.Scalar("int32", init_value=self.size // self.data_each_block)
-                    Current_Index_Output = self.tik_instance.Scalar("int32",
+                    current_index_output = self.tik_instance.Scalar("int32",
                                                                     init_value=i * (self.dim1 * self.size) +
-                                                                                    j * self.size)
+                                                                    j * self.size)
                     with self.tik_instance.for_range(0, loop_time) as m:
-                        res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype,
-                                                                  [self.data_each_block],
+                        res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
                                                                   name="res_lastdim_ub",
                                                                   scope=tik.scope_ubuf)
 
                         with self.tik_instance.for_range(0, self.data_each_block) as n:
-                            res_lastdim_ub[n].set_as(self.get_number_in_global_memory(i *
-                                                                                      (self.dim1 * self.dim2) +
-                                                                                      j * self.dim2)
-                                                     if self.size == 1 else
-                                                     self.compute_helper(self.scale_w,
-                                                                         m * self.data_each_block + n,
-                                                                         i * (self.dim1 * self.dim2) + j * self.dim2))
-                        self.tik_instance.data_move(self.output_gm[Current_Index_Output], res_lastdim_ub, 0, 1, 1, 0, 0)
-                        Current_Index_Output.set_as(Current_Index_Output + self.data_each_block)
-                    res_lastdim_remainder_ub = self.tik_instance.Tensor(self.x_dtype,
-                                                                        [self.data_each_block],
+                            res_lastdim_ub[n].set_as(
+                                self.get_number_in_global_memory(i * (self.dim1 * self.dim2) +
+                                                                 j * self.dim2) if self.size ==
+                                1 else self.compute_helper(self.scale_w, m * self.data_each_block + n,
+                                                           i * (self.dim1 * self.dim2) + j * self.dim2))
+                        self.tik_instance.data_move(self.output_gm[current_index_output], res_lastdim_ub, 0, 1, 1, 0, 0)
+                        current_index_output.set_as(current_index_output + self.data_each_block)
+                    res_lastdim_remainder_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
                                                                         name="res_lastdim_remainder_ub",
                                                                         scope=tik.scope_ubuf)
 
@@ -848,24 +675,18 @@ class ResizeLinear(object):
                     with self.tik_instance.if_scope(remainder != 0):
                         remainder_begin_index = self.size - self.data_each_block
                         with self.tik_instance.for_range(0, self.data_each_block) as k:
-                            res_lastdim_remainder_ub[k].set_as(self.get_number_in_global_memory(i *
-                                                                                                (self.dim1 *
-                                                                                                self.dim2) +
-                                                                                                j * self.dim2)
-                                                               if self.size == 1 else
-                                                               self.compute_helper(self.scale_w,
-                                                                                   remainder_begin_index + k,
-                                                                                   i * (self.dim1 * self.dim2) +
-                                                                                   j * self.dim2))
-                        self.tik_instance.data_move(self.output_gm[i * (self.dim1 * self.size) +
-                                                                   (j + 1) * self.size - self.data_each_block],
-                                                    res_lastdim_remainder_ub, 0, 1, 1, 0, 0)
+                            res_lastdim_remainder_ub[k].set_as(
+                                self.get_number_in_global_memory(i * (self.dim1 * self.dim2) +
+                                                                 j * self.dim2) if self.size ==
+                                1 else self.compute_helper(self.scale_w, remainder_begin_index + k,
+                                                           i * (self.dim1 * self.dim2) + j * self.dim2))
+                        self.tik_instance.data_move(
+                            self.output_gm[i * (self.dim1 * self.size) + (j + 1) * self.size - self.data_each_block],
+                            res_lastdim_remainder_ub, 0, 1, 1, 0, 0)
 
         self.output_gm.reshape([self.dim0, self.dim1, 1, self.size])
 
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.x_gm],
-                                   outputs=[self.output_gm])
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.x_gm], outputs=[self.output_gm])
         return self.tik_instance
 
     def get_number_in_global_memory(self, index):
@@ -882,7 +703,7 @@ class ResizeLinear(object):
         res : input.dtype
             the value under the given index
         """
-        max_offset=max(0, self.input_num - self.data_each_block)
+        max_offset = max(0, self.input_num - self.data_each_block)
 
         x_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block], name="x_ub", scope=tik.scope_ubuf)
 
@@ -1012,16 +833,18 @@ class ResizeLinear(object):
             raise RuntimeError("It is expected scales[0] equals to x.shape[2] / sizes[0].")
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_FLOAT,
-                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
-                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments
 # pylint: disable=W0613
-def resize_d(x, y, sizes, scales=None, roi=None,
+def resize_d(x,
+             y,
+             sizes,
+             scales=None,
+             roi=None,
              coordinate_transformation_mode="half_pixel",
              cubic_coeff_a=-0.75,
              exclude_outside=0,
@@ -1073,19 +896,11 @@ def resize_d(x, y, sizes, scales=None, roi=None,
     """
     x_dim = len(x.get("shape"))
     if mode == "cubic" and x_dim == 4:
-        resize_bicubic_instance = ResizeBicubic(x,
-                                                sizes,
-                                                scales,
-                                                coordinate_transformation_mode,
-                                                cubic_coeff_a,
+        resize_bicubic_instance = ResizeBicubic(x, sizes, scales, coordinate_transformation_mode, cubic_coeff_a,
                                                 kernel_name)
         return resize_bicubic_instance.resize_bicubic_compute()
     elif mode == "linear" and x_dim == 4:
-        resize_linear = ResizeLinear(x,
-                                     sizes,
-                                     scales,
-                                     coordinate_transformation_mode,
-                                     kernel_name)
+        resize_linear = ResizeLinear(x, sizes, scales, coordinate_transformation_mode, kernel_name)
 
         return resize_linear.resize_linear_compute()
     else:

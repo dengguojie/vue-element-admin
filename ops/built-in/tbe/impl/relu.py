@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,9 +120,10 @@ def relu(x, y, kernel_name="relu"):
         res = relu_compute(input_data, y, kernel_name)
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [input_data, res],
-              "print_ir": False,
-             }
+    config = {
+        "name": kernel_name,
+        "tensor_list": [input_data, res],
+        "print_ir": False,
+    }
 
     tbe.cce_build_code(sch, config)

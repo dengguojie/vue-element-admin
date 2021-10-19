@@ -56,9 +56,7 @@ def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_n
     if len(input_ori_shape) < 4:
         is_support_5hd = False
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                    "Hi3796CV300CS",
-                                                    "SD3403"):
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = ["float16"]
     else:
         dtype_base = ["float16", "float32"]
@@ -71,10 +69,8 @@ def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_n
     dtype_base = ','.join(dtype_base)
     format_base = ','.join(format_base)
 
-    input0 = util_select_op_base.gen_param(
-        classify="input0", name="x", datatype=dtype_base, format=format_base)
-    output0 = util_select_op_base.gen_param(
-        classify="output0", name="y", datatype=dtype_base, format=format_base)
+    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=dtype_base, format=format_base)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=dtype_base, format=format_base)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
@@ -114,7 +110,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
         tmp = tbe.vmuls(data_tmp_input, coeff)
 
     elif operation == 4:
-        cof = float(coeff * (mean_size ** (-0.5)))
+        cof = float(coeff * (mean_size**(-0.5)))
         tmp = tbe.vmuls(input_data, cof)
 
     elif operation == 1:
@@ -123,7 +119,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
     res = tbe.sum(tmp, axis=axis)
 
     if operation == 4:
-        size_reci = float(mean_size ** (-0.5))
+        size_reci = float(mean_size**(-0.5))
         res = tbe.vmuls(res, size_reci)
 
     if product_verion not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -163,7 +159,8 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     inp_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(inp_dtype, ("float16", "float32"), param_name="input_x")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and inp_dtype == "float32":
-        error_manager_vector.raise_err_specific_reson("reduction", "ES is not supported while the x's dtype\
+        error_manager_vector.raise_err_specific_reson(
+            "reduction", "ES is not supported while the x's dtype\
                                                       of input is [{}].".format(inp_dtype))
 
     # axis parameter check
@@ -188,8 +185,7 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
             mean_size = shape[-2]
         if axis == 1:
             rule_desc = "The C axis does not support reduction when the data format is NC1HWC0"
-            error_manager_vector.raise_err_check_params_rules("reduction", rule_desc,
-                                                            "axis", axis)
+            error_manager_vector.raise_err_check_params_rules("reduction", rule_desc, "axis", axis)
         if axis == 0:
             shape = [functools.reduce(lambda x, y: x * y, shape)]
             ori_shape = [functools.reduce(lambda x, y: x * y, ori_shape)]
@@ -208,7 +204,5 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data, res]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data, res]}
     tbe.cce_build_code(sch, config)

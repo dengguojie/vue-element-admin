@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -365,7 +367,7 @@ def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, strid
                 rows_idx = tik_instance.Scalar(dtype="int64", name="rows_idx", init_value=repeat_idx * rows_each_repeat)
                 if repeat_tail_count != 0:
                     with tik_instance.if_scope(repeat_idx == repeat_times - 1):
-                         curr_rows.set_as(repeat_tail_count)
+                        curr_rows.set_as(repeat_tail_count)
                 if repeat_tail_count * output_inner_dims % element_each_block != 0 and repeat_times != 1:
                     with tik_instance.if_scope(repeat_idx == repeat_times - 1):
                         rows_idx.set_as(rows_idx - roll_back_rows)
@@ -398,7 +400,7 @@ def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, strid
 
     with tik_instance.for_range(0, aicore_num_used, block_num=aicore_num_used) as blk_idx:
         if tail_rows != 0:
-            with tik_instance.if_scope(blk_idx < aicore_num_used -1):
+            with tik_instance.if_scope(blk_idx < aicore_num_used - 1):
                 slice_each_core(blk_idx, rows_each_core, thread_num)
             with tik_instance.else_scope():
                 slice_each_core(blk_idx, tail_rows, thread_num)

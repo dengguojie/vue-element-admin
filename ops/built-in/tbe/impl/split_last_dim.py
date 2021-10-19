@@ -71,6 +71,7 @@ def _get_ceil_int(int1, int2):
 class SplitLastDim():
     """Function: use to finish SplitLastDim main functions
     """
+
     def __init__(self, shape, dtype, split_dim, num_split, size_splits):
         """init SplitLastDim parameters
         """
@@ -319,7 +320,7 @@ class SplitLastDim():
         def _run_one_segment(_segment_len, _segment_index):
             # calcu gm offset
             offset = core_offset*self.split_dim_size + \
-                     _segment_index*self.segment_len
+                _segment_index*self.segment_len
             out_offset = \
                 core_offset*self.split_output_dim_size \
                 + _segment_index * self.max_dims * self.split_output_dim_size
@@ -430,7 +431,7 @@ class SplitLastDim():
 
         def _run_one_segment(_segment_index, _segment_len):
             offset = core_offset*self.split_dim_size + \
-                     _segment_index*self.max_dims*self.split_dim_size
+                _segment_index*self.max_dims*self.split_dim_size
             out_offset = \
                 core_offset*self.split_output_dim_size \
                 + _segment_index*self.max_dims*self.split_output_dim_size
@@ -567,6 +568,7 @@ def split_last_dim(shape, dtype, split_dim, num_split, size_splits,
 class SplitWith5HD:
     """Function: use to finish ConcatLastDim main functions
     """
+
     def __init__(self, input_value, output_data,
                  split_dim, num_split, kernel_name):
         """init SplitWith5HD parameters

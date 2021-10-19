@@ -24,7 +24,7 @@ SCALAR_MAX_FP32 = (2**31 - 1)
 # max set_mask_int64 value
 MAX_MASK_INT64 = 2**64 - 1
 # max segment len
-MAX_SEGMENT_LEN = 2048*7
+MAX_SEGMENT_LEN = 2048 * 7
 # int32 num in 8*block
 OUT_MASK = 64
 
@@ -116,7 +116,6 @@ class ArgminBase(object):
     """
     Function: use to store argmin base parameters
     """
-
     def __init__(self, shape_x, dtype_x, axis, kernel_name):
         """
         init argmin base parameters
@@ -178,7 +177,6 @@ class Argmin(ArgminBase):
     """
        Function: use to store argmin schedule parameters
     """
-
     def __init__(self, shape_x, dtype_x, axis, kernel_name):
         """
         init Argmin base parameters
@@ -245,11 +243,10 @@ class Argmin(ArgminBase):
         if self.first_dim_size != 1:
             self.thread_num = 2
 
-        self.data_gm = self.tik_instance.Tensor(
-            self.dtype_x,
-            (self.first_dim_size * self.axis_size * self.last_dim_size,),
-            name="data_gm",
-            scope=tik.scope_gm)
+        self.data_gm = self.tik_instance.Tensor(self.dtype_x,
+                                                (self.first_dim_size * self.axis_size * self.last_dim_size, ),
+                                                name="data_gm",
+                                                scope=tik.scope_gm)
 
     def min_compute(self):
         """
@@ -264,17 +261,15 @@ class Argmin(ArgminBase):
             self.tik_instance
         """
         # if not need split
-        self.result_gm_value = self.tik_instance.Tensor(
-            self.dtype_x, (self.gm_result_size,),
-            name="result_gm_value",
-            scope=tik.scope_gm)
+        self.result_gm_value = self.tik_instance.Tensor(self.dtype_x, (self.gm_result_size, ),
+                                                        name="result_gm_value",
+                                                        scope=tik.scope_gm)
 
         self.max_last_axis()
 
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=(self.data_gm,),
-            outputs=(self.result_gm_value,))
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.data_gm, ),
+                                   outputs=(self.result_gm_value, ))
         return self.tik_instance
 
     def get_tiling_info(self):
@@ -326,18 +321,15 @@ class Argmin(ArgminBase):
         core_segment = _get_ceil_int(core_segment, 8) * 8
         core_num_used = _get_ceil_int(core_number_all, core_segment)
         core_segment_tail = core_number_all % core_segment
-        with self.tik_instance.for_range(
-                0, core_num_used, block_num=core_num_used) as n_i:
+        with self.tik_instance.for_range(0, core_num_used, block_num=core_num_used) as n_i:
             if core_segment_tail == 0:
                 self.compute_max_last_axis(n_i, core_segment, core_segment)
 
             if core_segment_tail != 0:
                 with self.tik_instance.if_scope(n_i < (core_num_used - 1)):
-                    self.compute_max_last_axis(n_i, core_segment,
-                                               core_segment)
+                    self.compute_max_last_axis(n_i, core_segment, core_segment)
                 with self.tik_instance.else_scope():
-                    self.compute_max_last_axis(n_i, core_segment_tail,
-                                               core_segment)
+                    self.compute_max_last_axis(n_i, core_segment_tail, core_segment)
 
     def compute_max_last_axis(self, n_i, core_segment, segment_core):
         """
@@ -357,14 +349,10 @@ class Argmin(ArgminBase):
         None
         """
         ub_buf_size, loop_times, over_size, align_flag = self.get_tiling_info()
-        self.ub_result_64 = self.tik_instance.Tensor(
-            self.dtype_x, (64,),
-            name="ub_result_8",
-            scope=tik.scope_ubuf)
-        self.ub_result_value = self.tik_instance.Tensor(
-            self.dtype_x, (MAX_SEGMENT_LEN,),
-            name="ub_result_value",
-            scope=tik.scope_ubuf)
+        self.ub_result_64 = self.tik_instance.Tensor(self.dtype_x, (64, ), name="ub_result_8", scope=tik.scope_ubuf)
+        self.ub_result_value = self.tik_instance.Tensor(self.dtype_x, (MAX_SEGMENT_LEN, ),
+                                                        name="ub_result_value",
+                                                        scope=tik.scope_ubuf)
 
         def _run(segment_len, segment_index):
             with self.tik_instance.for_range(0, segment_len) as core_i:
@@ -374,14 +362,12 @@ class Argmin(ArgminBase):
 
                 argmax_func = self.do_min_last_axis_fp32
                 self.result_out_scalar.set_as(SCALAR_MAX_FP32)
-                self.tik_instance.vector_dup(self.data_each_vector, self.ub_result_64,
-                                             SCALAR_MAX_FP32, 1, 1, 8)
+                self.tik_instance.vector_dup(self.data_each_vector, self.ub_result_64, SCALAR_MAX_FP32, 1, 1, 8)
                 if loop_times != 0:
                     thread_num = 1
                     if loop_times > 2:
                         thread_num = 2
-                    with self.tik_instance.for_range(
-                            0, loop_times, thread_num=thread_num) as loop:
+                    with self.tik_instance.for_range(0, loop_times, thread_num=thread_num) as loop:
                         argmax_func(ub_buf_size, loop, offset)
                 if align_flag:
                     argmax_func(over_size, loop_times, offset)
@@ -391,14 +377,12 @@ class Argmin(ArgminBase):
             gm_out_offset = n_i * segment_core + \
                             MAX_SEGMENT_LEN * segment_index
             out_nbust = _get_ceil_int(segment_len, self.data_each_block)
-            self.tik_instance.data_move(self.result_gm_value[gm_out_offset],
-                                        self.ub_result_value, 0, 1,
-                                        out_nbust, 0, 0)
+            self.tik_instance.data_move(self.result_gm_value[gm_out_offset], self.ub_result_value, 0, 1, out_nbust, 0,
+                                        0)
 
         _loop_segment = core_segment // MAX_SEGMENT_LEN
         _loop_segment_tail = core_segment % MAX_SEGMENT_LEN
-        with self.tik_instance.for_range(
-                0, _loop_segment) as _loop:
+        with self.tik_instance.for_range(0, _loop_segment) as _loop:
             _run(MAX_SEGMENT_LEN, _loop)
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
@@ -422,29 +406,22 @@ class Argmin(ArgminBase):
         None
         """
         segment = ub_buf_size
-        _ub_size = [
-            self.data_each_block * _get_ceil_int(self.segment,
-                                                 self.data_each_block)
-        ]
-        ub_data = self.tik_instance.Tensor(
-            self.dtype_x, _ub_size, name="ub_data", scope=tik.scope_ubuf)
+        _ub_size = [self.data_each_block * _get_ceil_int(self.segment, self.data_each_block)]
+        ub_data = self.tik_instance.Tensor(self.dtype_x, _ub_size, name="ub_data", scope=tik.scope_ubuf)
         nbust = _get_ceil_int(segment, self.data_each_block)
         offset = loop * self.segment + n_i * self.axis_size
         repeat = _get_ceil_int(segment, self.data_each_vector)
-        self.tik_instance.data_move(ub_data, self.data_gm[offset], 0, 1, nbust,
-                                    0, 0)
+        self.tik_instance.data_move(ub_data, self.data_gm[offset], 0, 1, nbust, 0, 0)
         tail = ub_buf_size % self.data_each_vector
         if tail != 0:
             mask_h = 0
             mask = 2**tail - 1
             mask_l = MAX_MASK_INT64 - mask
             _offset = ub_buf_size // self.data_each_vector
-            self.tik_instance.vector_dup(
-                [mask_h, mask_l], ub_data[_offset * self.data_each_vector],
-                SCALAR_MAX_FP32, 1, 1, 8)
-        self.tik_instance.vmin(self.data_each_vector, self.ub_result_64,
-                               ub_data, self.ub_result_64,
-                               repeat, 1, 1, 1, 0, 8, 0)
+            self.tik_instance.vector_dup([mask_h, mask_l], ub_data[_offset * self.data_each_vector], SCALAR_MAX_FP32, 1,
+                                         1, 8)
+        self.tik_instance.vmin(self.data_each_vector, self.ub_result_64, ub_data, self.ub_result_64, repeat, 1, 1, 1, 0,
+                               8, 0)
 
     def get_one_from_64(self, mode=None):
         """
@@ -458,28 +435,20 @@ class Argmin(ArgminBase):
         -------
         None
         """
-        ub_block_0 = self.ub_result_64[8*0]
-        ub_block_1 = self.ub_result_64[8*1]
-        ub_block_2 = self.ub_result_64[8*2]
-        ub_block_3 = self.ub_result_64[8*3]
-        ub_block_4 = self.ub_result_64[8*4]
-        ub_block_5 = self.ub_result_64[8*5]
-        ub_block_6 = self.ub_result_64[8*6]
-        ub_block_7 = self.ub_result_64[8*7]
-        self.tik_instance.vmin(32, ub_block_0,
-                               ub_block_0, ub_block_4,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(16, ub_block_4,
-                               ub_block_0, ub_block_2,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(8, ub_block_0,
-                               ub_block_4, ub_block_5,
-                               1, 1, 1, 1, 8, 8, 8)
-        index_reg = [
-            self.tik_instance.Scalar(dtype=self.dtype_x) for _ in range(8)
-        ]
+        ub_block_0 = self.ub_result_64[8 * 0]
+        ub_block_1 = self.ub_result_64[8 * 1]
+        ub_block_2 = self.ub_result_64[8 * 2]
+        ub_block_3 = self.ub_result_64[8 * 3]
+        ub_block_4 = self.ub_result_64[8 * 4]
+        ub_block_5 = self.ub_result_64[8 * 5]
+        ub_block_6 = self.ub_result_64[8 * 6]
+        ub_block_7 = self.ub_result_64[8 * 7]
+        self.tik_instance.vmin(32, ub_block_0, ub_block_0, ub_block_4, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(16, ub_block_4, ub_block_0, ub_block_2, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(8, ub_block_0, ub_block_4, ub_block_5, 1, 1, 1, 1, 8, 8, 8)
+        index_reg = [self.tik_instance.Scalar(dtype=self.dtype_x) for _ in range(8)]
         for i in range(7):
-            index_reg[i+1].set_as(self.ub_result_64[i+1])
+            index_reg[i + 1].set_as(self.ub_result_64[i + 1])
         ub_block_1.set_as(index_reg[1])
         ub_block_2.set_as(index_reg[2])
         ub_block_3.set_as(index_reg[3])
@@ -487,24 +456,10 @@ class Argmin(ArgminBase):
         ub_block_5.set_as(index_reg[5])
         ub_block_6.set_as(index_reg[6])
         ub_block_7.set_as(index_reg[7])
-        self.tik_instance.vmin(1, ub_block_0,
-                               ub_block_0, ub_block_1,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(1, ub_block_2,
-                               ub_block_2, ub_block_3,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(1, ub_block_4,
-                               ub_block_4, ub_block_5,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(1, ub_block_6,
-                               ub_block_6, ub_block_7,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(1, ub_block_0,
-                               ub_block_0, ub_block_2,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(1, ub_block_4,
-                               ub_block_6, ub_block_4,
-                               1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmin(1, ub_block_0,
-                               ub_block_0, ub_block_4,
-                               1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_0, ub_block_0, ub_block_1, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_2, ub_block_2, ub_block_3, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_4, ub_block_4, ub_block_5, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_6, ub_block_6, ub_block_7, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_0, ub_block_0, ub_block_2, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_4, ub_block_6, ub_block_4, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmin(1, ub_block_0, ub_block_0, ub_block_4, 1, 1, 1, 1, 8, 8, 8)

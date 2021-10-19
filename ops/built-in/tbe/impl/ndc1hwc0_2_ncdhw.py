@@ -536,7 +536,6 @@ class Ndc1hwc02NcdhwCompute:
                     self.func_split_hw(args)
                 with tik_instance.else_scope():
                     hw_temp = hw_i - (hw_index * hw_ub)
-                    # hw_temp = hw_i - ((hw_zu - 1) * hw_ub)
                     hw_len = _ceil_fill(hw_temp, 16)
                     hw_before = hw_i - hw_len
                     args = tik_instance, ub_ori, ub_trans, nd_index, \

@@ -55,7 +55,7 @@ def softplus_compute(input_x, y, kernel_name="softplus"):
     dtype = input_x.dtype
     if dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.vexp",
-                                                    "float32"):
+                                           "float32"):
         input_x = tbe.cast_to(input_x, "float32")
 
     positive_part = tbe.vmaxs(input_x, tvm.const(0, dtype="float32"))
@@ -68,7 +68,7 @@ def softplus_compute(input_x, y, kernel_name="softplus"):
     log_pos = tbe.vlog(exp_add_one)
     res_positive = tbe.vadd(log_pos, positive_part)
 
-    #calculate positive part softplus
+    # calculate positive part softplus
     exp_neg = tbe.vexp(negative_part)
     add_one = tbe.vadds(exp_neg, SCALAR_ONE)
     res_negative = tbe.vlog(add_one)

@@ -70,16 +70,13 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
     shape = x.shape
     compatible_dtype = x.dtype
 
-    if inp_dtype == 'int8' and tbe_platform.api_check_support('te.lang.cce.cast_to',
-                                                 's82f16'):
+    if inp_dtype == 'int8' and tbe_platform.api_check_support('te.lang.cce.cast_to', 's82f16'):
         x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
     if tbe_platform.api_check_support('te.lang.cce.vrelu', compatible_dtype):
         data_res = tbe.vrelu(x)
     else:
-        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO,
-                                                      compatible_dtype),
-                                            shape)
+        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO, compatible_dtype), shape)
         data_res = tbe.vmax(x, tensor_zero)
 
     data_res = tbe.cast_to(data_res, inp_dtype)
@@ -132,9 +129,6 @@ def relu_v2(x, y, mask, kernel_name="relu_v2"):
         res, res_mask = relu_v2_compute(input_data, y, mask, kernel_name)
         sch = tbe.auto_schedule([res, res_mask])
 
-    config = {"name": kernel_name,
-              "tensor_list": [input_data, res, res_mask],
-              "print_ir": False
-              }
+    config = {"name": kernel_name, "tensor_list": [input_data, res, res_mask], "print_ir": False}
 
     tbe.cce_build_code(sch, config)

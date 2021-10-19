@@ -25,7 +25,7 @@ from te import platform as tbe_platform
 # pylint: disable=invalid-name,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("mse_loss")
 def mse_loss_compute(predict, label, reduction='mean', kernel_name="mse_loss"):
-    '''
+    """
     calculating mse_loss
     :param predict: TVM tensor
                    the output of previous layer
@@ -38,7 +38,7 @@ def mse_loss_compute(predict, label, reduction='mean', kernel_name="mse_loss"):
     :return:y
             when reduction=none:TVM tensor, output tensor
             when reduction=sum/mean, A Scalar
-    '''
+    """
     ori_dtype = predict.dtype
     shape = tbe.util.shape_to_list(predict.shape)
 
@@ -85,7 +85,7 @@ def mse_loss_compute(predict, label, reduction='mean', kernel_name="mse_loss"):
                             para_check.OPTION_INPUT, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
 def mse_loss(predict, label, y, reduction='mean', kernel_name="mse_loss"):
-    '''
+    """
     calculating data
     sum = (predict_n - label_n)^2
     if  reduction == sum: res = sum output a scalal
@@ -112,7 +112,7 @@ def mse_loss(predict, label, y, reduction='mean', kernel_name="mse_loss"):
     :param kernel_name: str
                       kernel name, default value is "mse_loss"
     :return: none
-    '''
+    """
 
     predict_shape = predict.get("shape")
     predict_dtype = predict.get("dtype")

@@ -24,7 +24,6 @@ from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-
 # size of 5HD format
 DIM_5HD = 5
 # size of c0 for fp16 fp32
@@ -39,8 +38,7 @@ INDEX_W = 3
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches
 # pylint: disable=too-many-lines,pointless-string-statement,unnecessary-lambda
-def _check_parameters(min_size, max_size, img_h, img_w,
-                      step_h, step_w, variance):
+def _check_parameters(min_size, max_size, img_h, img_w, step_h, step_w, variance):
     if len(min_size) <= 0:
         error_manager_vector.raise_err_input_param_range_invalid("prior_box_d", "min_size", "0", "inf",
                                                                  str(len(min_size)))
@@ -48,20 +46,17 @@ def _check_parameters(min_size, max_size, img_h, img_w,
     min_size_list = list(range(len(min_size)))
     for i in min_size_list:
         if min_size[i] <= 0:
-            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "min_size", "positive",
-                                                            min_size[i])
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "min_size", "positive", min_size[i])
 
     if len(max_size) > 0:
         if len(max_size) != len(min_size):
-            error_manager_vector.raise_err_inputs_shape_not_equal("prior_box_d", "max_size_size",
-                                                            "min_size_size", len(max_size), len(min_size),
-                                                            "equal")
+            error_manager_vector.raise_err_inputs_shape_not_equal("prior_box_d", "max_size_size", "min_size_size",
+                                                                  len(max_size), len(min_size), "equal")
         max_size_list = list(range(len(max_size)))
         for i in max_size_list:
             if max_size[i] <= min_size[i]:
                 rule_desc = "max_size must be greater than min_size %f" % min_size[i]
-                error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc,
-                                                                "max_size", max_size[i])
+                error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc, "max_size", max_size[i])
 
     if img_h != 0 or img_w != 0:
         if img_h < 0:
@@ -75,11 +70,9 @@ def _check_parameters(min_size, max_size, img_h, img_w,
 
     if step_h != 0 or step_w != 0:
         if step_h < 0:
-            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "step_h",
-                                                            "larger than 0", step_h)
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "step_h", "larger than 0", step_h)
         if step_w < 0:
-            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "step_w",
-                                                            "larger than 0", step_w)
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "step_w", "larger than 0", step_w)
     else:
         step_h = 0
         step_w = 0
@@ -87,21 +80,19 @@ def _check_parameters(min_size, max_size, img_h, img_w,
     if len(variance) > 1:
         if len(variance) != 4:
             rule_desc = "must and only provide 4 variance"
-            error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc,
-                                                            "actual number", len(variance))
+            error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc, "actual number", len(variance))
     variance_list = list(range(len(variance)))
     for i in variance_list:
         if variance[i] <= 0:
-            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "variance",
-                                                            "larger than 0", variance[i])
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "variance", "larger than 0", variance[i])
 
     return img_h, img_w, step_h, step_w
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 # pylint: disable=no-member,unused-argument
-def _prior_box_check(feature, img, data_h, data_w, min_size, max_size,
-                     img_h, img_w, step_h, step_w, variance, kernel_name):
+def _prior_box_check(feature, img, data_h, data_w, min_size, max_size, img_h, img_w, step_h, step_w, variance,
+                     kernel_name):
     shape_feature = feature.get("shape")
     shape_img = img.get("shape")
     shape_h_data = data_h.get("shape")
@@ -126,13 +117,13 @@ def _prior_box_check(feature, img, data_h, data_w, min_size, max_size,
     if feature_format == "NC1HWC0":
         if len(shape_feature) != DIM_5HD:
             rule_desc = "the dim of feature must be 5"
-            error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc,
-                                                        "shape_feature", len(shape_feature))
+            error_manager_vector.raise_err_check_params_rules("prior_box_d", rule_desc, "shape_feature",
+                                                              len(shape_feature))
 
         shape_c0 = C0
         if shape_feature[DIM_5HD - 1] != shape_c0:
-            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "value of C0",
-                                                            shape_c0, shape_feature[DIM_5HD - 1])
+            error_manager_vector.raise_err_input_value_invalid("prior_box_d", "value of C0", shape_c0,
+                                                               shape_feature[DIM_5HD - 1])
 
     img_h, img_w, step_h, step_w = \
         _check_parameters(min_size, max_size, img_h, img_w,
@@ -196,7 +187,6 @@ def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
     -------
     output tensor
     """
-
     """
     TODO:
     Please refer to the TE DSL Manual, And code here with TE DSL.
@@ -570,7 +560,7 @@ def _prior_compute(schedule, ops, axis):
         # no op need integrating
         return
     integration_op = schedule[ops[-1]]
-    for i in range(0, length-1):
+    for i in range(0, length - 1):
         schedule[ops[i]].compute_at(integration_op, axis)
 
 
@@ -579,7 +569,7 @@ def _get_ins_emit_axis(ops, last_axis):
         error_manager_vector.raise_err_specific_reson("prior_box_d", "operation list is empty")
     axis_list = []
     length = len(ops)
-    for i in range(0, length-1):
+    for i in range(0, length - 1):
         axis_list += [ops[i].op.axis[0]]
     axis_list += [last_axis]
     return axis_list
@@ -924,24 +914,35 @@ def _align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
                 tensor_dic.get("variance_data") != ops[i] and \
                 tensor_dic.get("top_data_temp") != ops[i] and \
                 tensor_dic.get("top_data_true") != ops[i]:
-            schedule[ops[i]].storage_align(ops[i].op.axis[shape_len - 1],
-                                           factor, offset)
+            schedule[ops[i]].storage_align(ops[i].op.axis[shape_len - 1], factor, offset)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=dangerous-default-value
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_FLOAT,
-                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
+                            para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
-def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
-                min_size, max_size, img_h=0, img_w=0, step_h=0.0, step_w=0.0,
-                flip=True, clip=False, offset=0.5, variance=[0.1],
+def prior_box_d(feature,
+                img,
+                data_h,
+                data_w,
+                box_height,
+                box_width,
+                y,
+                min_size,
+                max_size,
+                img_h=0,
+                img_w=0,
+                step_h=0.0,
+                step_w=0.0,
+                flip=True,
+                clip=False,
+                offset=0.5,
+                variance=[0.1],
                 kernel_name="prior_box"):
     """
     calculating data
@@ -959,13 +960,11 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
     -------
     None
     """
-
     """
     TODO:
     Please refer to the TE DSL Manual, And code here with TE DSL.
     """
-    img_h, img_w, step_h, step_w = _prior_box_check(feature, img, data_h,
-                                                    data_w, min_size, max_size, img_h, img_w,
+    img_h, img_w, step_h, step_w = _prior_box_check(feature, img, data_h, data_w, min_size, max_size, img_h, img_w,
                                                     step_h, step_w, variance, kernel_name)
     shape_img = img.get("shape")
     shape_feature = feature.get("shape")
@@ -983,10 +982,9 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
         step_w = 1.0 * img_w / shape_feature[INDEX_W]
     scale = 0.5
 
-    op_list, ins_list, tensor_dic, y, tensor_list = prior_box_compute(feature, img, data_h, data_w,
-                                                                      box_height, box_width, y,
-                                                                      rec_img_h, rec_img_w, step_h, step_w,
-                                                                      clip, offset, scale, variance)
+    op_list, ins_list, tensor_dic, y, tensor_list = prior_box_compute(feature, img, data_h, data_w, box_height,
+                                                                      box_width, y, rec_img_h, rec_img_w, step_h,
+                                                                      step_w, clip, offset, scale, variance)
 
     ub_size_limit = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     ub_size_limit = ub_size_limit / 21
@@ -1054,7 +1052,7 @@ def prior_box_d(feature, img, data_h, data_w, box_height, box_width, y,
             axis_list = _get_ins_emit_axis(op_list, xhi)
         elif split_axis_0 == 3:
             axis_list = _get_ins_emit_axis(op_list, xwi)
-        elif split_axis_0 in (4,5):
+        elif split_axis_0 in (4, 5):
             axis_list = _get_ins_emit_axis(op_list, xni)
 
         _ins_emit(schedule, op_list, axis_list, ins_list)

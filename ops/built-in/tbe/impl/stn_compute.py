@@ -70,6 +70,7 @@ class SpatialTransformer:
     """
         Function: use to store concat base parameters
     """
+
     def __init__(self, input_x, auxiliary_coefficients, auxiliary_offset, kernel_name='stn_compute'):
 
         self.d_type_x = input_x.get('dtype')
@@ -90,7 +91,7 @@ class SpatialTransformer:
         self.vec_compute_size = 256
 
         self.theta_size = auxiliary_coefficients.get('shape')[0] * auxiliary_coefficients.get('shape')[1] * \
-                          auxiliary_coefficients.get('shape')[2]
+            auxiliary_coefficients.get('shape')[2]
 
         self.output_hw = self.theta_size // 4 // self.shape[0] // self.shape[1]
 
@@ -99,7 +100,7 @@ class SpatialTransformer:
         self.ub_tensor_size = 16 if self.shape[1] * self.shape[4] * self.d_type_bytes_size > ub_size_bytes * 0.4 else \
             self.shape[1] * self.shape[4]
         self.input_stride = (self.shape[2] * self.shape[3] * self.shape[4] - self.shape[4]) \
-                            * self.d_type_bytes_size // 32
+            * self.d_type_bytes_size // 32
         self.output_stride = (self.output_hw * self.shape[4] - self.shape[4]) * self.d_type_bytes_size // 32
         self.if_skip_read_ceof = self.ub_tensor_size != 16
 
@@ -110,7 +111,7 @@ class SpatialTransformer:
 
         # ub theta size must be a multiple of 4 and 32
         ub_theta_offset_can_use = (ub_size_bytes - self.ub_tensor_size * self.d_type_bytes_size * 2) \
-                                  // (self.theta_type_bytes_size + self.offset_type_bytes_size)
+            // (self.theta_type_bytes_size + self.offset_type_bytes_size)
         self.ub_theta_offset_size = ub_theta_offset_can_use - ub_theta_offset_can_use % 4
 
         theta_burst_len = self.ub_theta_offset_size * self.theta_type_bytes_size // 32
@@ -313,8 +314,8 @@ class SpatialTransformer:
                 with self.tik_instance.if_scope(index == 3):
                     # move res to gm
                     output_start_index = batch_id * self.output_hw * self.shape[1] * self.shape[4] + \
-                                         ((move_input_times + already_process_ceof) // 4 -
-                                          batch_id * self.output_hw) * 16
+                        ((move_input_times + already_process_ceof) // 4 -
+                         batch_id * self.output_hw) * 16
                     if self.output_stride < 65535:
                         self.tik_instance.data_move(
                             dst=self.output_y_gm[output_start_index], src=tmp_res_ub, sid=0,
@@ -387,7 +388,7 @@ class SpatialTransformer:
         with self.tik_instance.for_range(0, handle_theta_size, thread_num=1) as move_input_times:
             # Sequence number of the C1 that has been processed * each c1 data count
             processed_c1_count = (already_process_theta + move_input_times) // (self.output_hw * 4) * \
-                                 self.input_hw * 16
+                self.input_hw * 16
             # position
             index_reg = self.tik_instance.Scalar(dtype="int32")
             index_reg.set_as(input_position_ub[move_input_times])

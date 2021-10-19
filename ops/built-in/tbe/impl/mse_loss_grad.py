@@ -53,7 +53,7 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     if dtype == "float16":
         predict = tbe.cast_to(predict, "float32")
         label = tbe.cast_to(label, "float32")
-        
+
     predict_shape = tbe.util.shape_to_list(predict.shape)
     dout_shape = tbe.util.shape_to_list(dout.shape)
 

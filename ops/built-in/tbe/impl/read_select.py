@@ -42,8 +42,11 @@ def _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list):
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,dangerous-default-value
 @tbe_platform.fusion_manager.fusion_manager.register("read_select")
-def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
-                        output_tensor_dim=4, kernel_name="read_select"):
+def read_select_compute(input_tensor,
+                        output_x,
+                        stride_list=[1, 1, 1, 1, 1],
+                        output_tensor_dim=4,
+                        kernel_name="read_select"):
     """
     calculating data
 
@@ -73,10 +76,10 @@ def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
     _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list)
 
     if len(valid_shape) == EMPTY_LIST_LEN:
-        valid_shape = [n_total, c1_total,
-                       (h_total + stride_list[2] - 1)//stride_list[2],
-                       (w_total + stride_list[3] - 1)//stride_list[3],
-                       c0_total]
+        valid_shape = [
+            n_total, c1_total, (h_total + stride_list[2] - 1) // stride_list[2],
+            (w_total + stride_list[3] - 1) // stride_list[3], c0_total
+        ]
 
     if len(slice_offset) == EMPTY_LIST_LEN:
         slice_offset = [0, 0, 0, 0, 0]
@@ -95,7 +98,7 @@ def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
     if output_tensor_dim == 5:
         return output_ub_5d
 
-    output_shape_4d = (n_valid, c1_valid, h_valid*w_valid, c0_valid)
+    output_shape_4d = (n_valid, c1_valid, h_valid * w_valid, c0_valid)
     output_ub_4d = \
         tvm.compute(output_shape_4d,
                     lambda n, c1, hw, c0: output_ub_5d(n, c1,
@@ -107,8 +110,7 @@ def read_select_compute(input_tensor, output_x, stride_list=[1, 1, 1, 1, 1],
 
 # pylint: disable=locally-disabled,unexpected-keyword-arg,unnecessary-lambda
 @para_check.check_input_type(dict, dict, (tuple, list), int, str)
-def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
-                output_tensor_dim=4, kernel_name="read_select"):
+def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1], output_tensor_dim=4, kernel_name="read_select"):
     """
     Read data with offset and stride
 
@@ -145,8 +147,8 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
 
     check_list = ["float16", "int8", "int16"]
     if input_dtype not in check_list:
-        error_manager_vector.raise_err_input_dtype_not_supported("read_select", "input_x",
-                                                                 "float16, int8, int16", str(input_dtype))
+        error_manager_vector.raise_err_input_dtype_not_supported("read_select", "input_x", "float16, int8, int16",
+                                                                 str(input_dtype))
 
     src_in_flag = "DDR"
     if "src_in_flag" in input_x:
@@ -155,24 +157,26 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
     input_tensor = tvm.placeholder(total_shape,
                                    name="input_tensor",
                                    dtype=input_dtype,
-                                   attrs={"valid_shape": valid_shape,
-                                          "slice_offset": slice_offset,
-                                          "src_in_flag": src_in_flag})
+                                   attrs={
+                                       "valid_shape": valid_shape,
+                                       "slice_offset": slice_offset,
+                                       "src_in_flag": src_in_flag
+                                   })
 
-    output_tensor = read_select_compute(input_tensor, output_x, stride_list,
-                                        output_tensor_dim, kernel_name=kernel_name)
+    output_tensor = read_select_compute(input_tensor, output_x, stride_list, output_tensor_dim, kernel_name=kernel_name)
     if output_tensor_dim == 5:
         output_5d_tensor = output_tensor
     else:
         output_5d = output_tensor.op.input_tensors
         output_5d_tensor = output_5d[0]
 
-    res = tvm.compute(output_5d_tensor.shape, lambda *indice: output_5d_tensor(*indice),
-                      name="res", tag=READ_SELECT_TAG)
+    res = tvm.compute(output_5d_tensor.shape,
+                      lambda *indice: output_5d_tensor(*indice),
+                      name="res",
+                      tag=READ_SELECT_TAG)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [input_tensor, res]}
+    config = {"name": kernel_name, "tensor_list": [input_tensor, res]}
     tbe.cce_build_code(sch, config)

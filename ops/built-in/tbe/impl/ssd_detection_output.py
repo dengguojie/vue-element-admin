@@ -15,6 +15,7 @@
 """
 ssd_detection_output
 """
+# pylint: disable=too-many-lines,too-many-branches
 import math
 
 import te.platform as tbe_platform
@@ -78,7 +79,7 @@ def _check_product_info(input_dict):
             and loc_dtype == priorbox_dtype:
         error_detail = "the dtype of inputs should be same"
         error_manager_vector.raise_err_two_input_dtype_invalid("ssd_detection_output",
-                            "mbox_conf, mbox_loc", "mbox_priorbox", error_detail)
+                                                               "mbox_conf, mbox_loc", "mbox_priorbox", error_detail)
 
     if tik_name in (tbe_platform.ASCEND_310,):
         para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
@@ -219,31 +220,31 @@ def _check_input_data_logical_relationship(input_dict):
             and loc_shape[0] == priorbox_shape[0]:
         error_detail = "the batch num of inputs should be equal"
         error_manager_vector.raise_err_two_input_shape_invalid("ssd_detection_output",
-                            "mbox_conf, mbox_loc", "mbox_priorbox", error_detail)
+                                                               "mbox_conf, mbox_loc", "mbox_priorbox", error_detail)
 
     if not conf_shape[1] // num_classes == loc_shape[1] // 4:
         rule_desc = "the second dimension of mbox_conf divided by num_classes(%d) " \
-                "should be equal to the second dimension of mbox_loc(%d) divided by 4" \
-                % (num_classes, loc_shape[1])
+            "should be equal to the second dimension of mbox_loc(%d) divided by 4" \
+            % (num_classes, loc_shape[1])
         error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
-                                        "the second dimension of mbox_conf", conf_shape[1])
+                                                          "the second dimension of mbox_conf", conf_shape[1])
 
     if not loc_shape[1] // 4 == priorbox_shape[2] // 4:
         rule_desc = "the second dimension of mbox_loc divided by 4 should be equal to " \
-                "the third dimension of mbox_priorbox(%d) divided by 4" % priorbox_shape[2]
+            "the third dimension of mbox_priorbox(%d) divided by 4" % priorbox_shape[2]
         error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
-                                        "the second dimension of mbox_loc", loc_shape[1])
+                                                          "the second dimension of mbox_loc", loc_shape[1])
 
     if not input_dict.get("variance_encoded_in_target"):
         if not priorbox_shape[1] == 2:
             rule_desc = "the second dimension of mbox_prior should be equal to 2"
             error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
-                                    "the second dimension of mbox_prior", priorbox_shape[1])
+                                                              "the second dimension of mbox_prior", priorbox_shape[1])
     else:
         if not (priorbox_shape[1] == 2 or priorbox_shape[1] == 1):
             rule_desc = "the second dimension of mbox_prior should be equal to 1 or 2"
             error_manager_vector.raise_err_check_params_rules("ssd_detection_output", rule_desc,
-                                    "the second dimension of mbox_prior", priorbox_shape[1])
+                                                              "the second dimension of mbox_prior", priorbox_shape[1])
 
 
 # pylint: disable=invalid-name, too-many-arguments, too-many-locals
@@ -985,12 +986,12 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         -------
         None
         """
-        topK_in_num = self.keep_top_k
+        topk_in_num = self.keep_top_k
         if self.keep_top_k <= 0:
-            topK_in_num = self.top_k
+            topk_in_num = self.top_k
         topk_input_data = {
             "proposal_num": self.topk2_in_gm.shape[1],
-            "k": topK_in_num,
+            "k": topk_in_num,
             "score_threshold": self.confidence_threshold,
             "regions_orig": self.topk2_in_gm,
             "mem_swap": self.topk2_swap_gm,
@@ -1015,13 +1016,13 @@ class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
         -------
         None
         """
-        topK_in_num = self.keep_top_k
+        topk_in_num = self.keep_top_k
         if self.keep_top_k <= 0:
-            topK_in_num = self.top_k
+            topk_in_num = self.top_k
 
         topk_input_data = {
             "proposal_num": self.topk3_in_gm.shape[1],
-            "k": topK_in_num,
+            "k": topk_in_num,
             "score_threshold": self.confidence_threshold,
             "regions_orig": self.topk3_in_gm,
             "mem_swap": self.topk3_swap_gm,

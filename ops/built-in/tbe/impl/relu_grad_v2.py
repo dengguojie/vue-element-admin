@@ -23,8 +23,7 @@ from te import tvm
 
 # pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("relu_grad_v2")
-def relu_grad_v2_compute(gradients, mask, backprops,
-                         kernel_name="relu_grad_v2"):
+def relu_grad_v2_compute(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     """
     calculate the backpropagation of relu operation
     output_backprops = input_gradients*1(input_features>0) or 0(input_features<=0).
@@ -104,18 +103,12 @@ def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     if shape_in[-1] % 8 != 0:
         shape_in[-1] = (shape_in[-1] + 7) // 8 * 8
 
-    data_input_gradients = tvm.placeholder(tuple(shape_in),
-                                           name="data_input_gradients",
-                                           dtype=dtype_input_gradients)
-    data_input_features = tvm.placeholder(shape_input_features,
-                                          name="data_input_features",
-                                          dtype=dtype_input_features)
+    data_input_gradients = tvm.placeholder(tuple(shape_in), name="data_input_gradients", dtype=dtype_input_gradients)
+    data_input_features = tvm.placeholder(shape_input_features, name="data_input_features", dtype=dtype_input_features)
 
-    res = relu_grad_v2_compute(data_input_gradients, data_input_features,
-                               backprops, kernel_name)
+    res = relu_grad_v2_compute(data_input_gradients, data_input_features, backprops, kernel_name)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_input_gradients, data_input_features, res]}
+    config = {"name": kernel_name, "tensor_list": [data_input_gradients, data_input_features, res]}
     tbe.cce_build_code(sch, config)

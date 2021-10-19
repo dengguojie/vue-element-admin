@@ -106,9 +106,7 @@ def ndhwc_2_ndc1hwc0(src, dst, src_format, dst_format,
     shape_nhwc = [n_src, h_i, w_i, c_i]
     shape_nc1hwc0 = [n_src, c_1, h_i, w_i, c_0]
 
-    src_new = src.copy()
-    dst_new = dst.copy()
-    src_new["shape"] = shape_nhwc
-    dst_new["shape"] = shape_nc1hwc0
+    src["shape"] = shape_nhwc
+    dst["shape"] = shape_nc1hwc0
 
-    four_2_five.four_2_five(src_new, dst_new, "NHWC", "NC1HWC0", kernel_name)
+    four_2_five.four_2_five(src, dst, "NHWC", "NC1HWC0", kernel_name)

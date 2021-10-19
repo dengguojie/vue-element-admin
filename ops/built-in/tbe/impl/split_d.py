@@ -119,7 +119,7 @@ class SplitMov:
 
         output_tensors = []
         for index, tensor_shape in enumerate(self.output_shapes):
-            tensor_name = "gm_output_" + str(index)
+            tensor_name = "gm_output_{}".format(str(index))
             gm_tensor = self.tik_instance.Tensor(self.dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
             output_tensors.append(gm_tensor)
 
@@ -328,7 +328,7 @@ class SplitLastDimVnv:
 
         output_tensors = []
         for index, tensor_shape in enumerate(self.output_shapes):
-            tensor_name = "gm_output_" + str(index)
+            tensor_name = "gm_output_{}".format(str(index))
             gm_tensor = self.tik_instance.Tensor(self.dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
             output_tensors.append(gm_tensor)
 
@@ -391,7 +391,7 @@ class SplitLastDimVnv:
             with self.tik_instance.for_range(0, 1):
                 src_offset = src_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * self.shape[1]
                 dst_offset = dst_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * \
-                             self.output_shapes[0][1]
+                    self.output_shapes[0][1]
                 _inner(src_offset, dst_offset, last_seg)
         if tail_ele != 0:
             with self.tik_instance.for_range(0, 1):

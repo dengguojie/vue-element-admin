@@ -146,7 +146,7 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
         dtype_list.remove("uint8")
         dtype_list.remove("int8")
 
-    if (cce_product in ("Ascend910") or (cce_product not in ("Ascend910") and len(shape_x1) == 4)) and len(
+    if (cce_product == "Ascend910" or (cce_product != "Ascend910" and len(shape_x1) == 4)) and len(
             shape_x2) == 1 and enum_x2 == 1:
         format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
         dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
@@ -783,7 +783,7 @@ def _infer_shape(format_pattern, x, y):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("mul")
-def mul_compute(input_x, input_y, output_data, is_scene_1D=False, kernel_name="mul"):
+def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="mul"):
     """
     calculating element-wise mul
 
@@ -806,7 +806,7 @@ def mul_compute(input_x, input_y, output_data, is_scene_1D=False, kernel_name="m
     shape_y = shape_util.shape_to_list(input_y.shape)
     x_dtype = input_x.dtype.lower()
 
-    if is_scene_1D:
+    if is_scene_1d:
         if x_dtype in ("uint8", "int8"):
             input_x = tbe.cast_to(input_x, "float32")
             input_y = tbe.cast_to(input_y, "float32")
@@ -942,11 +942,11 @@ def mul(x, y, output, kernel_name="mul"):
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if para_check.is_scalar(shape_y) and cce_product in ("Ascend910"):
-        is_scene_1D = True
+    if para_check.is_scalar(shape_y) and cce_product == "Ascend910":
+        is_scene_1d = True
         shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
     else:
-        is_scene_1D = False
+        is_scene_1d = False
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                   shape_y,
                                                                   param_name_input1="x",
@@ -956,7 +956,7 @@ def mul(x, y, output, kernel_name="mul"):
     input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     input_y = tvm.placeholder(shape_y, dtype=dtype_x, name="y")
 
-    res = mul_compute(input_x, input_y, output, is_scene_1D, kernel_name)
+    res = mul_compute(input_x, input_y, output, is_scene_1d, kernel_name)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

@@ -142,13 +142,13 @@ class SparseApplyRMSProp(SparseApply):
             mom_ub = self._get_ub("mom_ub")[offset]
             grad_ub = self.grad_ub[offset]
 
-        # ms_ = ms * rho + grad * grad * (1 - rho)
+        # ms_: ms * rho + grad * grad * (1 - rho)
         self.tik_instance.vmuls(mask, ms_ub, ms_ub, self.rho, repeat_times, 1, 1, 8, 8)
         self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat_times, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, (1 - self.rho), repeat_times, 1, 1, 8, 8)
         self.tik_instance.vadd(mask, ms_ub, ms_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-        # mom_ = mom * momentum + (ms_ + epsilon).rsqrt() * lr * grad
+        # mom_: mom * momentum + (ms_ + epsilon).rsqrt() * lr * grad
         self.tik_instance.vmuls(mask, mom_ub, mom_ub, self.momentum, repeat_times, 1, 1, 8, 8)
         self.tik_instance.vadds(mask, tmp_ub, ms_ub, self.epsilon, repeat_times, 1, 1, 8, 8)
 
@@ -162,7 +162,7 @@ class SparseApplyRMSProp(SparseApply):
             self.tik_instance.vmul(mask, tmp_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vadd(mask, mom_ub, mom_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-        # var_ = var - mom_
+        # var_: var - mom_
         self.tik_instance.vsub(mask, var_ub, var_ub, mom_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
 

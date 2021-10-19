@@ -31,6 +31,7 @@ class SSDDectionParamInit():
     define SSDDectionParamInit class
 
     """
+
     def __init__(self, input_dict):
         """
         SSDDectionParamInit init
@@ -69,6 +70,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
     """
     define SSDDecodeBBox class
     """
+
     def __init__(self, input_dict, tik_instance):
         """
         SSDDecodeBBox init
@@ -1188,8 +1190,8 @@ class SSDDecodeBBox(SSDDectionParamInit):
                 with self.instance.for_range(0, conf_move_loops) as move_index:
                     ub_start = move_index * (math.ceil(self.num_classes / 16) * 16)
                     gm_start = batch * self.loc_coord * self.num_classes + \
-                               parser_index * self.num_classes * 16 + \
-                               move_index * self.num_classes
+                        parser_index * self.num_classes * 16 + \
+                        move_index * self.num_classes
                     self.instance.data_move(conf_ub[ub_start],
                                             self.mbox_conf_gm[gm_start], 0, 1,
                                             burst_in_val, 0, 0)
@@ -1321,7 +1323,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
             if self.loc_num % handle_num > 0:
                 priorbox_data_tail_num = self.loc_num - \
-                                         priorbox_handle_loops * handle_num
+                    priorbox_handle_loops * handle_num
                 bbox_gm_start = priorbox_handle_loops * handle_num
                 if self.priorbox_batch != 1:
                     bbox_gm_start += \
@@ -1373,7 +1375,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
             with self.instance.for_range(0, priorbox_handle_loops) as \
                     priorbox_handle_index:
                 var_gm_start = self.loc_num + \
-                               priorbox_handle_index * handle_num
+                    priorbox_handle_index * handle_num
                 if self.priorbox_batch != 1:
                     var_gm_start += \
                         batch * self.loc_num * self.priorbox_shape_1

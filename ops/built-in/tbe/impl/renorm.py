@@ -19,6 +19,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
+
 #pylint: disable=invaild-name,unused-argument
 @fusion_manager.register("renorm")
 def renorm_compute(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
@@ -57,7 +58,7 @@ def renorm_compute(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
 
     shape_list = []
     for i in range(dims):
-        if(i != dim):
+        if i != dim:
             shape_list = shape_list + [i]
     if p == 1:
         x_sum = tbe.sum(tbe.vabs(input_x), shape_list, keepdims=True)
@@ -92,10 +93,10 @@ def renorm_compute(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
 
     return ratio
 
+
 #pylint: disable=invaild-name
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def renorm(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
     """
     calculating data
@@ -128,8 +129,7 @@ def renorm(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
     para_check.check_kernel_name(kernel_name)
     check_tuple = ("float16", "float32")
     if input_dtype not in check_tuple:
-        raise RuntimeError("Only support %s while dtype is %s" %
-                           (",".join(check_tuple), input_dtype))
+        raise RuntimeError("Only support %s while dtype is %s" % (",".join(check_tuple), input_dtype))
     if p < 0:
         raise RuntimeError("Only support p >= 0 while p is {}".format(p))
     dims = len(shape)
@@ -144,8 +144,6 @@ def renorm(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_input, res],
-              "bool_storage_as_1bit": False}
+    config = {"name": kernel_name, "tensor_list": [data_input, res], "bool_storage_as_1bit": False}
 
     tbe.build(schedule, config)

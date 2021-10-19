@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +17,11 @@
 """
 sub sample labels
 """
-import math
-
 from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from impl.util import util_tik_comm_func
-from te.utils import op_utils
 
 # pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
 # pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches

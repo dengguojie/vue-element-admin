@@ -21,10 +21,10 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
+
 # pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("relu_grad")
-def relu_grad_compute(input_gradients, input_features, output_backprops,
-                      kernel_name="relu_grad"):
+def relu_grad_compute(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation
     output_backprops = input_gradients*1(input_features>0) or 0(input_features<=0).
@@ -63,13 +63,10 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
             shape_util.broadcast_shapes(shape_input_gradients, shape_input_features,
                                         param_name_input1="input_gradients",
                                         param_name_input2="input_features")
-        input_gradients = tbe.broadcast(input_gradients, shape,
-                                        trans_type)
-        input_features = tbe.broadcast(input_features, shape,
-                                       trans_type)
+        input_gradients = tbe.broadcast(input_gradients, shape, trans_type)
+        input_features = tbe.broadcast(input_features, shape, trans_type)
 
-    derivative_relu = tbe.calculate_one_or_zero(input_features,
-                                                shape, trans_type)
+    derivative_relu = tbe.calculate_one_or_zero(input_features, shape, trans_type)
 
     result = tbe.vmul(input_gradients, derivative_relu)
 
@@ -83,8 +80,7 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
 # pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-def relu_grad(input_gradients, input_features, output_backprops,
-              kernel_name="relu_grad"):
+def relu_grad(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation
     output_backprops = input_gradients*1(input_features>0) or 0(input_features<=0).
@@ -131,15 +127,11 @@ def relu_grad(input_gradients, input_features, output_backprops,
     data_input_gradients = tvm.placeholder(shape_input_gradients,
                                            name="data_input_gradients",
                                            dtype=dtype_input_gradients)
-    data_input_features = tvm.placeholder(shape_input_features,
-                                          name="data_input_features",
-                                          dtype=dtype_input_features)
+    data_input_features = tvm.placeholder(shape_input_features, name="data_input_features", dtype=dtype_input_features)
 
-    res = relu_grad_compute(data_input_gradients, data_input_features,
-                            output_backprops, kernel_name)
+    res = relu_grad_compute(data_input_gradients, data_input_features, output_backprops, kernel_name)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_input_gradients, data_input_features, res]}
+    config = {"name": kernel_name, "tensor_list": [data_input_gradients, data_input_features, res]}
     tbe.cce_build_code(sch, config)

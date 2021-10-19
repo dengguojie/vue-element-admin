@@ -24,16 +24,11 @@ from te import tvm
 # define the type of None
 NONETYPE = type(None)
 
+
 # pylint: disable=locally-disabled,unused-argument,invalid-name
 # pylint: disable=too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_sum_d")
-def reduce_sum_d_compute(x,
-                         y,
-                         axis,
-                         keepdims,
-                         kernel_name="reduce_sum_d",
-                         is_5hdc=False,
-                         is_nz_nd=False):
+def reduce_sum_d_compute(x, y, axis, keepdims, kernel_name="reduce_sum_d", is_5hdc=False, is_nz_nd=False):
     """redusce_sum_d compute
 
     Parameters:
@@ -76,8 +71,7 @@ def reduce_sum_d_compute(x,
 
 
 # pylint: disable=locally-disabled,too-many-locals
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_LIST_INT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
     """reduce a tensor on a certain axis based on sum.
@@ -128,10 +122,8 @@ def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):
         shape, axis_d = shape_util.shape_refine(list(shape), axis_d, keepdims)
         shape, axis_d = shape_util.simplify_axis_shape(shape, axis_d)
 
-    data_input = tvm.placeholder(shape, name="data_input_" + kernel_name,
-                                 dtype=dtype_lower)
-    res = reduce_sum_d_compute(data_input, y, axis_d, keepdims,
-                               is_5hdc=is_5hdc, is_nz_nd=is_nz_nd)
+    data_input = tvm.placeholder(shape, name="data_input_" + kernel_name, dtype=dtype_lower)
+    res = reduce_sum_d_compute(data_input, y, axis_d, keepdims, is_5hdc=is_5hdc, is_nz_nd=is_nz_nd)
     if is_5hdc:
         res.ori_shape = x["ori_shape"]
         res.ori_format = x["ori_format"]

@@ -406,28 +406,28 @@ def newton_iteration(shape, tensor_x_rec, tensor_x, symbol, iter_num):
     tmp_neg = None
     tmp_add = None
     for index in range(0, iter_num):
-        key = "tmp_mul_" + symbol + str(index)
+        key = "{}{}{}".format("tmp_mul_", symbol, str(index))
         tmp_mul = tvm.compute(
             shape, lambda *i: tensor_x(*i) * tmp(*i), name=key)
         tensor_list[key] = tmp_mul
         scope_list[key] = cce.scope_ubuf
         emit_list[key] = "vector_mul"
 
-        key = "tmp_neg_" + symbol + str(index)
+        key = "{}{}{}".format("tmp_neg_", symbol, str(index))
         tmp_neg = tvm.compute(
             shape, lambda *i: tmp_mul(*i) * neg_one, name=key)
         tensor_list[key] = tmp_neg
         scope_list[key] = cce.scope_ubuf
         emit_list[key] = "vector_muls"
 
-        key = "tmp_add_" + symbol + str(index)
+        key = "{}{}{}".format("tmp_add_", symbol, str(index))
         tmp_add = tvm.compute(
             shape, lambda *i: tmp_neg(*i) + num_two, name=key)
         tensor_list[key] = tmp_add
         scope_list[key] = cce.scope_ubuf
         emit_list[key] = "vector_adds"
 
-        key = "tmp_" + symbol + str(index)
+        key = "{}{}{}".format("tmp_", symbol, str(index))
         tmp = tvm.compute(shape, lambda *i: tmp_add(*i) * tmp(*i), name=key)
         tensor_list[key] = tmp
         scope_list[key] = cce.scope_ubuf

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,7 +162,7 @@ class MaxPool3DGradCompute:
     """
     def __init__(self, shape_list, params):
         # forward_in_shape, forward_ou_shape, grad_shape, ou_shape
-        # list(ksize), list(strides), pads, dtype
+        # ksize_list, strides_list, pads, dtype
         self.forward_in_shape = shape_list[0]
         self.forward_ou_shape = shape_list[1]
         self.grad_shape = shape_list[2]
@@ -192,7 +190,7 @@ class MaxPool3DGradCompute:
         self.sh = self.strides[2]
         self.sw = self.strides[3]
 
-        if self.pads in ["CALCULATED",]:
+        if self.pads in ["CALCULATED", ]:
             # Pytorch
             self.pads = "SAME"
             self.pad = [[params[2][0], params[2][1]],
@@ -1039,48 +1037,48 @@ class MaxPool3DGradCompute:
     def _set_buf_tensor(self, tik_instance, param):
 
         l1_in_buf = tik_instance.Tensor(self.dtype,
-                                        [param.l1_in_size,],
+                                        [param.l1_in_size, ],
                                         name="l1_in_buf",
                                         scope=tik.scope_cbuf)
         forward_ou_buf = tik_instance.Tensor(self.dtype,
-                                             [param.forward_ou_size,],
+                                             [param.forward_ou_size, ],
                                              name="forward_ou_buf",
                                              scope=tik.scope_ubuf)
         grad_buf = tik_instance.Tensor(self.dtype,
-                                       [param.grad_size,],
+                                       [param.grad_size, ],
                                        name="grad_buf",
                                        scope=tik.scope_ubuf)
         col_in_buf = tik_instance.Tensor(self.dtype,
-                                         [param.col_in_size,],
+                                         [param.col_in_size, ],
                                          name="col_in_buf",
                                          scope=tik.scope_ubuf)
         mask_buf = tik_instance.Tensor("uint16",
-                                       [param.mask_size,],
+                                       [param.mask_size, ],
                                        name='mask_buf',
                                        scope=tik.scope_ubuf)
         mask_or_buf = tik_instance.Tensor("uint16",
-                                          [param.mask_size,],
+                                          [param.mask_size, ],
                                           name='mask_or_buf',
                                           scope=tik.scope_ubuf)
         mask_not_buf = tik_instance.Tensor("uint16",
-                                           [param.mask_size,],
+                                           [param.mask_size, ],
                                            name='mask_not_buf',
                                            scope=tik.scope_ubuf)
         zero_buf = tik_instance.Tensor(self.dtype,
-                                       [param.zero_size,],
+                                       [param.zero_size, ],
                                        name='zero_buf',
                                        scope=tik.scope_ubuf)
 
         grad_sel_fp16_buf = tik_instance.Tensor(self.dtype,
-                                                [param.grad_sel_fp16_size,],
+                                                [param.grad_sel_fp16_size, ],
                                                 name='grad_sel_fp16_buf',
                                                 scope=tik.scope_ubuf)
         grad_sel_fp32_buf = tik_instance.Tensor("float32",
-                                                [param.grad_sel_fp32_size,],
+                                                [param.grad_sel_fp32_size, ],
                                                 name='grad_sel_fp32_buf',
                                                 scope=tik.scope_ubuf)
         f_map_fp32_buf = tik_instance.Tensor("float32",
-                                             [param.f_map_fp32_size,],
+                                             [param.f_map_fp32_size, ],
                                              name='f_map_fp32_buf',
                                              scope=tik.scope_ubuf)
 

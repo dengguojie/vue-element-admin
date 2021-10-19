@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -802,7 +804,7 @@ class StridedSliceGradLastDimWithVnchwConv:
                         * self.output_offset[5] \
                         - self.block_num
                     self.tik_instance.data_move(self.output_gm[dst_offset],
-                                                origin_output_tail_data_ub[(do_outer_num - 1)* 16],
+                                                origin_output_tail_data_ub[(do_outer_num - 1) * 16],
                                                 0, 1, burst_len, 0, 0)
 
             origin_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),

@@ -79,6 +79,7 @@ class SpatialTransformer:
     SpatialTransformer operate is
     """
     # pylint: disable=no-member
+
     def __init__(self, theta, w_index, h_index, pos_coef,
                  pos_offset, size, default_theta, use_default_theta, kernel_name='stn_pre'):
 
@@ -198,8 +199,8 @@ class SpatialTransformer:
             )
             if self.calc_by_fp16 or self.w_index.get('dtype') == 'float32':
                 ch_cw_res_ceof_ub, ch_cw_res_offset_ub, ch_fw_res_ceof_ub, ch_fw_res_offset_ub, fh_cw_res_ceof_ub, \
-                fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
-                    h_index_ub, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub)
+                    fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
+                        h_index_ub, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub)
             else:
                 h_index_ub_fp32 = self.tik_instance.Tensor(
                     'float32', (self.w_index_ub_size,), name='h_index_ub_fp32', scope=tbe_platform.scope_ubuf
@@ -210,8 +211,8 @@ class SpatialTransformer:
                 self.tik_instance.vec_conv(64, '', h_index_ub_fp32, h_index_ub, 2, 8, 4)
                 self.tik_instance.vec_conv(64, '', w_index_ub_fp32, w_index_ub, 2, 8, 4)
                 ch_cw_res_ceof_ub, ch_cw_res_offset_ub, ch_fw_res_ceof_ub, ch_fw_res_offset_ub, fh_cw_res_ceof_ub, \
-                fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
-                    h_index_ub_fp32, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub_fp32)
+                    fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
+                        h_index_ub_fp32, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub_fp32)
 
             # change 4 * 128 to 128 * 4
             with self.tik_instance.new_stmt_scope():
@@ -234,7 +235,7 @@ class SpatialTransformer:
                 else:
                     with self.tik_instance.for_range(0, self.total_c1) as c1_count:
                         output_index = batch_id * self.total_c1 * self.output_hw_size * 4 + \
-                                       c1_count * self.output_hw_size * 4 + hw_index_handle_count * 512
+                            c1_count * self.output_hw_size * 4 + hw_index_handle_count * 512
                         # move ceof to gm
                         self.tik_instance.data_move(
                             dst=self.output_pos_coef_gm[output_index], src=ceof_res_ub, sid=0,
@@ -269,8 +270,8 @@ class SpatialTransformer:
             )
             if self.calc_by_fp16 or self.w_index.get('dtype') == 'float32':
                 ch_cw_res_ceof_ub, ch_cw_res_offset_ub, ch_fw_res_ceof_ub, ch_fw_res_offset_ub, fh_cw_res_ceof_ub, \
-                fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
-                    h_index_ub, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub)
+                    fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
+                        h_index_ub, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub)
             else:
                 h_index_ub_fp32 = self.tik_instance.Tensor(
                     'float32', (self.w_index_ub_size,), name='h_index_ub_fp32', scope=tbe_platform.scope_ubuf
@@ -281,8 +282,8 @@ class SpatialTransformer:
                 self.tik_instance.vec_conv(64, '', h_index_ub_fp32, h_index_ub, 2, 8, 4)
                 self.tik_instance.vec_conv(64, '', w_index_ub_fp32, w_index_ub, 2, 8, 4)
                 ch_cw_res_ceof_ub, ch_cw_res_offset_ub, ch_fw_res_ceof_ub, ch_fw_res_offset_ub, fh_cw_res_ceof_ub, \
-                fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
-                    h_index_ub_fp32, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub_fp32)
+                    fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub = self.calc_ceof_and_offset(
+                        h_index_ub_fp32, theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3, w_index_ub_fp32)
 
             # change 4 * 128 to 128 * 4
             with self.tik_instance.new_stmt_scope():
@@ -344,7 +345,7 @@ class SpatialTransformer:
                 else:
                     with self.tik_instance.for_range(0, self.total_c1) as c1_count:
                         output_index = (batch_id * self.total_c1 + c1_count) * self.output_hw_size * 4 \
-                                       + hw_index_handle_count * 4
+                            + hw_index_handle_count * 4
                         # move ceof to gm
                         last_num_size = 4 * each_batch_loop_last_num
                         tail_num = last_num_size * self.h_w_index_type_byte_size % 32
@@ -607,7 +608,7 @@ class SpatialTransformer:
         self.tik_instance.vec_sel(128, 0, ch_cw_res_ceof_ub, filter_index_tmp, float_filter_ub, ch_cw_ceof_1_ub, 1, 0,
                                   0, 0)
         return ch_cw_res_ceof_ub, ch_cw_res_offset_ub, ch_fw_ceof_ub, ch_fw_res_offset_ub, fh_cw_ceof_ub, \
-               fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub
+            fh_cw_res_offset_ub, fh_fw_res_ceof_ub, fh_fw_res_offset_ub
 
     def calc_ceil_w(self, origin_w_or_res_ub):
         """

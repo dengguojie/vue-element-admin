@@ -28,6 +28,8 @@ from te.utils.error_manager import error_manager_vector
 SHAPE_SIZE_LIMIT = 2147483648
 
 # pylint: disable=unused-argument
+
+
 @tbe_platform.fusion_manager.fusion_manager.register("square")
 def square_compute(input_x, output_y, kernel_name="square"):
     """

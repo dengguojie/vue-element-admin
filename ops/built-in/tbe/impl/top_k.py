@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # pylint: disable=too-many-lines
 # Copyright 2019 Huawei Technologies Co., Ltd
 #

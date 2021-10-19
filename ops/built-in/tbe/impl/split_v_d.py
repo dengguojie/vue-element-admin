@@ -106,7 +106,7 @@ class SplitNotEqual():
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.block_ele = 32 // self.dtype_size
         self.ub_ele = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // self.dtype_size - \
-                      self.block_ele
+            self.block_ele
         self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.tik_instance = tik.Tik()
         self.input_tensor = self.tik_instance.Tensor(self.dtype, self.shape, name="gm_in", scope=tik.scope_gm)

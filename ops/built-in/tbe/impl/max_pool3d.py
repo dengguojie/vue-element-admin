@@ -170,6 +170,7 @@ def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides, data_fo
                 error_manager_vector.raise_err_specific_reson("max_pool3d",
                                                               "strides N and C must be 1")
 
+
 # pylint: disable=too-many-locals,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
 @fusion_manager.register("max_pool3d")

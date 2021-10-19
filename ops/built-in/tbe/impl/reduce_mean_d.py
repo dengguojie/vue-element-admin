@@ -77,11 +77,11 @@ def reduce_mean_d_compute(x,
             reduce_elts *= shape[i]
     else:
         reduce_elts = shape[axes]
-    cof = reduce_elts ** (-1)
+    cof = reduce_elts**(-1)
 
     if ori_format[0] == 'NHWC' and ori_format[1] == 'NC1HWC0' and len(axes) == 2 \
             and axes == [1, 4] and len(ori_shape[0]) == 4:
-        cof = ori_shape[0][-1] ** (-1)
+        cof = ori_shape[0][-1]**(-1)
 
     dtype = x.dtype
     data_input_tmp = x
@@ -89,7 +89,7 @@ def reduce_mean_d_compute(x,
     has_improve_precision = False
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if impl_mode is None:
-        if cce_product in ("Ascend310",):
+        if cce_product in ("Ascend310", ):
             impl_mode = "high_performance"
         else:
             impl_mode = "high_precision"
@@ -119,9 +119,7 @@ def reduce_mean_d_compute(x,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_mean_d(input_x, output_y, axes,
-                  keepdims=None, kernel_name="reduce_mean_d",
-                  impl_mode=None):
+def reduce_mean_d(input_x, output_y, axes, keepdims=None, kernel_name="reduce_mean_d", impl_mode=None):
     """
     Reduce a tensor on a certa in axes based on mean.
 
@@ -179,8 +177,12 @@ def reduce_mean_d(input_x, output_y, axes,
     ori_shape = [input_x["ori_shape"], input_x["shape"]]
     ori_format = [input_x["ori_format"], input_x["format"]]
     data_input = tvm.placeholder(shape, name="data_input", dtype=inp_dtype)
-    res = reduce_mean_d_compute(data_input, output_y, axes, keepdims,
-                                impl_mode=impl_mode, is_5hdc=is_5hdc,
+    res = reduce_mean_d_compute(data_input,
+                                output_y,
+                                axes,
+                                keepdims,
+                                impl_mode=impl_mode,
+                                is_5hdc=is_5hdc,
                                 is_nz_nd=is_nz_nd)
     if is_5hdc:
         res.ori_shape = input_x["ori_shape"]
@@ -188,7 +190,5 @@ def reduce_mean_d(input_x, output_y, axes,
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data_input, res]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data_input, res]}
     tbe.cce_build_code(sch, config)

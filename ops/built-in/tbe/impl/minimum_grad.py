@@ -96,7 +96,6 @@ def _calculate_result_le(data_x, data_y, data_dz, dtype, shape_dz):
     minus_one = tvm.const(-1, dtype="int32")
     minus_one_tensor = tbe.broadcast(minus_one, shape_dz)
 
-    # if data_y >= data_x ; datax_select_le = 1; else datax_select_le =0;
     datax_select_le = _compare_value(data_y, data_x, dtype, shape_dz)
     result_dx = tbe.vmul(data_dz, datax_select_le)
 
@@ -243,7 +242,7 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
 
     if dtype_x != dtype_y != dtype_dz:
         rule_desc = "the dtypes of intputs should be same"
-        param_value = "%s,%s,%s"%(dtype_x, dtype_y, dtype_dz)
+        param_value = "%s,%s,%s" % (dtype_x, dtype_y, dtype_dz)
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
                                                           "grads,x1,x2", param_value)
 

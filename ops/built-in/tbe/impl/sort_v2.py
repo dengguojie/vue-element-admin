@@ -253,13 +253,13 @@ def sort_in_ub(tik_instance, input_ub, num, i, k, input_gm, temp, index, offset)
     with tik_instance.if_scope(num < (i + 1) * k):
         # aline for k
         aline = k - num % k
-        Min = tik_instance.Scalar('float16', init_value=-65504)
+        min_num = tik_instance.Scalar('float16', init_value=-65504)
         # Add ineffective object for 16 alignment
         with tik_instance.for_range(0, aline % BOLCk_SIZE) as j:
-            input_ub[dest_pos_ub + num % k + j].set_as(Min)
+            input_ub[dest_pos_ub + num % k + j].set_as(min_num)
         # Add ineffective object for k alignment
         with tik_instance.if_scope(aline > BOLCk_SIZE - 1):
-            tik_instance.vec_dup(BOLCk_SIZE, input_ub[dest_pos_ub + num % k + aline % BOLCk_SIZE], Min,
+            tik_instance.vec_dup(BOLCk_SIZE, input_ub[dest_pos_ub + num % k + aline % BOLCk_SIZE], min_num,
                                  aline // BOLCk_SIZE, 1)
 
     tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_INDEX)

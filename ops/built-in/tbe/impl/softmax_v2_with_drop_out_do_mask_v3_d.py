@@ -17,7 +17,6 @@
 """
 drop_out_do_mask_v3_d
 """
-import operator
 import te.platform as tbe_platform
 
 from te import tik
@@ -26,6 +25,7 @@ from te.utils import para_check
 SHAPE_SIZE_LIMIT = 1 << 30
 
 
+# pylint: disable = unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT,
@@ -121,14 +121,14 @@ def softmax_v2_with_drop_out_do_mask_v3_d(input_tensor, input_mask, output_1, ou
 
                 tik_inst.vector_dup(128, ub_dup[0], tik_inst.Scalar(init_value=0, dtype="uint16"), 1, 1, 8)
                 ub_reducemax_int16 = ub_reducemax.reinterpret_cast_to("uint16")
-                tik_inst.vor(16, ub_broadcast[0],ub_reducemax_int16[0], ub_dup[0], 16, 1, 1, 0, 1, 0, 0)
-                tik_inst.vor(16, ub_broadcast[256],ub_reducemax_int16[16], ub_dup[0], 16, 1, 1, 0, 1, 0, 0)
+                tik_inst.vor(16, ub_broadcast[0], ub_reducemax_int16[0], ub_dup[0], 16, 1, 1, 0, 1, 0, 0)
+                tik_inst.vor(16, ub_broadcast[256], ub_reducemax_int16[16], ub_dup[0], 16, 1, 1, 0, 1, 0, 0)
 
                 tik_inst.vtranspose(ub_broadcast[0], ub_broadcast[0])
                 tik_inst.vtranspose(ub_broadcast[256], ub_broadcast[256])
 
                 ub_broadcast_fp16 = ub_broadcast.reinterpret_cast_to("float16")
-                
+
                 with tik_inst.for_range(0, 4) as idx:
                     tik_inst.vsub(128, ub_2[idx * 128], ub_1[idx * 128], ub_broadcast_fp16[idx * 128],
                                   32, 1, 1, 1, 32, 32, 0)

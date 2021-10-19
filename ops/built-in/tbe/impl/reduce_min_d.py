@@ -22,15 +22,13 @@ from te import tvm
 import te.platform as tbe_platform
 from impl import reduce_min_d_tik
 
-
 # define the type of None
 NONETYPE = type(None)
 
 
 # pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_min_d")
-def reduce_min_d_compute(input_min, output_min, axis,
-                         keep_dims, kernel_name="reduce_min_d"):
+def reduce_min_d_compute(input_min, output_min, axis, keep_dims, kernel_name="reduce_min_d"):
     """
     Reduce a tensor on a certain axis based on min
 
@@ -71,8 +69,7 @@ def reduce_min_d_compute(input_min, output_min, axis,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT),
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_min_d(input_min, output_min, axis,
-                 keep_dims=None, kernel_name="reduce_min_d"):
+def reduce_min_d(input_min, output_min, axis, keep_dims=None, kernel_name="reduce_min_d"):
     """
     Reduce a tensor on a certain axis based on min
 
@@ -117,23 +114,19 @@ def reduce_min_d(input_min, output_min, axis,
         shape_input, axis = shape_util.shape_refine(list(shape_input), axis)
         shape_input, axis = shape_util.simplify_axis_shape(shape_input, axis)
 
-    data_input = tvm.placeholder(shape_input, name="data_input_" + kernel_name,
-                                 dtype=dtype_input.lower())
+    data_input = tvm.placeholder(shape_input, name="data_input_" + kernel_name, dtype=dtype_input.lower())
     shape_len = len(shape_input)
     if dtype_input.lower() in ("float32", "int32") and len(axis) == 1 \
             and ((axis[0] == (shape_len - 1)) or (axis[0] == -1)):
         input_min["shape"] = tuple(shape_input)
-        reduce_min_d_tik.reduce_min_d_tik(input_min, output_min, -1,
-                                          kernel_name)
+        reduce_min_d_tik.reduce_min_d_tik(input_min, output_min, -1, kernel_name)
     else:
-        res = reduce_min_d_compute(data_input, output_min, axis, keep_dims,
-                                   kernel_name)
+        res = reduce_min_d_compute(data_input, output_min, axis, keep_dims, kernel_name)
         if is_5hdc:
             res.ori_shape = input_min["ori_shape"]
             res.ori_format = input_min["ori_format"]
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
 
-        config = {"name": kernel_name,
-                  "tensor_list": [data_input, res]}
+        config = {"name": kernel_name, "tensor_list": [data_input, res]}
         tbe.cce_build_code(sch, config)

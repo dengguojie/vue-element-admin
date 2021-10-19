@@ -29,8 +29,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_all_d")
-def reduce_all_d_compute(input_data, output_data, axes,
-                         keepdims, kernel_name="reduce_all_d"):
+def reduce_all_d_compute(input_data, output_data, axes, keepdims, kernel_name="reduce_all_d"):
     """ TVM calculation process, used for fusion operation
 
     Parameters
@@ -72,8 +71,7 @@ def reduce_all_d_compute(input_data, output_data, axes,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_all_d(input_data, output_data, axes,
-                 keepdims=None, kernel_name="reduce_all_d"):
+def reduce_all_d(input_data, output_data, axes, keepdims=None, kernel_name="reduce_all_d"):
     """
     Reduce a tensor on a certain axes based on min
 
@@ -116,13 +114,13 @@ def reduce_all_d(input_data, output_data, axes,
         for i in axes:
             if i >= len(input_shape):
                 rule_desc = "axes should be less than dimension"
-                param_value = "%d,%d"%(i, len(input_shape))
+                param_value = "%d,%d" % (i, len(input_shape))
                 error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
                                                           "i,input_shape", param_value)
     else:
         if axes >= len(input_shape):
             rule_desc = "axes should be less than dimension"
-            param_value = "%d,%d"%(axes, len(input_shape))
+            param_value = "%d,%d" % (axes, len(input_shape))
             error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
                                                               "axes,input_shape", param_value)
 
@@ -132,10 +130,8 @@ def reduce_all_d(input_data, output_data, axes,
         input_shape, axes = shape_util.shape_refine(list(input_shape), axes)
         input_shape, axes = shape_util.simplify_axis_shape(input_shape, axes)
 
-    data_input = tvm.placeholder(input_shape, name="data_input_" + kernel_name,
-                                 dtype=input_dtype)
-    result = reduce_all_d_compute(data_input, output_data, axes,
-                                  keepdims, kernel_name)
+    data_input = tvm.placeholder(input_shape, name="data_input_" + kernel_name, dtype=input_dtype)
+    result = reduce_all_d_compute(data_input, output_data, axes, keepdims, kernel_name)
     if is_5hdc:
         result.ori_shape = input_data["ori_shape"]
         result.ori_format = input_data["ori_format"]
@@ -143,7 +139,5 @@ def reduce_all_d(input_data, output_data, axes,
     with tvm.target.cce():
         sch = tbe.auto_schedule(result)
 
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data_input, result]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data_input, result]}
     tbe.cce_build_code(sch, config)

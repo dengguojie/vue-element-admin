@@ -57,7 +57,8 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                        kernel_name="strided_slice_grad"):
-    """ Since `StridedSlice` cuts out pieces of its `input` which is size`shape_dy`, its gradient
+    """ 
+    Since `StridedSlice` cuts out pieces of its `input` which is size`shape_dy`, its gradient
     will have the same shape (which is passed here as `shape_x`). The gradient will be zero in any
     element that the slice does not select.
 

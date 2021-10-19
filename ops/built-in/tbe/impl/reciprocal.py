@@ -82,9 +82,13 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
     format_list = support_format * len(dtype_list)
     format_list_input = format_list
     format_list_output = format_list
-    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=",".join(dtype_total),
+    input0 = util_select_op_base.gen_param(classify="input0",
+                                           name="x",
+                                           datatype=",".join(dtype_total),
                                            format=",".join(format_list_input))
-    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
+    output0 = util_select_op_base.gen_param(classify="output0",
+                                            name="y",
+                                            datatype=",".join(dtype_total),
                                             format=",".join(format_list_output))
 
     param_list = [input0, output0]
@@ -141,7 +145,7 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
 
     shape = shape_util.shape_refine(shape)
     fuseshape = [1]
-    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x * y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=inp_dtype)
 
     res = reciprocal_compute(data, output_y, kernel_name)
@@ -149,8 +153,6 @@ def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data, res]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data, res]}
 
     tbe.cce_build_code(sch, config)
