@@ -44,6 +44,10 @@ const int32_t ARRAY_INDEX_2 = 2;
 const int32_t ARRAY_INDEX_3 = 3;
 const int32_t ARRAY_INDEX_4 = 4;
 const int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
+const int32_t ARRAY_FIRST_POS = 0;
+const int32_t DEFAULT_CAPACITY_EMPTY = 0;
+const int32_t NO_DIM = 0;
+const int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
 
 
 struct TilingInfoReduce {

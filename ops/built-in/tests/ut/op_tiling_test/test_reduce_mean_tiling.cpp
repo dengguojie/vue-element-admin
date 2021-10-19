@@ -123,7 +123,9 @@ TEST_F(ReduceMeanTiling, ReduceTiling4) {
   auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_idx_before_reduce": 0, "_pattern": "CommReduce", "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [-1], "_ub_info": [32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": -1, "_block_dims": {"-1": 32}, "_atomic_flags": {"-1": false}})";
+  std::string compileInfo = R"({"_idx_before_reduce": 0, "_pattern": "CommReduce", "_common_info": [32, 1, 8, 1, 1],
+  "_pattern_info": [2147483646], "_ub_info": [32512], "_ub_info_rf": [32512], "_reduce_shape_known": true,
+  "_const_shape_post": true, "_compile_pattern": 2147483646, "_block_dims": {"2147483646": 32}, "_atomic_flags": {"2147483646": false}})";
 
   std::vector<int64_t> input{1, 10};
   std::vector<int64_t> output{1, 10};

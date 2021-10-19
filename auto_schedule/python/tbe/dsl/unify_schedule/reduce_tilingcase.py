@@ -62,6 +62,8 @@ from ...common.utils.errormgr import get_error_message
 CONST = "const"
 ZERO = "zero"
 DEFAULT = "default"
+OP_TYPE_AUTO_TILING = "AutoTiling"
+TILINGKEY_NONE_REDUCE_AXIS = 2 ** 31 -2
 
 BlkOuter = "block_outer"
 BlkInner = "block_inner"
@@ -557,7 +559,7 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling_
     # the flag of invoking op_tiling interface during compilation
     add_compile_info_inner("_const_shape_post", False)
     add_compile_info_inner("_compile_pattern", _gen_const_tiling_key(compile_axis))
-    run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
+    run_info = op_tiling.do_op_tiling(OP_TYPE_AUTO_TILING, get_compile_info(), inputs, outputs)
     tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int",
                      "tensor_ub_size_before_reduce": "int", "tensor_ub_size_after_reduce": "int"}
     tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
@@ -915,7 +917,7 @@ def _gen_const_tiling_key(reduce_axis):
     :return:
     """
     if not reduce_axis:
-        return -1
+        return TILINGKEY_NONE_REDUCE_AXIS
     reduce_axis_local = list(reduce_axis)[:]
     reduce_axis_local = sorted(reduce_axis_local)
     dict_key = 0

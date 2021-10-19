@@ -59,7 +59,7 @@ int32_t Reduce::CalcConstPattern(std::vector<int32_t>& reduce_axis) {
   // generate dict key according to reduce_axis
   // Init() make reduce axis sorted
   if (reduce_axis.size() == 0) {
-    return -1;
+    return TILINGKEY_NONE_REDUCE_AXIS;
   }
 
   int32_t dict_key = 0;
@@ -117,15 +117,16 @@ int64_t Reduce::GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index) {
   return result;
 }
 
-bool Reduce::CalcBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor,int32_t& block_dim) {
+bool Reduce::CalcBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor, int32_t& block_dim) {
+   if (tiling_factor == 0) {
+     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling factor should not be 0");
+     return false;
+   }
+
   int32_t block_dim_temp = 1;
   for (int32_t i = 0; i <= tiling_axis; i++) {
     if (out[i] != 0) {
       if (i == tiling_axis) {
-        if (tiling_factor == 0) {
-          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling factor should not be 0");
-          return false;
-        }
         block_dim_temp = (int32_t)((out[i] + tiling_factor - 1) / tiling_factor) * block_dim_temp;
       } else {
         block_dim_temp = (int32_t)out[i] * block_dim_temp;
@@ -238,16 +239,16 @@ void Reduce::FusedReduceAxis() {
   }
 
   // Fused serial axises which in same type.
-  size_t first = 0;
-  size_t second = 0;
+  size_t first = ARRAY_FIRST_POS;
+  size_t second = ARRAY_FIRST_POS;
   int64_t value_input = 0;
   int32_t value_axis = 0;
   size_t length = input_shape_ori.size();
   bool cond_0 = false;
   bool cond_1 = false;
 
-  size_t capacity_shape = 0;
-  size_t capacity_axis = 0;
+  size_t capacity_shape = DEFAULT_CAPACITY_EMPTY;
+  size_t capacity_axis = DEFAULT_CAPACITY_EMPTY;
 
   // Deal Model
   if (reduce_axis_ori.size() == 0) {
@@ -294,12 +295,6 @@ void Reduce::FusedReduceAxis() {
 }
 
 void Reduce::ChooseAtomic() {
-  // UB_SPACE of ub_info is more than ub_info_rf, Atomic selected the former.
-  // nodes after reduce(include reduce) have same space(ubSizeA)
-  // nodes before reduce have same space(ubSizeB)
-  // ubSizeB = ubSizeA * coef (max dtype)
-  block_size = compileInfo.min_block_size;
-
   // Layer 0 Check if atomic is enabled
   bool atomic_available = compileInfo.atomic;
   // Layer 1 Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
@@ -349,11 +344,17 @@ void Reduce::ChooseUBInfo() {
     }
   }
 
-  // According adaptation of SCH, choose the best UBInfo.
-  // Rfactor only attached in Last Reduce.
+  // UB_SPACE of ub_info is more than ub_info_rf, Atomic selected the former.
+  // nodes after reduce(include reduce) have same space(ubSizeA)
+  // nodes before reduce have same space(ubSizeB)
+  // ubSizeB = ubSizeA * coef (max dtype)
   compileInfo.max_ub_count = compileInfo.ub_info[compileInfo.idx];
   ubSizeB = compileInfo.max_ub_count;
   ubSizeA = ubSizeB / compileInfo.coef;
+  block_size = compileInfo.min_block_size;
+
+  // According adaptation of SCH, choose the best UBInfo.
+  // Rfactor only attached in Last Reduce.
   if (is_last_axis_reduce) {
     int64_t last_dim = input_shape[input_shape.size()-1];
     int64_t real_reduce_count = total_reduce_count / last_dim;
@@ -423,7 +424,7 @@ void Reduce::ProcessReorderAxis(int32_t fused_type) {
   }
 
   int pos_r = num_a - ((int)input_shape.size() - (last_reduce_axis_idx + 1));
-  int pos_a = 0;
+  int pos_a = ARRAY_FIRST_POS;
 
   // [0: last_reduce_axis_idx]
   for (int32_t i = 0; i <= last_reduce_axis_idx; i++) {
@@ -666,7 +667,7 @@ bool Reduce::ProcessNormalTiling() {
     GetNotMulCoreBlockTiling();
   } else {
     if (!CalcBlockDim(output_shape, tilingInfo.block_tiling_axis,
-                      tilingInfo.block_tiling_factor,tilingInfo.block_dim)){
+                      tilingInfo.block_tiling_factor, tilingInfo.block_dim)) {
       return false;
     }
   }
@@ -782,7 +783,7 @@ bool Reduce::IsZero() {
     int64_t dim = input_shape_ori[i];
     bool non_reduce_axis = std::find(reduce_axis_ori.begin(), reduce_axis_ori.end(), i) == reduce_axis_ori.end();
 
-    if (dim == 0) {
+    if (dim == NO_DIM) {
       exit_zero_axis = true;
       if (non_reduce_axis) {
         exit_non_reduce_zero_axis = true;

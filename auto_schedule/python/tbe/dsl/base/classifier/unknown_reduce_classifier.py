@@ -113,11 +113,10 @@ class UnknownReduceClassifier:
             for reduce_axes in combinations(range(self.dim_len), i + 1):
                 f_shape, f_ranges, f_reduce_axes = helper.simplify(self.n_shape, self.n_ranges, reduce_axes)
 
+                # while reduce axis is empty, we will continue here and
+                # add pure move case afterwards
                 if not f_reduce_axes:
-                    f_shape = [1] + f_shape
-                    f_ranges = [(1, 1)] + f_ranges
-                    f_reduce_axes = [0, ]
-                    reduce_axes = []
+                    continue
 
                 def _normalize_const(_shape, _range, _axes):
                     # make const'inputs as same as dynamic
@@ -147,22 +146,21 @@ class UnknownReduceClassifier:
                     "axis_dtype": self.axis_type
                 }
                 ret.append([input_x, input_axis])
-        # if ret is none or reduce dim has 1, should append pure move case
-        if not ret or (any(x == 1 for x in self.input_x["shape"]) and list(self.n_shape) != [1, ]):
-            input_x = {
-                "shape": [1] + [util.combine_dim(self.n_shape)],
-                "range": [(1, 1)] + [util.combine_range(self.n_ranges)],
-                "mode": CONST,
-                "rel_pos_to_reduce": BEFORE
-            }
-            input_axis = {
-                "shape": [1, ],
-                "value": [0, ],
-                "rel_pos_to_reduce": AXIS,
-                "ori_axis": [],
-                "axis_dtype": self.axis_type
-            }
-            ret.append([input_x, input_axis])
+        # while reduce axis is unknown, it might be none, so we should add an pure move case
+        input_x = {
+            "shape": [1] + [util.combine_dim(self.n_shape)],
+            "range": [(1, 1)] + [util.combine_range(self.n_ranges)],
+            "mode": CONST,
+            "rel_pos_to_reduce": BEFORE
+        }
+        input_axis = {
+            "shape": [1, ],
+            "value": [0, ],
+            "rel_pos_to_reduce": AXIS,
+            "ori_axis": [],
+            "axis_dtype": self.axis_type
+        }
+        ret.append([input_x, input_axis])
         out_ins = []
         for ins in ret:
             ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keepdims)
