@@ -589,7 +589,7 @@ class GemmSchedule(object):
                 "format_in_a_ub": "none"
             }
 
-        load_b_matrix = (((self.format_b == "FRACTAL_Z")
+        load_b_matrix = (((self.format_b == "FRACTAL_Z" and not self.transpose_b)
             or (self.ops_format == "FRACTAL_NZ" and self.ops_data_flow_mode == "int82int32"))
             and (not self.ops_data_flow_mode == "int82fp32")
             and (not self.compress_flag)
