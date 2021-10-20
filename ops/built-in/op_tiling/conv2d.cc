@@ -39,10 +39,8 @@ namespace optiling {
  * @param [in] op_paras: inputs/outputs/atts of the conv2d
  * @param [out] valValue: val value
  */
-std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDescPtr& op_desc) {
-  int32_t nDim = 0;
-  int32_t hDim = 2;
-  int32_t wDim = 3;
+std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDescPtr& op_desc,
+                                 int32_t nDim, int32_t hDim, int32_t wDim) {
   auto input_desc = op_desc->GetInputDescPtr(0);
   auto output_desc = op_desc->GetOutputDescPtr(0);
 
@@ -51,6 +49,8 @@ std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDe
   int32_t wi = input_desc->GetShape().GetDim(wDim);
   int32_t ho = output_desc->GetShape().GetDim(hDim);
   int32_t wo = output_desc->GetShape().GetDim(wDim);
+  GELOGD("optiling runing shape is %d, %d, %d, %d, %d", batch, hi, ho, wi, wo);
+
   std::vector<int64_t> varValue;
   for (auto var:varMap) {
     if (var == "batch_n") {
@@ -79,10 +79,6 @@ std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDe
 bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                   utils::OpRunInfo& runInfo) {
   PROFILING_TILING_INIT(opType.c_str());
-  int32_t nDim = 0;
-  int32_t cDim = 1;
-  int32_t hDim = 2;
-  int32_t wDim = 3;
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
   auto input_desc = op_desc->GetInputDescPtr(0);
   if (input_desc == nullptr) {
@@ -92,6 +88,25 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
   if (output_desc == nullptr) {
     OP_LOGE(opType.c_str(), "GetOutputDescPtr failed");
   }
+  ge::Format input_format = input_desc->GetFormat();
+  std::string x_format = ge::TypeUtils::FormatToSerialString(input_format).c_str();
+  if (x_format != "NC1HWC0" && x_format != "NHWC") {
+    OP_LOGE(opType.c_str(), "only support NC1HWC0 or NHWC format.");
+  }
+
+  // default format NC1HWC0
+  int32_t nDim = 0;
+  int32_t cDim = 1;
+  int32_t hDim = 2;
+  int32_t wDim = 3;
+  if (x_format == "NHWC") {
+    nDim = x_format.find("N");
+    cDim = x_format.find("C");
+    hDim = x_format.find("H");
+    wDim = x_format.find("W");
+  }
+  GELOGD("optiling x_format is %s, nDim = %d, cDim = %d, hDim = %d, wDim = %d",
+          x_format.c_str(), nDim, cDim, hDim, wDim);
 
   if (op_desc->GetInputsSize() == 0 || op_desc->GetOutputsSize() == 0 || 
       input_desc->GetShape().GetDimNum() == 0 || output_desc->GetShape().GetDimNum() == 0) {
@@ -147,17 +162,18 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
     opInfo = opCompileInfo;
   }
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG()
-  std::vector<int64_t> varValue = setValValue(varMap, op_desc);
+  std::vector<int64_t> varValue = setValValue(varMap, op_desc, nDim, hDim, wDim);
 
-  bool res = cube_tiling1(opType, input_desc->GetShape().GetDims(), varValue, opInfo, runInfo);
+  bool res = cube_tiling1(opType, input_desc->GetShape().GetDims(), x_format, varValue, opInfo, runInfo);
   PROFILING_TILING_AFTER_CALCU_TILING_REG()
-  // for log
+   // for log
   int32_t batch = input_desc->GetShape().GetDim(nDim);
   int32_t hi = input_desc->GetShape().GetDim(hDim);
   int32_t wi = input_desc->GetShape().GetDim(wDim);
   int32_t ho = output_desc->GetShape().GetDim(hDim);
   int32_t wo = output_desc->GetShape().GetDim(wDim);
-  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
+  std::string node_name = op_desc->GetName();
+  GELOGD("[%s] tiling_data is %d, %d, %d, %d, %d, %d", node_name.c_str(), runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
   PROFILING_TILING_END()
   return res;
 }

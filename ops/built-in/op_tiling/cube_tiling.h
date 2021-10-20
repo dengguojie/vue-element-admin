@@ -39,6 +39,7 @@ namespace optiling {
  */
 bool cube_tiling1(const std::string& op_type,
                 const std::vector<int64_t>& input_shape,
+                const std::string& x_format,
                 const std::vector<int64_t>& var_value,
                 const nlohmann::json& compile_info,
                 utils::OpRunInfo& run_info);

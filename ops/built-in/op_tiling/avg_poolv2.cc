@@ -49,10 +49,6 @@ const int32_t MAX_STRIDE = 63;
 
 bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                          utils::OpRunInfo& runInfo) {
-  int32_t nDim = 0;
-  int32_t hDim = 2;
-  int32_t wDim = 3;
-
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
   ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
   if (input_desc == nullptr) {
@@ -67,6 +63,22 @@ bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas,
   if (input_shape.GetDimNum() == 0 || output_shape.GetDimNum() == 0) {
     return false;
   }
+  ge::Format input_format = input_desc->GetFormat();
+  std::string x_format = ge::TypeUtils::FormatToSerialString(input_format).c_str();
+  if (x_format != "NC1HWC0" && x_format != "NHWC") {
+    OP_LOGE(opType.c_str(), "only support NC1HWC0 or NHWC format.");
+  }
+
+  // default format NC1HWC0
+  int32_t nDim = 0;
+  int32_t hDim = 2;
+  int32_t wDim = 3;
+  if (x_format == "NHWC") {
+    nDim = x_format.find("N");
+    hDim = x_format.find("H");
+    wDim = x_format.find("W");
+  }
+  GELOGD("optiling x_format is %s, nDim = %d, hDim = %d, wDim = %d", x_format.c_str(), nDim, hDim, wDim);
 
   if(opCompileInfo.empty()) {
     GELOGD("op compile info is empty");
@@ -97,7 +109,8 @@ bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas,
     }
   }
   GELOGD("avgpoolv2 tiling_data is %d, %d, %d, %d, %d, %d", runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
-  return cube_tiling1(opType, opParas.GetInputDesc(0).GetShape().GetDims(), var_value, opCompileInfo, runInfo);
+  return cube_tiling1(opType, opParas.GetInputDesc(0).GetShape().GetDims(), x_format,
+                      var_value, opCompileInfo, runInfo);
 }
 // register tiling interface of the avgpool
 bool AvgPoolTilingV2(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,

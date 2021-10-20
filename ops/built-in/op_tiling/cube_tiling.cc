@@ -72,9 +72,13 @@ namespace {
     return true;
   }
 
-  static bool is_shape_in_range_cube(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
-    const std::vector<int32_t> shape_dim = {0, 2, 3};
+  static bool is_shape_in_range_cube(const std::vector<int64_t> &shape, const std::string& x_format,
+                                     const std::vector<int64_t> &range) {
     const std::vector<int32_t> range_dim = {0, 1, 2, 3, 4, 5};
+    std::vector<int32_t> shape_dim = {0, 2, 3};
+    if (x_format == "NHWC") {
+      shape_dim = {0, 1, 2};
+    }
     if (range.size() == range_dim.size()) {
       for (size_t i = 0; i < shape_dim.size(); ++i) {
         if (shape[shape_dim[i]] < range[range_dim[i * kRangeDivShape]] ||
@@ -198,7 +202,7 @@ namespace {
   }
 
   string cube_tiling_batch(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                         const nlohmann::json& compile_info, string tiling_id) {
+                         const std::string& x_format, const nlohmann::json& compile_info, string tiling_id) {
     if (cur_shape.empty()) {
       return tiling_id;
     }
@@ -210,7 +214,7 @@ namespace {
     const auto& tiling_range = compile_info.at("tiling_range");
     for (auto it = tiling_range.begin(); it != tiling_range.end(); it++) {
       auto& range = it.value();
-      if (is_shape_in_range_cube(cur_shape, range)) {
+      if (is_shape_in_range_cube(cur_shape, x_format, range)){
         tiling_id = it.key();
       }
     }
@@ -218,7 +222,7 @@ namespace {
   }
 
   string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                       const nlohmann::json& compile_info, string tiling_id) {
+                       const std::string& x_format, const nlohmann::json& compile_info, string tiling_id) {
     if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
         return tiling_id;
@@ -228,6 +232,10 @@ namespace {
     int32_t seedWDim = 2;
     int32_t hDim = 2;
     int32_t wDim = 3;
+    if (x_format == "NHWC") {
+      hDim = x_format.find("H");
+      wDim = x_format.find("W");
+    }
 
     const auto& repo_range = compile_info.at(kCompileRepoRange);
     auto& tiling_seeds = compile_info.at(kCompileRepoSeeds);
@@ -236,7 +244,7 @@ namespace {
       std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
       auto& range = repo_range[it.key()];
 
-      if (is_shape_in_range_cube(cur_shape, range)) {
+      if (is_shape_in_range_cube(cur_shape, x_format, range)) {
         int32_t dist = abs(cur_shape[hDim] - seed[seedHDim]) + abs(cur_shape[wDim] - seed[seedWDim]);
         if (dist < min_dist) {
           tiling_id = it.key();
@@ -253,7 +261,7 @@ namespace {
       auto& cost_range = compile_info.at(kCompileCostRange);
       for (auto it = cost_range.begin(); it != cost_range.end(); it++) {
         auto& range = it.value();
-        if (is_shape_in_range_cube(cur_shape, range)) {
+        if (is_shape_in_range_cube(cur_shape, x_format, range)) {
           tiling_id = it.key();
           break;
         }
@@ -297,6 +305,7 @@ namespace optiling {
   */
   bool cube_tiling1(const std::string& op_type,
                   const std::vector<int64_t>& input_shape,
+                  const std::string& x_format,
                   const std::vector<int64_t>& var_value,
                   const nlohmann::json& compile_info,
                   utils::OpRunInfo& run_info) {
@@ -307,13 +316,13 @@ namespace optiling {
 
       if (compile_info["tiling_type"] == "default_tiling") {
         std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
-        if (is_shape_in_range_cube(input_shape, default_range)) {
+        if (is_shape_in_range_cube(input_shape, x_format, default_range)) {
           tiling_id = compile_info["default_range"].begin().key();
         }
       } else if (vars.size() != 1) {
-        tiling_id = cube_tiling_nhw(op_type, input_shape, compile_info, tiling_id);
+        tiling_id = cube_tiling_nhw(op_type, input_shape, x_format, compile_info, tiling_id);
       } else {
-        tiling_id = cube_tiling_batch(op_type, input_shape, compile_info, tiling_id);
+        tiling_id = cube_tiling_batch(op_type, input_shape, x_format, compile_info, tiling_id);
       }
 
       if (tiling_id.empty()) {

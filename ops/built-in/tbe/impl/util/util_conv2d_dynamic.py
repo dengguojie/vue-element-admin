@@ -359,9 +359,9 @@ class Conv2dParaProcess(CubeParaProcess):
                 in_shape_nchw[1] = w_shape_nchw[1]*self.groups
             self.check_range_valid(in_shape_nchw, in_range_nchw, "fmap", self.data_format)
 
-        cor_in_range_nchw = self.correct_in_range(in_range_nchw, w_shape_nchw)
         self.check_support_valid(in_shape_nchw, w_shape_nchw)
         self.get_attr_nchw(self.data_format)
+        cor_in_range_nchw = self.correct_in_range(in_range_nchw, w_shape_nchw)
         y_range, correct_range_flag, new_in_range_nchw = self.get_output_range(w_shape_nchw, cor_in_range_nchw)
         self.check_range_valid(out_shape_nchw, y_range, "output", self.data_format)
 
