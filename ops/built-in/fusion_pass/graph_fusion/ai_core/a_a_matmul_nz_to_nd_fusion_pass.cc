@@ -49,6 +49,9 @@
 namespace fe {
 
 static const string kDescMatMul = "MatMul";
+static const string kDescTransdata0 = "Transdata0";
+static const string kDescTransdata1 = "Transdata1";
+static const string kDescTransdataOut = "TransdataOut";
 
 static const string kOpTypeMatMul = "MatMul";
 static const string kOpTypeMatMulV2 = "MatMulV2";
@@ -79,7 +82,12 @@ vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
   OP_LOGD(kNameFusionPass.c_str(), "Start to define pattern.");
 
   pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
-      .SetOutput(kDescMatMul);
+      .AddOpDesc(kDescTransdata0, {kOpTypeTransData})
+      .AddOpDesc(kDescTransdata1, {kOpTypeTransData})
+      .AddOpDesc(kDescTransdataOut, {kOpTypeTransData})
+      .SetInputs(kDescMatMul, {kDescTransdata0, kDescTransdata1})
+      .SetInputs(kDescTransdataOut, {kDescMatMul})
+      .SetOutput(kDescTransdataOut);
   patterns.push_back(pattern);
   OP_LOGD(kNameFusionPass.c_str(), "End to define pattern.");
   return patterns;
@@ -101,27 +109,32 @@ bool AAMatMulNzToNdFusionPass::CheckFormatOfTransData(const NodePtr node_ptr_tra
   return true;
 }
 
-bool AAMatMulNzToNdFusionPass::IsNumOfNodesCorrect(const ge::ComputeGraph& graph) {
-  int cnt_matmul = 0;
-  int cnt_data = 0;
-  int cnt_net_output = 0;
-  for (auto node_ptr : graph.GetAllNodes()) {
-    auto op_type = node_ptr->GetType();
-    if (op_type == kOpTypeData) {
-      cnt_data += 1;
-    } else if (op_type == kOpTypeNetOutput) {
-      cnt_net_output += 1;
-      node_ptr_netoutput = node_ptr;
-    } else if (find(whitelist_op_type.begin(), whitelist_op_type.end(), node_ptr->GetType()) !=
-               whitelist_op_type.end()) {
-      cnt_matmul += 1;
-      node_ptr_matmul = node_ptr;
-    }
-  }
+bool AAMatMulNzToNdFusionPass::IsNumOfNodesOutCorrect() {
+  auto out_nodes_data_0 = node_ptr_data_0->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(out_nodes_data_0 != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Data(index: 0) before matmul node should only have 1 output, actual %zu.",
+                    out_nodes_data_0), return false);
 
-  if (cnt_matmul > 1 || cnt_data < kNumDataNodes || cnt_net_output != 1) {
-    return false;
-  }
+  auto out_nodes_data_1 = node_ptr_data_1->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(out_nodes_data_1 != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Data(index: 1) before matmul node should only have 1 output, actual %zu.",
+                    out_nodes_data_1), return false);
+
+  auto out_nodes_transdata_0 = node_ptr_transdata_0->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(out_nodes_transdata_0 != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Transdata(index: 0) before matmul node should only have 1 output, actual %zu.",
+                    out_nodes_transdata_0), return false);
+
+  auto out_nodes_transdata_1 = node_ptr_transdata_1->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(out_nodes_transdata_1 != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Transdata(index: 1) before matmul node should only have 1 output, actual %zu.",
+                    out_nodes_transdata_1), return false);
+
+  auto out_nodes_matmul = node_ptr_matmul->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(out_nodes_matmul != 1,
+                    OP_LOGW(kNameFusionPass.c_str(), "Matmul node should only have 1 output, actual %zu.",
+                    out_nodes_matmul), return false);
+
   return true;
 }
 
@@ -146,61 +159,61 @@ bool AAMatMulNzToNdFusionPass::IsAligned() {
   return false;
 }
 
-bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect() {
-  FUSION_PASS_CHECK((node_ptr_matmul->GetOutDataNodes().size() != 1),
-                    OP_LOGW(kNameFusionPass.c_str(), "MatMul node should only have 1 output, actual %zu.",
-                            node_ptr_matmul->GetOutDataNodes().size()),
-                    return false);
-  node_ptr_transdata_out = node_ptr_matmul->GetOutDataNodes().at(0);
-  FUSION_PASS_CHECK(node_ptr_transdata_out->GetType() != kOpTypeTransData ||
-                        !CheckFormatOfTransData(node_ptr_transdata_out, kFormatFractalNz, kFormatNd),
-                    OP_LOGW(kNameFusionPass.c_str(), "TransData operator after MatMul does not match."), return false);
+bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect(const Mapping& mapping) {
+  node_ptr_matmul = GetNodeFromMapping(kDescMatMul, mapping);
+  FUSION_PASS_CHECK(node_ptr_matmul == nullptr, OP_LOGW(kNameFusionPass.c_str(),
+                    "Get node matmul failed"), return false);
+  node_ptr_transdata_0 = GetNodeFromMapping(kDescTransdata0, mapping);
+  FUSION_PASS_CHECK(node_ptr_transdata_0 == nullptr, OP_LOGW(kNameFusionPass.c_str(),
+                    "Get node transdata(idx: 0) before matmul failed"), return false);
+  node_ptr_transdata_1 = GetNodeFromMapping(kDescTransdata1, mapping);
+  FUSION_PASS_CHECK(node_ptr_transdata_1 == nullptr, OP_LOGW(kNameFusionPass.c_str(),
+                    "Get node transdata(idx: 1) before matmul failed"), return false);
+  node_ptr_transdata_out = GetNodeFromMapping(kDescTransdataOut, mapping);
+  FUSION_PASS_CHECK(node_ptr_transdata_out == nullptr, OP_LOGW(kNameFusionPass.c_str(),
+                    "Get node transdata after matmul failed"), return false);
 
-  FUSION_PASS_CHECK(
-      node_ptr_transdata_out->GetOutDataNodes().size() != 1,
-      OP_LOGW(kNameFusionPass.c_str(), "TransData after MatMul node should only have 1 output, actual %zu.",
-              node_ptr_transdata_out->GetOutDataNodes().size()),
-      return false);
-  node_ptr_netoutput = node_ptr_transdata_out->GetOutDataNodes().at(0);
+  auto out_nodes_transdata_out = node_ptr_transdata_out->GetOutDataNodes();
+  FUSION_PASS_CHECK(out_nodes_transdata_out.size() != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Transdata after matmul node should only have 1 output, actual %zu.",
+                    out_nodes_transdata_out.size()), return false);
+  node_ptr_netoutput = out_nodes_transdata_out.at(0);
+
+  auto in_nodes_transdata0_in = node_ptr_transdata_0->GetInDataNodes();
+  FUSION_PASS_CHECK(in_nodes_transdata0_in.size() != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Transdata(idx: 0) before matmul node should only have 1 input, actual %zu.",
+                    in_nodes_transdata0_in.size()), return false);
+  node_ptr_data_0 = in_nodes_transdata0_in.at(0);
+
+  auto in_nodes_transdata1_in = node_ptr_transdata_1->GetInDataNodes();
+  FUSION_PASS_CHECK(in_nodes_transdata1_in.size() != 1, OP_LOGW(kNameFusionPass.c_str(),
+                    "Transdata(idx: 1) before matmul node should only have 1 input, actual %zu.",
+                    in_nodes_transdata1_in.size()), return false);
+  node_ptr_data_1 = in_nodes_transdata1_in.at(0);
+
   FUSION_PASS_CHECK(node_ptr_netoutput->GetType() != kOpTypeNetOutput,
                     OP_LOGW(kNameFusionPass.c_str(), "The NetOutput operator does not match."), return false);
-
-  FUSION_PASS_CHECK(node_ptr_matmul->GetInDataNodes().size() < kNumDataNodes,
-                    OP_LOGW(kNameFusionPass.c_str(), "MatMul node should have at least 2 inputs, actual %zu.",
-                            node_ptr_matmul->GetInDataNodes().size()),
-                    return false);
-  node_ptr_transdata_0 = node_ptr_matmul->GetInDataNodes().at(0);
-  FUSION_PASS_CHECK(node_ptr_transdata_0->GetType() != kOpTypeTransData ||
-                        !CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz),
-                    OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:0) before MatMul node does not match."),
-                    return false);
-  FUSION_PASS_CHECK(
-      node_ptr_transdata_0->GetInDataNodes().size() != 1,
-      OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:0) before MatMul node should only have 1 input, actual %zu.",
-              node_ptr_transdata_0->GetInDataNodes().size()),
-      return false);
-  node_ptr_data_0 = node_ptr_transdata_0->GetInDataNodes().at(0);
   FUSION_PASS_CHECK(node_ptr_data_0->GetType() != kOpTypeData,
                     OP_LOGW(kNameFusionPass.c_str(), "Data(idx:0) before Matmul node does not match."), return false);
-
-  node_ptr_transdata_1 = node_ptr_matmul->GetInDataNodes().at(1);
-  FUSION_PASS_CHECK(node_ptr_transdata_1->GetType() != kOpTypeTransData ||
-                        !CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz),
-                    OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:1) before Matmul node does not match."),
-                    return false);
-  FUSION_PASS_CHECK(
-      node_ptr_transdata_1->GetInDataNodes().size() != 1,
-      OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:1) before MatMul node should only have 1 input, actual %zu.",
-              node_ptr_transdata_1->GetInDataNodes().size()),
-      return false);
-  node_ptr_data_1 = node_ptr_transdata_1->GetInDataNodes().at(0);
   FUSION_PASS_CHECK(node_ptr_data_1->GetType() != kOpTypeData,
                     OP_LOGW(kNameFusionPass.c_str(), "Data(idx:1) before Matmul node does not match."), return false);
+
+  FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz),
+                    OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:0) before MatMul node does not match."),
+                    return false);
+  
+  FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz),
+                    OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:1) before Matmul node does not match."),
+                    return false);
+
+  FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_out, kFormatFractalNz, kFormatNd),
+                    OP_LOGW(kNameFusionPass.c_str(), "TransData after Matmul node does not match."),
+                    return false);
 
   return true;
 }
 
-bool AAMatMulNzToNdFusionPass::NeedFusion(const ge::ComputeGraph& graph) {
+bool AAMatMulNzToNdFusionPass::NeedFusion(const ge::ComputeGraph& graph, const Mapping& mapping) {
   // Not support: cube_vector_split
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
@@ -212,12 +225,12 @@ bool AAMatMulNzToNdFusionPass::NeedFusion(const ge::ComputeGraph& graph) {
                     OP_LOGW(kNameFusionPass.c_str(), "Scenario where cube and vector are separated is not supported."),
                     return false);
 
-  FUSION_PASS_CHECK(!IsNumOfNodesCorrect(graph),
-                    OP_LOGW(kNameFusionPass.c_str(), "The number of nodes does not meet expectations."), return false);
-
-  FUSION_PASS_CHECK(!IsLinkRelationshipCorrect(),
+  FUSION_PASS_CHECK(!IsLinkRelationshipCorrect(mapping),
                     OP_LOGW(kNameFusionPass.c_str(), "The connection relationship does not meet expectations."),
                     return false);
+
+  FUSION_PASS_CHECK(!IsNumOfNodesOutCorrect(),
+                    OP_LOGW(kNameFusionPass.c_str(), "The number of nodes does not meet expectations."), return false);
 
   FUSION_PASS_CHECK(node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->GetDataType() != DT_FLOAT16 ||
                         node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->GetDataType() != DT_FLOAT16 ||
@@ -370,7 +383,7 @@ Status AAMatMulNzToNdFusionPass::DoFusion(ge::ComputeGraph& graph) {
 }
 
 Status AAMatMulNzToNdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  if (!NeedFusion(graph)) {
+  if (!NeedFusion(graph, mapping)) {
     return NOT_CHANGED;
   }
 

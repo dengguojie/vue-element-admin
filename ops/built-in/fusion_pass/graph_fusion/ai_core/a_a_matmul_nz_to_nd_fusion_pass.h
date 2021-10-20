@@ -33,10 +33,10 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   bool CheckFormatOfTransData(const ge::NodePtr node_ptr_transdata, const string& expect_src_format,
                               const string& expect_dst_format);
   bool IsAligned();
-  bool IsLinkRelationshipCorrect();
-  bool IsNumOfNodesCorrect(const ge::ComputeGraph& graph);
+  bool IsLinkRelationshipCorrect(const Mapping& mapping);
+  bool IsNumOfNodesOutCorrect();
   bool IsStaticShape();
-  bool NeedFusion(const ge::ComputeGraph& graph);
+  bool NeedFusion(const ge::ComputeGraph& graph, const Mapping& mapping);
   vector<FusionPattern*> DefinePatterns() override;
   void RestoreOriginalValues();
 
