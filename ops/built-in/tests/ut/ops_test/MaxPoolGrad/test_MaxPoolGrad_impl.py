@@ -38,9 +38,18 @@ def test_op_select_format(test_arg):
     ksize_1=[1,1,2,2]
     strides_1=[1,1,1,1]
     data_format_1="NCHW"
+    x1_2={"shape":(8,899,564,16),"format":"NHWC","dtype":"float16","ori_shape":(8,899,564,16),"ori_format":"NHWC"}
+    x2_2={"shape":(8,18,12,16),"format":"NHWC","dtype":"float16","ori_shape":(8,18,12,16),"ori_format":"NHWC"}
+    grad_2={"shape":(8,18,12,16),"format":"NHWC","dtype":"float16","ori_shape": (8,18,12,16),"ori_format":"NHWC"}
+    y_2={"shape":(8,899,564,16),"format":"NHWC","dtype":"float16","ori_shape":(8,899,564,16),"ori_format":"NHWC"}
+    ksize_2=[1,47,47,1]
+    strides_2=[1,51,51,1]
+    padding_2="SAME"
+    data_format_2="NHWC"
     op_select_format(x1, x2, grad, y, ksize, strides,padding, data_format)
     op_select_format(x1_dy, x2, grad, y, ksize, strides,padding, data_format)
     op_select_format(x1_1, x2_1, grad_1, y_1, ksize_1, strides_1,padding, data_format_1)
+    op_select_format(x1_2, x2_2, grad_2, y_2, ksize_2, strides_2, padding_2, data_format_2)
 
 
 

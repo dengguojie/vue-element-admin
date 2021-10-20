@@ -39,7 +39,6 @@ def op_select_format(x1, x2, grad, y, ksize, strides,
     x2_shape = list(x2.get("ori_shape"))
     grad_shape = list(grad.get("ori_shape"))
     dynamic = False
-    atomic_flag = _branch_choice(x1_shape, ksize, strides, padding, data_format)
     for i, _ in enumerate(x1_shape):
         if x1_shape[i] == -1 or x2_shape[i] == -1 or grad_shape[i] == -1:
             dynamic = True
@@ -57,32 +56,34 @@ def op_select_format(x1, x2, grad, y, ksize, strides,
         y_dtype = "float"
         y_format = "NC1HWC0"
         y_dy_format = "NC1HWC0"
-    elif atomic_flag:
-        x1_dtype = "float16"
-        x1_format = "NC1HWC0"
-        x1_dy_format = None
-        x2_dtype = "float16"
-        x2_format = "NC1HWC0"
-        x2_dy_format = None
-        grad_dtype = "float16"
-        grad_format = "NC1HWC0"
-        grad_dy_format = None
-        y_dtype = "float"
-        y_format = "NC1HWC0"
-        y_dy_format = None
     else:
-        x1_dtype = "float16"
-        x1_format = "NC1HWC0"
-        x1_dy_format = None
-        x2_dtype = "float16"
-        x2_format = "NC1HWC0"
-        x2_dy_format = None
-        grad_dtype = "float16"
-        grad_format = "NC1HWC0"
-        grad_dy_format = None
-        y_dtype = "float16"
-        y_format = "NC1HWC0"
-        y_dy_format = None
+        atomic_flag = _branch_choice(x1_shape, ksize, strides, padding, data_format)
+        if atomic_flag:
+            x1_dtype = "float16"
+            x1_format = "NC1HWC0"
+            x1_dy_format = None
+            x2_dtype = "float16"
+            x2_format = "NC1HWC0"
+            x2_dy_format = None
+            grad_dtype = "float16"
+            grad_format = "NC1HWC0"
+            grad_dy_format = None
+            y_dtype = "float"
+            y_format = "NC1HWC0"
+            y_dy_format = None
+        else:
+            x1_dtype = "float16"
+            x1_format = "NC1HWC0"
+            x1_dy_format = None
+            x2_dtype = "float16"
+            x2_format = "NC1HWC0"
+            x2_dy_format = None
+            grad_dtype = "float16"
+            grad_format = "NC1HWC0"
+            grad_dy_format = None
+            y_dtype = "float16"
+            y_format = "NC1HWC0"
+            y_dy_format = None
 
     input0 = gen_param(classify="input0", name="x1",
                        datatype=x1_dtype,
