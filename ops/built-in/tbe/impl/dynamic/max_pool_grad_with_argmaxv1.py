@@ -15,22 +15,14 @@
 """
 max_pool_grad_with_argmax_v1
 """
-
-import te
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.dynamic.max_pool_grad_with_argmax_cut_one_h_v1 import MaxpoolGradCustom
 
-# size of 5HD format
-DIM_5HD = 5
-# size of c0 for fp16
-C0 = 16
 # min shape of attr
 ATTR_SHAPE_MIN = 4
-# size of useful UB buffer
-USEFUL_UB_SIZE = 1024 * 240
 # size of vector calc one repeat
 ONE_REPEAT = 256
 # size of one block
@@ -55,8 +47,8 @@ UB_SIZE = 262144
 L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=invalid-name,too-many-arguments,useless-super-delegation,super-with-arguments
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,consider-using-in
+# 'pylint: disable=invalid-name,too-many-arguments,useless-super-delegation,super-with-arguments
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,consider-using-in
 @register_operator("MaxPoolGradWithArgmaxV1")
 @para_check.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple), (list, tuple), int, (list, tuple),
                              bool, str)
@@ -118,6 +110,9 @@ class MaxpoolGard(MaxpoolGradCustom):
         self.dilation_h, self.dilation_w = self.dilation[1:3]
 
     def tik_instance_function(self, kernel_name):
+        """
+        tik_instance function
+        """
         with self.tik_instance.for_range(0, self.blocknum, block_num=self.blocknum) as block_id:
             self.get_tiling_params()
             with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE0):
@@ -186,6 +181,7 @@ def check_output_dim_with_ksize_stride(ksize, strides):
             "invalid window params, window_h*window_w should be <=255")
 
 
+# 'pylint: disable=unused-argument
 def check_param(x, grad, argmax, y, ksize, strides, padding, dtype, dilation,
                 ceil_mode, kernel_name):
     """

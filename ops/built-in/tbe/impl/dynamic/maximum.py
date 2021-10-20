@@ -25,9 +25,9 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,unused-variable,too-many-locals
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,unused-variable,too-many-locals
+# 'pylint: disable=redefined-argument-from-local
 def maximum_compute(x1, x2, y, kernel_name="maximum"):
     """dynamic maximum compute
 

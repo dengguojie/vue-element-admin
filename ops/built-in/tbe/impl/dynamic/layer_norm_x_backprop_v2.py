@@ -15,7 +15,7 @@
 """
 layer_norm_x_backprop_v2
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import tbe as mytbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -25,7 +25,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import operation
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -35,7 +36,7 @@ class Constant(object):
     EPSLON = 1e-12
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @mytbe.common.register.register_param_generalization("LayerNormXBackpropV2")
 def layer_norm_x_backprop_generalization(input_dy, input_x, input_variance,
                                          input_mean, input_gamma, output_pd_x, output_res_gamma,
@@ -339,6 +340,7 @@ def _get_pd_mean(params, pd_xl, var_elta_2, cast_dtype):
     return pd_mean
 
 
+# 'pylint: disable=too-many-locals
 def _get_pd_x_front(data, params, shape_x, cast_dtype):
     """
     compute front part of pd_x according to data, params and shape_x
@@ -454,6 +456,7 @@ def _get_res(data, params, shape_x, dtype, cast_dtype):
     return pd_x, res_for_gamma
 
 
+# 'pylint: disable=too-many-arguments
 def _get_pds(data_dy, data_x, data_variance, data_mean,
              data_gamma, shape_gamma_ori):
     """
@@ -509,6 +512,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     return pd_x, res_for_gamma
 
 
+# 'pylint: disable=too-many-arguments
 def layer_norm_x_backprop_v2_compute(input_dy, input_x,
                                      input_variance, input_mean,
                                      input_gamma, output_pd_x, output_res_gamma,
@@ -545,7 +549,7 @@ def layer_norm_x_backprop_v2_compute(input_dy, input_x,
     return res_list
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @register_operator("LayerNormXBackpropV2", pattern="Layer_norm_x_backprop_v2")
 def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
                              input_gamma, output_pd_x, output_res_gamma,

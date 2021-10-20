@@ -17,7 +17,7 @@
 """
 max_pool_grad
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -26,7 +26,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -65,8 +66,8 @@ class Constant(object):
     CASE_SEVEN = 7
 
 
-# pylint: disable=too-many-locals,too-many-arguments,invalid-name,too-many-locals,no-self-use,too-few-public-methods
-# pylint: disable=too-many-statements,unused-variable,too-many-branches,too-many-instance-attributes,unused-argument
+# 'pylint: disable=too-many-locals,too-many-arguments,invalid-name,too-many-locals,no-self-use,too-few-public-methods
+# 'pylint: disable=too-many-statements,unused-variable,too-many-branches,too-many-instance-attributes,unused-argument
 def _init_coordinate_dy(tik_instance, pad_x_top, xi_coordinate):
     """
     init_coordinate

@@ -20,7 +20,8 @@ from impl.dynamic.max_pool_grad_with_argmax_cut_h_v1 import MaxpoolGradBase
 from impl.util.platform_adapter import tik
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The Class for Constant
     """
@@ -36,8 +37,8 @@ class Constant(object):
     MASK_MAX = 8
 
 
-# pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 class MaxpoolGardObject(MaxpoolGradBase):
     """
     parameter for max_pool_grad_with_pool

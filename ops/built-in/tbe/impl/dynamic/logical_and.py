@@ -24,8 +24,8 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,invalid-name
 def logical_and_compute(x1, x2, y, kernel_name="logical_and"):
     """
     calculating data

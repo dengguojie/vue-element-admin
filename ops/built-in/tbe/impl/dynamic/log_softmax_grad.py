@@ -24,7 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 
 
-# pylint: disable = locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator("LogSoftmaxGrad")
 def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
                              kernel_name="log_softmax_grad"):
@@ -75,6 +75,7 @@ def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
     return result
 
 
+# 'pylint: disable=too-many-locals,variable_type_changed
 @register_operator("LogSoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,

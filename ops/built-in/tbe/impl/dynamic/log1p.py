@@ -25,7 +25,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -47,7 +48,7 @@ class Constant(object):
     TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     algorithm: log1p
@@ -206,7 +207,7 @@ def _newton_exp_iter(input_x, input_y):
     Returns : A Tensor. Has the same type as input_y.
     -------
     """
-    # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
+    # Newton begin:`y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)`
     newton_exp = tbe.vadds(input_y, tvm.const(-1.0,
                                               "float32"))
     input_y_mul = tbe.vmuls(input_y, tvm.const(-1.0,
@@ -232,7 +233,7 @@ def _newton_taylor_iter(input_x, input_y):
     Returns: A Tensor. Has the same type as input_y.
     -------
     """
-    # Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
+    # Newton begin:`y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)`
     newton_taylor = tbe.vadds(input_y, tvm.const(-1.0,
                                                  "float32"))
     input_y_mul = tbe.vmuls(input_y, tvm.const(-1.0,

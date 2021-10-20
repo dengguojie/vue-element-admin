@@ -25,8 +25,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable,invalid-name,too-many-locals
 def minimum_compute(x1, x2, y, kernel_name="minimum"):
     """dynamic minimum compute
 
@@ -69,7 +69,7 @@ def minimum_compute(x1, x2, y, kernel_name="minimum"):
     return res
 
 
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=redefined-argument-from-local
 @register_operator("Minimum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

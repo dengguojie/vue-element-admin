@@ -26,7 +26,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -37,8 +38,8 @@ class Constant(object):
     SCALAR_MUL_FP16 = 2 ** 12
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def _less_compare(data, shape, dtype, data_min):
     """
     if x is less than y, then return 1, else return 0.

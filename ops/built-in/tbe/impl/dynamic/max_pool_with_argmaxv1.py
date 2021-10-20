@@ -16,62 +16,62 @@
 """
 max_pool_with_argmaxv1
 """
-
+from impl import constant_util
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# min value of fp16
-MIN_VALUE_FP16 = -65504.0
-MAX_INT32 = 2 ** 31 - 1
-TILING_NUM = 64
-# define dilation size
-DILATION = 1
-# parameters for vector instruct
-TILING_MODE0 = 0
-TILING_MODE1 = 1
-TILING_MODE2 = 2
-MASK = 128
-ALIGN16 = 16
-REPEAT_2 = 2
-DSTSTRIDEM0 = 1
-SRC0STRIDEM0 = 1
-SRC1STRIDEM0 = 1
-DSTSTRIDEM1 = 8
-SRC0STRIDEM1 = 8
-SRC1STRIDEM1 = 8
-MAX_ALLOW_UB = 253952
-DT_INT32 = 3
-DT_INT64 = 9
-SCALAR_255 = 255
-# get available ub size
-UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
-# get available l1 size
-L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # min value of fp16
+    MIN_VALUE_FP16 = -65504.0
+    TILING_NUM = 64
+    # parameters for vector instruct
+    TILING_MODE0 = 0
+    TILING_MODE1 = 1
+    TILING_MODE2 = 2
+    MASK = 128
+    ALIGN16 = 16
+    REPEAT_2 = 2
+    DSTSTRIDEM1 = 8
+    SRC0STRIDEM1 = 8
+    SRC1STRIDEM1 = 8
+    MAX_ALLOW_UB = 253952
+    DT_INT32 = 3
+    DT_INT64 = 9
+    SCALAR_255 = 255
+    # get available ub size
+    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
+    # get available l1 size
+    L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
-# pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
-# pylint: disable=too-many-statements,no-self-use,too-few-public-methods
-# pylint: disable=unused-argument
-def check_supported(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
+# 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
+# 'pylint: disable=too-many-statements,no-self-use,too-few-public-methods
+# 'pylint: disable=unused-argument
+def check_supported(x, y, argmax, ksize, strides, pads, dtype=Constant.DT_INT32, dilation=(1, 1, 1, 1),
                     ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """
     check whether ai_core is supported
     """
-    if ksize[1] * ksize[2] > SCALAR_255:
-        reason = "ksize is too large, ksize is %s" %(str(ksize),)
+    if ksize[1] * ksize[2] > Constant.SCALAR_255:
+        reason = "ksize is too large, ksize is %s" % (str(ksize),)
         return False, reason
 
     return True, ""
 
 
-# pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
-# pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
-# pylint: disable=too-many-statements,no-self-use,too-few-public-methods
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
+# 'pylint: disable=too-many-statements,no-self-use,too-few-public-methods
+# 'pylint: disable=unused-argument
 def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_name):
     """
     check parameters, if one is invalid, then raise error
@@ -139,7 +139,7 @@ def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_
     if ceil_mode is not True and ceil_mode is not False:
         raise RuntimeError("MaxPoolWithArgmax only supports ceil_mode across "
                            "True/False, and other string not support!")
-    if dtype != DT_INT32 and dtype != DT_INT64:
+    if dtype != Constant.DT_INT32 and dtype != Constant.DT_INT64:
         raise RuntimeError("MaxPoolWithArgmax only supports output indices data type: "
                            "int32, int64, and other data type not support!")
     if ksize[1] * ksize[2] > 255:
@@ -207,15 +207,15 @@ class MaxPoolWithargmaxPytorch(object):
         self.scalar_source_w = self.tik_instance.Scalar(dtype="int64")
 
         if self.input_dtype == "float16":
-            self.pad_value = MIN_VALUE_FP16
+            self.pad_value = Constant.MIN_VALUE_FP16
         # input and output
-        self.input_fmap_gm = self.tik_instance.Tensor(self.input_dtype, (MAX_INT32,),
+        self.input_fmap_gm = self.tik_instance.Tensor(self.input_dtype, (constant_util.SHAPE_SIZE_LIMIT,),
                                                       name="input_fmap_gm", scope=tik.scope_gm)
-        self.output_max_gm = self.tik_instance.Tensor(self.input_dtype, (MAX_INT32,),
+        self.output_max_gm = self.tik_instance.Tensor(self.input_dtype, (constant_util.SHAPE_SIZE_LIMIT,),
                                                       name="output_max_gm", scope=tik.scope_gm)
-        self.output_mask_gm = self.tik_instance.Tensor("uint16", (MAX_INT32,),
+        self.output_mask_gm = self.tik_instance.Tensor("uint16", (constant_util.SHAPE_SIZE_LIMIT,),
                                                        name="output_mask_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.mask_zero = self.tik_instance.Scalar("int64")
         # tiling params
         self.tiling_mode = None
@@ -272,7 +272,8 @@ class MaxPoolWithargmaxPytorch(object):
         self.cut_w_num = self.tik_instance.Scalar("int32")
 
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int32", shape=(TILING_NUM,), scope=tik.scope_ubuf, name="tiling_ub")
+            tiling_ub = self.tik_instance.Tensor("int32", shape=(Constant.TILING_NUM,), scope=tik.scope_ubuf,
+                                                 name="tiling_ub")
             self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
             self.tiling_mode.set_as(tiling_ub[0])
             self.need_core_num.set_as(tiling_ub[1])
@@ -357,23 +358,23 @@ class MaxPoolWithargmaxPytorch(object):
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
             self.get_tiling_params()
             with self.tik_instance.if_scope(block_index < self.need_core_num):
-                with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE0):
+                with self.tik_instance.if_scope(self.tiling_mode == Constant.TILING_MODE0):
                     with self.tik_instance.new_stmt_scope():
                         self.compute_no_cut(block_index)
 
-                with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE1):
+                with self.tik_instance.if_scope(self.tiling_mode == Constant.TILING_MODE1):
                     with self.tik_instance.new_stmt_scope():
                         self.compute_cut_h(block_index)
 
-                with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE2):
+                with self.tik_instance.if_scope(self.tiling_mode == Constant.TILING_MODE2):
                     with self.tik_instance.new_stmt_scope():
                         self.compute_cut_h_w(block_index)
 
         self.tik_instance.BuildCCE(kernel_name=kernel_name, inputs=self.input_fmap_gm,
                                    outputs=(self.output_max_gm, self.output_mask_gm), flowtable=[self.tiling_gm])
         ceil_mode_int = 1 if self.ceil_mode else 0
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "ub_size": UB_SIZE,
-                                                            "l1_size": L1_SIZE, "kernel_h": self.kernel_h,
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "ub_size": Constant.UB_SIZE,
+                                                            "l1_size": Constant.L1_SIZE, "kernel_h": self.kernel_h,
                                                             "kernel_w": self.kernel_w, "stride_h": self.stride_h,
                                                             "stride_w": self.stride_w, "pad_h": self.pad_h,
                                                             "pad_w": self.pad_w, "dilation_h": self.dilation_h,
@@ -467,20 +468,20 @@ class MaxPoolWithargmaxPytorch(object):
 
     def _clean_fp16_data_ub(self, input_ub, length, value):
         repeat_time = self.tik_instance.Scalar("int32", name="repeat_time")
-        repeat_time.set_as(length // ALIGN16)
+        repeat_time.set_as(length // Constant.ALIGN16)
         max_iter_num = 255
         with self.tik_instance.if_scope(repeat_time < max_iter_num):
-            self.tik_instance.vector_dup(ALIGN16, input_ub, value, repeat_time, 1, 1)
+            self.tik_instance.vector_dup(Constant.ALIGN16, input_ub, value, repeat_time, 1, 1)
         with self.tik_instance.else_scope():
             iter_times = repeat_time // max_iter_num
-            iter_max_len = max_iter_num * ALIGN16
+            iter_max_len = max_iter_num * Constant.ALIGN16
             iter_res_time = repeat_time - iter_times * max_iter_num
             with self.tik_instance.if_scope(iter_times > 0):
                 with self.tik_instance.for_range(0, iter_times) as num:
-                    self.tik_instance.vector_dup(ALIGN16, input_ub[num * iter_max_len],
+                    self.tik_instance.vector_dup(Constant.ALIGN16, input_ub[num * iter_max_len],
                                                  value, max_iter_num, 1, 1)
             with self.tik_instance.if_scope(iter_res_time > 0):
-                self.tik_instance.vector_dup(ALIGN16, input_ub[iter_times * iter_max_len],
+                self.tik_instance.vector_dup(Constant.ALIGN16, input_ub[iter_times * iter_max_len],
                                              value, iter_res_time, 1, 1)
 
     def _calc_only_cut_h_branch(self, cut_h_index, cut_h_size, cut_stride, cut_h_num, input_fmap_l1,
@@ -680,7 +681,7 @@ class MaxPoolWithargmaxPytorch(object):
                         with self.tik_instance.if_scope(tik.all(mask_zero_cut != 0, self.fmap_w != 1)):
                             self.tik_instance.vector_dup(
                                 [zero_scalar, mask_zero_cut], mask_ub[w_index * fmap_img2col_cut_h_num * self.c0_size +
-                                                            fmap_img2col_h_tail_num * 16 - 16], 0, 1, 1, 8)
+                                                                      fmap_img2col_h_tail_num * 16 - 16], 0, 1, 1, 8)
                         self.tik_instance.data_move(
                             self.output_mask_gm[offset_output_mask + w_index * (self.fmap_h_num + 1) * 16],
                             mask_ub[w_index * fmap_img2col_cut_h_num * self.c0_size],
@@ -946,7 +947,7 @@ class MaxPoolWithargmaxPytorch(object):
                     with self.tik_instance.if_scope(self.input_h - cut_stride * (cut_h_num - 1) + self.pad[2]
                                                     <= cut_h_size):
                         gm_l1_burst_len.set_as((self.input_h - cut_stride * (cut_h_num - 1) + self.pad[2]) *
-                                              self.input_w * self.c0_size // 16)
+                                               self.input_w * self.c0_size // 16)
                     with self.tik_instance.else_scope():
                         gm_l1_burst_len.set_as(cut_h_size * self.input_w * self.c0_size // 16)
                     self.tik_instance.data_move(
@@ -1191,7 +1192,7 @@ class MaxPoolWithargmaxPytorch(object):
                                                                     self.fmap_w != 1, cut_h_num == 1)):
                                 self.tik_instance.vector_dup(
                                     [zero_w, mask_zero_w], mask_ub[w_index * fmap_cut_w_num * self.c0_size +
-                                                              fmap_tail_w_num * 16 - 16], 0, 1, 1, 8)
+                                                                   fmap_tail_w_num * 16 - 16], 0, 1, 1, 8)
 
                             self.tik_instance.data_move(
                                 self.output_mask_gm[offset_output_mask + w_index * (self.fmap_h_num + 1) * 16],
@@ -1297,9 +1298,9 @@ class MaxPoolWithargmaxPytorch(object):
         data_input: output tensor
         """
         self.tik_instance.vmax(
-            MASK, data_input[index_h * 256], data_input[index_h * 256],
+            Constant.MASK, data_input[index_h * 256], data_input[index_h * 256],
             data_input_ub[index_w * 256 + index_h * self.fmap_w * 256],
-            REPEAT_2, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1, SRC0STRIDEM1, SRC1STRIDEM1)
+            Constant.REPEAT_2, 1, 1, 1, Constant.DSTSTRIDEM1, Constant.SRC0STRIDEM1, Constant.SRC1STRIDEM1)
         return data_input
 
     def _calc_max_fun_binary_search(self, data_input_ub, length):
@@ -1334,24 +1335,24 @@ class MaxPoolWithargmaxPytorch(object):
                     res_iter_times = repeat_time - iter_times
                     with self.tik_instance.for_range(0, iter_times) as iter_i:
                         self.tik_instance.vmax(
-                            MASK, input_ub_0[iter_i * iter_len], input_ub_0[iter_i * iter_len],
+                            Constant.MASK, input_ub_0[iter_i * iter_len], input_ub_0[iter_i * iter_len],
                             input_ub_1[iter_i * iter_len],
-                            255, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1, SRC0STRIDEM1, SRC1STRIDEM1)
+                            255, 1, 1, 1, Constant.DSTSTRIDEM1, Constant.SRC0STRIDEM1, Constant.SRC1STRIDEM1)
                     self.tik_instance.vmax(
-                        MASK, input_ub_0[iter_times * iter_len], input_ub_0[iter_times * iter_len],
+                        Constant.MASK, input_ub_0[iter_times * iter_len], input_ub_0[iter_times * iter_len],
                         input_ub_1[iter_times * iter_len],
-                        res_iter_times, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1, SRC0STRIDEM1, SRC1STRIDEM1
+                        res_iter_times, 1, 1, 1, Constant.DSTSTRIDEM1, Constant.SRC0STRIDEM1, Constant.SRC1STRIDEM1
                     )
 
                 with self.tik_instance.else_scope():
                     self.tik_instance.vmax(
-                        MASK, data_input_ub[0], data_input_ub[0], data_input_ub[half_time * 256],
-                        repeat_time, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1, SRC0STRIDEM1, SRC1STRIDEM1)
+                        Constant.MASK, data_input_ub[0], data_input_ub[0], data_input_ub[half_time * 256],
+                        repeat_time, 1, 1, 1, Constant.DSTSTRIDEM1, Constant.SRC0STRIDEM1, Constant.SRC1STRIDEM1)
 
                 with self.tik_instance.if_scope(res_len > 0):
                     self.tik_instance.vmax(
-                        MASK, data_input_ub[0], data_input_ub[0], data_input_ub[half_time * 2 * 256],
-                        REPEAT_2, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1, SRC0STRIDEM1, SRC1STRIDEM1)
+                        Constant.MASK, data_input_ub[0], data_input_ub[0], data_input_ub[half_time * 2 * 256],
+                        Constant.REPEAT_2, 1, 1, 1, Constant.DSTSTRIDEM1, Constant.SRC0STRIDEM1, Constant.SRC1STRIDEM1)
 
     def _calc_mask_fun(self, data_input_max, data_input_ub, index_w, index_h, fmap_h_num, mask_ub):
         """
@@ -1372,8 +1373,8 @@ class MaxPoolWithargmaxPytorch(object):
         """
         self.tik_instance.vcmpv_eq(mask_ub[index_w * fmap_h_num * 16 + index_h * 16],
                                    data_input_ub[index_w * 256 + index_h * self.fmap_w * 256],
-                                   data_input_max[index_h * 256], REPEAT_2,
-                                   SRC0STRIDEM0, SRC1STRIDEM0, SRC0STRIDEM1, SRC1STRIDEM1)
+                                   data_input_max[index_h * 256], Constant.REPEAT_2,
+                                   1, 1, Constant.SRC0STRIDEM1, Constant.SRC1STRIDEM1)
         return mask_ub
 
     def _calc_max_and_mask(self, fmap_h_num, fmap_ub, data_x_max, mask_ub, fmap_cut_w_num=0, fmap_h_tail_num=0):
@@ -1403,14 +1404,15 @@ class MaxPoolWithargmaxPytorch(object):
             with self.tik_instance.for_range(0, repeat_times) as repeat_index:
                 with self.tik_instance.if_scope(repeat_index != (repeat_times - 1)):
                     self.tik_instance.vector_dup(
-                        MASK, data_x_max[repeat_index * 254 * 128], MIN_VALUE_FP16, 254, DSTSTRIDEM0, SRC0STRIDEM1)
+                        Constant.MASK, data_x_max[repeat_index * 254 * 128], Constant.MIN_VALUE_FP16, 254, 1,
+                        Constant.SRC0STRIDEM1)
                 with self.tik_instance.else_scope():
                     self.tik_instance.vector_dup(
-                        MASK, data_x_max[repeat_index * 254 * 128], MIN_VALUE_FP16,
-                        (scalar_repeat_times - repeat_index * 254), DSTSTRIDEM0, SRC0STRIDEM1)
+                        Constant.MASK, data_x_max[repeat_index * 254 * 128], Constant.MIN_VALUE_FP16,
+                        (scalar_repeat_times - repeat_index * 254), 1, Constant.SRC0STRIDEM1)
         with self.tik_instance.else_scope():
-            self.tik_instance.vector_dup(MASK, data_x_max, MIN_VALUE_FP16, scalar_repeat_times, DSTSTRIDEM0,
-                                         SRC0STRIDEM1)
+            self.tik_instance.vector_dup(Constant.MASK, data_x_max, Constant.MIN_VALUE_FP16, scalar_repeat_times, 1,
+                                         Constant.SRC0STRIDEM1)
         with self.tik_instance.new_stmt_scope():
             feature_map_l1 = self.tik_instance.Tensor(
                 self.input_dtype, (256 * 256,), name="feature_map_l1", scope=tik.scope_cbuf)
@@ -1471,34 +1473,34 @@ class MaxPoolWithargmaxPytorch(object):
                 with self.tik_instance.if_scope(fmap_tail_w == 0):
                     with self.tik_instance.if_scope(fmap_tail_h == 0):
                         self.tik_instance.vor(
-                            16, mask_or[0], mask_ub[index_w * fmap_h_num * 16], mask_or[0], fmap_h_num, DSTSTRIDEM0,
-                            SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
+                            16, mask_or[0], mask_ub[index_w * fmap_h_num * 16], mask_or[0], fmap_h_num, 1,
+                            1, 1, 1, 1, 1)
                         self.tik_instance.vand(
                             16, mask_ub[index_w * fmap_h_num * 16], mask_not[0], mask_ub[index_w * fmap_h_num * 16],
-                            fmap_h_num, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0,
-                            SRC1STRIDEM0)
+                            fmap_h_num, 1, 1, 1, 1, 1,
+                            1)
                     with self.tik_instance.else_scope():
                         fmap_tail_num.set_as((fmap_tail_h + 15) // 16)
                         self.tik_instance.vor(
-                            16, mask_or[0], mask_ub[index_w * fmap_tail_num * 16], mask_or[0], fmap_h_num, DSTSTRIDEM0,
-                            SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
+                            16, mask_or[0], mask_ub[index_w * fmap_tail_num * 16], mask_or[0], fmap_h_num, 1,
+                            1, 1, 1, 1, 1)
                         self.tik_instance.vand(
                             16, mask_ub[index_w * fmap_tail_num * 16], mask_not[0],
-                            mask_ub[index_w * fmap_tail_num * 16], fmap_h_num, DSTSTRIDEM0, SRC0STRIDEM0,
-                            SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
+                            mask_ub[index_w * fmap_tail_num * 16], fmap_h_num, 1, 1,
+                            1, 1, 1, 1)
                 with self.tik_instance.else_scope():
                     fmap_tail_num.set_as((fmap_tail_w + 15) // 16)
                     self.tik_instance.vor(
-                        16, mask_or[0], mask_ub[index_w * fmap_tail_num * 16], mask_or[0], fmap_h_num, DSTSTRIDEM0,
-                        SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
+                        16, mask_or[0], mask_ub[index_w * fmap_tail_num * 16], mask_or[0], fmap_h_num, 1,
+                        1, 1, 1, 1, 1)
                     self.tik_instance.vand(
                         16, mask_ub[index_w * fmap_tail_num * 16], mask_not[0], mask_ub[index_w * fmap_tail_num * 16],
-                        fmap_h_num, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
-                self.tik_instance.vnot(16, mask_not[0], mask_or[0], fmap_h_num, SRC0STRIDEM0,
-                                       SRC1STRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
+                        fmap_h_num, 1, 1, 1, 1, 1, 1)
+                self.tik_instance.vnot(16, mask_not[0], mask_or[0], fmap_h_num, 1,
+                                       1, 1, 1)
             with self.tik_instance.else_scope():
-                self.tik_instance.vnot(16, mask_not[0], mask_ub[0], fmap_h_num, SRC0STRIDEM0,
-                                       SRC1STRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0)
+                self.tik_instance.vnot(16, mask_not[0], mask_ub[0], fmap_h_num, 1,
+                                       1, 1, 1)
                 self.tik_instance.data_move(mask_or[0], mask_ub[0], 0, 1, fmap_h_num, 0, 0)
 
     def _dup_mask_fun(self, mask_ub, scalar_repeat_times):
@@ -1521,13 +1523,13 @@ class MaxPoolWithargmaxPytorch(object):
             with self.tik_instance.for_range(0, repeat_times) as repeat_index:
                 with self.tik_instance.if_scope(repeat_index != (repeat_times - 1)):
                     self.tik_instance.vector_dup(
-                        MASK, mask_ub[repeat_index * 240 * 16], 65535, 30, DSTSTRIDEM0, SRC0STRIDEM1)
+                        Constant.MASK, mask_ub[repeat_index * 240 * 16], 65535, 30, 1, Constant.SRC0STRIDEM1)
                 with self.tik_instance.else_scope():
                     self.tik_instance.vector_dup(
                         16, mask_ub[repeat_index * 240 * 16], 65535, (scalar_repeat_times - repeat_index * 240),
-                        DSTSTRIDEM0, DSTSTRIDEM0)
+                        1, 1)
         with self.tik_instance.else_scope():
-            self.tik_instance.vector_dup(16, mask_ub, 65535, scalar_repeat_times, DSTSTRIDEM0, DSTSTRIDEM0)
+            self.tik_instance.vector_dup(16, mask_ub, 65535, scalar_repeat_times, 1, 1)
 
     def pow2(self, scalar0, scalar1):
         """
@@ -1540,10 +1542,10 @@ class MaxPoolWithargmaxPytorch(object):
             scalar1.set_as(scalar1 * 2)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("MaxPoolWithArgmaxV1")
-def max_pool_with_argmax_v1(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
-                           ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
+def max_pool_with_argmax_v1(x, y, argmax, ksize, strides, pads, dtype=Constant.DT_INT32, dilation=(1, 1, 1, 1),
+                            ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """
     implementation of max_pool_with_argmax for pytorch and return the \
     tik instance

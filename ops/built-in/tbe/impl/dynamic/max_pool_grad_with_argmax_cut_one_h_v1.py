@@ -21,7 +21,8 @@ from impl import constant_util_v1 as constant
 from impl.dynamic.max_pool_grad_with_argmax_cut_w_v1 import MaxpoolGardObject
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -39,9 +40,9 @@ class Constant(object):
     L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
-# pylint: disable=redefined-builtin,too-many-locals,simplifiable-if-expression,too-many-branches
-# pylint: disable=too-many-statements,literal-comparison
+# 'pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
+# 'pylint: disable=redefined-builtin,too-many-locals,simplifiable-if-expression,too-many-branches
+# 'pylint: disable=too-many-statements,literal-comparison
 class MaxpoolGradCustom(MaxpoolGardObject):
     """
     parameter for max_pool_grad_with_pool

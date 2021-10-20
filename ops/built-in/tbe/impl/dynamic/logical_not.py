@@ -24,7 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 def logical_not_compute(x, y, kernel_name="logical_not"):
     """
     calculating data

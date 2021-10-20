@@ -24,8 +24,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     """
     algorithm : logical_or_compute

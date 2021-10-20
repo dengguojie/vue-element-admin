@@ -15,13 +15,18 @@
 """
 max_pool_grad_with_argmax_v1
 """
+# 'pylint: disable=too-many-lines
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl import common_util_v1
 from impl import constant_util_v1 as constant
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for Constant
+    """
     # size of vector calc one repeat
     ONE_REPEAT = 256
     # max repeat of vector calc
@@ -37,8 +42,8 @@ class Constant(object):
     L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments,unused-argument
-# pylint: too-many-locals,simplifiable-if-statement,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments,unused-argument
+# 'pylint: too-many-locals,simplifiable-if-statement,too-many-branches,too-many-statements
 class MaxpoolGradBase(object):
     """
     parameter for max_pool_grad_with_pool
@@ -102,6 +107,7 @@ class MaxpoolGradBase(object):
         self.ho_every, self.ho_last = None, None
         self.ho_count = None
 
+    # 'pylint: disable=too-many-statements
     def get_tiling_params(self):
         """
         get tiling params
@@ -184,6 +190,7 @@ class MaxpoolGradBase(object):
                 self.tik_instance.data_move(
                     mask_l1[iter_time * max_repeat_time], mask_gm[cur_mask_idx], constant.SID, 1, res_iter_time, 0, 0)
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def tik_instance_cut_nc1_cut_h(self, block_id):
         """
         function for max_pool_grad_with_pool calc for normal shape
@@ -462,6 +469,7 @@ class MaxpoolGradBase(object):
 
                     dxh_address_offset.set_as(dxh_address_offset + output_cuthline * self.dxw * self.channel)
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def tik_instance_cut_nc1h_cut_h(self, block_id):
         """
         function for max_pool_grad_with_pool calc for normal shape

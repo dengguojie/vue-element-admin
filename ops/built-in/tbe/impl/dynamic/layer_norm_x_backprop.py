@@ -15,7 +15,7 @@
 """
 layer_norm_x_backprop
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import tbe as mytbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
@@ -27,7 +27,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import operation
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -37,7 +38,7 @@ class Constant(object):
     EPSLON = 1e-12
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @mytbe.common.register.register_param_generalization("LayerNormXBackprop")
 def layer_norm_bata_gamma_backprop_generalization(input_dy, input_x, input_variance,
                                                   input_mean, input_gamma, output_pd_x, impl_mode,
@@ -528,6 +529,7 @@ def _get_res(data, params, shape_x, dtype, cast_dtype):
     return pd_x
 
 
+# 'pylint: disable=too-many-arguments
 def _get_pds(data_dy, data_x, data_variance, data_mean,
              data_gamma, shape_gamma_ori):
     """
@@ -585,6 +587,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     return pd_x
 
 
+# 'pylint: disable=too-many-arguments
 @tbe_platform.fusion_manager.register("layer_norm_x_backprop")
 def layer_norm_x_backprop_compute(input_dy, input_x,
                                   input_variance, input_mean,
@@ -622,7 +625,7 @@ def layer_norm_x_backprop_compute(input_dy, input_x,
     return res_list
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @register_operator("LayerNormXBackprop", pattern="Layer_norm_x_backprop")
 def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                           input_gamma, output_pd_x,

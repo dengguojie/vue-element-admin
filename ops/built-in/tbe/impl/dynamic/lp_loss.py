@@ -28,7 +28,7 @@ from impl.util.platform_adapter import tbe_context
 from tbe.common.utils.shape_util import shape_to_list
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
 def l1_loss_compute(predict, label, dims, reduction):
     """
     :param predict: TVM tensor

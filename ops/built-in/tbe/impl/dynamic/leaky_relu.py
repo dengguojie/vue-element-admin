@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def get_fusion_params(x_tensor, y):
     """
     Get L1 fusion_params

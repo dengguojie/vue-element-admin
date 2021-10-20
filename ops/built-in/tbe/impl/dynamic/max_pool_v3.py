@@ -28,9 +28,9 @@ _MAX_KERNEL_SIZE_H_MUL_W = 255
 _MAX_KERNEL_SIZE = 20
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-statements
-# pylint: disable=self-assigning-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-statements
+# 'pylint: disable=self-assigning-variable
 def check_window_rule(global_pooling, ksize, strides, padding_mode, data_format, kernel_name):
     """
     check ksize and strides of window in pooling
@@ -132,7 +132,7 @@ def pretreat_to_maxpool(padding_mode, pads, global_pooling, ceil_mode):
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def max_pool_v3(input_data,
                 output_data,
                 ksize,

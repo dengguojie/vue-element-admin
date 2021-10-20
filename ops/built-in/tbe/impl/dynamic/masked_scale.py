@@ -25,7 +25,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator_compute("MaskedScale", op_mode="dynamic", support_fusion=True)
 def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
     """
@@ -68,7 +68,7 @@ def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @register_operator("MaskedScale")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,

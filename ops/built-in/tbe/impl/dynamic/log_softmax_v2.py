@@ -24,7 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 
 
-# pylint: disable = locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @register_operator("LogSoftmaxV2")
 def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     """
@@ -74,6 +74,7 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
     return res
 
 
+# 'pylint: disable=too-many-locals,variable_type_changed
 @register_operator("LogSoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
