@@ -111,7 +111,7 @@ class Vadd():
             with self.tik_instance.for_range(0, loop_time) as loop_index:
                 move_offset = loop_index * self.ub_tensor_size
                 self.vadd_compute_each_loop(move_offset, self.ub_tensor_size)
-            move_offset = loop_time * self.ub_tensor_size
+            move_offset += loop_time * self.ub_tensor_size
 
         last_num = move_num % self.ub_tensor_size
         if last_num > 0:

@@ -30,7 +30,18 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         :param json_obj: the json_obj of json object
         :return: fuzz_function
         """
-        fuzz_impl_path = json_obj.get(ConstManager.FUZZ_IMPL)
+        fuzz_impl_path_func = json_obj.get(ConstManager.FUZZ_IMPL)
+
+        if len(fuzz_impl_path_func.split(":")) == 1:
+            fuzz_impl_path, fuzz_func = fuzz_impl_path_func, ConstManager.FUZZ_FUNCTION
+        elif len(fuzz_impl_path_func.split(":")) == 2:
+            fuzz_impl_path, fuzz_func = fuzz_impl_path_func.split(":")
+            fuzz_func = fuzz_func.replace(ConstManager.SPACE, ConstManager.EMPTY)
+        else:
+            utils.print_error_log(
+                'The fuzz file "%s" is invalid, ex: fuzz.py:fuzz_function.'
+                'Please modify it.' % fuzz_impl_path_func)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         dir_path = os.path.dirname(self.current_json_path)
         real_fuzz_path = os.path.join(dir_path, fuzz_impl_path)
         if os.path.splitext(real_fuzz_path)[-1] != ConstManager.PY_FILE:
@@ -47,12 +58,12 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                                                             real_fuzz_path))
         try:
             module = importlib.import_module(module_name)
-            if not hasattr(module, ConstManager.FUZZ_FUNCTION):
+            if not hasattr(module, fuzz_func):
                 utils.print_error_log('%s has no attribute "%s"' % (real_fuzz_path,
-                                                                    ConstManager.FUZZ_FUNCTION))
+                                                                    fuzz_func))
                 raise utils.OpTestGenException(
                     ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
-            fuzz_function = getattr(module, ConstManager.FUZZ_FUNCTION)
+            fuzz_function = getattr(module, fuzz_func)
         except Exception as ex:
             utils.print_error_log(
                 'Failed to execute function "%s" in %s. %s' % (
@@ -275,6 +286,19 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
             desc_list.append(one_desc)
         return desc_list
 
+    @staticmethod
+    def get_fuzz_func_return(fuzz_func):
+        fuzz_return_list = []
+        fuzz_return = fuzz_func()
+        if isinstance(fuzz_return, dict):
+            fuzz_return_list.append(fuzz_return)
+        elif isinstance(fuzz_return, list):
+            fuzz_return_list = fuzz_return
+        else:
+            utils.print_error_log('The fuzz function return value must be dict or list')
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+        return fuzz_return_list
+
     def subcase_generate(self):
         """
         generate subcase by cross
@@ -288,34 +312,35 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         repeat_case_num = 0
         for _ in range(loop_num):
             ori_json = copy.deepcopy(self.json_obj)
-            fuzz_dict = fuzz_function()
-            if ori_json.get(ConstManager.ST_MODE) == "ms_python_train":
-                input_desc_list = self._make_desc_list_ms_fuzz(ori_json,
-                                                               fuzz_dict,
-                                                               ConstManager.INPUT_DESC)
-                output_desc_list = self._make_desc_list_ms_fuzz(ori_json,
+            fuzz_return_list = self.get_fuzz_func_return(fuzz_function)
+            for fuzz_dict in fuzz_return_list:
+                if ori_json.get(ConstManager.ST_MODE) == "ms_python_train":
+                    input_desc_list = self._make_desc_list_ms_fuzz(ori_json,
+                                                                   fuzz_dict,
+                                                                   ConstManager.INPUT_DESC)
+                    output_desc_list = self._make_desc_list_ms_fuzz(ori_json,
+                                                                    fuzz_dict,
+                                                                    ConstManager.OUTPUT_DESC)
+                else:
+                    input_desc_list = self._make_desc_list_fuzz(ori_json,
                                                                 fuzz_dict,
-                                                                ConstManager.OUTPUT_DESC)
-            else:
-                input_desc_list = self._make_desc_list_fuzz(ori_json,
-                                                            fuzz_dict,
-                                                            ConstManager.INPUT_DESC)
-                output_desc_list = self._make_desc_list_fuzz(ori_json,
-                                                             fuzz_dict,
-                                                             ConstManager.OUTPUT_DESC)
-            attr_list = self._check_attr_valid(ori_json, fuzz_dict)
-            case = {ConstManager.OP: ori_json[ConstManager.OP],
-                    ConstManager.INPUT_DESC: input_desc_list,
-                    ConstManager.OUTPUT_DESC: output_desc_list,
-                    'case_name': prefix + '%03d' % self.case_idx}
-            if ori_json.get(ConstManager.ST_MODE) == "ms_python_train":
-                case[ConstManager.ST_MODE] = "ms_python_train"
-            if len(attr_list) > 0:
-                case[ConstManager.ATTR] = attr_list
-            self.case_idx, self.total_case_list = \
-                self._add_case_to_total_case(case, self.case_idx,
-                                             [pyfile, function], self.total_case_list)
+                                                                ConstManager.INPUT_DESC)
+                    output_desc_list = self._make_desc_list_fuzz(ori_json,
+                                                                 fuzz_dict,
+                                                                 ConstManager.OUTPUT_DESC)
+                attr_list = self._check_attr_valid(ori_json, fuzz_dict)
+                case = {ConstManager.OP: ori_json[ConstManager.OP],
+                        ConstManager.INPUT_DESC: input_desc_list,
+                        ConstManager.OUTPUT_DESC: output_desc_list,
+                        'case_name': prefix + '%03d' % self.case_idx}
+                if ori_json.get(ConstManager.ST_MODE) == "ms_python_train":
+                    case[ConstManager.ST_MODE] = "ms_python_train"
+                if len(attr_list) > 0:
+                    case[ConstManager.ATTR] = attr_list
+                self.case_idx, self.total_case_list = \
+                    self._add_case_to_total_case(case, self.case_idx,
+                                                 [pyfile, function], self.total_case_list)
         utils.print_info_log('Create %d fuzz test cases for %s.'
-                             % (loop_num - repeat_case_num,
+                             % (loop_num * len(fuzz_return_list) - repeat_case_num,
                                 self.json_obj[ConstManager.CASE_NAME]))
         return self.total_case_list
