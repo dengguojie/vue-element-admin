@@ -85,6 +85,7 @@ set(_op_proto_srcs
   nonlinear_fuc_ops.cc
   no_op.cc
   npu_loss_scale_ops.cc
+  ocr_ops.cc
   outfeed_ops.cc
   pad_ops.cc
   parsing_ops.cc

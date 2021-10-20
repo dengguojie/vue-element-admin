@@ -288,6 +288,7 @@ set(_tf_plugins
   npu_clear_floatstatus_plugin.cc
   npu_get_floatstatus_plugin.cc
   npu_onnx_graph_op_plugin.cc
+  ocr_plugin.cc
   one_hot_plugin.cc
   ones_like_plugin.cc
   pack_plugin.cc

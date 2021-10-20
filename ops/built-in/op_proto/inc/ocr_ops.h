@@ -1,0 +1,135 @@
+/**
+ * Copyright 2019 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file ocr_ops.h
+ * \brief
+ */
+#ifndef OPS_BUILT_IN_OP_PROTO_INC_OCR_OPS_H_
+#define OPS_BUILT_IN_OP_PROTO_INC_OCR_OPS_H_
+
+#include "graph/operator_reg.h"
+
+namespace ge {
+/**
+*@brief batch input x acording to attr batch_size and enqueue.
+*@par Inputs:
+*@li x: A Tensor need to batch of type float16/float32/float64/int8/int32/int64/uint8/uint32/uint64. \n
+*@li queue_id:A Tensor of type uint32, queue id.
+
+*@par Outputs:
+*enqueue_count: A Tensor of type int64, enqueue tensor number.
+
+*@par Attributes:
+*@li batch_size: An optional int. Batch size.
+*@li queue_name: An optional string. Queue name.
+*@li pad_mode: An optional string from: '"REPLICATE", "ZERO"'. Defaults to
+"REPLICATE". Pad mode.
+*/
+REG_OP(BatchEnqueue)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, \
+        DT_INT8, DT_INT32, DT_INT64, DT_UINT8, DT_UINT32, DT_UINT64}))
+    .OPTIONAL_INPUT(queue_id, TensorType({DT_UINT32}))
+    .OUTPUT(enqueue_count, TensorType({DT_INT32}))
+    .ATTR(batch_size, Int, 8)
+    .ATTR(queue_name, String, "")
+    .ATTR(pad_mode, String, "REPLICATE")
+    .OP_END_FACTORY_REG(BatchEnqueue)
+
+/**
+*@brief batch input x acording to attr batch_size and enqueue.
+*@par Inputs:
+*@li imgs_data: A Tensor of type uint8. Multi img data value. \n
+*@li imgs_offset:A Tensor of type int32. Offset of every img data in input imgs_data. \n
+*@li imgs_size:A Tensor of type int32. Shape of every img data. \n
+*@li langs:A Tensor of type int32. Lang of every img data. \n
+*@li langs_score:A Tensor of type int32. Lang score of every img data. \n
+
+*@par Outputs:
+*@liimgs: A Tensor of type uint8. Multi imgs data after reconition pre handle.
+*@liimgs_relation: A Tensor of type int32. Output imgs orders in input imgs.
+*@liimgs_lang: A Tensor of type int32. Output batch imgs langs.
+
+*@par Attributes:
+*@li batch_size: An optional int. Batch size.
+*@li data_format: An optional string from: '"NHWC", "NCHW"'. Defaults to
+"NHWC". Data format.
+*@li pad_mode: An optional string from: '"REPLICATE", "ZERO"'. Defaults to
+"REPLICATE". Pad mode.
+*/
+REG_OP(OCRRecognitionPreHandle)
+    .INPUT(imgs_data, TensorType({DT_UINT8}))
+    .INPUT(imgs_offset, TensorType({DT_INT32}))
+    .INPUT(imgs_size, TensorType({DT_INT32}))
+    .INPUT(langs, TensorType({DT_INT32}))
+    .INPUT(langs_score, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(imgs, TensorType({DT_UINT8}))
+    .OUTPUT(imgs_relation, TensorType({DT_INT32}))
+    .OUTPUT(imgs_lang, TensorType({DT_INT32}))
+    .ATTR(batch_size, Int, 8)
+    .ATTR(data_format, String, "NHWC")
+    .ATTR(pad_mode, String, "REPLICATE")
+    .OP_END_FACTORY_REG(OCRRecognitionPreHandle)
+
+/**
+*@brief ocr detection pre handle.
+*@par Inputs:
+*img: A Tensor of type uint8. img data value. \n
+
+*@par Outputs:
+*@li resized_img: A Tensor of type uint8. Img after detection pre handle.
+*@li h_scale: A Tensor of type float. H scale.
+*@li w_scale: A Tensor of type float. W scale.
+
+*@par Attributes:
+*data_format: An optional string from: '"NHWC", "NCHW"'. Defaults to
+"NHWC". Data format.
+*/
+REG_OP(OCRDetectionPreHandle)
+    .INPUT(img, TensorType({DT_UINT8}))
+    .OUTPUT(resized_img, TensorType({DT_UINT8}))
+    .OUTPUT(h_scale, TensorType({DT_FLOAT}))
+    .OUTPUT(w_scale, TensorType({DT_FLOAT}))
+    .ATTR(data_format, String, "NHWC")
+    .OP_END_FACTORY_REG(OCRDetectionPreHandle)
+
+/**
+*@brief ocr identify prehandle.
+*@par Inputs:
+*@li imgs_data: A Tensor of type uint8. Multi img data value. \n
+*@li imgs_offset:A Tensor of type int32. Offset of every img data in input imgs_data. \n
+*@li imgs_size:A Tensor of type int32. Shape of every img data. \n
+
+*@par Outputs:
+*resized_imgs: A Tensor of type uint8. Multi imgs after identify pre handle.
+
+*@par Attributes:
+*@li size: An optional int. Size.
+*@li data_format: An optional string from: '"NHWC", "NCHW"'. Defaults to
+"NHWC". Data format.
+*/
+REG_OP(OCRIdentifyPreHandle)
+    .INPUT(imgs_data, TensorType({DT_UINT8}))
+    .INPUT(imgs_offset, TensorType({DT_INT32}))
+    .INPUT(imgs_size, TensorType({DT_INT32}))
+    .OUTPUT(resized_imgs, TensorType({DT_UINT8}))
+    .ATTR(size, ListInt, {})
+    .ATTR(data_format, String, "NHWC")
+    .OP_END_FACTORY_REG(OCRIdentifyPreHandle)
+} // namespace ge
+
+
+#endif  // OPS_BUILT_IN_OP_PROTO_INC_OCR_OPS_H_
