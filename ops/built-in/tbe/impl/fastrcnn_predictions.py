@@ -13,14 +13,15 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 add_tik
 """
-# pylint: disable=C0302
-# pylint: disable=R0913
+# 'pylint: disable=C0302
+# 'pylint: disable=R0913
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -43,7 +44,7 @@ class Constant:
     IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
 
 
-# pylint: disable=using-constant-test,too-many-locals
+# 'pylint: disable=using-constant-test,too-many-locals
 def ceil_div(divisor_a, divisor_b):
     """
     round up function
@@ -1210,7 +1211,7 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
                            Constant.REC_FACTOR, Constant.ONE, Constant.ONE, shape.n_maxtrix,
                            Constant.FOUR, Constant.FOUR * shape.n_maxtrix)
 
-    # Constant.SIXTEEN * k(vaild shape is Constant.FOUR * k) transpose k * Constant.SIXTEEN(vaild shape is k * Constant.FOUR)
+    # SIXTEEN * k(vaild shape is FOUR * k) transpose k * SIXTEEN(vaild shape is k * FOUR)
     with tik_instance.for_range(0, shape.n_maxtrix) as i:
         tik_instance.vtranspose(final_tensor.sorted_rois_ub_str[256 * i],
                                 final_tensor.sorted_rois_ub2[256 * i])

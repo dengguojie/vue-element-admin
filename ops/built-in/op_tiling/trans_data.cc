@@ -473,7 +473,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     int64_t axis_h = out_shape[2];
     int64_t axis_w = out_shape[3];
     int64_t axis_c = out_shape[4];
-    int64_t axis_c1 = axis_dc1hw / (axis_d * axis_h * axis_w);
+    int64_t axis_c1 = GetFloorDiv(axis_dc1hw, axis_d * axis_h * axis_w);
 
     in_shape_new = {axis_d, axis_c1, axis_h * axis_w, axis_no * axis_ni, axis_c0};
     out_shape_new = {axis_n, axis_d, axis_h * axis_w, axis_c};
@@ -603,50 +603,6 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   return true;
-}
-
-int32_t GetMultiCoreAxis(std::vector<int64_t> in_shape, int32_t axis_pos_c, int64_t block_elem_cnt, int64_t c0_len,
-                         int64_t core_num) {
-  int32_t shape_len = in_shape.size();
-  bool axis_c_not_last_dim = axis_pos_c + 1 != shape_len;
-  std::vector<int32_t> core_lp_cnt;
-
-  for (int32_t index = 0; index < shape_len; index++) {
-    int32_t tmp_full_cycle_loop_cnt;
-    int32_t left_loop_cnt;
-    int32_t full_cycle_loop_cnt;
-    if (index + 1 == shape_len) {
-      if (GetFloorDiv(in_shape[index], 8 * block_elem_cnt * core_num) > 0) {
-        tmp_full_cycle_loop_cnt = core_num;
-      } else {
-        tmp_full_cycle_loop_cnt = 0;
-      }
-      left_loop_cnt = GetCeilDiv(in_shape[index], 8 * block_elem_cnt) % core_num;
-    } else if (index == axis_pos_c && axis_c_not_last_dim) {
-      if (GetFloorDiv(in_shape[index], c0_len * core_num) > 0) {
-        tmp_full_cycle_loop_cnt = core_num;
-      } else {
-        tmp_full_cycle_loop_cnt = 0;
-      }
-      left_loop_cnt = GetCeilDiv(in_shape[index], c0_len) % core_num;
-    } else {
-      if (GetFloorDiv(in_shape[index], core_num) > 0) {
-        tmp_full_cycle_loop_cnt = core_num;
-      } else {
-        tmp_full_cycle_loop_cnt = 0;
-      }
-      left_loop_cnt = in_shape[index] % core_num;
-    }
-
-    if (tmp_full_cycle_loop_cnt > 0 && left_loop_cnt == 0) {
-      full_cycle_loop_cnt = 2 * tmp_full_cycle_loop_cnt;
-    } else {
-      full_cycle_loop_cnt = tmp_full_cycle_loop_cnt;
-    }
-    core_lp_cnt.push_back(full_cycle_loop_cnt + left_loop_cnt);
-  }
-
-  return max_element(core_lp_cnt.begin(), core_lp_cnt.end()) - core_lp_cnt.begin();
 }
 
 bool IsDoWithTransposeFormats(const ge::Format& src_format, const ge::Format& dst_format) {

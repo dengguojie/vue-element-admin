@@ -35,6 +35,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_common import check_load3d_w_out_1_support
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -47,7 +48,7 @@ class Constant:
     SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=unused-argument, too-many-arguments
+# 'pylint: disable=unused-argument, too-many-arguments
 def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_name="extract_image_patches"):
     """
     get extract_image_patches slice info
@@ -77,7 +78,7 @@ def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_nam
     return op_cal_info_in_json
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("extract_image_patches")
 def extract_image_patches_compute(fmap,
                                   c_in_real,
@@ -131,7 +132,8 @@ def extract_image_patches_compute(fmap,
     return output_res, workspace_res, workspace_shape
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-branches
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)

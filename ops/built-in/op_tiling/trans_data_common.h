@@ -19,8 +19,8 @@
  * \brief dynamic TransData common function
  */
 
-#ifndef __TRANSDATA_H__
-#define __TRANSDATA_H__
+#ifndef CANN_OPS_BUILT_IN_OP_TILING_TRANSDATA_H_
+#define CANN_OPS_BUILT_IN_OP_TILING_TRANSDATA_H_
 
 #include <string>
 #include <algorithm>
@@ -473,4 +473,4 @@ void PrintTilingNtc100Params(const std::string& op_type, const TransDataNtc100Pa
 
 }  // namespace optiling
 
-#endif  // __TRANS_DATA_H__
+#endif  // CANN_OPS_BUILT_IN_OP_TILING_TRANSDATA_H_

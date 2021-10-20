@@ -23,6 +23,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -34,7 +35,7 @@ class Constant:
     ZERO_VALUE = 0
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _less_compare_float32(data_x, data_y):
     """
     if x is less than y, then return 1, else return 0.
@@ -74,7 +75,7 @@ def _less_compare_float32(data_x, data_y):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _less_equal_compare_float32(data_x, data_y):
     """
     if x is less than y or equal y, then return 1, else return 0.
@@ -127,7 +128,7 @@ def _less_equal_compare_float32(data_x, data_y):
     return data_out
 
 
-# pylint: disable=locally-disabled,too-many-statements,invalid-name
+# 'pylint: disable=locally-disabled,too-many-statements,invalid-name
 def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits,
                             narrow_range):
     """
@@ -260,8 +261,8 @@ def _bool_negate(input_bool):
     return output_bool
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,redefined-builtin
 @tbe_platform.fusion_manager.fusion_manager.register("fake_quant_with_min_max_vars_per_channel_gradient")
 def fake_quant_with_min_max_vars_per_channel_gradient_compute(gradients, x,
                                                               min,
@@ -354,7 +355,7 @@ def fake_quant_with_min_max_vars_per_channel_gradient_compute(gradients, x,
     return res
 
 
-# pylint: disable=locally-disabled,redefined-builtin,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

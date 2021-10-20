@@ -15,7 +15,7 @@
 """
 euclidean_norm_d
 """
-# pylint: disable=W0613,W0401
+# 'pylint: disable=W0613,W0401
 import te.lang.cce
 from te import tvm
 from te.utils.op_utils import check_dtype
@@ -119,6 +119,7 @@ def refine_shape_axes_custom(shape, axes):
     return refined_shape, refined_axes
 
 
+# 'pylint: disable=too-many-locals
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_LIST_INT,
                  OPTION_ATTR_BOOL, KERNEL_NAME)
 def euclidean_norm_d(input_data,

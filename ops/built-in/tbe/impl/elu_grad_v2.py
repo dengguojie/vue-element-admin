@@ -23,17 +23,9 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-class Constant:
-    """
-    The class for elu_grad_v2 constant
-    """
-    NUM_ZERO = 0.0
-    NUM_ONE = 1.0
-
-
-#pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("elu_grad_v2")
-def elu_grad_v2_compute(grads, activations, y, alpha=Constant.NUM_ONE):
+def elu_grad_v2_compute(grads, activations, y, alpha=1.0):
     """
     calculating data
 
@@ -56,9 +48,9 @@ def elu_grad_v2_compute(grads, activations, y, alpha=Constant.NUM_ONE):
         grads = tbe.cast_to(grads, "float32")
         activations = tbe.cast_to(activations, "float32")
 
-    scalar_param_zero = tvm.const(Constant.NUM_ZERO, grads.dtype)
+    scalar_param_zero = tvm.const(0.0, grads.dtype)
     scalar_param_alpha = tvm.const(alpha, grads.dtype)
-    scalar_param_one = tvm.const(Constant.NUM_ONE, grads.dtype)
+    scalar_param_one = tvm.const(1.0, grads.dtype)
 
     tensor_scalar_one = tbe.broadcast(scalar_param_one, shape)
     tensor_scalar_zero = tbe.broadcast(scalar_param_zero, shape)
@@ -73,7 +65,7 @@ def elu_grad_v2_compute(grads, activations, y, alpha=Constant.NUM_ONE):
     return res
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)

@@ -44,8 +44,7 @@ int64_t GetCeilFillB(int64_t u_value, int64_t d_value) {
 bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int64_t& ll_dst_cl_left, int64_t& c_lp_cnt,
                            int64_t& c_left, int64_t& dst_cr_lp_cnt, int64_t& vnc_row_left, int64_t& ll_dst_cr_left,
                            int64_t& core_num, TransDataMode1010Param& params) {
-  int64_t tmp_full_loop_cnt_cr;
-  tmp_full_loop_cnt_cr = GetFloorDiv(dst_cr_lp_cnt, core_num) > 0 ? core_num : 0;
+  int64_t tmp_full_loop_cnt_cr = GetFloorDiv(dst_cr_lp_cnt, core_num) > 0 ? core_num : 0;
   
   int64_t reminder_loop_cnt_cr = dst_cr_lp_cnt % core_num;
   if (reminder_loop_cnt_cr == 0) {
@@ -53,8 +52,7 @@ bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int
   }
   int64_t full_loop_cnt_cr = tmp_full_loop_cnt_cr + reminder_loop_cnt_cr;
 
-  int64_t tmp_full_loop_cnt_c;
-  tmp_full_loop_cnt_c = GetFloorDiv(c_lp_cnt, core_num) > 0 ? core_num : 0;
+  int64_t tmp_full_loop_cnt_c = GetFloorDiv(c_lp_cnt, core_num) > 0 ? core_num : 0;
 
   int64_t reminder_loop_cnt_c = c_lp_cnt % core_num;
   if (reminder_loop_cnt_c == 0) {
@@ -62,8 +60,7 @@ bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int
   }
   int64_t full_loop_cnt_c = tmp_full_loop_cnt_c + reminder_loop_cnt_c;
 
-  int64_t tmp_full_loop_cnt_left;
-  tmp_full_loop_cnt_left = GetFloorDiv(dst_cl_lp_cnt, core_num) > 0 ? core_num : 0;
+  int64_t tmp_full_loop_cnt_left = GetFloorDiv(dst_cl_lp_cnt, core_num) > 0 ? core_num : 0;
   int64_t reminder_loop_cnt_left = dst_cl_lp_cnt % core_num;
   if (reminder_loop_cnt_left == 0) {
     tmp_full_loop_cnt_left += core_num;
@@ -91,7 +88,7 @@ bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int
     params.lc_vnc_row_left = vnc_row_left;
     params.nlc_last_line_cr_cnt = ll_dst_cr_left;
     params.lc_last_line_cr_cnt = ll_dst_cr_left;
-  } else if (max_element(loop_cnt_list.begin(), loop_cnt_list.end()) - loop_cnt_list.begin() == 1){
+  } else if (max_element(loop_cnt_list.begin(), loop_cnt_list.end()) - loop_cnt_list.begin() == 1) {
     params.used_core_cnt = GetCeilDiv(dst_cr_lp_cnt, GetCeilDiv(dst_cr_lp_cnt, core_num));
     params.nlc_dst_cr_lp_cnt = GetCeilDiv(dst_cr_lp_cnt, params.used_core_cnt);
     params.lc_dst_cr_lp_cnt = dst_cr_lp_cnt - params.nlc_dst_cr_lp_cnt * (params.used_core_cnt - 1);
@@ -167,7 +164,7 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   bool ret = GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1010 GetCommonParam Failed.");
-    return ret;
+    return false;
   }
 
   params.tiling_mode = 1010;
@@ -310,7 +307,7 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
                               dst_cr_lp_cnt, vnc_row_left, ll_dst_cr_left, core_num, params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1010 Failed.");
-    return ret;
+    return false;
   }
   return true;
 }

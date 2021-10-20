@@ -25,7 +25,7 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     """
     determines whether the values of two floating-point numbers are close or equal
@@ -33,7 +33,7 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("exp")
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     """

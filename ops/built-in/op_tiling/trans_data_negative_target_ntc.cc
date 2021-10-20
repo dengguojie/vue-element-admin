@@ -30,7 +30,7 @@
 
 namespace optiling {
 
-const int32_t FRAME_LEVEL = 2;
+const int32_t NTC_FRAME_LEVEL = 2;
 
 int64_t GetCeilFillA(int64_t u_value, int64_t d_value) {
   int64_t res_value = 0;
@@ -130,7 +130,7 @@ bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t& dst_cr_left, int64_t&
     params.lc_cr_lp_cnt = dst_cr_lp_cnt - params.nlc_cr_lp_cnt * (params.used_core_cnt - 1);
     params.nlc_cr_left = 0;
     params.lc_cr_left = dst_cr_left;
-    params.core_step_in = params.nlc_cr_lp_cnt * params.dst_cr_lp_step_in;;
+    params.core_step_in = params.nlc_cr_lp_cnt * params.dst_cr_lp_step_in;
     params.core_step_out = params.nlc_cr_lp_cnt * params.dst_cr_lp_step_out;
     params.nlc_c_lp_cnt = src_c_lp_cnt;
     params.lc_c_lp_cnt = src_c_lp_cnt;
@@ -224,7 +224,7 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
     }
   }
   // suppose there are 2 axises
-  int32_t pad_axis_cnt = FRAME_LEVEL - tmp_dst_cr_format.length();
+  int32_t pad_axis_cnt = NTC_FRAME_LEVEL - tmp_dst_cr_format.length();
   if (pad_axis_cnt != 0) {
     params.dst_cr_dims = 1;
     if (tmp_dst_cr_format.length() == 0) {
@@ -326,7 +326,7 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
     }
   }
   // suppose there are 2 axises
-  pad_axis_cnt = FRAME_LEVEL - tmp_dst_cl_format.length();
+  pad_axis_cnt = NTC_FRAME_LEVEL - tmp_dst_cl_format.length();
   if (pad_axis_cnt != 0) {
     params.dst_cl_dims = 1;
     if (tmp_dst_cl_format.length() == 0) {

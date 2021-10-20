@@ -23,8 +23,8 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-# pylint: disable=too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=too-many-locals,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("fast_gelu")
 def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu",
                       impl_mode="high_performance"):

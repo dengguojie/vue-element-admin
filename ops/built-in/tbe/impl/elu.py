@@ -39,19 +39,11 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-class Constant:
-    """
-    The class for constant
-    """
-    NUM_ZERO = 0.0
-    NUM_ONE_NEG = -1.0
-
-
 def _elu_computer_performance(data, alpha, dtype):
     """
     computer performance
     """
-    scalar_one_neg = tvm.const(Constant.NUM_ONE_NEG, dtype)
+    scalar_one_neg = tvm.const(-1.0, dtype)
 
     negative_data = tbe.vmuls(data, scalar_one_neg)
     negative_data = tbe.vrelu(negative_data)
@@ -71,19 +63,19 @@ def _elu_computer_precision(data, alpha, dtype):
     """
     computer precision
     """
-    scalar_zero = tvm.const(Constant.NUM_ZERO, dtype)
+    scalar_zero = tvm.const(0.0, dtype)
     negative_data = tbe.vmins(data, scalar_zero)
     positive_data = tbe.vmaxs(data, scalar_zero)
 
     exp_res = tbe.vexp(negative_data)
-    exp_res = tbe.vadds(exp_res, tvm.const(Constant.NUM_ONE_NEG, dtype))
+    exp_res = tbe.vadds(exp_res, tvm.const(-1.0, dtype))
 
     res = tbe.vaxpy(exp_res, positive_data, tvm.const(alpha, dtype))
 
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("elu")
 def elu_compute(x, y, alpha, kernel_name="elu"):
     """
@@ -129,7 +121,7 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     return res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def elu(x, y, alpha=1.0, kernel_name="elu"):

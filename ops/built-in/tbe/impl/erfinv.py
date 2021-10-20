@@ -23,25 +23,18 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
     """
-    # define a scaler, value = 1
     SCALER_ONE = 1
-    # define a scaler, value = -1
     SCALER_NEGATIVE_ONE = -1
-    # define a scaler, value = -0.47047, only used in compute of erf and erfc
     SCALER_P = 0.47047
-    # define a scaler, value = 0.3480242, only used in compute of erf and erfc
     SCALER_A = 0.3480242
-    # define a scaler, value = -0.0958798, only used in compute of erf and erfc
     SCALER_B = -0.0958798
-    # define a scaler, value = 0.7478556, only used in compute of erf and erfc
     SCALER_C = 0.7478556
-    # define a scaler, value = 32768
     SCALER_FP16_MAX = 32768
-    # define a scaler, value = 2**(-15)
     SCALER_FP16_MIN = 2 ** (-15)
 
     # The ratio needed for numerical calculation.
@@ -57,7 +50,7 @@ class Constant:
 
 
 @fusion_manager.register("erfinv")
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def erfinv_compute(input_x, output_y, kernel_name="erfinv"):
     """
     calculating data
@@ -109,6 +102,7 @@ def erfinv_compute(input_x, output_y, kernel_name="erfinv"):
     return y
 
 
+# 'pylint: disable=too-many-locals
 def cal_yl(input_x):
     """
     calculating data
@@ -151,6 +145,7 @@ def cal_yl(input_x):
     return yl
 
 
+# 'pylint: disable=too-many-locals
 def cal_yg(input_x):
     """
     calculating data
@@ -208,7 +203,7 @@ def cal_yg(input_x):
     return yg
 
 
-# Since erf() cannot be called here, it needs to be rewritten
+# 'pylint': disable=too-many-locals
 def erf(input_x):
     """
     calculating data

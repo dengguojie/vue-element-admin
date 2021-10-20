@@ -37,8 +37,8 @@ class Constant:
     ONE_VALUE = 1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def _less_compare_float32(data_x, data_y):
     """
     if x is less than y, then return 1, else return 0.
@@ -212,7 +212,7 @@ def fake_quant_with_min_max_vars_compute(x, min, max, y, num_bits, narrow_range,
     return res
 
 
-# pylint: disable=locally-disabled,redefined-builtin,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,

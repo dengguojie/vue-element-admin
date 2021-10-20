@@ -29,8 +29,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_compute
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("fast_gelu_grad")
 def fast_gelu_grad_compute(input_dy, input_x, output_z,
                            kernel_name="fast_gelu_grad",

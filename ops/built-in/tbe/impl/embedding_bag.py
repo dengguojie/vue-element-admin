@@ -23,9 +23,11 @@ from te.utils import para_check
 from te.utils import op_utils
 from impl.util import util_tik_comm_func
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
 
+
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant

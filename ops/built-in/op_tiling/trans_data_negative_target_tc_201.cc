@@ -30,7 +30,7 @@
 
 namespace optiling {
 
-const int32_t FRAME_LEVEL = 2;
+const int32_t TC_FRAME_LEVEL = 2;
 
 bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t& dst_r2nd_left, int64_t& src_cl_lp_cnt,
                           int64_t& src_cl_left, int64_t& src_left_lp_cnt, int64_t& src_left_left,
@@ -113,7 +113,7 @@ bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t& dst_r2nd_left, int6
     params.lc_dst_r2nd_lp_cnt = dst_r2nd_lp_cnt - params.nlc_dst_r2nd_lp_cnt * (params.used_core_cnt - 1);
     params.nlc_dst_r2nd_left = 0;
     params.lc_dst_r2nd_left = dst_r2nd_left;
-    params.core_step_in = params.nlc_dst_r2nd_lp_cnt * params.dst_r2nd_lp_step_in;;
+    params.core_step_in = params.nlc_dst_r2nd_lp_cnt * params.dst_r2nd_lp_step_in;
     params.core_step_out = params.nlc_dst_r2nd_lp_cnt * params.dst_r2nd_lp_step_out;
     params.nlc_src_left_lp_cnt = src_left_lp_cnt;
     params.lc_src_left_lp_cnt = src_left_lp_cnt;
@@ -290,7 +290,7 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
       params.dst_r2nd_in_1_src_asize = GetShapeSize(in_shape, src_chr_pos + 1);
     }
   }
-  int32_t pad_axis_cnt = FRAME_LEVEL - dst_r2nd_format.length();
+  int32_t pad_axis_cnt = TC_FRAME_LEVEL - dst_r2nd_format.length();
   if (pad_axis_cnt != 0) {
     params.dst_r2nd_dims = 1;
     if (dst_r2nd_format.length() == 0) {

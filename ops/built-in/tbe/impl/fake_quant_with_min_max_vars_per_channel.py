@@ -25,6 +25,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -74,7 +75,7 @@ def _less_compare_float32(data_x, data_y):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits,
                             narrow_range):
     """
@@ -164,8 +165,8 @@ def _bool_both_zero_compute(juduged_min, juduged_max):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
-# pylint: disable=locally-disabled,invalid-name,redefined-builtin
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,invalid-name,redefined-builtin
 @tbe_platform.fusion_manager.fusion_manager.register("fake_quant_with_min_max_vars_per_channel")
 def fake_quant_with_min_max_vars_per_channel_compute(x, min, max, y, num_bits=8, narrow_range=False,
                                                      kernel_name="fake_quant_with_min_max_vars_per_channel"):
@@ -229,7 +230,7 @@ def fake_quant_with_min_max_vars_per_channel_compute(x, min, max, y, num_bits=8,
     return res
 
 
-# pylint: disable=locally-disabled,redefined-builtin,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,

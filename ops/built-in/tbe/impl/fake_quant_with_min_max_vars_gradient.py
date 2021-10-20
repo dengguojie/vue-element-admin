@@ -25,6 +25,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -87,7 +88,7 @@ def _bool_negate(input_bool):
     return output_bool
 
 
-# pylint: disable=locally-disabled,too-many-statements,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-statements,too-many-locals,unused-variable
 def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits, narrow_range):
     """
     Compute gradients for a FakeQuantWithMinMaxVars operation.
@@ -159,7 +160,7 @@ def _nudged_min_max_compute(min_broadcast, max_broadcast, num_bits, narrow_range
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,invalid-name
 def _between_nudged_min_max_compute(x, nudged_min, nudged_max):
     """
     Compare x with nudged_min and nudged_max.
@@ -266,8 +267,8 @@ def _both_min_max_zero(input_min, input_max, input_shape, dtype):
     return bool_both_no_zero
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,redefined-builtin
 @fusion_manager.register("fake_quant_with_min_max_vars_gradient")
 def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
                                                   max, backprops_wrt_x,
@@ -351,7 +352,7 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
     return output_list
 
 
-# pylint: disable=locally-disabled,redefined-builtin,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,

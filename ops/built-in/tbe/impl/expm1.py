@@ -23,11 +23,11 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
     """
-    # define a scalar , value = -1
     SCALAR_NEGATIVE_ONE = -1.0
     # define taylor negative threshold , value = -0.7
     TAYLOR_NEGATIVE_THRESHOLD = -0.7
@@ -47,7 +47,7 @@ class Constant:
     TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _expm1_taylor_compute(input_x):
     """
     Calculate e^x - 1, Use seventh order taylor expansion
@@ -139,7 +139,7 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     return mini_res
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("expm1")
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """

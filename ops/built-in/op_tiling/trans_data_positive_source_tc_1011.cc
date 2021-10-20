@@ -44,8 +44,7 @@ int64_t GetCeilFillC(int64_t u_value, int64_t d_value) {
 bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t& axis_dst_r2nd_left, int64_t& c_lp_cnt, int64_t& c_left,
                            int64_t& axis_src_cl_lp_cnt, int64_t& axis_src_cl_left, int64_t& core_num,
                            TransDataMode1011Param& params) {
-  int64_t tmp_full_loop_cnt_r2nd;
-  tmp_full_loop_cnt_r2nd = GetFloorDiv(axis_dst_r2nd_lp_cnt, core_num) > 0 ? core_num : 0;
+  int64_t tmp_full_loop_cnt_r2nd = GetFloorDiv(axis_dst_r2nd_lp_cnt, core_num) > 0 ? core_num : 0;
   
   int64_t reminder_loop_cnt_r2nd = axis_dst_r2nd_lp_cnt % core_num;
   if (reminder_loop_cnt_r2nd == 0) {
@@ -53,16 +52,14 @@ bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t& axis_dst_r2nd
   }
   int64_t full_loop_cnt_r2nd = tmp_full_loop_cnt_r2nd + reminder_loop_cnt_r2nd;
 
-  int64_t tmp_full_loop_cnt_c;
-  tmp_full_loop_cnt_c = GetFloorDiv(c_lp_cnt, core_num) > 0 ? core_num : 0;
+  int64_t tmp_full_loop_cnt_c = GetFloorDiv(c_lp_cnt, core_num) > 0 ? core_num : 0;
   int64_t reminder_loop_cnt_c = c_lp_cnt % core_num;
   if (reminder_loop_cnt_c == 0) {
     tmp_full_loop_cnt_c += core_num;
   }
   int64_t full_loop_cnt_c = tmp_full_loop_cnt_c + reminder_loop_cnt_c;
 
-  int64_t tmp_full_loop_cnt_left;
-  tmp_full_loop_cnt_left = GetFloorDiv(axis_src_cl_lp_cnt, core_num) > 0 ? core_num : 0;
+  int64_t tmp_full_loop_cnt_left = GetFloorDiv(axis_src_cl_lp_cnt, core_num) > 0 ? core_num : 0;
   int64_t reminder_loop_cnt_left = axis_src_cl_lp_cnt % core_num;
   if (reminder_loop_cnt_left == 0) {
     tmp_full_loop_cnt_left += core_num;
@@ -87,7 +84,7 @@ bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t& axis_dst_r2nd
     params.lc_src_cl_lp_cnt = axis_src_cl_lp_cnt;
     params.nlc_src_cl_left = axis_src_cl_left;
     params.lc_src_cl_left = axis_src_cl_left;
-  } else if (max_element(loop_cnt_list.begin(), loop_cnt_list.end()) - loop_cnt_list.begin() == 1){
+  } else if (max_element(loop_cnt_list.begin(), loop_cnt_list.end()) - loop_cnt_list.begin() == 1) {
     params.mc_on_cl = 1;
     params.used_core_cnt = GetCeilDiv(axis_src_cl_lp_cnt, GetCeilDiv(axis_src_cl_lp_cnt, core_num));
     params.nlc_src_cl_lp_cnt = GetCeilDiv(axis_src_cl_lp_cnt, params.used_core_cnt);
@@ -156,7 +153,7 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   bool ret = GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1011 GetCommonParam Failed.");
-    return ret;
+    return false;
   }
 
   params.tiling_mode = 1011;
@@ -236,7 +233,7 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
                               core_num, params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1011 Failed.");
-    return ret;
+    return false;
   }
   return true;
 }

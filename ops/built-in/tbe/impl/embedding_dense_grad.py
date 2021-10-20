@@ -18,6 +18,8 @@ import math
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform as cce
 
+
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -31,7 +33,7 @@ class EmbeddingDenseGrad:
     Function: store EmbeddingDenseGrad parameters  and compute EmbeddingDenseGrad
     """
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument, too-many-statements, disable=too-many-arguments
     def __init__(
             self,
             grad,
@@ -317,6 +319,7 @@ class EmbeddingDenseGrad:
                     self.tik_instance.set_atomic_add(0)
 
 
+# 'pylint: disable=too-many-arguments
 def embedding_dense_grad(
         grad,
         indices,

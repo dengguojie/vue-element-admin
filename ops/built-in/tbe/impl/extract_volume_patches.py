@@ -15,7 +15,7 @@
 """
 extract_volume_patches
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 
 import functools
 import math
@@ -34,6 +34,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -49,7 +50,7 @@ class Constant:
     DEVICE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
-# pylint: disable = unused-argument,redefined-builtin,too-many-locals,too-many-arguments
+# 'pylint: disable = unused-argument,redefined-builtin,too-many-locals,too-many-arguments
 def get_op_support_info(input_x, output_y, ksizes, strides, padding, kernel_name="extract_volume_patches"):
     """
     get extract_volume_patches slice info
@@ -92,7 +93,7 @@ def get_op_support_info(input_x, output_y, ksizes, strides, padding, kernel_name
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-arguments, invalid-name, too-many-statements, too-many-branches,too-many-locals
+# 'pylint: disable=too-many-arguments, invalid-name, too-many-statements, too-many-branches,too-many-locals
 def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding, kernel_name):
     """
     check whether the input param valid or not
@@ -270,7 +271,7 @@ def _cal_multi_core_factor_3_axis(m, n, l):
     return core_m, core_n, core_l
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _din_img2col(image_patches_res_shape, image_patches_res, padding, stride_d, float16_align_flag):
     """
     calculate din_img2col tensor
@@ -287,7 +288,7 @@ def _din_img2col(image_patches_res_shape, image_patches_res, padding, stride_d, 
     Returns : A_din_img2col tensor
     """
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _din_img2col_compute(indices, image_patches_res, padding, stride_d, float16_align_flag):
         """
         calculate din_img2col tensor
@@ -342,7 +343,7 @@ def _din_img2col(image_patches_res_shape, image_patches_res, padding, stride_d, 
         tag='image_patches_res')
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride):
     """
     calculate im2col tensor
@@ -364,7 +365,7 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride):
     Returns : im2col tensor
     """
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _img2col_compute(input_img, indices, filter_w, pad, stride):
         """
         calculate im2col tensor
@@ -415,7 +416,7 @@ def _img2col(input_img, col_shape, filter_h, filter_w, pad, stride):
                        })
 
 
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-arguments,invalid-name
 def _im2col_fractal(a_im2col_shape, fmap):
     """
     calculate im2col_fractal tensor
@@ -429,7 +430,7 @@ def _im2col_fractal(a_im2col_shape, fmap):
     Returns : a_im2col_fractal tensor
     """
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _im2col_fractal_indices(indices, fmap):
         """
         calculate im2col_fractal tvm lambda function
@@ -466,7 +467,7 @@ def _im2col_fractal(a_im2col_shape, fmap):
                        tag='im2col_fractal')
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
 def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
                        max_l1_valid_size, max_next_valid_size, dtype, aligned_flag):
     """
@@ -696,7 +697,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
                                              l0ub_c0), l0_double_buffer, howo_split
 
 
-# pylint: disable=unnecessary-lambda,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-locals
 def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, padding):
     """
     calculating data
@@ -785,7 +786,8 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
         # [UB]image_patches_split_c1:
         #  `(fmap_batch, fmap_d, howo // BLOCK_SIZE, fmap_c1 * filter_h * filter_w, BLOCK_SIZE, blcok_size_align)` ->
         # [UB]image_patches_res:
-        #  `(fmap_batch, dout, howo // BLOCK_SIZE, fmap_c1, filter_d,filter_h * filter_w, BLOCK_SIZE, blcok_size_align)`
+        #  `(fmap_batch, dout, howo // BLOCK_SIZE, fmap_c1, filter_d,`
+        #  `filter_h * filter_w, BLOCK_SIZE, blcok_size_align)`
         image_patches_res_shape = (fmap_batch, dout, howo // Constant.BLOCK_SIZE, fmap_c1, filter_d,
                                    filter_h * filter_w, Constant.BLOCK_SIZE, blcok_size_align)
         image_patches_res = _din_img2col(image_patches_res_shape,
@@ -996,7 +998,7 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
         #  (fmap_batch, dout, howo // Constant.BLOCK_SIZE, Constant.BLOCK_SIZE, filter_d,
         #  fmap_c1, filter_h * filter_w, blcok_size_align) ->
         # [WorkSpace]workspace_res:
-        #  (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)
+        #  `(fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)`
         workspace_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)
         workspace_res = tvm.compute(workspace_shape,
                                     lambda n, dO, howo, kd, khkw, c1, c0: image_patches_res[
@@ -1195,7 +1197,7 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
         #  (fmap_batch, dout, howo // Constant.BLOCK_SIZE, Constant.BLOCK_SIZE, filter_d,
         #  fmap_c1, filter_h * filter_w, blcok_size_align) ->
         # [WorkSpace]workspace_res:
-        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)
+        #  `(fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)`
         workspace_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)
         workspace_res = tvm.compute(workspace_shape,
                                     lambda n, dO, howo, kd, khkw, c1, c0: image_patches_res[
@@ -1208,7 +1210,7 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
         # [WorkSpace]workspace_res:
         #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align) ->
         # [UB]ub_res:
-        #  (fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)
+        #  `(fmap_batch, dout, out_h*out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)`
         ub_res_shape = (fmap_batch, dout, out_h * out_w, filter_d, filter_h * filter_w, fmap_c1, blcok_size_align)
         ub_res = tvm.compute(ub_res_shape,
                              lambda n, dO, howo, kd, khkw, c1, c0: workspace_res[n, dO, howo, kd, khkw, c1, c0],
@@ -1271,7 +1273,7 @@ def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, pad
         return out_res
 
 
-# pylint: disable=unnecessary-lambda,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("extract_volume_patches")
 def extract_volume_patches_compute(data_input, fmap_c, ksizes, strides, padding):
     """
@@ -1296,7 +1298,7 @@ def extract_volume_patches_compute(data_input, fmap_c, ksizes, strides, padding)
     return list(output_image_patches)
 
 
-# pylint: disable=locally-disabled, too-many-statements, too-many-locals
+# 'pylint: disable=locally-disabled, too-many-statements, too-many-locals
 def _extract_volume_patches_schedule(res, sch_list, original_cin):
     """
     extract_image_patches schedule
@@ -1380,19 +1382,20 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         else:
             extract_params[key] = value
 
-    fmap_shape = extract_params["fmap_shape"]
-    (filter_d, filter_h, filter_w) = extract_params["ksizes"]
+    fmap_shape = extract_params.get("fmap_shape")
+    (filter_d, filter_h, filter_w) = extract_params.get("ksizes")
     (filter_d, filter_h, filter_w) = (filter_d.value, filter_h.value, filter_w.value)
-    (stride_d, stride_h, stride_w) = extract_params["strides"]
+    (stride_d, stride_h, stride_w) = extract_params.get("strides")
     (stride_d, stride_h, stride_w) = (stride_d.value, stride_h.value, stride_w.value)
     (fmap_batch, fmap_d, fmap_c1, fmap_h, fmap_w, _) = fmap_shape
     fmap_batch, fmap_d, fmap_c1, fmap_h, fmap_w = \
         fmap_batch.value, fmap_d.value, fmap_c1.value, fmap_h.value, fmap_w.value
-    padding = extract_params["padding_mode"]
-    original_cin = extract_params["original_cin"]
-    out_d = extract_params['out_d']
-    out_w = extract_params['out_w']
-    howo = extract_params["howo"]
+    padding = extract_params.get("padding_mode")
+    original_cin = extract_params.get("original_cin")
+    out_d = extract_params.get("out_d")
+    out_w = extract_params.get("out_w")
+    out_w = extract_params.get("out_w")
+    howo = extract_params.get("howo")
 
     compute_inline_tensor42 = 1 if original_cin % blcok_size_align != 0 else 0
     compute_inline_tensor3_6 = 1 if original_cin % blcok_size_align != 0 and dtype_input == "float16" else 0
@@ -2235,7 +2238,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         sch[res].bind(res_fused_axis, block_idx)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def extract_volume_patches(input_x, output_y, ksizes, strides, padding, kernel_name="extract_volume_patches"):

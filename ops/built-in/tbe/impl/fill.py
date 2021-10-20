@@ -19,7 +19,7 @@ fill
 from te.utils import para_check
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 def check_supported(dims, value, y, kernel_name="fill"):
     """
     verify the types of cast supported by tbe
@@ -33,7 +33,7 @@ def check_supported(dims, value, y, kernel_name="fill"):
     return True, ""
 
 
-# pylint: disable=unnecessary-pass
+# 'pylint: disable=unnecessary-pass
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def fill(dims, value, y, kernel_name="fill"):

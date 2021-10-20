@@ -273,9 +273,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   PrintVectorValues(op_type, "axis_value", axis_vec);
   std::vector<int64_t> status_vec;
   for (size_t i = 0; i < input_shape.size(); ++i) {
-    std::vector<int64_t>::iterator it;
-    it = find(axis_vec.begin(), axis_vec.end(), i);
-
+    std::vector<int64_t>::iterator it = find(axis_vec.begin(), axis_vec.end(), i);
     if (it != axis_vec.end()) {
       status_vec.push_back(1);
     } else {

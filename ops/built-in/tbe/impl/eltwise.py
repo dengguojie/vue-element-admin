@@ -25,7 +25,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unrecognized-inline-option,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=unrecognized-inline-option,invalid-name,too-many-locals,unused-argument
 def get_fusion_params(x_tensor, y, x_tensor_num):
     """
     Get L1 fusion_params
@@ -65,8 +65,8 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
     return fusion_params
 
 
-# pylint: disable=unidiomatic-typecheck,too-many-branches,too-many-locals
-# pylint: disable=no-member,dangerous-default-value,invalid-name
+# 'pylint: disable=unidiomatic-typecheck,too-many-branches,too-many-locals
+# 'pylint: disable=no-member,dangerous-default-value,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("eltwise")
 def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     '''

@@ -24,29 +24,22 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
     """
-    # define a scaler, value = 1
     SCALER_ONE = 1
-    # define a scaler, value = -1
     SCALER_NEGATIVE_ONE = -1
-    # define a scaler, value = -0.47047, only used in compute of erf and erfc
     SCALER_P = 0.47047
-    # define a scaler, value = 0.3480242, only used in compute of erf and erfc
     SCALER_A = 0.3480242
-    # define a scaler, value = -0.0958798, only used in compute of erf and erfc
     SCALER_B = -0.0958798
-    # define a scaler, value = 0.7478556, only used in compute of erf and erfc
     SCALER_C = 0.7478556
-    # define a scaler, value = 32768
     SCALER_FP16_MAX = 32768
-    # define a scaler, value = 2**(-15)
     SCALER_FP16_MIN = 2**(-15)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("erf")
 def erf_compute(input_x, output_y, kernel_name="erf"):
     """
