@@ -173,7 +173,6 @@ def check_dtype(input_x, weight, output_h):
     if input_x["dtype"] != "float32" or weight["dtype"] != "float32" \
        or weight["dtype"] != "float32" or output_h["dtype"] != "float32":
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "x, w, b, output_h supports dtype float32 only!")
-    return
 
 
 def check(shape_x_input, shape_w_input, shape_b_input, shape_output):
@@ -475,7 +474,7 @@ def dynamic_lstm(input_x, weight, bias,
                 if in_tensor not in visited_list:
                     stack.append(in_tensor)
                     if "elewise" in in_tensor.op.tag or \
-                            "broadcast" == in_tensor.op.tag:
+                            in_tensor.op.tag == "broadcast":
                         if in_tensor not in tensor_list:
                             tensor_list.append(in_tensor)
 

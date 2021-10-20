@@ -426,7 +426,7 @@ class UnsortedSegmentTiling(object):
         self.obj_scalar = self.scalars[0]
         select_mode = self._get_tiling_mode(self.obj_scalar)
 
-        if select_mode != False:
+        if select_mode:
             ub_use_rate = 0
             for the_mode in select_mode:
                 scalar = self.scalars[the_mode["ub_div_id"]]

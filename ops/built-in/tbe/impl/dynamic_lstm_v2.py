@@ -269,7 +269,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
                                           dtype=input_dtype,
                                           scope=scope_gm,
                                           name='s_init_h_gm')
-        s_init_c_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=bias_dtype, scope=scope_gm, name='s_init_c_gm')    
+        s_init_c_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=bias_dtype, scope=scope_gm, name='s_init_c_gm')
     if need_output_last:
         last_output_h_gm = tik_instance.Tensor(shape=shape_hc_init, dtype=input_dtype,
                                                scope=scope_gm, name='last_output_h_gm')
@@ -461,7 +461,7 @@ def dynamic_rnn_tik_high_precision(input_list, custom_list):
     need_output_last = custom_list[3]
 
     return dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length_gm, static_gm, s_init_h_gm, s_init_c_gm,
-                            s_state_h_gm_last, s_state_c_gm_last, sync0, 
+                            s_state_h_gm_last, s_state_c_gm_last, sync0,
                             is_first_round, is_global_init, has_static, need_output_last)
 
 
@@ -665,7 +665,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
             name='tensor_seq_length_ub_conv', tag='elewise_single_cast'
             )
     tensor_seq_length_ub_bc_conv = tensor_seq_length_ub_conv
-    if ''.join([str(i) for i in shape_h]) != ''.join([str(i) for i in shape_i]):
+    if ''.join((str(i) for i in shape_h)) != ''.join((str(i) for i in shape_i)):
         tensor_seq_length_ub_bc_conv = broadcast(tensor_seq_length_ub_conv, shape_i)
 
     f_t_sigmoid_mul_cont = vmul(f_t_sigmoid, tensor_seq_length_ub_bc_conv)
@@ -755,7 +755,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
             for in_tensor in cur_tensor.op.input_tensors:
                 if in_tensor not in visited_list:
                     stack.append(in_tensor)
-                    if "elewise" in in_tensor.op.tag or "broadcast" == in_tensor.op.tag:
+                    if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
                         if in_tensor.name.endswith("_drnn_cast"):
                             continue
                         if in_tensor.name in ["s_state_h_ub", "s_state_c_ub"]:
@@ -953,7 +953,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
 
     s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'unified_broadcast')
     s[tensor_seq_length_bc_ub].emit_insn(tensor_seq_length_bc_ub.op.axis[0], 'unified_broadcast')
-    if ''.join([str(i) for i in shape_h]) != ''.join([str(i) for i in shape_i]):
+    if ''.join((str(i) for i in shape_h)) != ''.join((str(i) for i in shape_i)):
         s[tensor_seq_length_ub_bc_conv].emit_insn(tensor_seq_length_ub_bc_conv.op.axis[0], 'unified_broadcast')
 
     if is_first_round:
@@ -1240,7 +1240,7 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
                 name="o_t_sigmoid", tag="split_com")
         j_t_tanh = tanh_compute_high_precision(j_t)
 
-    if ''.join([str(i) for i in shape_h]) == ''.join([str(i) for i in shape_i]):
+    if ''.join((str(i) for i in shape_h)) == ''.join((str(i) for i in shape_i)):
         tensor_cont_ub = tensor_seq_length_bc_ub
     else:
         tensor_cont_ub = tensor_seq_length_ub
@@ -1251,7 +1251,7 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
             name='tensor_seq_length_ub_conv', tag='elewise_single_cast'
             )
     tensor_seq_length_ub_bc_conv = tensor_seq_length_ub_conv
-    if ''.join([str(i) for i in shape_h]) != ''.join([str(i) for i in shape_i]):
+    if ''.join((str(i) for i in shape_h)) != ''.join((str(i) for i in shape_i)):
         tensor_seq_length_ub_bc_conv = broadcast(tensor_seq_length_ub_conv, shape_i)
 
     f_t_sigmoid_mul_cont = vmul(f_t_sigmoid, tensor_seq_length_ub_bc_conv)
@@ -1416,7 +1416,7 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
             for in_tensor in cur_tensor.op.input_tensors:
                 if in_tensor not in visited_list:
                     stack.append(in_tensor)
-                    if "elewise" in in_tensor.op.tag or "broadcast" == in_tensor.op.tag:
+                    if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
                         if in_tensor.name.endswith("_drnn_cast"):
                             continue
                         if in_tensor.name in ["s_state_h_ub", "s_state_c_ub"]:
@@ -1669,7 +1669,7 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
 
     s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'unified_broadcast')
     s[tensor_seq_length_bc_ub].emit_insn(tensor_seq_length_bc_ub.op.axis[0], 'unified_broadcast')
-    if ''.join([str(i) for i in shape_h]) != ''.join([str(i) for i in shape_i]):
+    if ''.join((str(i) for i in shape_h)) != ''.join((str(i) for i in shape_i)):
         s[tensor_seq_length_ub_bc_conv].emit_insn(tensor_seq_length_ub_bc_conv.op.axis[0], 'unified_broadcast')
 
     if is_first_round:

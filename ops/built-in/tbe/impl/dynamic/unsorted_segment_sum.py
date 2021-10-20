@@ -256,7 +256,7 @@ def check_supported(x, segment_ids, num_segments, y,
     for i in range(len(shapeid)):
         if shapeid[i] == -2:
             reason = "dynamic shape is not supported by aicore, shapeid[%s] == -2" % i
-            return False, reason 
+            return False, reason
         if shapeid[i] == -1:
             reason = "dynamic shape is not supported by aicore, shapeid[%s] == -1" % i
             dynamic_id = False, reason
