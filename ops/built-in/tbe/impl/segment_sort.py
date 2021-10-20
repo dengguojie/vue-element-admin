@@ -23,6 +23,7 @@ from impl.merge_sort import MergeSort
 
 
 class SegmentSort:
+    # 'pylint: disable=too-many-arguments
     """define SegmentSort"""
     def __init__(self, data_num, index_num, data_type, k_num, kernel_name, cont):
         self.data_num = data_num
@@ -126,6 +127,7 @@ class SegmentSort:
                                              self.tik.scope_ubuf, "ub_proposal_2")
         return ub_proposal_1, ub_proposal_2
 
+    # 'pylint: disable=too-many-locals
     def _init_index_channel(self, ub_proposal_1, index_l1, boxes_index, proposal_num):
         """
         algorithm: init index
@@ -228,7 +230,7 @@ def check_params(input_data, input_index, kernel_name):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="SegmentSort"):
     """algorithm: Segment merge sort on multiple core
     Parameters

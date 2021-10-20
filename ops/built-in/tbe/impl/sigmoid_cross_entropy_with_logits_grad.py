@@ -29,7 +29,7 @@ SCALAR_ONE = 1
 SCALAR_NEGTIVE_ONE = -1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("sigmoid_cross_entropy_with_logits_grad")
 def sigmoid_cross_entropy_with_logits_grad_compute(
         predict,

@@ -17,12 +17,12 @@
 """
 score_filter_pre_sort
 """
-# pylint: disable=C0302
-# pylint: disable=R0902
-# pylint: disable=R0915
-# pylint: disable=R0914
-# pylint: disable=R0913
-# pylint: disable=R0912
+# 'pylint: disable=C0302
+# 'pylint: disable=R0902
+# 'pylint: disable=R0915
+# 'pylint: disable=R0914
+# 'pylint: disable=R0913
+# 'pylint: disable=R0912
 from te import tik
 
 from impl.util.platform_adapter import para_check

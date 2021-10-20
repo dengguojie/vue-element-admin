@@ -96,7 +96,7 @@ if(BUILD_OPEN_PROJECT)
       set(TOOLCHAIN_DIR ${ASCEND_DIR}/toolkit/toolchain/hcc)
     endif()
   endif()
-  
+
   if(NOT "x${TOOLCHAIN_DIR}" STREQUAL "x")
     if(NOT IS_DIRECTORY ${TOOLCHAIN_DIR})
       message(FATAL_ERROR "specify cross compile toolchain directroy(${TOOLCHAIN_DIR}) is not exist")

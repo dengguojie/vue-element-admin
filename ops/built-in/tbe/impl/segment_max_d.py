@@ -62,7 +62,7 @@ def _check_segment_ids(shape, segment_ids):
         raise RuntimeError("len(segment_ids) == shape[0]")
 
 
-# pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
+# 'pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("segment_max_d")
 def segment_max_d_compute(x, y, segment_ids, kernel_name="segment_max_d"):
     """compute for tf_segment_max_cce"""

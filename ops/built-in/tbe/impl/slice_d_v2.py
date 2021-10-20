@@ -15,7 +15,7 @@
 # limitations under the License.
 # ============================================================================
 
-# pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
+# 'pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
 from types import MethodType
 import math
 
@@ -28,9 +28,9 @@ from impl.dynamic.strided_slice import StridedSlice
 from impl.dynamic.strided_slice import ceil_32bytes_align_count
 
 
-# pylint: disable=undefined-variable
-# pylint: disable=too-many-instance-attributes,useless-object-inheritance
-# pylint: disable=too-many-arguments,unused-argument,unneeded-not,invalid-name
+# 'pylint: disable=undefined-variable
+# 'pylint: disable=too-many-instance-attributes,useless-object-inheritance
+# 'pylint: disable=too-many-arguments,unused-argument,unneeded-not,invalid-name
 def _data_move(tik_instance: tik.Tik, dest: tik.Tensor, src: tik.Tensor, count):
     dtype_size = common_util.get_data_size(src.dtype)
     burst = math.ceil(count * dtype_size / constant.BLOCK_SIZE)
@@ -60,7 +60,7 @@ def _check_parameters(shape, size, kernel_name):
                                                                expected_value, real_value)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
@@ -173,6 +173,7 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
 
             return output_shape, input_shape, input_begin, input_end
 
+        # 'pylint: disable=too-many-boolean-expressions
         def _set_tiling_mode(output_shape, input_shape):
 
             date_move_stride_limit = 65535 * constant.BLOCK_SIZE

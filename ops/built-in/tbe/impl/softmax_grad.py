@@ -22,8 +22,8 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_grad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
                          kernel_name="softmax_grad"):
@@ -83,7 +83,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
 
     return res
 
-
+# 'pylint: disable=variable_type_changed
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME)

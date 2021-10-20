@@ -20,7 +20,7 @@ import te.platform as tbe_platform
 import te.lang.cce as tbe
 
 
-# pylint: disable=redefined-builtin,too-many-locals,too-many-arguments
+# 'pylint: disable=redefined-builtin,too-many-locals,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_v2")
 def smooth_l1_loss_v2_compute(input_predict,
                               input_label,

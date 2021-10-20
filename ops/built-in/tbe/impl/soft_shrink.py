@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 
 
 @fusion_manager.register("soft_shrink")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def soft_shrink_compute(input_x, output_y, lambd, kernel_name="soft_shrink"):
     """calculating data
 

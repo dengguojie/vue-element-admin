@@ -30,9 +30,9 @@ from impl.util.platform_adapter import error_manager_vector
 VALUE_ONE = 1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
-# pylint: disable=too-many-locals, invalid-name, unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals, invalid-name, unused-argument
+# 'pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("select")
 def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
     """compute for select_v2

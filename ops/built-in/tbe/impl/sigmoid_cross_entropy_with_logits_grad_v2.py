@@ -26,7 +26,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=raise-missing-from,too-many-arguments,too-many-locals,unused-argument
+# 'pylint: disable=raise-missing-from,too-many-arguments,too-many-locals,unused-argument
 def _broadcast_shape_check(input_shape, target_shape):
     """
     _broadcast_shape_check

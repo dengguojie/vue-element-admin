@@ -43,8 +43,8 @@ UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=trailing-whitespace,too-many-lines,no-else-return,consider-using-in,inconsistent-return-statements
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=trailing-whitespace,too-many-lines,no-else-return,consider-using-in,inconsistent-return-statements
 def get_op_support_info(x, y, begin, size, kernel_name="slice_d"):
     """
     get_op_support_info
@@ -55,11 +55,11 @@ def get_op_support_info(x, y, begin, size, kernel_name="slice_d"):
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-statements
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=locally-disabled,too-many-locals,singleton-comparison
-# pylint: disable=locally-disabled,invalid-name,attribute-defined-outside-init
+# 'pylint: disable=locally-disabled,too-many-lines,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals,singleton-comparison
+# 'pylint: disable=locally-disabled,invalid-name,attribute-defined-outside-init
 class SliceLastDimCompute():
     """
     class of SliceLastDimCompute for last dim small scene
@@ -716,8 +716,8 @@ def _get_align_axis(out_shape):
     return axis
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=locally-disabled,unnecessary-lambda
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unnecessary-lambda
 @fusion_manager.register("slice_d")
 def slice_d_compute(x, y, begin, size, kernel_name="slice_d"):
     """calculating: this operation extracts a slice of size size
@@ -6441,7 +6441,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                             uint64_all_one))
 
 
-# pylint: disable=locally-disabled,too-many-return-statements
+# 'pylint: disable=locally-disabled,too-many-return-statements
 def _check_scalar_one(shape, size, dtype):
     """
     function of checking whether scalar one scene
@@ -6597,7 +6597,7 @@ def _get_before_after(row_zu, row_out, dtype):
     return before, after
 
 
-# pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-branches
 def _last_dim_diff(shape, size, dtype):
     """
     function of checking whether last dim different
@@ -7302,7 +7302,7 @@ def _update_params_for_other_format(shape, begin, size, input_format, ori_format
 
         return begin_new, size_new
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def get_fused_str(format_char_list):
     """get_fused_str for format
     """

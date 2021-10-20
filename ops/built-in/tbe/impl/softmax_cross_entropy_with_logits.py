@@ -32,7 +32,7 @@ SCALAR_MINUS_ONE = -1
 MAX_SHAPE_NUM = 10000000
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def get_op_support_info(input_features,
                         input_labels,
                         output_loss,
@@ -83,9 +83,9 @@ def get_op_support_info(input_features,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_cross_entropy_with_logits")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def softmax_cross_entropy_with_logits_nchw_compute(
         input_features,
         input_labels,
@@ -152,7 +152,7 @@ def softmax_cross_entropy_with_logits_nchw_compute(
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_cross_entropy_with_logits")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def softmax_cross_entropy_with_logits_compute(
         input_features,
         input_labels,
@@ -354,7 +354,7 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
     return res
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def softmax_cross_entropy_with_logits(

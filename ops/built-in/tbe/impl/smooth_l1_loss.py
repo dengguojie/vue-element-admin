@@ -22,7 +22,7 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss")
 def smooth_l1_loss_compute(input_predict,
                            input_label,

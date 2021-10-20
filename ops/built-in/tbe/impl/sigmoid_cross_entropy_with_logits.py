@@ -25,7 +25,7 @@ SCALAR_ONE = 1
 SCALAR_ZREO = 0
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("sigmoid_cross_entropy_with_logits")
 def sigmoid_cross_entropy_with_logits_compute(predict,
                                               target,

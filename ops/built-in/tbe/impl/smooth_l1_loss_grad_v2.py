@@ -21,7 +21,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.register("smooth_l1_loss_grad_v2")
 def smooth_l1_loss_grad_v2_compute(input_predict,
                                    input_label,

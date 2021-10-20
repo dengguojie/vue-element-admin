@@ -38,7 +38,7 @@ LAST_ORDER = 13
 FIRST_FACTOR = -1.0 / 6.0
 
 
-# pylint: disable=invalid-name,too-many-locals
+# 'pylint: disable=invalid-name,too-many-locals
 def _sin(x):
     """algorithm: sin
     calculating data's sin x = x-x^3/3!+x ^5/5!-x^7/7!+x^9/9!-x^11/11! (-pai/2 < x < pai/2)
@@ -67,7 +67,7 @@ def _sin(x):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("sin")
 def sin_compute(x, y, kernel_name="sin"):
     """algorithm: sin

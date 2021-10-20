@@ -29,7 +29,7 @@ from impl.util.platform_adapter import error_manager_vector
 RESERVE_SIZE = 16 * 1024
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-statements,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,too-many-statements,too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def shuffle_channel(x, y, group=1, kernel_name="shuffle_channel"):

@@ -15,7 +15,7 @@
 # limitations under the License.
 # ============================================================================
 
-# pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
+# 'pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
 
 import math
 from functools import reduce
@@ -31,8 +31,9 @@ RESERVED_UB_SIZE = 4 * 1024
 AVAILABLE_UB_SIZE = UB_SIZE - RESERVED_UB_SIZE
 
 
-class SliceLastDim(object):
+class SliceLastDim():
     """slice last dim main method"""
+    # 'pylint: disable=too-many-arguments
     def __init__(self, x, y, start, end, stride=1, kernel_name="slice_last_dim"):
         self.kernel_name = kernel_name
         x_shape, self.x_dtype = x.get("shape"), x.get("dtype")
@@ -109,6 +110,7 @@ class SliceLastDim(object):
                 self.data_move_case_stride_gt1_with_loop(block_i, data_move_i, data_move_times,
                                                          num_burst_per_data_move, tail_num_burst)
 
+    # 'pylint: disable=too-many-arguments
     def data_move_case_stride1(self, block_i, data_move_i, data_move_times,
                                num_burst_per_data_move, tail_num_burst):
         """
@@ -138,6 +140,7 @@ class SliceLastDim(object):
             self.data_move_every_time(gm_to_ub_offset, ub_to_gm_offset, gm_to_ub_src_stride, ub_to_gm_dst_stride,
                                       tail_num_burst, tail_ub_to_gm_n_burst)
 
+    # 'pylint: disable=too-many-arguments
     def data_move_case_stride_gt1(self, block_i, data_move_i, data_move_times,
                                   num_burst_per_data_move, tail_num_burst):
         """
@@ -168,6 +171,7 @@ class SliceLastDim(object):
             self.data_move_every_time(gm_to_ub_offset, ub_to_gm_offset, gm_to_ub_src_stride, ub_to_gm_dst_stride,
                                       tail_num_burst, tail_ub_to_gm_n_burst)
 
+    # 'pylint: disable=too-many-arguments
     def data_move_case_stride_gt1_with_loop(self, block_i, data_move_i, data_move_times,
                                             num_burst_per_data_move, tail_num_burst):
         """
@@ -201,6 +205,7 @@ class SliceLastDim(object):
                 self.data_move_every_time(gm_to_ub_offset, ub_to_gm_offset, gm_to_ub_src_stride, ub_to_gm_dst_stride,
                                           tail_num_burst, tail_ub_to_gm_n_burst)
 
+    # 'pylint: disable=too-many-arguments
     def data_move_every_time(self, gm_to_ub_offset, ub_to_gm_offset, gm_to_ub_stride, ub_to_gm_stride,
                              gm_to_ub_nburst, ub_to_gm_nburst):
         """
@@ -308,6 +313,7 @@ class SliceLastDim(object):
                 "{} data type not supported yet!".format(self.x_dtype))
 
 
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def slice_last_dim(x, y, start, end, stride=1, kernel_name="slice_last_dim"):

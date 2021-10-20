@@ -30,8 +30,8 @@ SCALE_ALPHA_PRODUCT = 1.75809934085
 SCALAR_NEGATIVE_ONE = -1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("selu")
 def selu_compute(input_x, y, kernel_name="selu"):
     """Computes scaled exponential linear:

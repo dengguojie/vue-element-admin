@@ -24,7 +24,7 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=unused-argument,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_grad")
 def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
                                 kernel_name):
@@ -70,7 +70,7 @@ def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma,
     return res
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def smooth_l1_loss_grad(predict,

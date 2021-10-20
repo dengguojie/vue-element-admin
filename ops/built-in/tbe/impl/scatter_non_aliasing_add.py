@@ -34,12 +34,12 @@ UB_SIZE_RATIO = 0.9
 MAX_CORE_NUMBER = 65536
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
-# pylint: disable=useless-object-inheritance
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=useless-object-inheritance
 class ScatterNonAliasingAdd(object):
     """Function: use to store scatter base parameters"""
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, inputs, indices, updates, outputs, kernel_name):
         """
         Init scatter base parameters
@@ -424,7 +424,7 @@ class ScatterNonAliasingAdd(object):
                                         1, updates_burst_len, 0, 0)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
     def _calc_process(self, mask, dest_addr, src_addr1, src_addr2, repeat_times, is_tile):
         """Execute the corresponding calculation instruction
 

@@ -24,7 +24,7 @@ from impl.util.util_apply_op_schedule import ApplyOpConfig
 from impl.util.util_apply_op_schedule import common_apply_op_process
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("sgd")
 def sgd_compute(parameters,
                 gradient,

@@ -27,7 +27,7 @@ from te.utils.shape_util import shape_to_list
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @fusion_manager.register("soft_margin_loss_grad")
 def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
                                   reduction, kernel_name="soft_margin_loss_grad"):
@@ -100,7 +100,7 @@ def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
         res = tbe.cast_to(res, "float32")
     return res
 
-
+# 'pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)

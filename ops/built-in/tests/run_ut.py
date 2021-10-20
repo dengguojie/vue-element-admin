@@ -481,7 +481,7 @@ def main(argv):
             shutil.move(cube_cov_file, dst_path)
         if cube_res != op_status.SUCCESS:
             exit(-1)
-  
+
     if vector_case_dir:
         print("Enter vector op.")
         cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"

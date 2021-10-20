@@ -27,7 +27,7 @@ CONST_FP32_MAX = 3.4e+38
 CONST_FP16_MAX = 65504
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("sigmoid")
 def sigmoid_compute(x, y, kernel_name="sigmoid"):
     """calculating data

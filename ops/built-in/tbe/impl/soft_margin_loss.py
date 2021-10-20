@@ -25,7 +25,7 @@ from te.utils import para_check
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @fusion_manager.register("soft_margin_loss")
 def soft_margin_loss_compute(input_x, input_y, output_z, reduction='mean', kernel_name="soft_margin_loss"):
     """calculating data
@@ -73,7 +73,7 @@ def soft_margin_loss_compute(input_x, input_y, output_z, reduction='mean', kerne
     return result
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)

@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 
 
 @fusion_manager.register("soft_shrink_grad")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def soft_shrink_grad_compute(input_grad, input_x, output_y, lambd=0.5, kernel_name="soft_shrink_grad"):
     """calculating data
 
